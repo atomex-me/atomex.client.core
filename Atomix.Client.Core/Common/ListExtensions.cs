@@ -1,0 +1,30 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace Atomix.Common
+{
+    public static class ListExtensions
+    {
+        public static List<T> AddRangeEx<T>(this List<T> list, IEnumerable<T> range)
+        {
+            list.AddRange(range);
+            return list;
+        }
+
+        public static IList<T> ForEachDo<T>(this IList<T> list, Action<T> action)
+        {
+            //list.ForEach(action);
+
+            foreach (var item in list)
+                action(item);
+
+            return list;
+        }
+
+        public static IList<T> SortList<T>(this List<T> list, Comparison<T> comparison)
+        {
+            list.Sort(comparison);
+            return list;
+        }
+    }
+}
