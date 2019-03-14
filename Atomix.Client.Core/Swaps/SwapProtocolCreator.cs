@@ -10,32 +10,29 @@ namespace Atomix.Swaps
 {
     public class SwapProtocolCreator
     {
-        public static ISwapProtocol Create(
+        public static ISwap Create(
             Currency currency,
-            Swap swap,
+            SwapState swapState,
             IAccount account,
             ISwapClient swapClient,
-            IBackgroundTaskPerformer taskPerformer,
-            OnSwapUpdatedDelegate onSwapUpdated)
+            IBackgroundTaskPerformer taskPerformer)
         {
             switch (currency)
             {
                 case BitcoinBasedCurrency _:
-                    return new BitcoinBasedSwapProtocol(
+                    return new BitcoinBasedSwap(
                         currency: currency,
-                        swap: swap,
+                        swapState: swapState,
                         account: account,
                         swapClient: swapClient,
-                        taskPerformer: taskPerformer,
-                        onSwapUpdated: onSwapUpdated);
+                        taskPerformer: taskPerformer);
                 case Atomix.Ethereum _:
-                    return new EthereumSwapProtocol(
+                    return new EthereumSwap(
                         currency: currency,
-                        swap: swap,
+                        swapState: swapState,
                         account: account,
                         swapClient: swapClient,
-                        taskPerformer: taskPerformer,
-                        onSwapUpdated: onSwapUpdated);
+                        taskPerformer: taskPerformer);
                 default:
                     throw new NotSupportedException($"Not supported currency {currency.Name}");
             }

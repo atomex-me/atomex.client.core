@@ -15,7 +15,7 @@ namespace Atomix.LiteDb
     {
         public const string SwapsCollectionName = "swaps";
 
-        private readonly ConcurrentDictionary<Guid, ISwap> _swapById = new ConcurrentDictionary<Guid, ISwap>();
+        private readonly ConcurrentDictionary<Guid, ISwapState> _swapById = new ConcurrentDictionary<Guid, ISwapState>();
 
         private bool _loaded;
 
@@ -24,7 +24,7 @@ namespace Atomix.LiteDb
         {
         }
 
-        public Task<bool> AddSwapAsync(ISwap swap)
+        public Task<bool> AddSwapAsync(ISwapState swap)
         {
             if (!_swapById.TryAdd(swap.Id, swap))
                 return Task.FromResult(false);
@@ -33,9 +33,9 @@ namespace Atomix.LiteDb
             {
                 using (var db = new LiteDatabase(ConnectionString))
                 {
-                    var swaps = db.GetCollection<Swap>(SwapsCollectionName);
+                    var swaps = db.GetCollection<SwapState>(SwapsCollectionName);
 
-                    swaps.Insert((Swap)swap);
+                    swaps.Insert((SwapState)swap);
                 }
 
                 return Task.FromResult(true);
@@ -48,15 +48,15 @@ namespace Atomix.LiteDb
             return Task.FromResult(false);
         }
 
-        public Task<bool> UpdateSwapAsync(ISwap swap)
+        public Task<bool> UpdateSwapAsync(ISwapState swap)
         {
             try
             {
                 using (var db = new LiteDatabase(ConnectionString))
                 {
-                    var swaps = db.GetCollection<Swap>(SwapsCollectionName);
+                    var swaps = db.GetCollection<SwapState>(SwapsCollectionName);
 
-                    return Task.FromResult(swaps.Update((Swap)swap));
+                    return Task.FromResult(swaps.Update((SwapState)swap));
                 }
             }
             catch (Exception e)
@@ -67,7 +67,7 @@ namespace Atomix.LiteDb
             return Task.FromResult(false);
         }
 
-        public Task<bool> RemoveSwapAsync(ISwap swap)
+        public Task<bool> RemoveSwapAsync(ISwapState swap)
         {
             if (!_swapById.TryRemove(swap.Id, out _))
                 return Task.FromResult(false);
@@ -76,7 +76,7 @@ namespace Atomix.LiteDb
             {
                 using (var db = new LiteDatabase(ConnectionString))
                 {
-                    var swaps = db.GetCollection<Swap>(SwapsCollectionName);
+                    var swaps = db.GetCollection<SwapState>(SwapsCollectionName);
 
                     return Task.FromResult(swaps.Delete(swap.Id));
                 }
@@ -89,7 +89,7 @@ namespace Atomix.LiteDb
             return Task.FromResult(false);
         }
 
-        public Task<ISwap> GetSwapByIdAsync(Guid id)
+        public Task<ISwapState> GetSwapByIdAsync(Guid id)
         {
             if (_swapById.TryGetValue(id, out var swap))
                 return Task.FromResult(swap);
@@ -98,7 +98,7 @@ namespace Atomix.LiteDb
             {
                 using (var db = new LiteDatabase(ConnectionString))
                 {
-                    var swapCollection = db.GetCollection<Swap>(SwapsCollectionName);
+                    var swapCollection = db.GetCollection<SwapState>(SwapsCollectionName);
 
                     swap = swapCollection.FindById(id);
 
@@ -114,19 +114,19 @@ namespace Atomix.LiteDb
                 Log.Error(e, "Error getting swap by id");
             }
 
-            return Task.FromResult<ISwap>(null);
+            return Task.FromResult<ISwapState>(null);
         }
 
-        public Task<IEnumerable<ISwap>> GetSwapsAsync()
+        public Task<IEnumerable<ISwapState>> GetSwapsAsync()
         {
             if (_loaded)
-                return Task.FromResult<IEnumerable<ISwap>>(_swapById.Values);
+                return Task.FromResult<IEnumerable<ISwapState>>(_swapById.Values);
 
             try
             {
                 using (var db = new LiteDatabase(ConnectionString))
                 {
-                    var swapCollection = db.GetCollection<Swap>(SwapsCollectionName);
+                    var swapCollection = db.GetCollection<SwapState>(SwapsCollectionName);
 
                     var swaps = swapCollection.Find(Query.All());
 
@@ -136,7 +136,7 @@ namespace Atomix.LiteDb
   
                     _loaded = true;
 
-                    return Task.FromResult<IEnumerable<ISwap>>(_swapById.Values);
+                    return Task.FromResult<IEnumerable<ISwapState>>(_swapById.Values);
                 }
             }
             catch (Exception e)
@@ -144,7 +144,7 @@ namespace Atomix.LiteDb
                 Log.Error(e, "Swaps getting error");
             }
 
-            return Task.FromResult(Enumerable.Empty<ISwap>());
+            return Task.FromResult(Enumerable.Empty<ISwapState>());
         }
     }
 }

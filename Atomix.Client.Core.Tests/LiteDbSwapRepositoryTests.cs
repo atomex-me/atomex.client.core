@@ -19,9 +19,9 @@ namespace Atomix.Client.Core.Tests
         private const string PathToDb = "test.db";
         private SecureString Password { get; } = "12345".ToSecureString();
 
-        private Swap CreateSwap()
+        private SwapState CreateSwap()
         {
-            return new Swap()
+            return new SwapState()
             {
                 Order = new Order
                 {
@@ -45,12 +45,12 @@ namespace Atomix.Client.Core.Tests
                 },
                 Secret = new byte[] { 0x01, 0x02, 0x03 },
                 SecretHash = new byte[] { 0x04, 0x05, 0x06 },
-                State = SwapState.HasInitiatorPayment | SwapState.HasCounterPartyPayment,
-                InitiatorPaymentTx = new BitcoinBasedTransaction(
+                StateFlags = SwapStateFlags.HasPayment | SwapStateFlags.HasPartyPayment,
+                PaymentTx = new BitcoinBasedTransaction(
                     currency: Currencies.Btc,
                     tx: Transaction.Create(Network.TestNet)),
 
-                CounterPartyPaymentTx = new EthereumTransaction
+                PartyPaymentTx = new EthereumTransaction
                 {
                     From = "abcdefghj",
                     To = "eprstifg"
@@ -90,7 +90,7 @@ namespace Atomix.Client.Core.Tests
 
             var repository = new LiteDbSwapRepository(PathToDb, Password);
 
-            var swap = (Swap)await repository
+            var swap = (SwapState)await repository
                 .GetSwapByIdAsync(swapId)
                 .ConfigureAwait(false);
 
@@ -99,10 +99,10 @@ namespace Atomix.Client.Core.Tests
             Assert.NotNull(swap.Requisites);
             Assert.NotNull(swap.Secret);
             Assert.NotNull(swap.SecretHash);
-            Assert.True(swap.State.HasFlag(SwapState.HasInitiatorPayment));
-            Assert.True(swap.State.HasFlag(SwapState.HasCounterPartyPayment));
-            Assert.NotNull(swap.InitiatorPaymentTx);
-            Assert.NotNull(swap.CounterPartyPaymentTx);
+            Assert.True(swap.StateFlags.HasFlag(SwapStateFlags.HasPayment));
+            Assert.True(swap.StateFlags.HasFlag(SwapStateFlags.HasPartyPayment));
+            Assert.NotNull(swap.PaymentTx);
+            Assert.NotNull(swap.PartyPaymentTx);
         }
 
         [Fact]
@@ -113,7 +113,7 @@ namespace Atomix.Client.Core.Tests
 
             var repository = new LiteDbSwapRepository(PathToDb, Password);
 
-            var swap = (Swap)await repository
+            var swap = (SwapState)await repository
                 .GetSwapByIdAsync(swapId)
                 .ConfigureAwait(false);
 

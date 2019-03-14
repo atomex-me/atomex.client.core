@@ -31,7 +31,7 @@ namespace Atomix.Blockchain.Ethereum
                     .GetEvent<RedeemedEventDTO>(Currencies.Eth.SwapContractAddress);
 
                 var filter = redeemEventHandler
-                    .CreateFilterInput<byte[]>(Swap.SecretHash);
+                    .CreateFilterInput<byte[]>(SwapState.SecretHash);
 
                 var events = await redeemEventHandler
                     .GetAllChanges(filter)

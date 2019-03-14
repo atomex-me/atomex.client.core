@@ -7,186 +7,118 @@ using System;
 
 namespace Atomix.Common.Bson
 {
-    public class SwapToBsonSerializer : BsonSerializer<Swap>
+    public class SwapToBsonSerializer : BsonSerializer<SwapState>
     {
-        private const string OrderKey = nameof(Swap.Order);
-        private const string RequisitesKey = nameof(Swap.Requisites);
-        private const string StateKey = nameof(Swap.State);
-        private const string SecretKey = nameof(Swap.Secret);
-        private const string SecretHashKey = nameof(Swap.SecretHash);
+        private const string OrderKey = nameof(SwapState.Order);
+        private const string RequisitesKey = nameof(SwapState.Requisites);
+        private const string StateKey = nameof(SwapState.StateFlags);
+        private const string SecretKey = nameof(SwapState.Secret);
+        private const string SecretHashKey = nameof(SwapState.SecretHash);
 
-        private const string InitiatorPaymentTxIdKey = nameof(Swap.InitiatorPaymentTxId);
-        private const string CounterPartyPaymentTxIdKey = nameof(Swap.CounterPartyPaymentTxId);
+        private const string PaymentTxIdKey = nameof(SwapState.PaymentTxId);
+        private const string PartyPaymentTxIdKey = nameof(SwapState.PartyPaymentTxId);
 
-        private const string InitiatorPaymentTxKey = nameof(Swap.InitiatorPaymentTx);
-        private const string InitiatorPaymentSignedTxKey = nameof(Swap.InitiatorPaymentSignedTx);
-        private const string InitiatorRefundTxKey = nameof(Swap.InitiatorRefundTx);
-        private const string InitiatorRefundSignedTxKey = nameof(Swap.InitiatorRefundSignedTx);
-        private const string InitiatorRedeemTxKey = nameof(Swap.InitiatorRedeemTx);
-        private const string InitiatorRedeemSignedTxKey = nameof(Swap.InitiatorRedeemSignedTx);
+        private const string PaymentTxKey = nameof(SwapState.PaymentTx);
+        private const string RefundTxKey = nameof(SwapState.RefundTx);
+        private const string RedeemTxKey = nameof(SwapState.RedeemTx);
 
-        private const string CounterPartyPaymentTxKey = nameof(Swap.CounterPartyPaymentTx);
-        private const string CounterPartyPaymentSignedTxKey = nameof(Swap.CounterPartyPaymentSignedTx);
-        private const string CounterPartyRefundTxKey = nameof(Swap.CounterPartyRefundTx);
-        private const string CounterPartyRefundSignedTxKey = nameof(Swap.CounterPartyRefundSignedTx);
-        private const string CounterPartyRedeemTxKey = nameof(Swap.CounterPartyRedeemTx);
-        private const string CounterPartyRedeemSignedTxKey = nameof(Swap.CounterPartyRedeemSignedTx);
+        private const string PartyPaymentTxKey = nameof(SwapState.PartyPaymentTx);
+        private const string PartyRefundTxKey = nameof(SwapState.PartyRefundTx);
+        private const string PartyRedeemTxKey = nameof(SwapState.PartyRedeemTx);
 
-        protected override Swap Deserialize(BsonValue swap)
+        protected override SwapState Deserialize(BsonValue swap)
         {
             var bson = swap as BsonDocument;
             if (bson == null)
                 return null;
 
             var order = BsonMapper.Global.ToObject<Order>(bson[OrderKey].AsDocument);
+            var soldCurrency = order.SoldCurrency();
+            var purchasedCurrency = order.PurchasedCurrency();
 
-            var initiatorCurrency = order.SwapInitiative
-                ? order.SoldCurrency()
-                : order.PurchasedCurrency();
+            Enum.TryParse<SwapStateFlags>(bson[StateKey].AsString, out var state);
 
-            var counterPartyCurrency = order.SwapInitiative
-                ? order.PurchasedCurrency()
-                : order.SoldCurrency();
-
-            //var state = (SwapState) int.Parse(bson[StateKey].AsString);
-
-            Enum.TryParse<SwapState>(bson[StateKey].AsString, out var state);
-
-            return new Swap
+            return new SwapState
             {
                 Order = order,
                 Requisites = BsonMapper.Global.ToObject<SwapRequisites>(bson[RequisitesKey].AsDocument),
-                State = state,
+                StateFlags = state,
                 Secret = bson[SecretKey].AsBinary,
                 SecretHash = bson[SecretHashKey].AsBinary,
 
-                InitiatorPaymentTxId = bson[InitiatorPaymentTxIdKey].AsString,
-                CounterPartyPaymentTxId = bson[CounterPartyPaymentTxIdKey].AsString,
+                PaymentTxId = bson[PaymentTxIdKey].AsString,
+                PartyPaymentTxId = bson[PartyPaymentTxIdKey].AsString,
 
-                InitiatorPaymentTx = !bson[InitiatorPaymentTxKey].IsNull
+                PaymentTx = !bson[PaymentTxKey].IsNull
                     ? (IBlockchainTransaction)BsonMapper.Global.ToObject(
-                        type: initiatorCurrency.TransactionType,
-                        doc: bson[InitiatorPaymentTxKey].AsDocument)
+                        type: soldCurrency.TransactionType,
+                        doc: bson[PaymentTxKey].AsDocument)
                     : null,
 
-                InitiatorPaymentSignedTx = !bson[InitiatorPaymentSignedTxKey].IsNull
+                RefundTx = !bson[RefundTxKey].IsNull
                     ? (IBlockchainTransaction)BsonMapper.Global.ToObject(
-                        type: initiatorCurrency.TransactionType,
-                        doc: bson[InitiatorPaymentSignedTxKey].AsDocument)
+                        type: soldCurrency.TransactionType,
+                        doc: bson[RefundTxKey].AsDocument)
                     : null,
 
-                InitiatorRefundTx = !bson[InitiatorRefundTxKey].IsNull
+                RedeemTx = !bson[RedeemTxKey].IsNull
                     ? (IBlockchainTransaction)BsonMapper.Global.ToObject(
-                        type: initiatorCurrency.TransactionType,
-                        doc: bson[InitiatorRefundTxKey].AsDocument)
+                        type: purchasedCurrency.TransactionType,
+                        doc: bson[RedeemTxKey].AsDocument)
                     : null,
 
-                InitiatorRefundSignedTx = !bson[InitiatorRefundSignedTxKey].IsNull
+                PartyPaymentTx = !bson[PartyPaymentTxKey].IsNull
                     ? (IBlockchainTransaction)BsonMapper.Global.ToObject(
-                        type: initiatorCurrency.TransactionType,
-                        doc: bson[InitiatorRefundSignedTxKey].AsDocument)
+                        type: purchasedCurrency.TransactionType,
+                        doc: bson[PartyPaymentTxKey].AsDocument)
                     : null,
 
-                InitiatorRedeemTx = !bson[InitiatorRedeemTxKey].IsNull
+                PartyRefundTx = !bson[PartyRefundTxKey].IsNull
                     ? (IBlockchainTransaction)BsonMapper.Global.ToObject(
-                        type: initiatorCurrency.TransactionType,
-                        doc: bson[InitiatorRedeemTxKey].AsDocument)
+                        type: purchasedCurrency.TransactionType,
+                        doc: bson[PartyRefundTxKey].AsDocument)
                     : null,
 
-                InitiatorRedeemSignedTx = !bson[InitiatorRedeemSignedTxKey].IsNull
+                PartyRedeemTx = !bson[PartyRedeemTxKey].IsNull
                     ? (IBlockchainTransaction)BsonMapper.Global.ToObject(
-                        type: initiatorCurrency.TransactionType,
-                        doc: bson[InitiatorRedeemSignedTxKey].AsDocument)
+                        type: soldCurrency.TransactionType,
+                        doc: bson[PartyRedeemTxKey].AsDocument)
                     : null,
-
-                CounterPartyPaymentTx = !bson[CounterPartyPaymentTxKey].IsNull
-                    ? (IBlockchainTransaction)BsonMapper.Global.ToObject(
-                        type: counterPartyCurrency.TransactionType,
-                        doc: bson[CounterPartyPaymentTxKey].AsDocument)
-                    : null,
-
-                CounterPartyPaymentSignedTx = !bson[CounterPartyPaymentSignedTxKey].IsNull
-                    ? (IBlockchainTransaction)BsonMapper.Global.ToObject(
-                        type: counterPartyCurrency.TransactionType,
-                        doc: bson[CounterPartyPaymentSignedTxKey].AsDocument)
-                    : null,
-
-                CounterPartyRefundTx = !bson[CounterPartyRefundTxKey].IsNull
-                    ? (IBlockchainTransaction)BsonMapper.Global.ToObject(
-                        type: counterPartyCurrency.TransactionType,
-                        doc: bson[CounterPartyRefundTxKey].AsDocument)
-                    : null,
-
-                CounterPartyRefundSignedTx = !bson[CounterPartyRefundSignedTxKey].IsNull
-                    ? (IBlockchainTransaction)BsonMapper.Global.ToObject(
-                        type: counterPartyCurrency.TransactionType,
-                        doc: bson[CounterPartyRefundSignedTxKey].AsDocument)
-                    : null,
-
-                CounterPartyRedeemTx = !bson[CounterPartyRedeemTxKey].IsNull
-                    ? (IBlockchainTransaction)BsonMapper.Global.ToObject(
-                        type: counterPartyCurrency.TransactionType,
-                        doc: bson[CounterPartyRedeemTxKey].AsDocument)
-                    : null,
-
-                CounterPartyRedeemSignedTx = !bson[CounterPartyRedeemSignedTxKey].IsNull
-                    ? (IBlockchainTransaction)BsonMapper.Global.ToObject(
-                        type: counterPartyCurrency.TransactionType,
-                        doc: bson[CounterPartyRedeemSignedTxKey].AsDocument)
-                    : null
             };
         }
 
-        protected override BsonValue Serialize(Swap swap)
+        protected override BsonValue Serialize(SwapState swapState)
         {
             return new BsonDocument
             {
-                [IdKey] = swap.Id,
-                [OrderKey] = BsonMapper.Global.ToDocument(swap.Order),
-                [RequisitesKey] = BsonMapper.Global.ToDocument(swap.Requisites),
-                [StateKey] = swap.State.ToString(),
-                [SecretKey] = swap.Secret,
-                [SecretHashKey] = swap.SecretHash,
+                [IdKey] = swapState.Id,
+                [OrderKey] = BsonMapper.Global.ToDocument(swapState.Order),
+                [RequisitesKey] = BsonMapper.Global.ToDocument(swapState.Requisites),
+                [StateKey] = swapState.StateFlags.ToString(),
+                [SecretKey] = swapState.Secret,
+                [SecretHashKey] = swapState.SecretHash,
 
-                [InitiatorPaymentTxIdKey] = swap.InitiatorPaymentTxId,
-                [CounterPartyPaymentTxIdKey] = swap.CounterPartyPaymentTxId,
+                [PaymentTxIdKey] = swapState.PaymentTxId,
+                [PartyPaymentTxIdKey] = swapState.PartyPaymentTxId,
 
-                [InitiatorPaymentTxKey] = swap.InitiatorPaymentTx != null
-                    ? BsonMapper.Global.ToDocument(swap.InitiatorPaymentTx)
+                [PaymentTxKey] = swapState.PaymentTx != null
+                    ? BsonMapper.Global.ToDocument(swapState.PaymentTx)
                     : null,
-                [InitiatorPaymentSignedTxKey] = swap.InitiatorPaymentSignedTx != null 
-                    ? BsonMapper.Global.ToDocument(swap.InitiatorPaymentSignedTx)
+                [RefundTxKey] = swapState.RefundTx != null
+                    ? BsonMapper.Global.ToDocument(swapState.RefundTx)
                     : null,
-                [InitiatorRefundTxKey] = swap.InitiatorRefundTx != null
-                    ? BsonMapper.Global.ToDocument(swap.InitiatorRefundTx)
-                    : null,
-                [InitiatorRefundSignedTxKey] = swap.InitiatorRefundSignedTx != null
-                    ? BsonMapper.Global.ToDocument(swap.InitiatorRefundSignedTx)
-                    : null,
-                [InitiatorRedeemTxKey] = swap.InitiatorRedeemTx != null
-                    ? BsonMapper.Global.ToDocument(swap.InitiatorRedeemTx)
-                    : null,
-                [InitiatorRedeemSignedTxKey] = swap.InitiatorRedeemSignedTx != null
-                    ? BsonMapper.Global.ToDocument(swap.InitiatorRedeemSignedTx)
+                [RedeemTxKey] = swapState.RedeemTx != null
+                    ? BsonMapper.Global.ToDocument(swapState.RedeemTx)
                     : null,
 
-                [CounterPartyPaymentTxKey] = swap.CounterPartyPaymentTx != null
-                    ? BsonMapper.Global.ToDocument(swap.CounterPartyPaymentTx)
+                [PartyPaymentTxKey] = swapState.PartyPaymentTx != null
+                    ? BsonMapper.Global.ToDocument(swapState.PartyPaymentTx)
                     : null,
-                [CounterPartyPaymentSignedTxKey] = swap.CounterPartyPaymentSignedTx != null
-                    ? BsonMapper.Global.ToDocument(swap.CounterPartyPaymentSignedTx)
+                [PartyRefundTxKey] = swapState.PartyRefundTx != null
+                    ? BsonMapper.Global.ToDocument(swapState.PartyRefundTx)
                     : null,
-                [CounterPartyRefundTxKey] = swap.CounterPartyRefundTx != null
-                    ? BsonMapper.Global.ToDocument(swap.CounterPartyRefundTx)
-                    : null,
-                [CounterPartyRefundSignedTxKey] = swap.CounterPartyRefundSignedTx != null
-                    ? BsonMapper.Global.ToDocument(swap.CounterPartyRefundSignedTx)
-                    : null,
-                [CounterPartyRedeemTxKey] = swap.CounterPartyRedeemTx != null
-                    ? BsonMapper.Global.ToDocument(swap.CounterPartyRedeemTx)
-                    : null,
-                [CounterPartyRedeemSignedTxKey] = swap.CounterPartyRedeemSignedTx != null
-                    ? BsonMapper.Global.ToDocument(swap.CounterPartyRedeemSignedTx)
+                [PartyRedeemTxKey] = swapState.PartyRedeemTx != null
+                    ? BsonMapper.Global.ToDocument(swapState.PartyRedeemTx)
                     : null,
             };
         }

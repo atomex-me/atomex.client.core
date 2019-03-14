@@ -334,27 +334,27 @@ namespace Atomix.Wallet
 
         #region Swaps Proxy
 
-        public Task<bool> AddSwapAsync(ISwap swap)
+        public Task<bool> AddSwapAsync(ISwapState swap)
         {
             return SwapRepository.AddSwapAsync(swap);
         }
 
-        public Task<bool> UpdateSwapAsync(ISwap swap)
+        public Task<bool> UpdateSwapAsync(ISwapState swap)
         {
             return SwapRepository.UpdateSwapAsync(swap);
         }
 
-        public Task<bool> RemoveSwapAsync(ISwap swap)
+        public Task<bool> RemoveSwapAsync(ISwapState swap)
         {
             return SwapRepository.RemoveSwapAsync(swap);
         }
 
-        public Task<ISwap> GetSwapByIdAsync(Guid swapId)
+        public Task<ISwapState> GetSwapByIdAsync(Guid swapId)
         {
             return SwapRepository.GetSwapByIdAsync(swapId);
         }
 
-        public Task<IEnumerable<ISwap>> GetSwapsAsync()
+        public Task<IEnumerable<ISwapState>> GetSwapsAsync()
         {
             return SwapRepository.GetSwapsAsync();
         }

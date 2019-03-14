@@ -214,7 +214,7 @@ namespace Atomix.Subsystems
                     .GetSwapsAsync()
                     .ConfigureAwait(false);
 
-                foreach (var swap in swaps.Cast<Swap>())
+                foreach (var swap in swaps.Cast<SwapState>())
                     await RestoreSwapAsync(swap)
                         .ConfigureAwait(false);
             }
@@ -224,25 +224,26 @@ namespace Atomix.Subsystems
             }
         }
 
-        private async Task RestoreSwapAsync(Swap swap)
+        private async Task RestoreSwapAsync(SwapState swapState)
         {
             try
             {
-                if (!swap.IsComplete && !swap.IsCanceled && !swap.IsRefunded)
+                swapState.Updated += OnSwapUpdated;
+
+                if (!swapState.IsComplete && !swapState.IsCanceled && !swapState.IsRefunded)
                 {
-                    await new UniversalSwapProtocol(
-                            swap: swap,
+                    await new UniversalSwap(
+                            swapState: swapState,
                             account: Account,
                             swapClient: SwapClient,
-                            taskPerformer: TaskPerformer,
-                            onSwapUpdated: OnSwapUpdated)
+                            taskPerformer: TaskPerformer)
                         .RestoreSwapAsync()
                         .ConfigureAwait(false);
                 }
             }
             catch (Exception e)
             {
-                Log.Error(e, "Swap {@id} restore error", swap.Id);
+                Log.Error(e, "Swap {@id} restore error", swapState.Id);
             }
         }
 
@@ -459,7 +460,7 @@ namespace Atomix.Subsystems
 
             try
             {
-                var swap = (Swap)await Account
+                var swap = (SwapState)await Account
                     .GetSwapByIdAsync(swapData.SwapId)
                     .ConfigureAwait(false);
 
@@ -468,12 +469,11 @@ namespace Atomix.Subsystems
                     return;
                 }
 
-                await new UniversalSwapProtocol(
-                        swap: swap,
+                await new UniversalSwap(
+                        swapState: swap,
                         account: Account,
                         swapClient: SwapClient,
-                        taskPerformer: TaskPerformer,
-                        onSwapUpdated: OnSwapUpdated)
+                        taskPerformer: TaskPerformer)
                     .HandleSwapData(swapData)
                     .ConfigureAwait(false);
             }
@@ -491,9 +491,11 @@ namespace Atomix.Subsystems
 
             try
             {
-                var swap = new Swap(
+                var swap = new SwapState(
                     order: report.Order,
                     requisites: report.Requisites);
+
+                swap.Updated += OnSwapUpdated;
 
                 var result = await Account
                     .AddSwapAsync(swap)
@@ -510,12 +512,11 @@ namespace Atomix.Subsystems
 
                 if (swap.IsInitiator)
                 {
-                    await new UniversalSwapProtocol(
-                            swap: swap,
+                    await new UniversalSwap(
+                            swapState: swap,
                             account: Account,
                             swapClient: SwapClient,
-                            taskPerformer: TaskPerformer,
-                            onSwapUpdated: OnSwapUpdated)
+                            taskPerformer: TaskPerformer)
                         .InitiateSwapAsync()
                         .ConfigureAwait(false);
                 }

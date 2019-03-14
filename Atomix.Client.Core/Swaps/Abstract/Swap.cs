@@ -12,7 +12,7 @@ using Serilog;
 
 namespace Atomix.Swaps
 {
-    public abstract class SwapProtocol : ISwapProtocol
+    public abstract class Swap : ISwap
     {
         public const int DefaultSecretSize = 32; //16;
         public const int DefaultSecretHashSize = 32; //20;
@@ -26,33 +26,28 @@ namespace Atomix.Swaps
         public static TimeSpan DefaultGetTransactionInterval = TimeSpan.FromSeconds(10);
         public static TimeSpan DefaultRefundInterval = TimeSpan.FromMinutes(1);
 
-        public OnSwapUpdatedDelegate SwapUpdated { get; set; }
         public OnSwapUpdatedDelegate InitiatorPaymentConfirmed { get; set; }
         public OnSwapUpdatedDelegate CounterPartyPaymentConfirmed { get; set; }
         public OnSwapUpdatedDelegate CounterPartyPaymentSpent { get; set; }
 
         protected readonly Currency _currency;
-        protected readonly Swap _swap;
+        protected readonly SwapState _swapState;
         protected readonly IAccount _account;
         protected readonly ISwapClient _swapClient;
         protected readonly IBackgroundTaskPerformer _taskPerformer;
 
-        protected SwapProtocol(
+        protected Swap(
             Currency currency,
-            Swap swap,
+            SwapState swapState,
             IAccount account,
             ISwapClient swapClient,
-            IBackgroundTaskPerformer taskPerformer,
-            OnSwapUpdatedDelegate onSwapUpdated = null)
+            IBackgroundTaskPerformer taskPerformer)
         {
             _currency = currency;
-            _swap = swap ?? throw new ArgumentNullException(nameof(swap));
+            _swapState = swapState ?? throw new ArgumentNullException(nameof(swapState));
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _swapClient = swapClient ?? throw new ArgumentNullException(nameof(swapClient));
             _taskPerformer = taskPerformer ?? throw new ArgumentNullException(nameof(taskPerformer));
-
-            if (onSwapUpdated != null)
-                SwapUpdated = onSwapUpdated;
         }
 
         public abstract Task InitiateSwapAsync();
@@ -78,14 +73,14 @@ namespace Atomix.Swaps
 
         public abstract Task RedeemAsync();
 
-        public abstract Task BroadcastPayment();
+        public abstract Task BroadcastPaymentAsync();
 
         protected async Task HandleSecretHashAsync(byte[] secretHash)
         {
             Log.Debug(
                 messageTemplate: "Handle secret hash {@hash} for swap {@swapId}",
                 propertyValue0: secretHash?.ToHexString(),
-                propertyValue1: _swap.Id);
+                propertyValue1: _swapState.Id);
 
             AcceptSecretHash(secretHash);
 
@@ -95,27 +90,26 @@ namespace Atomix.Swaps
 
         protected void AcceptSecretHash(byte[] secretHash)
         {
-            if (_swap.IsInitiator)
+            if (_swapState.IsInitiator)
                 throw new InternalException(
                     code: Errors.WrongSwapMessageOrder,
-                    description: $"Initiator received secret hash message for swap {_swap.Id}");
+                    description: $"Initiator received secret hash message for swap {_swapState.Id}");
 
             if (secretHash == null || secretHash.Length != DefaultSecretHashSize)
                 throw new InternalException(
                     code: Errors.InvalidSecretHash,
-                    description: $"Incorrect secret hash length for swap {_swap.Id}");
+                    description: $"Incorrect secret hash length for swap {_swapState.Id}");
 
-            if (_swap.SecretHash != null)
+            if (_swapState.SecretHash != null)
                 throw new InternalException(
                     code: Errors.InvalidSecretHash,
-                    description: $"Secret hash already received for swap {_swap.Id}");
+                    description: $"Secret hash already received for swap {_swapState.Id}");
 
             Log.Debug(
                 messageTemplate: "Secret hash {@hash} successfully received",
                 propertyValue: secretHash.ToHexString());
 
-            _swap.SetSecretHash(secretHash);
-            RaiseSwapUpdated(_swap);
+            _swapState.SecretHash = secretHash;
         }
 
         protected void SendData(
@@ -124,8 +118,8 @@ namespace Atomix.Swaps
         {
             _swapClient.SendSwapDataAsync(new SwapData
             {
-                SwapId = _swap.Id,
-                Symbol = _swap.Order.Symbol,
+                SwapId = _swapState.Id,
+                Symbol = _swapState.Order.Symbol,
                 Type = dataType,
                 Data = data
             });
@@ -140,32 +134,25 @@ namespace Atomix.Swaps
 
         protected void CreateSecret()
         {
-            _swap.SetSecret(CreateSwapSecret());
-            RaiseSwapUpdated(_swap);
+            _swapState.Secret = CreateSwapSecret();
         }
 
         protected void CreateSecretHash()
         {
-            _swap.SetSecretHash(CreateSwapSecretHash(_swap.Secret));
-            RaiseSwapUpdated(_swap);
+            _swapState.SecretHash = CreateSwapSecretHash(_swapState.Secret);
         }
 
-        protected void RaiseSwapUpdated(ISwap swap)
-        {
-            SwapUpdated?.Invoke(this, new SwapEventArgs(swap));
-        }
-
-        protected void RaiseInitiatorPaymentConfirmed(ISwap swap)
+        protected void RaiseInitiatorPaymentConfirmed(ISwapState swap)
         {
             InitiatorPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap));
         }
 
-        protected void RaiseCounterPartyPaymentConfirmed(ISwap swap)
+        protected void RaiseCounterPartyPaymentConfirmed(ISwapState swap)
         {
             CounterPartyPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap));
         }
 
-        protected void RaiseCounterPartyPaymentSpent(ISwap swap)
+        protected void RaiseCounterPartyPaymentSpent(ISwapState swap)
         {
             CounterPartyPaymentSpent?.Invoke(this, new SwapEventArgs(swap));
         }

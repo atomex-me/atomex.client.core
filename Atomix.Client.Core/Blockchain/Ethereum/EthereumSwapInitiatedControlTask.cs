@@ -26,7 +26,7 @@ namespace Atomix.Blockchain.Ethereum
                     return true;
                 }
 
-                var order = Swap.Order;
+                var order = SwapState.Order;
                 var requiredAmountInEth = AmountHelper.QtyToAmount(order.Side, order.LastQty, order.LastPrice);
                 var requiredAmountInWei = Atomix.Ethereum.EthToWei(requiredAmountInEth);
 
@@ -39,8 +39,8 @@ namespace Atomix.Blockchain.Ethereum
 
                 var filterId = await eventHandler
                     .CreateFilterAsync(
-                        Swap.SecretHash,
-                        Swap.Order.ToWallet.Address)
+                        SwapState.SecretHash,
+                        SwapState.Order.ToWallet.Address)
                     .ConfigureAwait(false);
 
                 var events = await eventHandler

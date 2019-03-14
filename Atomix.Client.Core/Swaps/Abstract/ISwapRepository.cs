@@ -6,11 +6,11 @@ namespace Atomix.Swaps.Abstract
 {
     public interface ISwapRepository
     {
-        Task<bool> AddSwapAsync(ISwap swap);
-        Task<bool> UpdateSwapAsync(ISwap swap);
-        Task<bool> RemoveSwapAsync(ISwap swap);
+        Task<bool> AddSwapAsync(ISwapState swap);
+        Task<bool> UpdateSwapAsync(ISwapState swap);
+        Task<bool> RemoveSwapAsync(ISwapState swap);
         
-        Task<ISwap> GetSwapByIdAsync(Guid id);
-        Task<IEnumerable<ISwap>> GetSwapsAsync();
+        Task<ISwapState> GetSwapByIdAsync(Guid id);
+        Task<IEnumerable<ISwapState>> GetSwapsAsync();
     }
 }

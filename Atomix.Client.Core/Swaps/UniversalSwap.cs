@@ -8,52 +8,48 @@ using Serilog;
 
 namespace Atomix.Swaps
 {
-    public class UniversalSwapProtocol : SwapProtocol
+    public class UniversalSwap : Swap
     {
-        private ISwapProtocol _soldCurrencyProtocol;
-        private ISwapProtocol _purchasedCurrencyProtocol;
+        private ISwap _soldCurrencySwap;
+        private ISwap _purchasedCurrencySwap;
 
-        public UniversalSwapProtocol(        
-            Swap swap,
+        public UniversalSwap(        
+            SwapState swapState,
             IAccount account,
             ISwapClient swapClient,
-            IBackgroundTaskPerformer taskPerformer,
-            OnSwapUpdatedDelegate onSwapUpdated = null)
+            IBackgroundTaskPerformer taskPerformer)
             : base(
                 null,
-                swap,
+                swapState,
                 account,
                 swapClient,
-                taskPerformer,
-                onSwapUpdated)
+                taskPerformer)
         {
-            var soldCurrency = swap.Order.SoldCurrency();
+            var soldCurrency = swapState.Order.SoldCurrency();
 
-            _soldCurrencyProtocol = SwapProtocolCreator.Create(
+            _soldCurrencySwap = SwapProtocolCreator.Create(
                 currency: soldCurrency,
-                swap: swap,
+                swapState: swapState,
                 account: account,
                 swapClient: swapClient,
-                taskPerformer: taskPerformer,
-                onSwapUpdated: onSwapUpdated);
+                taskPerformer: taskPerformer);
 
-            var purchasedCurrency = swap.Order.PurchasedCurrency();
+            var purchasedCurrency = swapState.Order.PurchasedCurrency();
 
-            _purchasedCurrencyProtocol = SwapProtocolCreator.Create(
+            _purchasedCurrencySwap = SwapProtocolCreator.Create(
                 currency: purchasedCurrency,
-                swap: swap,
+                swapState: swapState,
                 account: account,
                 swapClient: swapClient,
-                taskPerformer: taskPerformer,
-                onSwapUpdated: onSwapUpdated);
+                taskPerformer: taskPerformer);
 
-            _soldCurrencyProtocol.CounterPartyPaymentSpent = async (sender, args) =>
+            _soldCurrencySwap.CounterPartyPaymentSpent = async (sender, args) =>
             {
                 try
                 {
                     // redeem by counter party async (using purchased currency protocol)
-                    if (_swap.IsCounterParty)
-                        await _purchasedCurrencyProtocol
+                    if (_swapState.IsCounterParty)
+                        await _purchasedCurrencySwap
                             .RedeemAsync()
                             .ConfigureAwait(false);
                 }
@@ -63,14 +59,14 @@ namespace Atomix.Swaps
                 }
             };
 
-            _purchasedCurrencyProtocol.InitiatorPaymentConfirmed = async (sender, args) =>
+            _purchasedCurrencySwap.InitiatorPaymentConfirmed = async (sender, args) =>
             {
                 try
                 {
                     // broadcast counter party payment tx (using sold currency protocol)
-                    if (swap.IsCounterParty)
-                        await _soldCurrencyProtocol
-                            .BroadcastPayment()
+                    if (swapState.IsCounterParty)
+                        await _soldCurrencySwap
+                            .BroadcastPaymentAsync()
                             .ConfigureAwait(false);
                 }
                 catch (Exception e)
@@ -82,24 +78,23 @@ namespace Atomix.Swaps
 
         public override Task InitiateSwapAsync()
         {
-            return _soldCurrencyProtocol
-                .InitiateSwapAsync();
+            return _soldCurrencySwap.InitiateSwapAsync();
         }
 
         public override async Task AcceptSwapAsync()
         {
-            await _soldCurrencyProtocol
+            await _soldCurrencySwap
                 .AcceptSwapAsync()
                 .ConfigureAwait(false);
 
-            await _purchasedCurrencyProtocol
+            await _purchasedCurrencySwap
                 .AcceptSwapAsync()
                 .ConfigureAwait(false);
         }
 
         public override async Task RestoreSwapAsync()
         {
-            await _soldCurrencyProtocol
+            await _soldCurrencySwap
                 .RestoreSwapAsync()
                 .ConfigureAwait(false);
         }
@@ -114,10 +109,10 @@ namespace Atomix.Swaps
                 case SwapDataType.CounterPartyPayment:
                 case SwapDataType.CounterPartyRefund:
                 case SwapDataType.CounterPartyPaymentTxId:
-                    return _purchasedCurrencyProtocol.HandleSwapData(swapData);
+                    return _purchasedCurrencySwap.HandleSwapData(swapData);
                 case SwapDataType.InitiatorRefundSigned:
                 case SwapDataType.CounterPartyRefundSigned:
-                    return _soldCurrencyProtocol.HandleSwapData(swapData);
+                    return _soldCurrencySwap.HandleSwapData(swapData);
                 default:
                     return base.HandleSwapData(swapData);
             }
@@ -125,12 +120,12 @@ namespace Atomix.Swaps
 
         public override Task RedeemAsync()
         {
-            return _purchasedCurrencyProtocol.RedeemAsync();
+            return _purchasedCurrencySwap.RedeemAsync();
         }
 
-        public override Task BroadcastPayment()
+        public override Task BroadcastPaymentAsync()
         {
-            return _soldCurrencyProtocol.BroadcastPayment();
+            return _soldCurrencySwap.BroadcastPaymentAsync();
         }
     }
 }
