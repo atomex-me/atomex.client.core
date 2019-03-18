@@ -18,12 +18,15 @@ namespace Atomix.Swaps.BitcoinBased
 {
     public class BitcoinBasedSwap : Swap
     {
+        private IBitcoinBasedSwapTransactionFactory _transactionFactory;
+
         public BitcoinBasedSwap(
             Currency currency,
             SwapState swapState,
             IAccount account,
             ISwapClient swapClient,
-            IBackgroundTaskPerformer taskPerformer)
+            IBackgroundTaskPerformer taskPerformer,
+            IBitcoinBasedSwapTransactionFactory transactionFactory)
             : base(
                 currency,
                 swapState,
@@ -31,6 +34,7 @@ namespace Atomix.Swaps.BitcoinBased
                 swapClient,
                 taskPerformer)
         {
+            _transactionFactory = transactionFactory ?? throw new ArgumentNullException(nameof(transactionFactory));
         }
 
         public override async Task InitiateSwapAsync()
@@ -532,7 +536,7 @@ namespace Atomix.Swaps.BitcoinBased
                 propertyValue0: currency.Name,
                 propertyValue1: _swapState.Id);
 
-            var tx = await BitcoinBasedSwapTransactionFactory
+            var tx = await _transactionFactory
                 .CreateSwapPaymentTxAsync(
                     currency: currency,
                     order: _swapState.Order,
@@ -556,8 +560,9 @@ namespace Atomix.Swaps.BitcoinBased
                 messageTemplate: "Create refund tx for swap {@swapId}",
                 propertyValue: _swapState.Id);
 
-            var tx = await paymentTx
+            var tx = await _transactionFactory
                 .CreateSwapRefundTxAsync(
+                    paymentTx: paymentTx,
                     order: _swapState.Order,
                     lockTime: DateTimeOffset.UtcNow + lockTime)
                 .ConfigureAwait(false);
@@ -582,8 +587,9 @@ namespace Atomix.Swaps.BitcoinBased
                 messageTemplate: "Create redeem tx for swap {@swapId}",
                 propertyValue: _swapState.Id);
 
-            var tx = await paymentTx
+            var tx = await _transactionFactory
                 .CreateSwapRedeemTxAsync(
+                    paymentTx : paymentTx,
                     order: _swapState.Order,
                     redeemAddress: redeemAddress)
                 .ConfigureAwait(false);

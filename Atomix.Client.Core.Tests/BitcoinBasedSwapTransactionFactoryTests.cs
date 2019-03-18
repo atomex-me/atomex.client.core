@@ -79,7 +79,8 @@ namespace Atomix.Client.Core.Tests
                 toWallet: bobBtcWallet,
                 refundWallet: bobLtcWallet);
 
-            var tx = await BitcoinBasedSwapTransactionFactory.CreateSwapPaymentTxAsync(
+            var tx = await new BitcoinBasedSwapTransactionFactory()
+                .CreateSwapPaymentTxAsync(
                     currency: bitcoin,
                     order: order,
                     requisites: requisites,

@@ -108,8 +108,11 @@ namespace Atomix.Client.Core.Tests
 
             var paymentTx = new BitcoinBasedTransaction(btc, PaymentTx1);
 
-            var tx = (IBitcoinBasedTransaction)await paymentTx
-                .CreateSwapRedeemTxAsync(order, redeemAddress)
+            var tx = await new BitcoinBasedSwapTransactionFactory()
+                .CreateSwapRedeemTxAsync(
+                    paymentTx: paymentTx,
+                    order: order,
+                    redeemAddress: redeemAddress)
                 .ConfigureAwait(false);
 
             Assert.NotNull(tx);

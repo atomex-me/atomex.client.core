@@ -48,6 +48,12 @@ namespace Atomix.Swaps
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _swapClient = swapClient ?? throw new ArgumentNullException(nameof(swapClient));
             _taskPerformer = taskPerformer ?? throw new ArgumentNullException(nameof(taskPerformer));
+
+            if (_swapState.Order == null)
+                throw new ArgumentNullException(nameof(swapState.Order));
+
+            if (_swapState.Requisites == null)
+                throw new ArgumentNullException(nameof(swapState.Requisites));
         }
 
         public abstract Task InitiateSwapAsync();

@@ -7,7 +7,6 @@ using Atomix.Core;
 using Atomix.Core.Entities;
 using Atomix.Swaps;
 using Atomix.Wallet.Abstract;
-using NBitcoin;
 using Serilog;
 
 namespace Atomix.Common

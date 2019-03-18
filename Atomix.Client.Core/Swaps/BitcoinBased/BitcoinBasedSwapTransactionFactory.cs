@@ -11,9 +11,9 @@ using System.Threading.Tasks;
 
 namespace Atomix.Swaps.BitcoinBased
 {
-    public static class BitcoinBasedSwapTransactionFactory
+    public class BitcoinBasedSwapTransactionFactory : IBitcoinBasedSwapTransactionFactory
     {
-        public static async Task<IBitcoinBasedTransaction> CreateSwapPaymentTxAsync(
+        public async Task<IBitcoinBasedTransaction> CreateSwapPaymentTxAsync(
             BitcoinBasedCurrency currency,
             Order order,
             SwapRequisites requisites,
@@ -46,7 +46,7 @@ namespace Atomix.Swaps.BitcoinBased
                 if (usedAmount < requiredAmount)
                     throw new Exception($"Insufficient funds. Available {usedAmount}, required {requiredAmount}");
 
-                var estimatedSigSize = usedOutputs.EstimateSigSize(); //EstimateSigSize(usedOutputs);
+                var estimatedSigSize = EstimateSigSize(usedOutputs);
 
                 tx = currency.CreateP2PkhSwapPaymentTx(
                     unspentOutputs: usedOutputs,
@@ -77,8 +77,8 @@ namespace Atomix.Swaps.BitcoinBased
             return tx;
         }
 
-        public static Task<IBitcoinBasedTransaction> CreateSwapRefundTxAsync(
-            this IBitcoinBasedTransaction paymentTx,
+        public Task<IBitcoinBasedTransaction> CreateSwapRefundTxAsync(
+            IBitcoinBasedTransaction paymentTx,
             Order order,
             DateTimeOffset lockTime)
         {
@@ -94,7 +94,7 @@ namespace Atomix.Swaps.BitcoinBased
             if (swapOutputs.Count != 1)
                 throw new Exception("Payment tx must have only one swap payment output");
 
-            var estimatedSigSize = swapOutputs.EstimateSigSize(forRefund: true); //  EstimateSigSize(swapOutputs, forRefund: true);
+            var estimatedSigSize = EstimateSigSize(swapOutputs, forRefund: true);
 
             var txSize = currency
                 .CreateSwapRefundTx(
@@ -122,8 +122,8 @@ namespace Atomix.Swaps.BitcoinBased
             return Task.FromResult(tx);
         }
 
-        public static Task<IBitcoinBasedTransaction> CreateSwapRedeemTxAsync(
-            this IBitcoinBasedTransaction paymentTx,
+        public Task<IBitcoinBasedTransaction> CreateSwapRedeemTxAsync(
+            IBitcoinBasedTransaction paymentTx,
             Order order,
             WalletAddress redeemAddress)
         {
@@ -139,7 +139,7 @@ namespace Atomix.Swaps.BitcoinBased
             if (swapOutputs.Count != 1)
                 throw new Exception("Payment tx must have only one swap payment output");
 
-            var estimatedSigSize = swapOutputs.EstimateSigSize(); //EstimateSigSize(swapOutputs);
+            var estimatedSigSize = EstimateSigSize(swapOutputs);
 
             var txSize = currency
                 .CreateP2PkhTx(
@@ -166,7 +166,7 @@ namespace Atomix.Swaps.BitcoinBased
         }
 
         private static long EstimateSigSize(
-            this IEnumerable<ITxOutput> outputs,
+            IEnumerable<ITxOutput> outputs,
             bool forRefund = false)
         {
             var result = 0L;

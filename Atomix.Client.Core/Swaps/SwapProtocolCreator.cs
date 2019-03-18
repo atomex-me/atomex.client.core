@@ -25,7 +25,8 @@ namespace Atomix.Swaps
                         swapState: swapState,
                         account: account,
                         swapClient: swapClient,
-                        taskPerformer: taskPerformer);
+                        taskPerformer: taskPerformer,
+                        transactionFactory: new BitcoinBasedSwapTransactionFactory());
                 case Atomix.Ethereum _:
                     return new EthereumSwap(
                         currency: currency,
