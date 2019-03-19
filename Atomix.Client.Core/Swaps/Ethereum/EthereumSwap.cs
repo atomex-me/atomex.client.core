@@ -341,7 +341,7 @@ namespace Atomix.Swaps.Ethereum
         {
             Log.Debug("Initiator payment transaction received. Now counter party can broadcast payment tx");
 
-            // SwapState.SetPartyPaymentSigned();
+            _swapState.PartyPaymentTx = null; // todo: change to set party payment flag
             _swapState.SetPartyPaymentConfirmed(); // todo: more flags?
 
             InitiatorPaymentConfirmed?.Invoke(this, new SwapEventArgs(_swapState));

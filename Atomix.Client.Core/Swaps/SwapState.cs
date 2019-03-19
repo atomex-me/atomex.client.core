@@ -247,7 +247,7 @@ namespace Atomix.Swaps
 
         public void SetPartyRedeemSpent()
         {
-            StateFlags |= SwapStateFlags.IsPartyRefundSigned;
+            StateFlags |= SwapStateFlags.IsPartyRedeemSpent;
             RaiseUpdated();
         }
     }
