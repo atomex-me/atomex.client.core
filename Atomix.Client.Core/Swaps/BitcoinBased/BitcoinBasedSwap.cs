@@ -72,9 +72,10 @@ namespace Atomix.Swaps.BitcoinBased
                 messageTemplate: "Accept swap {@swapId}",
                 propertyValue: _swapState.Id);
 
-            if (_currency.Name.Equals(_swapState.Order.PurchasedCurrency().Name)) {
+            if (_currency.Name.Equals(_swapState.Order.PurchasedCurrency().Name))
+            {
                 // nothing to do for purchased bitcoin base party
-                return;       
+                return;
             }
 
             _swapState.PaymentTx = await CreatePaymentTxAsync()
@@ -128,7 +129,7 @@ namespace Atomix.Swaps.BitcoinBased
                     .ConfigureAwait(false);
 
                 return;
-            }           
+            }
 
             // reject swap in others cases
             _swapState.Cancel();
@@ -191,7 +192,7 @@ namespace Atomix.Swaps.BitcoinBased
             await _account
                 .AddUnconfirmedTransactionAsync(
                     tx: _swapState.RedeemTx,
-                    selfAddresses: new[] {redeemAddress.Address})
+                    selfAddresses: new[] { redeemAddress.Address })
                 .ConfigureAwait(false);
         }
 
@@ -351,7 +352,7 @@ namespace Atomix.Swaps.BitcoinBased
             //        code: Errors.WrongSwapMessageOrder,
             //        description: $"Initiator's signed refund tx already received for swap {SwapState.Id}");
 
-            var currency = (BitcoinBasedCurrency) _swapState.Order.SoldCurrency();
+            var currency = (BitcoinBasedCurrency)_swapState.Order.SoldCurrency();
 
             var refundTx = ParseTransaction(currency, transactionBytes);
 
@@ -361,6 +362,7 @@ namespace Atomix.Swaps.BitcoinBased
             Log.Debug("Initiator's refund tx successfully received");
 
             _swapState.RefundTx = refundTx;
+            _swapState.SetRefundSigned();
 
             await BroadcastPaymentAsync()
                 .ConfigureAwait(false);
@@ -477,16 +479,17 @@ namespace Atomix.Swaps.BitcoinBased
             //        code: Errors.WrongSwapMessageOrder,
             //        description: $"CounterParty's signed refund tx already received for swap {SwapState.Id}");
 
-            var currency = (BitcoinBasedCurrency) _swapState.Order.SoldCurrency();
+            var currency = (BitcoinBasedCurrency)_swapState.Order.SoldCurrency();
 
             var refundTx = ParseTransaction(currency, transactionBytes);
 
             if (!TransactionVerifier.TryVerifySignedRefundTx(refundTx, _swapState.Order, out var error))
                 throw new InternalException(error);
 
-            Log.Debug("Initiator's refund tx successfully received");
+            Log.Debug("CounterParty's refund tx successfully received");
 
             _swapState.RefundTx = refundTx;
+            _swapState.SetRefundSigned();
 
             await BroadcastPaymentAsync()
                 .ConfigureAwait(false);
@@ -589,7 +592,7 @@ namespace Atomix.Swaps.BitcoinBased
 
             var tx = await _transactionFactory
                 .CreateSwapRedeemTxAsync(
-                    paymentTx : paymentTx,
+                    paymentTx: paymentTx,
                     order: _swapState.Order,
                     redeemAddress: redeemAddress)
                 .ConfigureAwait(false);
@@ -829,7 +832,7 @@ namespace Atomix.Swaps.BitcoinBased
         {
             try
             {
-                var refundTx = (IBitcoinBasedTransaction) _swapState.RefundTx;
+                var refundTx = (IBitcoinBasedTransaction)_swapState.RefundTx;
 
                 var txId = await _currency.BlockchainApi
                     .BroadcastAsync(refundTx)
@@ -842,7 +845,7 @@ namespace Atomix.Swaps.BitcoinBased
                 await _account
                     .AddUnconfirmedTransactionAsync(
                         tx: refundTx,
-                        selfAddresses: new[] {_swapState.Order.RefundWallet.Address})
+                        selfAddresses: new[] { _swapState.Order.RefundWallet.Address })
                     .ConfigureAwait(false);
 
                 _taskPerformer.EnqueueTask(new TransactionConfirmedTask
@@ -904,7 +907,7 @@ namespace Atomix.Swaps.BitcoinBased
             {
                 attempts++;
 
-                var tx = (IBitcoinBasedTransaction) await currency.BlockchainApi
+                var tx = (IBitcoinBasedTransaction)await currency.BlockchainApi
                     .GetTransactionAsync(txId)
                     .ConfigureAwait(false);
 
