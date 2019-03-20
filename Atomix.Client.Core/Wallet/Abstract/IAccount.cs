@@ -120,6 +120,28 @@ namespace Atomix.Wallet.Abstract
             Currency currency,
             CancellationToken cancellationToken = default(CancellationToken));
 
+        /// <summary>
+        /// Get refund address for <paramref name="currency"/>
+        /// </summary>
+        /// <param name="currency">Currency</param>
+        /// <param name="paymentAddresses">Payment addresses</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Wallet address</returns>
+        Task<WalletAddress> GetRefundAddressAsync(
+            Currency currency,
+            IEnumerable<WalletAddress> paymentAddresses,
+            CancellationToken cancellationToken = default(CancellationToken));
+
+        /// <summary>
+        /// Get redeem address for <paramref name="currency"/>
+        /// </summary>
+        /// <param name="currency">Currency</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Wallet address</returns>
+        Task<WalletAddress> GetRedeemAddressAsync(
+            Currency currency,
+            CancellationToken cancellationToken = default(CancellationToken));
+
         #endregion Wallet
 
         /// <summary>

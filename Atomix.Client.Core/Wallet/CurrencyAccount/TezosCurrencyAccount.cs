@@ -78,5 +78,18 @@ namespace Atomix.Wallet.CurrencyAccount
         {
             throw new NotImplementedException();
         }
+
+        public override Task<WalletAddress> GetRefundAddressAsync(
+            IEnumerable<WalletAddress> paymentAddresses,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException();
+        }
+
+        public override Task<WalletAddress> GetRedeemAddressAsync(
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException();
+        }
     }
 }

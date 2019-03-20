@@ -58,6 +58,13 @@ namespace Atomix.Wallet.Abstract
         Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default(CancellationToken));
 
+        Task<WalletAddress> GetRefundAddressAsync(
+            IEnumerable<WalletAddress> paymentAddresses,
+            CancellationToken cancellationToken = default(CancellationToken));
+
+        Task<WalletAddress> GetRedeemAddressAsync(
+            CancellationToken cancellationToken = default(CancellationToken));
+
         void RaiseBalanceUpdated(CurrencyEventArgs eventArgs);
     }
 }

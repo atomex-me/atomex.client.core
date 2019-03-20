@@ -74,7 +74,7 @@ namespace Atomix.Client.Core.Tests
         };
 
         [Fact]
-        public async void InitiateSwapTest()
+        public void InitiateSwapTest()
         {
             // setup environment
             //var account = new Mock<IAccount>();

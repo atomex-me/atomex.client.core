@@ -246,6 +246,23 @@ namespace Atomix.Wallet
                 .GetFreeExternalAddressAsync(cancellationToken);
         }
 
+        public Task<WalletAddress> GetRefundAddressAsync(
+            Currency currency,
+            IEnumerable<WalletAddress> paymentAddresses,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetAccountByCurrency(currency)
+                .GetRefundAddressAsync(paymentAddresses, cancellationToken);
+        }
+
+        public Task<WalletAddress> GetRedeemAddressAsync(
+            Currency currency,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetAccountByCurrency(currency)
+                .GetRedeemAddressAsync(cancellationToken);
+        }
+
         #endregion Wallet
 
         #region Transactions Proxy

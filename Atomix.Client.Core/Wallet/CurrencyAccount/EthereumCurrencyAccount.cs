@@ -318,5 +318,27 @@ namespace Atomix.Wallet.CurrencyAccount
                 .Any(t => t.From.ToLowerInvariant().Equals(walletAddress.Address) ||
                           t.To.ToLowerInvariant().Equals(walletAddress.Address));
         }
+
+        public override Task<WalletAddress> GetRefundAddressAsync(
+            IEnumerable<WalletAddress> paymentAddresses,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return Task.FromResult(paymentAddresses.First()); // todo: check address balance and reserved amount
+        }
+
+        public override async Task<WalletAddress> GetRedeemAddressAsync(
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var addressBalances = await GetUnspentAddressBalancesAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            var redeemFeeInEth = Ethereum.GetDefaultRedeemFeeAmount();
+
+            foreach (var (address, balanceInEth) in addressBalances)
+                if (balanceInEth >= redeemFeeInEth)
+                    return address;
+
+            throw new Exception("Insufficient funds for redeem");
+        }
     }
 }

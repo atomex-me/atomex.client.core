@@ -59,7 +59,7 @@ namespace Atomix.Swaps.Ethereum
             var order = _swapState.Order;
             var requiredAmountInEth = AmountHelper.QtyToAmount(order.Side, order.LastQty, order.LastPrice);
             var refundTimeInSeconds = (uint) lockTimeInHours * 60 * 60;
-            var master = true;
+            var isMasterAddress = true;
 
             var transactions = new List<EthereumTransaction>();
 
@@ -74,7 +74,27 @@ namespace Atomix.Swaps.Ethereum
                 Log.Debug("Available balance: {@balance}", balanceInEth);
 
                 var feeAmountInEth = Atomix.Ethereum.GetDefaultPaymentFeeAmount();
-                var amountInEth = Math.Min(balanceInEth - feeAmountInEth, requiredAmountInEth);
+
+                // reserve funds for refund from master address
+                var reservedAmountInEth = isMasterAddress
+                    ? Atomix.Ethereum.GetDefaultRefundFeeAmount() // todo: + reserved amount for address
+                    : 0;
+
+                var amountInEth = Math.Min(balanceInEth - feeAmountInEth - reservedAmountInEth, requiredAmountInEth);
+
+                if (amountInEth <= 0)
+                {
+                    Log.Warning(
+                        "Insufficient funds at {@address}. Balance: {@balance}, " +
+                        "feeAmount: {@feeAmount}, reserved: {@reserved}, result: {@result}." ,
+                        walletAddress.Address,
+                        balanceInEth,
+                        feeAmountInEth,
+                        reservedAmountInEth,
+                        amountInEth);
+                    continue;
+                }
+
                 requiredAmountInEth -= amountInEth;
 
                 // todo: offline nonce using
@@ -92,7 +112,7 @@ namespace Atomix.Swaps.Ethereum
                     GasPrice = Atomix.Ethereum.GweiToWei(Atomix.Ethereum.DefaultGasPriceInGwei),
                     Gas = Atomix.Ethereum.DefaultPaymentTxGasLimit,
                     Nonce = nonce,
-                    Master = master
+                    Master = isMasterAddress
                 };
 
                 var txInput = message.CreateTransactionInput(Currencies.Eth.SwapContractAddress);
@@ -101,8 +121,8 @@ namespace Atomix.Swaps.Ethereum
                     Type = EthereumTransaction.OutputTransaction
                 });
 
-                if (master)
-                    master = !master;
+                if (isMasterAddress)
+                    isMasterAddress = !isMasterAddress;
 
                 if (requiredAmountInEth == 0)
                     break;

@@ -314,6 +314,19 @@ namespace Atomix.Wallet.CurrencyAccount
                 .ConfigureAwait(false);
         }
 
+        public override Task<WalletAddress> GetRefundAddressAsync(
+            IEnumerable<WalletAddress> paymentAddresses,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetFreeInternalAddressAsync(cancellationToken);
+        }
+
+        public override Task<WalletAddress> GetRedeemAddressAsync(
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetFreeInternalAddressAsync(cancellationToken);
+        }
+
         private static ITxOutput RemoveDuplicates(string id, IEnumerable<ITxOutput> outputs)
         {
             var txOutputs = outputs.ToList();

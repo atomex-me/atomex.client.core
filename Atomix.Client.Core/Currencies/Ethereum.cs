@@ -131,5 +131,15 @@ namespace Atomix
         {
             return DefaultPaymentTxGasLimit * DefaultGasPriceInGwei / GweiInEth;
         }
+
+        public static decimal GetDefaultRefundFeeAmount()
+        {
+            return DefaultRefundTxGasLimit * DefaultGasPriceInGwei / GweiInEth;
+        }
+
+        public static decimal GetDefaultRedeemFeeAmount()
+        {
+            return DefaultRedeemTxGasLimit * DefaultGasPriceInGwei / GweiInEth;
+        }
     }
 }
