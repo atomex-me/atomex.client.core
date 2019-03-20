@@ -17,7 +17,7 @@ namespace Atomix.Swaps
         public bool IsInitiator => Order.SwapInitiative;
         public bool IsCounterParty => !Order.SwapInitiative;
 
-        public bool IsComplete => StateFlags.HasFlag(SwapStateFlags.IsRedeemConfirmed);
+        public bool IsComplete => StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast);
         public bool IsRefunded => StateFlags.HasFlag(SwapStateFlags.IsRefundConfirmed);
         public bool IsCanceled => StateFlags.HasFlag(SwapStateFlags.IsCanceled);
 
