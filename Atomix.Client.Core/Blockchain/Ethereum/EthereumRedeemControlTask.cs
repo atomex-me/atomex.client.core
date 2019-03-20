@@ -10,7 +10,7 @@ namespace Atomix.Blockchain.Ethereum
 {
     public class EthereumRedeemControlTask : BlockchainTask
     {
-        public DateTime RefundTime { get; set; }
+        public DateTime RefundTimeUtc { get; set; }
         public string From { get; set; }
         public byte[] Secret { get; set; }
 
@@ -18,7 +18,7 @@ namespace Atomix.Blockchain.Ethereum
         {
             try
             {
-                if (DateTime.Now >= RefundTime)
+                if (DateTime.UtcNow >= RefundTimeUtc)
                 {
                     CancelHandler?.Invoke(this);
                     return true;

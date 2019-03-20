@@ -203,7 +203,9 @@ namespace Atomix.Swaps.BitcoinBased
                  !_swapState.StateFlags.HasFlag(SwapStateFlags.IsPartyPaymentConfirmed) ||
                  !_swapState.StateFlags.HasFlag(SwapStateFlags.IsRefundSigned)))
             {
-                Log.Debug("CounterParty is not ready to broadcast payment tx");
+                Log.Debug(
+                    "CounterParty is not ready to broadcast payment tx for swap {@swap}",
+                    _swapState.Id);
                 return;
             }
 
@@ -297,7 +299,9 @@ namespace Atomix.Swaps.BitcoinBased
             if (!TransactionVerifier.TryVerifyPaymentTx(paymentTx, _swapState.Order, out var error))
                 throw new InternalException(error);
 
-            Log.Debug("Initiator's payment tx successfully received");
+            Log.Debug(
+                "Initiator's payment tx successfully received for swap {@swapId}",
+                _swapState.Id);
 
             _swapState.PartyPaymentTx = paymentTx;
 
@@ -328,7 +332,9 @@ namespace Atomix.Swaps.BitcoinBased
             if (!TransactionVerifier.TryVerifyRefundTx(refundTx, _swapState.Order, out var error))
                 throw new InternalException(error);
 
-            Log.Debug("Initiator's refund tx successfully received");
+            Log.Debug(
+                "Initiator's refund tx successfully received for swap {@swapId}",
+                _swapState.Id);
 
             _swapState.PartyRefundTx = refundTx;
 
@@ -359,7 +365,9 @@ namespace Atomix.Swaps.BitcoinBased
             if (!TransactionVerifier.TryVerifySignedRefundTx(refundTx, _swapState.Order, out var error))
                 throw new InternalException(error);
 
-            Log.Debug("Initiator's refund tx successfully received");
+            Log.Debug(
+                "Initiator's refund tx successfully received for swap {@swapId}",
+                _swapState.Id);
 
             _swapState.RefundTx = refundTx;
             _swapState.SetRefundSigned();
@@ -424,7 +432,9 @@ namespace Atomix.Swaps.BitcoinBased
             if (!TransactionVerifier.TryVerifyPaymentTx(paymentTx, _swapState.Order, out var error))
                 throw new InternalException(error);
 
-            Log.Debug("CounterParty's payment tx successfully received");
+            Log.Debug(
+                "CounterParty's payment tx successfully received for swap {@swap}",
+                _swapState.Id);
 
             _swapState.PartyPaymentTx = paymentTx;
 
@@ -455,7 +465,9 @@ namespace Atomix.Swaps.BitcoinBased
             if (!TransactionVerifier.TryVerifyRefundTx(refundTx, _swapState.Order, out var error))
                 throw new InternalException(error);
 
-            Log.Debug("CounterParty's refund tx successfully received");
+            Log.Debug(
+                "CounterParty's refund tx successfully received for swap {@swapId}",
+                _swapState.Id);
 
             _swapState.PartyRefundTx = refundTx;
 
@@ -486,7 +498,9 @@ namespace Atomix.Swaps.BitcoinBased
             if (!TransactionVerifier.TryVerifySignedRefundTx(refundTx, _swapState.Order, out var error))
                 throw new InternalException(error);
 
-            Log.Debug("CounterParty's refund tx successfully received");
+            Log.Debug(
+                "CounterParty's refund tx successfully received for swap {@swapId}",
+                _swapState.Id);
 
             _swapState.RefundTx = refundTx;
             _swapState.SetRefundSigned();
@@ -738,8 +752,9 @@ namespace Atomix.Swaps.BitcoinBased
                 .ConfigureAwait(false);
 
             Log.Debug(
-                messageTemplate: "Redeem tx {@txId} successfully broadcast",
-                propertyValue: txId);
+                messageTemplate: "Redeem tx {@txId} successfully broadcast for swap {@swapId}",
+                propertyValue0: txId,
+                propertyValue1: _swapState.Id);
         }
 
         private async void PaymentConfirmedEventHandler(BackgroundTask task)
@@ -876,7 +891,7 @@ namespace Atomix.Swaps.BitcoinBased
             if (swap == null)
                 return;
 
-            Log.Debug("Handle payment spent event");
+            Log.Debug("Handle payment spent event for swap {@swapId}", swap.Id);
 
             try
             {
@@ -939,9 +954,10 @@ namespace Atomix.Swaps.BitcoinBased
         private async Task GetSecretAsync(ITxPoint spentPoint)
         {
             Log.Debug(
-                messageTemplate: "Try to get CounterParty's payment spent output {@hash}:{@no}",
+                messageTemplate: "Try to get CounterParty's payment spent output {@hash}:{@no} for swap {@swapId}",
                 propertyValue0: spentPoint.Hash,
-                propertyValue1: spentPoint.Index);
+                propertyValue1: spentPoint.Index,
+                propertyValue2: _swapState.Id);
 
             var soldCurrency = _swapState.Order.SoldCurrency();
 

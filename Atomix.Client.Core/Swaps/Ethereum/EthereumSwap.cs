@@ -53,7 +53,7 @@ namespace Atomix.Swaps.Ethereum
             CancellationToken cancellationToken = default(CancellationToken))
         {
             Log.Debug(
-                messageTemplate: "Create payment transactions for swap {@swap}",
+                messageTemplate: "Create payment transactions for swap {@swapId}",
                 propertyValue: _swapState.Id);
 
             var order = _swapState.Order;
@@ -65,7 +65,10 @@ namespace Atomix.Swaps.Ethereum
 
             foreach (var walletAddress in order.FromWallets)
             {
-                Log.Debug("Create swap payment tx from address {@address}", walletAddress.Address);
+                Log.Debug(
+                    "Create swap payment tx from address {@address} for swap {@swapId}",
+                    walletAddress.Address,
+                    _swapState.Id);
 
                 var balanceInEth = await _account
                     .GetBalanceAsync(Currencies.Eth, walletAddress.Address)
@@ -177,8 +180,9 @@ namespace Atomix.Swaps.Ethereum
                 .ConfigureAwait(false);
 
             Log.Debug(
-                messageTemplate: "Payment txId {@id}",
-                propertyValue: txId);
+                messageTemplate: "Payment txId {@id} for swap {@swapId}",
+                propertyValue0: txId,
+                propertyValue1: _swapState.Id);
 
             // account new unconfirmed transaction
             await _account
@@ -215,7 +219,7 @@ namespace Atomix.Swaps.Ethereum
             _taskPerformer.EnqueueTask(new EthereumRedeemControlTask
             {
                 Currency = _currency,
-                RefundTime = DateTime.UtcNow.AddHours(lockTimeHours), // todo: not fully correct, use instead DTO.initialtimestamp + refundtimeinterval
+                RefundTimeUtc = DateTime.UtcNow.AddHours(lockTimeHours), // todo: not fully correct, use instead DTO.initialtimestamp + refundtimeinterval
                 SwapState = _swapState,
                 From = txs.First().From,
                 CompleteHandler = RedeemControlCompletedEventHandler,
@@ -262,7 +266,7 @@ namespace Atomix.Swaps.Ethereum
             _taskPerformer.EnqueueTask(new EthereumRefundTimeControlTask
             {
                 Currency = _currency,
-                RefundTimeUtc = redeemControlTask.RefundTime,
+                RefundTimeUtc = redeemControlTask.RefundTimeUtc,
                 SwapState = swap,
                 From = redeemControlTask.From,
                 CompleteHandler = RefundTimeReachedEventHandler
@@ -296,7 +300,10 @@ namespace Atomix.Swaps.Ethereum
             string masterAddress,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            Log.Debug("Create refund for address {@address} and swap {@swap}", masterAddress, _swapState.Id);
+            Log.Debug(
+                "Create refund for address {@address} and swap {@swap}",
+                masterAddress,
+                _swapState.Id);
 
             var web3 = new Web3(Web3BlockchainApi.UriByChain(Currencies.Eth.Chain));
             var txHandler = web3.Eth.GetContractTransactionHandler<RefundFunctionMessage>();
@@ -359,7 +366,9 @@ namespace Atomix.Swaps.Ethereum
 
         private void SwapInitiatedEventHandler(BackgroundTask task)
         {
-            Log.Debug("Initiator payment transaction received. Now counter party can broadcast payment tx");
+            Log.Debug(
+                "Initiator payment transaction received. Now counter party can broadcast payment tx for swap {@swapId}",
+                _swapState.Id);
 
             _swapState.PartyPaymentTx = null; // todo: change to set party payment flag
             _swapState.SetPartyPaymentConfirmed(); // todo: more flags?
@@ -424,7 +433,7 @@ namespace Atomix.Swaps.Ethereum
 
         public override async Task RedeemAsync()
         {
-            Log.Debug("Create redeem for swap {@swap}", _swapState.Id);
+            Log.Debug("Create redeem for swap {@swapId}", _swapState.Id);
 
             var web3 = new Web3(Web3BlockchainApi.UriByChain(Currencies.Eth.Chain));
             var txHandler = web3.Eth.GetContractTransactionHandler<RedeemFunctionMessage>();
