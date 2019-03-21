@@ -39,6 +39,19 @@ namespace Atomix.Swaps.Ethereum
                 messageTemplate: "Initiate swap {@swapId}",
                 propertyValue: _swapState.Id);
 
+            // wait counterparty payment
+            if (_swapState.Order.PurchasedCurrency().Name.Equals(Currencies.Eth.Name))
+            {
+                _taskPerformer.EnqueueTask(new EthereumSwapInitiatedControlTask
+                {
+                    Currency = _currency,
+                    SwapState = _swapState,
+                    Interval = TimeSpan.FromSeconds(20),
+                    CompleteHandler = SwapAcceptedEventHandler
+                });
+                return;
+            }
+
             CreateSecret();
             CreateSecretHash();
 
@@ -47,6 +60,8 @@ namespace Atomix.Swaps.Ethereum
             await CreateAndBroadcastPaymentTxAsync(DefaultInitiatorLockTimeHours)
                 .ConfigureAwait(false);
         }
+
+
 
         private async Task<IEnumerable<EthereumTransaction>> CreatePaymentTxsAsync(
             int lockTimeInHours,
@@ -362,6 +377,26 @@ namespace Atomix.Swaps.Ethereum
             }
 
             return Task.CompletedTask;
+        }
+
+        private async void SwapAcceptedEventHandler(BackgroundTask task)
+        {
+            try
+            {
+                Log.Debug(
+                    "CounterParty payment transaction received. Now counter party can redeem for swap {@swapId}",
+                    _swapState.Id);
+
+                _swapState.PartyPaymentTx = null; // todo: change to set party payment flag
+                _swapState.SetPartyPaymentConfirmed(); // todo: more flags?
+
+                await RedeemAsync()
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Swap accepted error");
+            }
         }
 
         private void SwapInitiatedEventHandler(BackgroundTask task)

@@ -43,6 +43,11 @@ namespace Atomix.Swaps.BitcoinBased
                 messageTemplate: "Initiate swap {@swapId}",
                 propertyValue: _swapState.Id);
 
+            if (_currency.Name.Equals(_swapState.Order.PurchasedCurrency().Name)) {
+                // nothing to do for purchased bitcoin base party
+                return;
+            }
+
             CreateSecret();
             CreateSecretHash();
 
@@ -72,8 +77,7 @@ namespace Atomix.Swaps.BitcoinBased
                 messageTemplate: "Accept swap {@swapId}",
                 propertyValue: _swapState.Id);
 
-            if (_currency.Name.Equals(_swapState.Order.PurchasedCurrency().Name))
-            {
+            if (_currency.Name.Equals(_swapState.Order.PurchasedCurrency().Name)) {
                 // nothing to do for purchased bitcoin base party
                 return;
             }

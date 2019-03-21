@@ -76,9 +76,15 @@ namespace Atomix.Swaps
             };
         }
 
-        public override Task InitiateSwapAsync()
+        public override async Task InitiateSwapAsync()
         {
-            return _soldCurrencySwap.InitiateSwapAsync();
+            await _soldCurrencySwap
+                .InitiateSwapAsync()
+                .ConfigureAwait(false);
+
+            await _purchasedCurrencySwap
+                .InitiateSwapAsync()
+                .ConfigureAwait(false);
         }
 
         public override async Task AcceptSwapAsync()
