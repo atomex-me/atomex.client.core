@@ -16,7 +16,16 @@ namespace Atomix.Updates
         );
         #endregion
 
-        #region events
+        #region public
+        public Version InstalledVersion
+        {
+            get
+            {
+                try { return ProductProvider.GetInstalledVersion(); }
+                catch { return new Version("0.0.0"); }
+            }
+        }
+
         public event EventHandler<ReadyEventArgs> UpdatesReady;
         #endregion
 
