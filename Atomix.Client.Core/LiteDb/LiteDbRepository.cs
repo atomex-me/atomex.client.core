@@ -1,7 +1,10 @@
-﻿using Atomix.Common;
-using Atomix.Common.Bson;
-using System;
+﻿using System;
 using System.Security;
+using Atomix.Blockchain.BitcoinBased;
+using Atomix.Blockchain.Ethereum;
+using Atomix.Blockchain.Tezos;
+using Atomix.Common;
+using Atomix.Common.Bson;
 
 namespace Atomix.LiteDb
 {
@@ -19,6 +22,7 @@ namespace Atomix.LiteDb
             new BitcoinBasedTransactionToBsonSerializer().Register();
             new BitcoinBasedTxOutputToBsonSerializer().Register();
             new EthereumTransactionToBsonSerializer().Register();
+            new TezosTransactionToBsonSerializer().Register();
             new SwapToBsonSerializer().Register();
         }
 

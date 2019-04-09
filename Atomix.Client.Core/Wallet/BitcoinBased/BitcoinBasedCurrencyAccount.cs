@@ -12,7 +12,7 @@ using Atomix.Core.Entities;
 using Atomix.Wallet.Abstract;
 using Serilog;
 
-namespace Atomix.Wallet.CurrencyAccount
+namespace Atomix.Wallet.BitcoinBased
 {
     public class BitcoinBasedCurrencyAccount : CurrencyAccount
     {
@@ -299,7 +299,7 @@ namespace Atomix.Wallet.CurrencyAccount
 
             var outputs = await TransactionRepository
                 .GetUnspentOutputsAsync(Currency)
-                .ConfigureAwait(continueOnCapturedContext: false);
+                .ConfigureAwait(false);
 
             // TODO: filter already used outputs
 

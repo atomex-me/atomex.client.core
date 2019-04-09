@@ -12,6 +12,7 @@ namespace Atomix.Wallet.Abstract
         Task EncryptAsync(SecureString password);
         void Lock();
         void Unlock(SecureString password);
+        byte[] GetPublicKey(KeyIndex keyIndex);
         byte[] GetPublicKey(uint chain, uint index);
         byte[] GetPrivateKey(KeyIndex keyIndex);
         byte[] GetPrivateKey(uint chain, uint index);

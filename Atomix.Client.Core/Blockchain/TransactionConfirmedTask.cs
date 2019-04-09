@@ -1,5 +1,7 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using Atomix.Blockchain.Abstract;
+using Serilog;
 
 namespace Atomix.Blockchain
 {
@@ -12,11 +14,21 @@ namespace Atomix.Blockchain
 
         public override async Task<bool> CheckCompletion()
         {
-            var tx = await Currency.BlockchainApi
-                .GetTransactionAsync(TxId)
-                .ConfigureAwait(false);
+            IBlockchainTransaction tx;
 
-            if (tx.BlockInfo == null || tx.BlockInfo.Confirmations < NumberOfConfirmations)
+            try
+            {
+                tx = await Currency.BlockchainApi
+                    .GetTransactionAsync(TxId)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Transaction confirmation task error");
+                return false;
+            }
+
+            if (tx == null || tx.BlockInfo == null || tx.BlockInfo.Confirmations < NumberOfConfirmations)
                 return false;
 
             Tx = tx;

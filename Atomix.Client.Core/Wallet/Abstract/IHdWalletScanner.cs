@@ -4,12 +4,8 @@ using Atomix.Core.Entities;
 
 namespace Atomix.Wallet.Abstract
 {
-    public interface IHdWalletScanner
+    public interface IHdWalletScanner : ICurrencyHdWalletScanner
     {
-        Task ScanAsync(
-            bool skipUsed = false,
-            CancellationToken cancellationToken = default(CancellationToken));
-
         Task ScanAsync(
             Currency currency,
             bool skipUsed = false,

@@ -9,6 +9,5 @@ namespace Atomix.Blockchain.Abstract
         BlockInfo BlockInfo { get; }
 
         bool IsConfirmed();
-        byte[] ToBytes();
     }
 }

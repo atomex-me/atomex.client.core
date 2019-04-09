@@ -131,13 +131,6 @@ namespace Atomix.Swaps
             });
         }
 
-        protected void SendTransactionData(
-            SwapDataType dataType,
-            IBlockchainTransaction tx)
-        {
-            SendData(dataType, tx.ToBytes());
-        }
-
         protected void CreateSecret()
         {
             _swapState.Secret = CreateSwapSecret();

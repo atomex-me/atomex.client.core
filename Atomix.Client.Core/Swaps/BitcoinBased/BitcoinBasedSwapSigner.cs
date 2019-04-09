@@ -11,7 +11,7 @@ namespace Atomix.Swaps.BitcoinBased
 {
     public class BitcoinBasedSwapSigner
     {
-        public IAccount Account { get; }
+        private IAccount Account { get; }
 
         public BitcoinBasedSwapSigner(IAccount account)
         {
@@ -19,8 +19,7 @@ namespace Atomix.Swaps.BitcoinBased
         }
 
         public async Task<IBitcoinBasedTransaction> SignPaymentTxAsync(
-            IBitcoinBasedTransaction paymentTx,
-            Order order)
+            IBitcoinBasedTransaction paymentTx)
         {
             var tx = paymentTx.Clone();
 

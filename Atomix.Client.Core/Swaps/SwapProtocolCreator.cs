@@ -4,11 +4,12 @@ using Atomix.Core.Entities;
 using Atomix.Swaps.Abstract;
 using Atomix.Swaps.BitcoinBased;
 using Atomix.Swaps.Ethereum;
+using Atomix.Swaps.Tezos;
 using Atomix.Wallet.Abstract;
 
 namespace Atomix.Swaps
 {
-    public class SwapProtocolCreator
+    public static class SwapProtocolCreator
     {
         public static ISwap Create(
             Currency currency,
@@ -29,6 +30,13 @@ namespace Atomix.Swaps
                         transactionFactory: new BitcoinBasedSwapTransactionFactory());
                 case Atomix.Ethereum _:
                     return new EthereumSwap(
+                        currency: currency,
+                        swapState: swapState,
+                        account: account,
+                        swapClient: swapClient,
+                        taskPerformer: taskPerformer);
+                case Atomix.Tezos _:
+                    return new TezosSwap(
                         currency: currency,
                         swapState: swapState,
                         account: account,

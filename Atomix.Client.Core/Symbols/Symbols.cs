@@ -5,13 +5,17 @@ namespace Atomix
 {
     public static class Symbols
     {
-        public static Symbol LtcBtc = new LtcBtc();
-        public static Symbol EthBtc = new EthBtc();
+        public static LtcBtc LtcBtc = new LtcBtc();
+        public static EthBtc EthBtc = new EthBtc();
+        public static XtzBtc XtzBtc = new XtzBtc();
+        public static XtzEth XtzEth = new XtzEth();
 
         public static Symbol[] Available =
         {
             LtcBtc,
-            EthBtc
+            EthBtc,
+            XtzBtc,
+            XtzEth
         };
 
         public static Symbol SymbolByCurrencies(Currency from, Currency to)

@@ -46,6 +46,7 @@
         public const int InvalidConnection = 10015;
         public const int InsufficientFunds = 10100;
         public const int InsufficientGas = 10101;
+        public const int InsufficientFee = 10102;
 
         // swap errors
         public const int SwapNotFound = 20000;

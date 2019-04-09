@@ -12,7 +12,7 @@ namespace Atomix.Cryptography
         public string Curve { get; set; } = Curves.Secp256K1;
         public string Algorithm { get; set; } = Identifiers.Sha256WithEcdsa;
 
-        public bool VerifySign(byte[] sign, byte[] data, byte[] publicKey)
+        public bool VerifySign(byte[] data, byte[] sign, byte[] publicKey)
         {
             var curve = SecNamedCurves.GetByName(Curve);
             var parameters = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H, curve.GetSeed());

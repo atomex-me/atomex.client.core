@@ -8,14 +8,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using Atomix.Blockchain.Abstract;
 using Atomix.Common;
-using Nethereum.Contracts;
 using Nethereum.Signer;
 using Newtonsoft.Json;
 using Serilog;
 
 namespace Atomix.Blockchain.Ethereum
 {
-    public class EtherScan : IEthereumBlockchainApi
+    public class EtherScanApi : IEthereumBlockchainApi
     {
         public const string MainNet = "https://api.etherscan.io/";
         public const string Ropsten = "http://api-ropsten.etherscan.io/";
@@ -80,7 +79,7 @@ namespace Atomix.Blockchain.Ethereum
             public string Confirmations { get; set; }
         }
 
-        public EtherScan(Chain chain)
+        public EtherScanApi(Chain chain)
         {
             switch (chain)
             {
@@ -95,7 +94,9 @@ namespace Atomix.Blockchain.Ethereum
             }
         }
 
-        public Task<BigInteger> GetTransactionCountAsync(string address, CancellationToken cancellationToken = default(CancellationToken))
+        public Task<BigInteger> GetTransactionCountAsync(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
         {
             throw new NotImplementedException();
         }

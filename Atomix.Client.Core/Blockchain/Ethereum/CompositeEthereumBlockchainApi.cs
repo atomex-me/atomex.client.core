@@ -12,12 +12,12 @@ namespace Atomix.Blockchain.Ethereum
     public class CompositeEthereumBlockchainApi : IEthereumBlockchainApi
     {
         private readonly Web3BlockchainApi _web3;
-        private readonly EtherScan _etherScan;
+        private readonly EtherScanApi _etherScanApi;
 
         public CompositeEthereumBlockchainApi(Chain chain)
         {
             _web3 = new Web3BlockchainApi(chain);
-            _etherScan = new EtherScan(chain);
+            _etherScanApi = new EtherScanApi(chain);
         }
 
         public Task<IBlockchainTransaction> GetTransactionAsync(
@@ -45,7 +45,7 @@ namespace Atomix.Blockchain.Ethereum
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            return _etherScan.GetTransactionsAsync(address, cancellationToken);
+            return _etherScanApi.GetTransactionsAsync(address, cancellationToken);
         }
     }
 }

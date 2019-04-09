@@ -73,11 +73,11 @@ namespace Atomix
 
         public override bool IsAddressFromKey(string address, byte[] publicKey)
         {
-            return AddressFromKey(publicKey)
+            return AddressFromKey(publicKey).ToLowerInvariant()
                 .Equals(address.ToLowerInvariant());
         }
 
-        public override bool VerifyMessage(byte[] publicKey, byte[] data, byte[] signature)
+        public override bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey)
         {
             return new EthECKey(publicKey, false)
                 .Verify(data, EthECDSASignature.FromDER(signature));

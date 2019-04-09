@@ -80,7 +80,7 @@ namespace Atomix.Common
                 if (!address.Currency.IsAddressFromKey(address.Address, pubKeyBytes))
                     return new Error(Errors.InvalidSigns, "Invalid public key for wallet");
 
-                if (!address.Currency.VerifyMessage(pubKeyBytes, data, Convert.FromBase64String(address.ProofOfPossession)))
+                if (!address.Currency.VerifyMessage(data, Convert.FromBase64String(address.ProofOfPossession), pubKeyBytes))
                    return new Error(Errors.InvalidSigns, "Invalid sign for wallet");
             }
 

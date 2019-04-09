@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -15,18 +15,24 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Info.Blockchain.API.Standart" Version="1.0.4" />
     <PackageReference Include="LiteDB" Version="4.1.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.2.0" />
-    <PackageReference Include="NBitcoin" Version="4.1.1.81" />
-    <PackageReference Include="NBitcoin.Altcoins" Version="1.0.1.35" />
-    <PackageReference Include="Nethereum.HdWallet" Version="3.0.0" />
-    <PackageReference Include="Nethereum.JsonRpc.WebSocketClient" Version="3.0.0" />
-    <PackageReference Include="Nethereum.Web3" Version="3.0.0" />
+    <PackageReference Include="NBitcoin" Version="4.1.1.98" />
+    <PackageReference Include="NBitcoin.Altcoins" Version="1.0.1.42" />
+    <PackageReference Include="Nethereum.HdWallet" Version="3.1.2" />
+    <PackageReference Include="Nethereum.JsonRpc.WebSocketClient" Version="3.1.2" />
+    <PackageReference Include="Nethereum.Web3" Version="3.1.2" />
+    <PackageReference Include="Portable.BouncyCastle" Version="1.8.5" />
     <PackageReference Include="protobuf-net" Version="2.4.0" />
     <PackageReference Include="QBitNinja.Client" Version="1.0.3.47" />
     <PackageReference Include="Serilog" Version="2.8.0" />
     <PackageReference Include="websocketsharp.core" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Wallet" />
   </ItemGroup>
 
   <ProjectExtensions><VisualStudio><UserProperties /></VisualStudio></ProjectExtensions>

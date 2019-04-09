@@ -15,6 +15,10 @@ namespace Atomix.MarketData.Bitfinex
     public class BitfinexQuotesProvider : QuotesProvider
     {
         public const string Usd = "USD";
+        public const string LtcBtc = "LTCBTC";
+        public const string EthBtc = "ETHBTC";
+        public const string XtzBtc = "XTZBTC";
+
         public string BaseUrl { get; } = "https://api.bitfinex.com/v1/";
 
         public BitfinexQuotesProvider(params string[] symbols)

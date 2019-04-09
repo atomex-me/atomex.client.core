@@ -14,7 +14,6 @@ using Atomix.Core.Entities;
 using Atomix.LiteDb;
 using Atomix.Swaps.Abstract;
 using Atomix.Wallet.Abstract;
-using Atomix.Wallet.CurrencyAccount;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 

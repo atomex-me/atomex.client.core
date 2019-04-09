@@ -29,15 +29,5 @@ namespace Atomix.Blockchain.Abstract
             string txId,
             uint outputNo,
             CancellationToken cancellationToken = default(CancellationToken));
-
-        //Task<IEnumerable<ITxOutput>> GetReceivedOutputsAsync(
-        //    string address,
-        //    string afterTxId = null,
-        //    CancellationToken cancellationToken = default(CancellationToken));
-
-        //Task<IEnumerable<ITxOutput>> GetSpentOutputsAsync(
-        //    string address,
-        //    string afterTxId = null,
-        //    CancellationToken cancellationToken = default(CancellationToken));
     }
 }

@@ -1,10 +1,10 @@
 ﻿using System.Linq;
-using Atomix.Blockchain;
-using Atomix.Blockchain.BitcoinBased;
+using Atomix.Common;
+using Atomix.Common.Bson;
 using LiteDB;
 using NBitcoin;
 
-namespace Atomix.Common.Bson
+namespace Atomix.Blockchain.BitcoinBased
 {
     public class BitcoinBasedTransactionToBsonSerializer : BsonSerializer<BitcoinBasedTransaction>
     {

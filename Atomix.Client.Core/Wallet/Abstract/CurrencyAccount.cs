@@ -6,9 +6,8 @@ using Atomix.Blockchain;
 using Atomix.Blockchain.Abstract;
 using Atomix.Core;
 using Atomix.Core.Entities;
-using Atomix.Wallet.Abstract;
 
-namespace Atomix.Wallet.CurrencyAccount
+namespace Atomix.Wallet.Abstract
 {
     public abstract class CurrencyAccount : ICurrencyAccount
     {

@@ -1,10 +1,9 @@
 ﻿using System.Linq;
 using System.Numerics;
-using Atomix.Blockchain;
-using Atomix.Blockchain.Ethereum;
+using Atomix.Common.Bson;
 using LiteDB;
 
-namespace Atomix.Common.Bson
+namespace Atomix.Blockchain.Ethereum
 {
     public class EthereumTransactionToBsonSerializer : BsonSerializer<EthereumTransaction>
     {
@@ -43,7 +42,7 @@ namespace Atomix.Common.Bson
             var currency = Currencies.Available
                 .FirstOrDefault(c => c.Name.Equals(currencyName));
 
-            if (currency is Ethereum)
+            if (currency is Atomix.Ethereum)
             {
                 return new EthereumTransaction
                 {
@@ -60,12 +59,8 @@ namespace Atomix.Common.Bson
                         : 0,
                     RlpEncodedTx = bson[RlpEncodedKey].AsString,
                     Type = bson[TypeKey].AsInt32,
-                    ReceiptStatus = bson.ContainsKey(ReceiptStatusKey)
-                        ? bson[ReceiptStatusKey].AsBoolean
-                        : true,
-                    IsInternal = bson.ContainsKey(IsInternalKey)
-                        ? bson[IsInternalKey].AsBoolean
-                        : false,
+                    ReceiptStatus = !bson.ContainsKey(ReceiptStatusKey) || bson[ReceiptStatusKey].AsBoolean,
+                    IsInternal = bson.ContainsKey(IsInternalKey) && bson[IsInternalKey].AsBoolean,
 
                     BlockInfo = new BlockInfo
                     {

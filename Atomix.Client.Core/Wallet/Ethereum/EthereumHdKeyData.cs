@@ -114,6 +114,11 @@ namespace Atomix.Wallet.KeyData
             }
         }
 
+        public byte[] GetPublicKey(KeyIndex keyIndex)
+        {
+            return GetPublicKey(keyIndex.Chain, keyIndex.Index);
+        }
+
         public byte[] GetPublicKey(uint chain, uint index)
         {
             return GetEcKey(chain, index)

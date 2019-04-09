@@ -1,5 +1,6 @@
 ﻿using System;
 using Atomix.Wallet.Abstract;
+using Atomix.Wallet.BitcoinBased;
 using Atomix.Wallet.KeyData;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -28,13 +29,16 @@ namespace Atomix.Common.Json
 
             var type = keyData.ContainsKey(TypeKey)
                 ? keyData[TypeKey].Value<string>()
-                : nameof(BitcoinBaseHdKeyData);
+                : nameof(BitcoinBasedHdKeyData);
 
-            if (type.Equals(nameof(BitcoinBaseHdKeyData)))
-                return new BitcoinBaseHdKeyData(keyData);
+            if (type.Equals(nameof(BitcoinBasedHdKeyData)))
+                return new BitcoinBasedHdKeyData(keyData);
 
             if (type.Equals(nameof(EthereumHdKeyData)))
                 return new EthereumHdKeyData(keyData);
+
+            if (type.Equals(nameof(TezosHdKeyData)))
+                return new TezosHdKeyData(keyData);
 
             throw new NotSupportedException("Key data type not supported");
         }

@@ -11,6 +11,7 @@ using Atomix.Core.Entities;
 using Atomix.Cryptography;
 using Atomix.Wallet.Abstract;
 using Atomix.Wallet.Bip;
+using Atomix.Wallet.BitcoinBased;
 using Atomix.Wallet.KeyData;
 using NBitcoin;
 using Newtonsoft.Json;
@@ -42,7 +43,7 @@ namespace Atomix.Wallet
         {
             _keys = new Dictionary<uint, IHdKeyData>
             {
-                {Bip44.Bitcoin, new BitcoinBaseHdKeyData(
+                { Bip44.Bitcoin, new BitcoinBasedHdKeyData(
                     mnemonic: mnemonic,
                     wordList: wordList,
                     passPhrase: passPhrase,
@@ -50,7 +51,7 @@ namespace Atomix.Wallet
                     currency: Bip44.Bitcoin,
                     account: account)},
 
-                {Bip44.Litecoin, new BitcoinBaseHdKeyData(
+                { Bip44.Litecoin, new BitcoinBasedHdKeyData(
                     mnemonic: mnemonic,
                     wordList: wordList,
                     passPhrase: passPhrase,
@@ -58,13 +59,18 @@ namespace Atomix.Wallet
                     currency: Bip44.Litecoin,
                     account: account)},
 
-                {Bip44.Ethereum, new EthereumHdKeyData(
+                { Bip44.Ethereum, new EthereumHdKeyData(
                     mnemonic: mnemonic,
                     passPhrase: passPhrase,
                     account: account)},
+
+                { Bip44.Tezos, new TezosHdKeyData(
+                    mnemonic: mnemonic,
+                    passPhrase: passPhrase,
+                    account: account)}
             };
 
-            _serviceKey = new BitcoinBaseHdKeyData(
+            _serviceKey = new BitcoinBasedHdKeyData(
                 mnemonic: mnemonic,
                 passPhrase: passPhrase,
                 wordList: wordList,
@@ -207,7 +213,7 @@ namespace Atomix.Wallet
 
                             var addressFromKey = currency.AddressFromKey(publicKeyBytes);
 
-                            if (addressFromKey.Equals(address))
+                            if (addressFromKey.ToLowerInvariant().Equals(address.ToLowerInvariant()))
                             {
                                 keyIndex = new KeyIndex(chain, index);
                                 state.Stop();

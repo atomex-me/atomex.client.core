@@ -583,10 +583,12 @@ namespace Atomix.Blockchain.SoChain
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            var tx = (IBitcoinBasedTransaction) transaction;
+
             var requestUri = $"api/v2/send_tx/{NetworkAcronym}";
 
             var content = new StringContent(
-                content: JsonConvert.SerializeObject(new SendTx(transaction.ToBytes().ToHexString())),
+                content: JsonConvert.SerializeObject(new SendTx(tx.ToBytes().ToHexString())),
                 encoding: Encoding.UTF8,
                 mediaType: "application/json");
 

@@ -1,23 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomix.Blockchain;
 using Atomix.Blockchain.Abstract;
-using Atomix.Blockchain.Ethereum;
+using Atomix.Blockchain.Tezos;
 using Atomix.Common;
 using Atomix.Core;
 using Atomix.Core.Entities;
 using Atomix.Wallet.Abstract;
 using Serilog;
 
-namespace Atomix.Wallet.CurrencyAccount
+namespace Atomix.Wallet.Tezos
 {
-    public class EthereumCurrencyAccount : CurrencyAccount
+    public class TezosCurrencyAccount : CurrencyAccount
     {
-        public EthereumCurrencyAccount(
+        public TezosCurrencyAccount(
             Currency currency,
             IHdWallet wallet,
             ITransactionRepository transactionRepository)
@@ -32,59 +31,55 @@ namespace Atomix.Wallet.CurrencyAccount
             decimal feePrice,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var addresses = await SelectUnspentAddressesAsync(amount, fee, feePrice, cancellationToken)
-                .ConfigureAwait(false);
+            var amountMicroTez = amount.ToMicroTez();
+            var feeMicroTez = fee.ToMicroTez();
 
-            if (addresses.Count() == 0)
+            var addresses = (await SelectUnspentAddressesAsync(amount, fee, cancellationToken)
+                .ConfigureAwait(false))
+                .ToList();
+
+            if (!addresses.Any())
             {
                 return new Error(
                     code: Errors.InsufficientFunds,
                     description: "Insufficient funds");
             }
 
-            var feePerTransaction = Math.Round(fee / addresses.Count());
+            var feePerTransactionInMtz = Math.Round(feeMicroTez / addresses.Count);
 
-            if (feePerTransaction < Ethereum.DefaultGasLimit)
+            if (feePerTransactionInMtz < Atomix.Tezos.DefaultFee)
             {
                 return new Error(
-                    code: Errors.InsufficientGas,
-                    description: "Insufficient gas");
+                    code: Errors.InsufficientFee,
+                    description: "Insufficient fee");
             }
 
-            var feeAmount = Currencies.Eth.GetFeeAmount(feePerTransaction, feePrice);
-
             Log.Debug(
-                "Fee per transaction {@feePerTransaction}. Fee Amount {@feeAmount}",
-                feePerTransaction,
-                feeAmount);
+                "Fee per transaction {@feePerTransaction}",
+                feePerTransactionInMtz);
 
-            var requiredAmount = amount;
+            var requiredAmountInMtz = amountMicroTez;
 
-            foreach (var (walletAddress, balance) in addresses)
+            foreach (var (walletAddress, balanceInTz) in addresses)
             {
-                var nonce = await ((IEthereumBlockchainApi)Currency.BlockchainApi)
-                    .GetTransactionCountAsync(walletAddress.Address, cancellationToken)
-                    .ConfigureAwait(false);
-
-                var txAmount = Math.Min(balance - feeAmount, requiredAmount);
-                requiredAmount -= txAmount;
+                var txAmountInMtz = Math.Min(balanceInTz.ToMicroTez() - feePerTransactionInMtz, requiredAmountInMtz);
+                requiredAmountInMtz -= txAmountInMtz;
 
                 Log.Debug(
-                    "Send {@amount} ETH from address {@address} with balance {@balance}",
-                    txAmount,
+                    "Send {@amount} XTZ from address {@address} with balance {@balance}",
+                    txAmountInMtz,
                     walletAddress.Address,
-                    balance);
+                    balanceInTz);
 
-                // TODO: check rest for last address (if rest less than DefaultGasLimit there is no reason to use this address)
-
-                var tx = new EthereumTransaction
+                var tx = new TezosTransaction
                 {
+                    From = walletAddress.Address,
                     To = to,
-                    Amount = new BigInteger(Ethereum.EthToWei(txAmount)),
-                    Nonce = nonce,
-                    GasPrice = new BigInteger(Ethereum.GweiToWei(feePrice)),
-                    GasLimit = new BigInteger(feePerTransaction),
-                    Type = EthereumTransaction.OutputTransaction
+                    Amount = Math.Round(txAmountInMtz, 0),
+                    Fee = feePerTransactionInMtz,
+                    GasLimit = Atomix.Tezos.DefaultGasLimit,
+                    StorageLimit = Atomix.Tezos.DefaultStorageLimit,
+                    Type = TezosTransaction.OutputTransaction
                 };
 
                 var signResult = await Wallet
@@ -98,9 +93,6 @@ namespace Atomix.Wallet.CurrencyAccount
                         description: "Transaction signing error");
                 }
 
-                // TODO: verification
-                //var result = tx.Verify();
-
                 var txId = await Currency.BlockchainApi
                     .BroadcastAsync(tx, cancellationToken)
                     .ConfigureAwait(false);
@@ -111,7 +103,8 @@ namespace Atomix.Wallet.CurrencyAccount
 
                 await AddUnconfirmedTransactionAsync(
                         tx: tx,
-                        selfAddresses: new[] {tx.From.ToLowerInvariant()})
+                        selfAddresses: new[] { tx.From },
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -122,14 +115,15 @@ namespace Atomix.Wallet.CurrencyAccount
             decimal amount,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            var defaultFeeInTz = ((decimal) Atomix.Tezos.DefaultFee).ToTez();
+
             var addresses = await SelectUnspentAddressesAsync(
                     amount: amount,
-                    fee: Ethereum.DefaultGasLimit,
-                    feePrice: Ethereum.DefaultGasPriceInGwei,
+                    fee: defaultFeeInTz,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            return addresses.Count() * Ethereum.DefaultGasLimit;
+            return addresses.Count() * defaultFeeInTz;
         }
 
         public override async Task AddConfirmedTransactionAsync(
@@ -173,7 +167,7 @@ namespace Atomix.Wallet.CurrencyAccount
                 .ConfigureAwait(false);
 
             return addressBalances
-                .FirstOrDefault(pair => pair.Item1.Address.Equals(address))
+                .FirstOrDefault(pair => pair.Item1.Address.ToLowerInvariant().Equals(address.ToLowerInvariant()))
                 .Item2;
         }
 
@@ -211,13 +205,46 @@ namespace Atomix.Wallet.CurrencyAccount
             return usedAddresses;
         }
 
+        public override async Task<bool> IsAddressHasOperationsAsync(
+            WalletAddress walletAddress,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return (await TransactionRepository.GetTransactionsAsync(Currency)
+                .ConfigureAwait(false))
+                .Cast<TezosTransaction>()
+                .Any(t => t.From.ToLowerInvariant().Equals(walletAddress.Address.ToLowerInvariant()) ||
+                          t.To.ToLowerInvariant().Equals(walletAddress.Address.ToLowerInvariant()));
+        }
+
+        public override Task<WalletAddress> GetRefundAddressAsync(
+            IEnumerable<WalletAddress> paymentAddresses,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return Task.FromResult(paymentAddresses.First()); // todo: check address balance and reserved amount
+        }
+
+        public override async Task<WalletAddress> GetRedeemAddressAsync(
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var addressBalances = await GetUnspentAddressBalancesAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            var redeemFeeInTz = ((decimal) Atomix.Tezos.DefaultRedeemFee).ToTez();
+
+            foreach (var (address, balanceInTz) in addressBalances)
+                if (balanceInTz >= redeemFeeInTz)
+                    return address;
+
+            throw new Exception("Insufficient funds for redeem");
+        }
+
         private async Task<IEnumerable<(WalletAddress, decimal)>> GetAddressBalancesAsync(
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var transactions = (await TransactionRepository
                 .GetTransactionsAsync(Currency)
                 .ConfigureAwait(false))
-                .Cast<EthereumTransaction>();
+                .Cast<TezosTransaction>();
 
             var addressBalances = new Dictionary<string, (WalletAddress, decimal)>();
 
@@ -225,10 +252,10 @@ namespace Atomix.Wallet.CurrencyAccount
             {
                 var addresses = new List<string>();
 
-                if (tx.Type == EthereumTransaction.OutputTransaction || tx.Type == EthereumTransaction.SelfTransaction)
-                    addresses.Add(tx.From.ToLowerInvariant());
-                if (tx.Type == EthereumTransaction.InputTransaction || tx.Type == EthereumTransaction.SelfTransaction)
-                    addresses.Add(tx.To.ToLowerInvariant());
+                if (tx.Type == TezosTransaction.OutputTransaction || tx.Type == TezosTransaction.SelfTransaction)
+                    addresses.Add(tx.From);
+                if (tx.Type == TezosTransaction.InputTransaction || tx.Type == TezosTransaction.SelfTransaction)
+                    addresses.Add(tx.To);
 
                 foreach (var address in addresses)
                 {
@@ -236,18 +263,16 @@ namespace Atomix.Wallet.CurrencyAccount
                         .GetAddressAsync(Currency, address, cancellationToken)
                         .ConfigureAwait(false);
 
-                    var isReceive = address.Equals(tx.To.ToLowerInvariant());
-
-                    var gas = tx.GasUsed != 0 ? tx.GasUsed : tx.GasLimit;
+                    var isReceive = address.ToLowerInvariant().Equals(tx.To.ToLowerInvariant());
 
                     var signedAmount = isReceive
-                        ? Ethereum.WeiToEth(tx.Amount)
-                        : -Ethereum.WeiToEth(tx.Amount +  tx.GasPrice * gas);
+                        ? tx.Amount
+                        : -(tx.Amount + tx.Fee);
 
                     if (addressBalances.TryGetValue(address, out var pair)) {
-                        addressBalances[address] = (pair.Item1, pair.Item2 + signedAmount);
+                        addressBalances[address] = (pair.Item1, pair.Item2 + signedAmount.ToTez());
                     } else {
-                        addressBalances.Add(address, (walletAddress, signedAmount));
+                        addressBalances.Add(address, (walletAddress, signedAmount.ToTez()));
                     }
                 }
             }
@@ -266,7 +291,6 @@ namespace Atomix.Wallet.CurrencyAccount
         private async Task<IEnumerable<(WalletAddress, decimal)>> SelectUnspentAddressesAsync(
             decimal amount,
             decimal fee,
-            decimal feePrice,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             // TODO: unspent address using policy (transaction count minimization?)
@@ -282,18 +306,18 @@ namespace Atomix.Wallet.CurrencyAccount
             for (var txCount = 1; txCount <= unspentAddressBalances.Count; ++txCount)
             {
                 // fee amount per transaction
-                var feeAmount = Currencies.Eth.GetFeeAmount(fee, feePrice) / txCount;
+                var feeAmountInTz = fee / txCount;
 
                 var usedAddressed = new List<(WalletAddress, decimal)>();
                 var usedAmount = 0m;
 
-                foreach (var (walletAddress, balance) in unspentAddressBalances)
+                foreach (var (walletAddress, balanceInTz) in unspentAddressBalances)
                 {
-                    if (balance < feeAmount)
+                    if (balanceInTz < feeAmountInTz)
                         continue; // ignore addresses with balance less than fee amount
 
-                    usedAmount += balance - feeAmount;
-                    usedAddressed.Add((walletAddress, balance));
+                    usedAmount += balanceInTz - feeAmountInTz;
+                    usedAddressed.Add((walletAddress, balanceInTz));
 
                     if (usedAmount >= amount)
                         break;
@@ -306,39 +330,6 @@ namespace Atomix.Wallet.CurrencyAccount
             }
 
             return Enumerable.Empty<(WalletAddress, decimal)>();
-        }
-
-        public override async Task<bool> IsAddressHasOperationsAsync(
-            WalletAddress walletAddress,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            return (await TransactionRepository.GetTransactionsAsync(Currency)
-                .ConfigureAwait(false))
-                .Cast<EthereumTransaction>()
-                .Any(t => t.From.ToLowerInvariant().Equals(walletAddress.Address) ||
-                          t.To.ToLowerInvariant().Equals(walletAddress.Address));
-        }
-
-        public override Task<WalletAddress> GetRefundAddressAsync(
-            IEnumerable<WalletAddress> paymentAddresses,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            return Task.FromResult(paymentAddresses.First()); // todo: check address balance and reserved amount
-        }
-
-        public override async Task<WalletAddress> GetRedeemAddressAsync(
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var addressBalances = await GetUnspentAddressBalancesAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            var redeemFeeInEth = Ethereum.GetDefaultRedeemFeeAmount();
-
-            foreach (var (address, balanceInEth) in addressBalances)
-                if (balanceInEth >= redeemFeeInEth)
-                    return address;
-
-            throw new Exception("Insufficient funds for redeem");
         }
     }
 }

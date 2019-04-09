@@ -3,6 +3,7 @@ using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
 using Atomix.Common;
+using WebSocketSharp;
 
 namespace Atomix.Cryptography
 {
@@ -28,14 +29,25 @@ namespace Atomix.Cryptography
         }
 
         /// <summary>
-        /// Encodes data with a 4-byte checksum and prefix
+        /// Encodes data with a 4-byte checksum and one byte prefix
         /// </summary>
-        /// <param name="prefix">Prefix byte</param>
         /// <param name="data">Data to be encoded</param>
+        /// <param name="prefix">Prefix byte</param>
         /// <returns></returns>
-        public static string Encode(byte prefix, byte[] data)
+        public static string Encode(byte[] data, byte prefix)
         {
             return Encode(new[] {prefix}.ConcatArrays(data));
+        }
+
+        /// <summary>
+        /// Encodes data with a 4-byte checksum and one prefix
+        /// </summary>
+        /// <param name="payload">Data to be encoded</param>
+        /// <param name="prefix">Prefix bytes</param>
+        /// <returns></returns>
+        public static string Encode(byte[] payload, byte[] prefix)
+        {
+            return Encode(prefix.ConcatArrays(payload));
         }
 
         /// <summary>
@@ -78,6 +90,27 @@ namespace Atomix.Cryptography
                 throw new FormatException("Base58 checksum is invalid");
 
             return dataWithoutCheckSum;
+        }
+
+        /// <summary>
+        /// Decodes encoded string in Base58check format with prefix
+        /// </summary>
+        /// <param name="encoded">Encoded data</param>
+        /// <param name="prefix">Prefix bytes</param>
+        /// <returns></returns>
+        public static byte[] Decode(string encoded, byte[] prefix)
+        {
+            int prefixLen = prefix?.Length ?? 0;
+
+            var decoded = Decode(encoded);
+
+            if (decoded.Length < prefixLen)
+                return null;
+
+            byte[] result = new byte[decoded.Length - prefixLen];
+            Array.Copy(decoded, prefixLen, result, 0, result.Length);
+
+            return result;
         }
 
         /// <summary>
@@ -128,7 +161,7 @@ namespace Atomix.Cryptography
         //Returns null if the checksum is invalid
         private static byte[] VerifyAndRemoveCheckSum(byte[] data)
         {
-            var result = data.SubArray(0, data.Length - CheckSumSize);
+            var result = ArrayHelpers.SubArray(data, 0, data.Length - CheckSumSize);
             var givenCheckSum = data.SubArray(data.Length - CheckSumSize);
             var correctCheckSum = _GetCheckSum(result);
 

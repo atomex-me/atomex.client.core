@@ -59,7 +59,7 @@ namespace Atomix
             } 
         }
 
-        public override bool VerifyMessage(byte[] publicKey, byte[] data, byte[] signature)
+        public override bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey)
         {
             return new PubKey(publicKey)
                 .VerifyMessage(data, Convert.ToBase64String(signature));

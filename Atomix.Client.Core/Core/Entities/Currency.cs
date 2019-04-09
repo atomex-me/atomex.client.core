@@ -31,7 +31,7 @@ namespace Atomix.Core.Entities
         public abstract string AddressFromKey(byte[] publicKey);
         public abstract bool IsValidAddress(string address);
         public abstract bool IsAddressFromKey(string address, byte[] publicKey);
-        public abstract bool VerifyMessage(byte[] publicKey, byte[] data, byte[] signature);
+        public abstract bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey);
 
         public abstract decimal GetFeeAmount(decimal fee, decimal feePrice);
         public abstract decimal GetFeeFromFeeAmount(decimal feeAmount, decimal feePrice);

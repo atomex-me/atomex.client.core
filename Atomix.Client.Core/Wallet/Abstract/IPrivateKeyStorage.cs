@@ -8,6 +8,8 @@ namespace Atomix.Wallet.Abstract
     {
         byte[] GetPrivateKey(Currency currency, KeyIndex keyIndex);
 
+        byte[] GetPublicKey(Currency currency, KeyIndex keyIndex);
+
         Task<KeyIndex> RecoverKeyIndexAsync(
             WalletAddress walletAddress,
             CancellationToken cancellationToken = default(CancellationToken));

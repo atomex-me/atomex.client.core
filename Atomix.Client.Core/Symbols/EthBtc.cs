@@ -10,8 +10,8 @@ namespace Atomix
             Name = $"{Currencies.Eth.Name}/{Currencies.Btc.Name}";
             Description = $"{Currencies.Eth.Description}/{Currencies.Btc.Description}";
             MinimumQty = 0.0001m; // todo: change minimum qty
-            PriceDigits = Currencies.Eth.Digits;
-            QtyDigits = Currencies.Ltc.Digits;
+            PriceDigits = Currencies.Btc.Digits;
+            QtyDigits = Currencies.Eth.Digits;
             Base = Currencies.Eth;
             Quote = Currencies.Btc;
         }

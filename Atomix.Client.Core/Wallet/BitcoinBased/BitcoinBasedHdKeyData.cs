@@ -7,9 +7,9 @@ using NBitcoin;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Atomix.Wallet.KeyData
+namespace Atomix.Wallet.BitcoinBased
 {
-    public class BitcoinBaseHdKeyData : IHdKeyData
+    public class BitcoinBasedHdKeyData : IHdKeyData
     {
         public const string TypeKey = "Type";
 
@@ -22,7 +22,7 @@ namespace Atomix.Wallet.KeyData
         [JsonIgnore]
         public bool IsLocked => Key == null;
 
-        public BitcoinBaseHdKeyData(
+        public BitcoinBasedHdKeyData(
             string mnemonic,
             Wordlist wordList,
             SecureString passPhrase,
@@ -37,7 +37,7 @@ namespace Atomix.Wallet.KeyData
             PublicKeyWif = Key.Neuter().GetWif(Network.Main).ToWif();
         }
 
-        public BitcoinBaseHdKeyData(JObject keyData)
+        public BitcoinBasedHdKeyData(JObject keyData)
         {
             EncryptedKeyWif = keyData[nameof(EncryptedKeyWif)].Value<string>();
             PublicKeyWif = keyData[nameof(PublicKeyWif)].Value<string>();
@@ -68,7 +68,12 @@ namespace Atomix.Wallet.KeyData
                 extPubKey: extPublicKey,
                 privateKey: new BitcoinEncryptedSecretNoEC(EncryptedKeyWif)
                     .GetKey(password.ToUnsecuredString())
-            );
+            );   
+        }
+
+        public byte[] GetPublicKey(KeyIndex keyIndex)
+        {
+            return GetPublicKey(keyIndex.Chain, keyIndex.Index);
         }
 
         public byte[] GetPublicKey(uint chain, uint index)
@@ -176,7 +181,7 @@ namespace Atomix.Wallet.KeyData
         {
             return new JObject
             {
-                [TypeKey] = nameof(BitcoinBaseHdKeyData),
+                [TypeKey] = nameof(BitcoinBasedHdKeyData),
                 [nameof(EncryptedKeyWif)] = EncryptedKeyWif,
                 [nameof(PublicKeyWif)] = PublicKeyWif
             };

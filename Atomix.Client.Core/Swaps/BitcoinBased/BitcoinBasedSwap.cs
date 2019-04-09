@@ -18,7 +18,7 @@ namespace Atomix.Swaps.BitcoinBased
 {
     public class BitcoinBasedSwap : Swap
     {
-        private IBitcoinBasedSwapTransactionFactory _transactionFactory;
+        private readonly IBitcoinBasedSwapTransactionFactory _transactionFactory;
 
         public BitcoinBasedSwap(
             Currency currency,
@@ -280,7 +280,7 @@ namespace Atomix.Swaps.BitcoinBased
             });
         }
 
-        public async Task HandleInitiatorPaymentTxAsync(byte[] transactionBytes)
+        private async Task HandleInitiatorPaymentTxAsync(byte[] transactionBytes)
         {
             Log.Debug(
                 messageTemplate: "Handle initiator's payment tx for swap {@swapId}",
@@ -313,7 +313,7 @@ namespace Atomix.Swaps.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public async Task HandleInitiatorRefundTxAsync(byte[] transactionBytes)
+        private async Task HandleInitiatorRefundTxAsync(byte[] transactionBytes)
         {
             Log.Debug(
                 messageTemplate: "Handle initiator's refund tx for swap {@swapId}",
@@ -346,7 +346,7 @@ namespace Atomix.Swaps.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public async Task HandleInitiatorRefundSignedTxAsync(byte[] transactionBytes)
+        private async Task HandleInitiatorRefundSignedTxAsync(byte[] transactionBytes)
         {
             Log.Debug(
                 messageTemplate: "Handle initiator's refund signed tx for swap {@swapId}",
@@ -380,7 +380,7 @@ namespace Atomix.Swaps.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public async Task HandleInitiatorPaymentTxId(string txId)
+        private async Task HandleInitiatorPaymentTxId(string txId)
         {
             Log.Debug(
                 messageTemplate: "Handle initiator's payment txId for swap {@swapId}",
@@ -413,7 +413,7 @@ namespace Atomix.Swaps.BitcoinBased
             });
         }
 
-        public async Task HandleCounterPartyPaymentTxAsync(byte[] transactionBytes)
+        private async Task HandleCounterPartyPaymentTxAsync(byte[] transactionBytes)
         {
             Log.Debug(
                 messageTemplate: "Handle counterParty's payment tx for swap {@swapId}",
@@ -446,7 +446,7 @@ namespace Atomix.Swaps.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public async Task HandleCounterPartyRefundTxAsync(byte[] transactionBytes)
+        private async Task HandleCounterPartyRefundTxAsync(byte[] transactionBytes)
         {
             Log.Debug(
                 messageTemplate: "Handle counterParty's refund tx for swap {@swapId}",
@@ -479,7 +479,7 @@ namespace Atomix.Swaps.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public async Task HandleCounterPartyRefundSignedTxAsync(byte[] transactionBytes)
+        private async Task HandleCounterPartyRefundSignedTxAsync(byte[] transactionBytes)
         {
             Log.Debug(
                 messageTemplate: "Handle counterParty's refund signed tx for swap {@swapId}",
@@ -513,7 +513,7 @@ namespace Atomix.Swaps.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public async Task HandleCounterPartyPaymentTxId(string txId)
+        private async Task HandleCounterPartyPaymentTxId(string txId)
         {
             Log.Debug(
                 messageTemplate: "Handle counterParty's payment txId for swap {@swapId}",
@@ -635,7 +635,7 @@ namespace Atomix.Swaps.BitcoinBased
                 propertyValue: _swapState.Id);
 
             var tx = await new BitcoinBasedSwapSigner(_account)
-                .SignPaymentTxAsync(paymentTx, _swapState.Order)
+                .SignPaymentTxAsync(paymentTx)
                 .ConfigureAwait(false);
 
             if (tx == null)
@@ -857,6 +857,8 @@ namespace Atomix.Swaps.BitcoinBased
                     .BroadcastAsync(refundTx)
                     .ConfigureAwait(false);
 
+                Log.Debug("Refund tx id {@txId} for swap {@swapId}", txId, _swapState.Id);
+
                 // todo: check result
 
                 _swapState.SetRefundBroadcast();
@@ -978,6 +980,13 @@ namespace Atomix.Swaps.BitcoinBased
                     description: "Invalid secret hash");
 
             _swapState.Secret = secret;
+        }
+
+        private void SendTransactionData(
+            SwapDataType dataType,
+            IBlockchainTransaction tx)
+        {
+            SendData(dataType, ((IBitcoinBasedTransaction)tx).ToBytes());
         }
     }
 }

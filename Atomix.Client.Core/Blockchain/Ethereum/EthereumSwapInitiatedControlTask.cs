@@ -10,7 +10,7 @@ namespace Atomix.Blockchain.Ethereum
 {
     public class EthereumSwapInitiatedControlTask : BlockchainTask
     {
-        public const int DefaultMaxAttemptsCount = 30;
+        public const int DefaultMaxAttemptsCount = 60;
 
         public int MaxAttemptsCount { get; set; } = DefaultMaxAttemptsCount;
         public int AttemptsCount { get; private set; }
@@ -27,7 +27,12 @@ namespace Atomix.Blockchain.Ethereum
                 }
 
                 var order = SwapState.Order;
-                var requiredAmountInEth = AmountHelper.QtyToAmount(order.Side, order.LastQty, order.LastPrice);
+
+                var side = order.Symbol
+                    .OrderSideForBuyCurrency(order.PurchasedCurrency())
+                    .Opposite();
+
+                var requiredAmountInEth = AmountHelper.QtyToAmount(side, order.LastQty, order.LastPrice);
                 var requiredAmountInWei = Atomix.Ethereum.EthToWei(requiredAmountInEth);
 
                 var wsUri = Web3BlockchainApi.WsUriByChain(Currencies.Eth.Chain);

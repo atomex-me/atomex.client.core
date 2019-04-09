@@ -2,10 +2,13 @@
 using Atomix.Blockchain.Abstract;
 using Atomix.Core.Entities;
 using Atomix.Wallet.Abstract;
+using Atomix.Wallet.BitcoinBased;
+using Atomix.Wallet.Ethereum;
+using Atomix.Wallet.Tezos;
 
-namespace Atomix.Wallet.CurrencyAccount
+namespace Atomix.Wallet
 {
-    public class CurrencyAccountCreator
+    public static class CurrencyAccountCreator
     {
         public static ICurrencyAccount Create(
             Currency currency,
@@ -19,12 +22,12 @@ namespace Atomix.Wallet.CurrencyAccount
                         currency,
                         wallet,
                         transactionRepository);
-                case Ethereum _:
+                case Atomix.Ethereum _:
                     return new EthereumCurrencyAccount(
                         currency,
                         wallet,
                         transactionRepository);
-                case Tezos _:
+                case Atomix.Tezos _:
                     return new TezosCurrencyAccount(
                         currency,
                         wallet,
