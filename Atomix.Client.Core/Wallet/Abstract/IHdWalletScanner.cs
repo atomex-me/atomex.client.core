@@ -4,11 +4,18 @@ using Atomix.Core.Entities;
 
 namespace Atomix.Wallet.Abstract
 {
-    public interface IHdWalletScanner : ICurrencyHdWalletScanner
+    public interface IHdWalletScanner
     {
         Task ScanAsync(
             Currency currency,
             bool skipUsed = false,
+            CancellationToken cancellationToken = default(CancellationToken));
+
+        Task ScanAsync(
+            bool skipUsed = false,
+            CancellationToken cancellationToken = default(CancellationToken));
+
+        Task ScanFreeAddressesAsync(
             CancellationToken cancellationToken = default(CancellationToken));
     }
 }

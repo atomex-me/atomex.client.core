@@ -54,6 +54,12 @@ namespace Atomix.Common
             _tasks.Enqueue(task);
         }
 
+        public void Clear()
+        {
+            while (!_tasks.IsEmpty)
+                _tasks.TryDequeue(out var _);
+        }
+
         private async Task RunAsync()
         {
             Log.Debug("Background task performer successfully started");
@@ -87,6 +93,9 @@ namespace Atomix.Common
                 {
                     Log.Error(e, "Check completion error");
                 }
+
+                if (_workerCts.IsCancellationRequested)
+                    break;
 
                 task.LastTryTime = DateTime.Now;
                 _tasks.Enqueue(task);

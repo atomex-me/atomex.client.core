@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -68,29 +69,60 @@ namespace Atomix.Wallet.Ethereum
                     {
                         freeKeysCount = 0;
 
-                        foreach (var tx in transactions)
-                        {
-                            var txId = tx.IsInternal ? tx.Id + "-internal" : tx.Id;
-
-                            var existsTx = (EthereumTransaction)await Account
-                                .GetTransactionByIdAsync(currency, txId)
-                                .ConfigureAwait(false);
-
-                            if (existsTx != null &&
-                                existsTx.Type != tx.Type &&
-                                existsTx.Type != EthereumTransaction.UnknownTransaction)
-                            {
-                                tx.Type = EthereumTransaction.SelfTransaction;
-                            }
-
-                            await Account
-                                .AddTransactionAsync(tx)
-                                .ConfigureAwait(false);
-                        }
+                        await ScanTransactionsAsync(transactions, cancellationToken)
+                            .ConfigureAwait(false);
                     }
 
                     index++;
                 }
+            }
+        }
+
+        public async Task ScanAsync(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var currency = Currencies.Eth;
+
+            Log.Debug("Scan transactions for  address {@address}", address);
+
+            var transactions = (await((IEthereumBlockchainApi)currency.BlockchainApi)
+                .GetTransactionsAsync(address, cancellationToken: cancellationToken)
+                .ConfigureAwait(false))
+                .Cast<EthereumTransaction>()
+                .ToList();
+
+            if (transactions.Count == 0)
+                return;
+
+            await ScanTransactionsAsync(transactions, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        private async Task ScanTransactionsAsync(
+            IEnumerable<EthereumTransaction> transactions,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var currency = Currencies.Eth;
+
+            foreach (var tx in transactions)
+            {
+                var txId = tx.IsInternal ? tx.Id + "-internal" : tx.Id;
+
+                var existsTx = (EthereumTransaction)await Account
+                    .GetTransactionByIdAsync(currency, txId)
+                    .ConfigureAwait(false);
+
+                if (existsTx != null &&
+                    existsTx.Type != tx.Type &&
+                    existsTx.Type != EthereumTransaction.UnknownTransaction)
+                {
+                    tx.Type = EthereumTransaction.SelfTransaction;
+                }
+
+                await Account
+                    .AddTransactionAsync(tx)
+                    .ConfigureAwait(false);
             }
         }
     }

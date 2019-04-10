@@ -205,6 +205,18 @@ namespace Atomix.Wallet.Tezos
             return usedAddresses;
         }
 
+        public override Task<WalletAddress> GetFreeInternalAddressAsync(
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return Task.FromResult(Wallet.GetInternalAddress(Currency, 0));
+        }
+
+        public override Task<WalletAddress> GetFreeExternalAddressAsync(
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return Task.FromResult(Wallet.GetExternalAddress(Currency, 0));
+        }
+
         public override async Task<bool> IsAddressHasOperationsAsync(
             WalletAddress walletAddress,
             CancellationToken cancellationToken = default(CancellationToken))

@@ -11,5 +11,9 @@ namespace Atomix.Wallet.Abstract
         Task ScanAsync(
             bool skipUsed = false,
             CancellationToken cancellationToken = default(CancellationToken));
+
+        Task ScanAsync(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken));
     }
 }

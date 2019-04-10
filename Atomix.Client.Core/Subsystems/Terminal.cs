@@ -12,9 +12,11 @@ using Atomix.MarketData;
 using Atomix.MarketData.Abstract;
 using Atomix.Subsystems.Abstract;
 using Atomix.Swaps;
+using Atomix.Wallet;
 using Atomix.Wallet.Abstract;
 using Atomix.Web;
 using Microsoft.Extensions.Configuration;
+using Org.BouncyCastle.Asn1.Cms;
 using Serilog;
 
 namespace Atomix.Subsystems
@@ -36,6 +38,7 @@ namespace Atomix.Subsystems
         private IAccount Account { get; set; }
         private IMarketDataRepository MarketDataRepository { get; }
         private IBackgroundTaskPerformer TaskPerformer { get; }
+        private TimeSpan AutoUpdateInterval { get; } = TimeSpan.FromSeconds(90);
 
         public Terminal(IConfiguration configuration)
             : this(configuration, null)
@@ -80,6 +83,7 @@ namespace Atomix.Subsystems
                 Account.SwapsLoaded += OnSwapsLoadedEventHandler;
                 Account.LoadSwapsAsync().FireAndForget();
             }
+
         }
 
         #region Api
@@ -136,6 +140,11 @@ namespace Atomix.Subsystems
                 .ConfigureAwait(false);
 
             // run tracker
+            TaskPerformer.EnqueueTask(new BalanceUpdateTask
+            {
+                Account = Account,
+                Interval = AutoUpdateInterval
+            });
             TaskPerformer.Start();
 
             // start to track unconfirmed transactions
@@ -148,6 +157,7 @@ namespace Atomix.Subsystems
             Log.Information("Stop terminal services");
 
             TaskPerformer.Stop();
+            TaskPerformer.Clear();
 
             return Task.WhenAll(
                 ExchangeClient.CloseAsync(),

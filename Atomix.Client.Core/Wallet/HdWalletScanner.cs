@@ -6,16 +6,12 @@ using Atomix.Wallet.Abstract;
 using Atomix.Wallet.BitcoinBased;
 using Atomix.Wallet.Ethereum;
 using Atomix.Wallet.Tezos;
+using Serilog;
 
 namespace Atomix.Wallet
 {
     public class HdWalletScanner : IHdWalletScanner
     {
-        public const int DefaultInternalLookAhead = 3;
-        public const int DefaultExternalLookAhead = 3;
-
-        public int InternalLookAhead { get; set; } = DefaultInternalLookAhead;
-        public int ExternalLookAhead { get; set; } = DefaultExternalLookAhead;
         public IAccount Account { get; }
 
         public HdWalletScanner(IAccount account)
@@ -38,18 +34,42 @@ namespace Atomix.Wallet
             bool skipUsed = false,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            ICurrencyHdWalletScanner scanner = null;
+            return GetCurrencyScanner(currency)
+                .ScanAsync(skipUsed, cancellationToken);
+        }
 
+        public async Task ScanFreeAddressesAsync(
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            foreach (var currency in Account.Currencies)
+            {
+                var walletAddress = await Account
+                    .GetFreeExternalAddressAsync(currency, cancellationToken)
+                    .ConfigureAwait(false);
+
+                try
+                {
+                    await GetCurrencyScanner(currency)
+                        .ScanAsync(walletAddress.Address, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Free address scan error for currency: {@currency}", currency.Name);
+                }
+            }
+        }
+
+        private ICurrencyHdWalletScanner GetCurrencyScanner(Currency currency)
+        {
             if (currency is BitcoinBasedCurrency)
-                scanner = new BitcoinBasedWalletScanner(currency, Account);
+                return new BitcoinBasedWalletScanner(currency, Account);
             else if (currency is Atomix.Ethereum)
-                scanner = new EthereumWalletScanner(Account);
+                return new EthereumWalletScanner(Account);
             else if (currency is Atomix.Tezos)
-                scanner = new TezosWalletScanner(Account);
+                return new TezosWalletScanner(Account);
             else
                 throw new NotSupportedException($"Currency {currency.Name} not supported");
-
-            return scanner.ScanAsync(skipUsed, cancellationToken);
         }
     }
 }

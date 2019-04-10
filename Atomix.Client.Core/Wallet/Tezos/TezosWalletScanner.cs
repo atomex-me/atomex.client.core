@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -70,30 +71,62 @@ namespace Atomix.Wallet.Tezos
                     else // address has activity
                     {
                         //freeKeysCount = 0;
-
-                        foreach (var tx in transactions)
-                        {
-                            var txId = tx.IsInternal ? tx.Id + "-internal" : tx.Id;
-
-                            var existsTx = (TezosTransaction)await Account
-                                .GetTransactionByIdAsync(currency, txId)
-                                .ConfigureAwait(false);
-
-                            if (existsTx != null &&
-                                existsTx.Type != tx.Type)
-                            {
-                                tx.Type = TezosTransaction.SelfTransaction;
-                            }
-
-                            await Account
-                                .AddTransactionAsync(tx)
-                                .ConfigureAwait(false);
-                        }
+                        await ScanTransactionsAsync(transactions, cancellationToken)
+                            .ConfigureAwait(false);
                     }
 
                     //index++;
                 //}
             //}
+        }
+
+        public async Task ScanAsync(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var currency = Currencies.Xtz;
+
+            Log.Debug(
+                "Scan transactions for address {@address}",
+                address);
+
+            var transactions = (await((ITezosBlockchainApi)currency.BlockchainApi)
+                .GetTransactionsAsync(address, cancellationToken: cancellationToken)
+                .ConfigureAwait(false))
+                .Cast<TezosTransaction>()
+                .ToList();
+
+            if (transactions.Count == 0)
+                return;
+
+            await ScanTransactionsAsync(transactions, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        private async Task ScanTransactionsAsync(
+            IEnumerable<TezosTransaction> transactions,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var currency = Currencies.Eth;
+
+            foreach (var tx in transactions)
+            {
+                var txId = tx.IsInternal ? tx.Id + "-internal" : tx.Id;
+
+                var existsTx = (TezosTransaction)await Account
+                    .GetTransactionByIdAsync(currency, txId)
+                    .ConfigureAwait(false);
+
+                if (existsTx != null &&
+                    existsTx.Type != tx.Type)
+                {
+                    tx.Type = TezosTransaction.SelfTransaction;
+                }
+
+                await Account
+                    .AddTransactionAsync(tx)
+                    .ConfigureAwait(false);
+            }
         }
     }
 }

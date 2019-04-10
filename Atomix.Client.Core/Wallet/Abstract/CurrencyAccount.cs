@@ -74,7 +74,7 @@ namespace Atomix.Wallet.Abstract
         public abstract Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default(CancellationToken));
 
-        public async Task<WalletAddress> GetFreeInternalAddressAsync(
+        public virtual async Task<WalletAddress> GetFreeInternalAddressAsync(
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var index = 0u;
@@ -97,7 +97,7 @@ namespace Atomix.Wallet.Abstract
             }
         }
 
-        public async Task<WalletAddress> GetFreeExternalAddressAsync(
+        public virtual async Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var index = 0u;

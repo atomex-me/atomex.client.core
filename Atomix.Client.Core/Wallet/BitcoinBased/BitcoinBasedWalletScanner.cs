@@ -32,21 +32,19 @@ namespace Atomix.Wallet.BitcoinBased
             CancellationToken cancellationToken = default(CancellationToken))
         {
             await ScanOutputsAsync(
-                    currency: Currency,
                     skipUsed: skipUsed,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            await ScanTransactionsAsync(Currency, cancellationToken)
+            await ScanTransactionsAsync(cancellationToken)
                 .ConfigureAwait(false);
         }
 
         private async Task ScanOutputsAsync(
-           Currency currency,
            bool skipUsed,
            CancellationToken cancellationToken = default(CancellationToken))
         {
-            Log.Debug("Scan outputs for {@name}", currency.Name);
+            Log.Debug("Scan outputs for {@name}", Currency.Name);
 
             var scanParams = new[]
             {
@@ -63,12 +61,12 @@ namespace Atomix.Wallet.BitcoinBased
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var walletAddress = Account.GetAddress(currency, param.Chain, index);
+                    var walletAddress = Account.GetAddress(Currency, param.Chain, index);
 
                     if (skipUsed) // check, if the address marked as "used" and skip in this case
                     {
                         var addressOutputs = (await Account
-                            .GetOutputsAsync(currency, walletAddress.Address)
+                            .GetOutputsAsync(Currency, walletAddress.Address)
                             .ConfigureAwait(false))
                             .ToList();
 
@@ -82,9 +80,9 @@ namespace Atomix.Wallet.BitcoinBased
                         }
                     }
 
-                    Log.Debug("Scan outputs for {@name} address {@address}", currency.Name, walletAddress.Address);
+                    Log.Debug("Scan outputs for {@name} address {@address}", Currency.Name, walletAddress.Address);
 
-                    var outputs = (await ((IInOutBlockchainApi)currency.BlockchainApi)
+                    var outputs = (await ((IInOutBlockchainApi)Currency.BlockchainApi)
                         .GetOutputsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                         .ConfigureAwait(false))
                         .ToList();
@@ -113,7 +111,7 @@ namespace Atomix.Wallet.BitcoinBased
                         await Account
                             .AddOutputsAsync(
                                 outputs: outputs.GroupBy(o => $"{o.TxId}{o.Index}", RemoveDuplicates),
-                                currency: currency,
+                                currency: Currency,
                                 address: walletAddress.Address)
                             .ConfigureAwait(false);
                     }
@@ -133,16 +131,23 @@ namespace Atomix.Wallet.BitcoinBased
         }
 
         private async Task ScanTransactionsAsync(
-            Currency currency,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (!currency.IsTransactionsAvailable)
+            if (!Currency.IsTransactionsAvailable)
                 return;
 
             var outputs = await Account
-                .GetOutputsAsync(currency)
+                .GetOutputsAsync(Currency)
                 .ConfigureAwait(false);
 
+            await ScanTransactionsAsync(outputs, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        private async Task ScanTransactionsAsync(
+            IEnumerable<ITxOutput> outputs,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
             foreach (var output in outputs)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -154,14 +159,14 @@ namespace Atomix.Wallet.BitcoinBased
                 foreach (var txId in txIds)
                 {
                     var tx = await Account
-                        .GetTransactionByIdAsync(currency, txId)
+                        .GetTransactionByIdAsync(Currency, txId)
                         .ConfigureAwait(false);
 
                     // request only not confirmed transactions
                     if (tx != null && tx.IsConfirmed())
                         continue;
 
-                    var transaction = await currency.BlockchainApi
+                    var transaction = await Currency.BlockchainApi
                         .GetTransactionAsync(txId, cancellationToken)
                         .ConfigureAwait(false);
 
@@ -170,6 +175,24 @@ namespace Atomix.Wallet.BitcoinBased
                         .ConfigureAwait(false);
                 }
             }
+        }
+
+        public async Task ScanAsync(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            Log.Debug("Scan outputs for {@address}", address);
+
+            var outputs = (await((IInOutBlockchainApi)Currency.BlockchainApi)
+                .GetOutputsAsync(address, cancellationToken: cancellationToken)
+                .ConfigureAwait(false))
+                .ToList();
+
+            if (outputs.Count == 0)
+                return;
+            
+            await ScanTransactionsAsync(outputs, cancellationToken)
+                .ConfigureAwait(false);         
         }
     }
 }
