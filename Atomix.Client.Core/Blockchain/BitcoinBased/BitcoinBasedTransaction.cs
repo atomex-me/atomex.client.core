@@ -60,7 +60,10 @@ namespace Atomix.Blockchain.BitcoinBased
         {
             Currency = currency;
             Tx = tx;
-            BlockInfo = new BlockInfo();
+            BlockInfo = new BlockInfo()
+            {
+                FirstSeen = DateTime.UtcNow
+            };
         }
 
         public BitcoinBasedTransaction(BitcoinBasedCurrency currency, string hex)

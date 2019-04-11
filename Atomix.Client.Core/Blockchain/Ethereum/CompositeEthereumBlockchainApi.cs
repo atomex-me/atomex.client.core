@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomix.Blockchain.Abstract;
-using Nethereum.Contracts;
 using Nethereum.Signer;
 
 namespace Atomix.Blockchain.Ethereum
@@ -24,7 +22,7 @@ namespace Atomix.Blockchain.Ethereum
             string txId,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            return _web3.GetTransactionAsync(txId, cancellationToken);
+            return _web3.GetTransactionAsync(txId, cancellationToken); //_etherScanApi.GetTransactionAsync(txId, cancellationToken); 
         }
 
         public Task<string> BroadcastAsync(

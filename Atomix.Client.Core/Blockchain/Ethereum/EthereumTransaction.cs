@@ -39,10 +39,13 @@ namespace Atomix.Blockchain.Ethereum
 
         public EthereumTransaction()
         {
-            BlockInfo = new BlockInfo();
+            BlockInfo = new BlockInfo()
+            {
+                FirstSeen = DateTime.UtcNow
+            };
         }
 
-        public EthereumTransaction(Transaction tx)
+        public EthereumTransaction(Transaction tx, TransactionReceipt txReceipt, DateTime blockTimeStamp)
         {
             Id = tx.TransactionHash;
             From = tx.From.ToLowerInvariant();
@@ -55,7 +58,11 @@ namespace Atomix.Blockchain.Ethereum
 
             BlockInfo = new BlockInfo
             {
-                BlockHeight = (long)tx.TransactionIndex.Value
+                BlockHeight = (long) tx.TransactionIndex.Value,
+                Fees = (long) txReceipt.GasUsed.Value,
+                Confirmations = (int) txReceipt.Status.Value,
+                BlockTime = blockTimeStamp,
+                FirstSeen = blockTimeStamp
             };
         }
 
@@ -69,7 +76,10 @@ namespace Atomix.Blockchain.Ethereum
             GasPrice = txInput.GasPrice;
             GasLimit = txInput.Gas;
 
-            BlockInfo = new BlockInfo();
+            BlockInfo = new BlockInfo()
+            {
+                FirstSeen = DateTime.UtcNow
+            };
         }
 
         public bool IsConfirmed() => BlockInfo?.Confirmations >= DefaultConfirmations;

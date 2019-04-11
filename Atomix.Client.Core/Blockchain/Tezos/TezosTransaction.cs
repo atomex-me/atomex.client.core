@@ -44,7 +44,10 @@ namespace Atomix.Blockchain.Tezos
 
         public TezosTransaction()
         {
-            BlockInfo = new BlockInfo();
+            BlockInfo = new BlockInfo()
+            {
+                FirstSeen = DateTime.UtcNow
+            };
         }
 
         public async Task<bool> SignAsync(

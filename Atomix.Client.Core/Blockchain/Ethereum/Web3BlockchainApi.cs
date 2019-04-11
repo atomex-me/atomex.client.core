@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomix.Blockchain.Abstract;
+using Atomix.Common;
 using Nethereum.Signer;
 using Nethereum.Web3;
 
@@ -59,7 +60,19 @@ namespace Atomix.Blockchain.Ethereum
                 .SendRequestAsync(txId)
                 .ConfigureAwait(false);
 
-            return new EthereumTransaction(tx);
+            var block = await web3.Eth.Blocks
+                .GetBlockWithTransactionsHashesByHash
+                .SendRequestAsync(tx.BlockHash)
+                .ConfigureAwait(false);
+
+            var utcTimeStamp = ((long)block.Timestamp.Value).ToUtcDateTime();
+
+            var txReceipt = await web3.Eth.Transactions
+                .GetTransactionReceipt
+                .SendRequestAsync(txId)
+                .ConfigureAwait(false);
+
+            return new EthereumTransaction(tx, txReceipt, utcTimeStamp);
         }
 
         public async Task<string> BroadcastAsync(
