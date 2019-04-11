@@ -38,9 +38,6 @@ namespace Atomix.Wallet
             PathToWallet = PathEx.ToFullPath(pathToWallet);
 
             KeyStorage = HdKeyStorage.LoadFromFile(pathToWallet, password);
-            if (KeyStorage == null)
-                throw new Exception("Can't load hd wallet data");
-
             KeyStorage.UseCache(new KeyIndexCache());
             KeyStorage.Unlock(password);
         }

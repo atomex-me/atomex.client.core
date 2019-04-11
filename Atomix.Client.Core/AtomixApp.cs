@@ -8,7 +8,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Atomix
 {
-    public class AtomixApp
+    public class AtomixApp : IAtomixApp
     {
         public event EventHandler<AccountChangedEventArgs> AccountChanged;
 
@@ -25,7 +25,7 @@ namespace Atomix
             Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
 
-        public AtomixApp UseAccount(IAccount account, bool restartTerminal = false)
+        public IAtomixApp UseAccount(IAccount account, bool restartTerminal = false)
         {
             var previousAccount = Account;
             Account = account;

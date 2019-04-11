@@ -256,7 +256,8 @@ namespace Atomix.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "HdData load from file error");
+                Log.Error(e, "HdKeyStorage data loading error");
+                throw e;
             }
 
             return result;
@@ -276,7 +277,7 @@ namespace Atomix.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "HdData save to file error");
+                Log.Error(e, "HdKeyStorage save to file error");
             }
         }
     }
