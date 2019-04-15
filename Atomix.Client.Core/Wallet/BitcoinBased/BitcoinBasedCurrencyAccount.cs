@@ -196,6 +196,9 @@ namespace Atomix.Wallet.BitcoinBased
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            await UpdateTransactionType(tx, cancellationToken)
+                .ConfigureAwait(false);
+
             var result = await TransactionRepository
                 .AddTransactionAsync(tx)
                 .ConfigureAwait(false);
@@ -257,6 +260,13 @@ namespace Atomix.Wallet.BitcoinBased
                         MostLikelySpent[tx.Currency.Name].Remove(unspentOutput);
                 }
             }
+        }
+
+        public override Task UpdateTransactionType(
+            IBlockchainTransaction tx,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return Task.CompletedTask; // nothing todo for BitcoinBased currencies
         }
 
         public override async Task<decimal> GetBalanceAsync(

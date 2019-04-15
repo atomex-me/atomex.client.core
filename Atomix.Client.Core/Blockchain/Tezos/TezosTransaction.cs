@@ -17,6 +17,7 @@ namespace Atomix.Blockchain.Tezos
 {
     public class TezosTransaction : IAddressBasedTransaction
     {
+        public const int UnknownTransaction = 0;
         public const int InputTransaction = 1;
         public const int OutputTransaction = 2;
         public const int SelfTransaction = 3;

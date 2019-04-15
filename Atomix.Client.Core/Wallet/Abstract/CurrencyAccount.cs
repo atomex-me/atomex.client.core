@@ -52,6 +52,10 @@ namespace Atomix.Wallet.Abstract
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default(CancellationToken));
 
+        public abstract Task UpdateTransactionType(
+            IBlockchainTransaction tx,
+            CancellationToken cancellationToken = default(CancellationToken));
+
         public abstract Task<decimal> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default(CancellationToken));

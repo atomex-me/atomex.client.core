@@ -10,6 +10,7 @@ using Atomix.Common;
 using Atomix.Core;
 using Atomix.Core.Entities;
 using Atomix.Wallet.Abstract;
+using Atomix.Wallet.Bip;
 using Serilog;
 
 namespace Atomix.Wallet.Tezos
@@ -130,6 +131,9 @@ namespace Atomix.Wallet.Tezos
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            await UpdateTransactionType(tx, cancellationToken)
+                .ConfigureAwait(false);
+
             var result = await TransactionRepository
                 .AddTransactionAsync(tx)
                 .ConfigureAwait(false);
@@ -157,6 +161,27 @@ namespace Atomix.Wallet.Tezos
                 RaiseUnconfirmedTransactionAdded(new TransactionEventArgs(tx));
 
             RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
+        }
+
+        public override Task UpdateTransactionType(
+            IBlockchainTransaction tx,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var ethTx = tx as TezosTransaction;
+
+            var isFromSelf = IsSelfAddress(ethTx.From);
+            var isToSelf = IsSelfAddress(ethTx.To);
+
+            if (isFromSelf && isToSelf)
+                ethTx.Type = TezosTransaction.SelfTransaction;
+            else if (isFromSelf)
+                ethTx.Type = TezosTransaction.OutputTransaction;
+            else if (isToSelf)
+                ethTx.Type = TezosTransaction.InputTransaction;
+            else
+                ethTx.Type = TezosTransaction.UnknownTransaction;
+
+            return Task.CompletedTask;
         }
 
         public override async Task<decimal> GetBalanceAsync(
@@ -342,6 +367,40 @@ namespace Atomix.Wallet.Tezos
             }
 
             return Enumerable.Empty<(WalletAddress, decimal)>();
+        }
+
+        private bool IsSelfAddress(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return Wallet.GetAddress(Currencies.Xtz, 0, 0).Address
+                .ToLowerInvariant()
+                .Equals(address.ToLowerInvariant());
+
+            //var lowAddress = address.ToLowerInvariant();
+            //var chains = new [] { Bip44.External, Bip44.Internal };
+
+            //foreach (var chain in chains)
+            //{
+            //    var i = 0u;
+            //    var freeCounter = 0;
+
+            //    while (true)
+            //    {
+            //        var walletAddress = Wallet.GetAddress(Currencies.Xtz, chain, i);
+
+            //        if (walletAddress.Address.ToLowerInvariant().Equals(lowAddress))
+            //            return true;
+
+            //        if (!await IsAddressHasOperationsAsync(walletAddress, cancellationToken))
+            //            freeCounter++;
+
+            //        if (freeCounter == 5)
+            //            break;
+            //    }
+            //}
+
+            return false;
         }
     }
 }

@@ -109,16 +109,9 @@ namespace Atomix.Wallet.Ethereum
             {
                 var txId = tx.IsInternal ? tx.Id + "-internal" : tx.Id;
 
-                var existsTx = (EthereumTransaction)await Account
-                    .GetTransactionByIdAsync(currency, txId)
+                await Account
+                    .UpdateTransactionType(tx, cancellationToken)
                     .ConfigureAwait(false);
-
-                if (existsTx != null &&
-                    existsTx.Type != tx.Type &&
-                    existsTx.Type != EthereumTransaction.UnknownTransaction)
-                {
-                    tx.Type = EthereumTransaction.SelfTransaction;
-                }
 
                 await Account
                     .AddTransactionAsync(tx)

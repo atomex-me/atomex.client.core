@@ -156,6 +156,15 @@ namespace Atomix.Wallet
                 .ConfigureAwait(false);
         }
 
+        public async Task UpdateTransactionType(
+            IBlockchainTransaction tx,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            await GetAccountByCurrency(tx.Currency)
+                .UpdateTransactionType(tx, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         public Task<decimal> GetBalanceAsync(
             Currency currency,
             string address,

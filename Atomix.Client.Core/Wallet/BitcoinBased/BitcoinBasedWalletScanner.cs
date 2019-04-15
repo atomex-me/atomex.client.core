@@ -171,6 +171,10 @@ namespace Atomix.Wallet.BitcoinBased
                         .ConfigureAwait(false);
 
                     await Account
+                        .UpdateTransactionType(transaction, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    await Account
                         .AddTransactionAsync(transaction)
                         .ConfigureAwait(false);
                 }

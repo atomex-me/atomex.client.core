@@ -11,6 +11,8 @@ using Atomix.Common;
 using Atomix.Core;
 using Atomix.Core.Entities;
 using Atomix.Wallet.Abstract;
+using Atomix.Wallet.Bip;
+using NBitcoin.Altcoins.Elements;
 using Serilog;
 
 namespace Atomix.Wallet.Ethereum
@@ -138,6 +140,9 @@ namespace Atomix.Wallet.Ethereum
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            await UpdateTransactionType(tx, cancellationToken)
+                .ConfigureAwait(false);
+
             var result = await TransactionRepository
                 .AddTransactionAsync(tx)
                 .ConfigureAwait(false);
@@ -165,6 +170,28 @@ namespace Atomix.Wallet.Ethereum
                 RaiseUnconfirmedTransactionAdded(new TransactionEventArgs(tx));
 
             RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
+        }
+
+        public override async Task UpdateTransactionType(
+            IBlockchainTransaction tx,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var ethTx = tx as EthereumTransaction;
+
+            var isFromSelf = await IsSelfAddressAsync(ethTx.From)
+                .ConfigureAwait(false);
+
+            var isToSelf = await IsSelfAddressAsync(ethTx.To)
+                .ConfigureAwait(false);
+
+            if (isFromSelf && isToSelf)
+                ethTx.Type = EthereumTransaction.SelfTransaction;
+            else if (isFromSelf)
+                ethTx.Type = EthereumTransaction.OutputTransaction;
+            else if (isToSelf)
+                ethTx.Type = EthereumTransaction.InputTransaction;
+            else
+                ethTx.Type = EthereumTransaction.UnknownTransaction;
         }
 
         public override async Task<decimal> GetBalanceAsync(
@@ -341,6 +368,38 @@ namespace Atomix.Wallet.Ethereum
                     return address;
 
             throw new Exception("Insufficient funds for redeem");
+        }
+
+        private async Task<bool> IsSelfAddressAsync(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var lowAddress = address.ToLowerInvariant();
+            var chains = new[] { Bip44.External, Bip44.Internal };
+
+            foreach (var chain in chains)
+            {
+                var i = 0u;
+                var freeCounter = 0;
+
+                while (true)
+                {
+                    var walletAddress = Wallet.GetAddress(Currencies.Eth, chain, i);
+
+                    if (walletAddress.Address.ToLowerInvariant().Equals(lowAddress))
+                        return true;
+
+                    if (!await IsAddressHasOperationsAsync(walletAddress, cancellationToken))
+                        freeCounter++;
+
+                    if (freeCounter == 5)
+                        break;
+
+                    i++;
+                }
+            }
+
+            return false;
         }
     }
 }

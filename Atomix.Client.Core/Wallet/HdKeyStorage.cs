@@ -233,7 +233,6 @@ namespace Atomix.Wallet
             return keyIndex;
         }
 
-
         public static HdKeyStorage LoadFromFile(string pathToFile, SecureString password)
         {
             if (!File.Exists(pathToFile))

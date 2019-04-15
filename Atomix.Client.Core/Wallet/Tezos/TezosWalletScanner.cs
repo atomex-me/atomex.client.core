@@ -113,15 +113,9 @@ namespace Atomix.Wallet.Tezos
             {
                 var txId = tx.IsInternal ? tx.Id + "-internal" : tx.Id;
 
-                var existsTx = (TezosTransaction)await Account
-                    .GetTransactionByIdAsync(currency, txId)
+                await Account
+                    .UpdateTransactionType(tx, cancellationToken)
                     .ConfigureAwait(false);
-
-                if (existsTx != null &&
-                    existsTx.Type != tx.Type)
-                {
-                    tx.Type = TezosTransaction.SelfTransaction;
-                }
 
                 await Account
                     .AddTransactionAsync(tx)
