@@ -38,19 +38,19 @@ namespace Atomix
             return this;
         }
 
-        public AtomixApp UseQuotesProvider(ICurrencyQuotesProvider quotesProvider)
+        public IAtomixApp UseQuotesProvider(ICurrencyQuotesProvider quotesProvider)
         {
             QuotesProvider = quotesProvider;
             return this;
         }
 
-        public AtomixApp UseTerminal(ITerminal terminal)
+        public IAtomixApp UseTerminal(ITerminal terminal)
         {
             Terminal = terminal;
             return this;
         }
 
-        public AtomixApp Start()
+        public IAtomixApp Start()
         {
             if (HasQuotesProvider)
                 QuotesProvider.Start();
@@ -61,7 +61,7 @@ namespace Atomix
             return this;
         }
 
-        public AtomixApp Stop()
+        public IAtomixApp Stop()
         {
             if (HasQuotesProvider)
                 QuotesProvider.Stop();

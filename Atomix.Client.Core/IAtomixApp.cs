@@ -20,5 +20,9 @@ namespace Atomix
         bool HasTerminal { get; }
 
         IAtomixApp UseAccount(IAccount account, bool restartTerminal = false);
+        IAtomixApp UseQuotesProvider(ICurrencyQuotesProvider quotesProvider);
+        IAtomixApp UseTerminal(ITerminal terminal);
+        IAtomixApp Start();
+        IAtomixApp Stop();
     }
 }
