@@ -71,7 +71,7 @@ namespace Atomix.Wallet.Tezos
                     else // address has activity
                     {
                         //freeKeysCount = 0;
-                        await ScanTransactionsAsync(transactions, cancellationToken)
+                        await AddTransactionsAsync(transactions, cancellationToken)
                             .ConfigureAwait(false);
                     }
 
@@ -99,11 +99,11 @@ namespace Atomix.Wallet.Tezos
             if (transactions.Count == 0)
                 return;
 
-            await ScanTransactionsAsync(transactions, cancellationToken)
+            await AddTransactionsAsync(transactions, cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        private async Task ScanTransactionsAsync(
+        private async Task AddTransactionsAsync(
             IEnumerable<TezosTransaction> transactions,
             CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -111,16 +111,34 @@ namespace Atomix.Wallet.Tezos
 
             foreach (var tx in transactions)
             {
-                var txId = tx.IsInternal ? tx.Id + "-internal" : tx.Id;
-
                 await Account
                     .UpdateTransactionType(tx, cancellationToken)
                     .ConfigureAwait(false);
 
-                await Account
-                    .AddTransactionAsync(tx)
+                var isNewOrChanged = await IsTransactionNewOrChangedAsync(tx, cancellationToken)
                     .ConfigureAwait(false);
+
+                if (isNewOrChanged)
+                    await Account
+                        .AddTransactionAsync(tx)
+                        .ConfigureAwait(false);
             }
+        }
+
+        private async Task<bool> IsTransactionNewOrChangedAsync(
+            TezosTransaction tx,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var txId = tx.IsInternal ? tx.Id + "-internal" : tx.Id;
+
+            var existsTx = await Account.GetTransactionByIdAsync(Currencies.Xtz, txId)
+                .ConfigureAwait(false) as TezosTransaction;
+
+            return existsTx == null ||
+                   existsTx.IsConfirmed() != tx.IsConfirmed() ||
+                   existsTx.Type != tx.Type ||
+                   existsTx.BlockInfo.Fees != tx.BlockInfo.Fees ||
+                   existsTx.BlockInfo.FirstSeen != tx.BlockInfo.FirstSeen;
         }
     }
 }

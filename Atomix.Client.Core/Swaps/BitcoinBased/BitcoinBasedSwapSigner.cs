@@ -105,19 +105,23 @@ namespace Atomix.Swaps.BitcoinBased
                 return null;
             }
 
-            // get counter party signature from refund tx
-            var counterPartyScriptSig = tx.GetScriptSig(0);
-            var counterPartySign = BitcoinBasedSwapTemplate.ExtractSignFromP2PkhSwapRefund(counterPartyScriptSig);
-
-            // clean counter party signature in refund tx
-            tx.NonStandardSign(Script.Empty, 0);
-
             var spentOutput = paymentTx.Outputs.FirstOrDefault(o => o.IsSwapPayment);
             if (spentOutput == null)
             {
                 Log.Error("Payment transaction hasn't swap output");
                 return null;
             }
+
+            // firstly check, if transaction is already signed
+            if (tx.Verify(spentOutput))
+                return tx;
+
+            // get counter party signature from refund tx
+            var counterPartyScriptSig = tx.GetScriptSig(0);
+            var counterPartySign = BitcoinBasedSwapTemplate.ExtractSignFromP2PkhSwapRefund(counterPartyScriptSig);
+
+            // clean counter party signature in refund tx
+            tx.NonStandardSign(Script.Empty, 0);
 
             var sigHash = tx.GetSignatureHash(spentOutput);
 

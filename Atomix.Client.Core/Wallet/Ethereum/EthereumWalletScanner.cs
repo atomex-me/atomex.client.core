@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomix.Blockchain.Ethereum;
@@ -69,7 +70,7 @@ namespace Atomix.Wallet.Ethereum
                     {
                         freeKeysCount = 0;
 
-                        await ScanTransactionsAsync(transactions, cancellationToken)
+                        await AddTransactionsAsync(transactions, cancellationToken)
                             .ConfigureAwait(false);
                     }
 
@@ -95,11 +96,11 @@ namespace Atomix.Wallet.Ethereum
             if (transactions.Count == 0)
                 return;
 
-            await ScanTransactionsAsync(transactions, cancellationToken)
+            await AddTransactionsAsync(transactions, cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        private async Task ScanTransactionsAsync(
+        private async Task AddTransactionsAsync(
             IEnumerable<EthereumTransaction> transactions,
             CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -107,16 +108,34 @@ namespace Atomix.Wallet.Ethereum
 
             foreach (var tx in transactions)
             {
-                var txId = tx.IsInternal ? tx.Id + "-internal" : tx.Id;
-
                 await Account
                     .UpdateTransactionType(tx, cancellationToken)
                     .ConfigureAwait(false);
 
-                await Account
-                    .AddTransactionAsync(tx)
+                var isNewOrChanged = await IsTransactionNewOrChangedAsync(tx, cancellationToken)
                     .ConfigureAwait(false);
+
+                if (isNewOrChanged)
+                    await Account
+                        .AddTransactionAsync(tx)
+                        .ConfigureAwait(false);
             }
+        }
+
+        private async Task<bool> IsTransactionNewOrChangedAsync(
+            EthereumTransaction tx,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var txId = tx.IsInternal ? tx.Id + "-internal" : tx.Id;
+
+            var existsTx = await Account.GetTransactionByIdAsync(Currencies.Eth, txId)
+                .ConfigureAwait(false) as EthereumTransaction;
+
+            return existsTx == null ||
+                   existsTx.IsConfirmed() != tx.IsConfirmed() ||
+                   existsTx.Type != tx.Type ||
+                   existsTx.BlockInfo.Fees != tx.BlockInfo.Fees ||
+                   existsTx.BlockInfo.FirstSeen != tx.BlockInfo.FirstSeen;
         }
     }
 }
