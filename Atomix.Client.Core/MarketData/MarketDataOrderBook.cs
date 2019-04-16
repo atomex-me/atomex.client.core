@@ -82,6 +82,9 @@ namespace Atomix.MarketData
                     ? Sells
                     : Buys;
 
+                if (amount == 0)
+                    return book.Any() ? book.First().Key : 0;
+
                 foreach (var entryPair in book)
                 {
                     var qty = entryPair.Value.Qty();
@@ -95,6 +98,28 @@ namespace Atomix.MarketData
             }
 
             return 0m;
+        }
+
+        public decimal EstimateMaxAmount(Side side)
+        {
+            var amount = 0m;
+
+            lock (SyncRoot)
+            {
+                var book = side == Side.Buy
+                    ? Sells
+                    : Buys;
+
+                foreach (var entryPair in book)
+                {
+                    amount += AmountHelper.QtyToAmount(
+                        side: side,
+                        qty: entryPair.Value.Qty(),
+                        price: entryPair.Key);
+                }
+            }
+
+            return amount;
         }
     }
 }
