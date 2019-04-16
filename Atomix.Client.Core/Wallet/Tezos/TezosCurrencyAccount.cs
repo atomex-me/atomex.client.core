@@ -399,8 +399,6 @@ namespace Atomix.Wallet.Tezos
             //            break;
             //    }
             //}
-
-            return false;
         }
     }
 }

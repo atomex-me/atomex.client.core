@@ -391,7 +391,7 @@ namespace Atomix.Subsystems
 
         private void OnQuotesReceivedEventHandler(object sender, QuotesEventArgs args)
         {
-            Log.Verbose("Quotes: {@quotes}", args.Quotes);
+            Log.Debug("Quotes: {@quotes}", args.Quotes);
 
             MarketDataRepository.ApplyQuotes(args.Quotes);
 
@@ -412,14 +412,14 @@ namespace Atomix.Subsystems
 
         private void OnEntriesReceivedEventHandler(object sender, EntriesEventArgs args)
         {
-            Log.Verbose("Entries: {@entries}", args.Entries);
+            Log.Debug("Entries: {@entries}", args.Entries);
 
             MarketDataRepository.ApplyEntries(args.Entries);
         }
 
         private void OnSnapshotReceivedEventHandler(object sender, SnapshotEventArgs args)
         {
-            Log.Verbose("Snapshot: {@snapshot}", args.Snapshot);
+            Log.Debug("Snapshot: {@snapshot}", args.Snapshot);
 
             MarketDataRepository.ApplySnapshot(args.Snapshot);
         }

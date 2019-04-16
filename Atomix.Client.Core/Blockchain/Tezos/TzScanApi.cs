@@ -268,8 +268,8 @@ namespace Atomix.Blockchain.Tezos
             }
             catch (Exception e)
             {
-                Log.Error(e, "Http GET requestUri error");
-                throw;
+                Log.Error(e, "Http request error");
+                return default(T);
             }
 
             if (response.IsSuccessStatusCode)
@@ -283,12 +283,16 @@ namespace Atomix.Blockchain.Tezos
                 return responseHandler(responseContent);
             }
 
-            if ((int)response.StatusCode == HttpTooManyRequests)
+            if ((int) response.StatusCode == HttpTooManyRequests)
             {
-                throw new Exception("Too many requests");
+                Log.Warning("Too many requests");
+            }
+            else
+            {
+                Log.Warning("Invalud response code: {@code}", response.StatusCode);
             }
 
-            throw new Exception($"Invalid response code: {response.StatusCode}");
+            return default(T);
         }
 
         private HttpClient CreateHttpClient()

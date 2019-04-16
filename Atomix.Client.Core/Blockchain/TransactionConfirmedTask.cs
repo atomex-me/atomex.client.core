@@ -28,7 +28,7 @@ namespace Atomix.Blockchain
                 return false;
             }
 
-            if (tx == null || tx.BlockInfo == null || tx.BlockInfo.Confirmations < NumberOfConfirmations)
+            if (tx?.BlockInfo == null || tx.BlockInfo.Confirmations < NumberOfConfirmations)
                 return false;
 
             Tx = tx;

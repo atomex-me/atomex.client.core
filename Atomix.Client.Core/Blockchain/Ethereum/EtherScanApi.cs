@@ -220,12 +220,12 @@ namespace Atomix.Blockchain.Ethereum
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Http GET requestUri error");
+                    Log.Error(e, "Http request error");
 
                     if (attempts < RequestAttemptsCount)
                         continue;
 
-                    throw;
+                    return default(T);
                 }
 
                 if (response.IsSuccessStatusCode)
@@ -252,7 +252,9 @@ namespace Atomix.Blockchain.Ethereum
                 tryToSend = false;
             }
 
-            throw new Exception($"Invalid response code: {response.StatusCode}");
+            Log.Warning("Invalid response code: {@code}", response.StatusCode);
+
+            return default(T);
         }
 
         private HttpClient CreateHttpClient()
