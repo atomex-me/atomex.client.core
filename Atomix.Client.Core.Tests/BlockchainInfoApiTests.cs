@@ -27,7 +27,7 @@ namespace Atomix.Client.Core.Tests
             Assert.True(soTx.Currency.Name == bcTx.Currency.Name);
             Assert.True(soTx.BlockInfo.BlockHeight == bcTx.BlockInfo.BlockHeight);
             Assert.True(soTx.BlockInfo.Fees == bcTx.BlockInfo.Fees);
-            Assert.True(soTx.BlockInfo.Confirmations == bcTx.BlockInfo.Confirmations);
+            //Assert.True(soTx.BlockInfo.Confirmations == bcTx.BlockInfo.Confirmations);
         }
         
         [Fact]
