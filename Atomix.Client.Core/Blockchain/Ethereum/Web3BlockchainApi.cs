@@ -7,6 +7,7 @@ using Atomix.Blockchain.Abstract;
 using Atomix.Common;
 using Nethereum.Signer;
 using Nethereum.Web3;
+using Serilog;
 
 namespace Atomix.Blockchain.Ethereum
 {
@@ -60,17 +61,28 @@ namespace Atomix.Blockchain.Ethereum
                 .SendRequestAsync(txId)
                 .ConfigureAwait(false);
 
+            if (tx == null || tx.BlockHash == null)
+                return null;
+
             var block = await web3.Eth.Blocks
                 .GetBlockWithTransactionsHashesByHash
                 .SendRequestAsync(tx.BlockHash)
                 .ConfigureAwait(false);
 
-            var utcTimeStamp = ((long)block.Timestamp.Value).ToUtcDateTime();
+            var utcTimeStamp = block != null
+                ? ((long)block.Timestamp.Value).ToUtcDateTime()
+                : DateTime.UtcNow;
 
             var txReceipt = await web3.Eth.Transactions
                 .GetTransactionReceipt
                 .SendRequestAsync(txId)
                 .ConfigureAwait(false);
+
+            if (txReceipt == null)
+            {
+                Log.Error("Tx not null, but txReceipt is null!");
+                return null;
+            }
 
             return new EthereumTransaction(tx, txReceipt, utcTimeStamp);
         }

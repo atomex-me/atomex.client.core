@@ -121,16 +121,21 @@ namespace Atomix.Blockchain.Tezos
             if (!opResults.Any())
                 return null;
 
+            string txId = null;
+
             if (opResults.Any() && opResults.All(op => op.Succeeded))
             {
                 var injectedOperation = await rpc
                     .InjectOperations(tx.SignedMessage.SignedBytes)
                     .ConfigureAwait(false);
 
-                opResults.Last().Data["op_hash"] = injectedOperation.ToString();
+                txId = injectedOperation.ToString();
             }
 
-            tx.Id = opResults.Last().Data["op_hash"].ToString();
+            if (txId == null)
+                Log.Error("TxId is null");
+
+            tx.Id = txId;
 
             return tx.Id;
         }
@@ -175,27 +180,31 @@ namespace Atomix.Blockchain.Tezos
             return transactions;
         }
 
-        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
             string address,
             int page,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var requestUri = $"v3/operations/{address}?type=Transaction&p={page}"; // TODO: use all types!!!
 
-            return SendRequest<IEnumerable<IBlockchainTransaction>>(
-                requestUri: requestUri,
-                method: HttpMethod.Get,
-                content: null,
-                responseHandler: responseContent =>
-                {
-                    var operations = JsonConvert.DeserializeObject<List<OperationHeader<OperationType<Operation>>>>(responseContent);
+            var txs = await SendRequest<IEnumerable<IBlockchainTransaction>>(
+                    requestUri: requestUri,
+                    method: HttpMethod.Get,
+                    content: null,
+                    responseHandler: responseContent =>
+                    {
+                        var operations =
+                            JsonConvert.DeserializeObject<List<OperationHeader<OperationType<Operation>>>>(responseContent);
 
-                    return operations
-                        .Select(operationHeader => TxFromOperation(operationHeader, address))
-                        .Where(tx => tx != null)
-                        .ToList();
-                },
-                cancellationToken: cancellationToken);
+                        return operations
+                            .Select(operationHeader => TxFromOperation(operationHeader, address))
+                            .Where(tx => tx != null)
+                            .ToList();
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            return txs ?? Enumerable.Empty<IBlockchainTransaction>();
         }
 
         private IBlockchainTransaction TxFromOperation(

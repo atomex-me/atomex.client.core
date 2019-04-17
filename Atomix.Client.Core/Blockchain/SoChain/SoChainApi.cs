@@ -397,7 +397,7 @@ namespace Atomix.Blockchain.SoChain
                 cancellationToken: cancellationToken);
         }
 
-        public Task<IEnumerable<ITxOutput>> GetUnspentOutputsAsync(
+        public async Task<IEnumerable<ITxOutput>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default(CancellationToken))
@@ -405,27 +405,30 @@ namespace Atomix.Blockchain.SoChain
             var addParams = afterTxId != null ? $"{address}/{afterTxId}" : $"{address}";
             var requestUri = $"api/v2/get_tx_unspent/{NetworkAcronym}/{addParams}";
 
-            return SendRequest<IEnumerable<ITxOutput>>(
-                requestUri: requestUri,
-                method: HttpMethod.Get,
-                content: null,
-                responseHandler: responseContent =>
-                {
-                    var outputs = JsonConvert.DeserializeObject<Response<AddressOutputs>>(responseContent);
+            var outs = await SendRequest<IEnumerable<ITxOutput>>(
+                    requestUri: requestUri,
+                    method: HttpMethod.Get,
+                    content: null,
+                    responseHandler: responseContent =>
+                    {
+                        var outputs = JsonConvert.DeserializeObject<Response<AddressOutputs>>(responseContent);
 
-                    return outputs.Data.Txs
-                        .Select(u =>
-                            new BitcoinBasedTxOutput(
-                                coin: new Coin(
-                                    fromTxHash: new uint256(u.TxId),
-                                    fromOutputIndex: (uint) u.OutputNo,
-                                    amount: new Money(decimal.Parse(u.Value, CultureInfo.InvariantCulture),
-                                        MoneyUnit.BTC),
-                                    scriptPubKey: new Script(Hex.FromString(u.ScriptHex))),
-                                spentTxPoint: null));
+                        return outputs.Data.Txs
+                            .Select(u =>
+                                new BitcoinBasedTxOutput(
+                                    coin: new Coin(
+                                        fromTxHash: new uint256(u.TxId),
+                                        fromOutputIndex: (uint) u.OutputNo,
+                                        amount: new Money(decimal.Parse(u.Value, CultureInfo.InvariantCulture),
+                                            MoneyUnit.BTC),
+                                        scriptPubKey: new Script(Hex.FromString(u.ScriptHex))),
+                                    spentTxPoint: null));
 
-                },
-                cancellationToken: cancellationToken);
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            return outs ?? Enumerable.Empty<ITxOutput>();
         }
 
         public Task<IEnumerable<ITxOutput>> GetReceivedOutputsAsync(
@@ -459,50 +462,53 @@ namespace Atomix.Blockchain.SoChain
                 cancellationToken: cancellationToken);
         }
 
-        public Task<IEnumerable<ITxOutput>> GetOutputsAsync(
+        public async Task<IEnumerable<ITxOutput>> GetOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var requestUri = $"api/v2/address/{NetworkAcronym}/{address}";
 
-            return SendRequest<IEnumerable<ITxOutput>>(
-                requestUri: requestUri,
-                method: HttpMethod.Get,
-                content: null,
-                responseHandler: responseContext =>
-                {
-                    var displayData = JsonConvert.DeserializeObject<Response<AddressDisplayData>>(responseContext);
-
-                    var outputs = new List<ITxOutput>();
-
-                    foreach (var tx in displayData.Data.Txs)
+            var outs = await SendRequest<IEnumerable<ITxOutput>>(
+                    requestUri: requestUri,
+                    method: HttpMethod.Get,
+                    content: null,
+                    responseHandler: responseContext =>
                     {
-                        if (tx.Incoming == null)
-                            continue;
+                        var displayData = JsonConvert.DeserializeObject<Response<AddressDisplayData>>(responseContext);
 
-                        var spentTxPoint = tx.Incoming.Spent != null
-                            ? new TxPoint(tx.Incoming.Spent.InputNo, tx.Incoming.Spent.TxId)
-                            : null;
+                        var outputs = new List<ITxOutput>();
 
-                        var amount = new Money(decimal.Parse(tx.Incoming.Value, CultureInfo.InvariantCulture),
-                            MoneyUnit.BTC);
+                        foreach (var tx in displayData.Data.Txs)
+                        {
+                            if (tx.Incoming == null)
+                                continue;
 
-                        var script = new Script(Hex.FromString(tx.Incoming.ScriptHex));
+                            var spentTxPoint = tx.Incoming.Spent != null
+                                ? new TxPoint(tx.Incoming.Spent.InputNo, tx.Incoming.Spent.TxId)
+                                : null;
 
-                        outputs.Add(new BitcoinBasedTxOutput(
-                            coin: new Coin(
-                                fromTxHash: new uint256(tx.TxId),
-                                fromOutputIndex: tx.Incoming.OutputNo,
-                                amount: amount,
-                                scriptPubKey: script),
-                            spentTxPoint: spentTxPoint));
-                    }
+                            var amount = new Money(decimal.Parse(tx.Incoming.Value, CultureInfo.InvariantCulture),
+                                MoneyUnit.BTC);
 
-                    return outputs;
+                            var script = new Script(Hex.FromString(tx.Incoming.ScriptHex));
 
-                },
-                cancellationToken: cancellationToken);
+                            outputs.Add(new BitcoinBasedTxOutput(
+                                coin: new Coin(
+                                    fromTxHash: new uint256(tx.TxId),
+                                    fromOutputIndex: tx.Incoming.OutputNo,
+                                    amount: amount,
+                                    scriptPubKey: script),
+                                spentTxPoint: spentTxPoint));
+                        }
+
+                        return outputs;
+
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            return outs ?? Enumerable.Empty<ITxOutput>();
         }
 
         public Task<IBlockchainTransaction> GetTransactionAsync(
@@ -669,12 +675,12 @@ namespace Atomix.Blockchain.SoChain
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Http GET requestUri error");
+                    Log.Error(e, "Http request error");
 
                     if (attempts < RequestAttemptsCount)
                         continue;
 
-                    throw;
+                    return default(T);
                 }
 
                 if (response.IsSuccessStatusCode)
@@ -701,7 +707,9 @@ namespace Atomix.Blockchain.SoChain
                 tryToSend = false;
             }
 
-            throw new Exception($"Invalid response code: {response.StatusCode}");
+            Log.Error("Invalid response code: {@code}", response.StatusCode);
+
+            return default(T);
         }
 
         private HttpClient CreateHttpClient()
