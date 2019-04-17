@@ -42,10 +42,10 @@ namespace Atomix.Client.Core.Tests
             Assert.True(tx.Check());
             Assert.True(tx.Verify(initTx.Outputs));
 
-            await Assert.ThrowsAsync<Exception>(async () =>
-            {
-                await api.BroadcastAsync(tx, CancellationToken.None);
-            }); 
+            var txId = await api.BroadcastAsync(tx, CancellationToken.None)
+				.ConfigureAwait(false);
+
+			Assert.Null(txId);
         }
 
         [Fact]
