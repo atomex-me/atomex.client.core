@@ -15,7 +15,7 @@ using Serilog;
 
 namespace Atomix.Swaps.Tezos
 {
-    public class TezosSwap : Swap
+    public class TezosSwap : CurrencySwap
     {
         public TezosSwap(
             Currency currency,
@@ -32,57 +32,11 @@ namespace Atomix.Swaps.Tezos
         {
         }
 
-        public override Task AcceptSwapAsync()
-        {
-            Log.Debug(
-                messageTemplate: "Accept swap {@swapId}",
-                propertyValue: _swapState.Id);
-
-            // wait initiator payment for counter party purchased currency
-            if (_swapState.Order.PurchasedCurrency().Name.Equals(Currencies.Xtz.Name))
-            {
-                _taskPerformer.EnqueueTask(new TezosSwapInitiatedControlTask
-                {
-                    Currency = _currency,
-                    SwapState = _swapState,
-                    Interval = TimeSpan.FromSeconds(30),
-                    RefundTime = DefaultInitiatorLockTimeHours * 60 * 60,
-                    CompleteHandler = SwapInitiatedEventHandler
-                });
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public override Task BroadcastPaymentAsync()
-        {
-            var lockTimeHours = _swapState.IsInitiator
-                ? DefaultInitiatorLockTimeHours
-                : DefaultCounterPartyLockTimeHours;
-
-            return CreateAndBroadcastPaymentTxAsync(lockTimeHours);
-        }
-
         public override async Task InitiateSwapAsync()
         {
             Log.Debug(
                 messageTemplate: "Initiate swap {@swapId}",
                 propertyValue: _swapState.Id);
-
-            // wait counterparty payment
-            if (_swapState.Order.PurchasedCurrency().Name.Equals(Currencies.Xtz.Name))
-            {
-                _taskPerformer.EnqueueTask(new TezosSwapInitiatedControlTask
-                {
-                    Currency = _currency,
-                    SwapState = _swapState,
-                    Interval = TimeSpan.FromSeconds(30),
-                    RefundTime = DefaultCounterPartyLockTimeHours * 60 * 60,
-                    CompleteHandler = SwapAcceptedEventHandler
-                });
-
-                return;
-            }
 
             CreateSecret();
             CreateSecretHash();
@@ -91,6 +45,65 @@ namespace Atomix.Swaps.Tezos
 
             await CreateAndBroadcastPaymentTxAsync(DefaultInitiatorLockTimeHours)
                 .ConfigureAwait(false);
+        }
+
+        public override Task AcceptSwapAsync()
+        {
+            Log.Debug(
+                messageTemplate: "Accept swap {@swapId}",
+                propertyValue: _swapState.Id);
+
+            return Task.CompletedTask;
+        }
+
+        public override Task PrepareToReceiveAsync()
+        {
+            // initiator waits "accepted" event, counterParty waits "initiated" event
+            var handler = _swapState.IsInitiator
+                ? (OnTaskDelegate)SwapAcceptedEventHandler
+                : (OnTaskDelegate)SwapInitiatedEventHandler;
+
+            var refundTime = _swapState.IsInitiator
+                ? DefaultCounterPartyLockTimeHours * 60 * 60
+                : DefaultInitiatorLockTimeHours * 60 * 60;
+
+            _taskPerformer.EnqueueTask(new TezosSwapInitiatedControlTask
+            {
+                Currency = _currency,
+                SwapState = _swapState,
+                Interval = TimeSpan.FromSeconds(30),
+                RefundTime = refundTime,
+                CompleteHandler = handler
+            });
+
+            return Task.CompletedTask;
+        }
+
+        public override async Task RestoreSwapAsync()
+        {
+            if (_swapState.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast))
+            {
+                // todo: check confirmation
+                return;
+            }
+
+            if (_swapState.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
+            {
+                var lockTimeHours = _swapState.IsInitiator
+                    ? DefaultInitiatorLockTimeHours
+                    : DefaultCounterPartyLockTimeHours;
+
+                await TryRefundAsync(
+                        paymentTx: _swapState.PaymentTx,
+                        paymentTxId: _swapState.PaymentTxId,
+                        refundTime: _swapState.Order.TimeStamp.AddHours(lockTimeHours))
+                    .ConfigureAwait(false);
+            }
+        }
+
+        public override Task HandleSwapData(SwapData swapData)
+        {
+            throw new Exception("Invalid swap data type");
         }
 
         public override async Task RedeemAsync()
@@ -126,27 +139,14 @@ namespace Atomix.Swaps.Tezos
             _swapState.SetRedeemSigned();
         }
 
-        public override async Task RestoreSwapAsync()
+        public override Task BroadcastPaymentAsync()
         {
-            if (_swapState.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast))
-            {
-                // todo: check confirmation
-                return;
-            }
+            var lockTimeHours = _swapState.IsInitiator
+                ? DefaultInitiatorLockTimeHours
+                : DefaultCounterPartyLockTimeHours;
 
-            if (_swapState.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-            {
-                var lockTimeHours = _swapState.IsInitiator
-                    ? DefaultInitiatorLockTimeHours
-                    : DefaultCounterPartyLockTimeHours;
-
-                await TryRefundAsync(
-                        paymentTx: _swapState.PaymentTx,
-                        paymentTxId: _swapState.PaymentTxId,
-                        refundTime: _swapState.Order.TimeStamp.AddHours(lockTimeHours))
-                    .ConfigureAwait(false);
-            }
-        }
+            return CreateAndBroadcastPaymentTxAsync(lockTimeHours);
+        }      
 
         private async Task TryRefundAsync(
             IBlockchainTransaction paymentTx,

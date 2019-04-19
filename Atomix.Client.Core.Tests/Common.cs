@@ -10,7 +10,7 @@ namespace Atomix.Client.Core.Tests
         public static Key Alice { get; } = new Key();
         public static Key Bob { get; } = new Key();
         public static byte[] Secret { get; } = Encoding.UTF8.GetBytes("atomix");
-        public static byte[] SecretHash { get; } = Swap.CreateSwapSecretHash(Secret);
+        public static byte[] SecretHash { get; } = CurrencySwap.CreateSwapSecretHash(Secret);
 
         public static string AliceAddress(BitcoinBasedCurrency currency)
         {

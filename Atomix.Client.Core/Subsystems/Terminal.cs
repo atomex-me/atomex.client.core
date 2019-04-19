@@ -16,7 +16,6 @@ using Atomix.Wallet;
 using Atomix.Wallet.Abstract;
 using Atomix.Web;
 using Microsoft.Extensions.Configuration;
-using Org.BouncyCastle.Asn1.Cms;
 using Serilog;
 
 namespace Atomix.Subsystems
@@ -242,7 +241,7 @@ namespace Atomix.Subsystems
 
                 if (!swapState.IsComplete && !swapState.IsCanceled && !swapState.IsRefunded)
                 {
-                    await new UniversalSwap(
+                    await new Swap(
                             swapState: swapState,
                             account: Account,
                             swapClient: SwapClient,
@@ -479,7 +478,7 @@ namespace Atomix.Subsystems
                     return;
                 }
 
-                await new UniversalSwap(
+                await new Swap(
                         swapState: swap,
                         account: Account,
                         swapClient: SwapClient,
@@ -522,7 +521,7 @@ namespace Atomix.Subsystems
 
                 if (swap.IsInitiator)
                 {
-                    await new UniversalSwap(
+                    await new Swap(
                             swapState: swap,
                             account: Account,
                             swapClient: SwapClient,

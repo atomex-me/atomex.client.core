@@ -16,7 +16,7 @@ using Serilog;
 
 namespace Atomix.Swaps.BitcoinBased
 {
-    public class BitcoinBasedSwap : Swap
+    public class BitcoinBasedSwap : CurrencySwap
     {
         private readonly IBitcoinBasedSwapTransactionFactory _transactionFactory;
 
@@ -42,11 +42,6 @@ namespace Atomix.Swaps.BitcoinBased
             Log.Debug(
                 messageTemplate: "Initiate swap {@swapId}",
                 propertyValue: _swapState.Id);
-
-            if (_currency.Name.Equals(_swapState.Order.PurchasedCurrency().Name)) {
-                // nothing to do for purchased bitcoin base party
-                return;
-            }
 
             CreateSecret();
             CreateSecretHash();
@@ -77,11 +72,6 @@ namespace Atomix.Swaps.BitcoinBased
                 messageTemplate: "Accept swap {@swapId}",
                 propertyValue: _swapState.Id);
 
-            if (_currency.Name.Equals(_swapState.Order.PurchasedCurrency().Name)) {
-                // nothing to do for purchased bitcoin base party
-                return;
-            }
-
             _swapState.PaymentTx = await CreatePaymentTxAsync()
                 .ConfigureAwait(false);
 
@@ -98,6 +88,12 @@ namespace Atomix.Swaps.BitcoinBased
 
             SendTransactionData(SwapDataType.CounterPartyPayment, _swapState.PaymentTx);
             SendTransactionData(SwapDataType.CounterPartyRefund, _swapState.RefundTx);
+        }
+
+        public override Task PrepareToReceiveAsync()
+        {
+            // nothing to do for purchased bitcoin base party
+            return Task.CompletedTask;
         }
 
         public override async Task RestoreSwapAsync()
@@ -160,7 +156,7 @@ namespace Atomix.Swaps.BitcoinBased
                 case SwapDataType.CounterPartyPaymentTxId:
                     return HandleCounterPartyPaymentTxId(Encoding.UTF8.GetString(swapData.Data));
                 default:
-                    return base.HandleSwapData(swapData);
+                    throw new Exception("Invalid swap data type");
             }
         }
 

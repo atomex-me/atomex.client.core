@@ -2,32 +2,30 @@
 using System.Threading.Tasks;
 using Atomix.Common;
 using Atomix.Common.Abstract;
+using Atomix.Core;
 using Atomix.Swaps.Abstract;
 using Atomix.Wallet.Abstract;
 using Serilog;
 
 namespace Atomix.Swaps
 {
-    public class UniversalSwap : Swap
+    public class Swap : ISwap
     {
-        private ISwap _soldCurrencySwap;
-        private ISwap _purchasedCurrencySwap;
+        private SwapState _swapState;
+        private ICurrencySwap _soldCurrencySwap;
+        private ICurrencySwap _purchasedCurrencySwap;
 
-        public UniversalSwap(        
+        public Swap(        
             SwapState swapState,
             IAccount account,
             ISwapClient swapClient,
             IBackgroundTaskPerformer taskPerformer)
-            : base(
-                null,
-                swapState,
-                account,
-                swapClient,
-                taskPerformer)
         {
+            _swapState = swapState;
+
             var soldCurrency = swapState.Order.SoldCurrency();
 
-            _soldCurrencySwap = SwapProtocolCreator.Create(
+            _soldCurrencySwap = CurrencySwapCreator.Create(
                 currency: soldCurrency,
                 swapState: swapState,
                 account: account,
@@ -36,7 +34,7 @@ namespace Atomix.Swaps
 
             var purchasedCurrency = swapState.Order.PurchasedCurrency();
 
-            _purchasedCurrencySwap = SwapProtocolCreator.Create(
+            _purchasedCurrencySwap = CurrencySwapCreator.Create(
                 currency: purchasedCurrency,
                 swapState: swapState,
                 account: account,
@@ -76,62 +74,95 @@ namespace Atomix.Swaps
             };
         }
 
-        public override async Task InitiateSwapAsync()
+        public async Task InitiateSwapAsync()
         {
             await _soldCurrencySwap
                 .InitiateSwapAsync()
                 .ConfigureAwait(false);
 
             await _purchasedCurrencySwap
-                .InitiateSwapAsync()
+                .PrepareToReceiveAsync()
                 .ConfigureAwait(false);
         }
 
-        public override async Task AcceptSwapAsync()
+        public async Task AcceptSwapAsync()
         {
             await _soldCurrencySwap
                 .AcceptSwapAsync()
                 .ConfigureAwait(false);
 
             await _purchasedCurrencySwap
-                .AcceptSwapAsync()
+                .PrepareToReceiveAsync()
                 .ConfigureAwait(false);
         }
 
-        public override async Task RestoreSwapAsync()
+        public async Task RestoreSwapAsync()
         {
             await _soldCurrencySwap
                 .RestoreSwapAsync()
                 .ConfigureAwait(false);
         }
 
-        public override Task HandleSwapData(SwapData swapData)
+        public Task HandleSwapData(SwapData swapData)
         {
             switch (swapData.Type)
             {
+                case SwapDataType.SecretHash:
+                    return HandleSecretHashAsync(swapData.Data);
+
                 case SwapDataType.InitiatorPayment:
                 case SwapDataType.InitiatorRefund:
                 case SwapDataType.InitiatorPaymentTxId:
                 case SwapDataType.CounterPartyPayment:
                 case SwapDataType.CounterPartyRefund:
                 case SwapDataType.CounterPartyPaymentTxId:
-                    return _purchasedCurrencySwap.HandleSwapData(swapData);
+                    return _purchasedCurrencySwap
+                        .HandleSwapData(swapData);
+
                 case SwapDataType.InitiatorRefundSigned:
                 case SwapDataType.CounterPartyRefundSigned:
-                    return _soldCurrencySwap.HandleSwapData(swapData);
+                    return _soldCurrencySwap
+                        .HandleSwapData(swapData);
                 default:
-                    return base.HandleSwapData(swapData);
+                    throw new ArgumentOutOfRangeException(nameof(swapData.Type));
             }
         }
 
-        public override Task RedeemAsync()
+        protected async Task HandleSecretHashAsync(byte[] secretHash)
         {
-            return _purchasedCurrencySwap.RedeemAsync();
+            Log.Debug(
+                messageTemplate: "Handle secret hash {@hash} for swap {@swapId}",
+                propertyValue0: secretHash?.ToHexString(),
+                propertyValue1: _swapState.Id);
+
+            AcceptSecretHash(secretHash);
+
+            await AcceptSwapAsync()
+                .ConfigureAwait(false);
         }
 
-        public override Task BroadcastPaymentAsync()
+        protected void AcceptSecretHash(byte[] secretHash)
         {
-            return _soldCurrencySwap.BroadcastPaymentAsync();
+            if (_swapState.IsInitiator)
+                throw new InternalException(
+                    code: Errors.WrongSwapMessageOrder,
+                    description: $"Initiator received secret hash message for swap {_swapState.Id}");
+
+            if (secretHash == null || secretHash.Length != CurrencySwap.DefaultSecretHashSize)
+                throw new InternalException(
+                    code: Errors.InvalidSecretHash,
+                    description: $"Incorrect secret hash length for swap {_swapState.Id}");
+
+            if (_swapState.SecretHash != null)
+                throw new InternalException(
+                    code: Errors.InvalidSecretHash,
+                    description: $"Secret hash already received for swap {_swapState.Id}");
+
+            Log.Debug(
+                messageTemplate: "Secret hash {@hash} successfully received",
+                propertyValue: secretHash.ToHexString());
+
+            _swapState.SecretHash = secretHash;
         }
     }
 }

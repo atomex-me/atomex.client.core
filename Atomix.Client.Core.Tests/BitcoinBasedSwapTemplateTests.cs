@@ -29,7 +29,7 @@ namespace Atomix.Client.Core.Tests
 
             Assert.NotNull(secret);
 
-            var secretHash = Convert.ToBase64String(Swap.CreateSwapSecretHash160(secret));
+            var secretHash = Convert.ToBase64String(CurrencySwap.CreateSwapSecretHash160(secret));
 
             Assert.Equal(SwapSecretHash, secretHash);
         }

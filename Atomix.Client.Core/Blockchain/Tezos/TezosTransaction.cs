@@ -184,7 +184,7 @@ namespace Atomix.Blockchain.Tezos
                 {
                     var secretBytes = Hex.FromString(Params["args"][0]["args"][0]["args"][1]["bytes"].ToString());
 
-                    return Swap.CreateSwapSecretHash(secretBytes).SequenceEqual(secretHash);
+                    return CurrencySwap.CreateSwapSecretHash(secretBytes).SequenceEqual(secretHash);
                 }
 
                 return false;

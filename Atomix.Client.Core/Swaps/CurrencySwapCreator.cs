@@ -9,9 +9,9 @@ using Atomix.Wallet.Abstract;
 
 namespace Atomix.Swaps
 {
-    public static class SwapProtocolCreator
+    public static class CurrencySwapCreator
     {
-        public static ISwap Create(
+        public static ICurrencySwap Create(
             Currency currency,
             SwapState swapState,
             IAccount account,

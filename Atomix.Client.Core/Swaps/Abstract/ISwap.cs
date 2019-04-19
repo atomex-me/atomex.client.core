@@ -2,19 +2,31 @@ using System.Threading.Tasks;
 
 namespace Atomix.Swaps.Abstract
 {
-    public delegate void OnSwapUpdatedDelegate(object sender, SwapEventArgs swapArgs);
-
     public interface ISwap
     {
-        OnSwapUpdatedDelegate InitiatorPaymentConfirmed { get; set; }
-        OnSwapUpdatedDelegate CounterPartyPaymentConfirmed { get; set; }
-        OnSwapUpdatedDelegate CounterPartyPaymentSpent { get; set; }
-
+        /// <summary>
+        /// Initiates swap for the currency being sold
+        /// </summary>
+        /// <returns></returns>
         Task InitiateSwapAsync();
+
+        /// <summary>
+        /// Accepts swap for the currency being sold
+        /// </summary>
+        /// <returns></returns>
         Task AcceptSwapAsync();
+
+        /// <summary>
+        /// Restores swap
+        /// </summary>
+        /// <returns></returns>
         Task RestoreSwapAsync();
+
+        /// <summary>
+        /// Handles swap data messages
+        /// </summary>
+        /// <param name="swapData">Swap data</param>
+        /// <returns></returns>
         Task HandleSwapData(SwapData swapData);
-        Task RedeemAsync();
-        Task BroadcastPaymentAsync();
     }
 }

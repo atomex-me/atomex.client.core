@@ -16,12 +16,14 @@ namespace Atomix.Blockchain.BlockchainInfo
 {
     public class BlockchainInfoApi : IInOutBlockchainApi
     {
-        private readonly BitcoinBasedCurrency _currency = new Atomix.Bitcoin();
+        private readonly BitcoinBasedCurrency _currency;
         private readonly BlockchainHttpClient _client;
         private readonly BlockExplorer _explorer;
         
-        public BlockchainInfoApi()
+        public BlockchainInfoApi(BitcoinBasedCurrency currency)
         {
+            _currency = currency ?? throw new ArgumentNullException(nameof(currency));
+
              var baseUrl = _currency.Network == Network.Main ? "https://blockchain.info/" : "https://testnet.blockchain.info/";
             _client = new BlockchainHttpClient(uri: baseUrl);
             _explorer = new BlockchainApiHelper(baseHttpClient: new BlockchainHttpClient(uri: baseUrl)).blockExplorer;
@@ -92,32 +94,38 @@ namespace Atomix.Blockchain.BlockchainInfo
                 spentTxPoint: null));
         }
 
-        public async Task<IEnumerable<ITxOutput>> GetOutputsAsync(string address, string afterTxId = null,
+        public async Task<IEnumerable<ITxOutput>> GetOutputsAsync(
+            string address,
+            string afterTxId = null,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var data = await _explorer.GetHash160AddressAsync(address);
             var outputs = new List<ITxOutput>();
-            
+
             foreach (var tx in data.Transactions)
             {
-                if (tx.Outputs[0] == null)
-                    continue;
-                var spentTxPoint = tx.Outputs[0].Spent
-                    ? new TxPoint((uint) tx.Outputs[0].SpendingOutpoints[0].N,
-                        (await _explorer.GetTransactionByIndexAsync(tx.Outputs[0].SpendingOutpoints[0].TxIndex)).Hash)
+                foreach (var output in tx.Outputs)
+                {
+                    if (output.Address == null || !output.Address.ToLowerInvariant().Equals(address.ToLowerInvariant()))
+                        continue;
+
+                    var spentTxPoint = output.Spent
+                    ? new TxPoint((uint)output.SpendingOutpoints[0].N,
+                        (await _explorer.GetTransactionByIndexAsync(output.SpendingOutpoints[0].TxIndex)).Hash)
                     : null;
 
-                var amount = new Money(tx.Outputs[0].Value.Satoshis, MoneyUnit.Satoshi);
+                    var amount = new Money(output.Value.Satoshis, MoneyUnit.Satoshi);
 
-                var script = new Script(Hex.FromString(tx.Outputs[0].Script));
+                    var script = new Script(Hex.FromString(output.Script));
 
-                outputs.Add(new BitcoinBasedTxOutput(
-                    coin: new Coin(
-                        fromTxHash: new uint256(tx.Hash),
-                        fromOutputIndex: (uint) tx.Outputs[0].N,
-                        amount: amount,
-                        scriptPubKey: script),
-                    spentTxPoint: spentTxPoint));
+                    outputs.Add(new BitcoinBasedTxOutput(
+                        coin: new Coin(
+                            fromTxHash: new uint256(tx.Hash),
+                            fromOutputIndex: (uint)output.N,
+                            amount: amount,
+                            scriptPubKey: script),
+                        spentTxPoint: spentTxPoint));
+                }
             }
 
             return outputs;

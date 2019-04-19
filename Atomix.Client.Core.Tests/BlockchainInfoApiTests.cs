@@ -18,8 +18,8 @@ namespace Atomix.Client.Core.Tests
         [Fact]
         public async void GetTransactionTest()
         {
-            var soChain = new SoChainApi(currency: new Bitcoin());
-            var bcInfo = new BlockchainInfoApi();
+            var soChain = new SoChainApi(Currencies.Btc);
+            var bcInfo = new BlockchainInfoApi(Currencies.Btc);
             var soTx = await soChain.GetTransactionAsync("aa1b99c63f2a28dd4d0e1765194d9810cc937ecb9a25f0ca04a485e0dd433ca8");
             var bcTx = await bcInfo.GetTransactionAsync("aa1b99c63f2a28dd4d0e1765194d9810cc937ecb9a25f0ca04a485e0dd433ca8");
             
@@ -33,8 +33,8 @@ namespace Atomix.Client.Core.Tests
         [Fact]
         public async void GetInputsTest()
         {
-            var soChain = new SoChainApi(currency: new Bitcoin());
-            var bcInfo = new BlockchainInfoApi();
+            var soChain = new SoChainApi(Currencies.Btc);
+            var bcInfo = new BlockchainInfoApi(Currencies.Btc);
 
             var soIn = (await soChain.GetInputsAsync("aa1b99c63f2a28dd4d0e1765194d9810cc937ecb9a25f0ca04a485e0dd433ca8")).ToList()[0];
             var bcIn = (await bcInfo.GetInputsAsync("aa1b99c63f2a28dd4d0e1765194d9810cc937ecb9a25f0ca04a485e0dd433ca8")).ToList()[0];
@@ -46,8 +46,8 @@ namespace Atomix.Client.Core.Tests
         [Fact]
         public async void GetInputTest()
         {
-            var soChain = new SoChainApi(currency: new Bitcoin());
-            var bcInfo = new BlockchainInfoApi();
+            var soChain = new SoChainApi(Currencies.Btc);
+            var bcInfo = new BlockchainInfoApi(Currencies.Btc);
 
             var soIn = await soChain.GetInputAsync("aa1b99c63f2a28dd4d0e1765194d9810cc937ecb9a25f0ca04a485e0dd433ca8", 0);
             var bcIn = await bcInfo.GetInputAsync("aa1b99c63f2a28dd4d0e1765194d9810cc937ecb9a25f0ca04a485e0dd433ca8", 0);
@@ -59,8 +59,8 @@ namespace Atomix.Client.Core.Tests
         [Fact]
         public async void GetOutputsTest()
         {
-            var soChain = new SoChainApi(currency: new Bitcoin());
-            var bcInfo = new BlockchainInfoApi();
+            var soChain = new SoChainApi(Currencies.Btc);
+            var bcInfo = new BlockchainInfoApi(Currencies.Btc);
             
             var bcOuts = await bcInfo.GetOutputsAsync("2NBgXvWR9DRZaJzkpHXa134txembCSW8S4h");
             var soOuts = await soChain.GetOutputsAsync("2NBgXvWR9DRZaJzkpHXa134txembCSW8S4h");
@@ -85,8 +85,8 @@ namespace Atomix.Client.Core.Tests
         [Fact]
         public async void GetUnspentOutputTest()
         {
-            var soChain = new SoChainApi(currency: new Bitcoin());
-            var bcInfo = new BlockchainInfoApi();
+            var soChain = new SoChainApi(Currencies.Btc);
+            var bcInfo = new BlockchainInfoApi(Currencies.Btc);
 
             var soOuts = (await soChain.GetUnspentOutputsAsync("2NBgXvWR9DRZaJzkpHXa134txembCSW8S4h"));
             var bcOuts = (await bcInfo.GetUnspentOutputsAsync("2NBgXvWR9DRZaJzkpHXa134txembCSW8S4h"));
@@ -112,8 +112,8 @@ namespace Atomix.Client.Core.Tests
         [Fact]
         public async void IsTransactionSpentTest()
         {
-            var soChain = new SoChainApi(currency: new Bitcoin());
-            var bcInfo = new BlockchainInfoApi();
+            var soChain = new SoChainApi(Currencies.Btc);
+            var bcInfo = new BlockchainInfoApi(Currencies.Btc);
 
             var soOuts = (await soChain.IsTransactionOutputSpent("aa1b99c63f2a28dd4d0e1765194d9810cc937ecb9a25f0ca04a485e0dd433ca8", 0));
             var bcOuts = (await bcInfo.IsTransactionOutputSpent("aa1b99c63f2a28dd4d0e1765194d9810cc937ecb9a25f0ca04a485e0dd433ca8", 0));

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Threading.Tasks;
-using Atomix.Blockchain.Abstract;
 using Atomix.Common;
 using Atomix.Common.Abstract;
 using Atomix.Core;
@@ -12,7 +11,7 @@ using Serilog;
 
 namespace Atomix.Swaps
 {
-    public abstract class Swap : ISwap
+    public abstract class CurrencySwap : ICurrencySwap
     {
         public const int DefaultSecretSize = 32; //16;
         public const int DefaultSecretHashSize = 32; //20;
@@ -36,7 +35,7 @@ namespace Atomix.Swaps
         protected readonly ISwapClient _swapClient;
         protected readonly IBackgroundTaskPerformer _taskPerformer;
 
-        protected Swap(
+        protected CurrencySwap(
             Currency currency,
             SwapState swapState,
             IAccount account,
@@ -60,63 +59,15 @@ namespace Atomix.Swaps
 
         public abstract Task AcceptSwapAsync();
 
+        public abstract Task PrepareToReceiveAsync();
+
         public abstract Task RestoreSwapAsync();
 
-        public virtual Task HandleSwapData(SwapData swapData)
-        {
-            switch (swapData.Type)
-            {
-                case SwapDataType.SecretHash:
-                    return HandleSecretHashAsync(swapData.Data);
-                //case SwapDataType.Canceled:
-                //    break;
-                //case SwapDataType.LockTimeWarning:
-                //    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-        }
+        public abstract Task HandleSwapData(SwapData swapData);
 
         public abstract Task RedeemAsync();
 
         public abstract Task BroadcastPaymentAsync();
-
-        protected async Task HandleSecretHashAsync(byte[] secretHash)
-        {
-            Log.Debug(
-                messageTemplate: "Handle secret hash {@hash} for swap {@swapId}",
-                propertyValue0: secretHash?.ToHexString(),
-                propertyValue1: _swapState.Id);
-
-            AcceptSecretHash(secretHash);
-
-            await AcceptSwapAsync()
-                .ConfigureAwait(false);
-        }
-
-        protected void AcceptSecretHash(byte[] secretHash)
-        {
-            if (_swapState.IsInitiator)
-                throw new InternalException(
-                    code: Errors.WrongSwapMessageOrder,
-                    description: $"Initiator received secret hash message for swap {_swapState.Id}");
-
-            if (secretHash == null || secretHash.Length != DefaultSecretHashSize)
-                throw new InternalException(
-                    code: Errors.InvalidSecretHash,
-                    description: $"Incorrect secret hash length for swap {_swapState.Id}");
-
-            if (_swapState.SecretHash != null)
-                throw new InternalException(
-                    code: Errors.InvalidSecretHash,
-                    description: $"Secret hash already received for swap {_swapState.Id}");
-
-            Log.Debug(
-                messageTemplate: "Secret hash {@hash} successfully received",
-                propertyValue: secretHash.ToHexString());
-
-            _swapState.SecretHash = secretHash;
-        }
 
         protected void SendData(
             SwapDataType dataType,
