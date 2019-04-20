@@ -64,12 +64,11 @@ namespace Atomix.Wallet
         {
             if (currency is BitcoinBasedCurrency)
                 return new BitcoinBasedWalletScanner(currency, Account);
-            else if (currency is Atomix.Ethereum)
+            if (currency is Atomix.Ethereum)
                 return new EthereumWalletScanner(Account);
-            else if (currency is Atomix.Tezos)
+            if (currency is Atomix.Tezos)
                 return new TezosWalletScanner(Account);
-            else
-                throw new NotSupportedException($"Currency {currency.Name} not supported");
+            throw new NotSupportedException($"Currency {currency.Name} not supported");
         }
     }
 }

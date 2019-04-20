@@ -1,4 +1,5 @@
 ﻿using System;
+using Atomix.Blockchain.BlockchainInfo;
 using Atomix.Blockchain.SoChain;
 using Atomix.Wallet.Bip;
 using NBitcoin;
@@ -25,7 +26,7 @@ namespace Atomix
             HasFeePrice = false;           
 
             Network = Network.TestNet;
-            BlockchainApi = new SoChainApi(this);
+            BlockchainApi = new BlockchainInfoApi(this); //new SoChainApi(this);
 
             IsTransactionsAvailable = true;
             IsSwapAvailable = true;

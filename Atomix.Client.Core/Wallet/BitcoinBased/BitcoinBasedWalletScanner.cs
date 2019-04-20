@@ -194,7 +194,14 @@ namespace Atomix.Wallet.BitcoinBased
 
             if (outputs.Count == 0)
                 return;
-            
+
+            await Account
+                .AddOutputsAsync(
+                    outputs: outputs.GroupBy(o => $"{o.TxId}{o.Index}", RemoveDuplicates),
+                    currency: Currency,
+                    address: address)
+                .ConfigureAwait(false);
+
             await ScanTransactionsAsync(outputs, cancellationToken)
                 .ConfigureAwait(false);         
         }
