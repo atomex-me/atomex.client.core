@@ -113,7 +113,7 @@ namespace Atomix.Blockchain.Ethereum
                 method: HttpMethod.Get,
                 content: null,
                 responseHandler: responseContent => ParseTransactions(responseContent, address, isInternal: false),
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken) ?? Enumerable.Empty<IBlockchainTransaction>();
 
             requestUri = $"api?module=account&action=txlistinternal&address={address}&sort=asc&apikey={ApiKey}";
 
@@ -122,7 +122,8 @@ namespace Atomix.Blockchain.Ethereum
                 method: HttpMethod.Get,
                 content: null,
                 responseHandler: responseContent => ParseTransactions(responseContent, address, isInternal: true),
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken) ?? Enumerable.Empty<IBlockchainTransaction>();
+
 
             return transactions.Concat(internalTransactions);
         }
@@ -148,7 +149,7 @@ namespace Atomix.Blockchain.Ethereum
                 Type = t.To.Equals(address)
                     ? EthereumTransaction.InputTransaction
                     : EthereumTransaction.OutputTransaction,
-                ReceiptStatus = t.ReceiptStatus != null ? t.ReceiptStatus.Equals("1") : true,
+                ReceiptStatus = t.ReceiptStatus?.Equals("1") ?? true,
                 IsInternal = isInternal,
 
                 BlockInfo = new BlockInfo
