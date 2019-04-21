@@ -32,7 +32,6 @@ namespace Atomix.Subsystems
 
         private ExchangeWebClient ExchangeClient { get; }
         private MarketDataWebClient MarketDataClient { get; }
-        private SwapWebClient SwapClient { get; }
 
         private IAccount Account { get; set; }
         private IMarketDataRepository MarketDataRepository { get; }
@@ -53,6 +52,7 @@ namespace Atomix.Subsystems
             ExchangeClient.AuthNonce               += OnExchangeAuthNonceEventHandler;
             ExchangeClient.Error                   += OnExchangeErrorEventHandler;
             ExchangeClient.ExecutionReportReceived += OnExchangeExecutionReportEventHandler;
+            ExchangeClient.SwapDataReceived        += OnSwapDataReceivedEventHandler;
 
             MarketDataClient = new MarketDataWebClient(configuration);
             MarketDataClient.Connected        += OnMarketDataConnectedEventHandler;
@@ -63,14 +63,6 @@ namespace Atomix.Subsystems
             MarketDataClient.QuotesReceived   += OnQuotesReceivedEventHandler;
             MarketDataClient.EntriesReceived  += OnEntriesReceivedEventHandler;
             MarketDataClient.SnapshotReceived += OnSnapshotReceivedEventHandler;
-
-            SwapClient = new SwapWebClient(configuration);
-            SwapClient.Connected        += OnSwapConnectedEventHandler;
-            SwapClient.Disconnected     += OnSwapDisconnectedEventHandler;
-            SwapClient.AuthOk           += OnSwapAuthOkEventHandler;
-            SwapClient.AuthNonce        += OnSwapAuthNonceEventHandler;
-            SwapClient.Error            += OnSwapErrorEventHandler;
-            SwapClient.SwapDataReceived += OnSwapDataReceivedEventHandler;
 
             MarketDataRepository = new MarketDataRepository(Symbols.Available);
             TaskPerformer = new BackgroundTaskPerformer();
@@ -116,12 +108,9 @@ namespace Atomix.Subsystems
                     return ExchangeClient.IsConnected;
                 case TerminalService.MarketData:
                     return MarketDataClient.IsConnected;
-                case TerminalService.Swap:
-                    return SwapClient.IsConnected;
                 case TerminalService.All:
                     return ExchangeClient.IsConnected &&
-                        MarketDataClient.IsConnected &&
-                        SwapClient.IsConnected;
+                        MarketDataClient.IsConnected;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(service), service, null);
             }
@@ -134,8 +123,7 @@ namespace Atomix.Subsystems
             // run services
             await Task.WhenAll(
                     ExchangeClient.ConnectAsync(),
-                    MarketDataClient.ConnectAsync(),
-                    SwapClient.ConnectAsync())
+                    MarketDataClient.ConnectAsync())
                 .ConfigureAwait(false);
 
             // run tracker
@@ -160,8 +148,7 @@ namespace Atomix.Subsystems
 
             return Task.WhenAll(
                 ExchangeClient.CloseAsync(),
-                MarketDataClient.CloseAsync(),
-                SwapClient.CloseAsync());
+                MarketDataClient.CloseAsync());
         }
 
         public async void OrderSendAsync(Order order)
@@ -244,7 +231,7 @@ namespace Atomix.Subsystems
                     await new Swap(
                             swapState: swapState,
                             account: Account,
-                            swapClient: SwapClient,
+                            swapClient: ExchangeClient,
                             taskPerformer: TaskPerformer)
                         .RestoreSwapAsync()
                         .ConfigureAwait(false);
@@ -335,7 +322,7 @@ namespace Atomix.Subsystems
                 .ConfigureAwait(false);
 
             if (!result)
-                OnError(TerminalService.Swap, "Can't run swap");
+                OnError(TerminalService.Exchange, "Can't run swap");
         }
 
         private async Task HandleOrderAsync(ExecutionReport report)
@@ -427,42 +414,6 @@ namespace Atomix.Subsystems
 
         #region SwapEventHandlers
 
-        private void OnSwapConnectedEventHandler(object sender, EventArgs args)
-        {
-            ServiceConnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Swap));
-        }
-
-        private void OnSwapDisconnectedEventHandler(object sender, EventArgs args)
-        {
-            ServiceDisconnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Swap));
-        }
-
-        private void OnSwapAuthOkEventHandler(object sender, EventArgs e)
-        {
-            //throw new NotImplementedException();
-        }
-
-        private async void OnSwapAuthNonceEventHandler(object sender, EventArgs args)
-        {
-            try
-            {
-                var auth = await Account
-                    .CreateAuthRequestAsync(SwapClient.Nonce)
-                    .ConfigureAwait(false);
-
-                SwapClient.AuthAsync(auth);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Swap auth error");
-            }
-        }
-
-        private void OnSwapErrorEventHandler(object sender, ErrorEventArgs args)
-        {
-            Log.Debug("Swap service error {@Error}", args.Error);
-        }
-
         private async void OnSwapDataReceivedEventHandler(object sender, SwapDataEventArgs args)
         {
             var swapData = args.SwapData;
@@ -474,21 +425,21 @@ namespace Atomix.Subsystems
                     .ConfigureAwait(false);
 
                 if (swap == null) {
-                    OnError(TerminalService.Swap, $"Can't find swap with id {swapData.SwapId} in swap repository");
+                    OnError(TerminalService.Exchange, $"Can't find swap with id {swapData.SwapId} in swap repository");
                     return;
                 }
 
                 await new Swap(
                         swapState: swap,
                         account: Account,
-                        swapClient: SwapClient,
+                        swapClient: ExchangeClient,
                         taskPerformer: TaskPerformer)
                     .HandleSwapData(swapData)
                     .ConfigureAwait(false);
             }
             catch (Exception e)
             {
-                OnError(TerminalService.Swap, e);
+                OnError(TerminalService.Exchange, e);
             }
         }
 
@@ -524,7 +475,7 @@ namespace Atomix.Subsystems
                     await new Swap(
                             swapState: swap,
                             account: Account,
-                            swapClient: SwapClient,
+                            swapClient: ExchangeClient,
                             taskPerformer: TaskPerformer)
                         .InitiateSwapAsync()
                         .ConfigureAwait(false);

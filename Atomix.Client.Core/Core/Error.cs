@@ -61,6 +61,7 @@
         public const int InvalidSecretHash = 20050;
         public const int InvalidSpentPoint = 20051;
         public const int SwapError = 20052;
+        public const int NoLiquidity = 20053;
 
     }
 }

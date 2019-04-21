@@ -4,7 +4,6 @@
     {
         Exchange,
         MarketData,
-        Swap,
         All
     }
 }
