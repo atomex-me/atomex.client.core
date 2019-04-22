@@ -593,8 +593,12 @@ namespace Atomix.Blockchain.SoChain
 
             var requestUri = $"api/v2/send_tx/{NetworkAcronym}";
 
+            var txHex = tx.ToBytes().ToHexString();
+
+            Log.Debug("TxHex: {@txHex}", txHex);
+
             var content = new StringContent(
-                content: JsonConvert.SerializeObject(new SendTx(tx.ToBytes().ToHexString())),
+                content: JsonConvert.SerializeObject(new SendTx(txHex)),
                 encoding: Encoding.UTF8,
                 mediaType: "application/json");
 

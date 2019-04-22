@@ -80,7 +80,7 @@ namespace Atomix.Blockchain.Ethereum
 
             if (txReceipt == null)
             {
-                Log.Error("Tx not null, but txReceipt is null!");
+                Log.Error("Tx not null, but txReceipt is null for txIs {@txId}!", txId);
                 return null;
             }
 

@@ -170,6 +170,11 @@ namespace Atomix.Wallet.BitcoinBased
                         .GetTransactionAsync(txId, cancellationToken)
                         .ConfigureAwait(false);
 
+                    if (transaction == null) {
+                        Log.Warning("Wow! Transaction with id {@id} not found", txId);
+                        continue;
+                    }
+
                     await Account
                         .UpdateTransactionType(transaction, cancellationToken)
                         .ConfigureAwait(false);

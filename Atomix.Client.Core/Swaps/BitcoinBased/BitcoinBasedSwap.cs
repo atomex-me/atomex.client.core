@@ -220,6 +220,9 @@ namespace Atomix.Swaps.BitcoinBased
                 .BroadcastAsync(_swapState.PaymentTx)
                 .ConfigureAwait(false);
 
+            if (txId == null)
+                throw new Exception("Transaction broadcast error");
+
             _swapState.SetPaymentBroadcast();
 
             Log.Debug(
