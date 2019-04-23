@@ -63,5 +63,7 @@
         public const int SwapError = 20052;
         public const int NoLiquidity = 20053;
 
+        public const int TransactionBroadcastError = 20100;
+
     }
 }

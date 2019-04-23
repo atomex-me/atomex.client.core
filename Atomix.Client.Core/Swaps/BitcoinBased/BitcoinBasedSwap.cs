@@ -221,7 +221,7 @@ namespace Atomix.Swaps.BitcoinBased
                 .ConfigureAwait(false);
 
             if (txId == null)
-                throw new Exception("Transaction broadcast error");
+                throw new Exception("Transaction Id is null");
 
             _swapState.SetPaymentBroadcast();
 
@@ -754,6 +754,9 @@ namespace Atomix.Swaps.BitcoinBased
                 .BroadcastAsync(redeemTx)
                 .ConfigureAwait(false);
 
+            if (txId == null)
+                throw new Exception("Transaction Id is null");
+
             Log.Debug(
                 messageTemplate: "Redeem tx {@txId} successfully broadcast for swap {@swapId}",
                 propertyValue0: txId,
@@ -855,6 +858,9 @@ namespace Atomix.Swaps.BitcoinBased
                 var txId = await _currency.BlockchainApi
                     .BroadcastAsync(refundTx)
                     .ConfigureAwait(false);
+
+                if (txId == null)
+                    throw new Exception("Transaction Id is null");
 
                 Log.Debug("Refund tx id {@txId} for swap {@swapId}", txId, _swapState.Id);
 

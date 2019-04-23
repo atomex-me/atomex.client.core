@@ -82,10 +82,11 @@ namespace Atomix.Wallet
         public async Task<WalletAddress> GetAddressAsync(
             Currency currency,
             string address,
+            uint maxIndex,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var keyIndex = await KeyStorage
-                .RecoverKeyIndexAsync(currency, address, cancellationToken)
+                .RecoverKeyIndexAsync(currency, address, maxIndex, cancellationToken)
                 .ConfigureAwait(false);
 
             if (keyIndex == null)
@@ -100,20 +101,6 @@ namespace Atomix.Wallet
                 PublicKey = Convert.ToBase64String(publicKeyBytes),
             };
         }
-
-        //public async Task<byte[]> GetPrivateKeyAsync(Currency currency, WalletAddress address)
-        //{
-        //    var keyIndex = await KeyStorage
-        //        .RecoverKeyIndexAsync(address)
-        //        .ConfigureAwait(false);
-
-        //    if (keyIndex == null) {
-        //        Log.Error($"Can't find private key for address {address.Address}");
-        //        return null;
-        //    }
-
-        //    return KeyStorage.GetPrivateKey(currency, keyIndex);
-        //}
 
         public byte[] GetServicePublicKey(uint index)
         {
@@ -152,7 +139,10 @@ namespace Atomix.Wallet
             }
 
             var keyIndex = await KeyStorage
-                .RecoverKeyIndexAsync(address, cancellationToken)
+                .RecoverKeyIndexAsync(
+                    walletAddress: address,
+                    maxIndex: 0,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (keyIndex == null) {
@@ -253,7 +243,10 @@ namespace Atomix.Wallet
             }
 
             var keyIndex = await KeyStorage
-                .RecoverKeyIndexAsync(address, cancellationToken)
+                .RecoverKeyIndexAsync(
+                    walletAddress: address,
+                    maxIndex: 0,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (keyIndex == null)

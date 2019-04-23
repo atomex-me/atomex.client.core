@@ -98,6 +98,11 @@ namespace Atomix.Wallet.Tezos
                     .BroadcastAsync(tx, cancellationToken)
                     .ConfigureAwait(false);
 
+                if (txId == null)
+                    return new Error(
+                        code: Errors.TransactionBroadcastError,
+                        description: "Transaction Id is null");
+
                 Log.Debug(
                     messageTemplate: "Transaction successfully sent with txId: {@id}",
                     propertyValue: txId);
@@ -297,7 +302,11 @@ namespace Atomix.Wallet.Tezos
                 foreach (var address in addresses)
                 {
                     var walletAddress = await Wallet
-                        .GetAddressAsync(Currency, address, cancellationToken)
+                        .GetAddressAsync(
+                            currency: Currency,
+                            address: address,
+                            maxIndex: 0,
+                            cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
                     var isReceive = address.ToLowerInvariant().Equals(tx.To.ToLowerInvariant());

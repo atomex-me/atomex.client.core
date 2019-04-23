@@ -74,14 +74,17 @@ namespace Atomix.Blockchain.BlockchainInfo
             return soChain.BroadcastAsync(transaction, cancellationToken);
         }
 
-        public async Task<ITxPoint> GetInputAsync(
+        public Task<ITxPoint> GetInputAsync(
             string txId,
             uint inputNo,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            return (await GetInputsAsync(txId, cancellationToken)
-                .ConfigureAwait(false))
-                .ToList()[(int)inputNo];
+            var soChain = new SoChainApi(_currency);
+
+            return soChain.GetInputAsync(txId, inputNo, cancellationToken);
+            //return (await GetInputsAsync(txId, cancellationToken)
+            //    .ConfigureAwait(false))
+            //    .ToList()[(int)inputNo];
         }
 
         public async Task<IEnumerable<ITxPoint>> GetInputsAsync(

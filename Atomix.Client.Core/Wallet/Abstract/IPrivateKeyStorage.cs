@@ -12,11 +12,13 @@ namespace Atomix.Wallet.Abstract
 
         Task<KeyIndex> RecoverKeyIndexAsync(
             WalletAddress walletAddress,
+            uint maxIndex,
             CancellationToken cancellationToken = default(CancellationToken));
 
         Task<KeyIndex> RecoverKeyIndexAsync(
             Currency currency,
             string address,
+            uint maxIndex,
             CancellationToken cancellationToken = default(CancellationToken));
     }
 }

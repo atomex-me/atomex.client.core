@@ -298,7 +298,7 @@ namespace Atomix.Blockchain.Tezos
             }
             else
             {
-                Log.Warning("Invalud response code: {@code}", response.StatusCode);
+                Log.Warning("Invalid response code: {@code}", response.StatusCode);
             }
 
             return default(T);

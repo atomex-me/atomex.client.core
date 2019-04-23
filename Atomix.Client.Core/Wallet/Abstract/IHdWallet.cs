@@ -59,22 +59,14 @@ namespace Atomix.Wallet.Abstract
         /// </summary>
         /// <param name="currency">Currency</param>
         /// <param name="address">Address</param>
+        /// <param name="maxIndex">Maximum search index</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Wallet address</returns>
         Task<WalletAddress> GetAddressAsync(
             Currency currency,
             string address,
+            uint maxIndex,
             CancellationToken cancellationToken = default(CancellationToken));
-
-        ///// <summary>
-        ///// Gets private key for currency <paramref name="currency"/> for address <paramref name="address"/>
-        ///// </summary>
-        ///// <param name="currency">Currency</param>
-        ///// <param name="address">Address</param>
-        ///// <returns>Private key bytes</returns>
-        //Task<byte[]> GetPrivateKeyAsync(
-        //    Currency currency,
-        //    WalletAddress address);
 
         /// <summary>
         /// Gets public key for service key with <paramref name="index"/>

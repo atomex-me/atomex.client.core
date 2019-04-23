@@ -12,7 +12,6 @@ using Atomix.Core;
 using Atomix.Core.Entities;
 using Atomix.Wallet.Abstract;
 using Atomix.Wallet.Bip;
-using NBitcoin.Altcoins.Elements;
 using Serilog;
 
 namespace Atomix.Wallet.Ethereum
@@ -108,6 +107,11 @@ namespace Atomix.Wallet.Ethereum
                     .BroadcastAsync(tx, cancellationToken)
                     .ConfigureAwait(false);
 
+                if (txId == null)
+                    return new Error(
+                        code: Errors.TransactionBroadcastError,
+                        description: "Transaction Id is null");
+
                 Log.Debug(
                     messageTemplate: "Transaction successfully sent with txId: {@id}",
                     propertyValue: txId);
@@ -202,7 +206,7 @@ namespace Atomix.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             return addressBalances
-                .FirstOrDefault(pair => pair.Item1.Address.Equals(address))
+                .FirstOrDefault(pair => pair.Item1.Address.Equals(address.ToLowerInvariant()))
                 .Item2;
         }
 
@@ -262,7 +266,11 @@ namespace Atomix.Wallet.Ethereum
                 foreach (var address in addresses)
                 {
                     var walletAddress = await Wallet
-                        .GetAddressAsync(Currency, address, cancellationToken)
+                        .GetAddressAsync(
+                            currency: Currency,
+                            address: address,
+                            maxIndex: 0,
+                            cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
                     var isReceive = address.Equals(tx.To.ToLowerInvariant());

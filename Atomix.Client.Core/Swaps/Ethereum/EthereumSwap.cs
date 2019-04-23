@@ -359,6 +359,9 @@ namespace Atomix.Swaps.Ethereum
                 .BroadcastAsync(tx, cancellationToken)
                 .ConfigureAwait(false);
 
+            if (txId == null)
+                throw new Exception("Transaction Id is null");
+
             Log.Debug(
                 messageTemplate: "Payment txId {@id} for swap {@swapId}",
                 propertyValue0: txId,

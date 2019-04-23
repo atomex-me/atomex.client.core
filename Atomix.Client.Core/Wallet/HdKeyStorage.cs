@@ -169,17 +169,20 @@ namespace Atomix.Wallet
 
         public Task<KeyIndex> RecoverKeyIndexAsync(
             WalletAddress walletAddress,
+            uint maxIndex,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             return RecoverKeyIndexAsync(
                 walletAddress.Currency,
                 walletAddress.Address,
+                maxIndex,
                 cancellationToken);
         }
 
         public async Task<KeyIndex> RecoverKeyIndexAsync(
             Currency currency,
             string address,
+            uint maxIndex,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var keyIndex = Cache?.IndexByAddress(address);
@@ -221,6 +224,9 @@ namespace Atomix.Wallet
                             }
 
                             index++;
+
+                            if (index == maxIndex)
+                                break;
                         }
                     });
                 }

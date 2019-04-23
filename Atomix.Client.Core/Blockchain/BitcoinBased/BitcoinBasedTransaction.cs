@@ -100,7 +100,11 @@ namespace Atomix.Blockchain.BitcoinBased
                 var address = spentOutput.DestinationAddress(Currency);
 
                 var keyIndex = await keyStorage
-                    .RecoverKeyIndexAsync(Currency, address, cancellationToken)
+                    .RecoverKeyIndexAsync(
+                        currency: Currency,
+                        address: address,
+                        maxIndex: 0,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (keyIndex == null)

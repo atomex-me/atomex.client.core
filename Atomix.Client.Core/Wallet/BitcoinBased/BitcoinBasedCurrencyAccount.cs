@@ -67,8 +67,7 @@ namespace Atomix.Wallet.BitcoinBased
                 .SignAsync(tx, unspentOutputs, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (!signResult)
-            {
+            if (!signResult) {
                 return new Error(
                     code: Errors.TransactionSigningError,
                     description: "Transaction signing error");
@@ -79,6 +78,11 @@ namespace Atomix.Wallet.BitcoinBased
             var txId = await Currency.BlockchainApi
                 .BroadcastAsync(tx, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (txId == null)
+                return new Error(
+                    code: Errors.TransactionBroadcastError,
+                    description: "Transaction id is null");
 
             Log.Debug(
                 messageTemplate: "Transaction successfully sent with txId: {@id}",
@@ -320,7 +324,7 @@ namespace Atomix.Wallet.BitcoinBased
             if (amount > 0 && !addresses.Any())
                 throw new Exception($"Insufficient funds for currency {Currency.Name}");
 
-            return await Task.WhenAll(addresses.Select(a => Wallet.GetAddressAsync(Currency, a)))
+            return await Task.WhenAll(addresses.Select(a => Wallet.GetAddressAsync(currency: Currency, address: a, maxIndex: 0)))
                 .ConfigureAwait(false);
         }
 

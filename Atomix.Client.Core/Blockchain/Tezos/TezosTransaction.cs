@@ -57,7 +57,11 @@ namespace Atomix.Blockchain.Tezos
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var keyIndex = await keyStorage
-                .RecoverKeyIndexAsync(Currency, address, cancellationToken)
+                .RecoverKeyIndexAsync(
+                    currency: Currency,
+                    address: address,
+                    maxIndex: 0,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (keyIndex == null)
