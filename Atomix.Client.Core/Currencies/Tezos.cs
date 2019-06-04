@@ -11,16 +11,16 @@ namespace Atomix
     {
         public const long XtzDigitsMultiplier = 1_000_000;
         public const string AlphanetSwapContractAddress = "KT1FU74GimCeEVRAEZGURb6TWU8jK1N6zFJy";
-        public const long DefaultFee = 1300;
+        public const long DefaultFee = 3000;
         public const long DefaultGasLimit = 20000;
         public const long DefaultStorageLimit = 20000;
-        public const long DefaultPaymentFee = 50000;
+        public const long DefaultPaymentFee = 100000;
         public const long DefaultPaymentGasLimit = 400000;
         public const long DefaultPaymentStorageLimit = 60000;
-        public const long DefaultRedeemFee = 50000;
+        public const long DefaultRedeemFee = 100000;
         public const long DefaultRedeemGasLimit = 400000;
         public const long DefaultRedeemStorageLimit = 60000;
-        public const long DefaultRefundFee = 50000;
+        public const long DefaultRefundFee = 100000;
         public const long DefaultRefundGasLimit = 400000;
         public const long DefaultRefundStorageLimit = 60000;
 
