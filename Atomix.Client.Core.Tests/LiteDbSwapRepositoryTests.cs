@@ -62,14 +62,14 @@ namespace Atomix.Client.Core.Tests
         void NullPasswordTest()
         {
             Assert.Throws<ArgumentNullException>(() => {
-                var repository = new LiteDbSwapRepository(PathToDb, null);
+                var repository = new LiteDbRepository(PathToDb, null);
             });
         }
 
         [Fact]
         public async Task<Guid> AddSwapTestAsync()
         {
-            var repository = new LiteDbSwapRepository(PathToDb, Password);
+            var repository = new LiteDbRepository(PathToDb, Password);
 
             var swap = CreateSwap();
 
@@ -88,7 +88,7 @@ namespace Atomix.Client.Core.Tests
             var swapId = await AddSwapTestAsync()
                 .ConfigureAwait(false);
 
-            var repository = new LiteDbSwapRepository(PathToDb, Password);
+            var repository = new LiteDbRepository(PathToDb, Password);
 
             var swap = (SwapState)await repository
                 .GetSwapByIdAsync(swapId)
@@ -111,7 +111,7 @@ namespace Atomix.Client.Core.Tests
             var swapId = await AddSwapTestAsync()
                 .ConfigureAwait(false);
 
-            var repository = new LiteDbSwapRepository(PathToDb, Password);
+            var repository = new LiteDbRepository(PathToDb, Password);
 
             var swap = (SwapState)await repository
                 .GetSwapByIdAsync(swapId)
