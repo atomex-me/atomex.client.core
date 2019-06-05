@@ -73,17 +73,13 @@ namespace Atomix.Wallet
 
             var accountDirectory = Path.GetDirectoryName(Wallet.PathToWallet);
 
-            TransactionRepository = new LiteDbTransactionRepository(
+            var dataRepository = new LiteDbRepository(
                 pathToDb: $"{accountDirectory}/{DefaultHistoryFileName}",
                 password: password);
 
-            OrderRepository = new LiteDbOrderRepository(
-                pathToDb: $"{accountDirectory}/{DefaultHistoryFileName}",
-                password: password);
-
-            SwapRepository = new LiteDbSwapRepository(
-                pathToDb: $"{accountDirectory}/{DefaultHistoryFileName}",
-                password: password);
+            TransactionRepository = dataRepository;
+            OrderRepository = dataRepository;
+            SwapRepository = dataRepository;
 
             CurrencyAccounts = Currencies
                 .ToDictionary(
