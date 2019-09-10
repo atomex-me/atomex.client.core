@@ -5,7 +5,7 @@ stages:
   - test
 
 variables:
-  test: "Atomix.Client.Core.Tests"
+  test: "Atomex.Client.Core.Tests"
 
 before_script:
   - "dotnet restore"
