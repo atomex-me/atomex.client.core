@@ -29,6 +29,16 @@ namespace Atomix.MarketData
 
             IsReady = false;
         }
+        
+        //public MarketDataOrderBook()
+        //{
+        //    _lastTransactionId = 0;
+
+        //    Buys = new SortedDictionary<decimal, Entry>(new DescendingComparer<decimal>());
+        //    Sells = new SortedDictionary<decimal, Entry>();
+
+        //    IsReady = false;
+        //}
 
         public Quote TopOfBook()
         {
@@ -39,6 +49,12 @@ namespace Atomix.MarketData
                 Bid = Buys.Count != 0 ? Buys.First().Key : 0,
                 Ask = Sells.Count != 0 ? Sells.First().Key : decimal.MaxValue
             };
+        }
+
+        public bool IsValid()
+        {
+            var quote = TopOfBook();
+            return quote.Bid != 0 && quote.Ask != 0 && quote.Ask != decimal.MaxValue;
         }
 
         public void ApplySnapshot(Snapshot snapshot)
@@ -94,6 +110,68 @@ namespace Atomix.MarketData
 
                     if (amountToFill <= 0)
                         return entryPair.Key;
+                }
+            }
+
+            return 0m;
+        }
+
+        public decimal AverageDealBasePrice(Side side, decimal qty)
+        {
+            var qtyToFill = qty;
+
+            lock (SyncRoot)
+            {
+                var book = side == Side.Buy
+                    ? Sells
+                    : Buys;
+
+                if (qty == 0)
+                    return book.Any() ? book.First().Key : 0;
+
+                decimal baseQty = 0;
+
+                foreach (var entryPair in book)
+                {
+                    var availiableQty = entryPair.Value.Qty();
+
+                    if (availiableQty >= qtyToFill)
+                        return (baseQty + qtyToFill * entryPair.Key) / qty;
+
+                    baseQty += availiableQty * entryPair.Key;
+
+                    qtyToFill -= availiableQty;
+                }
+            }
+
+            return 0m;
+        }
+
+        public decimal AverageDealQuotePrice(Side side, decimal baseQty)
+        {
+            var baseQtyToFill = baseQty;
+
+            lock (SyncRoot)
+            {
+                var book = side == Side.Buy
+                    ? Sells
+                    : Buys;
+
+                if (baseQty == 0)
+                    return book.Any() ? book.First().Key : 0;
+
+                decimal qty = 0;
+
+                foreach (var entryPair in book)
+                {
+                    var availiableBaseQty = entryPair.Value.Qty() * entryPair.Key;
+
+                    if (availiableBaseQty >= baseQtyToFill)
+                        return baseQty / (qty + baseQtyToFill / entryPair.Key);
+
+                    qty += availiableBaseQty / entryPair.Key;
+
+                    baseQtyToFill -= availiableBaseQty;
                 }
             }
 

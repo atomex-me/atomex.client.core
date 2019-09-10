@@ -19,12 +19,16 @@ namespace Atomix.Common.Json
         {
         }
 
-        public CompactCurrencyConverter(IEnumerable<Currency> currencies)
+        public CompactCurrencyConverter(
+            IEnumerable<Currency> currencies)
         {
             Currencies = currencies;
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(
+            JsonWriter writer,
+            object value,
+            JsonSerializer serializer)
         {
             var currency = (Currency)value;
 
@@ -36,7 +40,11 @@ namespace Atomix.Common.Json
             @object.WriteTo(writer);
         }
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        public override object ReadJson(
+            JsonReader reader,
+            Type objectType,
+            object existingValue,
+            JsonSerializer serializer)
         {
             var token = JToken.Load(reader);
 
@@ -53,7 +61,8 @@ namespace Atomix.Common.Json
             return Currencies.FirstOrDefault(s => s.Name.Equals(currency));
         }
 
-        public override bool CanConvert(Type objectType)
+        public override bool CanConvert(
+            Type objectType)
         {
             return typeof(Currency).IsAssignableFrom(objectType);
         }

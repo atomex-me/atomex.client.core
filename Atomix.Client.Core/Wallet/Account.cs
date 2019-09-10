@@ -5,14 +5,13 @@ using System.Linq;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+using Atomix.Abstract;
 using Atomix.Blockchain;
 using Atomix.Blockchain.Abstract;
 using Atomix.Common;
 using Atomix.Core;
-using Atomix.Core.Abstract;
 using Atomix.Core.Entities;
 using Atomix.LiteDb;
-using Atomix.Swaps.Abstract;
 using Atomix.Wallet.Abstract;
 using Microsoft.Extensions.Configuration;
 using Serilog;
@@ -21,8 +20,11 @@ namespace Atomix.Wallet
 {
     public class Account : IAccount
     {
-        public const string DefaultHistoryFileName = "history.db";
-        public const string DefaultAccountKey = "Account:Default";
+        public const string DefaultUserSettingsFileName = "user.config";
+
+        private const string DefaultDataFileName = "data.db";
+        private const string DefaultAccountKey = "Account:Default";
+        private const string ApiVersion = "1.0";
 
         public event EventHandler<CurrencyEventArgs> BalanceUpdated
         {
@@ -35,7 +37,6 @@ namespace Atomix.Wallet
                     currencyAccount.Value.BalanceUpdated -= value;
             }
         }
-
         public event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded
         {
             add {
@@ -47,63 +48,100 @@ namespace Atomix.Wallet
                     currencyAccount.Value.UnconfirmedTransactionAdded -= value;
             }
         }
-
-        public event EventHandler SwapsLoaded;
         public event EventHandler Locked;
         public event EventHandler Unlocked;
 
-        public IHdWallet Wallet { get; }
-        private ITransactionRepository TransactionRepository { get; }
-        private IOrderRepository OrderRepository { get; }
-        private ISwapRepository SwapRepository { get; }
-
         public bool IsLocked => Wallet.IsLocked;
-        public IEnumerable<Currency> Currencies => Wallet.Currencies;
+        public Network Network => Wallet.Network;
+        public IHdWallet Wallet { get; }
+        public ICurrencies Currencies { get; }
+        public ISymbols Symbols { get; }
+        public UserSettings UserSettings { get; private set; }
 
+        private IAccountDataRepository DataRepository { get; }
         private IDictionary<string, ICurrencyAccount> CurrencyAccounts { get; }
 
-        public Account(string pathToAccount, SecureString password)
-            : this(new HdWallet(pathToAccount, password), password)
+        private Account(
+            string pathToAccount,
+            SecureString password,
+            ICurrenciesProvider currenciesProvider,
+            ISymbolsProvider symbolsProvider)
+            : this(wallet: HdWallet.LoadFromFile(pathToAccount, password),
+                   password: password,
+                   currenciesProvider: currenciesProvider,
+                   symbolsProvider : symbolsProvider)
         {
         }
 
-        public Account(IHdWallet wallet, SecureString password)
+        public Account(
+            IHdWallet wallet,
+            SecureString password,
+            ICurrenciesProvider currenciesProvider,
+            ISymbolsProvider symbolsProvider)
         {
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
 
-            var accountDirectory = Path.GetDirectoryName(Wallet.PathToWallet);
+            Currencies = currenciesProvider.GetCurrencies(Network);
+            Symbols = symbolsProvider.GetSymbols(Network);
 
-            var dataRepository = new LiteDbRepository(
-                pathToDb: $"{accountDirectory}/{DefaultHistoryFileName}",
-                password: password);
-
-            TransactionRepository = dataRepository;
-            OrderRepository = dataRepository;
-            SwapRepository = dataRepository;
+            DataRepository = new LiteDbAccountDataRepository(
+                pathToDb: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultDataFileName}",
+                password: password,
+                currencies: Currencies,
+                symbols: Symbols);
 
             CurrencyAccounts = Currencies
                 .ToDictionary(
                     c => c.Name,
-                    c => CurrencyAccountCreator.Create(c, Wallet, TransactionRepository));
+                    c => CurrencyAccountCreator.Create(c, Wallet, DataRepository));
+
+            UserSettings = UserSettings.TryLoadFromFile(
+                pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
+                password: password);
+
+            if (UserSettings == null)
+                UserSettings = UserSettings.DefaultSettings;
         }
 
-        public static IAccount LoadFromConfiguration(
-            IConfiguration configuration,
-            SecureString password)
+        #region Common
+
+        public void Lock()
         {
-            var pathToAccount = configuration[DefaultAccountKey];
+            Wallet.Lock();
 
-            if (string.IsNullOrEmpty(pathToAccount)) {
-                Log.Error("Path to default account is null or empty");
-                return null;
-            }
+            Locked?.Invoke(this, EventArgs.Empty);
+        }
 
-            if (!File.Exists(PathEx.ToFullPath(pathToAccount))) {
-                Log.Error("Default account not found");
-                return null;
-            }
+        public void Unlock(SecureString password)
+        {
+            Wallet.Unlock(password);
 
-            return new Account(pathToAccount, password);
+            Unlocked?.Invoke(this, EventArgs.Empty);
+        }
+
+        public IAccount UseUserSettings(UserSettings userSettings)
+        {
+            UserSettings = userSettings;
+            return this;
+        }
+
+        public Task<Error> SendAsync(
+            Currency currency,
+            IEnumerable<WalletAddress> from,
+            string to,
+            decimal amount,
+            decimal fee,
+            decimal feePrice,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetAccountByCurrency(currency)
+                .SendAsync(
+                    from: from,
+                    to: to,
+                    amount: amount,
+                    fee: fee,
+                    feePrice: feePrice,
+                    cancellationToken: cancellationToken);
         }
 
         public Task<Error> SendAsync(
@@ -125,72 +163,72 @@ namespace Atomix.Wallet
 
         public Task<decimal> EstimateFeeAsync(
             Currency currency,
+            string to,
             decimal amount,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             return GetAccountByCurrency(currency)
-                .EstimateFeeAsync(amount, cancellationToken);
+                .EstimateFeeAsync(to, amount, cancellationToken);
         }
 
-        public async Task AddUnconfirmedTransactionAsync(
-            IBlockchainTransaction tx,
-            string[] selfAddresses,
-            bool notify = true,
-            CancellationToken cancellationToken = default(CancellationToken))
+        public async Task<Auth> CreateAuthRequestAsync(AuthNonce nonce, uint keyIndex = 0)
         {
-            await GetAccountByCurrency(tx.Currency)
-                .AddUnconfirmedTransactionAsync(tx, selfAddresses, notify, cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        public async Task AddConfirmedTransactionAsync(
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            await GetAccountByCurrency(tx.Currency)
-                .AddConfirmedTransactionAsync(tx, cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        public async Task UpdateTransactionType(
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            await GetAccountByCurrency(tx.Currency)
-                .UpdateTransactionType(tx, cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        public Task<decimal> GetBalanceAsync(
-            Currency currency,
-            string address,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            return GetAccountByCurrency(currency)
-                .GetBalanceAsync(address, cancellationToken);
-        }
-
-        public Task<decimal> GetBalanceAsync(
-            Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            return GetAccountByCurrency(currency)
-                .GetBalanceAsync(cancellationToken);
-        }
-
-        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync()
-        {
-            var result = new List<IBlockchainTransaction>();
-
-            foreach (var currency in Currencies)
+            if (IsLocked)
             {
-                var txs = await GetTransactionsAsync(currency)
-                    .ConfigureAwait(false);
-
-                result.AddRange(txs);
+                Log.Warning("Wallet locked");
+                return null;
             }
 
-            return result;
+            var servicePublicKey = Wallet.GetServicePublicKey(keyIndex);
+
+            var auth = new Auth
+            {
+                TimeStamp = DateTime.UtcNow,
+                Nonce = nonce.Nonce,
+                ClientNonce = Guid.NewGuid().ToString(),
+                PublicKeyHex = servicePublicKey.ToHexString(),
+                Version = ApiVersion
+            };
+
+            var signature = await Wallet
+                .SignByServiceKeyAsync(auth.SignedData, keyIndex)
+                .ConfigureAwait(false);
+
+            auth.Signature = Convert.ToBase64String(signature);
+
+            return auth;
+        }
+
+        public static IAccount LoadFromConfiguration(
+            IConfiguration configuration,
+            SecureString password,
+            ICurrenciesProvider currenciesProvider,
+            ISymbolsProvider symbolsProvider)
+        {
+            var pathToAccount = configuration[DefaultAccountKey];
+
+            if (string.IsNullOrEmpty(pathToAccount))
+            {
+                Log.Error("Path to default account is null or empty");
+                return null;
+            }
+
+            if (!File.Exists(PathEx.ToFullPath(pathToAccount)))
+            {
+                Log.Error("Default account not found");
+                return null;
+            }
+
+            return LoadFromFile(pathToAccount, password, currenciesProvider, symbolsProvider);
+        }
+
+        public static Account LoadFromFile(
+            string pathToAccount,
+            SecureString password,
+            ICurrenciesProvider currenciesProvider,
+            ISymbolsProvider symbolsProvider)
+        {
+            return new Account(pathToAccount, password, currenciesProvider, symbolsProvider);
         }
 
         private ICurrencyAccount GetAccountByCurrency(Currency currency)
@@ -201,37 +239,90 @@ namespace Atomix.Wallet
             throw new NotSupportedException($"Not supported currency {currency.Name}");
         }
 
-        #region Wallet
+        #endregion Common
 
-        public void Lock()
-        {
-            Wallet.Lock();
+        #region Balances
 
-            Locked?.Invoke(this, EventArgs.Empty);
-        }
-
-        public void Unlock(SecureString password)
-        {
-            Wallet.Unlock(password);
-
-            Unlocked?.Invoke(this, EventArgs.Empty);
-        }
-
-        public WalletAddress GetAddress(
+        public Task<Balance> GetBalanceAsync(
             Currency currency,
-            uint chain,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return Task.FromResult(GetAccountByCurrency(currency).GetBalance());
+        }
+
+        public Task<Balance> GetAddressBalanceAsync(
+            Currency currency,
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetAccountByCurrency(currency)
+                .GetAddressBalanceAsync(address, cancellationToken);
+        }
+
+        public Task UpdateBalanceAsync(
+            Currency currency,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetAccountByCurrency(currency)
+                .UpdateBalanceAsync(cancellationToken);
+        }
+
+        public Task UpdateBalanceAsync(
+            Currency currency,
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetAccountByCurrency(currency)
+                .UpdateBalanceAsync(address, cancellationToken);
+        }
+
+        #endregion Balances
+
+        #region Addresses
+
+        public Task<WalletAddress> DivideAddressAsync(
+            Currency currency,
+            int chain,
             uint index)
         {
-            return Wallet.GetAddress(currency, chain, index);
+            return GetAccountByCurrency(currency)
+                .DivideAddressAsync(chain, index);
+        }
+
+        public Task<WalletAddress> ResolveAddressAsync(
+            Currency currency,
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetAccountByCurrency(currency)
+                .ResolveAddressAsync(address, cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             Currency currency,
-            decimal requiredAmount,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             return GetAccountByCurrency(currency)
-                .GetUnspentAddressesAsync(requiredAmount, cancellationToken);
+                .GetUnspentAddressesAsync(cancellationToken);
+        }
+
+        public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+            Currency currency,
+            decimal amount,
+            decimal fee,
+            decimal feePrice,
+            bool isFeePerTransaction,
+            AddressUsagePolicy addressUsagePolicy,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetAccountByCurrency(currency)
+                .GetUnspentAddressesAsync(
+                    amount: amount,
+                    fee: fee,
+                    feePrice: feePrice,
+                    isFeePerTransaction: isFeePerTransaction,
+                    addressUsagePolicy: addressUsagePolicy,
+                    cancellationToken: cancellationToken);
         }
 
         public Task<WalletAddress> GetFreeInternalAddressAsync(
@@ -252,11 +343,10 @@ namespace Atomix.Wallet
 
         public Task<WalletAddress> GetRefundAddressAsync(
             Currency currency,
-            IEnumerable<WalletAddress> paymentAddresses,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             return GetAccountByCurrency(currency)
-                .GetRefundAddressAsync(paymentAddresses, cancellationToken);
+                .GetRefundAddressAsync(cancellationToken);
         }
 
         public Task<WalletAddress> GetRedeemAddressAsync(
@@ -267,157 +357,134 @@ namespace Atomix.Wallet
                 .GetRedeemAddressAsync(cancellationToken);
         }
 
-        #endregion Wallet
+        #endregion Addresses
 
-        #region Transactions Proxy
+        #region Transactions
 
-        public async Task<bool> AddTransactionAsync(IBlockchainTransaction tx)
+        public Task UpsertTransactionAsync(
+            IBlockchainTransaction tx,
+            bool updateBalance = false,
+            bool notifyIfUnconfirmed = true,
+            bool notifyIfBalanceUpdated = true,
+            CancellationToken cancellationToken = default(CancellationToken))
         {
-            var result = await TransactionRepository
-                .AddTransactionAsync(tx)
-                .ConfigureAwait(false);
-
-            GetAccountByCurrency(tx.Currency)
-                .RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
-
-            return result;
-        }
-
-        public async Task<bool> AddOutputsAsync(
-            IEnumerable<ITxOutput> outputs,
-            Currency currency,
-            string address)
-        {
-            var result = await TransactionRepository
-                .AddOutputsAsync(outputs, currency, address)
-                .ConfigureAwait(false);
-
-            GetAccountByCurrency(currency)
-                .RaiseBalanceUpdated(new CurrencyEventArgs(currency));
-
-            return result;
+            return GetAccountByCurrency(tx.Currency)
+                .UpsertTransactionAsync(
+                    tx: tx,
+                    updateBalance: updateBalance,
+                    notifyIfUnconfirmed: notifyIfUnconfirmed,
+                    notifyIfBalanceUpdated: notifyIfBalanceUpdated,
+                    cancellationToken: cancellationToken);
         }
 
         public Task<IBlockchainTransaction> GetTransactionByIdAsync(
             Currency currency,
             string txId)
         {
-            return TransactionRepository.GetTransactionByIdAsync(currency, txId);
+            return DataRepository.GetTransactionByIdAsync(currency, txId);
         }
 
         public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(Currency currency)
         {
-            return TransactionRepository.GetTransactionsAsync(currency);
+            return DataRepository.GetTransactionsAsync(currency);
         }
 
-        public Task<IEnumerable<ITxOutput>> GetUnspentOutputsAsync(
-            Currency currency,
-            bool skipUnconfirmed = true)
+        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync()
         {
-            return TransactionRepository.GetUnspentOutputsAsync(
-                currency,
-                skipUnconfirmed);
+            var result = new List<IBlockchainTransaction>();
+
+            foreach (var currency in Currencies)
+            {
+                var txs = await GetTransactionsAsync(currency)
+                    .ConfigureAwait(false);
+
+                result.AddRange(txs);
+            }
+
+            return result;
         }
 
-        public Task<IEnumerable<ITxOutput>> GetUnspentOutputsAsync(
+        #endregion Transactions
+
+        #region Outputs
+
+        public Task UpsertOutputsAsync(
+            IEnumerable<ITxOutput> outputs,
             Currency currency,
             string address,
-            bool skipUnconfirmed = true)
+            bool notifyIfBalanceUpdated = true)
         {
-            return TransactionRepository.GetUnspentOutputsAsync(
-                currency,
-                address,
-                skipUnconfirmed);
+            return GetAccountByCurrency(currency)
+                .UpsertOutputsAsync(
+                    outputs: outputs,
+                    currency: currency,
+                    address: address,
+                    notifyIfBalanceUpdated: notifyIfBalanceUpdated);
+        }
+
+        public Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(Currency currency)
+        {
+            return DataRepository.GetAvailableOutputsAsync(
+                currency: currency);
+        }
+
+        public Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
+            Currency currency,
+            string address)
+        {
+            return DataRepository.GetAvailableOutputsAsync(
+                currency: currency,
+                address: address);
         }
 
         public Task<IEnumerable<ITxOutput>> GetOutputsAsync(Currency currency)
         {
-            return TransactionRepository.GetOutputsAsync(currency);
+            return DataRepository.GetOutputsAsync(currency);
         }
 
-        public Task<IEnumerable<ITxOutput>> GetOutputsAsync(
-            Currency currency,
-            string address)
+        public Task<IEnumerable<ITxOutput>> GetOutputsAsync(Currency currency, string address)
         {
-            return TransactionRepository.GetOutputsAsync(currency, address);
+            return DataRepository.GetOutputsAsync(currency, address);
         }
 
-        #endregion Transactions Proxy
+        #endregion Outputs
 
-        #region Orders Proxy
+        #region Orders
 
-        public Task<bool> AddOrderAsync(Order order)
+        public Task<bool> UpsertOrderAsync(Order order)
         {
-            return OrderRepository.AddOrderAsync(order);
+            return DataRepository.UpsertOrderAsync(order);
         }
 
-        #endregion Orders Proxy
-
-        #region Swaps Proxy
-
-        public Task<bool> AddSwapAsync(ISwapState swap)
+        public Order GetOrderById(string clientOrderId)
         {
-            return SwapRepository.AddSwapAsync(swap);
+            return DataRepository.GetOrderById(clientOrderId);
         }
 
-        public Task<bool> UpdateSwapAsync(ISwapState swap)
+        #endregion Orders
+
+        #region Swaps
+
+        public Task<bool> AddSwapAsync(ClientSwap clientSwap)
         {
-            return SwapRepository.UpdateSwapAsync(swap);
+            return DataRepository.AddSwapAsync(clientSwap);
         }
 
-        public Task<bool> RemoveSwapAsync(ISwapState swap)
+        public Task<bool> UpdateSwapAsync(ClientSwap clientSwap)
         {
-            return SwapRepository.RemoveSwapAsync(swap);
+            return DataRepository.UpdateSwapAsync(clientSwap);
         }
 
-        public Task<ISwapState> GetSwapByIdAsync(Guid swapId)
+        public Task<ClientSwap> GetSwapByIdAsync(long swapId)
         {
-            return SwapRepository.GetSwapByIdAsync(swapId);
+            return DataRepository.GetSwapByIdAsync(swapId);
         }
 
-        public Task<IEnumerable<ISwapState>> GetSwapsAsync()
+        public Task<IEnumerable<ClientSwap>> GetSwapsAsync()
         {
-            return SwapRepository.GetSwapsAsync();
+            return DataRepository.GetSwapsAsync();
         }
 
-        public async Task LoadSwapsAsync()
-        {
-            var _ = await SwapRepository
-                .GetSwapsAsync()
-                .ConfigureAwait(false);
-
-            SwapsLoaded?.Invoke(this, EventArgs.Empty);
-        }
-
-        #endregion Swaps Proxy
-
-        public async Task<Auth> CreateAuthRequestAsync(
-            AuthNonce nonce,
-            uint keyIndex = 0)
-        {
-            if (IsLocked)
-            {
-                Log.Warning("Wallet locked");
-                return null;
-            }
-
-            var servicePublicKey = Wallet.GetServicePublicKey(keyIndex);
-
-            var auth = new Auth
-            {
-                TimeStamp = DateTime.UtcNow,
-                Nonce = nonce.Nonce,
-                ClientNonce = Guid.NewGuid().ToString(),
-                PublicKeyHex = servicePublicKey.ToHexString()
-            };
-
-            var signature = await Wallet
-                .SignByServiceKeyAsync(auth.SignedData, keyIndex)
-                .ConfigureAwait(false);
-
-            auth.Signature = Convert.ToBase64String(signature);
-
-            return auth;
-        }
+        #endregion Swaps
     }
 }

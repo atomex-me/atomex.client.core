@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using Atomix.Blockchain;
 using Atomix.Blockchain.Abstract;
@@ -10,6 +9,7 @@ using Atomix.Common.Abstract;
 using Atomix.Core;
 using Atomix.Core.Entities;
 using Atomix.Swaps.Abstract;
+using Atomix.Swaps.Tasks;
 using Atomix.Wallet;
 using Atomix.Wallet.Abstract;
 using Serilog;
@@ -22,232 +22,67 @@ namespace Atomix.Swaps.BitcoinBased
 
         public BitcoinBasedSwap(
             Currency currency,
-            SwapState swapState,
             IAccount account,
             ISwapClient swapClient,
             IBackgroundTaskPerformer taskPerformer,
             IBitcoinBasedSwapTransactionFactory transactionFactory)
             : base(
                 currency,
-                swapState,
                 account,
                 swapClient,
                 taskPerformer)
         {
-            _transactionFactory = transactionFactory ?? throw new ArgumentNullException(nameof(transactionFactory));
+            _transactionFactory = transactionFactory ??
+                throw new ArgumentNullException(nameof(transactionFactory));
         }
 
-        public override async Task InitiateSwapAsync()
+        public override async Task BroadcastPaymentAsync(ClientSwap swap)
         {
-            Log.Debug(
-                messageTemplate: "Initiate swap {@swapId}",
-                propertyValue: _swapState.Id);
-
-            CreateSecret();
-            CreateSecretHash();
-
-            SendData(SwapDataType.SecretHash, _swapState.SecretHash);
-
-            _swapState.PaymentTx = await CreatePaymentTxAsync()
-                .ConfigureAwait(false);
-
-            _swapState.PaymentTx = await SignPaymentTxAsync(
-                    paymentTx: (IBitcoinBasedTransaction)_swapState.PaymentTx)
-                .ConfigureAwait(false);
-
-            _swapState.SetPaymentSigned();
-
-            _swapState.RefundTx = await CreateRefundTxAsync(
-                    paymentTx: (IBitcoinBasedTransaction)_swapState.PaymentTx,
-                    lockTime: TimeSpan.FromHours(DefaultInitiatorLockTimeHours))
-                .ConfigureAwait(false);
-
-            SendTransactionData(SwapDataType.InitiatorPayment, _swapState.PaymentTx);
-            SendTransactionData(SwapDataType.InitiatorRefund, _swapState.RefundTx);
-        }
-
-        public override async Task AcceptSwapAsync()
-        {
-            Log.Debug(
-                messageTemplate: "Accept swap {@swapId}",
-                propertyValue: _swapState.Id);
-
-            _swapState.PaymentTx = await CreatePaymentTxAsync()
-                .ConfigureAwait(false);
-
-            _swapState.PaymentTx = await SignPaymentTxAsync(
-                    paymentTx: (IBitcoinBasedTransaction)_swapState.PaymentTx)
-                .ConfigureAwait(false);
-
-            _swapState.SetPaymentSigned();
-
-            _swapState.RefundTx = await CreateRefundTxAsync(
-                    paymentTx: (IBitcoinBasedTransaction)_swapState.PaymentTx,
-                    lockTime: TimeSpan.FromHours(DefaultCounterPartyLockTimeHours))
-                .ConfigureAwait(false);
-
-            SendTransactionData(SwapDataType.CounterPartyPayment, _swapState.PaymentTx);
-            SendTransactionData(SwapDataType.CounterPartyRefund, _swapState.RefundTx);
-        }
-
-        public override Task PrepareToReceiveAsync()
-        {
-            // nothing to do for purchased bitcoin base party
-            return Task.CompletedTask;
-        }
-
-        public override async Task RestoreSwapAsync()
-        {
-            if (_swapState.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast))
+            if (swap.IsAcceptor &&
+                (!swap.StateFlags.HasFlag(SwapStateFlags.HasPartyPayment) ||
+                 !swap.StateFlags.HasFlag(SwapStateFlags.IsPartyPaymentConfirmed)))
             {
-                _taskPerformer.EnqueueTask(new TransactionConfirmedTask
-                {
-                    Currency = _swapState.Order.SoldCurrency(),
-                    SwapState = _swapState,
-                    Interval = DefaultConfirmationCheckInterval,
-                    TxId = _swapState.RefundTx.Id,
-                    CompleteHandler = RefundConfirmedEventHandler
-                });
+                Log.Debug("CounterParty is not ready to broadcast payment tx for swap {@swap}", swap.Id);
 
                 return;
             }
 
-            if (_swapState.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-            {
-                if (_swapState.PaymentTx == null &&
-                    _swapState.PaymentTxId == null)
-                {
-                    Log.Error(
-                        "Error while trying to restore swap with id {@id}. Payment transaction information not saved.",
-                        _swapState.Id);
-                    return;
-                }
+            var lockTimeInSeconds = swap.IsInitiator
+                ? DefaultInitiatorLockTimeInSeconds
+                : DefaultAcceptorLockTimeInSeconds;
 
-                var needSign = !_swapState.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed);
-
-                await PrepareRefundAsync(needSign)
-                    .ConfigureAwait(false);
-
-                return;
-            }
-
-            // reject swap in others cases
-            _swapState.Cancel();
-        }
-
-        public override Task HandleSwapData(SwapData swapData)
-        {
-            switch (swapData.Type)
-            {
-                case SwapDataType.InitiatorPayment:
-                    return HandleInitiatorPaymentTxAsync(swapData.Data);
-                case SwapDataType.InitiatorRefund:
-                    return HandleInitiatorRefundTxAsync(swapData.Data);
-                case SwapDataType.InitiatorRefundSigned:
-                    return HandleInitiatorRefundSignedTxAsync(swapData.Data);
-                case SwapDataType.InitiatorPaymentTxId:
-                    return HandleInitiatorPaymentTxId(Encoding.UTF8.GetString(swapData.Data));
-                case SwapDataType.CounterPartyPayment:
-                    return HandleCounterPartyPaymentTxAsync(swapData.Data);
-                case SwapDataType.CounterPartyRefund:
-                    return HandleCounterPartyRefundTxAsync(swapData.Data);
-                case SwapDataType.CounterPartyRefundSigned:
-                    return HandleCounterPartyRefundSignedTxAsync(swapData.Data);
-                case SwapDataType.CounterPartyPaymentTxId:
-                    return HandleCounterPartyPaymentTxId(Encoding.UTF8.GetString(swapData.Data));
-                default:
-                    throw new Exception("Invalid swap data type");
-            }
-        }
-
-        public override async Task RedeemAsync()
-        {
-            var currency = _swapState.Order.PurchasedCurrency();
-
-            var redeemAddress = await _account
-                .GetFreeInternalAddressAsync(currency)
+            await CreatePaymentAsync(swap, lockTimeInSeconds)
                 .ConfigureAwait(false);
 
-            // create redeem tx
-            _swapState.RedeemTx = await CreateRedeemTxAsync(
-                    paymentTx: (IBitcoinBasedTransaction)_swapState.PartyPaymentTx,
-                    redeemAddress: redeemAddress)
-                .ConfigureAwait(false);
+            Log.Debug("Broadcast payment tx for swap {@swap}", swap.Id);
 
-            // sign redeem tx
-            _swapState.RedeemTx = await SignRedeemTxAsync(
-                    redeemTx: (IBitcoinBasedTransaction)_swapState.RedeemTx,
-                    paymentTx: (IBitcoinBasedTransaction)_swapState.PartyPaymentTx)
-                .ConfigureAwait(false);
-
-            _swapState.SetRedeemSigned();
-
-            // broadcast redeem tx
-            await BroadcastRedeemAsync(_swapState.RedeemTx)
-                .ConfigureAwait(false);
-
-            _swapState.SetRedeemBroadcast();
-
-            // add new unconfirmed transaction
-            await _account
-                .AddUnconfirmedTransactionAsync(
-                    tx: _swapState.RedeemTx,
-                    selfAddresses: new[] { redeemAddress.Address })
-                .ConfigureAwait(false);
-        }
-
-        public override async Task BroadcastPaymentAsync()
-        {
-            if (_swapState.IsCounterParty &&
-                (!_swapState.StateFlags.HasFlag(SwapStateFlags.HasPartyPayment) ||
-                 !_swapState.StateFlags.HasFlag(SwapStateFlags.IsPartyPaymentConfirmed) ||
-                 !_swapState.StateFlags.HasFlag(SwapStateFlags.IsRefundSigned)))
-            {
-                Log.Debug(
-                    "CounterParty is not ready to broadcast payment tx for swap {@swap}",
-                    _swapState.Id);
-                return;
-            }
-
-            Log.Debug(
-                messageTemplate: "Broadcast payment tx for swap {@swap}",
-                propertyValue: _swapState.Id);
-
-            var currency = _swapState.Order.SoldCurrency();
+            var currency = swap.SoldCurrency;
 
             // broadcast payment transaction
             var txId = await currency.BlockchainApi
-                .BroadcastAsync(_swapState.PaymentTx)
+                .BroadcastAsync(swap.PaymentTx)
                 .ConfigureAwait(false);
 
-            if (txId == null)
-                throw new Exception("Transaction Id is null");
+            swap.PaymentTxId = txId ?? throw new Exception("Transaction Id is null");
+            swap.SetPaymentBroadcast();
+            RaiseSwapUpdated(swap, SwapStateFlags.IsPaymentBroadcast);
 
-            _swapState.SetPaymentBroadcast();
-
-            Log.Debug(
-                messageTemplate: "Payment txId {@id}",
-                propertyValue: txId);
+            Log.Debug("Payment txId {@id}", txId);
 
             // account new unconfirmed transaction
-            await _account
-                .AddUnconfirmedTransactionAsync(
-                    tx: _swapState.PaymentTx,
-                    selfAddresses: new[] { _swapState.Order.RefundWallet.Address },
-                    notify: false)
+            await Account
+                .UpsertTransactionAsync(
+                    tx: swap.PaymentTx,
+                    updateBalance: true,
+                    notifyIfUnconfirmed: false)
                 .ConfigureAwait(false);
 
-            if (_swapState.IsInitiator)
-            {
-                // send payment txId to counterParty
-                SendData(SwapDataType.InitiatorPaymentTxId, Encoding.UTF8.GetBytes(txId));
-            }
-            else
-            {
-                // send payment txId to initiator
-                SendData(SwapDataType.CounterPartyPaymentTxId, Encoding.UTF8.GetBytes(txId));
+            // send payment txId to party
+            SwapClient.SwapPaymentAsync(swap);
 
-                var swapOutputs = ((IBitcoinBasedTransaction)_swapState.PaymentTx)
+            if (swap.IsAcceptor)
+            {
+                var swapOutputs = ((IBitcoinBasedTransaction)swap.PaymentTx)
                     .SwapOutputs()
                     .ToList();
 
@@ -257,10 +92,10 @@ namespace Atomix.Swaps.BitcoinBased
                         description: "Payment tx must have only one swap output");
 
                 // track counter party payment spent event
-                _taskPerformer.EnqueueTask(new BitcoinBasedOutputSpentTask
+                TaskPerformer.EnqueueTask(new BitcoinBasedOutputSpentTask
                 {
                     Currency = currency,
-                    SwapState = _swapState,
+                    Swap = swap,
                     OutputHash = txId,
                     OutputIndex = swapOutputs.First().Index,
                     Interval = DefaultOutputSpentCheckInterval,
@@ -269,486 +104,299 @@ namespace Atomix.Swaps.BitcoinBased
             }
 
             // track payment transaction confirmation
-            _taskPerformer.EnqueueTask(new TransactionConfirmedTask
+            TaskPerformer.EnqueueTask(new TransactionConfirmationCheckTask
             {
                 Currency = currency,
-                SwapState = _swapState,
+                Swap = swap,
                 TxId = txId,
                 Interval = DefaultConfirmationCheckInterval,
                 CompleteHandler = PaymentConfirmedEventHandler
             });
         }
 
-        private async Task HandleInitiatorPaymentTxAsync(byte[] transactionBytes)
+        private async Task CreatePaymentAsync(ClientSwap swap, int lockTimeInSeconds)
         {
-            Log.Debug(
-                messageTemplate: "Handle initiator's payment tx for swap {@swapId}",
-                propertyValue: _swapState.Id);
+            var lockTime = swap.TimeStamp.ToUniversalTime() + TimeSpan.FromSeconds(lockTimeInSeconds);
 
-            if (_swapState.IsInitiator)
-                throw new InternalException(
-                    code: Errors.WrongSwapMessageOrder,
-                    description: $"Initiator received initiator's payment tx for swap {_swapState.Id}");
-
-            if (_swapState.PartyPaymentTx != null)
-                throw new InternalException(
-                    code: Errors.WrongSwapMessageOrder,
-                    description: $"Initiator's payment tx already received for swap {_swapState.Id}");
-
-            var currency = (BitcoinBasedCurrency)_swapState.Order.PurchasedCurrency();
-
-            var paymentTx = ParseTransaction(currency, transactionBytes);
-
-            if (!TransactionVerifier.TryVerifyPaymentTx(paymentTx, _swapState.Order, out var error))
-                throw new InternalException(error);
-
-            Log.Debug(
-                "Initiator's payment tx successfully received for swap {@swapId}",
-                _swapState.Id);
-
-            _swapState.PartyPaymentTx = paymentTx;
-
-            await SignAndSendPartyRefundAsync()
+            var refundAddress = await Account
+                .GetRefundAddressAsync(Currency)
                 .ConfigureAwait(false);
+
+            swap.PaymentTx = await CreatePaymentTxAsync(
+                    swap: swap,
+                    refundAddress: refundAddress.Address,
+                    lockTime: lockTime)
+                .ConfigureAwait(false);
+
+            swap.PaymentTx = await SignPaymentTxAsync(
+                    swap: swap,
+                    paymentTx: (IBitcoinBasedTransaction)swap.PaymentTx)
+                .ConfigureAwait(false);
+
+            swap.SetPaymentSigned();
+            RaiseSwapUpdated(swap, SwapStateFlags.IsPaymentSigned);
+
+            swap.RefundTx = await CreateRefundTxAsync(
+                    swap: swap,
+                    paymentTx: (IBitcoinBasedTransaction)swap.PaymentTx,
+                    refundAddress: refundAddress.Address,
+                    lockTime: lockTime)
+                .ConfigureAwait(false);
+
+            swap.RefundTx = await SignRefundTxAsync(
+                    swap: swap,
+                    refundTx: (IBitcoinBasedTransaction)swap.RefundTx,
+                    paymentTx: (IBitcoinBasedTransaction)swap.PaymentTx,
+                    refundAddress: refundAddress)
+                .ConfigureAwait(false);
+
+            swap.SetRefundSigned();
+            RaiseSwapUpdated(swap, SwapStateFlags.IsRefundSigned);
         }
 
-        private async Task HandleInitiatorRefundTxAsync(byte[] transactionBytes)
+        public override Task PrepareToReceiveAsync(ClientSwap swap)
         {
-            Log.Debug(
-                messageTemplate: "Handle initiator's refund tx for swap {@swapId}",
-                propertyValue: _swapState.Id);
-
-            if (_swapState.IsInitiator)
-                throw new InternalException(
-                    code: Errors.WrongSwapMessageOrder,
-                    description: $"Initiator received initiator's refund tx for swap {_swapState.Id}");
-
-            if (_swapState.PartyRefundTx != null)
-                throw new InternalException(
-                    code: Errors.WrongSwapMessageOrder,
-                    description: $"Initiator's refund tx already received for swap {_swapState.Id}");
-
-            var currency = (BitcoinBasedCurrency)_swapState.Order.PurchasedCurrency();
-
-            var refundTx = ParseTransaction(currency, transactionBytes);
-
-            if (!TransactionVerifier.TryVerifyRefundTx(refundTx, _swapState.Order, out var error))
-                throw new InternalException(error);
-
-            Log.Debug(
-                "Initiator's refund tx successfully received for swap {@swapId}",
-                _swapState.Id);
-
-            _swapState.PartyRefundTx = refundTx;
-
-            await SignAndSendPartyRefundAsync()
-                .ConfigureAwait(false);
+            // nothing to do for purchased bitcoin base party
+            return Task.CompletedTask;
         }
 
-        private async Task HandleInitiatorRefundSignedTxAsync(byte[] transactionBytes)
+        public override Task RestoreSwapAsync(ClientSwap swap)
         {
-            Log.Debug(
-                messageTemplate: "Handle initiator's refund signed tx for swap {@swapId}",
-                propertyValue: _swapState.Id);
-
-            if (_swapState.IsCounterParty)
-                throw new InternalException(
-                    code: Errors.WrongSwapMessageOrder,
-                    description: $"CounterParty received signed initiator's refund tx for swap {_swapState.Id}");
-
-            //if (SwapState.InitiatorRefundSignedTx != null)
-            //    throw new InternalException(
-            //        code: Errors.WrongSwapMessageOrder,
-            //        description: $"Initiator's signed refund tx already received for swap {SwapState.Id}");
-
-            var currency = (BitcoinBasedCurrency)_swapState.Order.SoldCurrency();
-
-            var refundTx = ParseTransaction(currency, transactionBytes);
-
-            if (!TransactionVerifier.TryVerifySignedRefundTx(refundTx, _swapState.Order, out var error))
-                throw new InternalException(error);
-
-            Log.Debug(
-                "Initiator's refund tx successfully received for swap {@swapId}",
-                _swapState.Id);
-
-            _swapState.RefundTx = refundTx;
-            _swapState.SetRefundSigned();
-
-            await BroadcastPaymentAsync()
-                .ConfigureAwait(false);
+            return swap.IsSoldCurrency(Currency)
+                ? RestoreForSoldCurrencyAsync(swap)
+                : RestoreForPurchasedCurrencyAsync(swap);
         }
 
-        private async Task HandleInitiatorPaymentTxId(string txId)
+        private async Task RestoreForSoldCurrencyAsync(ClientSwap swap)
         {
-            Log.Debug(
-                messageTemplate: "Handle initiator's payment txId for swap {@swapId}",
-                propertyValue: _swapState.Id);
+            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
+            {
+                if (!(swap.PaymentTx is IBitcoinBasedTransaction tx))
+                {
+                    Log.Error("Can't restore swap {@id}. Payment tx is null.", swap.Id);
+                    return;
+                }
 
-            if (_swapState.IsInitiator)
+                // check payment transaction spent
+                var api = (IInOutBlockchainApi)Currency.BlockchainApi;
+
+                var spentPoint = await api
+                    .IsTransactionOutputSpent(tx.Id, tx.SwapOutputs().First().Index) // todo: check specific output 
+                    .ConfigureAwait(false);
+
+                if (spentPoint != null && (swap.RefundTx == null ||
+                                           (swap.RefundTx != null && spentPoint.Hash != swap.RefundTx.Id)))
+                {
+                    // raise redeem for counter party in other chain
+                    if (swap.IsAcceptor)
+                        PaymentSpentEventHandler(swap, spentPoint);
+                    // else
+                    //    nothing to do (waiting for redeem confirmation in another chain)
+                    return;
+                }
+
+                if (!(swap.RefundTx is IBitcoinBasedTransaction refundTx))
+                {
+                    Log.Error("Can't restore swap {@id}. Refund tx is null", swap.Id);
+                    return;
+                }
+
+                if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast))
+                {
+                    // wait for refund confirmation
+                    TaskPerformer.EnqueueTask(new TransactionConfirmationCheckTask
+                    {
+                        Currency = Currency,
+                        Swap = swap,
+                        Interval = DefaultConfirmationCheckInterval,
+                        TxId = refundTx.Id,
+                        CompleteHandler = RefundConfirmedEventHandler
+                    });
+                }
+                else
+                {
+                    var refundTimeUtc = swap.TimeStamp.ToUniversalTime() +
+                                        TimeSpan.FromSeconds(swap.IsInitiator
+                                            ? DefaultInitiatorLockTimeInSeconds
+                                            : DefaultAcceptorLockTimeInSeconds);
+
+                    // refund control
+                    TaskPerformer.EnqueueTask(new RefundTimeControlTask
+                    {
+                        Currency = Currency,
+                        Swap = swap,
+                        Interval = DefaultRefundInterval,
+                        RefundTimeUtc = refundTimeUtc,
+                        CompleteHandler = RefundTimeControlEventHandler
+                    });
+                }
+            }
+            else
+            {
+                if (DateTime.UtcNow < swap.TimeStamp.ToUniversalTime() + DefaultMaxSwapTimeout)
+                {
+                    if (swap.IsInitiator)
+                    {
+                        // todo: initiate swap
+
+                        //await InitiateSwapAsync(swapState)
+                        //    .ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        // todo: request secret hash from server
+                    }
+                }
+                else
+                {
+                    swap.Cancel();
+                    RaiseSwapUpdated(swap, SwapStateFlags.IsCanceled);
+                }
+            }
+        }
+
+        private Task RestoreForPurchasedCurrencyAsync(ClientSwap swap)
+        {
+            if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast) &&
+                !swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemConfirmed))
+            {
+                if (!(swap.RedeemTx is IBitcoinBasedTransaction redeemTx))
+                {
+                    Log.Error("Can't restore swap {@id}. Redeem tx is null", swap.Id);
+                    return Task.CompletedTask;
+                }
+
+                TaskPerformer.EnqueueTask(new TransactionConfirmationCheckTask
+                {
+                    Currency = Currency,
+                    Swap = swap,
+                    Interval = DefaultConfirmationCheckInterval,
+                    TxId = redeemTx.Id,
+                    CompleteHandler = RedeemConfirmedEventHandler
+                });
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public override async Task HandlePartyPaymentAsync(ClientSwap swap, ClientSwap clientSwap)
+        {
+            Log.Debug("Handle party's payment txId for swap {@swapId}", swap.Id);
+
+            if (swap.PartyPaymentTxId != null)
                 throw new InternalException(
                     code: Errors.WrongSwapMessageOrder,
-                    description: $"Initiator received initiator's payment txId for swap {_swapState.Id}");
+                    description: $"Party's payment txId already received for swap {swap.Id}");
 
-            if (_swapState.PartyPaymentTxId != null)
+            if (clientSwap.PartyPaymentTxId == null)
                 throw new InternalException(
-                    code: Errors.WrongSwapMessageOrder,
-                    description: $"Initiator's payment txId already received for swap {_swapState.Id}");
+                    code: Errors.InvalidPaymentTxId,
+                    description: "TxId is null");
 
-            _swapState.PartyPaymentTxId = txId;
+            swap.PartyPaymentTxId = clientSwap.PartyPaymentTxId;
+            RaiseSwapUpdated(swap, SwapStateFlags.Empty);
 
-            // get initiator payment tx from blockchain
-            await GetPartyPaymentTxAsync()
+            // get party payment tx from block-chain
+            var currency = (BitcoinBasedCurrency)swap.PurchasedCurrency;
+
+            var tx = await GetPaymentTxAsync(currency, swap.PartyPaymentTxId)
                 .ConfigureAwait(false);
+
+            var refundLockTime = swap.IsInitiator
+                ? DefaultAcceptorLockTimeInSeconds
+                : DefaultInitiatorLockTimeInSeconds;
+
+            if (!BitcoinBasedTransactionVerifier.TryVerifyPartyPaymentTx(
+                tx: tx,
+                swap: swap,
+                secretHash: swap.SecretHash,
+                refundLockTime: refundLockTime,
+                error: out var error))
+            {
+                throw new InternalException(error);
+            }
+
+            swap.PartyPaymentTx = tx;
+            RaiseSwapUpdated(swap, SwapStateFlags.HasPartyPayment);
 
             // track initiator payment confirmation
-            _taskPerformer.EnqueueTask(new TransactionConfirmedTask
+            TaskPerformer.EnqueueTask(new TransactionConfirmationCheckTask
             {
-                Currency = _swapState.Order.PurchasedCurrency(),
-                SwapState = _swapState,
-                TxId = txId,
+                Currency = swap.PurchasedCurrency,
+                Swap = swap,
+                TxId = swap.PartyPaymentTxId,
                 Interval = DefaultConfirmationCheckInterval,
                 CompleteHandler = PartyPaymentConfirmedEventHandler
             });
         }
 
-        private async Task HandleCounterPartyPaymentTxAsync(byte[] transactionBytes)
+        public override async Task RedeemAsync(ClientSwap swap)
         {
-            Log.Debug(
-                messageTemplate: "Handle counterParty's payment tx for swap {@swapId}",
-                propertyValue: _swapState.Id);
+            var currency = swap.PurchasedCurrency;
 
-            if (_swapState.IsCounterParty)
-                throw new InternalException(
-                    code: Errors.WrongSwapMessageOrder,
-                    description: $"CounterParty received counterParty's payment tx for swap {_swapState.Id}");
-
-            if (_swapState.PartyPaymentTx != null)
-                throw new InternalException(
-                    code: Errors.WrongSwapMessageOrder,
-                    description: $"CounterParty's payment tx already received for swap {_swapState.Id}");
-
-            var currency = (BitcoinBasedCurrency)_swapState.Order.PurchasedCurrency();
-
-            var paymentTx = ParseTransaction(currency, transactionBytes);
-
-            if (!TransactionVerifier.TryVerifyPaymentTx(paymentTx, _swapState.Order, out var error))
-                throw new InternalException(error);
-
-            Log.Debug(
-                "CounterParty's payment tx successfully received for swap {@swap}",
-                _swapState.Id);
-
-            _swapState.PartyPaymentTx = paymentTx;
-
-            await SignAndSendPartyRefundAsync()
-                .ConfigureAwait(false);
-        }
-
-        private async Task HandleCounterPartyRefundTxAsync(byte[] transactionBytes)
-        {
-            Log.Debug(
-                messageTemplate: "Handle counterParty's refund tx for swap {@swapId}",
-                propertyValue: _swapState.Id);
-
-            if (_swapState.IsCounterParty)
-                throw new InternalException(
-                    code: Errors.WrongSwapMessageOrder,
-                    description: $"CounterParty received counterParty's refund tx for swap {_swapState.Id}");
-
-            if (_swapState.PartyRefundTx != null)
-                throw new InternalException(
-                    code: Errors.WrongSwapMessageOrder,
-                    description: $"CounterParty's refund tx already received for swap {_swapState.Id}");
-
-            var currency = (BitcoinBasedCurrency)_swapState.Order.PurchasedCurrency();
-
-            var refundTx = ParseTransaction(currency, transactionBytes);
-
-            if (!TransactionVerifier.TryVerifyRefundTx(refundTx, _swapState.Order, out var error))
-                throw new InternalException(error);
-
-            Log.Debug(
-                "CounterParty's refund tx successfully received for swap {@swapId}",
-                _swapState.Id);
-
-            _swapState.PartyRefundTx = refundTx;
-
-            await SignAndSendPartyRefundAsync()
-                .ConfigureAwait(false);
-        }
-
-        private async Task HandleCounterPartyRefundSignedTxAsync(byte[] transactionBytes)
-        {
-            Log.Debug(
-                messageTemplate: "Handle counterParty's refund signed tx for swap {@swapId}",
-                propertyValue: _swapState.Id);
-
-            if (_swapState.IsInitiator)
-                throw new InternalException(
-                    code: Errors.WrongSwapMessageOrder,
-                    description: $"Initiator received signed counterParty's refund tx for swap {_swapState.Id}");
-
-            //if (SwapState.CounterPartyRefundSignedTx != null)
-            //    throw new InternalException(
-            //        code: Errors.WrongSwapMessageOrder,
-            //        description: $"CounterParty's signed refund tx already received for swap {SwapState.Id}");
-
-            var currency = (BitcoinBasedCurrency)_swapState.Order.SoldCurrency();
-
-            var refundTx = ParseTransaction(currency, transactionBytes);
-
-            if (!TransactionVerifier.TryVerifySignedRefundTx(refundTx, _swapState.Order, out var error))
-                throw new InternalException(error);
-
-            Log.Debug(
-                "CounterParty's refund tx successfully received for swap {@swapId}",
-                _swapState.Id);
-
-            _swapState.RefundTx = refundTx;
-            _swapState.SetRefundSigned();
-
-            await BroadcastPaymentAsync()
-                .ConfigureAwait(false);
-        }
-
-        private async Task HandleCounterPartyPaymentTxId(string txId)
-        {
-            Log.Debug(
-                messageTemplate: "Handle counterParty's payment txId for swap {@swapId}",
-                propertyValue: _swapState.Id);
-
-            if (_swapState.IsCounterParty)
-                throw new InternalException(
-                    code: Errors.WrongSwapMessageOrder,
-                    description: $"CounterParty received counterParty's payment txId for swap {_swapState.Id}");
-
-            if (_swapState.PartyPaymentTxId != null)
-                throw new InternalException(
-                    code: Errors.WrongSwapMessageOrder,
-                    description: $"CounterParty's payment txId already received for swap {_swapState.Id}");
-
-            _swapState.PartyPaymentTxId = txId;
-
-            // get counterParty payment tx from blockchain
-            await GetPartyPaymentTxAsync()
+            var redeemAddress = await Account
+                .GetFreeInternalAddressAsync(currency)
                 .ConfigureAwait(false);
 
-            // track counterParty payment confirmation
-            _taskPerformer.EnqueueTask(new TransactionConfirmedTask
-            {
-                Currency = _swapState.Order.PurchasedCurrency(),
-                SwapState = _swapState,
-                TxId = txId,
-                Interval = DefaultConfirmationCheckInterval,
-                CompleteHandler = PartyPaymentConfirmedEventHandler
-            });
-        }
-
-        #region Transaction creation
-
-        private async Task<IBitcoinBasedTransaction> CreatePaymentTxAsync()
-        {
-            var currency = (BitcoinBasedCurrency)_swapState.Order.SoldCurrency();
-
-            Log.Debug(
-                messageTemplate: "Create swap payment {@currency} tx for swap {@swapId}",
-                propertyValue0: currency.Name,
-                propertyValue1: _swapState.Id);
-
-            var tx = await _transactionFactory
-                .CreateSwapPaymentTxAsync(
-                    currency: currency,
-                    order: _swapState.Order,
-                    requisites: _swapState.Requisites,
-                    secretHash: _swapState.SecretHash,
-                    outputsSource: new LocalTxOutputSource(_account))
+            // create redeem tx
+            swap.RedeemTx = await CreateRedeemTxAsync(
+                    swap: swap,
+                    paymentTx: (IBitcoinBasedTransaction)swap.PartyPaymentTx,
+                    redeemAddress: redeemAddress.Address)
                 .ConfigureAwait(false);
 
-            Log.Debug(
-                messageTemplate: "Payment tx successfully created for swap {@swapId}",
-                propertyValue: _swapState.Id);
-
-            return tx;
-        }
-
-        private async Task<IBitcoinBasedTransaction> CreateRefundTxAsync(
-            IBitcoinBasedTransaction paymentTx,
-            TimeSpan lockTime)
-        {
-            Log.Debug(
-                messageTemplate: "Create refund tx for swap {@swapId}",
-                propertyValue: _swapState.Id);
-
-            var tx = await _transactionFactory
-                .CreateSwapRefundTxAsync(
-                    paymentTx: paymentTx,
-                    order: _swapState.Order,
-                    lockTime: DateTimeOffset.UtcNow + lockTime)
-                .ConfigureAwait(false);
-
-            if (tx == null)
-                throw new InternalException(
-                    code: Errors.TransactionCreationError,
-                    description: $"Refund tx creation error for swap {_swapState.Id}");
-
-            Log.Debug(
-                messageTemplate: "Refund tx successfully created for swap {@swapId}",
-                propertyValue: _swapState.Id);
-
-            return tx;
-        }
-
-        private async Task<IBitcoinBasedTransaction> CreateRedeemTxAsync(
-            IBitcoinBasedTransaction paymentTx,
-            WalletAddress redeemAddress)
-        {
-            Log.Debug(
-                messageTemplate: "Create redeem tx for swap {@swapId}",
-                propertyValue: _swapState.Id);
-
-            var tx = await _transactionFactory
-                .CreateSwapRedeemTxAsync(
-                    paymentTx: paymentTx,
-                    order: _swapState.Order,
+            // sign redeem tx
+            swap.RedeemTx = await SignRedeemTxAsync(
+                    swap: swap,
+                    redeemTx: (IBitcoinBasedTransaction)swap.RedeemTx,
+                    paymentTx: (IBitcoinBasedTransaction)swap.PartyPaymentTx,
                     redeemAddress: redeemAddress)
                 .ConfigureAwait(false);
 
-            if (tx == null)
-                throw new InternalException(
-                    code: Errors.TransactionCreationError,
-                    description: $"Redeem tx creation error for swap {_swapState.Id}");
+            swap.SetRedeemSigned();
+            RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemSigned);
 
-            return tx;
-        }
-
-        #endregion Transaction creation
-
-        #region Transaction signing
-
-        private async Task<IBitcoinBasedTransaction> SignPaymentTxAsync(
-            IBitcoinBasedTransaction paymentTx)
-        {
-            Log.Debug(
-                messageTemplate: "Sign payment tx for swap {@swapId}",
-                propertyValue: _swapState.Id);
-
-            var tx = await new BitcoinBasedSwapSigner(_account)
-                .SignPaymentTxAsync(paymentTx)
+            // broadcast redeem tx
+            await BroadcastRedeemAsync(
+                    swap: swap,
+                    redeemTx: swap.RedeemTx)
                 .ConfigureAwait(false);
 
-            if (tx == null)
-                throw new InternalException(
-                    code: Errors.TransactionSigningError,
-                    description: $"Payment tx signing error for swap {_swapState.Id}");
+            swap.SetRedeemBroadcast();
+            RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemBroadcast);
 
-            Log.Debug(
-                messageTemplate: "Payment tx successfully signed for swap {@swapId}",
-                propertyValue: _swapState.Id);
-
-            return tx;
-        }
-
-        private async Task<IBitcoinBasedTransaction> SignRefundTxAsync(
-            IBitcoinBasedTransaction refundTx,
-            IBitcoinBasedTransaction paymentTx)
-        {
-            var tx = await new BitcoinBasedSwapSigner(_account)
-                .SignRefundTxAsync(
-                    refundTx: refundTx,
-                    paymentTx: paymentTx,
-                    order: _swapState.Order)
+            // add new unconfirmed transaction
+            await Account
+                .UpsertTransactionAsync(
+                    tx: swap.RedeemTx,
+                    updateBalance: true)
                 .ConfigureAwait(false);
 
-            if (tx == null)
-                throw new InternalException(
-                    code: Errors.TransactionSigningError,
-                    description: $"Refund tx not signed for swap {_swapState.Id}");
-
-            return tx;
-        }
-
-        private async Task SignAndSendPartyRefundAsync()
-        {
-            if (!_swapState.StateFlags.HasFlag(SwapStateFlags.HasPartyRefund) ||
-                !_swapState.StateFlags.HasFlag(SwapStateFlags.HasPartyPayment) ||
-                _swapState.StateFlags.HasFlag(SwapStateFlags.IsPartyRefundSigned))
+            TaskPerformer.EnqueueTask(new TransactionConfirmationCheckTask
             {
-                Log.Debug(
-                    messageTemplate: "Not ready to sign and send party's refund tx for swap {@swapId}",
-                    propertyValue: _swapState.Id);
-
-                return;
-            }
-
-            _swapState.PartyRefundTx = await SignRefundTxAsync(
-                    refundTx: (IBitcoinBasedTransaction)_swapState.PartyRefundTx,
-                    paymentTx: (IBitcoinBasedTransaction)_swapState.PartyPaymentTx)
-                .ConfigureAwait(false);
-
-            _swapState.SetPartyRefundSigned();
-
-            var dataType = _swapState.IsInitiator
-                ? SwapDataType.CounterPartyRefundSigned
-                : SwapDataType.InitiatorRefundSigned;
-
-            SendTransactionData(dataType, _swapState.PartyRefundTx);
+                Currency = swap.PurchasedCurrency,
+                Swap = swap,
+                Interval = DefaultConfirmationCheckInterval,
+                TxId = swap.RedeemTx.Id,
+                CompleteHandler = RedeemConfirmedEventHandler
+            });
         }
 
-        private async Task<IBitcoinBasedTransaction> SignRedeemTxAsync(
-            IBitcoinBasedTransaction redeemTx,
-            IBitcoinBasedTransaction paymentTx)
+        public override Task WaitForRedeemAsync(ClientSwap swap)
         {
-            var tx = await new BitcoinBasedSwapSigner(_account)
-                .SignRedeemTxAsync(
-                    redeemTx: redeemTx,
-                    paymentTx: paymentTx,
-                    order: _swapState.Order,
-                    secret: _swapState.Secret)
-                .ConfigureAwait(false);
-
-            if (tx == null)
-                throw new InternalException(
-                    code: Errors.TransactionSigningError,
-                    description: $"Redeem tx sign error for swap {_swapState.Id}");
-
-            return tx;
+            // nothing to do
+            return Task.CompletedTask;
         }
 
-        private async Task<IBitcoinBasedTransaction> SignSelfRefundTxAsync(
-            IBitcoinBasedTransaction refundTx,
-            IBitcoinBasedTransaction paymentTx)
+        public override Task PartyRedeemAsync(ClientSwap swap)
         {
-            var tx = await new BitcoinBasedSwapSigner(_account)
-                .SignSelfRefundTxAsync(
-                    refundTx: refundTx,
-                    paymentTx: paymentTx,
-                    order: _swapState.Order)
-                .ConfigureAwait(false);
-
-            if (tx == null)
-                throw new InternalException(
-                    code: Errors.TransactionSigningError,
-                    description: "Self refund signing error");
-
-            return tx;
+            // nothing to do
+            return Task.CompletedTask;
         }
 
-        #endregion Transaction signing
-
-        private IBitcoinBasedTransaction ParseTransaction(BitcoinBasedCurrency currency, byte[] transactionBytes)
+        private async Task BroadcastRedeemAsync(ClientSwap swap, IBlockchainTransaction redeemTx)
         {
-            if (!BitcoinBasedTransactionParser.TryParseTransaction(currency, transactionBytes, out var tx))
-                throw new InternalException(
-                    code: Errors.WrongSwapData,
-                    description: $"Can't parse tx for swap {_swapState.Id}");
-
-            return tx;
-        }
-
-        private async Task BroadcastRedeemAsync(IBlockchainTransaction redeemTx)
-        {
-            var currency = _swapState.Order.PurchasedCurrency();
+            var currency = swap.PurchasedCurrency;
 
             var txId = await currency.BlockchainApi
                 .BroadcastAsync(redeemTx)
@@ -757,65 +405,227 @@ namespace Atomix.Swaps.BitcoinBased
             if (txId == null)
                 throw new Exception("Transaction Id is null");
 
-            Log.Debug(
-                messageTemplate: "Redeem tx {@txId} successfully broadcast for swap {@swapId}",
-                propertyValue0: txId,
-                propertyValue1: _swapState.Id);
+            Log.Debug("Redeem tx {@txId} successfully broadcast for swap {@swapId}", txId, swap.Id);
+        }
+
+        private async Task<IBitcoinBasedTransaction> CreatePaymentTxAsync(
+            ClientSwap swap,
+            string refundAddress,
+            DateTimeOffset lockTime)
+        {
+            var currency = (BitcoinBasedCurrency)swap.SoldCurrency;
+
+            Log.Debug("Create swap payment {@currency} tx for swap {@swapId}",
+                currency.Name,
+                swap.Id);
+
+            var unspentAddresses = (await Account
+                .GetUnspentAddressesAsync(currency)
+                .ConfigureAwait(false))
+                .ToList()
+                .SortList((a, b) => a.AvailableBalance().CompareTo(b.AvailableBalance()))
+                .Select(a => a.Address);
+
+            var tx = await _transactionFactory
+                .CreateSwapPaymentTxAsync(
+                    currency: currency,
+                    swap: swap,
+                    fromWallets: unspentAddresses,
+                    refundAddress: refundAddress,
+                    toAddress: swap.PartyAddress,
+                    lockTime: lockTime,
+                    secretHash: swap.SecretHash,
+                    secretSize: DefaultSecretSize,
+                    outputsSource: new LocalTxOutputSource(Account))
+                .ConfigureAwait(false);
+
+            if (tx == null)
+                throw new InternalException(
+                    code: Errors.TransactionCreationError,
+                    description: $"Payment tx creation error for swap {swap.Id}");
+
+            Log.Debug("Payment tx successfully created for swap {@swapId}", swap.Id);
+
+            return tx;
+        }
+
+        private async Task<IBitcoinBasedTransaction> CreateRefundTxAsync(
+            ClientSwap swap,
+            IBitcoinBasedTransaction paymentTx,
+            string refundAddress,
+            DateTimeOffset lockTime)
+        {
+            Log.Debug("Create refund tx for swap {@swapId}", swap.Id);
+
+            var tx = await _transactionFactory
+                .CreateSwapRefundTxAsync(
+                    paymentTx: paymentTx,
+                    swap: swap,
+                    refundAddress: refundAddress,
+                    lockTime: lockTime)
+                .ConfigureAwait(false);
+
+            if (tx == null)
+                throw new InternalException(
+                    code: Errors.TransactionCreationError,
+                    description: $"Refund tx creation error for swap {swap.Id}");
+
+            Log.Debug("Refund tx successfully created for swap {@swapId}", swap.Id);
+
+            return tx;
+        }
+
+        private async Task<IBitcoinBasedTransaction> CreateRedeemTxAsync(
+            ClientSwap swap,
+            IBitcoinBasedTransaction paymentTx,
+            string redeemAddress)
+        {
+            Log.Debug("Create redeem tx for swap {@swapId}", swap.Id);
+
+            var tx = await _transactionFactory
+                .CreateSwapRedeemTxAsync(
+                    paymentTx: paymentTx,
+                    swap: swap,
+                    redeemAddress: redeemAddress)
+                .ConfigureAwait(false);
+
+            if (tx == null)
+                throw new InternalException(
+                    code: Errors.TransactionCreationError,
+                    description: $"Redeem tx creation error for swap {swap.Id}");
+
+            return tx;
+        }
+
+        private async Task<IBitcoinBasedTransaction> SignPaymentTxAsync(
+            ClientSwap swap,
+            IBitcoinBasedTransaction paymentTx)
+        {
+            Log.Debug("Sign payment tx for swap {@swapId}", swap.Id);
+
+            var tx = await new BitcoinBasedSwapSigner(Account)
+                .SignPaymentTxAsync(paymentTx)
+                .ConfigureAwait(false);
+
+            if (tx == null)
+                throw new InternalException(
+                    code: Errors.TransactionSigningError,
+                    description: $"Payment tx signing error for swap {swap.Id}");
+
+            Log.Debug("Payment tx successfully signed for swap {@swapId}", swap.Id);
+
+            return tx;
+        }
+
+        private async Task<IBitcoinBasedTransaction> SignRefundTxAsync(
+            ClientSwap swap,
+            IBitcoinBasedTransaction refundTx,
+            IBitcoinBasedTransaction paymentTx,
+            WalletAddress refundAddress)
+        {
+            var tx = await new BitcoinBasedSwapSigner(Account)
+                .SignRefundTxAsync(
+                    refundTx: refundTx,
+                    paymentTx: paymentTx,
+                    refundAddress: refundAddress)
+                .ConfigureAwait(false);
+
+            if (tx == null)
+                throw new InternalException(
+                    code: Errors.TransactionSigningError,
+                    description: $"Refund tx not signed for swap {swap.Id}");
+
+            return tx;
+        }
+
+        private async Task<IBitcoinBasedTransaction> SignRedeemTxAsync(
+            ClientSwap swap,
+            IBitcoinBasedTransaction redeemTx,
+            IBitcoinBasedTransaction paymentTx,
+            WalletAddress redeemAddress)
+        {
+            var tx = await new BitcoinBasedSwapSigner(Account)
+                .SignRedeemTxAsync(
+                    redeemTx: redeemTx,
+                    paymentTx: paymentTx,
+                    redeemAddress: redeemAddress,
+                    secret: swap.Secret)
+                .ConfigureAwait(false);
+
+            if (tx == null)
+                throw new InternalException(
+                    code: Errors.TransactionSigningError,
+                    description: $"Redeem tx sign error for swap {swap.Id}");
+
+            return tx;
         }
 
         private async void PaymentConfirmedEventHandler(BackgroundTask task)
         {
-            var confirmedTask = task as TransactionConfirmedTask;
-            var swap = confirmedTask?.SwapState;
+            var confirmationCheckTask = task as TransactionConfirmationCheckTask;
+            var swap = confirmationCheckTask?.Swap;
 
             if (swap == null)
                 return;
 
-            Log.Debug(
-                messageTemplate: "Handle payment confirmed event for swap {@swapId}",
-                propertyValue: swap.Id);
+            Log.Debug("Handle payment confirmed event for swap {@swapId}", swap.Id);
 
             swap.SetPaymentConfirmed();
+            RaiseSwapUpdated(swap, SwapStateFlags.IsPaymentConfirmed);
 
             try
             {
-                if (confirmedTask.Tx != null)
-                    await _account
-                        .AddConfirmedTransactionAsync(confirmedTask.Tx)
+                if (confirmationCheckTask.Transactions.Any())
+                {
+                    await Account
+                        .UpsertTransactionAsync(
+                            tx: confirmationCheckTask.Transactions.First(),
+                            updateBalance: true)
                         .ConfigureAwait(false);
+                }
 
-                await PrepareRefundAsync()
-                    .ConfigureAwait(false);
+                var refundTimeUtc = swap.TimeStamp.ToUniversalTime() +
+                                    TimeSpan.FromSeconds(swap.IsInitiator
+                                        ? DefaultInitiatorLockTimeInSeconds
+                                        : DefaultAcceptorLockTimeInSeconds);
+
+                TaskPerformer.EnqueueTask(new RefundTimeControlTask
+                {
+                    Currency = Currency,
+                    Swap = swap,
+                    Interval = DefaultRefundInterval,
+                    RefundTimeUtc = refundTimeUtc,
+                    CompleteHandler = RefundTimeControlEventHandler
+                });
             }
             catch (Exception e)
             {
                 Log.Error(e, "Error while handle payment tx confirmed event");
             }
 
-            if (_swapState.IsInitiator)
-                RaiseInitiatorPaymentConfirmed(_swapState);
+            if (swap.IsInitiator)
+                RaiseInitiatorPaymentConfirmed(swap);
             else
-                RaiseCounterPartyPaymentConfirmed(_swapState);
+                RaiseAcceptorPaymentConfirmed(swap);
         }
 
         private async void PartyPaymentConfirmedEventHandler(BackgroundTask task)
         {
-            var confirmedTask = task as TransactionConfirmedTask;
-            var swap = confirmedTask?.SwapState;
+            var confirmationCheckTask = task as TransactionConfirmationCheckTask;
+            var swap = confirmationCheckTask?.Swap;
 
             if (swap == null)
                 return;
 
-            Log.Debug(
-                messageTemplate: "Handle party's payment confirmed event for swap {@swapId}",
-                propertyValue: swap.Id);
+            Log.Debug("Handle party's payment confirmed event for swap {@swapId}", swap.Id);
 
             swap.SetPartyPaymentConfirmed();
+            RaiseSwapUpdated(swap, SwapStateFlags.IsPartyPaymentConfirmed);
 
             try
             {
-                if (_swapState.IsInitiator)
-                    await RedeemAsync()
+                if (swap.IsInitiator)
+                    await RedeemAsync(swap)
                         .ConfigureAwait(false);
             }
             catch (Exception e)
@@ -823,63 +633,50 @@ namespace Atomix.Swaps.BitcoinBased
                 Log.Error(e, "Error while handle counterParty's payment tx confirmed event");
             }
 
-            if (_swapState.IsInitiator)
-                RaiseCounterPartyPaymentConfirmed(_swapState);
+            if (swap.IsInitiator)
+                RaiseAcceptorPaymentConfirmed(swap);
             else
-                RaiseInitiatorPaymentConfirmed(_swapState);
-        }
-
-        private async Task PrepareRefundAsync(bool selfSign = true)
-        {
-            if (selfSign)
-            {
-                _swapState.RefundTx = await SignSelfRefundTxAsync(
-                        refundTx: (IBitcoinBasedTransaction)_swapState.RefundTx,
-                        paymentTx: (IBitcoinBasedTransaction)_swapState.PaymentTx)
-                    .ConfigureAwait(false);
-            }
-
-            _taskPerformer.EnqueueTask(new RefundTimeControlTask
-            {
-                Currency = _swapState.Order.SoldCurrency(),
-                SwapState = _swapState,
-                Interval = DefaultRefundInterval,
-                RefundTimeUtc = ((IBitcoinBasedTransaction)_swapState.RefundTx).LockTime,
-                CompleteHandler = RefundTimeControlEventHandler
-            });
+                RaiseInitiatorPaymentConfirmed(swap);
         }
 
         private async void RefundTimeControlEventHandler(BackgroundTask task)
         {
+            var refundTimeControlTask = task as RefundTimeControlTask;
+            var swap = refundTimeControlTask?.Swap;
+
+            if (swap == null)
+                return;
+
             try
             {
-                var refundTx = (IBitcoinBasedTransaction)_swapState.RefundTx;
+                var refundTx = (IBitcoinBasedTransaction)swap.RefundTx;
 
-                var txId = await _currency.BlockchainApi
+                var txId = await Currency.BlockchainApi
                     .BroadcastAsync(refundTx)
                     .ConfigureAwait(false);
 
                 if (txId == null)
                     throw new Exception("Transaction Id is null");
 
-                Log.Debug("Refund tx id {@txId} for swap {@swapId}", txId, _swapState.Id);
+                Log.Debug("Refund tx id {@txId} for swap {@swapId}", txId, swap.Id);
 
                 // todo: check result
 
-                _swapState.SetRefundBroadcast();
+                swap.SetRefundBroadcast();
+                RaiseSwapUpdated(swap, SwapStateFlags.IsRefundBroadcast);
 
-                await _account
-                    .AddUnconfirmedTransactionAsync(
+                await Account
+                    .UpsertTransactionAsync(
                         tx: refundTx,
-                        selfAddresses: new[] { _swapState.Order.RefundWallet.Address })
+                        updateBalance: true)
                     .ConfigureAwait(false);
 
-                _taskPerformer.EnqueueTask(new TransactionConfirmedTask
+                TaskPerformer.EnqueueTask(new TransactionConfirmationCheckTask
                 {
-                    Currency = _swapState.Order.SoldCurrency(),
-                    SwapState = _swapState,
+                    Currency = Currency,
+                    Swap = swap,
                     Interval = DefaultConfirmationCheckInterval,
-                    TxId = _swapState.RefundTx.Id,
+                    TxId = swap.RefundTx.Id,
                     CompleteHandler = RefundConfirmedEventHandler
                 });
             }
@@ -891,31 +688,49 @@ namespace Atomix.Swaps.BitcoinBased
 
         private void RefundConfirmedEventHandler(BackgroundTask task)
         {
-            _swapState.SetRefundConfirmed();
+            var confirmationCheckTask = task as TransactionConfirmationCheckTask;
+            var swap = confirmationCheckTask?.Swap;
+
+            swap?.SetRefundConfirmed();
+            RaiseSwapUpdated(swap, SwapStateFlags.IsRefundConfirmed);
         }
 
-        private async void PaymentSpentEventHandler(BackgroundTask task)
+        private void RedeemConfirmedEventHandler(BackgroundTask task)
         {
-            var spentTask = task as BitcoinBasedOutputSpentTask;
-            var swap = spentTask?.SwapState;
+            var confirmationCheckTask = task as TransactionConfirmationCheckTask;
+            var swap = confirmationCheckTask?.Swap;
+
+            swap?.SetRedeemConfirmed();
+            RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemConfirmed);
+        }
+
+        private void PaymentSpentEventHandler(BackgroundTask task)
+        {
+            var outputSpentTask = task as BitcoinBasedOutputSpentTask;
+            var swap = outputSpentTask?.Swap;
 
             if (swap == null)
                 return;
 
             Log.Debug("Handle payment spent event for swap {@swapId}", swap.Id);
 
+            PaymentSpentEventHandler(swap, outputSpentTask.SpentPoint);
+        }
+
+        private async void PaymentSpentEventHandler(ClientSwap swap, ITxPoint spentPoint)
+        {
             try
             {
-                if (spentTask.SpentPoint == null)
+                if (spentPoint == null)
                     throw new InternalException(
                         code: Errors.InvalidSpentPoint,
                         description: "Invalid spent point");
 
                 // extract secret
-                await GetSecretAsync(spentTask.SpentPoint)
+                await GetSecretAsync(swap, spentPoint)
                     .ConfigureAwait(false);
 
-                RaiseCounterPartyPaymentSpent(_swapState);
+                RaiseAcceptorPaymentSpent(swap);
             }
             catch (Exception e)
             {
@@ -949,28 +764,14 @@ namespace Atomix.Swaps.BitcoinBased
                 description: $"Transaction with id {txId} not found");
         }
 
-        private async Task GetPartyPaymentTxAsync()
+        private async Task GetSecretAsync(ClientSwap swap, ITxPoint spentPoint)
         {
-            var currency = (BitcoinBasedCurrency)_swapState.Order.PurchasedCurrency();
+            Log.Debug("Try to get CounterParty's payment spent output {@hash}:{@no} for swap {@swapId}",
+                spentPoint.Hash,
+                spentPoint.Index,
+                swap.Id);
 
-            var tx = await GetPaymentTxAsync(currency, _swapState.PartyPaymentTxId)
-                .ConfigureAwait(false);
-
-            if (!TransactionVerifier.TryVerifyPaymentTx(tx, _swapState.Order, out var error))
-                throw new InternalException(error);
-
-            _swapState.PartyPaymentTx = tx;
-        }
-
-        private async Task GetSecretAsync(ITxPoint spentPoint)
-        {
-            Log.Debug(
-                messageTemplate: "Try to get CounterParty's payment spent output {@hash}:{@no} for swap {@swapId}",
-                propertyValue0: spentPoint.Hash,
-                propertyValue1: spentPoint.Index,
-                propertyValue2: _swapState.Id);
-
-            var soldCurrency = _swapState.Order.SoldCurrency();
+            var soldCurrency = swap.SoldCurrency;
 
             var swapInput = await ((IInOutBlockchainApi)soldCurrency.BlockchainApi)
                 .GetInputAsync(spentPoint.Hash, spentPoint.Index)
@@ -979,19 +780,13 @@ namespace Atomix.Swaps.BitcoinBased
             var secret = swapInput.ExtractSecret();
             var secretHash = CreateSwapSecretHash(secret);
 
-            if (!secretHash.SequenceEqual(_swapState.SecretHash))
+            if (!secretHash.SequenceEqual(swap.SecretHash))
                 throw new InternalException(
                     code: Errors.InvalidSecretHash,
                     description: "Invalid secret hash");
 
-            _swapState.Secret = secret;
-        }
-
-        private void SendTransactionData(
-            SwapDataType dataType,
-            IBlockchainTransaction tx)
-        {
-            SendData(dataType, ((IBitcoinBasedTransaction)tx).ToBytes());
+            swap.Secret = secret;
+            RaiseSwapUpdated(swap, SwapStateFlags.HasSecret);
         }
     }
 }

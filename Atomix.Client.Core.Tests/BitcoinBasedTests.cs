@@ -13,8 +13,8 @@ namespace Atomix.Client.Core.Tests
         public static IEnumerable<object[]> BitcoinBasedCurrencies =>
             new List<object[]>
             {
-                new object[] {Currencies.Btc},
-                new object[] {Currencies.Ltc}
+                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>()},
+                new object[] {Common.CurrenciesTestNet.Get<Litecoin>()}
             };
 
         public IBitcoinBasedTransaction CreateFakeTx(BitcoinBasedCurrency currency, PubKey destination)
@@ -140,6 +140,33 @@ namespace Atomix.Client.Core.Tests
 
         [Theory]
         [MemberData(nameof(BitcoinBasedCurrencies))]
+        public IBitcoinBasedTransaction CreateHtlcP2PkhSwapPaymentTxAlice2Bob(BitcoinBasedCurrency currency)
+        {
+            var initTx = CreateFakeTx(currency, Common.Alice.PubKey);
+            const int amount = 3000;
+            const int fee = 1000;
+            // change = 2000;
+
+            var tx = currency.CreateHtlcP2PkhSwapPaymentTx(
+                unspentOutputs: initTx.Outputs,
+                aliceRefundAddress: Common.Alice.PubKey.GetAddress(currency),
+                bobAddress: Common.Bob.PubKey.GetAddress(currency),
+                lockTime: DateTimeOffset.UtcNow.AddHours(1),
+                secretHash: Common.SecretHash,
+                secretSize: Common.Secret.Length,
+                amount: amount,
+                fee: fee);
+
+            Assert.NotNull(tx);
+            Assert.True(tx.Check());
+            Assert.Equal(initTx.TotalOut - fee, tx.TotalOut);
+            Assert.Equal(fee, tx.GetFee(initTx.Outputs));
+
+            return tx;
+        }
+
+        [Theory]
+        [MemberData(nameof(BitcoinBasedCurrencies))]
         public IBitcoinBasedTransaction CreateSwapRefundTxAlice2Bob(BitcoinBasedCurrency currency)
         {
             const int paymentQty = 3000;
@@ -156,7 +183,7 @@ namespace Atomix.Client.Core.Tests
             // change = 0;
 
             var tx = BitcoinBasedCommon.CreateSwapRefundTx(
-                currency: Currencies.Btc as BitcoinBasedCurrency, 
+                currency: Common.BtcTestNet, 
                 outputs: paymentTxOutputs,
                 from: Common.Alice.PubKey,
                 to: Common.Alice.PubKey,
@@ -230,6 +257,20 @@ namespace Atomix.Client.Core.Tests
 
         [Theory]
         [MemberData(nameof(BitcoinBasedCurrencies))]
+        public IBitcoinBasedTransaction SignHtlcP2PkhSwapPaymentTxAlice2Bob(BitcoinBasedCurrency currency)
+        {
+            var initTx = CreateFakeTx(currency, Common.Alice.PubKey);
+            var tx = CreateHtlcP2PkhSwapPaymentTxAlice2Bob(currency);
+
+            tx.Sign(Common.Alice, initTx.Outputs);
+
+            Assert.True(tx.Verify(initTx.Outputs));
+
+            return tx;
+        }
+
+        [Theory]
+        [MemberData(nameof(BitcoinBasedCurrencies))]
         public IBitcoinBasedTransaction SignSwapRefundTxAlice2Bob(BitcoinBasedCurrency currency)
         {
             const int paymentQty = 3000;
@@ -243,7 +284,7 @@ namespace Atomix.Client.Core.Tests
             // change = 0;
 
             var refundTx = BitcoinBasedCommon.CreateSwapRefundTx(
-                currency: Currencies.Btc as BitcoinBasedCurrency,
+                currency: Common.BtcTestNet,
                 outputs: paymentTxOutputs,
                 from: Common.Alice.PubKey,
                 to: Common.Alice.PubKey,
@@ -257,6 +298,45 @@ namespace Atomix.Client.Core.Tests
             var aliceSign = Common.Alice.Sign(sigHash, SigHash.All);
             var bobSign = Common.Bob.Sign(sigHash, SigHash.All);
             var refundScript = BitcoinBasedSwapTemplate.GenerateSwapRefund(aliceSign, bobSign);
+
+            refundTx.NonStandardSign(refundScript, paymentTxOutputs.First());
+
+            Assert.True(refundTx.Verify(paymentTxOutputs));
+
+            return refundTx;
+        }
+
+        [Theory]
+        [MemberData(nameof(BitcoinBasedCurrencies))]
+        public IBitcoinBasedTransaction SignHtlcSwapRefundTxAlice2Bob(BitcoinBasedCurrency currency)
+        {
+            const int paymentQty = 3000;
+
+            var paymentTx = CreateHtlcP2PkhSwapPaymentTxAlice2Bob(currency);
+            var paymentTxOutputs = paymentTx.Outputs.Where(o => o.Value == paymentQty).ToArray();
+
+            var lockTime = DateTimeOffset.UtcNow.AddHours(1);
+            const int amount = 2000;
+            const int fee = 1000;
+            // change = 0;
+
+            var refundTx = BitcoinBasedCommon.CreateSwapRefundTx(
+                currency: Common.BtcTestNet,
+                outputs: paymentTxOutputs,
+                from: Common.Alice.PubKey,
+                to: Common.Alice.PubKey,
+                amount: amount,
+                fee: fee,
+                lockTime: lockTime
+            );
+
+            var sigHash = new uint256(refundTx.GetSignatureHash(paymentTxOutputs.First()));
+
+            var aliceSign = Common.Alice.Sign(sigHash, SigHash.All);
+
+            var refundScript = BitcoinBasedSwapTemplate.GenerateHtlcSwapRefund(
+                aliceRefundSig: aliceSign,
+                aliceRefundPubKey: Common.Alice.PubKey.ToBytes());
 
             refundTx.NonStandardSign(refundScript, paymentTxOutputs.First());
 
@@ -322,6 +402,39 @@ namespace Atomix.Client.Core.Tests
             var bobSign = Common.Bob.Sign(sigHash, SigHash.All).ToBytes();
             var bobPubKey = Common.Bob.PubKey.ToBytes();
             var redeemScript = BitcoinBasedSwapTemplate.GenerateP2PkhSwapRedeem(bobSign, bobPubKey, Common.Secret);
+
+            redeemTx.NonStandardSign(redeemScript, paymentTxOutputs.First());
+
+            Assert.True(redeemTx.Verify(paymentTxOutputs));
+
+            return redeemTx;
+        }
+
+        [Theory]
+        [MemberData(nameof(BitcoinBasedCurrencies))]
+        public IBitcoinBasedTransaction SignHtlcP2PkhSwapRedeemTxByBob(BitcoinBasedCurrency currency)
+        {
+            const int paymentQty = 3000;
+
+            var paymentTx = CreateHtlcP2PkhSwapPaymentTxAlice2Bob(currency);
+            var paymentTxOutputs = paymentTx.Outputs
+                .Where(o => o.Value == paymentQty)
+                .ToArray();
+
+            const int amount = 2000;
+            const int fee = 1000;
+
+            var redeemTx = currency.CreatePaymentTx(
+                unspentOutputs: paymentTxOutputs,
+                destinationAddress: Common.Bob.PubKey.GetAddress(currency),
+                changeAddress: Common.Bob.PubKey.GetAddress(currency),
+                amount: amount,
+                fee: fee);
+
+            var sigHash = new uint256(redeemTx.GetSignatureHash(paymentTxOutputs.First()));
+            var bobSign = Common.Bob.Sign(sigHash, SigHash.All).ToBytes();
+            var bobPubKey = Common.Bob.PubKey.ToBytes();
+            var redeemScript = BitcoinBasedSwapTemplate.GenerateHtlcP2PkhSwapRedeem(bobSign, bobPubKey, Common.Secret);
 
             redeemTx.NonStandardSign(redeemScript, paymentTxOutputs.First());
 

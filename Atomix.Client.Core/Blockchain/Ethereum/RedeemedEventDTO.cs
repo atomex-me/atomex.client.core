@@ -10,8 +10,5 @@ namespace Atomix.Blockchain.Ethereum
 
         [Parameter("bytes32", "_secret", 2, false)]
         public byte[] Secret { get; set; }
-
-        [Parameter("uint", "_redeemTime", 3, false)]
-        public uint RedeemTime { get; set; }
     }
 }

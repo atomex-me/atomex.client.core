@@ -1,20 +1,31 @@
-﻿using LiteDB;
+﻿using System;
+using LiteDB;
 
 namespace Atomix.Common.Bson
 {
-    public abstract class BsonSerializer<T>
+    public class BsonSerializer<T>
     {
-        public const string IdKey = "_id";
+        protected const string IdKey = "_id";
 
-        public void Register()
+        protected BsonMapper BsonMapper { get; private set; }
+
+        public virtual void Register(BsonMapper bsonMapper)
         {
-            BsonMapper.Global.RegisterType(
+            BsonMapper = bsonMapper ?? throw new ArgumentNullException(nameof(bsonMapper));
+
+            BsonMapper.RegisterType(
                 serialize: Serialize,
                 deserialize: Deserialize);
         }
 
-        protected abstract T Deserialize(BsonValue bsonValue);
+        public virtual T Deserialize(BsonValue bsonValue)
+        {
+            throw new NotImplementedException();
+        }
 
-        protected abstract BsonValue Serialize(T obj);
+        public virtual BsonValue Serialize(T obj)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

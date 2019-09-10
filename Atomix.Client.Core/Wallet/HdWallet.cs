@@ -8,9 +8,9 @@ using Atomix.Blockchain.Abstract;
 using Atomix.Common;
 using Atomix.Core.Entities;
 using Atomix.Wallet.Abstract;
-using Atomix.Wallet.Bip;
 using NBitcoin;
 using Serilog;
+using Network = Atomix.Core.Network;
 
 namespace Atomix.Wallet
 {
@@ -18,36 +18,31 @@ namespace Atomix.Wallet
     {
         private HdKeyStorage KeyStorage { get; }
 
-        public IEnumerable<Currency> Currencies => Atomix.Currencies.Available;
-        public bool IsLocked => KeyStorage.IsLocked;
         public string PathToWallet { get; set; }
+        public Network Network => KeyStorage.Network;
+        public bool IsLocked => KeyStorage.IsLocked;
 
-        public HdWallet()
-        {
-            PathToWallet = string.Empty;
-
-            var wordList = Wordlist.English;
-            var mnemonic = new Mnemonic(wordList, WordCount.TwentyFour).ToString();
-
-            KeyStorage = new HdKeyStorage(mnemonic, wordList, new SecureString());
-            KeyStorage.UseCache(new KeyIndexCache());
-        }
-
-        public HdWallet(string pathToWallet, SecureString password)
+        private HdWallet(string pathToWallet, SecureString password)
         {
             PathToWallet = PathEx.ToFullPath(pathToWallet);
 
-            KeyStorage = HdKeyStorage.LoadFromFile(pathToWallet, password);
-            KeyStorage.UseCache(new KeyIndexCache());
-            KeyStorage.Unlock(password);
+            KeyStorage = HdKeyStorageLoader.LoadFromFile(pathToWallet, password)
+                .Unlock(password);
         }
 
-        public HdWallet(string mnemonic, Wordlist wordList, SecureString passPhrase = null)
+        public HdWallet(
+            string mnemonic,
+            Wordlist wordList,
+            SecureString passPhrase = null,
+            Network network = Network.MainNet)
         {
             PathToWallet = PathEx.ToFullPath(string.Empty);
 
-            KeyStorage = new HdKeyStorage(mnemonic, wordList, passPhrase);
-            KeyStorage.UseCache(new KeyIndexCache());
+            KeyStorage = new HdKeyStorage(
+                mnemonic: mnemonic,
+                wordList: wordList,
+                passPhrase: passPhrase,
+                network: network);
         }
 
         public void Lock()
@@ -65,9 +60,12 @@ namespace Atomix.Wallet
             return KeyStorage.EncryptAsync(password);
         }
 
-        public WalletAddress GetAddress(Currency currency, uint chain, uint index)
+        public WalletAddress GetAddress(Currency currency, int chain, uint index)
         {
             var publicKeyBytes = KeyStorage.GetPublicKey(currency, chain, index);
+
+            if (publicKeyBytes == null)
+                return null;
 
             var address = currency.AddressFromKey(publicKeyBytes);
 
@@ -76,29 +74,7 @@ namespace Atomix.Wallet
                 Currency = currency,
                 Address = address,
                 PublicKey = Convert.ToBase64String(publicKeyBytes),
-            };
-        }
-
-        public async Task<WalletAddress> GetAddressAsync(
-            Currency currency,
-            string address,
-            uint maxIndex,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var keyIndex = await KeyStorage
-                .RecoverKeyIndexAsync(currency, address, maxIndex, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (keyIndex == null)
-                return null;
-
-            var publicKeyBytes = KeyStorage.GetPublicKey(currency, keyIndex);
-
-            return new WalletAddress
-            {
-                Currency = currency,
-                Address = address,
-                PublicKey = Convert.ToBase64String(publicKeyBytes),
+                KeyIndex = new KeyIndex { Chain = chain, Index = index }
             };
         }
 
@@ -107,17 +83,7 @@ namespace Atomix.Wallet
             return KeyStorage.GetServicePublicKey(index);
         }
 
-        public WalletAddress GetInternalAddress(Currency currency, uint index)
-        {
-            return GetAddress(currency, Bip44.Internal, index);
-        }
-
-        public WalletAddress GetExternalAddress(Currency currency, uint index)
-        {
-            return GetAddress(currency, Bip44.External, index);
-        }
-
-        public async Task<byte[]> SignAsync(
+        public Task<byte[]> SignAsync(
             byte[] data,
             WalletAddress address,
             CancellationToken cancellationToken = default(CancellationToken))
@@ -128,54 +94,48 @@ namespace Atomix.Wallet
             if (address == null)
                 throw new ArgumentNullException(nameof(address));
 
-            Log.Verbose(
-                messageTemplate: "Sign request for data {@data} with key for address {@address}", 
-                propertyValue0: data.ToHexString(),
-                propertyValue1: address.Address);
+            Log.Verbose("Sign request for data {@data} with key for address {@address}", 
+                data.ToHexString(),
+                address.Address);
 
-            if (IsLocked) {
+            if (IsLocked)
+            {
                 Log.Warning("Wallet locked");
-                return null;
+                return Task.FromResult<byte[]>(null);
             }
 
-            var keyIndex = await KeyStorage
-                .RecoverKeyIndexAsync(
-                    walletAddress: address,
-                    maxIndex: 0,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            if (keyIndex == null) {
+            if (address.KeyIndex == null)
+            {
                 Log.Error($"Can't find private key for address {address.Address}");
-                return null;
+                return Task.FromResult<byte[]>(null);
             }
 
-            var signature = KeyStorage.SignMessage(address.Currency, data, keyIndex);
+            var signature = KeyStorage.SignMessage(address.Currency, data, address.KeyIndex);
 
-            Log.Verbose(
-                messageTemplate: "Data signature in base64: {@signature}",
-                propertyValue: Convert.ToBase64String(signature));
+            Log.Verbose("Data signature in base64: {@signature}",
+                Convert.ToBase64String(signature));
 
-            if (!KeyStorage.VerifyMessage(address.Currency, data, signature, keyIndex))
+            if (!KeyStorage.VerifyMessage(address.Currency, data, signature, address.KeyIndex))
             {
                 Log.Error("Signature verify error");
-                return null;
+                return Task.FromResult<byte[]>(null);
             }
 
             Log.Verbose("Data successfully signed");
 
-            return signature;      
+            return Task.FromResult(signature);      
         }
 
         public async Task<bool> SignAsync(
-            IInOutTransaction transaction,
+            IInOutTransaction tx,
             IEnumerable<ITxOutput> spentOutputs,
+            IAddressResolver addressResolver,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (transaction == null)
-                throw new ArgumentNullException(nameof(transaction));
+            if (tx == null)
+                throw new ArgumentNullException(nameof(tx));
 
-            Log.Verbose("Sign request for transaction {@id}", transaction.Id);
+            Log.Verbose("Sign request for transaction {@id}", tx.Id);
 
             if (IsLocked)
             {
@@ -183,26 +143,28 @@ namespace Atomix.Wallet
                 return false;
             }
 
-            await transaction
-                .SignAsync(KeyStorage, spentOutputs, cancellationToken)
+            await tx
+                .SignAsync(
+                    addressResolver: addressResolver,
+                    keyStorage: KeyStorage,
+                    spentOutputs: spentOutputs,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            Log.Verbose(
-                messageTemplate: "Transaction {@id} successfully signed",
-                propertyValue: transaction.Id);
+            Log.Verbose("Transaction {@id} successfully signed", tx.Id);
 
             return true;
         }
 
         public async Task<bool> SignAsync(
-            IAddressBasedTransaction transaction,
-            string address,
+            IAddressBasedTransaction tx,
+            WalletAddress address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            if (transaction == null)
-                throw new ArgumentNullException(nameof(transaction));
+            if (tx == null)
+                throw new ArgumentNullException(nameof(tx));
 
-            Log.Verbose("Sign request for transaction {@id}", transaction.Id);
+            Log.Verbose("Sign request for transaction {@id}", tx.Id);
 
             if (IsLocked)
             {
@@ -210,18 +172,16 @@ namespace Atomix.Wallet
                 return false;
             }
 
-            await transaction
+            await tx
                 .SignAsync(KeyStorage, address, cancellationToken)
                 .ConfigureAwait(false);
 
-            Log.Verbose(
-                messageTemplate: "Transaction {@id} successfully signed",
-                propertyValue: transaction.Id);
+            Log.Verbose("Transaction {@id} successfully signed", tx.Id);
 
             return true;
         }
 
-        public async Task<byte[]> SignHashAsync(
+        public Task<byte[]> SignHashAsync(
             byte[] hash,
             WalletAddress address,
             CancellationToken cancellationToken = default(CancellationToken))
@@ -232,46 +192,34 @@ namespace Atomix.Wallet
             if (address == null)
                 throw new ArgumentNullException(nameof(address));
 
-            Log.Verbose(
-                messageTemplate: "Sign request for hash {@hash}",
-                propertyValue: hash.ToHexString());
+            Log.Verbose("Sign request for hash {@hash}", hash.ToHexString());
 
             if (IsLocked)
             {
                 Log.Warning("Wallet locked");
-                return null;
+                return Task.FromResult<byte[]>(null);
             }
 
-            var keyIndex = await KeyStorage
-                .RecoverKeyIndexAsync(
-                    walletAddress: address,
-                    maxIndex: 0,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            if (keyIndex == null)
+            if (address.KeyIndex == null)
             {
                 Log.Error($"Can't find private key for address {address.Address}");
-                return null;
+                return Task.FromResult<byte[]>(null);
             }
 
-            var signature = KeyStorage.SignHash(address.Currency, hash, keyIndex);
+            var signature = KeyStorage.SignHash(address.Currency, hash, address.KeyIndex);
 
-            Log.Verbose(
-                messageTemplate: "Hash signature in base64: {@signature}",
-                propertyValue: Convert.ToBase64String(signature));
+            Log.Verbose("Hash signature in base64: {@signature}", Convert.ToBase64String(signature));
 
-            if (!KeyStorage.VerifyHash(address.Currency, hash, signature, keyIndex))
+            if (!KeyStorage.VerifyHash(address.Currency, hash, signature, address.KeyIndex))
             {
-                Log.Error("Signature verify error");
-                return null;
+                Log.Error(messageTemplate: "Signature verify error");
+                return Task.FromResult<byte[]>(null);
             }
 
             Log.Verbose("Hash successfully signed");
 
-            return signature;
+            return Task.FromResult(signature);
         }
-
 
         public Task<byte[]> SignByServiceKeyAsync(
             byte[] data,
@@ -281,10 +229,9 @@ namespace Atomix.Wallet
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
 
-            Log.Verbose(
-                messageTemplate: "Service sign request for data {@data} with key index {@index}",
-                propertyValue0: data.ToHexString(),
-                propertyValue1: keyIndex);
+            Log.Verbose("Service sign request for data {@data} with key index {@index}",
+                data.ToHexString(),
+                keyIndex);
 
             if (IsLocked)
             {
@@ -297,9 +244,7 @@ namespace Atomix.Wallet
                 chain: 0,
                 index: keyIndex);
 
-            Log.Verbose(
-                messageTemplate: "Signature in base64: {@signature}",
-                propertyValue: Convert.ToBase64String(signature));
+            Log.Verbose("Signature in base64: {@signature}", Convert.ToBase64String(signature));
 
             if (!KeyStorage.VerifyMessageByServiceKey(data, signature, chain: 0, index: keyIndex))
             {
@@ -310,6 +255,37 @@ namespace Atomix.Wallet
             Log.Verbose("Data successfully signed by service key");
 
             return Task.FromResult(signature);
+        }
+
+        public byte[] GetDeterministicSecret(Currency currency, DateTime timeStamp)
+        {
+            return KeyStorage.GetDeterministicSecret(currency, timeStamp);
+        }
+
+        //public bool Verify(
+        //    WalletAddress walletAddress,
+        //    byte[] data,
+        //    byte[] signature)
+        //{
+        //    if (walletAddress == null)
+        //        throw new ArgumentNullException(nameof(walletAddress));
+
+        //    if (data == null)
+        //        throw new ArgumentNullException(nameof(data));
+
+        //    if (signature == null)
+        //        throw new ArgumentNullException(nameof(signature));
+
+        //    return KeyStorage.VerifyMessage(
+        //        currency: walletAddress.Currency,
+        //        data: data,
+        //        signature: signature,
+        //        keyIndex: walletAddress.KeyIndex);
+        //}
+
+        public static HdWallet LoadFromFile(string pathToWallet, SecureString password)
+        {
+            return new HdWallet(pathToWallet, password);
         }
 
         public void SaveToFile(string pathToWallet, SecureString password)

@@ -1,17 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Collections.Generic;
 using Atomix.Blockchain.Abstract;
 using Atomix.Blockchain.BitcoinBased;
-using Atomix.Common.Abstract;
 using Atomix.Core;
 using Atomix.Core.Entities;
-using Atomix.Swaps;
-using Atomix.Swaps.Abstract;
-using Atomix.Swaps.BitcoinBased;
-using Atomix.Wallet.Abstract;
-using Moq;
 using NBitcoin;
 using Xunit;
 
@@ -19,9 +10,9 @@ namespace Atomix.Client.Core.Tests
 {
     public class BitcoinBasedSwapTests
     {
-        public Order InitiatorOrder => new Order()
+        public Order InitiatorOrder => new Order
         {
-            Symbol = Symbols.LtcBtc,
+            Symbol = Common.LtcBtcTestNet,
             Price = 0.014861m,
             Qty = 1,
             LastPrice = 0.014861m,
@@ -29,48 +20,23 @@ namespace Atomix.Client.Core.Tests
             Side = Side.Buy,
             Status = OrderStatus.Filled,
             EndOfTransaction = true,
-            SwapInitiative = true,
-            RefundWallet = new WalletAddress()
+            FromWallets = new List<WalletAddress>
             {
-                Address = "<initiator BTC refund wallet>",
-                Currency = Currencies.Btc
-            },
-            ToWallet = new WalletAddress()
-            {
-                Address = "<initiator LTC target wallet>",
-                Currency = Currencies.Ltc
-            },
-            FromWallets = new List<WalletAddress>()
-            {
-                new WalletAddress()
+                new WalletAddress
                 {
                     Address = "initiator BTC payment wallet",
-                    Currency = Currencies.Btc
+                    Currency = Common.BtcTestNet
                 }
             }
         };
 
-        public IEnumerable<ITxOutput> InitiatorOutputs => new List<ITxOutput>()
+        public IEnumerable<ITxOutput> InitiatorOutputs => new List<ITxOutput>
         {
-            new BitcoinBasedTxOutput(new Coin()
+            new BitcoinBasedTxOutput(new Coin
             {
                 Amount = Money.Satoshis(10000000000ul),
                 Outpoint = new OutPoint(new uint256(), 0)
             })
-        };
-
-        public SwapRequisites PartyRequisites => new SwapRequisites()
-        {
-            ToWallet = new WalletAddress()
-            {
-                Address = "<party BTC target wallet>",
-                Currency = Currencies.Btc
-            },
-            RefundWallet = new WalletAddress()
-            {
-                Address = "<party LTC refund wallet>",
-                Currency = Currencies.Ltc
-            }
         };
 
         [Fact]

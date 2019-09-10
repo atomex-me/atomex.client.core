@@ -5,10 +5,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Atomix.Blockchain.Abstract;
 using Atomix.Blockchain.BitcoinBased;
-using Atomix.Blockchain.SoChain;
 using Atomix.Common;
 using Info.Blockchain.API.BlockExplorer;
 using Info.Blockchain.API.Client;
+using Info.Blockchain.API.PushTx;
 using NBitcoin;
 using Serilog;
 using Transaction = NBitcoin.Transaction;
@@ -20,7 +20,9 @@ namespace Atomix.Blockchain.BlockchainInfo
         private readonly BitcoinBasedCurrency _currency;
         private readonly BlockchainHttpClient _client;
         private readonly BlockExplorer _explorer;
-        
+
+        private readonly string _apiCode = "64e1d1c5-ed33-4fd6-ab77-81e650343f05";
+
         public BlockchainInfoApi(BitcoinBasedCurrency currency)
         {
             _currency = currency ?? throw new ArgumentNullException(nameof(currency));
@@ -29,8 +31,30 @@ namespace Atomix.Blockchain.BlockchainInfo
                  ? "https://blockchain.info/"
                  : "https://testnet.blockchain.info/";
 
-            _client = new BlockchainHttpClient(uri: baseUrl);
-            _explorer = new BlockchainApiHelper(baseHttpClient: new BlockchainHttpClient(uri: baseUrl)).blockExplorer;
+            _client = new BlockchainHttpClient(apiCode: _apiCode, uri: baseUrl);
+            _explorer = new BlockchainApiHelper(apiCode: _apiCode, baseHttpClient: new BlockchainHttpClient(uri: baseUrl)).blockExplorer;
+        }
+
+        public async Task<decimal> GetBalanceAsync(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            try
+            {
+                var addr = await _explorer
+                    .GetBase58AddressAsync(address)
+                    .ConfigureAwait(false);
+
+                return addr.FinalBalance.GetBtc();
+            }
+            catch (Exception e)
+            {
+                Log.Warning("Server api exception while get address {@address}: {@message}",
+                    address,
+                    ResolveExceptionMessage(e));
+
+                return 0;
+            }
         }
 
         public async Task<IBlockchainTransaction> GetTransactionAsync(
@@ -47,10 +71,9 @@ namespace Atomix.Blockchain.BlockchainInfo
             }
             catch (ServerApiException e)
             {
-                Log.Warning(
-                    messageTemplate: "Server api exception while get transaction by id {@txId}: {@message}",
-                    propertyValue0: txId,
-                    propertyValue1: ResolveExceptionMessage(e));
+                Log.Warning("Server api exception while get transaction by id {@txId}: {@message}",
+                    txId,
+                    ResolveExceptionMessage(e));
 
                 return null;
             }
@@ -60,7 +83,7 @@ namespace Atomix.Blockchain.BlockchainInfo
                 tx: Transaction.Parse(await GetTxHexAsync(txId).ConfigureAwait(false), _currency.Network),
                 blockInfo: new BlockInfo
                 {
-                    Fees = await GetTxFeeAsync(txId),
+                    Fees = await GetTxFeeAsync(txId).ConfigureAwait(false),
                     Confirmations = (int) (await GetBlockCountAsync().ConfigureAwait(false) - tx.BlockHeight + 1),
                     BlockHeight = tx.BlockHeight,
                     FirstSeen = tx.Time,
@@ -68,59 +91,95 @@ namespace Atomix.Blockchain.BlockchainInfo
                 });
         }
 
-        public Task<string> BroadcastAsync(
+        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsByIdAsync(
+            string txId,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var tx = await GetTransactionAsync(txId, cancellationToken)
+                .ConfigureAwait(false);
+
+            return tx != null
+                ? new[] { tx }
+                : Enumerable.Empty<IBlockchainTransaction>();
+        }
+
+        public async Task<string> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var soChain = new SoChainApi(_currency);
+            var tx = (IBitcoinBasedTransaction)transaction;
 
-            return soChain.BroadcastAsync(transaction, cancellationToken);
+            var txHex = tx.ToBytes().ToHexString();
+
+            Log.Debug("TxHex: {@txHex}", txHex);
+
+            await new TransactionPusher()
+                .PushTransactionAsync(txHex)
+                .ConfigureAwait(false);
+
+            return tx.Id; // todo: receive id from network!!!
         }
 
-        public Task<ITxPoint> GetInputAsync(
+        public async Task<ITxPoint> GetInputAsync(
             string txId,
             uint inputNo,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var soChain = new SoChainApi(_currency);
-
-            return soChain.GetInputAsync(txId, inputNo, cancellationToken);
-            //return (await GetInputsAsync(txId, cancellationToken)
-            //    .ConfigureAwait(false))
-            //    .ToList()[(int)inputNo];
-        }
-
-        public async Task<IEnumerable<ITxPoint>> GetInputsAsync(
-            string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var result = new List<ITxPoint>();
             var tx = await _explorer
                 .GetTransactionByHashAsync(txId)
                 .ConfigureAwait(false);
 
-            foreach (var i in tx.Inputs)
+            var input = tx.Inputs[(int)inputNo];
+
+            var prevTx = await _explorer
+                .GetTransactionByIndexAsync(input.PreviousOutput.TxIndex)
+                .ConfigureAwait(false);
+
+            var txIn = new TxIn(
+                prevout: new OutPoint(
+                    hashIn: new uint256(prevTx.Hash),
+                    nIn: input.PreviousOutput.N),
+                scriptSig: new Script(input.ScriptSignature));
+
+            return new BitcoinBasedTxPoint(new IndexedTxIn
             {
-                var witScript = WitScript.Empty;
-                var prevTx = await _explorer
-                    .GetTransactionByIndexAsync(i.PreviousOutput.TxIndex)
-                    .ConfigureAwait(false);
-
-                if (i.Witness != null)
-                {
-                    var wit = new List<string> {i.Witness};
-                    witScript = wit.Aggregate(witScript, (current, witness) => current + new WitScript(witness));
-                }
-                result.Add(new BitcoinBasedTxPoint(new IndexedTxIn
-                {
-                    TxIn = new TxIn(new OutPoint(new uint256(prevTx.Hash), i.PreviousOutput.N), new Script()),
-                    Index = (uint)i.PreviousOutput.SpendingOutpoints[0].N,
-                    WitScript = witScript,
-                }));
-            }
-
-            return result;
+                Index = inputNo,
+                TxIn = txIn,
+                WitScript = new WitScript(input.Witness)
+            });
         }
+
+        //public async Task<IEnumerable<ITxPoint>> GetInputsAsync(
+        //    string txId,
+        //    CancellationToken cancellationToken = default(CancellationToken))
+        //{
+        //    var result = new List<ITxPoint>();
+        //    var tx = await _explorer
+        //        .GetTransactionByHashAsync(txId)
+        //        .ConfigureAwait(false);
+
+        //    foreach (var i in tx.Inputs)
+        //    {
+        //        var witScript = WitScript.Empty;
+        //        var prevTx = await _explorer
+        //            .GetTransactionByIndexAsync(i.PreviousOutput.TxIndex)
+        //            .ConfigureAwait(false);
+
+        //        if (i.Witness != null)
+        //        {
+        //            var wit = new List<string> {i.Witness};
+        //            witScript = wit.Aggregate(witScript, (current, witness) => current + new WitScript(witness));
+        //        }
+        //        result.Add(new BitcoinBasedTxPoint(new IndexedTxIn
+        //        {
+        //            TxIn = new TxIn(new OutPoint(new uint256(prevTx.Hash), i.PreviousOutput.N), new Script()),
+        //            Index = (uint)i.PreviousOutput.SpendingOutpoints[0].N,
+        //            WitScript = witScript,
+        //        }));
+        //    }
+
+        //    return result;
+        //}
 
         public async Task<IEnumerable<ITxOutput>> GetUnspentOutputsAsync(
             string address,
@@ -194,7 +253,9 @@ namespace Atomix.Blockchain.BlockchainInfo
             uint outputNo,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var tx = await _explorer.GetTransactionByHashAsync(txId);
+            var tx = await _explorer.GetTransactionByHashAsync(txId)
+                .ConfigureAwait(false);
+
             if (tx.Outputs[(int) outputNo] == null)
                 return null;
             
@@ -227,10 +288,13 @@ namespace Atomix.Blockchain.BlockchainInfo
 
         private static string ResolveExceptionMessage(Exception e)
         {
-            if (e.Message.Contains(value: "Gateway Timeout:"))
+            if (e.Message.Contains("Gateway Timeout:"))
                 return "Gateway Timeout";
 
-            return e.Message.Contains(value: "Bad Gateway:")
+            if (e.Message.Contains("Origin Connection Time-out:"))
+                return "Origin Connection Time-out";
+
+            return e.Message.Contains("Bad Gateway:")
                 ? "Bad Gateway"
                 : e.Message;
         }

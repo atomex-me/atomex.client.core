@@ -14,12 +14,15 @@ namespace Atomix.Blockchain.BitcoinBased
         public bool IsSpent => SpentTxPoint != null;
         public ITxPoint SpentTxPoint { get; set; }
 
-        public BitcoinBasedTxOutput(ICoin coin)
+        public BitcoinBasedTxOutput(
+            ICoin coin)
             : this(coin, null)
         {
         }
 
-        public BitcoinBasedTxOutput(ICoin coin, ITxPoint spentTxPoint)
+        public BitcoinBasedTxOutput(
+            ICoin coin,
+            ITxPoint spentTxPoint)
         {
             Coin = coin;
             SpentTxPoint = spentTxPoint;
@@ -31,24 +34,16 @@ namespace Atomix.Blockchain.BitcoinBased
 
         public bool IsP2PkhSwapPayment => BitcoinBasedSwapTemplate.IsP2PkhSwapPayment(Coin.TxOut.ScriptPubKey);
 
-        public bool IsSwapPayment => IsP2PkhSwapPayment;
+        public bool IsHtlcP2PkhSwapPayment => BitcoinBasedSwapTemplate.IsHtlcP2PkhSwapPayment(Coin.TxOut.ScriptPubKey);
 
-        public string DestinationAddress(Currency currency)
+        public bool IsSwapPayment => IsHtlcP2PkhSwapPayment;
+
+        public string DestinationAddress(
+            Currency currency)
         {
             return Coin.TxOut.ScriptPubKey
                 .GetDestinationAddress(((BitcoinBasedCurrency) currency).Network)
                 .ToString();
-        }
-
-        public BitcoinBasedTxOutput WithPatchedTxId(string txId)
-        {
-            return new BitcoinBasedTxOutput(new Coin
-            {
-                Amount = new Money(Value),
-                Outpoint = new OutPoint(new uint256(txId), Coin.Outpoint.N),
-                ScriptPubKey = Coin.TxOut.ScriptPubKey,
-                TxOut = Coin.TxOut.Clone()
-            });
         }
     }
 }

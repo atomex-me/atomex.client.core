@@ -5,9 +5,17 @@ namespace Atomix.Common
 {
     public static class ListExtensions
     {
+        public static List<T> AddEx<T>(this List<T> list, T value)
+        {
+            list.Add(value);
+            return list;
+        }
+
         public static List<T> AddRangeEx<T>(this List<T> list, IEnumerable<T> range)
         {
-            list.AddRange(range);
+            if (range != null)
+                list.AddRange(range);
+
             return list;
         }
 
@@ -21,7 +29,7 @@ namespace Atomix.Common
             return list;
         }
 
-        public static IList<T> SortList<T>(this List<T> list, Comparison<T> comparison)
+        public static List<T> SortList<T>(this List<T> list, Comparison<T> comparison)
         {
             list.Sort(comparison);
             return list;

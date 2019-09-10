@@ -24,7 +24,7 @@ namespace Atomix.Swaps.BitcoinBased
             var tx = paymentTx.Clone();
 
             var outputs = await Account
-                .GetUnspentOutputsAsync(tx.Currency)
+                .GetAvailableOutputsAsync(tx.Currency)
                 .ConfigureAwait(false);
 
             var spentOutputs = outputs
@@ -32,7 +32,10 @@ namespace Atomix.Swaps.BitcoinBased
                 .ToList();
 
             var result = await Account.Wallet
-                .SignAsync(tx, spentOutputs)
+                .SignAsync(
+                    tx: tx,
+                    spentOutputs: spentOutputs,
+                    addressResolver: Account)
                 .ConfigureAwait(false);
 
             if (!result)
@@ -53,49 +56,7 @@ namespace Atomix.Swaps.BitcoinBased
         public async Task<IBitcoinBasedTransaction> SignRefundTxAsync(
             IBitcoinBasedTransaction refundTx,
             IBitcoinBasedTransaction paymentTx,
-            Order order)
-        {
-            var tx = refundTx.Clone();
-
-            if (tx.Inputs.Length != 1)
-            {
-                Log.Error("Refund transaction has zero or more than one input");
-                return null;
-            }
-
-            if (!(paymentTx.Outputs.FirstOrDefault(o => o.IsSwapPayment) is BitcoinBasedTxOutput spentOutput))
-            {
-                Log.Error("Payment transaction hasn't swap output");
-                return null;
-            }
-
-            spentOutput = spentOutput.WithPatchedTxId(tx.Inputs.First().Hash);
-
-            var sigHash = tx.GetSignatureHash(spentOutput);
-
-            var signature = await Account.Wallet
-                .SignHashAsync(
-                    hash: sigHash,
-                    address: order.ToWallet)
-                .ConfigureAwait(false);
-
-            if (signature == null)
-            {
-                Log.Error("Refund transaction signature error");
-                return null;
-            }
-
-            var signScript = BitcoinBasedSwapTemplate.GenerateSwapRefundByBob(signature);
-
-            tx.NonStandardSign(signScript, spentOutput);
-
-            return tx;
-        }
-
-        public async Task<IBitcoinBasedTransaction> SignSelfRefundTxAsync(
-            IBitcoinBasedTransaction refundTx,
-            IBitcoinBasedTransaction paymentTx,
-            Order order)
+            WalletAddress refundAddress)
         {
             var tx = refundTx.Clone();
 
@@ -116,11 +77,7 @@ namespace Atomix.Swaps.BitcoinBased
             if (tx.Verify(spentOutput))
                 return tx;
 
-            // get counter party signature from refund tx
-            var counterPartyScriptSig = tx.GetScriptSig(0);
-            var counterPartySign = BitcoinBasedSwapTemplate.ExtractSignFromP2PkhSwapRefund(counterPartyScriptSig);
-
-            // clean counter party signature in refund tx
+            // clean any signature, if exists
             tx.NonStandardSign(Script.Empty, 0);
 
             var sigHash = tx.GetSignatureHash(spentOutput);
@@ -128,7 +85,7 @@ namespace Atomix.Swaps.BitcoinBased
             var signature = await Account.Wallet
                 .SignHashAsync(
                     hash: sigHash,
-                    address: order.RefundWallet)
+                    address: refundAddress)
                 .ConfigureAwait(false);
 
             if (signature == null)
@@ -137,9 +94,9 @@ namespace Atomix.Swaps.BitcoinBased
                 return null;
             }
 
-            var refundScript = BitcoinBasedSwapTemplate.GenerateSwapRefund(
+            var refundScript = BitcoinBasedSwapTemplate.GenerateHtlcSwapRefund(
                 aliceRefundSig: signature,
-                bobRefundSig: counterPartySign);
+                aliceRefundPubKey: refundAddress.PublicKeyBytes());
 
             tx.NonStandardSign(refundScript, spentOutput);
 
@@ -155,7 +112,7 @@ namespace Atomix.Swaps.BitcoinBased
         public async Task<IBitcoinBasedTransaction> SignRedeemTxAsync(
             IBitcoinBasedTransaction redeemTx,
             IBitcoinBasedTransaction paymentTx,
-            Order order,
+            WalletAddress redeemAddress,
             byte[] secret)
         {
             var tx = redeemTx.Clone();
@@ -172,7 +129,7 @@ namespace Atomix.Swaps.BitcoinBased
             var signature = await Account.Wallet
                 .SignHashAsync(
                     hash: sigHash,
-                    address: order.ToWallet)
+                    address: redeemAddress)
                 .ConfigureAwait(false);
 
             if (signature == null)
@@ -181,9 +138,9 @@ namespace Atomix.Swaps.BitcoinBased
                 return null;
             }
 
-            var redeemScript = BitcoinBasedSwapTemplate.GenerateP2PkhSwapRedeem(
+            var redeemScript = BitcoinBasedSwapTemplate.GenerateHtlcP2PkhSwapRedeem(
                 sig: signature,
-                pubKey: order.ToWallet.PublicKeyBytes(),
+                pubKey: redeemAddress.PublicKeyBytes(),
                 secret: secret);
 
             tx.NonStandardSign(redeemScript, spentOutput);

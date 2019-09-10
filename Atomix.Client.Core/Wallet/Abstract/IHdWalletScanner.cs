@@ -17,5 +17,10 @@ namespace Atomix.Wallet.Abstract
 
         Task ScanFreeAddressesAsync(
             CancellationToken cancellationToken = default(CancellationToken));
+
+        Task ScanAddressAsync(
+            Currency currency,
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken));
     }
 }

@@ -6,7 +6,7 @@ using NBitcoin;
 
 namespace Atomix.Client.Core.Tests
 {
-    public class BitcoinBasedCommon
+    public static class BitcoinBasedCommon
     {
         public static IBitcoinBasedTransaction CreateFakeTx(BitcoinBasedCurrency currency, PubKey to, params long[] outputs)
         {
@@ -15,7 +15,7 @@ namespace Atomix.Client.Core.Tests
             foreach (var output in outputs)
                 tx.Outputs.Add(new TxOut(new Money(output), to.Hash)); // p2pkh
 
-            return new BitcoinBasedTransaction(currency, tx);
+            return new BitcoinBasedTransaction(currency, tx.ToBytes());
         }
 
         public static IBitcoinBasedTransaction CreateSegwitPaymentTx(
@@ -45,8 +45,8 @@ namespace Atomix.Client.Core.Tests
         {
             return currency.CreateSwapRefundTx(
                 unspentOutputs: outputs,
-                destinationAddress: to.GetAddress(currency.Network).ToString(),
-                changeAddress: from.GetAddress(currency.Network).ToString(),
+                destinationAddress: to.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
+                changeAddress: from.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
                 amount: amount,
                 fee: fee,
                 lockTime: lockTime);

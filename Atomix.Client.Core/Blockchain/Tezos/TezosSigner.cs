@@ -2,26 +2,51 @@
 using Atomix.Blockchain.Tezos.Internal;
 using Atomix.Common;
 using Atomix.Cryptography;
+using Atomix.Cryptography.BouncyCastle;
 
 namespace Atomix.Blockchain.Tezos
 {
-    public class TezosSigner
+    public static class TezosSigner
     {
-        public byte[] Sign(byte[] data, byte[] privateKey)
+        public static byte[] Sign(
+            byte[] data,
+            byte[] privateKey)
         {
-            return new Ed25519().Sign(data, privateKey);
+            return Ed25519.Sign(data, privateKey);
         }
 
-        public SignedMessage SignHash(byte[] data, byte[] privateKey, byte[] watermark = null)
+        public static byte[] SignByExtendedKey(
+            byte[] data,
+            byte[] extendedPrivateKey)
         {
-            var dataForSign = data.Copy(0, data.Length);
+            return Ed25519.SignByExtendedKey(data, extendedPrivateKey);
+        }
+
+        private static SignedMessage SignHash(
+            byte[] data,
+            byte[] privateKey,
+            Func<byte[], byte[], byte[]> signer,
+            byte[] watermark = null)
+        {
+            var dataForSign = data.Copy(offset: 0, count: data.Length);
 
             if (watermark?.Length > 0)
             {
                 var bytesWithWatermark = new byte[dataForSign.Length + watermark.Length];
 
-                Array.Copy(watermark, 0, bytesWithWatermark, 0, watermark.Length);
-                Array.Copy(dataForSign, 0, bytesWithWatermark, watermark.Length, dataForSign.Length);
+                Array.Copy(
+                    sourceArray: watermark,
+                    sourceIndex: 0,
+                    destinationArray: bytesWithWatermark,
+                    destinationIndex: 0,
+                    length: watermark.Length);
+
+                Array.Copy(
+                    sourceArray: dataForSign,
+                    sourceIndex: 0,
+                    destinationArray: bytesWithWatermark,
+                    destinationIndex: watermark.Length,
+                    length: dataForSign.Length);
 
                 dataForSign = bytesWithWatermark;
             }
@@ -29,7 +54,7 @@ namespace Atomix.Blockchain.Tezos
             var hash = new HmacBlake2b(SignedMessage.HashSizeBits)
                 .ComputeHash(dataForSign);
 
-            var signature = new Ed25519().Sign(hash, privateKey);
+            var signature = signer(hash, privateKey);
 
             return new SignedMessage
             {
@@ -40,17 +65,44 @@ namespace Atomix.Blockchain.Tezos
             };
         }
 
-        public bool Verify(byte[] data, byte[] signature, byte[] publicKey)
+        public static SignedMessage SignHash(
+            byte[] data,
+            byte[] privateKey,
+            byte[] watermark = null,
+            bool isExtendedKey = true)
         {
-            return new Ed25519().Verify(data, signature, publicKey);
+            if (isExtendedKey)
+                return SignHash(data,
+                    privateKey,
+                    Ed25519.SignByExtendedKey,
+                    watermark);
+ 
+            return SignHash(data,
+                privateKey,
+                Ed25519.Sign,
+                watermark);
         }
 
-        public bool VerifyHash(byte[] data, byte[] signature, byte[] publicKey)
+        public static bool Verify(
+            byte[] data,
+            byte[] signature,
+            byte[] publicKey)
         {
-            var hash = new HmacBlake2b(SignedMessage.HashSizeBits)
-                .ComputeHash(data);
+            return Ed25519.Verify(data, signature, publicKey);
+        }
 
-            return new Ed25519().Verify(hash, signature, publicKey);
+        public static bool VerifyHash(
+            byte[] data,
+            byte[] signature,
+            byte[] publicKey)
+        {
+            var hash = new HmacBlake2b(digestSize: SignedMessage.HashSizeBits)
+                .ComputeHash(input: data);
+
+            return Ed25519.Verify(
+                data: hash,
+                signature: signature,
+                publicKey: publicKey);
         }
     }
 }

@@ -1,23 +1,39 @@
-﻿namespace Atomix.Core.Entities
+﻿using System.Globalization;
+using System.Linq;
+using Atomix.Abstract;
+using Microsoft.Extensions.Configuration;
+
+namespace Atomix.Core.Entities
 {
-    public abstract class Symbol
+    public class Symbol
     {
         public const int MaxNameLength = 32;
 
         public int Id { get; set; }
         public string Name { get; set; }
-        public string Description { get; set; }
         public decimal MinimumQty { get; set; }
-        public int PriceDigits { get; set; }
-        public int QtyDigits { get; set; }
         public int BaseId { get; set; }
         public Currency Base { get; set; }
         public int QuoteId { get; set; }
         public Currency Quote { get; set; }
 
-        public abstract decimal ToPrice(ulong price);
-        public abstract decimal ToQty(ulong qty);
-        public abstract ulong PriceToUlong(decimal price);
-        public abstract ulong QtyToUlong(decimal qty);
+        public Symbol()
+        {   
+        }
+
+        public Symbol(
+            IConfiguration configuration,
+            ICurrencies currencies)
+        {
+            Id = int.Parse(configuration["Id"]);
+            Name = configuration["Name"];
+            MinimumQty = decimal.Parse(configuration["MinimumQty"], CultureInfo.InvariantCulture);
+
+            var baseName = Name.Substring(0, Name.IndexOf('/'));
+            var quoteName = Name.Substring(Name.IndexOf('/') + 1);
+
+            Base = currencies.First(c => c.Name == baseName);
+            Quote = currencies.First(c => c.Name == quoteName);
+        }
     }
 }

@@ -9,19 +9,19 @@ namespace Atomix.Blockchain.Ethereum
         [Parameter("bytes32", "_hashedSecret", 1, true)]
         public byte[] HashedSecret { get; set; }
 
-        [Parameter("uint", "_initTimestamp", 2, false)]
-        public uint InitTimestamp { get; set; }
-
-        [Parameter("uint", "_refundTime", 3, false)]
-        public uint RefundTime { get; set; }
-
-        [Parameter("address", "_participant", 4, true)]
+        [Parameter("address", "_participant", 2, true)]
         public string Participant { get; set; }
 
-        [Parameter("address", "_initiator", 5, true)]
+        [Parameter("address", "_initiator", 3, false)]
         public string Initiator { get; set; }
 
-        [Parameter("uint256", "_value", 6, false)]
+        [Parameter("uint", "_refundTimestamp", 4, false)]
+        public uint RefundTimestamp { get; set; }
+
+        [Parameter("uint256", "_value", 5, false)]
         public BigInteger Value { get; set; }
+
+        [Parameter("uint256", "_payoff", 6, false)]
+        public BigInteger RedeemFee { get; set; }
     }
 }

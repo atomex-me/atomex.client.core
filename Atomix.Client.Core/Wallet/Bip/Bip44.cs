@@ -6,12 +6,12 @@
     // Structure:
     // m / purpose' / coin_type' / account' / chain / address_index
 
-    public class Bip44
+    public static class Bip44
     {
         public const int Purpose = 44;
 
-        public const uint External = 0;
-        public const uint Internal = 1;
+        public const int External = 0;
+        public const int Internal = 1;
 
         public const uint Bitcoin = 0;
         public const uint Testnet = 1;

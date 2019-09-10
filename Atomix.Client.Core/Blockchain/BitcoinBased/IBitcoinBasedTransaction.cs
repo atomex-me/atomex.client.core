@@ -9,7 +9,6 @@ namespace Atomix.Blockchain.BitcoinBased
     public interface IBitcoinBasedTransaction : IInOutTransaction
     {
         long TotalOut { get; }
-        DateTime LockTime { get; }
 
         long GetFee(ITxOutput[] spentOutputs);
         byte[] GetSignatureHash(ITxOutput spentOutput);

@@ -1,13 +1,13 @@
-﻿using Atomix.Blockchain;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Atomix.Blockchain;
 using Atomix.Blockchain.Abstract;
 using Atomix.Blockchain.BitcoinBased;
 using Atomix.Common;
 using Atomix.Core.Entities;
 using Serilog;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace Atomix.Swaps.BitcoinBased
 {
@@ -15,29 +15,33 @@ namespace Atomix.Swaps.BitcoinBased
     {
         public async Task<IBitcoinBasedTransaction> CreateSwapPaymentTxAsync(
             BitcoinBasedCurrency currency,
-            Order order,
-            SwapRequisites requisites,
+            ClientSwap swap,
+            IEnumerable<string> fromWallets,
+            string refundAddress,
+            string toAddress,
+            DateTimeOffset lockTime,
             byte[] secretHash,
+            int secretSize,
             ITxOutputSource outputsSource)
         {
-            IBitcoinBasedTransaction tx;
+            var availableOutputs = (await outputsSource
+                .GetAvailableOutputsAsync(currency, fromWallets)
+                .ConfigureAwait(false))
+                .ToList();
 
             var fee = 0L;
-            long usedAmount;
-            var orderAmount = (long)(AmountHelper.QtyToAmount(order.Side, order.LastQty, order.LastPrice) *
+            var orderAmount = (long)(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price) *
                               currency.DigitsMultiplier);
+
             var requiredAmount = orderAmount + fee;
 
-            var unspentOutputs = await outputsSource
-                .GetUnspentOutputsAsync(order.FromWallets)
-                .ConfigureAwait(false);
-
-            var unspentOutputsList = unspentOutputs.ToList();
+            long usedAmount;
             IList<ITxOutput> usedOutputs;
+            IBitcoinBasedTransaction tx;
 
             do
             {
-                usedOutputs = unspentOutputsList
+                usedOutputs = availableOutputs
                     .SelectOutputsForAmount(requiredAmount)
                     .ToList();
 
@@ -48,12 +52,13 @@ namespace Atomix.Swaps.BitcoinBased
 
                 var estimatedSigSize = EstimateSigSize(usedOutputs);
 
-                tx = currency.CreateP2PkhSwapPaymentTx(
+                tx = currency.CreateHtlcP2PkhSwapPaymentTx(
                     unspentOutputs: usedOutputs,
-                    aliceRefundPubKey: order.RefundWallet.PublicKeyBytes(),
-                    bobRefundPubKey: requisites.ToWallet.PublicKeyBytes(),
-                    bobAddress: requisites.ToWallet.Address,
+                    aliceRefundAddress: refundAddress,
+                    bobAddress: toAddress,
+                    lockTime: lockTime,
                     secretHash: secretHash,
+                    secretSize: secretSize,
                     amount: orderAmount,
                     fee: fee);
 
@@ -65,12 +70,13 @@ namespace Atomix.Swaps.BitcoinBased
 
             } while (usedAmount < requiredAmount);
 
-            tx = currency.CreateP2PkhSwapPaymentTx(
+            tx = currency.CreateHtlcP2PkhSwapPaymentTx(
                 unspentOutputs: usedOutputs,
-                aliceRefundPubKey: order.RefundWallet.PublicKeyBytes(),
-                bobRefundPubKey: requisites.ToWallet.PublicKeyBytes(),
-                bobAddress: requisites.ToWallet.Address,
+                aliceRefundAddress: refundAddress,
+                bobAddress: toAddress,
+                lockTime: lockTime,
                 secretHash: secretHash,
+                secretSize: secretSize,
                 amount: orderAmount,
                 fee: fee);
 
@@ -79,16 +85,17 @@ namespace Atomix.Swaps.BitcoinBased
 
         public Task<IBitcoinBasedTransaction> CreateSwapRefundTxAsync(
             IBitcoinBasedTransaction paymentTx,
-            Order order,
+            ClientSwap swap,
+            string refundAddress,
             DateTimeOffset lockTime)
         {
             var currency = (BitcoinBasedCurrency)paymentTx.Currency;
-            var orderAmount = (long)(AmountHelper.QtyToAmount(order.Side, order.LastQty, order.LastPrice) *
+            var orderAmount = (long)(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price) *
                                      currency.DigitsMultiplier);
 
             var swapOutputs = paymentTx.Outputs
                 .Cast<BitcoinBasedTxOutput>()
-                .Where(o => o.Value == orderAmount && o.IsP2PkhSwapPayment)
+                .Where(o => o.Value == orderAmount && o.IsSwapPayment)
                 .ToList();
 
             if (swapOutputs.Count != 1)
@@ -99,8 +106,8 @@ namespace Atomix.Swaps.BitcoinBased
             var txSize = currency
                 .CreateSwapRefundTx(
                     unspentOutputs: swapOutputs,
-                    destinationAddress: order.RefundWallet.Address,
-                    changeAddress: order.RefundWallet.Address,
+                    destinationAddress: refundAddress,
+                    changeAddress: refundAddress,
                     amount: orderAmount,
                     fee: 0,
                     lockTime: lockTime)
@@ -113,8 +120,8 @@ namespace Atomix.Swaps.BitcoinBased
 
             var tx = currency.CreateSwapRefundTx(
                 unspentOutputs: swapOutputs,
-                destinationAddress: order.RefundWallet.Address,
-                changeAddress: order.RefundWallet.Address,
+                destinationAddress: refundAddress,
+                changeAddress: refundAddress,
                 amount: orderAmount - fee,
                 fee: fee,
                 lockTime: lockTime);
@@ -124,16 +131,15 @@ namespace Atomix.Swaps.BitcoinBased
 
         public Task<IBitcoinBasedTransaction> CreateSwapRedeemTxAsync(
             IBitcoinBasedTransaction paymentTx,
-            Order order,
-            WalletAddress redeemAddress)
+            ClientSwap swap,
+            string redeemAddress)
         {
             var currency = (BitcoinBasedCurrency)paymentTx.Currency;
-            var orderAmount = (long)(AmountHelper.QtyToAmount(order.Side.Opposite(), order.LastQty, order.LastPrice) *
+            var orderAmount = (long)(AmountHelper.QtyToAmount(swap.Side.Opposite(), swap.Qty, swap.Price) *
                                      currency.DigitsMultiplier);
 
             var swapOutputs = paymentTx
                 .SwapOutputs()
-                .Where(o => o.IsSwapPayment) //o.Value == orderAmount)
                 .ToList();
 
             if (swapOutputs.Count != 1)
@@ -144,8 +150,8 @@ namespace Atomix.Swaps.BitcoinBased
             var txSize = currency
                 .CreateP2PkhTx(
                     unspentOutputs: swapOutputs,
-                    destinationAddress: redeemAddress.Address,
-                    changeAddress: redeemAddress.Address,
+                    destinationAddress: redeemAddress,
+                    changeAddress: redeemAddress,
                     amount: orderAmount,
                     fee: 0)
                 .VirtualSize();
@@ -157,17 +163,15 @@ namespace Atomix.Swaps.BitcoinBased
 
             var tx = currency.CreateP2PkhTx(
                 unspentOutputs: swapOutputs,
-                destinationAddress: redeemAddress.Address,
-                changeAddress: redeemAddress.Address,
+                destinationAddress: redeemAddress,
+                changeAddress: redeemAddress,
                 amount: orderAmount - fee,
                 fee: fee);
 
             return Task.FromResult(tx);
         }
 
-        private static long EstimateSigSize(
-            IEnumerable<ITxOutput> outputs,
-            bool forRefund = false)
+        private static long EstimateSigSize(IEnumerable<ITxOutput> outputs, bool forRefund = false)
         {
             var result = 0L;
 
@@ -177,7 +181,7 @@ namespace Atomix.Swaps.BitcoinBased
                     result += BitcoinBasedCurrency.P2PkhScriptSigSize; // use compressed?
                 else if (output.IsSegwitP2Pkh)
                     result += BitcoinBasedCurrency.P2WPkhScriptSigSize;
-                else if (output.IsP2PkhSwapPayment)
+                else if (output.IsP2PkhSwapPayment || output.IsHtlcP2PkhSwapPayment)
                     result += forRefund
                         ? BitcoinBasedCurrency.P2PkhSwapRefundSigSize
                         : BitcoinBasedCurrency.P2PkhSwapRedeemSigSize;

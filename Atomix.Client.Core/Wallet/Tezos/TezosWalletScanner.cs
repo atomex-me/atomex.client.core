@@ -12,12 +12,12 @@ namespace Atomix.Wallet.Tezos
 {
     public class TezosWalletScanner : ICurrencyHdWalletScanner
     {
-        private const int DefaultInternalLookAhead = 1;
-        private const int DefaultExternalLookAhead = 1;
+        private const int DefaultInternalLookAhead = 3;
+        private const int DefaultExternalLookAhead = 3;
 
-        public int InternalLookAhead { get; set; } = DefaultInternalLookAhead;
-        public int ExternalLookAhead { get; set; } = DefaultExternalLookAhead;
-        public IAccount Account { get; }
+        private int InternalLookAhead { get; } = DefaultInternalLookAhead;
+        private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
+        private IAccount Account { get; }
 
         public TezosWalletScanner(IAccount account)
         {
@@ -28,28 +28,36 @@ namespace Atomix.Wallet.Tezos
             bool skipUsed = false,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var currency = Currencies.Xtz;
+            var currency = Account.Currencies.Get<Atomix.Tezos>();
 
-            ///var scanParams = new[]
-            //{
-            //    new {Chain = Bip44.Internal, LookAhead = InternalLookAhead},
-            //    new {Chain = Bip44.External, LookAhead = ExternalLookAhead},
-           // };
+            var scanParams = new[]
+            {
+                new {Chain = HdKeyStorage.NonHdKeysChain, LookAhead = 0},
+                new {Chain = Bip44.Internal, LookAhead = InternalLookAhead},
+                new {Chain = Bip44.External, LookAhead = ExternalLookAhead},
+            };
 
-            //foreach (var param in scanParams)
-            //{
-                //var freeKeysCount = 0;
-                //var index = 0u;
+            foreach (var param in scanParams)
+            {
+                var freeKeysCount = 0;
+                var index = 0u;
 
-                //while (true)
-                //{
+                while (true)
+                {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var walletAddress = Account.GetAddress(currency, Bip44.External, 0); //param.Chain, index);
+                    var walletAddress = await Account
+                        .DivideAddressAsync(currency, param.Chain, index)
+                        .ConfigureAwait(false);
+
+                    if (walletAddress == null)
+                        break;
 
                     Log.Debug(
-                        "Scan transactions for {@name} address {@address}",
+                        "Scan transactions for {@name} address {@chain}:{@index}:{@address}",
                         currency.Name,
+                        param.Chain,
+                        index,
                         walletAddress.Address);
 
                     var transactions = (await((ITezosBlockchainApi)currency.BlockchainApi)
@@ -60,35 +68,44 @@ namespace Atomix.Wallet.Tezos
 
                     if (transactions.Count == 0) // address without activity
                     {
-                        //freeKeysCount++;
+                        freeKeysCount++;
 
-                        //if (freeKeysCount >= param.LookAhead)
-                        //{
-                        //    Log.Debug($"{param.LookAhead} free keys found. Chain scan completed");
-                        //    break;
-                        //}
+                        if (freeKeysCount >= param.LookAhead)
+                        {
+                            Log.Debug(
+                                messageTemplate: "{@lookAhead} free keys found. Chain scan completed",
+                                propertyValue: param.LookAhead);
+                            break;
+                        }
                     }
                     else // address has activity
                     {
-                        //freeKeysCount = 0;
-                        await AddTransactionsAsync(transactions, cancellationToken)
+                        freeKeysCount = 0;
+
+                        await UpsertTransactionsAsync(transactions)
                             .ConfigureAwait(false);
                     }
 
-                    //index++;
-                //}
-            //}
+                    index++;
+                }
+            }
+
+            await Account
+                .UpdateBalanceAsync(
+                    currency: currency,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
 
         public async Task ScanAsync(
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var currency = Currencies.Xtz;
+            var currency = Account.Currencies.Get<Atomix.Tezos>();
 
             Log.Debug(
-                "Scan transactions for address {@address}",
-                address);
+                messageTemplate: "Scan transactions for address {@address}",
+                propertyValue: address);
 
             var transactions = (await((ITezosBlockchainApi)currency.BlockchainApi)
                 .GetTransactionsAsync(address, cancellationToken: cancellationToken)
@@ -99,46 +116,30 @@ namespace Atomix.Wallet.Tezos
             if (transactions.Count == 0)
                 return;
 
-            await AddTransactionsAsync(transactions, cancellationToken)
+            await UpsertTransactionsAsync(transactions)
+                .ConfigureAwait(false);
+
+            await Account
+                .UpdateBalanceAsync(
+                    currency: currency,
+                    address: address,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        private async Task AddTransactionsAsync(
-            IEnumerable<TezosTransaction> transactions,
-            CancellationToken cancellationToken = default(CancellationToken))
+        private async Task UpsertTransactionsAsync(
+            IEnumerable<TezosTransaction> transactions)
         {
-            var currency = Currencies.Eth;
-
             foreach (var tx in transactions)
             {
                 await Account
-                    .UpdateTransactionType(tx, cancellationToken)
+                    .UpsertTransactionAsync(
+                        tx: tx,
+                        updateBalance: false,
+                        notifyIfUnconfirmed: false,
+                        notifyIfBalanceUpdated: false)
                     .ConfigureAwait(false);
-
-                var isNewOrChanged = await IsTransactionNewOrChangedAsync(tx, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (isNewOrChanged)
-                    await Account
-                        .AddTransactionAsync(tx)
-                        .ConfigureAwait(false);
             }
-        }
-
-        private async Task<bool> IsTransactionNewOrChangedAsync(
-            TezosTransaction tx,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var txId = tx.IsInternal ? tx.Id + "-internal" : tx.Id;
-
-            var existsTx = await Account.GetTransactionByIdAsync(Currencies.Xtz, txId)
-                .ConfigureAwait(false) as TezosTransaction;
-
-            return existsTx == null ||
-                   existsTx.IsConfirmed() != tx.IsConfirmed() ||
-                   existsTx.Type != tx.Type ||
-                   existsTx.BlockInfo.Fees != tx.BlockInfo.Fees ||
-                   existsTx.BlockInfo.FirstSeen != tx.BlockInfo.FirstSeen;
         }
     }
 }

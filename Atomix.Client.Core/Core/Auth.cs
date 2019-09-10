@@ -8,16 +8,17 @@ namespace Atomix.Core
 {
     public class Auth
     {
-        public const double MaxTimeStampDifferenceMs = 3 * 60 * 1000; // 3 minutes
-        public const int MinClientNonceLength = 16;
+        private const double MaxTimeStampDifferenceMs = 3 * 60 * 1000; // 3 minutes
+        private const int MinClientNonceLength = 16;
 
         public DateTime TimeStamp { get; set; }
         public string Nonce { get; set; }
         public string ClientNonce { get; set; }
         public string PublicKeyHex { get; set; }
         public string Signature { get; set; }
+        public string Version { get; set; }
 
-        public byte[] PublicKey
+        private byte[] PublicKey
         {
             get
             {
@@ -56,7 +57,7 @@ namespace Atomix.Core
             return ClientNonce != null && ClientNonce.Length >= MinClientNonceLength;
         }
 
-        public bool VerifySignature()
+        private bool VerifySignature()
         {
             if (Signature == null)
                 return false;
@@ -65,8 +66,13 @@ namespace Atomix.Core
             return pubKey.VerifyMessage(SignedData, Signature);
         }
         
-        public bool Authorize(string nonce, out Error error)
+        public bool Authorize(string nonce, string version, out Error error)
         {
+            if (version != Version){
+                error = new Error(Errors.AuthError, "Invalid API version");
+                return false;
+            }
+
             if (!CheckTimeStamp()) {
                 error = new Error(Errors.AuthError, "Invalid timestamp");
                 return false;

@@ -1,20 +1,22 @@
 ﻿using System;
-using Atomix.Swaps.Abstract;
+using Atomix.Core.Entities;
 
 namespace Atomix.Swaps
 {
     public class SwapEventArgs : EventArgs
     {
-        public ISwapState Swap { get; }
+        public ClientSwap Swap { get; }
+        public SwapStateFlags ChangedFlag { get; }
 
-        public SwapEventArgs()
-            : this(null)
+        public SwapEventArgs(ClientSwap swap)
+            : this(swap, SwapStateFlags.Empty)
         {
         }
 
-        public SwapEventArgs(ISwapState swap)
+        public SwapEventArgs(ClientSwap swap, SwapStateFlags changedFlag)
         {
             Swap = swap;
+            ChangedFlag = changedFlag;
         }
     }
 }

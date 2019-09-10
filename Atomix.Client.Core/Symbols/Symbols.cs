@@ -1,30 +1,28 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
+using Atomix.Abstract;
 using Atomix.Core.Entities;
+using Microsoft.Extensions.Configuration;
 
 namespace Atomix
 {
-    public static class Symbols
+    public class Symbols : List<Symbol>, ISymbols
     {
-        public static LtcBtc LtcBtc = new LtcBtc();
-        public static EthBtc EthBtc = new EthBtc();
-        public static XtzBtc XtzBtc = new XtzBtc();
-        public static XtzEth XtzEth = new XtzEth();
-
-        public static Symbol[] Available =
+        public Symbols(
+            IConfiguration configuration,
+            ICurrencies currencies)
         {
-            LtcBtc,
-            EthBtc,
-            XtzBtc,
-            XtzEth
-        };
+            var symbols = configuration
+                .GetChildren()
+                .Select(s => new Symbol(s, currencies));
 
-        public static Symbol SymbolByCurrencies(Currency from, Currency to)
+            AddRange(symbols);
+        }
+
+        public Symbol GetByName(
+            string name)
         {
-            if (from == null || to == null)
-                return null;
-
-            return Available.FirstOrDefault(s =>
-                s.Name.Equals($"{from.Name}/{to.Name}") || s.Name.Equals($"{to.Name}/{from.Name}"));
+            return this.FirstOrDefault(s => s.Name == name);
         }
     }
 }

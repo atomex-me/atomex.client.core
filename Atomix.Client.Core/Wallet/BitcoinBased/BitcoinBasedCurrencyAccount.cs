@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomix.Blockchain;
 using Atomix.Blockchain.Abstract;
+using Atomix.Blockchain.BitcoinBased;
 using Atomix.Common;
 using Atomix.Core;
 using Atomix.Core.Entities;
@@ -14,19 +14,41 @@ using Serilog;
 
 namespace Atomix.Wallet.BitcoinBased
 {
-    public class BitcoinBasedCurrencyAccount : CurrencyAccount
+    public class BitcoinBasedCurrencyAccount : CurrencyAccount, IAddressResolver
     {
         private BitcoinBasedCurrency BtcBasedCurrency => (BitcoinBasedCurrency) Currency;
-
-        private IDictionary<string, IList<ITxOutput>> MostLikelySpent { get; } =
-            new ConcurrentDictionary<string, IList<ITxOutput>>();
 
         public BitcoinBasedCurrencyAccount(
             Currency currency,
             IHdWallet wallet,
-            ITransactionRepository transactionRepository)
-                : base(currency, wallet, transactionRepository)
+            IAccountDataRepository dataRepository)
+                : base(currency, wallet, dataRepository)
         {
+        }
+
+        #region Common
+
+        public override async Task<Error> SendAsync(
+            IEnumerable<WalletAddress> from,
+            string to,
+            decimal amount,
+            decimal fee,
+            decimal feePrice,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var unspentOutputs = (await DataRepository
+                .GetAvailableOutputsAsync(Currency)
+                .ConfigureAwait(false))
+                .Where(o => from.FirstOrDefault(w => w.Address == o.DestinationAddress(Currency)) != null)
+                .ToList();
+
+            return await SendAsync(
+                    outputs: unspentOutputs,
+                    to: to,
+                    amount: amount,
+                    fee: fee,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
 
         public override async Task<Error> SendAsync(
@@ -36,44 +58,67 @@ namespace Atomix.Wallet.BitcoinBased
             decimal feePrice,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            var unspentOutputs = (await DataRepository
+                .GetAvailableOutputsAsync(Currency)
+                .ConfigureAwait(false))
+                .ToList();
+
+            return await SendAsync(
+                    outputs: unspentOutputs,
+                    to: to,
+                    amount: amount,
+                    fee: fee,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        private async Task<Error> SendAsync(
+            List<ITxOutput> outputs,
+            string to,
+            decimal amount,
+            decimal fee,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
             var amountSatoshi = BtcBasedCurrency.CoinToSatoshi(amount);
             var feeSatoshi = BtcBasedCurrency.CoinToSatoshi(fee);
 
-            var unspentOutputs = (await TransactionRepository
-                .GetUnspentOutputsAsync(BtcBasedCurrency)
-                .ConfigureAwait(false))
+            outputs = outputs
                 .SelectOutputsForAmount(amountSatoshi + feeSatoshi)
                 .ToList();
 
-            if (!unspentOutputs.Any())
-            {
+            if (!outputs.Any())
                 return new Error(
                     code: Errors.InsufficientFunds,
                     description: "Insufficient funds");
-            }
 
             var changeAddress = await GetFreeInternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var tx = BtcBasedCurrency
                 .CreatePaymentTx(
-                    unspentOutputs: unspentOutputs,
+                    unspentOutputs: outputs,
                     destinationAddress: to,
                     changeAddress: changeAddress.Address,
                     amount: amountSatoshi,
                     fee: feeSatoshi);
 
-            var signResult = await Wallet
-                .SignAsync(tx, unspentOutputs, cancellationToken)
+            var result = await Wallet
+                .SignAsync(
+                    tx: tx,
+                    spentOutputs: outputs,
+                    addressResolver: this,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (!signResult) {
+            if (!result)
                 return new Error(
                     code: Errors.TransactionSigningError,
                     description: "Transaction signing error");
-            }
 
-            // TODO: verification
+            if (!tx.Verify(outputs))
+                return new Error(
+                    code: Errors.TransactionVerificationError,
+                    description: "Transaction verification error");
 
             var txId = await Currency.BlockchainApi
                 .BroadcastAsync(tx, cancellationToken)
@@ -84,13 +129,13 @@ namespace Atomix.Wallet.BitcoinBased
                     code: Errors.TransactionBroadcastError,
                     description: "Transaction id is null");
 
-            Log.Debug(
-                messageTemplate: "Transaction successfully sent with txId: {@id}",
-                propertyValue: txId);
+            Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
-            await AddUnconfirmedTransactionAsync(
+            await UpsertTransactionAsync(
                     tx: tx,
-                    selfAddresses: new[] {changeAddress.Address},
+                    updateBalance: true,
+                    notifyIfUnconfirmed: true,
+                    notifyIfBalanceUpdated: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -98,256 +143,390 @@ namespace Atomix.Wallet.BitcoinBased
         }
 
         public override async Task<decimal> EstimateFeeAsync(
+            string to,
             decimal amount,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var amountSatoshi = BtcBasedCurrency.CoinToSatoshi(amount);
+            var amountInSatoshi = BtcBasedCurrency.CoinToSatoshi(amount);
 
-            var outputs = (await TransactionRepository
-                .GetUnspentOutputsAsync(Currency)
-                .ConfigureAwait(false))
-                .SelectOutputsForAmount(amountSatoshi)
-                .ToList();
-
-            if (!outputs.Any())
-                return 0;
-
-            var testTx = BtcBasedCurrency
-                .CreatePaymentTx(outputs,
-                    destinationAddress: BtcBasedCurrency.TestAddress(),
-                    changeAddress: BtcBasedCurrency.TestAddress(),
-                    amount: amountSatoshi,
-                    fee: 0);
-
-            return testTx.VirtualSize() * BtcBasedCurrency.FeeRate / BtcBasedCurrency.DigitsMultiplier;
-        }
-
-        public override async Task AddUnconfirmedTransactionAsync(
-            IBlockchainTransaction tx,
-            string[] selfAddresses,
-            bool notify = true,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var result = await TransactionRepository
-                .AddTransactionAsync(tx)
-                .ConfigureAwait(false);
-
-            if (!result)
-                return; // TODO: return result
-
-            if (!(tx is IInOutTransaction inOutTx))
-                throw new NotSupportedException("Transaction has incorrect type");
-
-            await AddUnconfirmedOutputsAsync(inOutTx, selfAddresses, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (notify)
-                RaiseUnconfirmedTransactionAdded(new TransactionEventArgs(tx));
-
-            RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
-        }
-
-        private async Task AddUnconfirmedOutputsAsync(
-            IInOutTransaction tx,
-            string[] selfAddresses,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var outputs = (await TransactionRepository
-                .GetOutputsAsync(tx.Currency)
+            var unspentOutputs = (await DataRepository
+                .GetAvailableOutputsAsync(Currency)
                 .ConfigureAwait(false))
                 .ToList();
 
-            // add self inputs to MostLikelySpent list
-            foreach (var i in tx.Inputs)
+            var feeInSatoshi = 0L;
+
+            while (true)
             {
-                var selfInput = outputs.FirstOrDefault(o => o.Index == i.Index && o.TxId == i.Hash);
-
-                if (selfInput == null)
-                    continue;
-
-                if (MostLikelySpent.TryGetValue(tx.Currency.Name, out var outputsList)) {
-                    outputsList.Add(selfInput);
-                } else {
-                    MostLikelySpent.Add(tx.Currency.Name, new List<ITxOutput> { selfInput });
-                }
-            }
-
-            // save self outputs
-            foreach (var o in tx.Outputs)
-            {
-                if (o.IsSwapPayment)
-                    continue;
-
-                var address = o.DestinationAddress(tx.Currency);
-
-                if (!selfAddresses.Contains(address))
-                    continue;
-
-                var addressOutputs = (await TransactionRepository
-                    .GetOutputsAsync(tx.Currency, address)
-                    .ConfigureAwait(false))
+                var selectedOutputs = unspentOutputs
+                    .SelectOutputsForAmount(amountInSatoshi + feeInSatoshi)
                     .ToList();
 
-                addressOutputs.Add(o);
+                if (!selectedOutputs.Any()) // insufficient funds
+                {
+                    var tx = BtcBasedCurrency
+                        .CreatePaymentTx(unspentOutputs,
+                            destinationAddress: BtcBasedCurrency.TestAddress(),
+                            changeAddress: BtcBasedCurrency.TestAddress(),
+                            amount: unspentOutputs.Sum(o => o.Value),
+                            fee: 0);
 
-                await TransactionRepository
-                    .AddOutputsAsync(addressOutputs, tx.Currency, address)
-                    .ConfigureAwait(false);
+                    return (long)(tx.VirtualSize() * BtcBasedCurrency.FeeRate) / (decimal)BtcBasedCurrency.DigitsMultiplier;
+                }
+
+                var testTx = BtcBasedCurrency
+                    .CreatePaymentTx(selectedOutputs,
+                        destinationAddress: BtcBasedCurrency.TestAddress(),
+                        changeAddress: BtcBasedCurrency.TestAddress(),
+                        amount: amountInSatoshi,
+                        fee: feeInSatoshi);
+
+                var requiredFeeInSatoshi = (long)(testTx.VirtualSize() * BtcBasedCurrency.FeeRate);
+
+                if (requiredFeeInSatoshi > feeInSatoshi)
+                {
+                    feeInSatoshi = requiredFeeInSatoshi;
+                    continue; 
+                }
+
+                return requiredFeeInSatoshi / (decimal)BtcBasedCurrency.DigitsMultiplier;
             }
         }
 
-        public override async Task AddConfirmedTransactionAsync(
-            IBlockchainTransaction tx,
+        #endregion Common
+
+        #region Balances
+
+        public override async Task UpdateBalanceAsync(
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            await UpdateTransactionType(tx, cancellationToken)
+            var outputs = (await DataRepository
+                .GetOutputsAsync(Currency)
+                .ConfigureAwait(false))
+                .ToList();
+
+            //var unconfirmedTxs = (await DataRepository
+            //    .GetUnconfirmedTransactionsAsync(Currency)
+            //    .ConfigureAwait(false))
+            //    .Cast<IInOutTransaction>()
+            //    .ToList();
+
+            // calculate balances
+            var totalBalance = 0m;
+            var totalUnconfirmedIncome = 0m;
+            var totalUnconfirmedOutcome = 0m;
+            var addressBalances = new Dictionary<string, WalletAddress>();
+
+            foreach (var o in outputs)
+            {
+                var address = o.DestinationAddress(Currency);
+                var amount = o.Value / (decimal) Currency.DigitsMultiplier;
+
+                var isSpent = o.IsSpent;
+
+                //var isConfirmedOutput = unconfirmedTxs
+                //    .FirstOrDefault(t => t.Outputs
+                //        .FirstOrDefault(to => to.Index == o.Index && to.TxId == o.TxId) != null) == null;
+
+                var isConfirmedOutput = (await DataRepository
+                    .GetTransactionByIdAsync(Currency, o.TxId)
+                    .ConfigureAwait(false))
+                    .IsConfirmed();
+
+                //var isConfirmedInput = isSpent && unconfirmedTxs
+                //    .FirstOrDefault(t => t.Inputs
+                //        .FirstOrDefault(ti => ti.Index == o.Index && ti.Hash == o.TxId) != null) == null;
+
+                var isConfirmedInput = isSpent && (await DataRepository
+                    .GetTransactionByIdAsync(Currency, o.SpentTxPoint.Hash)
+                    .ConfigureAwait(false))
+                    .IsConfirmed();
+
+                // balance = sum (all confirmed unspended outputs) + sum(all confirmed spent outputs with unconfirmed spent tx)
+                // unconfirmedIncome = sum(all unconfirmed unspended outputs)
+                // unconfirmedOutcome = -sum(all confirmed spent outputs with unconfirmed spent tx)
+
+                if (addressBalances.TryGetValue(address, out var walletAddress))
+                {
+                    walletAddress.Balance += isConfirmedOutput && (!isSpent || !isConfirmedInput) ? amount : 0;
+                    walletAddress.UnconfirmedIncome += !isConfirmedOutput && !isSpent ? amount : 0;
+                    walletAddress.UnconfirmedOutcome += isConfirmedOutput && isSpent && !isConfirmedInput ? -amount : 0;
+                }
+                else
+                {
+                    walletAddress = await DataRepository
+                        .GetWalletAddressAsync(Currency, address)
+                        .ConfigureAwait(false);
+
+                    walletAddress.Balance = isConfirmedOutput && (!isSpent || !isConfirmedInput) ? amount : 0;
+                    walletAddress.UnconfirmedIncome = !isConfirmedOutput && !isSpent ? amount : 0;
+                    walletAddress.UnconfirmedOutcome = isConfirmedOutput && isSpent && !isConfirmedInput ? -amount : 0;
+                    walletAddress.HasActivity = true;
+
+                    addressBalances.Add(address, walletAddress);
+                }
+
+                totalBalance += isConfirmedOutput && (!isSpent || !isConfirmedInput) ? amount : 0;
+                totalUnconfirmedIncome += !isConfirmedOutput && !isSpent ? amount : 0;
+                totalUnconfirmedOutcome += isConfirmedOutput && isSpent && !isConfirmedInput ? -amount : 0;
+            }
+
+            // upsert addresses
+            await DataRepository
+                .UpsertAddressesAsync(addressBalances.Values)
                 .ConfigureAwait(false);
 
-            var result = await TransactionRepository
-                .AddTransactionAsync(tx)
+            Balance = totalBalance;
+            UnconfirmedIncome = totalUnconfirmedIncome;
+            UnconfirmedOutcome = totalUnconfirmedOutcome;
+
+            RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
+        }
+
+        public override async Task UpdateBalanceAsync(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var outputs = (await DataRepository
+                .GetOutputsAsync(Currency, address)
+                .ConfigureAwait(false))
+                .ToList();
+
+            var walletAddress = await DataRepository
+                .GetWalletAddressAsync(Currency, address)
+                .ConfigureAwait(false);
+
+            var balance = 0m;
+            var unconfirmedIncome = 0m;
+            var unconfirmedOutcome = 0m;
+
+            foreach (var o in outputs)
+            {
+                var amount = o.Value / (decimal) Currency.DigitsMultiplier;
+
+                var isSpent = o.IsSpent;
+
+                //var isConfirmedOutput = unconfirmedTxs
+                //    .FirstOrDefault(t => t.Outputs
+                //        .FirstOrDefault(to => to.Index == o.Index && to.TxId == o.TxId) != null) == null;
+
+                var isConfirmedOutput = (await DataRepository
+                    .GetTransactionByIdAsync(Currency, o.TxId)
+                    .ConfigureAwait(false))
+                    .IsConfirmed();
+
+                //var isConfirmedInput = isSpent && unconfirmedTxs
+                //    .FirstOrDefault(t => t.Inputs
+                //        .FirstOrDefault(ti => ti.Index == o.Index && ti.Hash == o.TxId) != null) == null;
+
+                var isConfirmedInput = isSpent && (await DataRepository
+                    .GetTransactionByIdAsync(Currency, o.SpentTxPoint.Hash)
+                    .ConfigureAwait(false))
+                    .IsConfirmed();
+
+                balance            += isConfirmedOutput && (!isSpent || !isConfirmedInput) ? amount : 0;
+                unconfirmedIncome  += !isConfirmedOutput && !isSpent ? amount : 0;
+                unconfirmedOutcome += isConfirmedOutput && isSpent && !isConfirmedInput ? -amount : 0;
+            }
+
+            var balanceDifference = balance - walletAddress.Balance;
+            var unconfirmedIncomeDifference = unconfirmedIncome - walletAddress.UnconfirmedIncome;
+            var unconfirmedOutcomeDifference = unconfirmedOutcome - walletAddress.UnconfirmedOutcome;
+
+            if (balanceDifference != 0 ||
+                unconfirmedIncomeDifference != 0 ||
+                unconfirmedOutcomeDifference != 0)
+            {
+                walletAddress.Balance = balance;
+                walletAddress.UnconfirmedIncome = unconfirmedIncome;
+                walletAddress.UnconfirmedOutcome = unconfirmedOutcome;
+                walletAddress.HasActivity = true;
+
+                await DataRepository.UpsertAddressAsync(walletAddress)
+                    .ConfigureAwait(false);
+
+                Balance += balanceDifference;
+                UnconfirmedIncome += unconfirmedIncomeDifference;
+                UnconfirmedOutcome += unconfirmedOutcomeDifference;
+
+                RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
+            }
+        }
+
+        #endregion Balances
+
+        #region Addresses
+
+        public override async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+            decimal amount,
+            decimal fee,
+            decimal feePrice,
+            bool isFeePerTransaction,
+            AddressUsagePolicy addressUsagePolicy,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            // todo: unspent address using policy (transaction count minimization?)
+
+            var unspentAddresses = (await DataRepository
+                .GetUnspentAddressesAsync(Currency)
+                .ConfigureAwait(false))
+                .ToList();
+
+            unspentAddresses = ApplyAddressUsagePolicy(
+                    addresses: unspentAddresses,
+                    amount: amount,
+                    fee: fee,
+                    feePrice: feePrice,
+                    addressUsagePolicy: addressUsagePolicy)
+                .ToList();
+
+            if (unspentAddresses.Count == 0)
+                return unspentAddresses;
+
+            var requiredAmount = amount + fee;
+
+            var usedAddresses = new List<WalletAddress>();
+            var usedAmount = 0m;
+
+            foreach (var walletAddress in unspentAddresses)
+            {
+                if (usedAmount >= requiredAmount)
+                    break;
+
+                usedAddresses.Add(walletAddress);
+                usedAmount += walletAddress.AvailableBalance();
+            }
+
+            if (requiredAmount > 0 && usedAmount < requiredAmount)
+                return Enumerable.Empty<WalletAddress>();
+
+            return ResolvePublicKeys(usedAddresses);
+        }
+
+        #endregion Addresses
+
+        #region Transactions
+
+        public override async Task UpsertTransactionAsync(
+            IBlockchainTransaction tx,
+            bool updateBalance = false,
+            bool notifyIfUnconfirmed = true,
+            bool notifyIfBalanceUpdated = true,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var result = await DataRepository
+                .UpsertTransactionAsync(tx)
                 .ConfigureAwait(false);
 
             if (!result)
                 return; // TODO: return result
 
             if (!(tx is IInOutTransaction inOutTx))
-                throw new NotSupportedException("Transaction has incorrect type");
+                throw new NotSupportedException(message: "Transaction has incorrect type");
 
-            await AddConfirmedOutputsAsync(inOutTx, cancellationToken)
+            await UpsertOutputsAsync(
+                    tx: inOutTx,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
+            if (updateBalance)
+                await UpdateBalanceAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+            if (notifyIfUnconfirmed && !tx.IsConfirmed())
+                RaiseUnconfirmedTransactionAdded(new TransactionEventArgs(tx));
+
+            if (updateBalance && notifyIfBalanceUpdated)
+                RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
         }
 
-        private async Task AddConfirmedOutputsAsync(
+        #endregion Transactions
+
+        #region Outputs
+
+        private async Task UpsertOutputsAsync(
             IInOutTransaction tx,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var outputs = (await TransactionRepository
-                .GetOutputsAsync(tx.Currency)
-                .ConfigureAwait(false))
-                .ToList();
+            // update & save self outputs
+            foreach (var output in tx.Outputs.Cast<BitcoinBasedTxOutput>())
+            {
+                if (output.IsSwapPayment || output.IsP2PkhSwapPayment)
+                    continue;
 
+                string address;
+
+                try
+                {
+                    address = output.DestinationAddress(tx.Currency);
+                }
+                catch (Exception)
+                {
+                    Log.Warning("Can't parse address from output for tx id {@txId}", tx.Id);
+                    continue;
+                }
+
+                var isSelfAddress = await IsSelfAddressAsync(address, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!isSelfAddress)
+                    continue;
+
+                await UpsertOutputAsync(tx.Currency, output, address)
+                    .ConfigureAwait(false);
+            }
+
+            // update & save self inputs
             for (uint i = 0; i < tx.Inputs.Length; ++i)
             {
-                var txInput = tx.Inputs[i];
-                var selfInput = outputs.FirstOrDefault(o => o.Index == txInput.Index && o.TxId == txInput.Hash);
+                var input = tx.Inputs[i];
+                
+                var selfInput = await DataRepository
+                    .GetOutputAsync(tx.Currency, input.Hash, input.Index)
+                    .ConfigureAwait(false);
 
                 if (selfInput == null)
                     continue;
 
                 selfInput.SpentTxPoint = new TxPoint(i, tx.Id);
 
-                var address = selfInput.DestinationAddress(tx.Currency);
-
-                var addressOutputs = (await TransactionRepository
-                    .GetOutputsAsync(tx.Currency, address)
-                    .ConfigureAwait(false))
-                    .ToList();
-
-                addressOutputs.Add(selfInput);
-
-                await TransactionRepository
-                    .AddOutputsAsync(
-                        outputs: addressOutputs.GroupBy(o => $"{o.TxId}{o.Index}", RemoveDuplicates),
-                        currency: tx.Currency,
-                        address: address)
+                await UpsertOutputAsync(tx.Currency, selfInput, selfInput.DestinationAddress(tx.Currency))
                     .ConfigureAwait(false);
-
-                // remove from most likely spent list
-                if (MostLikelySpent.TryGetValue(tx.Currency.Name, out var mostLikelySpent))
-                {
-                    var unspentOutput = mostLikelySpent
-                        .FirstOrDefault(o => o.TxId == selfInput.TxId && o.Index == selfInput.Index);
-
-                    if (unspentOutput != null)
-                        MostLikelySpent[tx.Currency.Name].Remove(unspentOutput);
-                }
             }
         }
 
-        public override Task UpdateTransactionType(
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default(CancellationToken))
+        private async Task UpsertOutputAsync(
+            Currency currency,
+            ITxOutput output,
+            string address)
         {
-            return Task.CompletedTask; // nothing todo for BitcoinBased currencies
+            var addressOutputs = (await DataRepository
+                .GetOutputsAsync(currency, address)
+                .ConfigureAwait(false))
+                .ToList();
+
+            addressOutputs.Add(output);
+
+            await DataRepository
+                .UpsertOutputsAsync(
+                    outputs: addressOutputs.RemoveDuplicates(),
+                    currency: currency,
+                    address: address)
+                .ConfigureAwait(false);
         }
 
-        public override async Task<decimal> GetBalanceAsync(
+        #endregion Outputs
+
+        #region AddressResolver
+
+        public Task<WalletAddress> ResolveAddressAsync(
+            Currency currency,
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var outputs = await TransactionRepository
-                .GetUnspentOutputsAsync(Currency, address)
-                .ConfigureAwait(continueOnCapturedContext: false);
-
-            return (decimal) outputs.Sum(o => o.Value) / Currency.DigitsMultiplier;
+            return ResolveAddressAsync(address, cancellationToken);
         }
 
-        public override async Task<decimal> GetBalanceAsync(
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var outputs = await TransactionRepository
-                .GetUnspentOutputsAsync(Currency)
-                .ConfigureAwait(continueOnCapturedContext: false);
-
-            return (decimal)outputs.Sum(o => o.Value) / Currency.DigitsMultiplier;
-        }
-
-        public override async Task<bool> IsAddressHasOperationsAsync(
-            WalletAddress walletAddress,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var outputs = await TransactionRepository
-                .GetOutputsAsync(Currency, walletAddress.Address)
-                .ConfigureAwait(false);
-
-            return outputs != null && outputs.Any();
-        }
-
-        public override async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
-            decimal requiredAmount,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var amount = (long)(requiredAmount * Currency.DigitsMultiplier);
-
-            var outputs = await TransactionRepository
-                .GetUnspentOutputsAsync(Currency)
-                .ConfigureAwait(false);
-
-            // TODO: filter already used outputs
-
-            var addresses = outputs
-                .SelectAddressesForAmount(Currency, amount)
-                .ToList();
-
-            if (amount > 0 && !addresses.Any())
-                throw new Exception($"Insufficient funds for currency {Currency.Name}");
-
-            return await Task.WhenAll(addresses.Select(a => Wallet.GetAddressAsync(currency: Currency, address: a, maxIndex: 0)))
-                .ConfigureAwait(false);
-        }
-
-        public override Task<WalletAddress> GetRefundAddressAsync(
-            IEnumerable<WalletAddress> paymentAddresses,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            return GetFreeInternalAddressAsync(cancellationToken);
-        }
-
-        public override Task<WalletAddress> GetRedeemAddressAsync(
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            return GetFreeInternalAddressAsync(cancellationToken);
-        }
-
-        private static ITxOutput RemoveDuplicates(string id, IEnumerable<ITxOutput> outputs)
-        {
-            var txOutputs = outputs.ToList();
-
-            return txOutputs.Count == 1
-                ? txOutputs.First()
-                : txOutputs.First(o => o.IsSpent);
-        }
+        #endregion AddressResolver
     }
 }

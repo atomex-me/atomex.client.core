@@ -16,14 +16,33 @@ namespace Atomix.Wallet
             _account = account ?? throw new ArgumentNullException(nameof(account));
         }
 
-        public async Task<IEnumerable<ITxOutput>> GetUnspentOutputsAsync(IEnumerable<WalletAddress> addresses)
+        public async Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
+            IEnumerable<WalletAddress> addresses)
         {
             var outputs = new List<ITxOutput>();
 
             foreach (var a in addresses)
             {
                 var unspentOuts = await _account
-                    .GetUnspentOutputsAsync(a.Currency, a.Address)
+                    .GetAvailableOutputsAsync(a.Currency, a.Address)
+                    .ConfigureAwait(false);
+
+                outputs.AddRange(unspentOuts);
+            }
+
+            return outputs;
+        }
+
+        public async Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
+            Currency currency,
+            IEnumerable<string> addresses)
+        {
+            var outputs = new List<ITxOutput>();
+
+            foreach (var address in addresses)
+            {
+                var unspentOuts = await _account
+                    .GetAvailableOutputsAsync(currency, address)
                     .ConfigureAwait(false);
 
                 outputs.AddRange(unspentOuts);

@@ -47,6 +47,14 @@ namespace Atomix.Common
         public static T[] SubArray<T>(this T[] arr, int start, int length)
         {
             var result = new T[length];
+            Array.Copy(arr, start, result, 0, length);
+
+            return result;
+        }
+
+        public static byte[] SubArray(this byte[] arr, int start, int length)
+        {
+            var result = new byte[length];
             Buffer.BlockCopy(arr, start, result, 0, length);
 
             return result;
@@ -55,6 +63,17 @@ namespace Atomix.Common
         public static T[] SubArray<T>(this T[] arr, int start)
         {
             return SubArray(arr, start, arr.Length - start);
+        }
+
+        public static byte[] SubArray(this byte[] arr, int start)
+        {
+            return SubArray(arr, start, arr.Length - start);
+        }
+
+        public static void Clear<T>(this T[] array)
+        {
+            if (array != null)
+                Array.Clear(array: array, index: 0, length: array.Length);
         }
     }
 }

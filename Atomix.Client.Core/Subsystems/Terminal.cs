@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Atomix.Api.Proto;
 using Atomix.Blockchain;
 using Atomix.Blockchain.Abstract;
 using Atomix.Common;
@@ -24,62 +25,36 @@ namespace Atomix.Subsystems
     {
         public event EventHandler<TerminalServiceEventArgs> ServiceConnected;
         public event EventHandler<TerminalServiceEventArgs> ServiceDisconnected;
+        public event EventHandler<TerminalServiceEventArgs> ServiceAuthenticated;
+        public event EventHandler<TerminalErrorEventArgs> Error;
+        public event EventHandler<OrderEventArgs> OrderReceived;
         public event EventHandler<MarketDataEventArgs> QuotesUpdated;
         //public event EventHandler<MarketDataEventArgs> OrderBookUpdated;
-        public event EventHandler<ExecutionReportEventArgs> ExecutionReportReceived;
         public event EventHandler<SwapEventArgs> SwapUpdated;
-        public event EventHandler<TerminalErrorEventArgs> Error;
 
-        private ExchangeWebClient ExchangeClient { get; }
-        private MarketDataWebClient MarketDataClient { get; }
+        private ProtoSchemes Schemes { get; set; }
+        private ExchangeWebClient ExchangeClient { get; set; }
+        private MarketDataWebClient MarketDataClient { get; set; }
 
+        private IConfiguration Configuration { get; }
         private IAccount Account { get; set; }
-        private IMarketDataRepository MarketDataRepository { get; }
+        private IMarketDataRepository MarketDataRepository { get; set; }
+        private ClientSwapManager SwapManager { get; set; }
         private IBackgroundTaskPerformer TaskPerformer { get; }
-        private TimeSpan AutoUpdateInterval { get; } = TimeSpan.FromSeconds(90);
 
-        public Terminal(IConfiguration configuration)
-            : this(configuration, null)
+        public Terminal(
+            IConfiguration configuration,
+            IAccount account = null)
         {
-        }
-
-        public Terminal(IConfiguration configuration, IAccount account)
-        {
-            ExchangeClient = new ExchangeWebClient(configuration);
-            ExchangeClient.Connected               += OnExchangeConnectedEventHandler;
-            ExchangeClient.Disconnected            += OnExchangeDisconnectedEventHandler;
-            ExchangeClient.AuthOk                  += OnExchangeAuthOkEventHandler;
-            ExchangeClient.AuthNonce               += OnExchangeAuthNonceEventHandler;
-            ExchangeClient.Error                   += OnExchangeErrorEventHandler;
-            ExchangeClient.ExecutionReportReceived += OnExchangeExecutionReportEventHandler;
-            ExchangeClient.SwapDataReceived        += OnSwapDataReceivedEventHandler;
-
-            MarketDataClient = new MarketDataWebClient(configuration);
-            MarketDataClient.Connected        += OnMarketDataConnectedEventHandler;
-            MarketDataClient.Disconnected     += OnMarketDataDisconnectedEventHandler;
-            MarketDataClient.AuthOk           += OnMarketDataAuthOkEventHandler;
-            MarketDataClient.AuthNonce        += OnMarketDataAuthNonceEventHandler;
-            MarketDataClient.Error            += OnMarketDataErrorEventHandler;
-            MarketDataClient.QuotesReceived   += OnQuotesReceivedEventHandler;
-            MarketDataClient.EntriesReceived  += OnEntriesReceivedEventHandler;
-            MarketDataClient.SnapshotReceived += OnSnapshotReceivedEventHandler;
-
-            MarketDataRepository = new MarketDataRepository(Symbols.Available);
+            Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             TaskPerformer = new BackgroundTaskPerformer();
-
             Account = account;
 
-            if (Account != null) {
+            if (Account != null)
                 Account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
-                Account.SwapsLoaded += OnSwapsLoadedEventHandler;
-                Account.LoadSwapsAsync().FireAndForget();
-            }
-
         }
 
-        #region Api
-
-        public async Task<ITerminal> ChangeAccountAsync(IAccount account, bool restart = true)
+        public async Task ChangeAccountAsync(IAccount account, bool restart = true)
         {
             if (restart)
                 await StopAsync()
@@ -87,17 +62,12 @@ namespace Atomix.Subsystems
 
             Account = account;
 
-            if (Account != null) {
+            if (Account != null)
                 Account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
-                Account.SwapsLoaded += OnSwapsLoadedEventHandler;
-                Account.LoadSwapsAsync().FireAndForget();
-            }
 
             if (restart && Account != null)
                 await StartAsync()
                     .ConfigureAwait(false);
-
-            return this;
         }
 
         public bool IsServiceConnected(TerminalService service)
@@ -120,6 +90,44 @@ namespace Atomix.Subsystems
         {
             Log.Information("Start terminal services");
 
+            var configuration = Configuration.GetSection($"Services:{Account.Network}");
+
+            // init schemes
+            Schemes = new ProtoSchemes(
+                currencies: Account.Currencies,
+                symbols: Account.Symbols);
+
+            // init market data repository
+            MarketDataRepository = new MarketDataRepository(Account.Symbols);
+
+            // init exchange client
+            ExchangeClient = new ExchangeWebClient(configuration, Schemes);
+            ExchangeClient.Connected     += OnExchangeConnectedEventHandler;
+            ExchangeClient.Disconnected  += OnExchangeDisconnectedEventHandler;
+            ExchangeClient.AuthOk        += OnExchangeAuthOkEventHandler;
+            ExchangeClient.AuthNonce     += OnExchangeAuthNonceEventHandler;
+            ExchangeClient.Error         += OnExchangeErrorEventHandler;
+            ExchangeClient.OrderReceived += OnExchangeOrderEventHandler;
+            ExchangeClient.SwapReceived  += OnSwapReceivedEventHandler;
+
+            // init market data client
+            MarketDataClient = new MarketDataWebClient(configuration, Schemes);
+            MarketDataClient.Connected        += OnMarketDataConnectedEventHandler;
+            MarketDataClient.Disconnected     += OnMarketDataDisconnectedEventHandler;
+            MarketDataClient.AuthOk           += OnMarketDataAuthOkEventHandler;
+            MarketDataClient.AuthNonce        += OnMarketDataAuthNonceEventHandler;
+            MarketDataClient.Error            += OnMarketDataErrorEventHandler;
+            MarketDataClient.QuotesReceived   += OnQuotesReceivedEventHandler;
+            MarketDataClient.EntriesReceived  += OnEntriesReceivedEventHandler;
+            MarketDataClient.SnapshotReceived += OnSnapshotReceivedEventHandler;
+
+            // init swap manager
+            SwapManager = new ClientSwapManager(
+                account: Account,
+                swapClient: ExchangeClient,
+                taskPerformer: TaskPerformer);
+            SwapManager.SwapUpdated += (sender, args) => SwapUpdated?.Invoke(sender, args);
+
             // run services
             await Task.WhenAll(
                     ExchangeClient.ConnectAsync(),
@@ -130,25 +138,48 @@ namespace Atomix.Subsystems
             TaskPerformer.EnqueueTask(new BalanceUpdateTask
             {
                 Account = Account,
-                Interval = AutoUpdateInterval
+                Interval = TimeSpan.FromSeconds(Account.UserSettings.BalanceUpdateIntervalInSec)
             });
             TaskPerformer.Start();
 
             // start to track unconfirmed transactions
             await TrackUnconfirmedTransactionsAsync()
                 .ConfigureAwait(false);
+
+            // restore swaps
+            SwapManager.RestoreSwapsAsync().FireAndForget();
         }
 
-        public Task StopAsync()
+        public async Task StopAsync()
         {
+            if (ExchangeClient == null || MarketDataClient == null)
+                return;
+
             Log.Information("Stop terminal services");
 
             TaskPerformer.Stop();
             TaskPerformer.Clear();
 
-            return Task.WhenAll(
+            await Task.WhenAll(
                 ExchangeClient.CloseAsync(),
                 MarketDataClient.CloseAsync());
+
+            ExchangeClient.Connected     -= OnExchangeConnectedEventHandler;
+            ExchangeClient.Disconnected  -= OnExchangeDisconnectedEventHandler;
+            ExchangeClient.AuthOk        -= OnExchangeAuthOkEventHandler;
+            ExchangeClient.AuthNonce     -= OnExchangeAuthNonceEventHandler;
+            ExchangeClient.Error         -= OnExchangeErrorEventHandler;
+            ExchangeClient.OrderReceived -= OnExchangeOrderEventHandler;
+            ExchangeClient.SwapReceived  -= OnSwapReceivedEventHandler;
+
+            MarketDataClient.Connected        -= OnMarketDataConnectedEventHandler;
+            MarketDataClient.Disconnected     -= OnMarketDataDisconnectedEventHandler;
+            MarketDataClient.AuthOk           -= OnMarketDataAuthOkEventHandler;
+            MarketDataClient.AuthNonce        -= OnMarketDataAuthNonceEventHandler;
+            MarketDataClient.Error            -= OnMarketDataErrorEventHandler;
+            MarketDataClient.QuotesReceived   -= OnQuotesReceivedEventHandler;
+            MarketDataClient.EntriesReceived  -= OnEntriesReceivedEventHandler;
+            MarketDataClient.SnapshotReceived -= OnSnapshotReceivedEventHandler;
         }
 
         public async void OrderSendAsync(Order order)
@@ -160,7 +191,7 @@ namespace Atomix.Subsystems
             try
             {
                 await Account
-                    .AddOrderAsync(order)
+                    .UpsertOrderAsync(order)
                     .ConfigureAwait(false);
 
                 ExchangeClient.OrderSendAsync(order);
@@ -185,62 +216,19 @@ namespace Atomix.Subsystems
 
         public MarketDataOrderBook GetOrderBook(Symbol symbol)
         {
-            return MarketDataRepository.OrderBookBySymbolId(symbol.Id);
+            return MarketDataRepository?.OrderBookBySymbolId(symbol.Id);
         }
 
         public Quote GetQuote(Symbol symbol)
         {
-            return MarketDataRepository.QuoteBySymbolId(symbol.Id);
+            return MarketDataRepository?.QuoteBySymbolId(symbol.Id);
         }
-
-        #endregion
 
         #region AccountEventHandlers
 
         private void OnUnconfirmedTransactionAddedEventHandler(object sender, TransactionEventArgs e)
         {
             TrackUnconfirmedTransaction(e.Transaction);
-        }
-
-        private async void OnSwapsLoadedEventHandler(object sender, EventArgs args)
-        {
-            try
-            {
-                var swaps = await Account
-                    .GetSwapsAsync()
-                    .ConfigureAwait(false);
-
-                foreach (var swap in swaps.Cast<SwapState>())
-                    await RestoreSwapAsync(swap)
-                        .ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Swaps restore error");
-            }
-        }
-
-        private async Task RestoreSwapAsync(SwapState swapState)
-        {
-            try
-            {
-                swapState.Updated += OnSwapUpdated;
-
-                if (!swapState.IsComplete && !swapState.IsCanceled && !swapState.IsRefunded)
-                {
-                    await new Swap(
-                            swapState: swapState,
-                            account: Account,
-                            swapClient: ExchangeClient,
-                            taskPerformer: TaskPerformer)
-                        .RestoreSwapAsync()
-                        .ConfigureAwait(false);
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Swap {@id} restore error", swapState.Id);
-            }
         }
 
         #endregion
@@ -259,7 +247,7 @@ namespace Atomix.Subsystems
 
         private void OnExchangeAuthOkEventHandler(object sender, EventArgs e)
         {
-            //throw new NotImplementedException();
+            ServiceAuthenticated?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
         }
 
         private async void OnExchangeAuthNonceEventHandler(object sender, EventArgs args)
@@ -267,7 +255,9 @@ namespace Atomix.Subsystems
             try
             {
                 var auth = await Account
-                    .CreateAuthRequestAsync(ExchangeClient.Nonce)
+                    .CreateAuthRequestAsync(
+                        nonce: ExchangeClient.Nonce,
+                        keyIndex: Account.UserSettings.AuthenticationKeyIndex)
                     .ConfigureAwait(false);
 
                 ExchangeClient.AuthAsync(auth);
@@ -283,56 +273,38 @@ namespace Atomix.Subsystems
             Log.Error("Exchange service error {@Error}", args.Error);
         }
 
-        private async void OnExchangeExecutionReportEventHandler(object sender, ExecutionReportEventArgs args)
+        private async void OnExchangeOrderEventHandler(object sender, OrderEventArgs args)
         {
             // todo: remove warranty outputs if cancel/rejected/partially_filled/filled
 
-            var order = args.Report.Order;
+            var order = args.Order;
 
             try
             {
-                if (order.Status == OrderStatus.Unknown ||
-                    order.Status == OrderStatus.Pending)
+                if (order.Status == OrderStatus.Pending)
                 {
                     OnError(TerminalService.Exchange, $"Invalid order status {order.Status}");
                     return;
                 }
 
-                await HandleOrderAsync(args.Report)
+                // resolve order wallets
+                await order
+                    .ResolveWallets(Account)
                     .ConfigureAwait(false);
 
-                if (order.Status == OrderStatus.Filled ||
-                    order.Status == OrderStatus.PartiallyFilled)
-                {
-                    await HandleOrderExecutionAsync(args.Report)
-                        .ConfigureAwait(false);
-                }
+                var result = await Account
+                    .UpsertOrderAsync(order)
+                    .ConfigureAwait(false);
 
-                ExecutionReportReceived?.Invoke(this, args);
+                if (!result)
+                    OnError(TerminalService.Exchange, "Error adding order");
+
+                OrderReceived?.Invoke(this, args);
             }
             catch (Exception e)
             {
                 OnError(TerminalService.Exchange, e);
             }
-        }
-
-        private async Task HandleOrderExecutionAsync(ExecutionReport report)
-        {
-            var result = await RunSwapAsync(report)
-                .ConfigureAwait(false);
-
-            if (!result)
-                OnError(TerminalService.Exchange, "Can't run swap");
-        }
-
-        private async Task HandleOrderAsync(ExecutionReport report)
-        {
-            var result = await Account
-                .AddOrderAsync(report.Order)
-                .ConfigureAwait(false);
-
-            if (!result)
-                OnError(TerminalService.Exchange, "Error adding order");
         }
 
         #endregion
@@ -351,7 +323,7 @@ namespace Atomix.Subsystems
 
         private void OnMarketDataAuthOkEventHandler(object sender, EventArgs e)
         {
-            //throw new NotImplementedException();
+            ServiceAuthenticated?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
         }
 
         private async void OnMarketDataAuthNonceEventHandler(object sender, EventArgs args)
@@ -359,7 +331,9 @@ namespace Atomix.Subsystems
             try
             {
                 var auth = await Account
-                    .CreateAuthRequestAsync(MarketDataClient.Nonce)
+                    .CreateAuthRequestAsync(
+                        nonce: MarketDataClient.Nonce,
+                        keyIndex: Account.UserSettings.AuthenticationKeyIndex)
                     .ConfigureAwait(false);
 
                 MarketDataClient.AuthAsync(auth);
@@ -372,12 +346,12 @@ namespace Atomix.Subsystems
 
         private void OnMarketDataErrorEventHandler(object sender, ErrorEventArgs args)
         {
-            Log.Debug("Market data service error {@Error}", args.Error);
+            Log.Warning("Market data service error {@Error}", args.Error);
         }
 
         private void OnQuotesReceivedEventHandler(object sender, QuotesEventArgs args)
         {
-            Log.Debug("Quotes: {@quotes}", args.Quotes);
+            Log.Verbose("Quotes: {@quotes}", args.Quotes);
 
             MarketDataRepository.ApplyQuotes(args.Quotes);
 
@@ -390,7 +364,7 @@ namespace Atomix.Subsystems
 
             foreach (var symbolId in symbolsIds)
             {
-                var symbol = Symbols.Available.FirstOrDefault(s => s.Id == symbolId);
+                var symbol = Account.Symbols.FirstOrDefault(s => s.Id == symbolId);
                 if (symbol != null)
                     QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));
             }
@@ -398,14 +372,16 @@ namespace Atomix.Subsystems
 
         private void OnEntriesReceivedEventHandler(object sender, EntriesEventArgs args)
         {
-            Log.Debug("Entries: {@entries}", args.Entries);
+            Log.Verbose("Entries: {@entries}", args.Entries);
 
             MarketDataRepository.ApplyEntries(args.Entries);
         }
 
-        private void OnSnapshotReceivedEventHandler(object sender, SnapshotEventArgs args)
+        private void OnSnapshotReceivedEventHandler(
+            object sender,
+            SnapshotEventArgs args)
         {
-            Log.Debug("Snapshot: {@snapshot}", args.Snapshot);
+            Log.Verbose("Snapshot: {@snapshot}", args.Snapshot);
 
             MarketDataRepository.ApplySnapshot(args.Snapshot);
         }
@@ -414,27 +390,12 @@ namespace Atomix.Subsystems
 
         #region SwapEventHandlers
 
-        private async void OnSwapDataReceivedEventHandler(object sender, SwapDataEventArgs args)
+        private async void OnSwapReceivedEventHandler(object sender, SwapEventArgs args)
         {
-            var swapData = args.SwapData;
-
             try
             {
-                var swap = (SwapState)await Account
-                    .GetSwapByIdAsync(swapData.SwapId)
-                    .ConfigureAwait(false);
-
-                if (swap == null) {
-                    OnError(TerminalService.Exchange, $"Can't find swap with id {swapData.SwapId} in swap repository");
-                    return;
-                }
-
-                await new Swap(
-                        swapState: swap,
-                        account: Account,
-                        swapClient: ExchangeClient,
-                        taskPerformer: TaskPerformer)
-                    .HandleSwapData(swapData)
+                await SwapManager
+                    .HandleSwapAsync(args.Swap)
                     .ConfigureAwait(false);
             }
             catch (Exception e)
@@ -444,73 +405,6 @@ namespace Atomix.Subsystems
         }
 
         #endregion
-
-        private async Task<bool> RunSwapAsync(ExecutionReport report)
-        {
-            Log.Debug("Run swap with id {@swapId}", report.Order.SwapId);
-
-            try
-            {
-                var swap = new SwapState(
-                    order: report.Order,
-                    requisites: report.Requisites);
-
-                swap.Updated += OnSwapUpdated;
-
-                var result = await Account
-                    .AddSwapAsync(swap)
-                    .ConfigureAwait(false);
-
-                if (!result)
-                {
-                    Log.Error(
-                        messageTemplate: "Can't add swap {@swapId} to account swaps repository",
-                        propertyValue: swap.Id);
-
-                    return false;
-                }
-
-                if (swap.IsInitiator)
-                {
-                    await new Swap(
-                            swapState: swap,
-                            account: Account,
-                            swapClient: ExchangeClient,
-                            taskPerformer: TaskPerformer)
-                        .InitiateSwapAsync()
-                        .ConfigureAwait(false);
-                }
-
-                return true;
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Run swap error");
-
-                return false;
-            }
-        }
-
-        private async void OnSwapUpdated(object sender, SwapEventArgs args)
-        {
-            try
-            {
-                var result = await Account
-                    .UpdateSwapAsync(args.Swap)
-                    .ConfigureAwait(false);
-
-                if (!result)
-                {
-                    Log.Error("Swap update error");
-                }
-
-                SwapUpdated?.Invoke(this, new SwapEventArgs(args.Swap));
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Swap update error");
-            }
-        }
 
         private async Task TrackUnconfirmedTransactionsAsync()
         {
@@ -532,17 +426,36 @@ namespace Atomix.Subsystems
 
         private void TrackUnconfirmedTransaction(IBlockchainTransaction transaction)
         {
-            TaskPerformer.EnqueueTask(new TransactionConfirmedTask
+            if (transaction.IsConfirmed())
+                return;
+
+            TaskPerformer.EnqueueTask(new TransactionConfirmationCheckTask
             {
                 Currency = transaction.Currency,
                 Interval = TimeSpan.FromSeconds(30),
                 TxId = transaction.Id,
-                CompleteHandler = task =>
+                CompleteHandler = async task =>
                 {
-                    var tx = (task as TransactionConfirmedTask)?.Tx;
+                    try
+                    {
+                        if (!(task is TransactionConfirmationCheckTask confirmationCheckTask))
+                            return;
 
-                    if (tx != null)
-                        Account.AddConfirmedTransactionAsync(tx);
+                        foreach (var tx in confirmationCheckTask.Transactions)
+                        {
+                            await Account
+                                .UpsertTransactionAsync(tx: tx)
+                                .ConfigureAwait(false);
+                        }
+
+                        await Account
+                            .UpdateBalanceAsync(confirmationCheckTask.Currency)
+                            .ConfigureAwait(false);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error(e, "Error in transaction confirmed handler");
+                    }
                 }
             });
         }

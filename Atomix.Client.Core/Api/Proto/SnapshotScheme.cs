@@ -3,12 +3,10 @@ using Atomix.MarketData;
 
 namespace Atomix.Api.Proto
 {
-    public class SnapshotScheme : ProtoScheme
+    public class SnapshotScheme : ProtoScheme<Snapshot>
     {
-        public const int MessageId = 14;
-
-        public SnapshotScheme()
-            : base(MessageId)
+        public SnapshotScheme(byte messageId)
+            : base(messageId)
         {
             Model.Add(typeof(Entry), true)
                 .AddRequired(nameof(Entry.Side))
@@ -16,9 +14,9 @@ namespace Atomix.Api.Proto
                 .AddRequired(nameof(Entry.QtyProfile));
 
             Model.Add(typeof(Snapshot), true)
-                .AddRequired(nameof(MarketData.Snapshot.LastTransactionId))
-                .AddRequired(nameof(MarketData.Snapshot.SymbolId))
-                .AddRequired(nameof(MarketData.Snapshot.Entries));
+                .AddRequired(nameof(Snapshot.LastTransactionId))
+                .AddRequired(nameof(Snapshot.SymbolId))
+                .AddRequired(nameof(Snapshot.Entries));
         }
     }
 }

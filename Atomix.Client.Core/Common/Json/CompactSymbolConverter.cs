@@ -19,12 +19,16 @@ namespace Atomix.Common.Json
         {
         }
 
-        public CompactSymbolConverter(IEnumerable<Symbol> symbols)
+        public CompactSymbolConverter(
+            IEnumerable<Symbol> symbols)
         {
             Symbols = symbols;
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void WriteJson(
+            JsonWriter writer,
+            object value,
+            JsonSerializer serializer)
         {
             var symbol = (Symbol)value;
 
@@ -36,7 +40,10 @@ namespace Atomix.Common.Json
             @object.WriteTo(writer);
         }
 
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue,
+        public override object ReadJson(
+            JsonReader reader,
+            Type objectType,
+            object existingValue,
             JsonSerializer serializer)
         {
             var token = JToken.Load(reader);
@@ -54,7 +61,8 @@ namespace Atomix.Common.Json
             return Symbols.FirstOrDefault(s => s.Name.Equals(symbol));
         }
 
-        public override bool CanConvert(Type objectType)
+        public override bool CanConvert(
+            Type objectType)
         {
             return typeof(Symbol).IsAssignableFrom(objectType);
         }

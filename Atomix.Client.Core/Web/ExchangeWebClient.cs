@@ -1,12 +1,13 @@
 ﻿using System;
 using System.IO;
 using Atomix.Api.Proto;
-using Atomix.Common.Proto;
+using Atomix.Common;
 using Atomix.Core;
 using Atomix.Core.Entities;
 using Atomix.Swaps;
 using Atomix.Swaps.Abstract;
 using Microsoft.Extensions.Configuration;
+using ClientSwap = Atomix.Core.Entities.ClientSwap;
 
 namespace Atomix.Web
 {
@@ -14,61 +15,75 @@ namespace Atomix.Web
     {
         private const string ExchangeUrlKey = "Exchange:Url";
 
-        public event EventHandler<ExecutionReportEventArgs> ExecutionReportReceived;
-        public event EventHandler<SwapDataEventArgs> SwapDataReceived;
+        public event EventHandler<OrderEventArgs> OrderReceived;
+        public event EventHandler<SwapEventArgs> SwapReceived;
 
-        public ExchangeWebClient(IConfiguration configuration)
-            : this(configuration[ExchangeUrlKey])
+        public ExchangeWebClient(IConfiguration configuration, ProtoSchemes schemes)
+            : this(configuration[ExchangeUrlKey], schemes)
         {
         }
 
-        public ExchangeWebClient(string url)
-            : base(url)
+        private ExchangeWebClient(string url, ProtoSchemes schemes)
+            : base(url, schemes)
         {
-            AddHandler(ExecutionReportScheme.MessageId, ExecutionReportHandler);
-            AddHandler(SwapDataScheme.MessageId, OnSwapDataHandler);
+            AddHandler(Schemes.Order.MessageId, OnOrderHandler);
+            AddHandler(Schemes.Swap.MessageId, OnSwapHandler);
         }
 
-        protected void ExecutionReportHandler(MemoryStream stream)
+        private void OnOrderHandler(MemoryStream stream)
         {
-            var executionReport = stream.Deserialize<ExecutionReport>(ProtoScheme.ExecutionReport);
-            ExecutionReportReceived?.Invoke(this, new ExecutionReportEventArgs(executionReport));
+            var response = Schemes.Order.DeserializeWithLengthPrefix(stream);
+            response.Data.ResolveRelationshipsByName(Schemes.Currencies, Schemes.Symbols);
+
+            OrderReceived?.Invoke(this, new OrderEventArgs(response.Data));
         }
 
-        protected void OnSwapDataHandler(MemoryStream stream)
+        private void OnSwapHandler(MemoryStream stream)
         {
-            var swapData = stream.Deserialize<SwapData>(ProtoScheme.Swap);
-            SwapDataReceived?.Invoke(this, new SwapDataEventArgs(swapData));
+            var response = Schemes.Swap.DeserializeWithLengthPrefix(stream);
+            response.Data.ResolveRelationshipsByName(Schemes.Symbols);
+
+            SwapReceived?.Invoke(this, new SwapEventArgs(response.Data));
         }
 
         public void AuthAsync(Auth auth)
         {
-            SendAsync(ProtoScheme.Auth.SerializeWithMessageId(auth));
+            SendAsync(Schemes.Auth.SerializeWithMessageId(auth));
         }
 
         public void OrderSendAsync(Order order)
         {
-            SendAsync(ProtoScheme.OrderSend.SerializeWithMessageId(order));
+            SendAsync(Schemes.OrderSend.SerializeWithMessageId(order));
         }
 
         public void OrderCancelAsync(Order order)
         {
-            SendAsync(ProtoScheme.OrderCancel.SerializeWithMessageId(order));
+            SendAsync(Schemes.OrderCancel.SerializeWithMessageId(order));
         }
 
-        public void OrderStatusAsync(Order order)
+        public void OrderStatusAsync(Request<Order> request)
         {
-            SendAsync(ProtoScheme.OrderStatus.SerializeWithMessageId(order));
+            SendAsync(Schemes.OrderStatus.SerializeWithMessageId(request));
         }
 
-        public void OrdersAsync()
+        public void OrdersAsync(Request<Order> request)
         {
-            SendAsync(new byte[]{ OrdersScheme.MessageId });
+            SendAsync(Schemes.Orders.SerializeWithMessageId(request));
         }
 
-        public void SendSwapDataAsync(SwapData swapData)
+        public void SwapInitiateAsync(ClientSwap swap)
         {
-            SendAsync(ProtoScheme.Swap.SerializeWithMessageId(swapData));
+            SendAsync(Schemes.SwapInitiate.SerializeWithMessageId(swap));
+        }
+
+        public void SwapAcceptAsync(ClientSwap swap)
+        {
+            SendAsync(Schemes.SwapAccept.SerializeWithMessageId(swap));
+        }
+
+        public void SwapPaymentAsync(ClientSwap swap)
+        {
+            SendAsync(Schemes.SwapPayment.SerializeWithMessageId(swap));
         }
     }
 }

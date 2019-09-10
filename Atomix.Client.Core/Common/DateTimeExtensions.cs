@@ -21,9 +21,9 @@ namespace Atomix.Common
             return Math.Floor((dt - UnixStartTime).TotalSeconds);
         }
 
-        public static double ToUnixTimeMs(this DateTime dt)
+        public static long ToUnixTimeMs(this DateTime dt)
         {
-            return Math.Floor((dt - UnixStartTime).TotalMilliseconds);
+            return (long)Math.Floor((dt - UnixStartTime).TotalMilliseconds);
         }
 
         public static bool EqualToMinutes(this DateTime dt, DateTime d)

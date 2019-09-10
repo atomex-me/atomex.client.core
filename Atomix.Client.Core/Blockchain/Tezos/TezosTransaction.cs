@@ -8,7 +8,7 @@ using Atomix.Blockchain.Tezos.Internal;
 using Atomix.Common;
 using Atomix.Core.Entities;
 using Atomix.Cryptography;
-using Atomix.Swaps;
+using Atomix.Swaps.Abstract;
 using Atomix.Wallet.Abstract;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -22,10 +22,11 @@ namespace Atomix.Blockchain.Tezos
         public const int OutputTransaction = 2;
         public const int SelfTransaction = 3;
         public const int ActivateAccountTransaction = 4;
-        public const int DefaultConfirmations = 1;
-        
+        private const int DefaultConfirmations = 1;
+        private const string InternalSuffix = "_internal_";
+
         public string Id { get; set; }
-        public Currency Currency => Currencies.Xtz;
+        public Currency Currency { get; set; }
         public BlockInfo BlockInfo { get; set; }
         public string From { get; set; }
         public string To { get; set; }
@@ -33,57 +34,63 @@ namespace Atomix.Blockchain.Tezos
         public decimal Fee { get; set; }
         public decimal GasLimit { get; set; }
         public decimal StorageLimit { get; set; }
+        public decimal Burn { get; set; }
         public JObject Params { get; set; }
         public int Type { get; set; }
         public bool IsInternal { get; set; }
+        public int InternalIndex { get; set; }
 
-        public JArray Operations { get; set; }
-        public JObject Head { get; set; }
-        public SignedMessage SignedMessage { get; set; }
+        public string UniqueId => Id + (IsInternal ? $"{InternalSuffix}{InternalIndex}" : string.Empty);
+
+        public JArray Operations { get; private set; }
+        public JObject Head { get; private set; }
+        public SignedMessage SignedMessage { get; private set; }
 
         public bool IsConfirmed() => BlockInfo?.Confirmations >= DefaultConfirmations;
 
         public TezosTransaction()
         {
-            BlockInfo = new BlockInfo()
+        }
+
+        public TezosTransaction(Currency currency)
+        {
+            Currency = currency;
+            BlockInfo = new BlockInfo
             {
                 FirstSeen = DateTime.UtcNow
             };
         }
 
         public async Task<bool> SignAsync(
-            IPrivateKeyStorage keyStorage,
-            string address,
+            IKeyStorage keyStorage,
+            WalletAddress address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var keyIndex = await keyStorage
-                .RecoverKeyIndexAsync(
-                    currency: Currency,
-                    address: address,
-                    maxIndex: 0,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+            var xtz = (Atomix.Tezos) Currency;
 
-            if (keyIndex == null)
+            if (address.KeyIndex == null)
             {
-                Log.Error($"Can't find private key for address {address}");
+                Log.Error("Can't find private key for address {@address}", address);
                 return false;
             }
 
-            var privateKey = keyStorage.GetPrivateKey(Currency, keyIndex);
-            var publicKey = keyStorage.GetPublicKey(Currency, keyIndex);
+            var privateKey = keyStorage
+                .GetPrivateKey(Currency, address.KeyIndex);
 
-            var rpc = new Rpc(Currencies.Xtz.RpcProvider);
+            if (privateKey == null)
+            {
+                Log.Error("Can't find private key for address {@address}", address);
+                return false;
+            }
+
+            var publicKey = keyStorage
+                .GetPublicKey(Currency, address.KeyIndex);
+
+            var rpc = new Rpc(xtz.RpcProvider);
 
             Head = await rpc
                 .GetHeader()
                 .ConfigureAwait(false);
-
-            var account = await rpc
-                .GetAccountForBlock(Head["hash"].ToString(), From)
-                .ConfigureAwait(false);
-
-            var counter = int.Parse(account["counter"].ToString());
 
             var managerKey = await rpc
                 .GetManagerKey(From)
@@ -94,8 +101,12 @@ namespace Atomix.Blockchain.Tezos
             var gas = GasLimit.ToString(CultureInfo.InvariantCulture);
             var storage = StorageLimit.ToString(CultureInfo.InvariantCulture);
 
-            if (privateKey != null && managerKey["key"] == null)
+            if (managerKey["key"] == null)
             {
+                var revealOpCounter = await TezosCounter.Instance
+                    .GetCounter(xtz, From, Head)
+                    .ConfigureAwait(false);
+
                 var revealOp = new JObject
                 {
                     ["kind"] = OperationType.Reveal,
@@ -104,18 +115,22 @@ namespace Atomix.Blockchain.Tezos
                     ["source"] = From,
                     ["storage_limit"] = storage,
                     ["gas_limit"] = gas,
-                    ["counter"] = (++counter).ToString()
+                    ["counter"] = revealOpCounter.ToString()
                 };
 
                 Operations.AddFirst(revealOp);
             }
+
+            var counter = await TezosCounter.Instance
+                .GetCounter(xtz, From, Head)
+                .ConfigureAwait(false);
 
             var transaction = new JObject
             {
                 ["kind"] = OperationType.Transaction,
                 ["source"] = From,
                 ["fee"] = Fee.ToString(CultureInfo.InvariantCulture),
-                ["counter"] = (++counter).ToString(),
+                ["counter"] = counter.ToString(),
                 ["gas_limit"] = gas,
                 ["storage_limit"] = storage,
                 ["amount"] = Math.Round(Amount, 0).ToString(CultureInfo.InvariantCulture),
@@ -141,36 +156,34 @@ namespace Atomix.Blockchain.Tezos
                 .ForgeOperations(Head, Operations)
                 .ConfigureAwait(false);
 
-            SignedMessage = new TezosSigner().SignHash(
+            SignedMessage = TezosSigner.SignHash(
                 data: Hex.FromString(forgedOpGroup.ToString()),
                 privateKey: privateKey,
-                watermark: Watermark.Generic);
+                watermark: Watermark.Generic,
+                isExtendedKey: privateKey.Length == 64);
 
             return true;
         }
 
-        public decimal AmountInXtz()
-        {
-            switch (Type)
-            {
-                case InputTransaction:
-                    return Atomix.Tezos.MtzToTz(Amount);
-                case OutputTransaction:
-                    return -Atomix.Tezos.MtzToTz(Amount + Fee);
-                case SelfTransaction:
-                    return -Atomix.Tezos.MtzToTz(Fee);
-                default:
-                    return Atomix.Tezos.MtzToTz(Amount + Fee);
-            }
-        }
-
-        public bool IsSwapPayment(long refundTime, byte[] secretHash, string participant)
+        public bool IsSwapInit(long refundTimestamp, byte[] secretHash, string participant)
         {
             try
             {
-                return Params["args"][0]["args"][0]["int"].ToObject<long>() == refundTime &&
-                       Params["args"][0]["args"][1]["args"][0]["bytes"].ToString().Equals(secretHash.ToHexString()) &&
-                       Params["args"][0]["args"][1]["args"][1]["args"][0]["string"].ToString().Equals(participant);
+                return Params["args"][0]["args"][0]["args"][1]["args"][0]["args"][0]["bytes"].ToString().Equals(secretHash.ToHexString()) &&
+                       Params["args"][0]["args"][0]["args"][1]["args"][0]["args"][1]["int"].ToObject<long>() == refundTimestamp &&
+                       Params["args"][0]["args"][0]["args"][0]["string"].ToString().Equals(participant);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        public bool IsSwapAdd(byte[] secretHash)
+        {
+            try
+            {
+                return Params["args"][0]["args"][0]["bytes"].ToString().Equals(secretHash.ToHexString());
             }
             catch (Exception)
             {
@@ -182,16 +195,24 @@ namespace Atomix.Blockchain.Tezos
         {
             try
             {
-                var secretHashHex = Params["args"][0]["args"][0]["args"][0]["bytes"].ToString();
+                var secretBytes = Hex.FromString(Params["args"][0]["args"][0]["bytes"].ToString());
+                var secretHashBytes = CurrencySwap.CreateSwapSecretHash(secretBytes);
 
-                if (secretHashHex.Equals(secretHash.ToHexString()))
-                {
-                    var secretBytes = Hex.FromString(Params["args"][0]["args"][0]["args"][1]["bytes"].ToString());
-
-                    return CurrencySwap.CreateSwapSecretHash(secretBytes).SequenceEqual(secretHash);
-                }
-
+                return secretHashBytes.SequenceEqual(secretHash);
+            }
+            catch (Exception)
+            {
                 return false;
+            }
+        }
+
+        public bool IsSwapRefund(byte[] secretHash)
+        {
+            try
+            {
+                var secretHashBytes = Hex.FromString(Params["args"][0]["args"][0]["bytes"].ToString());
+
+                return secretHashBytes.SequenceEqual(secretHash);
             }
             catch (Exception)
             {
@@ -201,7 +222,12 @@ namespace Atomix.Blockchain.Tezos
 
         public byte[] GetSecret()
         {
-            return Hex.FromString(Params["args"][0]["args"][0]["args"][1]["bytes"].ToString());
+            return Hex.FromString(Params["args"][0]["args"][0]["bytes"].ToString());
+        }
+
+        public decimal GetRedeemFee()
+        {
+            return decimal.Parse(Params["args"][0]["args"][0]["args"][1]["args"][1]["int"].ToString());
         }
     }
 }

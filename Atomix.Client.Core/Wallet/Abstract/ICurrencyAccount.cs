@@ -14,7 +14,15 @@ namespace Atomix.Wallet.Abstract
         event EventHandler<CurrencyEventArgs> BalanceUpdated;
         event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded;
 
-        Currency Currency { get; }
+        #region Common
+
+        Task<Error> SendAsync(
+            IEnumerable<WalletAddress> from,
+            string to,
+            decimal amount,
+            decimal fee,
+            decimal feePrice,
+            CancellationToken cancellationToken = default(CancellationToken));
 
         Task<Error> SendAsync(
             string to,
@@ -24,36 +32,49 @@ namespace Atomix.Wallet.Abstract
             CancellationToken cancellationToken = default(CancellationToken));
 
         Task<decimal> EstimateFeeAsync(
+            string to,
             decimal amount,
             CancellationToken cancellationToken = default(CancellationToken));
 
-        Task AddUnconfirmedTransactionAsync(
-            IBlockchainTransaction tx,
-            string[] selfAddresses,
-            bool notify = true,
-            CancellationToken cancellationToken = default(CancellationToken));
+        #endregion Common
 
-        Task AddConfirmedTransactionAsync(
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default(CancellationToken));
+        #region Balances
 
-        Task UpdateTransactionType(
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default(CancellationToken));
+        Balance GetBalance();
 
-        Task<decimal> GetBalanceAsync(
+        Task<Balance> GetAddressBalanceAsync(
             string address,
             CancellationToken cancellationToken = default(CancellationToken));
 
-        Task<decimal> GetBalanceAsync(
+        Task UpdateBalanceAsync(
             CancellationToken cancellationToken = default(CancellationToken));
 
-        Task<bool> IsAddressHasOperationsAsync(
-            WalletAddress walletAddress,
+        Task UpdateBalanceAsync(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken));
+
+        #endregion Balances
+
+        #region Addresses
+
+        Task<WalletAddress> DivideAddressAsync(
+            int chain,
+            uint index,
+            CancellationToken cancellationToken = default(CancellationToken));
+
+        Task<WalletAddress> ResolveAddressAsync(
+            string address,
             CancellationToken cancellationToken = default(CancellationToken));
 
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
-            decimal requiredAmount,
+            CancellationToken cancellationToken = default(CancellationToken));
+
+        Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+            decimal amount,
+            decimal fee,
+            decimal feePrice,
+            bool isFeePerTransaction,
+            AddressUsagePolicy addressUsagePolicy,
             CancellationToken cancellationToken = default(CancellationToken));
 
         Task<WalletAddress> GetFreeInternalAddressAsync(
@@ -63,12 +84,33 @@ namespace Atomix.Wallet.Abstract
             CancellationToken cancellationToken = default(CancellationToken));
 
         Task<WalletAddress> GetRefundAddressAsync(
-            IEnumerable<WalletAddress> paymentAddresses,
             CancellationToken cancellationToken = default(CancellationToken));
 
         Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default(CancellationToken));
 
-        void RaiseBalanceUpdated(CurrencyEventArgs eventArgs);
+        #endregion Addresses
+
+        #region Transactions
+
+        Task UpsertTransactionAsync(
+            IBlockchainTransaction tx,
+            bool updateBalance = false,
+            bool notifyIfUnconfirmed = true,
+            bool notifyIfBalanceUpdated = true,
+            CancellationToken cancellationToken = default(CancellationToken));
+
+        #endregion Transactions
+
+        #region Outputs
+
+        Task UpsertOutputsAsync(
+            IEnumerable<ITxOutput> outputs,
+            Currency currency,
+            string address,
+            bool notifyIfBalanceUpdated = true,
+            CancellationToken cancellationToken = default(CancellationToken));
+
+        #endregion Outputs
     }
 }

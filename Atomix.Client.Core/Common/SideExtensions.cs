@@ -13,8 +13,6 @@ namespace Atomix.Common
                     return Side.Sell;
                 case Side.Sell:
                     return Side.Buy;
-                case Side.All:
-                    throw new ArgumentOutOfRangeException(nameof(side), side, null);
                 default:
                     throw new ArgumentOutOfRangeException(nameof(side), side, null);
             }

@@ -3,16 +3,17 @@ using Atomix.Core;
 
 namespace Atomix.Api.Proto
 {
-    public class ErrorScheme : ProtoScheme
+    public class ErrorScheme : ProtoScheme<Error>
     {
-        public const int MessageId = 3;
-
-        public ErrorScheme()
-            : base(MessageId)
+        public ErrorScheme(byte messageId)
+            : base(messageId)
         {
             Model.Add(typeof(Error), true)
-                .AddRequired(nameof(Core.Error.Code))
-                .AddRequired(nameof(Core.Error.Description));
+                .AddRequired(nameof(Error.Code))
+                .AddRequired(nameof(Error.Description))
+                .AddRequired(nameof(Error.RequestId))
+                .AddRequired(nameof(Error.OrderId))
+                .AddRequired(nameof(Error.SwapId));
         }
     }
 }

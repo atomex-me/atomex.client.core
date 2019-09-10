@@ -11,8 +11,9 @@ namespace Atomix.Blockchain.Abstract
         ITxOutput[] Outputs { get; }
 
         Task<bool> SignAsync(
-            IPrivateKeyStorage keyStorage,
-            IEnumerable<ITxOutput> spentOutput,
+            IAddressResolver addressResolver,
+            IKeyStorage keyStorage,
+            IEnumerable<ITxOutput> spentOutputs,
             CancellationToken cancellationToken = default(CancellationToken));
     }
 }

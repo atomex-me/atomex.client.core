@@ -1,35 +1,73 @@
 ﻿using System;
+using Atomix.Blockchain.Abstract;
+using Atomix.Blockchain.Insight;
 using Atomix.Blockchain.SoChain;
 using Atomix.Wallet.Bip;
-using NBitcoin.Altcoins;
+using Microsoft.Extensions.Configuration;
+using NBitcoin;
 
 namespace Atomix
 {
     public class Litecoin : BitcoinBasedCurrency
     {
-        public const long LtcDigitsMultiplier = 100_000_000;
+        private const long LtcDigitsMultiplier = 100_000_000;
 
         public Litecoin()
         {
-            Name = "LTC";
-            Description = "Litecoin";
+        }
+
+        public Litecoin(IConfiguration configuration)
+        {
+            Name = configuration["Name"];
+            Description = configuration["Description"];
+
             DigitsMultiplier = LtcDigitsMultiplier;
             Digits = (int)Math.Log10(LtcDigitsMultiplier);
             Format = $"F{Digits}";
 
-            FeeRate = 100m; // 100 litoshi per byte ~ 0.001 LTC/Bb
+            FeeRate = decimal.Parse(configuration["FeeRate"]); // 16 satoshi per byte
             FeeDigits = Digits;
             FeeCode = Name;
             FeeFormat = $"F{FeeDigits}";
 
             HasFeePrice = false;
 
-            Network = AltNetworkSets.Litecoin.Testnet;    
-            BlockchainApi = new SoChainApi(this);
-            
+            Network = ResolveNetwork(configuration);
+            BlockchainApi = ResolveBlockchainApi(configuration);
+            TxExplorerUri = configuration["TxExplorerUri"];
+            AddressExplorerUri = configuration["AddressExplorerUri"];
+
             IsTransactionsAvailable = true;
             IsSwapAvailable = true;
             Bip44Code = Bip44.Litecoin;
+        }
+
+        private static Network ResolveNetwork(IConfiguration configuration)
+        {
+            var chain = configuration["Chain"]
+                .ToLowerInvariant();
+
+            if (chain.Equals("mainnet"))
+                return NBitcoin.Altcoins.Litecoin.Instance.Mainnet; 
+
+            if (chain.Equals("testnet"))
+                return NBitcoin.Altcoins.Litecoin.Instance.Testnet;
+
+            throw new NotSupportedException($"Chain {chain} not supported");
+        }
+
+        private IBlockchainApi ResolveBlockchainApi(IConfiguration configuration)
+        {
+            var blockchainApi = configuration["BlockchainApi"]
+                .ToLowerInvariant();
+
+            if (blockchainApi.Equals("sochain"))
+                return new SoChainApi(this);
+
+            if (blockchainApi.Equals("insight"))
+                return new InsightApi(this, configuration);
+
+            throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported");
         }
     }
 }

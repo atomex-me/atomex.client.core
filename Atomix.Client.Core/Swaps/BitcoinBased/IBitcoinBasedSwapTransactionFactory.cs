@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Atomix.Blockchain.Abstract;
 using Atomix.Blockchain.BitcoinBased;
@@ -10,19 +11,24 @@ namespace Atomix.Swaps.BitcoinBased
     {
         Task<IBitcoinBasedTransaction> CreateSwapPaymentTxAsync(
             BitcoinBasedCurrency currency,
-            Order order,
-            SwapRequisites requisites,
+            ClientSwap swap,
+            IEnumerable<string> fromWallets,
+            string refundAddress,
+            string toAddress,
+            DateTimeOffset lockTime,
             byte[] secretHash,
+            int secretSize,
             ITxOutputSource outputsSource);
 
         Task<IBitcoinBasedTransaction> CreateSwapRefundTxAsync(
             IBitcoinBasedTransaction paymentTx,
-            Order order,
+            ClientSwap swap,
+            string refundAddress,
             DateTimeOffset lockTime);
 
         Task<IBitcoinBasedTransaction> CreateSwapRedeemTxAsync(
             IBitcoinBasedTransaction paymentTx,
-            Order order,
-            WalletAddress redeemAddress);
+            ClientSwap swap,
+            string redeemAddress);
     }
 }

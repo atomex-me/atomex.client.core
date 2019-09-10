@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomix.Blockchain.Abstract;
 using Atomix.Blockchain.Tezos.Internal;
+using Atomix.Common;
+using Atomix.Core.Entities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -15,14 +15,12 @@ namespace Atomix.Blockchain.Tezos
 {
     public class TzScanApi : ITezosBlockchainApi
     {
-        public const string Mainnet = "https://api6.tzscan.io/";
-        public const string Alphanet = "https://api.alphanet.tzscan.io/";
+        private const string Mainnet = "https://api3.tzscan.io/";
+        private const string Alphanet = "https://api.alphanet.tzscan.io/";
 
-        public const string MainnetRpc = "https://mainnet-node.tzscan.io";
-        public const string AlphanetRpc = "http://alphanet-node.tzscan.io:80";
-        public const string ZeronetRpc = "https://zeronet-node.tzscan.io:80";
-
-        private const int HttpTooManyRequests = 429;
+        private const string MainnetRpc = "https://mainnet-node.tzscan.io";
+        private const string AlphanetRpc = "http://alphanet-node.tzscan.io:80";
+        //public const string ZeronetRpc = "https://zeronet-node.tzscan.io:80";
 
         internal class OperationHeader<T>
         {
@@ -86,11 +84,14 @@ namespace Atomix.Blockchain.Tezos
             public List<T> Operations { get; set; }
         }
 
+        private readonly Currency _currency;
         private readonly string _rpcProvider;
         private readonly string _apiBaseUrl;
 
-        public TzScanApi(TezosNetwork network)
+        public TzScanApi(Currency currency, TezosNetwork network)
         {
+            _currency = currency;
+
             switch (network)
             {
                 case TezosNetwork.Mainnet:
@@ -104,6 +105,16 @@ namespace Atomix.Blockchain.Tezos
                 default:
                     throw new NotSupportedException("Network not supported");
             }
+        }
+
+        public async Task<decimal> GetBalanceAsync(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var rpc = new Rpc(_rpcProvider);
+
+            return await rpc.GetBalance(address)
+                .ConfigureAwait(false);
         }
 
         public async Task<string> BroadcastAsync(
@@ -123,6 +134,9 @@ namespace Atomix.Blockchain.Tezos
 
             string txId = null;
 
+            foreach (var opResult in opResults)
+                Log.Debug("OperationResult {@result}: {@opResult}", opResult.Succeeded, opResult.Data.ToString());
+
             if (opResults.Any() && opResults.All(op => op.Succeeded))
             {
                 var injectedOperation = await rpc
@@ -140,23 +154,42 @@ namespace Atomix.Blockchain.Tezos
             return tx.Id;
         }
 
-        public Task<IBlockchainTransaction> GetTransactionAsync(
+        public async Task<IBlockchainTransaction> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var requestUri = $"v3/operation/{txId}";
 
-            return SendRequest(
-                requestUri: requestUri,
-                method: HttpMethod.Get,
-                content: null,
-                responseHandler: responseContent =>
-                {
-                    var operationHeader = JsonConvert.DeserializeObject<OperationHeader<OperationType<Operation>>>(responseContent);
+            return await HttpHelper.GetAsync(
+                    baseUri: _apiBaseUrl,
+                    requestUri: requestUri,
+                    responseHandler: responseContent =>
+                    {
+                        var operationHeader = JsonConvert.DeserializeObject<OperationHeader<OperationType<Operation>>>(responseContent);
 
-                    return TxFromOperation(operationHeader);
-                },
-                cancellationToken: cancellationToken);
+                        return TxsFromOperation(operationHeader).FirstOrDefault();
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsByIdAsync(
+            string txId,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var requestUri = $"v3/operation/{txId}";
+
+            return await HttpHelper.GetAsync(
+                    baseUri: _apiBaseUrl,
+                    requestUri: requestUri,
+                    responseHandler: responseContent =>
+                    {
+                        var operationHeader = JsonConvert.DeserializeObject<OperationHeader<OperationType<Operation>>>(responseContent);
+
+                        return TxsFromOperation(operationHeader);
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false) ?? Enumerable.Empty<IBlockchainTransaction>();
         }
 
         public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
@@ -187,129 +220,111 @@ namespace Atomix.Blockchain.Tezos
         {
             var requestUri = $"v3/operations/{address}?type=Transaction&p={page}"; // TODO: use all types!!!
 
-            var txs = await SendRequest<IEnumerable<IBlockchainTransaction>>(
+            return await HttpHelper.GetAsync<IEnumerable<IBlockchainTransaction>>(
+                    baseUri: _apiBaseUrl,
                     requestUri: requestUri,
-                    method: HttpMethod.Get,
-                    content: null,
                     responseHandler: responseContent =>
                     {
+                        var transactions = new List<IBlockchainTransaction>();
+
                         var operations =
                             JsonConvert.DeserializeObject<List<OperationHeader<OperationType<Operation>>>>(responseContent);
 
-                        return operations
-                            .Select(operationHeader => TxFromOperation(operationHeader, address))
-                            .Where(tx => tx != null)
-                            .ToList();
+                        foreach (var operation in operations)
+                            transactions.AddRange(TxsFromOperation(operation));
+
+                        return transactions;
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false) ?? Enumerable.Empty<IBlockchainTransaction>();
+        }
+
+        public async Task<bool> IsActiveAddress(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var requestUri = $"v3/number_operations/{address}?type=Transaction";
+
+            return await HttpHelper.GetAsync(
+                    baseUri: _apiBaseUrl,
+                    requestUri: requestUri,
+                    responseHandler: responeContent =>
+                    {
+                        var operationsCount = JsonConvert.DeserializeObject<JArray>(responeContent)
+                            .FirstOrDefault()?.Value<long>() ?? 0;
+
+                        return operationsCount > 0;
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-
-            return txs ?? Enumerable.Empty<IBlockchainTransaction>();
         }
 
-        private IBlockchainTransaction TxFromOperation(
-            OperationHeader<OperationType<Operation>> operationHeader,
-            string address = null)
+        private IEnumerable<IBlockchainTransaction> TxsFromOperation(
+            OperationHeader<OperationType<Operation>> operationHeader)
         {
-            var tx = operationHeader.Type.Operations.
-                FirstOrDefault(o => o.Kind.Equals(OperationType.Transaction));
+            var txs = new List<IBlockchainTransaction>();
 
-            if (tx == null)
-                return null;
+            var internalCounters = new Dictionary<string, int>();
 
-            return new TezosTransaction
+            foreach (var operation in operationHeader.Type.Operations)
             {
-                Id = operationHeader.Hash,
-                From = tx.Source.Tz,
-                To = tx.Destination.Tz,
-                Amount = decimal.Parse(tx.Amount),
-                Fee = tx.Fee,
-                GasLimit = decimal.Parse(tx.GasLimit),
-                StorageLimit = decimal.Parse(tx.StorageLimit),
-                Params = tx.Parameters != null
-                    ? JObject.Parse(tx.Parameters)
-                    : null,
-                Type = tx.Destination.Tz.Equals(address)
-                    ? TezosTransaction.InputTransaction
-                    : TezosTransaction.OutputTransaction,
-                IsInternal = tx.Internal,
-
-                BlockInfo = new BlockInfo
+                try
                 {
-                    Fees = tx.Fee,
-                    FirstSeen = tx.TimeStamp,
-                    BlockTime = tx.TimeStamp,
-                    BlockHeight = tx.OpLevel,
-                    Confirmations = tx.Failed ? 0 : 1
+                    if (operation.Kind != OperationType.Transaction)
+                    {
+                        Log.Debug("Skip {@kind} operation", operation.Kind);
+                        continue;
+                    }
+
+                    var internalIndex = 0;
+
+                    if (operation.Internal)
+                    {
+                        if (internalCounters.TryGetValue(operationHeader.Hash, out var index))
+                        {
+                            internalIndex = ++index;
+                            internalCounters[operationHeader.Hash] = internalIndex;
+                        }
+                        else
+                        {
+                            internalCounters.Add(operationHeader.Hash, internalIndex);
+                        }
+                    }
+
+                    txs.Add(new TezosTransaction(_currency)
+                    {
+                        Id = operationHeader.Hash,
+                        From = operation.Source.Tz,
+                        To = operation.Destination.Tz,
+                        Amount = decimal.Parse(operation.Amount),
+                        Fee = operation.Fee,
+                        GasLimit = decimal.Parse(operation.GasLimit),
+                        StorageLimit = decimal.Parse(operation.StorageLimit),
+                        Burn = operation.Burn,
+                        Params = operation.Parameters != null
+                            ? JObject.Parse(operation.Parameters)
+                            : null,
+                        Type = TezosTransaction.UnknownTransaction,
+                        IsInternal = operation.Internal,
+                        InternalIndex = internalIndex,
+
+                        BlockInfo = new BlockInfo
+                        {
+                            Fees = operation.Fee,
+                            FirstSeen = operation.TimeStamp,
+                            BlockTime = operation.TimeStamp,
+                            BlockHeight = operation.OpLevel,
+                            Confirmations = operation.Failed ? 0 : 1
+                        }
+                    });
                 }
-            };
-        }
-
-        private async Task<T> SendRequest<T>(
-            string requestUri,
-            HttpMethod method,
-            HttpContent content,
-            Func<string, T> responseHandler,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            HttpResponseMessage response;
-
-            Log.Debug("Send request: {@request}", requestUri);
-
-            try
-            {
-                if (method == HttpMethod.Get)
+                catch (Exception e)
                 {
-                    response = await CreateHttpClient()
-                        .GetAsync(requestUri, cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                else if (method == HttpMethod.Post)
-                {
-                    response = await CreateHttpClient()
-                        .PostAsync(requestUri, content, cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                else
-                {
-                    throw new ArgumentException("Http method not supported");
+                    Log.Error(e, "Operation parse error");
                 }
             }
-            catch (Exception e)
-            {
-                Log.Error(e, "Http request error");
-                return default(T);
-            }
 
-            if (response.IsSuccessStatusCode)
-            {
-                var responseContent = await response.Content
-                    .ReadAsStringAsync()
-                    .ConfigureAwait(false);
-
-                Log.Verbose($"Raw response content: {responseContent}");
-
-                return responseHandler(responseContent);
-            }
-
-            if ((int) response.StatusCode == HttpTooManyRequests)
-            {
-                Log.Warning("Too many requests");
-            }
-            else
-            {
-                Log.Warning("Invalid response code: {@code}", response.StatusCode);
-            }
-
-            return default(T);
-        }
-
-        private HttpClient CreateHttpClient()
-        {
-            var client = new HttpClient { BaseAddress = new Uri(_apiBaseUrl) };
-            client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            return client;
+            return txs;
         }
 
         public static string RpcByNetwork(TezosNetwork network)

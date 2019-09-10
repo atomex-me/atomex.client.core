@@ -6,7 +6,7 @@ namespace Atomix.MarketData
 {
     public class AnonymousOrder
     {
-        public Guid OrderId { get; set; }
+        public long OrderId { get; set; }
         public int SymbolId { get; set; }
         public DateTime TimeStamp { get; set; }
         public decimal Price { get; set; }
@@ -25,7 +25,7 @@ namespace Atomix.MarketData
 
         public AnonymousOrder(Order order)
         {
-            OrderId          = order.OrderId;
+            OrderId          = order.Id;
             SymbolId         = order.SymbolId;
             TimeStamp        = order.TimeStamp;
             Price            = order.Price;

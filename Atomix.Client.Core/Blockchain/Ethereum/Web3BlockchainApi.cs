@@ -5,6 +5,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Atomix.Blockchain.Abstract;
 using Atomix.Common;
+using Atomix.Core.Entities;
+using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Signer;
 using Nethereum.Web3;
 using Serilog;
@@ -13,22 +15,39 @@ namespace Atomix.Blockchain.Ethereum
 {
     public class Web3BlockchainApi : IEthereumBlockchainApi
     {
-        public const string InfuraMainNet = "https://mainnet.infura.io";
-        public const string InfuraRinkeby = "https://rinkeby.infura.io";
-        public const string InfuraRopsten = "https://ropsten.infura.io";
+        private const string InfuraMainNet = "https://mainnet.infura.io";
+        private const string InfuraRinkeby = "https://rinkeby.infura.io";
+        private const string InfuraRopsten = "https://ropsten.infura.io";
 
-        public const string InfuraMainNetWebSocket = "wss://mainnet.infura.io/ws/v3/1f76c4ad2d4e4ad58d3b08d68c61cb0d";
-        public const string InfuraRinkebyWebSocket = "wss://rinkeby.infura.io/ws/v3/1f76c4ad2d4e4ad58d3b08d68c61cb0d";
-        public const string InfuraRopstenWebSocket = "wss://ropsten.infura.io/ws/v3/1f76c4ad2d4e4ad58d3b08d68c61cb0d";
+        private const string InfuraMainNetWebSocket = "wss://mainnet.infura.io/ws/v3/1f76c4ad2d4e4ad58d3b08d68c61cb0d";
+        private const string InfuraRinkebyWebSocket = "wss://rinkeby.infura.io/ws/v3/1f76c4ad2d4e4ad58d3b08d68c61cb0d";
+        private const string InfuraRopstenWebSocket = "wss://ropsten.infura.io/ws/v3/1f76c4ad2d4e4ad58d3b08d68c61cb0d";
 
+        private readonly Currency _currency;
         private readonly string _uri;
 
-        public Web3BlockchainApi(Chain chain)
+        public Web3BlockchainApi(Currency currency, Chain chain)
         {
+            _currency = currency;
             _uri = UriByChain(chain);
 
             if (_uri == null)
                 throw new NotSupportedException($"Chain {chain} not supported");
+        }
+
+        public async Task<decimal> GetBalanceAsync(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var web3 = new Web3(_uri);
+
+            var balance = await web3.Eth.GetBalance
+                .SendRequestAsync(address)
+                .ConfigureAwait(false);
+
+            return balance != null
+                ? Atomix.Ethereum.WeiToEth(balance.Value)
+                : 0;
         }
 
         public async Task<BigInteger> GetTransactionCountAsync(
@@ -41,13 +60,6 @@ namespace Atomix.Blockchain.Ethereum
                 .GetTransactionCount
                 .SendRequestAsync(address)
                 .ConfigureAwait(false);
-        }
-
-        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
-            string address,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            throw new NotImplementedException();
         }
 
         public async Task<IBlockchainTransaction> GetTransactionAsync(
@@ -84,7 +96,21 @@ namespace Atomix.Blockchain.Ethereum
                 return null;
             }
 
-            return new EthereumTransaction(tx, txReceipt, utcTimeStamp);
+            return new EthereumTransaction(_currency, tx, txReceipt, utcTimeStamp);
+        }
+
+        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsByIdAsync(
+            string txId,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException();
         }
 
         public async Task<string> BroadcastAsync(

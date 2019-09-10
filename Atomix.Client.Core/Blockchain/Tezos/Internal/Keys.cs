@@ -16,7 +16,7 @@ namespace Atomix.Blockchain.Tezos.Internal
         public Keys()
         { }
 
-        public Keys(byte[] pk, byte[] sk)
+        public Keys(byte[] sk, byte[] pk)
         {
             PublicHash = Base58Check.Encode(new HmacBlake2b(PublicKeyHashBitSize).ComputeHash(pk), Prefix.Tz1);
 

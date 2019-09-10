@@ -1,12 +1,13 @@
-﻿namespace Atomix.Api.Proto
-{
-    public class AuthOkScheme : ProtoScheme
-    {
-        public const int MessageId = 2;
+﻿using Atomix.Core;
 
-        public AuthOkScheme()
-            : base(MessageId)
+namespace Atomix.Api.Proto
+{
+    public class AuthOkScheme : ProtoScheme<AuthOk>
+    {
+        public AuthOkScheme(byte messageId)
+            : base(messageId)
         {
+            Model.Add(typeof(AuthOk), true);
         }
     }
 }

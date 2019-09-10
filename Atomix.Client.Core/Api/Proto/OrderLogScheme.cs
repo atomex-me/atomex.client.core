@@ -1,14 +1,13 @@
-﻿using Atomix.Common.Proto;
+﻿using System.Collections.Generic;
+using Atomix.Common.Proto;
 using Atomix.MarketData;
 
 namespace Atomix.Api.Proto
 {
-    public class OrderLogScheme : ProtoScheme
+    public class OrderLogScheme : ProtoScheme<List<AnonymousOrder>>
     {
-        public const int MessageId = 15;
-
-        public OrderLogScheme()
-            : base(MessageId)
+        public OrderLogScheme(byte messageId)
+            : base(messageId)
         {
             Model.Add(typeof(AnonymousOrder), true)
                 .AddRequired(nameof(AnonymousOrder.OrderId))

@@ -3,15 +3,14 @@ using Atomix.Core;
 
 namespace Atomix.Api.Proto
 {
-    public class AuthNonceScheme : ProtoScheme
+    public class AuthNonceScheme : ProtoScheme<AuthNonce>
     {
-        public const int MessageId = 0;
-
-        public AuthNonceScheme()
-            : base(MessageId)
+        public AuthNonceScheme(byte messageId)
+            : base(messageId)
         {
             Model.Add(typeof(AuthNonce), true)
-                .AddRequired(nameof(Core.AuthNonce.Nonce));
+                .AddRequired(nameof(AuthNonce.Nonce))
+                .AddRequired(nameof(AuthNonce.Version));
         }
     }
 }

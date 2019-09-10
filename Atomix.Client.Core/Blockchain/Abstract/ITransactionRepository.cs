@@ -6,7 +6,7 @@ namespace Atomix.Blockchain.Abstract
 {
     public interface ITransactionRepository
     {
-        Task<bool> AddTransactionAsync(IBlockchainTransaction tx);
+        Task AddTransactionAsync(IBlockchainTransaction tx);
         Task<bool> AddOutputsAsync(IEnumerable<ITxOutput> outputs, Currency currency, string address);
         Task<IBlockchainTransaction> GetTransactionByIdAsync(Currency currency, string txId);
         Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(Currency currency);

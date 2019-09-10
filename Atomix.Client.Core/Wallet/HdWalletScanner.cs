@@ -12,7 +12,7 @@ namespace Atomix.Wallet
 {
     public class HdWalletScanner : IHdWalletScanner
     {
-        public IAccount Account { get; }
+        private IAccount Account { get; }
 
         public HdWalletScanner(IAccount account)
         {
@@ -60,6 +60,23 @@ namespace Atomix.Wallet
             }
         }
 
+        public async Task ScanAddressAsync(
+            Currency currency,
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            try
+            {
+                await GetCurrencyScanner(currency)
+                    .ScanAsync(address, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Address scan error for currency {@currency} and address {@address}", currency.Name, address);
+            }
+        }
+
         private ICurrencyHdWalletScanner GetCurrencyScanner(Currency currency)
         {
             if (currency is BitcoinBasedCurrency)
@@ -68,6 +85,7 @@ namespace Atomix.Wallet
                 return new EthereumWalletScanner(Account);
             if (currency is Atomix.Tezos)
                 return new TezosWalletScanner(Account);
+
             throw new NotSupportedException($"Currency {currency.Name} not supported");
         }
     }

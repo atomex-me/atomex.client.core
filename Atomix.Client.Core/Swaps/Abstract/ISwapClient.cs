@@ -1,7 +1,11 @@
-﻿namespace Atomix.Swaps.Abstract
+﻿using Atomix.Core.Entities;
+
+namespace Atomix.Swaps.Abstract
 {
     public interface ISwapClient
     {
-        void SendSwapDataAsync(SwapData swapData);
+        void SwapInitiateAsync(ClientSwap swap);
+        void SwapAcceptAsync(ClientSwap swap);
+        void SwapPaymentAsync(ClientSwap swap);
     }
 }

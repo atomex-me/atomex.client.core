@@ -7,8 +7,5 @@ namespace Atomix.Blockchain.Ethereum
     {
         [Parameter("bytes32", "_hashedSecret", 1, true)]
         public byte[] HashedSecret { get; set; }
-
-        [Parameter("uint", "_refundTime", 2, false)]
-        public uint RefundTime { get; set; }
     }
 }

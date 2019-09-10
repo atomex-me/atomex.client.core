@@ -4,96 +4,95 @@ using ProtoBuf.Meta;
 
 namespace Atomix.Api.Proto
 {
-    public class ProtoScheme
+    public class ProtoScheme<T>
     {
-        public static ProtoScheme AuthNonce = new AuthNonceScheme();
-        public static ProtoScheme Auth = new AuthScheme();
-        public static ProtoScheme AuthOk = new AuthOkScheme();
-        public static ProtoScheme Error = new ErrorScheme();
-        public static ProtoScheme OrderSend = new OrderSendScheme();
-        public static ProtoScheme OrderCancel = new OrderCancelScheme();
-        public static ProtoScheme OrderStatus = new OrderStatusScheme();
-        public static ProtoScheme Orders = new OrdersScheme();
-        public static ProtoScheme ExecutionReport = new ExecutionReportScheme();
-        public static ProtoScheme Swap = new SwapDataScheme();
-        public static ProtoScheme Subscribe = new SubscribeScheme();
-        public static ProtoScheme Unsubscribe = new UnsubscribeScheme();
-        public static ProtoScheme Quotes = new QuotesScheme(); 
-        public static ProtoScheme Entries = new EntriesScheme();
-        public static ProtoScheme Snapshot = new SnapshotScheme();
-        public static ProtoScheme OrderLog = new OrderLogScheme();
+        protected RuntimeTypeModel Model { get; }
 
-        protected RuntimeTypeModel Model { get; } = TypeModel.Create();
-        private readonly byte _messageId;
+        public byte MessageId { get; }
 
-        public ProtoScheme(byte messageId)
+        protected ProtoScheme(byte messageId)
         {
-            _messageId = messageId;
+            MessageId = messageId;
+            Model = TypeModel.Create();
+            Model.IncludeDateTimeKind = true;
         }
 
-        public T Deserialize<T>(MemoryStream stream) where T : class
+        public T Deserialize(MemoryStream stream)
         {
-            return Model.Deserialize(stream, null, typeof(T)) as T;
+            return (T)Model.Deserialize(stream, null, typeof(T));
         }
 
-        public T DeserializeWithLengthPrefix<T>(MemoryStream stream, PrefixStyle prefixStyle, int expectedField) where T : class
+        private T DeserializeWithLengthPrefix(
+            Stream stream,
+            PrefixStyle prefixStyle,
+            int expectedField)
         {
-            return Model.DeserializeWithLengthPrefix(stream, null, typeof(T), prefixStyle, expectedField) as T;
+            return (T)Model.DeserializeWithLengthPrefix(stream, null, typeof(T), prefixStyle, expectedField);
         }
 
-        public T DeserializeWithLengthPrefix<T>(MemoryStream stream) where T : class
+        public T DeserializeWithLengthPrefix(MemoryStream stream)
         {
-            return DeserializeWithLengthPrefix<T>(stream, PrefixStyle.Fixed32, 0);
+            return DeserializeWithLengthPrefix(stream, PrefixStyle.Fixed32, 0);
         }
 
-        public void Serialize<T>(Stream outputStream, T obj)
+        public void Serialize(Stream outputStream, T obj)
         {
             Model.Serialize(outputStream, obj);
         }
 
-        public byte[] Serialize<T>(T obj)
+        public byte[] Serialize(T obj)
         {
-            var stream = new MemoryStream();
-            Model.Serialize(stream, obj);
-            return stream.ToArray();
+            using (var stream = new MemoryStream())
+            {
+                Model.Serialize(stream, obj);
+                return stream.ToArray();
+            }
         }
 
-        public void SerializeWithLengthPrefix<T>(Stream outputStream, T obj, PrefixStyle prefixStyle, int field)
+        private void SerializeWithLengthPrefix(
+            Stream outputStream,
+            T obj,
+            PrefixStyle prefixStyle,
+            int field)
         {
             Model.SerializeWithLengthPrefix(outputStream, obj, typeof(T), prefixStyle, field);
         }
 
-        public byte[] SerializeWithLengthPrefix<T>(T obj, PrefixStyle prefixStyle, int field)
+        private byte[] SerializeWithLengthPrefix(T obj, PrefixStyle prefixStyle, int field)
         {
-            var stream = new MemoryStream();
-            Model.SerializeWithLengthPrefix(stream, obj, typeof(T), prefixStyle, field);
-            return stream.ToArray();
+            using (var stream = new MemoryStream())
+            {
+                Model.SerializeWithLengthPrefix(stream, obj, typeof(T), prefixStyle, field);
+                return stream.ToArray();
+            }
         }
 
-        public byte[] SerializeWithLengthPrefix<T>(T obj)
+        public byte[] SerializeWithLengthPrefix(T obj)
         {
             return SerializeWithLengthPrefix(obj, PrefixStyle.Fixed32, 0);
         }
 
-        public void SerializeWithMessageId<T>(Stream outputStream, T obj, byte messageId)
+        private void SerializeWithMessageId(Stream outputStream, T obj, byte messageId)
         {
             outputStream.WriteByte(messageId);
             SerializeWithLengthPrefix(outputStream, obj, PrefixStyle.Fixed32, 0);
         }
 
-        public byte[] SerializeWithMessageId<T>(T obj, byte messageId)
+        private byte[] SerializeWithMessageId(T obj, byte messageId)
         {
-            var stream = new MemoryStream();
-            SerializeWithMessageId(stream, obj, messageId);
-            return stream.ToArray();
+            using (var stream = new MemoryStream())
+            {
+                SerializeWithMessageId(stream, obj, messageId);
+                return stream.ToArray();
+            }
         }
 
-        public byte[] SerializeWithMessageId<T>(T obj)
+        public byte[] SerializeWithMessageId(T obj)
         {
-            return SerializeWithMessageId(obj, _messageId);
+            return SerializeWithMessageId(obj, MessageId);
         }
 
-        public string GetSchema<T>()
+        public string GetSchema()
         {
             return Model.GetSchema(typeof(T), ProtoSyntax.Proto2);
         }

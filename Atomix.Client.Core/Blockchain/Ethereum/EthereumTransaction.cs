@@ -19,10 +19,11 @@ namespace Atomix.Blockchain.Ethereum
         public const int InputTransaction = 1;
         public const int OutputTransaction = 2;
         public const int SelfTransaction = 3;
-        public const int DefaultConfirmations = 1;
+        private const int DefaultConfirmations = 1;
+        private const string InternalSuffix = "_internal_";
 
         public string Id { get; set; }
-        public Currency Currency { get; } = Currencies.Eth;
+        public Currency Currency { get; set; }
         public BlockInfo BlockInfo { get; set; }
         public string From { get; set; }
         public string To { get; set; }
@@ -36,17 +37,30 @@ namespace Atomix.Blockchain.Ethereum
         public int Type { get; set; }
         public bool ReceiptStatus { get; set; }
         public bool IsInternal { get; set; }
+        public int InternalIndex { get; set; }
+
+        public string UniqueId => Id + (IsInternal ? $"{InternalSuffix}{InternalIndex}" : string.Empty);
 
         public EthereumTransaction()
         {
-            BlockInfo = new BlockInfo()
+        }
+
+        public EthereumTransaction(Currency currency)
+        {
+            Currency = currency;
+            BlockInfo = new BlockInfo
             {
                 FirstSeen = DateTime.UtcNow
             };
         }
 
-        public EthereumTransaction(Transaction tx, TransactionReceipt txReceipt, DateTime blockTimeStamp)
+        public EthereumTransaction(
+            Currency currency,
+            Transaction tx,
+            TransactionReceipt txReceipt,
+            DateTime blockTimeStamp)
         {
+            Currency = currency;
             Id = tx.TransactionHash;
             From = tx.From.ToLowerInvariant();
             To = tx.To.ToLowerInvariant();
@@ -55,6 +69,13 @@ namespace Atomix.Blockchain.Ethereum
             Nonce = tx.Nonce;
             GasPrice = tx.GasPrice;
             GasLimit = tx.Gas;
+            GasUsed = txReceipt.GasUsed;
+            Type = UnknownTransaction;
+            ReceiptStatus = txReceipt.Status != null
+                ? txReceipt.Status.Value == BigInteger.One
+                : true;
+            IsInternal = false;
+            InternalIndex = 0;
 
             BlockInfo = new BlockInfo
             {
@@ -66,17 +87,18 @@ namespace Atomix.Blockchain.Ethereum
             };
         }
 
-        public EthereumTransaction(TransactionInput txInput)
+        public EthereumTransaction(Currency currency, TransactionInput txInput)
         {
-            From = txInput.From;
-            To = txInput.To;
+            Currency = currency;
+            From = txInput.From.ToLowerInvariant();
+            To = txInput.To.ToLowerInvariant();
             Input = txInput.Data;
             Amount = txInput.Value;
             Nonce = txInput.Nonce;
             GasPrice = txInput.GasPrice;
             GasLimit = txInput.Gas;
 
-            BlockInfo = new BlockInfo()
+            BlockInfo = new BlockInfo
             {
                 FirstSeen = DateTime.UtcNow
             };
@@ -99,43 +121,20 @@ namespace Atomix.Blockchain.Ethereum
             return Encoding.UTF8.GetBytes(RlpEncodedTx);
         }
 
-        public decimal AmountInEth()
-        {
-            var gas = GasUsed != 0 ? GasUsed : GasLimit;
-
-            switch (Type)
-            {
-                case InputTransaction:
-                    return Atomix.Ethereum.WeiToEth(Amount);
-                case OutputTransaction:
-                    return -Atomix.Ethereum.WeiToEth(Amount + GasPrice * gas);
-                case SelfTransaction:
-                    return -Atomix.Ethereum.WeiToEth(GasPrice * gas);
-                default:
-                    return Atomix.Ethereum.WeiToEth(Amount + GasPrice * gas);
-            }  
-        }
-
         public async Task<bool> SignAsync(
-            IPrivateKeyStorage keyStorage,
-            string address,
+            IKeyStorage keyStorage,
+            WalletAddress address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var keyIndex = await keyStorage
-                .RecoverKeyIndexAsync(
-                    currency: Currency,
-                    address: address,
-                    maxIndex: 0,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            if (keyIndex == null)
+            if (address.KeyIndex == null)
             {
-                Log.Error($"Can't find private key for address {address}");
+                Log.Error(
+                    messageTemplate: "Can't find private key for address {@address}",
+                    propertyValue: address);
                 return false;
             }
 
-            var privateKey = keyStorage.GetPrivateKey(Currency, keyIndex);
+            var privateKey = keyStorage.GetPrivateKey(Currency, address.KeyIndex);
 
             return await SignAsync(privateKey)
                 .ConfigureAwait(false);
@@ -156,9 +155,7 @@ namespace Atomix.Blockchain.Ethereum
                     gasPrice: GasPrice,
                     gasLimit: GasLimit,
                     data: Input);
-
-            //var tx = TransactionFactory.CreateTransaction(RlpEncodedTx);
-
+            
             From = Web3.OfflineTransactionSigner
                 .GetSenderAddress(RlpEncodedTx, GetCurrency().Chain)
                 .ToLowerInvariant();

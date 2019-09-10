@@ -3,19 +3,18 @@ using Atomix.Core;
 
 namespace Atomix.Api.Proto
 {
-    public class AuthScheme : ProtoScheme
+    public class AuthScheme : ProtoScheme<Auth>
     {
-        public const int MessageId = 1;
-
-        public AuthScheme()
-            : base(MessageId)
+        public AuthScheme(byte messageId)
+            : base(messageId)
         {
             Model.Add(typeof(Auth), true)
-                .AddRequired(nameof(Core.Auth.TimeStamp))
-                .AddRequired(nameof(Core.Auth.Nonce))
-                .AddRequired(nameof(Core.Auth.ClientNonce))
-                .AddRequired(nameof(Core.Auth.PublicKeyHex))
-                .AddRequired(nameof(Core.Auth.Signature));
+                .AddRequired(nameof(Auth.TimeStamp))
+                .AddRequired(nameof(Auth.Nonce))
+                .AddRequired(nameof(Auth.ClientNonce))
+                .AddRequired(nameof(Auth.PublicKeyHex))
+                .AddRequired(nameof(Auth.Signature))
+                .AddRequired(nameof(Auth.Version));
         }
     }
 }

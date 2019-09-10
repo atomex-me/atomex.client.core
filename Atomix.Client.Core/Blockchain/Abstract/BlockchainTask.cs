@@ -1,12 +1,11 @@
 ﻿using Atomix.Common;
 using Atomix.Core.Entities;
-using Atomix.Swaps;
 
 namespace Atomix.Blockchain.Abstract
 {
     public abstract class BlockchainTask : BackgroundTask
     {
         public Currency Currency { get; set; }
-        public SwapState SwapState { get; set; }
+        public ClientSwap Swap { get; set; }
     }
 }

@@ -6,6 +6,11 @@ namespace Atomix.Blockchain.Abstract
 {
     public interface ITxOutputSource
     {
-        Task<IEnumerable<ITxOutput>> GetUnspentOutputsAsync(IEnumerable<WalletAddress> addresses);
+        Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
+            IEnumerable<WalletAddress> addresses);
+
+        Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
+            Currency currency,
+            IEnumerable<string> addresses);
     }
 }

@@ -11,10 +11,6 @@ namespace Atomix.Blockchain.Abstract
             uint inputNo,
             CancellationToken cancellationToken = default(CancellationToken));
 
-        Task<IEnumerable<ITxPoint>> GetInputsAsync(
-            string txId,
-            CancellationToken cancellationToken = default(CancellationToken));
-
         Task<IEnumerable<ITxOutput>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,

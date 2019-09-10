@@ -1,31 +1,61 @@
 using System.Threading.Tasks;
+using Atomix.Core.Entities;
 
 namespace Atomix.Swaps.Abstract
 {
-    public delegate void OnSwapUpdatedDelegate(object sender, SwapEventArgs swapArgs);
+    public delegate void OnSwapUpdatedDelegate(ICurrencySwap currencySwap, SwapEventArgs swapArgs);
 
-    public interface ICurrencySwap : ISwap
+    public interface ICurrencySwap
     {
         OnSwapUpdatedDelegate InitiatorPaymentConfirmed { get; set; }
-        OnSwapUpdatedDelegate CounterPartyPaymentConfirmed { get; set; }
-        OnSwapUpdatedDelegate CounterPartyPaymentSpent { get; set; }
+        OnSwapUpdatedDelegate AcceptorPaymentConfirmed { get; set; }
+        OnSwapUpdatedDelegate AcceptorPaymentSpent { get; set; }
+        OnSwapUpdatedDelegate SwapUpdated { get; set; }
 
-        /// <summary>
-        /// Prepating to receive the purchased currency
-        /// </summary>
-        /// <returns></returns>
-        Task PrepareToReceiveAsync();
-
-        /// <summary>
-        /// Redeems swap for currency being purchased
-        /// </summary>
-        /// <returns></returns>
-        Task RedeemAsync();
+        Currency Currency { get; }
 
         /// <summary>
         /// Broadcast payment transactions for currency being sold
         /// </summary>
         /// <returns></returns>
-        Task BroadcastPaymentAsync();
+        Task BroadcastPaymentAsync(ClientSwap swap);
+
+        /// <summary>
+        /// Preparing to receive the purchased currency
+        /// </summary>
+        /// <returns></returns>
+        Task PrepareToReceiveAsync(ClientSwap swap);
+
+        /// <summary>
+        /// Redeems swap for currency being purchased
+        /// </summary>
+        /// <returns></returns>
+        Task RedeemAsync(ClientSwap swap);
+
+        /// <summary>
+        /// Waits for redeem for swap for currency being purchased in case when counterparty doesn't have funds to redeem for himself
+        /// </summary>
+        /// <returns></returns>
+        Task WaitForRedeemAsync(ClientSwap swap);
+
+        /// <summary>
+        /// Redeems swap for party
+        /// </summary>
+        /// <returns></returns>
+        Task PartyRedeemAsync(ClientSwap swap);
+
+        /// <summary>
+        /// Restores swap
+        /// </summary>
+        /// <returns></returns>
+        Task RestoreSwapAsync(ClientSwap swap);
+
+        /// <summary>
+        /// Handle party payment tx
+        /// </summary>
+        /// <param name="swap">Local swap</param>
+        /// <param name="clientSwap">Received swap</param>
+        /// <returns></returns>
+        Task HandlePartyPaymentAsync(ClientSwap swap, ClientSwap clientSwap);
     }
 }

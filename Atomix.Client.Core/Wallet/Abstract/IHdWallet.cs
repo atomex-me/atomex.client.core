@@ -1,8 +1,10 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomix.Blockchain.Abstract;
+using Atomix.Core;
 using Atomix.Core.Entities;
 
 namespace Atomix.Wallet.Abstract
@@ -12,12 +14,12 @@ namespace Atomix.Wallet.Abstract
         /// <summary>
         /// Path to wallet
         /// </summary>
-        string PathToWallet { get; set; }
+        string PathToWallet { get; }
 
         /// <summary>
-        /// Gets all currencies supported by the wallet
+        /// Gets wallet's network
         /// </summary>
-        IEnumerable<Currency> Currencies { get; }
+        Network Network { get; }
 
         /// <summary>
         /// Gets the value that indicates whether the wallet is locked
@@ -49,24 +51,7 @@ namespace Atomix.Wallet.Abstract
         /// <param name="chain">Chain</param>
         /// <param name="index">Key index</param>
         /// <returns>Address</returns>
-        WalletAddress GetAddress(
-            Currency currency,
-            uint chain,
-            uint index);
-
-        /// <summary>
-        /// Gets wallet address for <paramref name="address"/>
-        /// </summary>
-        /// <param name="currency">Currency</param>
-        /// <param name="address">Address</param>
-        /// <param name="maxIndex">Maximum search index</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Wallet address</returns>
-        Task<WalletAddress> GetAddressAsync(
-            Currency currency,
-            string address,
-            uint maxIndex,
-            CancellationToken cancellationToken = default(CancellationToken));
+        WalletAddress GetAddress(Currency currency, int chain, uint index);
 
         /// <summary>
         /// Gets public key for service key with <paramref name="index"/>
@@ -74,26 +59,6 @@ namespace Atomix.Wallet.Abstract
         /// <param name="index">Service key index</param>
         /// <returns>Public key bytes</returns>
         byte[] GetServicePublicKey(uint index);
-
-        /// <summary>
-        /// Gets internal address for <paramref name="currency"/> and key <paramref name="index"/>
-        /// </summary>
-        /// <param name="currency">Currency</param>
-        /// <param name="index">Key index</param>
-        /// <returns>Address</returns>
-        WalletAddress GetInternalAddress(
-            Currency currency,
-            uint index);
-
-        /// <summary>
-        /// Gets external address for <paramref name="currency"/> and key <paramref name="index"/>
-        /// </summary>
-        /// <param name="currency">Currency</param>
-        /// <param name="index">Key index</param>
-        /// <returns>Address</returns>
-        WalletAddress GetExternalAddress(
-            Currency currency,
-            uint index);
 
         /// <summary>
         /// Sign <paramref name="data"/> using public key corresponding to <paramref name="address"/>
@@ -108,27 +73,29 @@ namespace Atomix.Wallet.Abstract
             CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
-        /// Sign input/output <paramref name="transaction"/> corresponding to <paramref name="spentOutputs"/>
+        /// Sign input/output <paramref name="tx"/> corresponding to <paramref name="spentOutputs"/>
         /// </summary>
-        /// <param name="transaction">In/out transaction to sign</param>
+        /// <param name="tx">In/out transaction to sign</param>
         /// <param name="spentOutputs">Spent outputs</param>
+        /// <param name="addressResolver">Address resolver</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True, if transaction successfully signed, otherwise else</returns>
         Task<bool> SignAsync(
-            IInOutTransaction transaction,
+            IInOutTransaction tx,
             IEnumerable<ITxOutput> spentOutputs,
+            IAddressResolver addressResolver,
             CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
-        /// Sign address based <paramref name="transaction"/> by key for <paramref name="address"/>
+        /// Sign address based <paramref name="tx"/> by key for <paramref name="address"/>
         /// </summary>
-        /// <param name="transaction">Address based transaction to sign</param>
+        /// <param name="tx">Address based transaction to sign</param>
         /// <param name="address">Address</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True, if transaction successfully signed, otherwise else</returns>
         Task<bool> SignAsync(
-            IAddressBasedTransaction transaction,
-            string address,
+            IAddressBasedTransaction tx,
+            WalletAddress address,
             CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
@@ -154,5 +121,12 @@ namespace Atomix.Wallet.Abstract
             byte[] data,
             uint keyIndex,
             CancellationToken cancellationToken = default(CancellationToken));
+
+        //bool Verify(
+        //    WalletAddress walletAddress,
+        //    byte[] data,
+        //    byte[] signature);
+
+        byte[] GetDeterministicSecret(Currency currency, DateTime timeStamp);
     }
 }

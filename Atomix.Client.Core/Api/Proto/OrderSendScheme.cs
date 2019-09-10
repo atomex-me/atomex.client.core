@@ -1,20 +1,20 @@
-﻿using Atomix.Common.Proto;
+﻿using Atomix.Abstract;
+using Atomix.Common.Proto;
 using Atomix.Core.Entities;
 
 namespace Atomix.Api.Proto
 {
-    public class OrderSendScheme : ProtoScheme
+    public class OrderSendScheme : ProtoScheme<Order>
     {
-        public const int MessageId = 4;
-
-        public OrderSendScheme()
-            : base(MessageId)
+        public OrderSendScheme(byte messageId, ICurrencies currencies)
+            : base(messageId)
         {
             Model.Add(typeof(Currency), true)
-                .AddAvailableCurrencies();
+                .AddCurrencies(currencies)
+                .AddRequired(nameof(Currency.Name));         
 
             Model.Add(typeof(Symbol), true)
-                .AddAvailableSymbols();
+                .AddRequired(nameof(Symbol.Name));
 
             Model.Add(typeof(WalletAddress), true)
                 .AddRequired(nameof(WalletAddress.Address))
@@ -29,14 +29,9 @@ namespace Atomix.Api.Proto
                 .AddRequired(nameof(Order.TimeStamp))
                 .AddRequired(nameof(Order.Price))
                 .AddRequired(nameof(Order.Qty))
-                .AddRequired(nameof(Order.Fee))
-                .AddRequired(nameof(Order.RedeemFee))
                 .AddRequired(nameof(Order.Side))
                 .AddRequired(nameof(Order.Type))
-                .AddRequired(nameof(Order.FromWallets))
-                .AddRequired(nameof(Order.ToWallet))
-                .AddRequired(nameof(Order.RefundWallet))
-                .AddRequired(nameof(Order.IsStayAfterDisconnect));
+                .AddRequired(nameof(Order.FromWallets));
         }
     }
 }

@@ -17,32 +17,14 @@ namespace Atomix.Client.Core.Tests
                 Status = status,
                 FromWallets = new List<WalletAddress> {
                     new WalletAddress { Address = "1234" }
-                },
-                ToWallet = new WalletAddress { Address = "4321" },
-                RefundWallet = new WalletAddress { Address = "5678" }
+                }
             };
-        }
-
-        [Fact]
-        public void IsContinuationOfUnknownTest()
-        {
-            var order = CreateOrder(OrderStatus.Unknown);
-
-            Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Unknown)));
-            Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Pending)));
-            Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Placed)));
-            Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Canceled)));
-            Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.PartiallyFilled)));
-            Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Filled)));
-            Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Rejected)));
         }
 
         [Fact]
         public void IsContinuationOfPendingTest()
         {
             var order = CreateOrder(OrderStatus.Pending);
-
-            Assert.True(order.IsContinuationOf(CreateOrder(OrderStatus.Unknown)));
 
             Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Pending)));
             Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Placed)));
@@ -57,7 +39,6 @@ namespace Atomix.Client.Core.Tests
         {
             var order = CreateOrder(OrderStatus.Placed);
 
-            Assert.True(order.IsContinuationOf(CreateOrder(OrderStatus.Unknown)));
             Assert.True(order.IsContinuationOf(CreateOrder(OrderStatus.Pending)));
 
             Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Placed)));
@@ -75,7 +56,6 @@ namespace Atomix.Client.Core.Tests
             Assert.True(order.IsContinuationOf(CreateOrder(OrderStatus.Placed)));
             Assert.True(order.IsContinuationOf(CreateOrder(OrderStatus.PartiallyFilled)));
 
-            Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Unknown)));
             Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Pending)));
             Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Canceled)));
             Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Filled)));
@@ -96,7 +76,6 @@ namespace Atomix.Client.Core.Tests
                 Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.PartiallyFilled, leaveQty: 9)));
                 Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Placed, leaveQty: 10)));
                 Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.PartiallyFilled, leaveQty: 10)));
-                Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Unknown)));
                 Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Pending)));
                 Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Canceled)));
                 Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Filled)));
@@ -109,11 +88,10 @@ namespace Atomix.Client.Core.Tests
         {
             var order = CreateOrder(OrderStatus.Rejected);
 
-            Assert.True(order.IsContinuationOf(CreateOrder(OrderStatus.Unknown)));
-            Assert.True(order.IsContinuationOf(CreateOrder(OrderStatus.Placed)));
+            Assert.True(order.IsContinuationOf(CreateOrder(OrderStatus.Pending)));
 
+            Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Placed)));
             Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.PartiallyFilled)));
-            Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Pending)));
             Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Canceled)));
             Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Filled)));
             Assert.False(order.IsContinuationOf(CreateOrder(OrderStatus.Rejected)));
@@ -122,7 +100,7 @@ namespace Atomix.Client.Core.Tests
         [Fact]
         public void IsContinuationOfThrowsTest()
         {
-            var order = CreateOrder(OrderStatus.Unknown);
+            var order = CreateOrder(OrderStatus.Pending);
 
             Assert.Throws<ArgumentNullException>(() => order.IsContinuationOf(null));
         }

@@ -1,14 +1,13 @@
-﻿using Atomix.Common.Proto;
+﻿using System.Collections.Generic;
+using Atomix.Common.Proto;
 using Atomix.MarketData;
 
 namespace Atomix.Api.Proto
 {
-    public class QuotesScheme : ProtoScheme
+    public class QuotesScheme : ProtoScheme<List<Quote>>
     {
-        public const int MessageId = 12;
-
-        public QuotesScheme()
-            : base(MessageId)
+        public QuotesScheme(byte messageId)
+            : base(messageId)
         {
             Model.Add(typeof(Quote), true)
                 .AddRequired(nameof(Quote.SymbolId))

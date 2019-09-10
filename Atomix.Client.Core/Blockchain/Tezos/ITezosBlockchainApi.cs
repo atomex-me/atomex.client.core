@@ -15,5 +15,9 @@ namespace Atomix.Blockchain.Tezos
             string address,
             int page,
             CancellationToken cancellationToken = default(CancellationToken));
+
+        Task<bool> IsActiveAddress(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken));
     }
 }

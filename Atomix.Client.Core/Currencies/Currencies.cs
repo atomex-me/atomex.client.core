@@ -1,20 +1,31 @@
-﻿using Atomix.Core.Entities;
+﻿using System.Collections.Generic;
+using System.Linq;
+using Atomix.Abstract;
+using Atomix.Core.Entities;
+using Microsoft.Extensions.Configuration;
 
 namespace Atomix
 {
-    public static class Currencies
+    public class Currencies : List<Currency>, ICurrencies
     {
-        public static Bitcoin Btc = new Bitcoin();
-        public static Ethereum Eth = new Ethereum();
-        public static Litecoin Ltc = new Litecoin();
-        public static Tezos Xtz = new Tezos();
-
-        public static Currency[] Available =
+        public Currencies(
+            IConfiguration configuration)
         {
-            Btc,
-            Eth,
-            Ltc,
-            Xtz,
-        };
+            Add(new Bitcoin(configuration.GetSection("BTC")));
+            Add(new Ethereum(configuration.GetSection("ETH")));
+            Add(new Litecoin(configuration.GetSection("LTC")));
+            Add(new Tezos(configuration.GetSection("XTZ")));
+        }
+
+        public Currency GetByName(
+            string name)
+        {
+            return this.FirstOrDefault(c => c.Name == name);
+        }
+
+        public T Get<T>() where T : Currency
+        {
+            return this.FirstOrDefault(c => c.GetType() == typeof(T)) as T;
+        }
     }
 }

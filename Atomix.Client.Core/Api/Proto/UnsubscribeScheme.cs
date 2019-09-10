@@ -1,14 +1,13 @@
-﻿using Atomix.Common.Proto;
+﻿using System.Collections.Generic;
+using Atomix.Common.Proto;
 using Atomix.MarketData;
 
 namespace Atomix.Api.Proto
 {
-    public class SubscribeScheme : ProtoScheme
+    public class SubscribeScheme : ProtoScheme<List<Subscription>>
     {
-        public const int MessageId = 10;
-
-        public SubscribeScheme()
-            : base(MessageId)
+        public SubscribeScheme(byte messageId)
+            : base(messageId)
         {
             Model.Add(typeof(Subscription), true)
                 //.AddRequired(nameof(Subscription.Symbol))

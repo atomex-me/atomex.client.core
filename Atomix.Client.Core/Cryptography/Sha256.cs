@@ -8,7 +8,10 @@ namespace Atomix.Cryptography
     {
         public override byte[] ComputeHash(byte[] input, int offset, int count)
         {
-            return SHA256.Create().ComputeHash(input, offset, count);
+            using (var sha256 = SHA256.Create())
+            {
+                return sha256.ComputeHash(input, offset, count);
+            }
         }
 
         public static byte[] Compute(byte[] input, int offset, int count)

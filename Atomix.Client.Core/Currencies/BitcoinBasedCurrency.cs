@@ -4,6 +4,8 @@ using System.Linq;
 using Atomix.Blockchain.Abstract;
 using Atomix.Blockchain.BitcoinBased;
 using Atomix.Core.Entities;
+using Atomix.Cryptography;
+using Atomix.Wallet.BitcoinBased;
 using NBitcoin;
 
 namespace Atomix
@@ -16,12 +18,28 @@ namespace Atomix
         public const int P2PkhSwapRedeemSigSize = 82; //65 + 16 + 1;
         public const int P2WPkhScriptSigSize = P2PkhScriptSigSize / 4;
         //public const int P2WPkhCompressedScriptSigSize = P2PkhCompressedScriptSigSize / 4;
+        public const int RedeemTxSize = 225;
 
         public Network Network { get; protected set; }
 
         protected BitcoinBasedCurrency()
         {
             TransactionType = typeof(BitcoinBasedTransaction);
+        }
+
+        public override IExtKey CreateExtKey(byte[] seed)
+        {
+            return CreateExtKeyFromSeed(seed);
+        }
+
+        public static IExtKey CreateExtKeyFromSeed(byte[] seed)
+        {
+            return new BitcoinBasedExtKey(seed);
+        }
+
+        public override IKey CreateKey(byte[] seed)
+        {
+            return new BitcoinBasedKey(seed);
         }
 
         public override string AddressFromKey(byte[] publicKey)
@@ -49,7 +67,7 @@ namespace Atomix
             try
             {
                 return new PubKey(publicKey)
-                    .GetAddress(Network)
+                    .GetAddress(ScriptPubKeyType.Legacy, Network)
                     .ToString()
                     .Equals(address);
             }
@@ -80,6 +98,11 @@ namespace Atomix
             return 1m;
         }
 
+        public override decimal GetDefaultRedeemFee()
+        {
+            return FeeRate * RedeemTxSize / DigitsMultiplier;
+        }
+
         public long CoinToSatoshi(decimal coins)
         {
             return (long) (coins * DigitsMultiplier);
@@ -89,7 +112,7 @@ namespace Atomix
         {
             return new Key()
                 .PubKey
-                .GetAddress(Network)
+                .GetAddress(ScriptPubKeyType.Legacy, Network)
                 .ToString();
         }
 
@@ -119,10 +142,10 @@ namespace Atomix
                 .Cast<BitcoinBasedTxOutput>()
                 .Select(o => o.Coin);
 
-            var destination = new BitcoinPubKeyAddress(destinationAddress)
+            var destination = BitcoinAddress.Create(destinationAddress, Network)
                 .ScriptPubKey;
 
-            var change = new BitcoinPubKeyAddress(changeAddress)
+            var change = BitcoinAddress.Create(changeAddress, Network)
                 .ScriptPubKey;
 
             return BitcoinBasedTransaction.CreateTransaction(
@@ -209,13 +232,48 @@ namespace Atomix
                 aliceRefundPubKey: aliceRefundPubKey,
                 bobRefundPubKey: bobRefundPubKey,
                 bobAddress: bobAddress,
-                secretHash: secretHash);
+                secretHash: secretHash,
+                expectedNetwork: Network);
 
             return BitcoinBasedTransaction.CreateTransaction(
                 currency: this,
                 coins: coins,
                 destination: swap,
                 change: alicePubKey.Hash.ScriptPubKey,
+                amount: amount,
+                fee: fee);
+        }
+
+        public virtual IBitcoinBasedTransaction CreateHtlcP2PkhSwapPaymentTx(
+            IEnumerable<ITxOutput> unspentOutputs,
+            string aliceRefundAddress,
+            string bobAddress,
+            DateTimeOffset lockTime,
+            byte[] secretHash,
+            int secretSize,
+            long amount,
+            long fee)
+        {
+            var coins = unspentOutputs
+                .Cast<BitcoinBasedTxOutput>()
+                .Select(o => o.Coin);
+
+            var swap = BitcoinBasedSwapTemplate.GenerateHtlcP2PkhSwapPayment(
+                aliceRefundAddress: aliceRefundAddress,
+                bobAddress: bobAddress,
+                lockTimeStamp: lockTime.ToUnixTimeSeconds(),
+                secretHash: secretHash,
+                secretSize: secretSize,
+                expectedNetwork: Network);
+
+            var change = BitcoinAddress.Create(aliceRefundAddress, Network)
+                .ScriptPubKey;
+
+            return BitcoinBasedTransaction.CreateTransaction(
+                currency: this,
+                coins: coins,
+                destination: swap,
+                change: change,
                 amount: amount,
                 fee: fee);
         }
@@ -232,10 +290,10 @@ namespace Atomix
                 .Cast<BitcoinBasedTxOutput>()
                 .Select(o => o.Coin);
 
-            var destination = new BitcoinPubKeyAddress(destinationAddress)
+            var destination = BitcoinAddress.Create(destinationAddress, Network)
                 .ScriptPubKey;
 
-            var change = new BitcoinPubKeyAddress(changeAddress)
+            var change = BitcoinAddress.Create(changeAddress, Network)
                 .ScriptPubKey;
 
             return BitcoinBasedTransaction.CreateTransaction(

@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Atomix.Common;
 using Atomix.Core.Entities;
 using Atomix.MarketData.Abstract;
 using Newtonsoft.Json;
@@ -15,11 +15,11 @@ namespace Atomix.MarketData.Bitfinex
     public class BitfinexQuotesProvider : QuotesProvider
     {
         public const string Usd = "USD";
-        public const string LtcBtc = "LTCBTC";
-        public const string EthBtc = "ETHBTC";
-        public const string XtzBtc = "XTZBTC";
+        public const string LtcBtc = "tLTCBTC";
+        public const string EthBtc = "tETHBTC";
+        public const string XtzBtc = "tXTZBTC";
 
-        public string BaseUrl { get; } = "https://api.bitfinex.com/v1/";
+        private string BaseUrl { get; } = "https://api.bitfinex.com/v2/";
 
         public BitfinexQuotesProvider(params string[] symbols)
         {
@@ -28,55 +28,55 @@ namespace Atomix.MarketData.Bitfinex
 
         public BitfinexQuotesProvider(IEnumerable<Currency> currencies, string baseCurrency)
         {
-            Quotes = currencies.ToDictionary(currency => $"{currency.Name}{baseCurrency}".ToUpper(), currency => new Quote());
+            Quotes = currencies.ToDictionary(currency => $"t{currency.Name}{baseCurrency}", currency => new Quote());
         }
 
         public override Quote GetQuote(string currency, string baseCurrency)
         {
-            return Quotes.TryGetValue($"{currency}{baseCurrency}".ToUpper(), out var rate) ? rate : null;
+            return Quotes.TryGetValue($"t{currency}{baseCurrency}", out var rate) ? rate : null;
         }
 
-        protected override async Task UpdateAsync(CancellationToken cancellation = default(CancellationToken))
+        protected override async Task UpdateAsync(
+            CancellationToken cancellationToken = default(CancellationToken))
         {
             Log.Debug("Start of update");
 
-            var client = new HttpClient { BaseAddress = new Uri(BaseUrl) };
-            var isAvailable = true;
+            bool isAvailable;
 
             try
             {
-                foreach (var symbol in Quotes.Keys.ToList())
-                {
-                    var request = $"pubticker/{symbol.ToLower()}";
+                var symbols = string.Join(",", Quotes.Keys);
 
-                    Log.Debug("Send request: {@request}", request);
+                var request = $"tickers?symbols={symbols}";
 
-                    var response = await client
-                        .GetAsync(request, cancellation)
-                        .ConfigureAwait(false);
-
-                    if (response.IsSuccessStatusCode)
-                    {
-                        var responseContent = await response.Content
-                            .ReadAsStringAsync()
-                            .ConfigureAwait(false);
-
-                        Log.Verbose("Raw response content: {@content}", responseContent);
-
-                        var data = JsonConvert.DeserializeObject<JObject>(responseContent);
-
-                        Quotes[symbol] = new Quote
+                isAvailable = await HttpHelper.GetAsync(
+                        baseUri: BaseUrl,
+                        requestUri: request,
+                        responseHandler: responseContent =>
                         {
-                            Bid = data["bid"].Value<decimal>(),
-                            Ask = data["ask"].Value<decimal>()
-                        };
-                    }
-                    else
-                    {
-                        Log.Error("Invalid response code: {@code}", response.StatusCode);
-                        isAvailable = false;
-                    }
-                }
+                            var tickers = JsonConvert.DeserializeObject<JArray>(responseContent);
+
+                            foreach (var tickerToken in tickers)
+                            {
+                                if (!(tickerToken is JArray ticker))
+                                    continue;
+
+                                var symbol = ticker[0].Value<string>();
+
+                                var bid = ticker[1].Value<decimal>();
+                                var ask = ticker[3].Value<decimal>();
+
+                                Quotes[symbol] = new Quote()
+                                {
+                                    Bid = bid,
+                                    Ask = ask
+                                };
+                            }
+
+                            return true;
+                        },
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
 
                 Log.Debug("Update finished");
             }

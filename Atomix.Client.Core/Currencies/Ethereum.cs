@@ -1,8 +1,12 @@
 ﻿using System;
 using System.Numerics;
+using Atomix.Blockchain.Abstract;
 using Atomix.Blockchain.Ethereum;
 using Atomix.Core.Entities;
+using Atomix.Cryptography;
 using Atomix.Wallet.Bip;
+using Atomix.Wallet.Ethereum;
+using Microsoft.Extensions.Configuration;
 using Nethereum.Signer;
 using Nethereum.Util;
 
@@ -10,36 +14,42 @@ namespace Atomix
 {
     public class Ethereum : Currency
     {
-        public const long WeiInEth = 1000000000000000000;
-        public const long WeiInGwei = 1000000000;
-        public const long GweiInEth = 1000000000;
-        public const long EthDigitsMultiplier = GweiInEth; //1_000_000_000;
-        public const string DefaultName = "ETH";
-        public const string DefaultDescription = "Ethereum";
-        public const string DefaultGasPriceFormat = "F9";
-        public const string DefaultGasPriceCode = "GWEI";
-        public const string DefaultFeeCode = "GAS";
-        public const long DefaultGasLimit = 21000; // gas
-        public const long DefaultPaymentTxGasLimit = 172000; // gas
-        public const long DefaultRefundTxGasLimit = 50000; // gas
-        public const long DefaultRedeemTxGasLimit = 100000; // gas
-        public const decimal DefaultGasPriceInGwei = 6; // Gwei
-        public const string RopstenSwapContractAddress = "0x76E5e6307A82DA2B9bDa52fd0B73BAfE17A05636";
-        public const string RopstenChain = "Ropsten";
-        public const string MainNetChain = "MainNet";
+        private const long WeiInEth = 1000000000000000000;
+        private const long WeiInGwei = 1000000000;
+        private const long GweiInEth = 1000000000;
+        private const string DefaultGasPriceFormat = "F9";
+        private const string DefaultGasPriceCode = "GWEI";
+        private const string DefaultFeeCode = "GAS";
+        private const long EthDigitsMultiplier = GweiInEth; //1_000_000_000;
 
-        public Chain Chain { get; protected set; }
-        public string SwapContractAddress { get; protected set; }
+        public decimal GasLimit { get; }
+        public decimal InitiateGasLimit { get; }
+        public decimal InitiateWithRewardGasLimit { get; }
+        public decimal AddGasLimit { get; }
+        public decimal RefundGasLimit { get; }
+        public decimal RedeemGasLimit { get; }
+        public decimal GasPriceInGwei { get; }
+        public decimal InitiateFeeAmount => InitiateGasLimit * GasPriceInGwei / GweiInEth;
+        public decimal InitiateWithRewardFeeAmount => InitiateWithRewardGasLimit * GasPriceInGwei / GweiInEth;
+        public decimal AddFeeAmount => AddGasLimit * GasPriceInGwei / GweiInEth;
+        public decimal RefundFeeAmount => RefundGasLimit * GasPriceInGwei / GweiInEth;
+        public decimal RedeemFeeAmount => RedeemGasLimit * GasPriceInGwei / GweiInEth;
+
+        public Chain Chain { get; }
+        public string SwapContractAddress { get; }
 
         public Ethereum()
         {
-            Name = DefaultName;
-            Description = DefaultDescription;
+        }
+
+        public Ethereum(IConfiguration configuration)
+        {
+            Name = configuration["Name"];
+            Description = configuration["Description"];
             DigitsMultiplier = EthDigitsMultiplier;
-            Digits = (int) Math.Log10(EthDigitsMultiplier);
+            Digits = (int)Math.Log10(EthDigitsMultiplier);
             Format = $"F{Digits}";
 
-            //FeeRate = 0;
             FeeDigits = 0; // in gas
             FeeCode = DefaultFeeCode;
             FeeFormat = $"F{FeeDigits}";
@@ -48,14 +58,65 @@ namespace Atomix
             FeePriceCode = DefaultGasPriceCode;
             FeePriceFormat = DefaultGasPriceFormat;
 
-            Chain = Chain.Ropsten;
-            SwapContractAddress = RopstenSwapContractAddress;
-            BlockchainApi = new CompositeEthereumBlockchainApi(Chain);
+            GasLimit = decimal.Parse(configuration["GasLimit"]);
+            InitiateGasLimit = decimal.Parse(configuration["InitiateGasLimit"]);
+            InitiateWithRewardGasLimit = decimal.Parse(configuration["InitiateWithRewardGasLimit"]);
+            AddGasLimit = decimal.Parse(configuration["AddGasLimit"]);
+            RefundGasLimit = decimal.Parse(configuration["RefundGasLimit"]);
+            RedeemGasLimit = decimal.Parse(configuration["RedeemGasLimit"]);
+            GasPriceInGwei = decimal.Parse(configuration["GasPriceInGwei"]);
+
+            Chain = ResolveChain(configuration);
+            SwapContractAddress = configuration["SwapContract"];
+            BlockchainApi = ResolveBlockchainApi(
+                configuration: configuration,
+                currency: this,
+                chain: Chain);
+            TxExplorerUri = configuration["TxExplorerUri"];
+            AddressExplorerUri = configuration["AddressExplorerUri"];
             TransactionType = typeof(EthereumTransaction);
 
             IsTransactionsAvailable = true;
             IsSwapAvailable = true;
             Bip44Code = Bip44.Ethereum;
+        }
+
+        private static Chain ResolveChain(IConfiguration configuration)
+        {
+            var chain = configuration["Chain"]
+                .ToLowerInvariant();
+
+            if (chain.Equals("mainnet"))
+                return Chain.MainNet;
+
+            if (chain.Equals("ropsten"))
+                return Chain.Ropsten;
+
+            throw new NotSupportedException($"Chain {chain} not supported");
+        }
+
+        private static IBlockchainApi ResolveBlockchainApi(
+            IConfiguration configuration,
+            Currency currency,
+            Chain chain)
+        {
+            var blockchainApi = configuration["BlockchainApi"]
+                .ToLowerInvariant();
+
+            if (blockchainApi.Equals("etherscan+web3"))
+                return new CompositeEthereumBlockchainApi(currency, chain);
+
+            throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported");
+        }
+
+        public override IExtKey CreateExtKey(byte[] seed)
+        {
+            return new EthereumExtKey(seed);
+        }
+
+        public override IKey CreateKey(byte[] seed)
+        {
+            return new EthereumKey(seed);
         }
 
         public override string AddressFromKey(byte[] publicKey)
@@ -102,9 +163,14 @@ namespace Atomix
                 : 0;
         }
 
+        public override decimal GetDefaultRedeemFee()
+        {
+            return RedeemFeeAmount;
+        }
+
         public override decimal GetDefaultFeePrice()
         {
-            return DefaultGasPriceInGwei;
+            return GasPriceInGwei;
         }
 
         public static long EthToWei(decimal eth)
@@ -120,26 +186,6 @@ namespace Atomix
         public static decimal WeiToEth(BigInteger wei)
         {
             return (decimal)wei / WeiInEth;
-        }
-
-        public static decimal GetDefaultFeeAmount()
-        {
-            return DefaultGasLimit * DefaultGasPriceInGwei / GweiInEth;
-        }
-
-        public static decimal GetDefaultPaymentFeeAmount()
-        {
-            return DefaultPaymentTxGasLimit * DefaultGasPriceInGwei / GweiInEth;
-        }
-
-        public static decimal GetDefaultRefundFeeAmount()
-        {
-            return DefaultRefundTxGasLimit * DefaultGasPriceInGwei / GweiInEth;
-        }
-
-        public static decimal GetDefaultRedeemFeeAmount()
-        {
-            return DefaultRedeemTxGasLimit * DefaultGasPriceInGwei / GweiInEth;
         }
     }
 }

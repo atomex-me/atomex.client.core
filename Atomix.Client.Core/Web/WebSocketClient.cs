@@ -17,13 +17,13 @@ namespace Atomix.Web
         public event EventHandler<CloseEventArgs> Disconnected;
         public bool IsConnected => _ws.ReadyState == WebSocketState.Open;
 
-        public bool Reconnection { get; set; } = true;
-        public TimeSpan ReconnectionDelayMin { get; set; } = TimeSpan.FromSeconds(1);
-        public TimeSpan ReconnectionDelayMax { get; set; } = TimeSpan.FromSeconds(10); //TimeSpan.FromMinutes(1);
-        public int ReconnectionAttempts { get; set; } = int.MaxValue;
-        public int ReconnectionAttemptWithMaxDelay { get; set; } = 10; //20;
+        private bool Reconnection { get; } = true;
+        private TimeSpan ReconnectionDelayMin { get; } = TimeSpan.FromSeconds(1);
+        private TimeSpan ReconnectionDelayMax { get; } = TimeSpan.FromSeconds(10); //TimeSpan.FromMinutes(1);
+        private int ReconnectionAttempts { get; } = int.MaxValue;
+        private int ReconnectionAttemptWithMaxDelay { get; } = 10; //20;
 
-        public WebSocketClient(string url)
+        protected WebSocketClient(string url)
         {
             _ws = new WebSocket(url) {Log = {Output = (data, s) => { }}};
             _ws.OnOpen += OnOpenEventHandler;
@@ -32,7 +32,7 @@ namespace Atomix.Web
             _ws.OnMessage += OnMessageEventHandler;
         }
 
-        protected virtual void OnOpenEventHandler(object sender, EventArgs args)
+        private void OnOpenEventHandler(object sender, EventArgs args)
         {  
             Connected?.Invoke(this, args);
 
@@ -44,7 +44,7 @@ namespace Atomix.Web
             }
         }
 
-        protected virtual void OnCloseEventHandler(object sender, CloseEventArgs args)
+        private void OnCloseEventHandler(object sender, CloseEventArgs args)
         {
             Disconnected?.Invoke(this, args);
 
@@ -52,12 +52,12 @@ namespace Atomix.Web
                 TryToReconnect();
         }
 
-        protected virtual void OnErrorEventHandler(object sender, ErrorEventArgs args)
+        private void OnErrorEventHandler(object sender, ErrorEventArgs args)
         {
             Log.Error(args.Exception, "Socket error: {@message}", args.Message);
         }
 
-        protected virtual void OnMessageEventHandler(object sender, MessageEventArgs args)
+        private void OnMessageEventHandler(object sender, MessageEventArgs args)
         {
             if (args.IsBinary) {
                 OnBinaryMessage(sender, args);
@@ -68,7 +68,7 @@ namespace Atomix.Web
             }
         }
 
-        protected virtual void OnTextMessage(object sender, MessageEventArgs args)
+        private void OnTextMessage(object sender, MessageEventArgs args)
         {
         }
 
@@ -163,7 +163,7 @@ namespace Atomix.Web
             GC.SuppressFinalize(this);
         }
 
-        protected virtual void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
             if (disposing)
                 _ws.Close();

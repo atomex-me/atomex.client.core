@@ -24,7 +24,6 @@ namespace Atomix.Blockchain.Tezos.Internal
     {
         //public const string DefaultProvider = "http://localhost:8732";
 
-        private static readonly HttpClient Client = new HttpClient();
         private static readonly Dictionary<string, IOperationHandler> OpHandlers = new Dictionary<string, IOperationHandler>
         {
             { OperationType.ActivateAccount, new ActivateAccountOperationHandler() },
@@ -227,10 +226,15 @@ namespace Atomix.Blockchain.Tezos.Internal
             }
             else
             {
-                signedOpGroup = new TezosSigner().SignHash(
+                var privateKey = Base58Check.Decode(keys.DecryptPrivateKey(), Prefix.Edsk);
+
+                signedOpGroup = TezosSigner.SignHash(
                     data: Hex.FromString(forgedOpGroup.ToString()),
-                    privateKey: Base58Check.Decode(keys.DecryptPrivateKey(), Prefix.Edsk),
-                    watermark: Watermark.Generic);
+                    privateKey: privateKey,
+                    watermark: Watermark.Generic,
+                    isExtendedKey: privateKey.Length == 64);
+
+                privateKey.Clear();
             }
 
             var opResults = await PreApplyOperations(head, arrOps, signedOpGroup.EncodedSignature)
@@ -343,40 +347,46 @@ namespace Atomix.Blockchain.Tezos.Internal
             return (TJType)JToken.Parse(result);
         }
 
-        private async Task<string> Query(string ep, object data = null)
+        private async Task<string> Query(
+            string ep,
+            object data = null)
         {
             var get = data == null;
 
-            var request = new HttpRequestMessage(get ? HttpMethod.Get : HttpMethod.Post, $"{_provider}/{ep}")
-            {
-                Version = HttpVersion.Version11 // Tezos node does not like the default v2.
-            };
+            var httpMethod = get ? HttpMethod.Get : HttpMethod.Post;
 
-            if (!get)
+            using (var request = new HttpRequestMessage(httpMethod, $"{_provider}/{ep}"))
             {
-                request.Content = new StringContent(data.ToString());
-                request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                request.Version = HttpVersion.Version11;
+
+                if (!get)
+                {
+                    request.Content = new StringContent(data.ToString());
+                    request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+                }
+
+                using (var httpClient = new HttpClient())
+                using (var response = await httpClient
+                    .SendAsync(request)
+                    .ConfigureAwait(false))
+                {
+                    var responseBody = await response.Content
+                        .ReadAsStringAsync()
+                        .ConfigureAwait(false);
+
+                    if (response.IsSuccessStatusCode == false)
+                    {
+                        // If failed, throw the body as the exception message.
+                        if (!string.IsNullOrWhiteSpace(responseBody))
+                            throw new HttpRequestException(responseBody);
+
+                        // Otherwise, throw a generic exception.
+                        response.EnsureSuccessStatusCode();
+                    }
+
+                    return responseBody;
+                }
             }
-
-            var response = await Client
-                .SendAsync(request)
-                .ConfigureAwait(false);
-
-            var responseBody = await response.Content
-                .ReadAsStringAsync()
-                .ConfigureAwait(false);
-
-            if (response.IsSuccessStatusCode == false)
-            {
-                 // If failed, throw the body as the exception message.
-                if (!string.IsNullOrWhiteSpace(responseBody))
-                    throw new HttpRequestException(responseBody);
-
-                // Otherwise, throw a generic exception.
-                response.EnsureSuccessStatusCode();
-            }
-
-            return responseBody;
         }
     }
 }

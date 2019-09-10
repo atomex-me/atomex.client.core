@@ -16,11 +16,14 @@ namespace Atomix.Blockchain.BitcoinBased
 {
     public class BitcoinBasedTransaction : IBitcoinBasedTransaction
     {
-        public const int DefaultConfirmations = 1;
+        private const int DefaultConfirmations = 1;
 
         public Transaction Tx { get; }
 
         public string Id => Tx.GetHash().ToString();
+        public Currency Currency { get; }
+        public BlockInfo BlockInfo { get; }
+        public long TotalOut => Tx.TotalOut.Satoshi;
         public DateTime LockTime => Tx.LockTime.Date.UtcDateTime;
 
         public ITxPoint[] Inputs
@@ -46,8 +49,6 @@ namespace Atomix.Blockchain.BitcoinBased
             }
         }
 
-        public Currency Currency { get; }
-        public BlockInfo BlockInfo { get; }
         public long Fees => BlockInfo?.Fees ?? 0;
         public int Confirmations => BlockInfo?.Confirmations ?? 0;
         public long BlockHeight => BlockInfo?.BlockHeight ?? 0;
@@ -56,23 +57,29 @@ namespace Atomix.Blockchain.BitcoinBased
 
         public bool IsConfirmed() => Confirmations >= DefaultConfirmations;
 
-        public BitcoinBasedTransaction(Currency currency, Transaction tx)
+        private BitcoinBasedTransaction(
+            Currency currency,
+            Transaction tx)
         {
             Currency = currency;
             Tx = tx;
-            BlockInfo = new BlockInfo()
+            BlockInfo = new BlockInfo
             {
                 FirstSeen = DateTime.UtcNow
             };
         }
 
-        public BitcoinBasedTransaction(BitcoinBasedCurrency currency, string hex)
-            : this(currency, Transaction.Parse(hex, currency.Network))
+        private BitcoinBasedTransaction(
+            BitcoinBasedCurrency currency,
+            string hex)
+                : this(currency, Transaction.Parse(hex, currency.Network))
         {
         }
 
-        public BitcoinBasedTransaction(BitcoinBasedCurrency currency, byte[] bytes)
-            : this(currency, bytes.ToHexString())
+        public BitcoinBasedTransaction(
+            BitcoinBasedCurrency currency,
+            byte[] bytes)
+                : this(currency, bytes.ToHexString())
         {
         }
 
@@ -85,10 +92,9 @@ namespace Atomix.Blockchain.BitcoinBased
             BlockInfo = blockInfo;
         }
 
-        public long TotalOut => Tx.TotalOut.Satoshi;
-
         public async Task<bool> SignAsync(
-            IPrivateKeyStorage keyStorage,
+            IAddressResolver addressResolver,
+            IKeyStorage keyStorage,
             IEnumerable<ITxOutput> spentOutputs,
             CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -99,55 +105,66 @@ namespace Atomix.Blockchain.BitcoinBased
             {
                 var address = spentOutput.DestinationAddress(Currency);
 
-                var keyIndex = await keyStorage
-                    .RecoverKeyIndexAsync(
+                var walletAddress = await addressResolver
+                    .ResolveAddressAsync(
                         currency: Currency,
                         address: address,
-                        maxIndex: 0,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (keyIndex == null)
+                if (walletAddress?.KeyIndex == null)
                 {
                     Log.Error($"Can't find private key for address {address}");
                     return false;
                 }
 
-                Sign(keyStorage.GetPrivateKey(Currency, keyIndex), spentOutput);
+                Sign(keyStorage.GetPrivateKey(Currency, walletAddress.KeyIndex), spentOutput);
             }
 
             return true;
         }
 
-        public void Sign(Key privateKey, ITxOutput spentOutput)
+        public void Sign(
+            Key privateKey,
+            ITxOutput spentOutput)
         {
             var output = (BitcoinBasedTxOutput)spentOutput;
 
             Tx.Sign(privateKey, output.Coin);
         }
 
-        public void Sign(byte[] privateKey, ITxOutput spentOutput)
+        public void Sign(
+            byte[] privateKey,
+            ITxOutput spentOutput)
         {
             Sign(new Key(privateKey), spentOutput);
         }
 
-        public void Sign(Key privateKey, ITxOutput[] spentOutputs)
+        public void Sign(
+            Key privateKey,
+            ITxOutput[] spentOutputs)
         {
             foreach (var output in spentOutputs)
                 Sign(privateKey, output);
         }
 
-        public void Sign(byte[] privateKey, ITxOutput[] spentOutputs)
+        public void Sign(
+            byte[] privateKey,
+            ITxOutput[] spentOutputs)
         {
             Sign(new Key(privateKey), spentOutputs);
         }
 
-        public void NonStandardSign(byte[] sigScript, ITxOutput spentOutput)
+        public void NonStandardSign(
+            byte[] sigScript,
+            ITxOutput spentOutput)
         {
             NonStandardSign(new Script(sigScript), spentOutput);
         }
 
-        public void NonStandardSign(Script sigScript, ITxOutput spentOutput)
+        public void NonStandardSign(
+            Script sigScript,
+            ITxOutput spentOutput)
         {
             var spentOutpoint = ((BitcoinBasedTxOutput) spentOutput).Coin.Outpoint;
             var input = Tx.Inputs.FindIndexedInput(spentOutpoint);
@@ -155,19 +172,24 @@ namespace Atomix.Blockchain.BitcoinBased
             input.ScriptSig = sigScript;
         }
 
-        public void NonStandardSign(byte[] sigScript, int inputNo)
+        public void NonStandardSign(
+            byte[] sigScript,
+            int inputNo)
         {
             NonStandardSign(new Script(sigScript), inputNo);
         }
 
-        public void NonStandardSign(Script sigScript, int inputNo)
+        public void NonStandardSign(
+            Script sigScript,
+            int inputNo)
         {
             var input = Tx.Inputs[inputNo];
 
             input.ScriptSig = sigScript;
         }
 
-        public bool Verify(ITxOutput spentOutput)
+        public bool Verify(
+            ITxOutput spentOutput)
         {
             if (!(Currency is BitcoinBasedCurrency btcBaseCurrency))
                 throw new NotSupportedException("Currency must be Bitcoin based");
@@ -180,7 +202,9 @@ namespace Atomix.Blockchain.BitcoinBased
             return result;
         }
 
-        public bool Verify(ITxOutput spentOutput, out Error[] errors)
+        public bool Verify(
+            ITxOutput spentOutput,
+            out Error[] errors)
         {
             if (!(Currency is BitcoinBasedCurrency btcBaseCurrency))
                 throw new NotSupportedException("Currency must be Bitcoin based");
@@ -197,7 +221,8 @@ namespace Atomix.Blockchain.BitcoinBased
             return result;
         }
 
-        public bool Verify(IEnumerable<ITxOutput> spentOutputs)
+        public bool Verify(
+            IEnumerable<ITxOutput> spentOutputs)
         {
             if (!(Currency is BitcoinBasedCurrency btcBaseCurrency))
                 throw new NotSupportedException("Currency must be Bitcoin based");
@@ -213,7 +238,9 @@ namespace Atomix.Blockchain.BitcoinBased
             return result;
         }
 
-        public bool Verify(IEnumerable<ITxOutput> spentOutputs, out Error[] errors)
+        public bool Verify(
+            IEnumerable<ITxOutput> spentOutputs,
+            out Error[] errors)
         {
             if (!(Currency is BitcoinBasedCurrency btcBaseCurrency))
                 throw new NotSupportedException("Currency must be Bitcoin based");
@@ -241,7 +268,8 @@ namespace Atomix.Blockchain.BitcoinBased
             return Tx.Check() == TransactionCheckResult.Success;
         }
 
-        public long GetFee(ITxOutput[] spentOutputs)
+        public long GetFee(
+            ITxOutput[] spentOutputs)
         {
             return Tx.GetFee(spentOutputs
                     .Cast<BitcoinBasedTxOutput>()
@@ -250,12 +278,14 @@ namespace Atomix.Blockchain.BitcoinBased
                 .Satoshi;
         }
 
-        public byte[] GetSignatureHash(ITxOutput spentOutput)
+        public byte[] GetSignatureHash(
+            ITxOutput spentOutput)
         {
             return Tx.GetSignatureHash(((BitcoinBasedTxOutput)spentOutput).Coin).ToBytes();
         }
 
-        public Script GetScriptSig(int inputNo)
+        public Script GetScriptSig(
+            int inputNo)
         {
             return Tx.Inputs[inputNo].ScriptSig;
         }

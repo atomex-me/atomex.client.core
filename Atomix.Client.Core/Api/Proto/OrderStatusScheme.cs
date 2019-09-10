@@ -1,37 +1,25 @@
 ﻿using Atomix.Common.Proto;
+using Atomix.Core;
 using Atomix.Core.Entities;
 
 namespace Atomix.Api.Proto
 {
-    public class OrderStatusScheme : ProtoScheme
+    public class OrderStatusScheme : ProtoScheme<Request<Order>>
     {
-        public const int MessageId = 6;
-
-        public OrderStatusScheme()
-            : base(MessageId)
+        public OrderStatusScheme(byte messageId)
+            : base(messageId)
         {
-            Model.Add(typeof(Currency), true)
-                .AddAvailableCurrencies();
-
             Model.Add(typeof(Symbol), true)
-                .AddAvailableSymbols();
-
-            Model.Add(typeof(WalletAddress), true)
-                .AddRequired(nameof(WalletAddress.Address))
-                .AddRequired(nameof(WalletAddress.Currency))
-                .AddRequired(nameof(WalletAddress.PublicKey))
-                .AddRequired(nameof(WalletAddress.ProofOfPossession))
-                .AddRequired(nameof(WalletAddress.Nonce));
+                .AddRequired(nameof(Symbol.Name));
 
             Model.Add(typeof(Order), true)
-                .AddRequired(nameof(Order.OrderId))
-                .AddRequired(nameof(Order.ClientOrderId))
+                .AddRequired(nameof(Order.Id))
                 .AddRequired(nameof(Order.Symbol))
-                .AddRequired(nameof(Order.TimeStamp))
-                .AddRequired(nameof(Order.Side))
-                .AddRequired(nameof(Order.FromWallets))
-                .AddRequired(nameof(Order.ToWallet))
-                .AddRequired(nameof(Order.RefundWallet));
+                .AddRequired(nameof(Order.Side));
+
+            Model.Add(typeof(Request<Order>), true)
+                .AddRequired(nameof(Request<Order>.Id))
+                .AddRequired(nameof(Request<Order>.Data));
         }
     }
 }

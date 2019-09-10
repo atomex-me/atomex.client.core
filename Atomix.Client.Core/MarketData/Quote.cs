@@ -13,5 +13,10 @@ namespace Atomix.MarketData
         {
             return $"{{Bid: {Bid}, Ask: {Ask}}}";
         }
+
+        public bool IsValid()
+        {
+            return Bid != 0 && Ask != 0 && Ask != decimal.MaxValue;
+        }
     }
 }

@@ -1,114 +1,200 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security;
+using System.Security.Cryptography;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Atomix.Common;
-using Atomix.Common.Json;
 using Atomix.Core.Entities;
 using Atomix.Cryptography;
 using Atomix.Wallet.Abstract;
 using Atomix.Wallet.Bip;
-using Atomix.Wallet.BitcoinBased;
-using Atomix.Wallet.KeyData;
 using NBitcoin;
 using Newtonsoft.Json;
 using Serilog;
+using Aes = Atomix.Cryptography.Aes;
+using Network = Atomix.Core.Network;
 
 namespace Atomix.Wallet
 {
-    public class HdKeyStorage : IPrivateKeyStorage
+    public class NonHdKey
     {
-        private const int MaxFileSizeInBytes = 10 * 1024 * 1024; // 10 Mb
-        private const int PasswordHashIterations = 5;
-        private const int ServicePurpose = 777;
+        private const int AesKeySize = 256;
+        private const int AesSaltSize = 16;
+        private const int AesRfc2898Iterations = 1024;
 
-        [JsonProperty("Keys")]
-        private Dictionary<uint, IHdKeyData> _keys;
-
-        [JsonProperty("ServiceKey")]
-        private IHdKeyData _serviceKey;
+        public uint CurrencyCode { get; set; }
+        public string EncryptedSeed { get; set; }
 
         [JsonIgnore]
-        public bool IsLocked => _serviceKey.IsLocked;
-
-        [JsonIgnore]
-        public IKeyIndexCache Cache { get; private set; }
-
-        public HdKeyStorage() { }
-
-        public HdKeyStorage(string mnemonic, Wordlist wordList = null, SecureString passPhrase = null, uint account = 0)
-        {
-            _keys = new Dictionary<uint, IHdKeyData>
-            {
-                { Bip44.Bitcoin, new BitcoinBasedHdKeyData(
-                    mnemonic: mnemonic,
-                    wordList: wordList,
-                    passPhrase: passPhrase,
-                    purpose: Bip44.Purpose,
-                    currency: Bip44.Bitcoin,
-                    account: account)},
-
-                { Bip44.Litecoin, new BitcoinBasedHdKeyData(
-                    mnemonic: mnemonic,
-                    wordList: wordList,
-                    passPhrase: passPhrase,
-                    purpose: Bip44.Purpose,
-                    currency: Bip44.Litecoin,
-                    account: account)},
-
-                { Bip44.Ethereum, new EthereumHdKeyData(
-                    mnemonic: mnemonic,
-                    passPhrase: passPhrase,
-                    account: account)},
-
-                { Bip44.Tezos, new TezosHdKeyData(
-                    mnemonic: mnemonic,
-                    passPhrase: passPhrase,
-                    account: account)}
-            };
-
-            _serviceKey = new BitcoinBasedHdKeyData(
-                mnemonic: mnemonic,
-                passPhrase: passPhrase,
-                wordList: wordList,
-                purpose: ServicePurpose,
-                currency: 0,
-                account: account);
-        }
-
-        public HdKeyStorage UseCache(IKeyIndexCache cache)
-        {
-            Cache = cache;
-            return this;
-        }
+        public byte[] Seed { get; set; }
 
         public void Lock()
         {
-            foreach (var key in _keys)
-                key.Value.Lock();
-
-            _serviceKey.Lock();
+            Seed.Clear();
+            Seed = null;
         }
 
         public void Unlock(SecureString password)
         {
-            foreach (var key in _keys)
-                key.Value.Unlock(password);
-
-            _serviceKey.Unlock(password);
+            try
+            {
+                Seed = Aes.Decrypt(
+                    encryptedBytes: Hex.FromString(EncryptedSeed),
+                    password: password,
+                    keySize: AesKeySize,
+                    saltSize: AesSaltSize,
+                    iterations: AesRfc2898Iterations);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Unlock error");
+            }
         }
 
-        public async Task EncryptAsync(SecureString password)
+        public void Encrypt(SecureString password)
         {
-            foreach (var key in _keys)
-                await key.Value.EncryptAsync(password)
-                    .ConfigureAwait(false);
+            try
+            {
+                EncryptedSeed = Aes.Encrypt(
+                        plainBytes: Seed,
+                        password: password,
+                        keySize: AesKeySize,
+                        saltSize: AesSaltSize,
+                        iterations: AesRfc2898Iterations)
+                    .ToHexString();
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Encrypt error");
+            }
+        }
+    }
 
-            await _serviceKey.EncryptAsync(password)
-                .ConfigureAwait(false);
+    public class HdKeyStorage : IKeyStorage
+    {
+        public const string CurrentVersion = "1.0.0.0";
+        public const int NonHdKeysChain = -1;
+        private const int ServicePurpose = 777;
+        private const int MaxFileSizeInBytes = 100 * 1024 * 1024; // 100 Mb
+
+        private const int AesKeySize = 256;
+        private const int AesSaltSize = 16;
+        private const int AesRfc2898Iterations = 1024;
+
+        public Network Network { get; set; }
+        public string EncryptedSeed { get; set; }
+        public string Version { get; set; }
+        public IList<NonHdKey> NonHdKeys { get; } = new List<NonHdKey>();
+
+        [JsonIgnore]
+        private byte[] Seed { get; set; }
+
+        [JsonIgnore]
+        public bool IsLocked => Seed == null;
+
+        public HdKeyStorage()
+        {
+        }
+
+        public HdKeyStorage(byte[] seed, Network network = Network.MainNet)
+        {
+            Version = CurrentVersion;
+            Seed = seed;
+            Network = network;
+        }
+
+        public HdKeyStorage(
+            string mnemonic,
+            Wordlist wordList = null,
+            SecureString passPhrase = null,
+            Network network = Network.MainNet)
+        {
+            Version = CurrentVersion;
+            Seed = new Mnemonic(mnemonic, wordList)
+                .DeriveSeed(passPhrase.ToUnsecuredString());
+            Network = network;
+        }
+
+        public void Lock()
+        {
+            Seed.Clear();
+            Seed = null;
+
+            foreach (var singleKey in NonHdKeys)
+                singleKey.Lock();
+        }
+
+        public HdKeyStorage Unlock(SecureString password)
+        {
+            try
+            {
+                Seed = Aes.Decrypt(
+                    encryptedBytes: Hex.FromString(EncryptedSeed),
+                    password: password,
+                    keySize: AesKeySize,
+                    saltSize: AesSaltSize,
+                    iterations: AesRfc2898Iterations);
+
+                foreach (var singleKey in NonHdKeys)
+                    singleKey.Unlock(password);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Unlock error");
+            }
+
+            return this;
+        }
+
+        public void Encrypt(SecureString password)
+        {
+            try
+            {
+                EncryptedSeed = Aes.Encrypt(
+                        plainBytes: Seed,
+                        password: password,
+                        keySize: AesKeySize,
+                        saltSize: AesSaltSize,
+                        iterations: AesRfc2898Iterations)
+                    .ToHexString();
+
+                foreach (var singleKey in NonHdKeys)
+                    singleKey.Encrypt(password);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Encrypt error");
+            }
+        }
+
+        public Task EncryptAsync(SecureString password)
+        {
+            return Task.Factory.StartNew(() => Encrypt(password));
+        }
+
+        private IExtKey GetExtKey(
+            Currency currency,
+            int purpose,
+            int chain,
+            uint index)
+        {
+            return currency
+                .CreateExtKey(Seed)
+                .Derive(new KeyPath(path: $"m/{purpose}'/{currency.Bip44Code}'/0'/{chain}/{index}"));
+        }
+
+        private IKey GetNonHdKey(Currency currency, uint index)
+        {
+            var nonHdKeys = NonHdKeys
+                .Where(s => s.CurrencyCode == currency.Bip44Code)
+                .ToList();
+
+            return index < nonHdKeys.Count
+                ? currency.CreateKey(nonHdKeys[(int)index].Seed)
+                : null;
         }
 
         public byte[] GetPublicKey(Currency currency, KeyIndex keyIndex)
@@ -116,127 +202,179 @@ namespace Atomix.Wallet
             return GetPublicKey(currency, keyIndex.Chain, keyIndex.Index);
         }
 
-        public byte[] GetPublicKey(Currency currency, uint chain, uint index)
+        public byte[] GetPublicKey(Currency currency, int chain, uint index)
         {
-            var publicKeyBytes = _keys[currency.Bip44Code].GetPublicKey(chain, index);
+            if (chain == NonHdKeysChain)
+                return GetNonHdPublicKey(currency, index);
 
-            var address = currency.AddressFromKey(publicKeyBytes);
+            var extKey = GetExtKey(
+                currency: currency,
+                purpose: Bip44.Purpose,
+                chain: chain,
+                index: index);
 
-            Cache?.Add(address, chain, index);
+            extKey.GetPublicKey(out var publicKey);
 
-            return publicKeyBytes;
+            return publicKey;
+        }
+
+        private byte[] GetNonHdPublicKey(Currency currency, uint index)
+        {
+            var key = GetNonHdKey(currency, index);
+
+            if (key == null)
+                return null;
+
+            key.GetPublicKey(out var publicKey);
+
+            return publicKey;
         }
 
         public byte[] GetServicePublicKey(uint index)
         {
-            return _serviceKey.GetPublicKey(chain: 0, index: index);
+            var extKey = BitcoinBasedCurrency
+                .CreateExtKeyFromSeed(Seed)
+                .Derive(new KeyPath(path: $"m/{ServicePurpose}'/0'/0'/0/{index}"));
+
+            extKey.GetPublicKey(out var publicKey);
+
+            return publicKey;
         }
 
         public byte[] GetPrivateKey(Currency currency, KeyIndex keyIndex)
         {
-            return _keys[currency.Bip44Code].GetPrivateKey(keyIndex);
+            if (keyIndex.Chain == NonHdKeysChain)
+                return GetNonHdPrivateKey(currency, keyIndex.Index);
+
+            var extKey = GetExtKey(
+                currency: currency,
+                purpose: Bip44.Purpose,
+                chain: keyIndex.Chain,
+                index: keyIndex.Index);
+
+            extKey.GetPrivateKey(out var privateKey);
+
+            return privateKey;
+        }
+
+        private byte[] GetNonHdPrivateKey(Currency currency, uint index)
+        {
+            var key = GetNonHdKey(currency, index);
+
+            if (key == null)
+                return null;
+
+            key.GetPrivateKey(out var privateKey);
+
+            return privateKey;
         }
 
         public byte[] SignHash(Currency currency, byte[] hash, KeyIndex keyIndex)
         {
-            return _keys[currency.Bip44Code].SignHash(hash, keyIndex);
+            if (keyIndex.Chain == NonHdKeysChain)
+                return GetNonHdKey(currency, keyIndex.Index)
+                    .SignHash(hash);
+
+            return GetExtKey(
+                    currency: currency,
+                    purpose: Bip44.Purpose,
+                    chain: keyIndex.Chain,
+                    index: keyIndex.Index)
+                .SignHash(hash);
         }
 
         public byte[] SignMessage(Currency currency, byte[] data, KeyIndex keyIndex)
         {
-            return _keys[currency.Bip44Code].SignMessage(data, keyIndex);
+            if (keyIndex.Chain == NonHdKeysChain)
+                return GetNonHdKey(currency, keyIndex.Index)
+                    .SignMessage(data);
+
+            return GetExtKey(
+                    currency: currency,
+                    purpose: Bip44.Purpose,
+                    chain: keyIndex.Chain,
+                    index: keyIndex.Index)
+                .SignMessage(data);
         }
 
-        public byte[] SignMessageByServiceKey(byte[] data, uint chain, uint index)
+        public byte[] SignMessageByServiceKey(byte[] data, int chain, uint index)
         {
-            return _serviceKey.SignMessage(data, chain, index);
+            return BitcoinBasedCurrency
+                .CreateExtKeyFromSeed(Seed)
+                .Derive(new KeyPath(path: $"m/{ServicePurpose}'/0'/0'/{chain}/{index}"))
+                .SignMessage(data);
         }
 
-        public bool VerifyHash(Currency currency, byte[] hash, byte[] signature, KeyIndex keyIndex)
-        {
-            return _keys[currency.Bip44Code].VerifyHash(hash, signature, keyIndex);
-        }
-
-        public bool VerifyMessage(Currency currency, byte[] data, byte[] signature, KeyIndex keyIndex)
-        {
-            return _keys[currency.Bip44Code].VerifyMessage(data, signature, keyIndex);
-        }
-
-        public bool VerifyMessageByServiceKey(byte[] data, byte[] signature, uint chain, uint index)
-        {
-            return _serviceKey.VerifyMessage(data, signature, chain, index);
-        }
-
-        public Task<KeyIndex> RecoverKeyIndexAsync(
-            WalletAddress walletAddress,
-            uint maxIndex,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            return RecoverKeyIndexAsync(
-                walletAddress.Currency,
-                walletAddress.Address,
-                maxIndex,
-                cancellationToken);
-        }
-
-        public async Task<KeyIndex> RecoverKeyIndexAsync(
+        public bool VerifyHash(
             Currency currency,
-            string address,
-            uint maxIndex,
-            CancellationToken cancellationToken = default(CancellationToken))
+            byte[] hash,
+            byte[] signature,
+            KeyIndex keyIndex)
         {
-            var keyIndex = Cache?.IndexByAddress(address);
+            if (keyIndex.Chain == NonHdKeysChain)
+                return GetNonHdKey(currency, keyIndex.Index)
+                    .VerifyHash(hash, signature);
 
-            if (keyIndex != null)
-                return keyIndex;
+            return GetExtKey(
+                    currency: currency,
+                    purpose: Bip44.Purpose,
+                    chain: keyIndex.Chain,
+                    index: keyIndex.Index)
+                .VerifyHash(hash, signature);
+        }
 
-            await Task.Factory.StartNew(() =>
+        public bool VerifyMessage(
+            Currency currency,
+            byte[] data,
+            byte[] signature,
+            KeyIndex keyIndex)
+        {
+            if (keyIndex.Chain == NonHdKeysChain)
+                return GetNonHdKey(currency, keyIndex.Index)
+                    .VerifyMessage(data, signature);
+
+            return GetExtKey(
+                    currency: currency,
+                    purpose: Bip44.Purpose,
+                    chain: keyIndex.Chain,
+                    index: keyIndex.Index)
+                .VerifyMessage(data, signature);
+        }
+
+        public bool VerifyMessageByServiceKey(
+            byte[] data,
+            byte[] signature,
+            int chain,
+            uint index)
+        {
+            return BitcoinBasedCurrency
+                .CreateExtKeyFromSeed(Seed)
+                .Derive(new KeyPath(path: $"m/{ServicePurpose}'/0'/0'/{chain}/{index}"))
+                .VerifyMessage(data, signature);
+        }
+
+        public byte[] GetDeterministicSecret(Currency currency, DateTime timeStamp)
+        {
+            var utcTimeStamp = timeStamp.ToUniversalTime();
+
+            var daysIndex = (int)(utcTimeStamp.Date - DateTime.MinValue).TotalDays;
+            var secondsIndex = utcTimeStamp.Hour * 60 * 60 + utcTimeStamp.Minute * 60 + utcTimeStamp.Second;
+            var msIndex = utcTimeStamp.Millisecond;
+
+            var extKey = BitcoinBasedCurrency
+                .CreateExtKeyFromSeed(Seed)
+                .Derive(new KeyPath(path: $"m/{ServicePurpose}'/{currency.Bip44Code}'/0'/{daysIndex}/{secondsIndex}/{msIndex}"));
+
+            extKey.GetPublicKey(out var publicKey);
+
+            try
             {
-                try
-                {
-                    var options = new ParallelOptions();// {CancellationToken = cancellationToken};
-
-                    // Oops, only brute force can help us
-                    Parallel.ForEach(new[] {Bip44.Internal, Bip44.External}, options, (chain, state) =>
-                    {
-                        var index = 0u;
-
-                        while (true)
-                        {
-                            if (state.IsStopped)
-                                break;
-
-                            if (cancellationToken.IsCancellationRequested) {
-                                if (!state.IsStopped)
-                                    state.Stop();
-                                break;
-                            }
-
-                            var publicKeyBytes = GetPublicKey(currency, chain, index);
-
-                            var addressFromKey = currency.AddressFromKey(publicKeyBytes);
-
-                            if (addressFromKey.ToLowerInvariant().Equals(address.ToLowerInvariant()))
-                            {
-                                keyIndex = new KeyIndex(chain, index);
-                                state.Stop();
-                                break;
-                            }
-
-                            index++;
-
-                            if (index == maxIndex)
-                                break;
-                        }
-                    });
-                }
-                catch (OperationCanceledException)
-                {
-                    Log.Debug("Recover key routine canceled");
-                }
-            }, cancellationToken).ConfigureAwait(false);
-
-            return keyIndex;
+                return Sha512.Compute(publicKey);
+            }
+            finally
+            {
+                publicKey.Clear();
+            }  
         }
 
         public static HdKeyStorage LoadFromFile(string pathToFile, SecureString password)
@@ -247,22 +385,38 @@ namespace Atomix.Wallet
             if (new FileInfo(pathToFile).Length > MaxFileSizeInBytes)
                 throw new Exception("File is too large");
 
-            HdKeyStorage result = null;
+            HdKeyStorage result;
 
             try
             {
-                var passwordHash = SessionPasswordHelper.GetSessionPasswordBytes(password, PasswordHashIterations);
-                var encryptedBytes = File.ReadAllBytes(pathToFile);
-                var decryptedBytes = Aes.Decrypt(encryptedBytes, passwordHash);
-                var json = Encoding.UTF8.GetString(decryptedBytes);
+                using (var stream = new FileStream(pathToFile, FileMode.Open))
+                {
+                    var network = stream.ReadByte();
 
-                result = JsonConvert.DeserializeObject<HdKeyStorage>(json,
-                    new HdKeyDataConverter());
+                    var encryptedBytes = stream.ReadBytes((int)stream.Length - 1);
+
+                    var decryptedBytes = Aes.Decrypt(
+                        encryptedBytes: encryptedBytes,
+                        password: password,
+                        keySize: AesKeySize,
+                        saltSize: AesSaltSize,
+                        iterations: AesRfc2898Iterations);
+
+                    var json = Encoding.UTF8.GetString(decryptedBytes);
+
+                    result = JsonConvert.DeserializeObject<HdKeyStorage>(json);
+
+                    if (result.Network != (Network)network)
+                        throw new Exception("Wallet type does not match the type specified during creation");
+
+                    if (result.Version != CurrentVersion)
+                        throw new NotSupportedException($"Version {result.Version} does not match {CurrentVersion}");
+                }
             }
             catch (Exception e)
             {
                 Log.Error(e, "HdKeyStorage data loading error");
-                throw e;
+                throw;
             }
 
             return result;
@@ -272,13 +426,21 @@ namespace Atomix.Wallet
         {
             try
             {
-                var serialized = JsonConvert.SerializeObject(this, Formatting.Indented, new HdKeyDataConverter());
-                var serializedBytes = Encoding.UTF8.GetBytes(serialized);
+                using (var stream = new FileStream(pathToFile, FileMode.Create))
+                {
+                    var serialized = JsonConvert.SerializeObject(this, Formatting.Indented);
+                    var serializedBytes = Encoding.UTF8.GetBytes(serialized);
 
-                var passwordHash = SessionPasswordHelper.GetSessionPasswordBytes(password, PasswordHashIterations);
-                var encryptedBytes = Aes.Encrypt(serializedBytes, passwordHash);
+                    var encryptedBytes = Aes.Encrypt(
+                        plainBytes: serializedBytes,
+                        password: password,
+                        keySize: AesKeySize,
+                        saltSize: AesSaltSize,
+                        iterations: AesRfc2898Iterations);
 
-                File.WriteAllBytes(pathToFile, encryptedBytes);
+                    stream.WriteByte((byte)Network);
+                    stream.Write(encryptedBytes, 0, encryptedBytes.Length);
+                }
             }
             catch (Exception e)
             {

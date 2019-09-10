@@ -13,7 +13,6 @@ namespace Atomix.Swaps
     {
         public static ICurrencySwap Create(
             Currency currency,
-            SwapState swapState,
             IAccount account,
             ISwapClient swapClient,
             IBackgroundTaskPerformer taskPerformer)
@@ -23,7 +22,6 @@ namespace Atomix.Swaps
                 case BitcoinBasedCurrency _:
                     return new BitcoinBasedSwap(
                         currency: currency,
-                        swapState: swapState,
                         account: account,
                         swapClient: swapClient,
                         taskPerformer: taskPerformer,
@@ -31,14 +29,12 @@ namespace Atomix.Swaps
                 case Atomix.Ethereum _:
                     return new EthereumSwap(
                         currency: currency,
-                        swapState: swapState,
                         account: account,
                         swapClient: swapClient,
                         taskPerformer: taskPerformer);
                 case Atomix.Tezos _:
                     return new TezosSwap(
                         currency: currency,
-                        swapState: swapState,
                         account: account,
                         swapClient: swapClient,
                         taskPerformer: taskPerformer);

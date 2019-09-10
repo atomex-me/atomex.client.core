@@ -1,6 +1,6 @@
 ﻿using System;
 using Atomix.Blockchain.BitcoinBased;
-using Atomix.Swaps;
+using Atomix.Swaps.Abstract;
 using NBitcoin;
 using Xunit;
 

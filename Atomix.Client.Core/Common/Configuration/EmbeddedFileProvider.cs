@@ -10,28 +10,32 @@ namespace Atomix.Common.Configuration
     {
         private readonly Assembly _assembly;
 
-        public EmbeddedFileProvider(Assembly assembly)
+        public EmbeddedFileProvider(
+            Assembly assembly)
         {
             _assembly = assembly ?? throw new ArgumentNullException(nameof(assembly));
         }
 
-        public IFileInfo GetFileInfo(string subPath)
+        public IFileInfo GetFileInfo(
+            string subPath)
         {
-            var fullFileName = $"{_assembly.GetName().Name}.{subPath}";
+            var resourceNames = _assembly.GetManifestResourceNames();
 
-            var isFileEmbedded = _assembly.GetManifestResourceNames().Contains(fullFileName);
+            var fullFileName = resourceNames.FirstOrDefault(n => n.EndsWith(subPath));
 
-            return isFileEmbedded
+            return fullFileName != null
                 ? new EmbeddedFileInfo(subPath, _assembly.GetManifestResourceStream(fullFileName))
                 : (IFileInfo)new NotFoundFileInfo(subPath);
         }
 
-        public IDirectoryContents GetDirectoryContents(string subPath)
+        public IDirectoryContents GetDirectoryContents(
+            string subPath)
         {
             throw new NotImplementedException();
         }
 
-        public IChangeToken Watch(string filter)
+        public IChangeToken Watch(
+            string filter)
         {
             throw new NotImplementedException();
         }

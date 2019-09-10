@@ -4,9 +4,9 @@ using Atomix.Cryptography;
 
 namespace Atomix.Common
 {
-    public class SessionPasswordHelper
+    public static class SessionPasswordHelper
     {
-        public const int DefaultHashIterationsCount = 10;
+        private const int DefaultHashIterationsCount = 10;
 
         public static string GetSessionPassword(
             SecureString password,

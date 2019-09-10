@@ -1,33 +1,32 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomix.Blockchain.Abstract;
 using Atomix.Common;
+using Atomix.Core.Entities;
 using Nethereum.Signer;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Serilog;
 
 namespace Atomix.Blockchain.Ethereum
 {
     public class EtherScanApi : IEthereumBlockchainApi
     {
-        public const string MainNet = "https://api.etherscan.io/";
-        public const string Ropsten = "http://api-ropsten.etherscan.io/";
+        private const string MainNet = "https://api.etherscan.io/";
+        private const string Ropsten = "http://api-ropsten.etherscan.io/";
 
         private const string ApiKey = "2R1AIHZZE5NVSHRQUGAHU8EYNYYZ5B2Y37";
         private const int MinDelayBetweenRequestMs = 1000; // 500
-        private const int TooManyRequestsDelayMs = 20000;
-        private const int MaxDelayMs = 1000;
-        private const int HttpTooManyRequests = 429;
-        private static long _lastRequestTimeStampMs;
 
-        public string BaseUrl { get; }
-        public int RequestAttemptsCount { get; } = 5;
+        private static readonly RequestLimitChecker RequestLimitChecker 
+            = new RequestLimitChecker(MinDelayBetweenRequestMs);
+
+        private string BaseUrl { get; }
+        private int MaxRequestAttemptsCount { get; } = 1;
 
         internal class Response<T>
         {
@@ -79,8 +78,12 @@ namespace Atomix.Blockchain.Ethereum
             public string Confirmations { get; set; }
         }
 
-        public EtherScanApi(Chain chain)
+        private Currency Currency { get; }
+
+        public EtherScanApi(Currency currency, Chain chain)
         {
+            Currency = currency;
+
             switch (chain)
             {
                 case Chain.MainNet:
@@ -94,73 +97,34 @@ namespace Atomix.Blockchain.Ethereum
             }
         }
 
+        public async Task<decimal> GetBalanceAsync(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var requestUri = $"api?module=account&action=balance&address={address}&apikey={ApiKey}";
+
+            return await HttpHelper.GetAsync(
+                   baseUri: BaseUrl,
+                   requestUri: requestUri,
+                   responseHandler: responseContent =>
+                   {
+                       var json = JsonConvert.DeserializeObject<JObject>(responseContent);
+
+                       return json.ContainsKey("result")
+                           ? Atomix.Ethereum.WeiToEth(new BigInteger(long.Parse(json["result"].ToString())))
+                           : 0;
+                   },
+                   requestLimitChecker: RequestLimitChecker,
+                   maxAttempts: MaxRequestAttemptsCount,
+                   cancellationToken: cancellationToken)
+               .ConfigureAwait(false);
+        }
+
         public Task<BigInteger> GetTransactionCountAsync(
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             throw new NotImplementedException();
-        }
-
-        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
-            string address,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            // TODO: add pagination support
-            var requestUri = $"api?module=account&action=txlist&address={address}&sort=asc&apikey={ApiKey}";
-
-            var transactions = await SendRequest(
-                requestUri: requestUri,
-                method: HttpMethod.Get,
-                content: null,
-                responseHandler: responseContent => ParseTransactions(responseContent, address, isInternal: false),
-                cancellationToken: cancellationToken) ?? Enumerable.Empty<IBlockchainTransaction>();
-
-            requestUri = $"api?module=account&action=txlistinternal&address={address}&sort=asc&apikey={ApiKey}";
-
-            var internalTransactions = await SendRequest(
-                requestUri: requestUri,
-                method: HttpMethod.Get,
-                content: null,
-                responseHandler: responseContent => ParseTransactions(responseContent, address, isInternal: true),
-                cancellationToken: cancellationToken) ?? Enumerable.Empty<IBlockchainTransaction>();
-
-
-            return transactions.Concat(internalTransactions);
-        }
-
-        private IEnumerable<IBlockchainTransaction> ParseTransactions(
-            string responseContent,
-            string address,
-            bool isInternal)
-        {
-            var txs = JsonConvert.DeserializeObject<Response<List<Transaction>>>(responseContent);
-
-            return txs.Result.Select(t => new EthereumTransaction
-            {
-                Id = t.Hash,
-                From = t.From.ToLowerInvariant(),
-                To = t.To.ToLowerInvariant(),
-                Input = t.Input,
-                Amount = BigInteger.Parse(t.Value),
-                Nonce = t.Nonce != null ?  BigInteger.Parse(t.Nonce) : 0,
-                GasPrice = t.GasPrice != null ? BigInteger.Parse(t.GasPrice) : 0,
-                GasLimit = BigInteger.Parse(t.Gas),
-                GasUsed = BigInteger.Parse(t.GasUsed),
-                Type = t.To.Equals(address)
-                    ? EthereumTransaction.InputTransaction
-                    : EthereumTransaction.OutputTransaction,
-                ReceiptStatus = t.ReceiptStatus?.Equals("1") ?? true,
-                IsInternal = isInternal,
-
-                BlockInfo = new BlockInfo
-                {
-                    BlockHeight = long.Parse(t.BlockNumber),
-                    BlockTime = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(t.TimeStamp)),
-                    Confirmations = t.Confirmations != null ? int.Parse(t.Confirmations) : 1,
-                    Fees = long.Parse(t.GasUsed),
-                    FirstSeen = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(t.TimeStamp))
-                }
-            });
         }
 
         public Task<IBlockchainTransaction> GetTransactionAsync(
@@ -170,6 +134,59 @@ namespace Atomix.Blockchain.Ethereum
             throw new NotImplementedException();
         }
 
+        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsByIdAsync(
+            string txId,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task<IEnumerable<IBlockchainTransaction>> GetInternalTransactionsAsync(
+            string txId,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var requestUri = $"api?module=account&action=txlistinternal&txhash={txId}&apikey={ApiKey}";
+
+            return await HttpHelper.GetAsync(
+                   baseUri: BaseUrl,
+                   requestUri: requestUri,
+                   responseHandler: responseContent => ParseTransactions(responseContent, txId: txId, isInternal: true),
+                   requestLimitChecker: RequestLimitChecker,
+                   maxAttempts: MaxRequestAttemptsCount,
+                   cancellationToken: cancellationToken)
+               .ConfigureAwait(false) ?? Enumerable.Empty<IBlockchainTransaction>();
+        }
+
+        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+            string address,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            // TODO: add pagination support
+            var requestUri = $"api?module=account&action=txlist&address={address}&sort=asc&apikey={ApiKey}";
+
+            var transactions = await HttpHelper.GetAsync(
+                    baseUri: BaseUrl,
+                    requestUri: requestUri,
+                    responseHandler: responseContent => ParseTransactions(responseContent, txId: null, isInternal: false),
+                    requestLimitChecker: RequestLimitChecker,
+                    maxAttempts: MaxRequestAttemptsCount,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false) ?? Enumerable.Empty<IBlockchainTransaction>();
+
+            requestUri = $"api?module=account&action=txlistinternal&address={address}&sort=asc&apikey={ApiKey}";
+
+            var internalTransactions = await HttpHelper.GetAsync(
+                    baseUri: BaseUrl,
+                    requestUri: requestUri,
+                    responseHandler: responseContent => ParseTransactions(responseContent, txId: null, isInternal: true),
+                    requestLimitChecker: RequestLimitChecker,
+                    maxAttempts: MaxRequestAttemptsCount,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false) ?? Enumerable.Empty<IBlockchainTransaction>();
+
+            return transactions.Concat(internalTransactions);
+        }
+
         public Task<string> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default(CancellationToken))
@@ -177,127 +194,70 @@ namespace Atomix.Blockchain.Ethereum
             throw new NotImplementedException();
         }
 
-        private async Task<T> SendRequest<T>(
-            string requestUri,
-            HttpMethod method,
-            HttpContent content,
-            Func<string, T> responseHandler,
-            CancellationToken cancellationToken = default(CancellationToken))
+        private IEnumerable<IBlockchainTransaction> ParseTransactions(
+            string responseContent,
+            string txId,
+            bool isInternal)
         {
-            HttpResponseMessage response = null;
-            var tryToSend = true;
-            var attempts = 0;
+            var result = new List<IBlockchainTransaction>();
 
-            while (tryToSend)
+            var txs = JsonConvert.DeserializeObject<Response<List<Transaction>>>(responseContent);
+
+            var internalCounters = new Dictionary<string, int>();
+
+            foreach (var tx in txs.Result)
             {
-                if (cancellationToken.IsCancellationRequested)
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                await RequestLimitControl(cancellationToken)
-                    .ConfigureAwait(false);
-
-                Log.Debug("Send request: {@request}", requestUri);
-
-                try
+                if (txId == null && tx.Hash == null)
                 {
-                    attempts++;
-
-                    if (method == HttpMethod.Get)
-                    {
-                        response = await CreateHttpClient()
-                            .GetAsync(requestUri, cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                    else if (method == HttpMethod.Post)
-                    {
-                        response = await CreateHttpClient()
-                            .PostAsync(requestUri, content, cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        throw new ArgumentException("Http method not supported");
-                    }
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "Http request error");
-
-                    if (attempts < RequestAttemptsCount)
-                        continue;
-
-                    return default(T);
-                }
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var responseContent = await response.Content
-                        .ReadAsStringAsync()
-                        .ConfigureAwait(false);
-
-                    Log.Verbose($"Raw response content: {responseContent}");
-
-                    return responseHandler(responseContent);
-                }
-
-                if ((int)response.StatusCode == HttpTooManyRequests)
-                {
-                    Log.Debug("Too many requests");
-
-                    for (var i = 0; i < TooManyRequestsDelayMs / MaxDelayMs; ++i)
-                        await Task.Delay(MaxDelayMs, cancellationToken);
-
+                    Log.Warning("Tx with null hash received");
                     continue;
                 }
 
-                tryToSend = false;
+                var id = tx.Hash ?? txId;
+
+                var internalIndex = 0;
+
+                if (isInternal)
+                {
+                    if (internalCounters.TryGetValue(id, out var index))
+                    {
+                        internalIndex = ++index;
+                        internalCounters[id] = internalIndex;
+                    }
+                    else
+                    {
+                        internalCounters.Add(id, internalIndex);
+                    }
+                }
+
+                result.Add(new EthereumTransaction(Currency)
+                {
+                    Id = id,
+                    From = tx.From.ToLowerInvariant(),
+                    To = tx.To.ToLowerInvariant(),
+                    Input = tx.Input,
+                    Amount = BigInteger.Parse(tx.Value),
+                    Nonce = tx.Nonce != null ? BigInteger.Parse(tx.Nonce) : 0,
+                    GasPrice = tx.GasPrice != null ? BigInteger.Parse(tx.GasPrice) : 0,
+                    GasLimit = BigInteger.Parse(tx.Gas),
+                    GasUsed = BigInteger.Parse(tx.GasUsed),
+                    Type = EthereumTransaction.UnknownTransaction,
+                    ReceiptStatus = tx.ReceiptStatus?.Equals("1") ?? true,
+                    IsInternal = isInternal,
+                    InternalIndex = internalIndex,
+
+                    BlockInfo = new BlockInfo
+                    {
+                        BlockHeight = long.Parse(tx.BlockNumber),
+                        BlockTime = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
+                        Confirmations = tx.Confirmations != null ? int.Parse(tx.Confirmations) : 1,
+                        Fees = long.Parse(tx.GasUsed),
+                        FirstSeen = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp))
+                    }
+                });
             }
 
-            Log.Warning("Invalid response code: {@code}", response.StatusCode);
-
-            return default(T);
-        }
-
-        private HttpClient CreateHttpClient()
-        {
-            var client = new HttpClient { BaseAddress = new Uri(BaseUrl) };
-            client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            return client;
-        }
-
-        private static readonly object LimitControlSync = new object();
-
-        private static async Task RequestLimitControl(
-            CancellationToken cancellationToken)
-        {
-            var isCompleted = false;
-
-            while (!isCompleted)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                Monitor.Enter(LimitControlSync);
-
-                var timeStampMs = (long)DateTime.Now.ToUnixTimeMs();
-                var differenceMs = timeStampMs - _lastRequestTimeStampMs;
-
-                if (differenceMs < MinDelayBetweenRequestMs)
-                {
-                    Monitor.Exit(LimitControlSync);
-
-                    await Task.Delay((int)(MinDelayBetweenRequestMs - differenceMs), cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                else
-                {
-                    _lastRequestTimeStampMs = timeStampMs;
-                    Monitor.Exit(LimitControlSync);
-
-                    isCompleted = true;
-                }
-            }
+            return result;
         }
     }
 }

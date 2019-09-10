@@ -1,14 +1,13 @@
-﻿using Atomix.Common.Proto;
+﻿using System.Collections.Generic;
+using Atomix.Common.Proto;
 using Atomix.MarketData;
 
 namespace Atomix.Api.Proto
 {
-    public class EntriesScheme : ProtoScheme
+    public class EntriesScheme : ProtoScheme<List<Entry>>
     {
-        public const int MessageId = 13;
-
-        public EntriesScheme()
-            : base(MessageId)
+        public EntriesScheme(byte messageId)
+            : base(messageId)
         {
             Model.Add(typeof(Entry), true)
                 .AddRequired(nameof(Entry.TransactionId))
