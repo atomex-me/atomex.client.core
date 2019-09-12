@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Security;
-using Atomex.Wallet.Migrations;
 
 namespace Atomex.Wallet
 {
@@ -22,12 +21,6 @@ namespace Atomex.Wallet
                 Version = new Version(version: "1.0.0.0"),
                 LoadFromFile = HdKeyStorage.LoadFromFile,
                 Up = keyStorage => keyStorage
-            },
-            new StorageVersion
-            {
-                Version = null,
-                LoadFromFile = From0000To1000.LoadFromFile,   
-                Up = From0000To1000.Up
             }
         };
 
