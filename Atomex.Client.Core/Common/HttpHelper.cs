@@ -6,7 +6,7 @@ using Serilog;
 
 namespace Atomex.Common
 {
-    public class HttpHelper
+    public static class HttpHelper
     {
         private const int HttpTooManyRequests = 429;
         private const int TooManyRequestsDelayMs = 20000;
@@ -92,7 +92,7 @@ namespace Atomex.Common
 
                             return responseHandler(responseContent);
                         }
-                        else if ((int)response.StatusCode == HttpTooManyRequests)
+                        if ((int)response.StatusCode == HttpTooManyRequests)
                         {
                             Log.Debug("Too many requests");
 
@@ -102,14 +102,12 @@ namespace Atomex.Common
 
                             continue;
                         }
-                        else
-                        {
-                            var responseText = await response.Content
-                                .ReadAsStringAsync()
-                                .ConfigureAwait(false);
 
-                            Log.Error("Invalid response: {@code} {@text}", response.StatusCode, responseText);
-                        }
+                        var responseText = await response.Content
+                            .ReadAsStringAsync()
+                            .ConfigureAwait(false);
+
+                        Log.Error("Invalid response: {@code} {@text}", response.StatusCode, responseText);
                     }
                 }
                 catch (Exception e)
@@ -141,16 +139,14 @@ namespace Atomex.Common
                         .GetAsync(requestUri, cancellationToken)
                         .ConfigureAwait(false);
                 }
-                else if (method == HttpMethod.Post)
+                if (method == HttpMethod.Post)
                 {
                     return await httpClient
                         .PostAsync(requestUri, content, cancellationToken)
                         .ConfigureAwait(false);
                 }
-                else
-                {
-                    throw new ArgumentException("Http method not supported");
-                }
+
+                throw new ArgumentException("Http method not supported");
             }
         }
     }

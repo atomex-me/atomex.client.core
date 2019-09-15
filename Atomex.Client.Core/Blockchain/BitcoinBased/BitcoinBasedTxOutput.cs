@@ -14,15 +14,12 @@ namespace Atomex.Blockchain.BitcoinBased
         public bool IsSpent => SpentTxPoint != null;
         public ITxPoint SpentTxPoint { get; set; }
 
-        public BitcoinBasedTxOutput(
-            ICoin coin)
+        public BitcoinBasedTxOutput(ICoin coin)
             : this(coin, null)
         {
         }
 
-        public BitcoinBasedTxOutput(
-            ICoin coin,
-            ITxPoint spentTxPoint)
+        public BitcoinBasedTxOutput(ICoin coin, ITxPoint spentTxPoint)
         {
             Coin = coin;
             SpentTxPoint = spentTxPoint;
@@ -32,14 +29,15 @@ namespace Atomex.Blockchain.BitcoinBased
 
         public bool IsSegwitP2Pkh => Coin.TxOut.ScriptPubKey.FindTemplate() == PayToWitPubKeyHashTemplate.Instance;
 
+        public bool IsP2Sh => Coin.TxOut.ScriptPubKey.FindTemplate() == PayToScriptHashTemplate.Instance;
+
         public bool IsP2PkhSwapPayment => BitcoinBasedSwapTemplate.IsP2PkhSwapPayment(Coin.TxOut.ScriptPubKey);
 
         public bool IsHtlcP2PkhSwapPayment => BitcoinBasedSwapTemplate.IsHtlcP2PkhSwapPayment(Coin.TxOut.ScriptPubKey);
 
         public bool IsSwapPayment => IsHtlcP2PkhSwapPayment;
 
-        public string DestinationAddress(
-            Currency currency)
+        public string DestinationAddress(Currency currency)
         {
             return Coin.TxOut.ScriptPubKey
                 .GetDestinationAddress(((BitcoinBasedCurrency) currency).Network)

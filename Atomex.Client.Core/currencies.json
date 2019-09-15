@@ -8,7 +8,10 @@
       "BlockchainApi": "Insight",
       "TxExplorerUri": "https://live.blockcypher.com/btc/tx/",
       "AddressExplorerUri": "https://live.blockcypher.com/btc/address/",
-      "InsightBaseUri": "https://insight.bitpay.com/"
+      "InsightBaseUri": "https://insight.bitpay.com/",
+      "InsightBroadcastThroughBlockcypher": false,
+      "InsightBroadcastEndpoint": "https://api.blockcypher.com/v1/btc/main/"
+
     },
     "ETH": {
       "Name": "ETH",
@@ -19,10 +22,11 @@
       "AddGasLimit": 50000,
       "RefundGasLimit": 40200,
       "RedeemGasLimit": 57000,
-      "GasPriceInGwei": 6,
+      "GasPriceInGwei": 15,
       "Chain": "MainNet",
       "BlockchainApi": "EtherScan+Web3",
       "SwapContract": "0xe9c251cbb4881f9e056e40135e7d3ea9a7d037df",
+      "SwapContractBlockNumber": 8168569,
       "TxExplorerUri": "https://etherscan.io/tx/",
       "AddressExplorerUri": "https://etherscan.io/address/"
     },
@@ -86,6 +90,7 @@
       "Chain": "Ropsten",
       "BlockchainApi": "EtherScan+Web3",
       "SwapContract": "0x527d1049837edf5f99c287a41a87702686082bf8",
+      "SwapContractBlockNumber": 6000466,
       "TxExplorerUri": "https://ropsten.etherscan.io/tx/",
       "AddressExplorerUri": "https://ropsten.etherscan.io/address/"
     },

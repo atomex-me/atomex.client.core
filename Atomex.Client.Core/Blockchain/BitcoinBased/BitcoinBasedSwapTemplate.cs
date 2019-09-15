@@ -232,8 +232,7 @@ namespace Atomex.Blockchain.BitcoinBased
         /// </summary>
         /// <param name="bobRefundSig">Bob signature</param>
         /// <returns>Atomic swap Bob's refund script</returns>
-        public static Script GenerateSwapRefundByBob(
-            byte[] bobRefundSig)
+        public static Script GenerateSwapRefundByBob(byte[] bobRefundSig)
         {
             if (bobRefundSig == null)
                 throw new ArgumentNullException(nameof(bobRefundSig));
@@ -321,6 +320,35 @@ namespace Atomex.Blockchain.BitcoinBased
             byte[] aliceRefundPubKey)
         {
             return GenerateHtlcSwapRefund(aliceRefundSig.ToBytes(), aliceRefundPubKey);
+        }
+
+        /// <summary>
+        /// Generate atomic swap refund script
+        /// </summary>
+        /// <param name="aliceRefundSig">Alice signature</param>
+        /// <param name="aliceRefundPubKey">Alice refund public key</param>
+        /// <param name="redeemScript">Redeem script</param>
+        /// <returns>Atomic swap refund script</returns>
+        public static Script GenerateHtlcP2PkhP2ShSwapRefund(
+            byte[] aliceRefundSig,
+            byte[] aliceRefundPubKey,
+            byte[] redeemScript)
+        {
+            // <aliceRefundSig> <aliceRefundPubKey> 1 <redeemScript>
+
+            if (aliceRefundSig == null)
+                throw new ArgumentNullException(nameof(aliceRefundSig));
+
+            if (aliceRefundPubKey == null)
+                throw new ArgumentNullException(nameof(aliceRefundPubKey));
+
+            return new Script(new List<Op>
+            {
+                Op.GetPushOp(aliceRefundSig),
+                Op.GetPushOp(aliceRefundPubKey),
+                Op.GetPushOp(1),
+                Op.GetPushOp(redeemScript)
+            });
         }
 
         /// <summary>
@@ -414,8 +442,7 @@ namespace Atomex.Blockchain.BitcoinBased
         /// </summary>
         /// <param name="script">Script</param>
         /// <returns>True if <paramref name="script"/> is a P2PKH atomic swap payment script, else false</returns>
-        public static bool IsP2PkhSwapPayment(
-            Script script)
+        public static bool IsP2PkhSwapPayment(Script script)
         {
             var ops = script.ToOps().ToList();
 
@@ -436,8 +463,7 @@ namespace Atomex.Blockchain.BitcoinBased
                    ops[15].Code == OpcodeType.OP_ENDIF;
         }
 
-        public static bool IsHtlcP2PkhSwapPayment(
-            Script script)
+        public static bool IsHtlcP2PkhSwapPayment(Script script)
         {
             var ops = script.ToOps().ToList();
 
@@ -463,8 +489,7 @@ namespace Atomex.Blockchain.BitcoinBased
                    ops[21].Code == OpcodeType.OP_ENDIF;
         }
 
-        public static bool IsSwapHash(
-            OpcodeType opcodeType)
+        public static bool IsSwapHash(OpcodeType opcodeType)
         {
             return opcodeType == OpcodeType.OP_HASH160 ||
                    opcodeType == OpcodeType.OP_HASH256 ||
@@ -476,8 +501,7 @@ namespace Atomex.Blockchain.BitcoinBased
         /// </summary>
         /// <param name="script">Script</param>
         /// <returns>True if <paramref name="script"/> is a P2PKH atomic swap redeem script, else false</returns>
-        public static bool IsP2PkhSwapRedeem(
-            Script script)
+        public static bool IsP2PkhSwapRedeem(Script script)
         {
             var ops = script.ToOps().ToList();
 
@@ -487,8 +511,7 @@ namespace Atomex.Blockchain.BitcoinBased
             return ops[3].Code == OpcodeType.OP_0;
         }
 
-        public static byte[] ExtractSecretFromP2PkhSwapRedeem(
-            Script script)
+        public static byte[] ExtractSecretFromP2PkhSwapRedeem(Script script)
         {
             var ops = script.ToOps().ToList();
 
@@ -498,32 +521,28 @@ namespace Atomex.Blockchain.BitcoinBased
             return ops[2].PushData;
         }
 
-        public static long ExtractLockTimeFromHtlcP2PkhSwapPayment(
-            Script script)
+        public static long ExtractLockTimeFromHtlcP2PkhSwapPayment(Script script)
         {
             var ops = script.ToOps().ToList();
 
             return ops[1].GetLong() ?? 0;
         }
 
-        public static byte[] ExtractSecretHashFromHtlcP2PkhSwapPayment(
-            Script script)
+        public static byte[] ExtractSecretHashFromHtlcP2PkhSwapPayment(Script script)
         {
             var ops = script.ToOps().ToList();
 
             return ops[14].PushData;
         }
 
-        public static byte[] ExtractTargetPkhFromHtlcP2PkhSwapPayment(
-            Script script)
+        public static byte[] ExtractTargetPkhFromHtlcP2PkhSwapPayment(Script script)
         {
             var ops = script.ToOps().ToList();
 
             return ops[18].PushData;
         }
 
-        public static byte[] ExtractSignFromP2PkhSwapRefund(
-            Script script)
+        public static byte[] ExtractSignFromP2PkhSwapRefund(Script script)
         {
             var ops = script.ToOps().ToList();
 

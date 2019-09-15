@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Core.Entities;
@@ -56,27 +57,27 @@ namespace Atomex
             FeeFormat        = $"F{FeeDigits}";
             HasFeePrice      = false;
 
-            Fee          = decimal.Parse(configuration[nameof(Fee)]);
-            GasLimit     = decimal.Parse(configuration[nameof(GasLimit)]);
-            StorageLimit = decimal.Parse(configuration[nameof(StorageLimit)]);
+            Fee          = decimal.Parse(configuration[nameof(Fee)], CultureInfo.InvariantCulture);
+            GasLimit     = decimal.Parse(configuration[nameof(GasLimit)], CultureInfo.InvariantCulture);
+            StorageLimit = decimal.Parse(configuration[nameof(StorageLimit)], CultureInfo.InvariantCulture);
 
-            InitiateFee          = decimal.Parse(configuration[nameof(InitiateFee)]);
-            InitiateGasLimit     = decimal.Parse(configuration[nameof(InitiateGasLimit)]);
-            InitiateStorageLimit = decimal.Parse(configuration[nameof(InitiateStorageLimit)]);
+            InitiateFee          = decimal.Parse(configuration[nameof(InitiateFee)], CultureInfo.InvariantCulture);
+            InitiateGasLimit     = decimal.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
+            InitiateStorageLimit = decimal.Parse(configuration[nameof(InitiateStorageLimit)], CultureInfo.InvariantCulture);
 
-            AddFee          = decimal.Parse(configuration[nameof(AddFee)]);
-            AddGasLimit     = decimal.Parse(configuration[nameof(AddGasLimit)]);
-            AddStorageLimit = decimal.Parse(configuration[nameof(AddStorageLimit)]);
+            AddFee          = decimal.Parse(configuration[nameof(AddFee)], CultureInfo.InvariantCulture);
+            AddGasLimit     = decimal.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
+            AddStorageLimit = decimal.Parse(configuration[nameof(AddStorageLimit)], CultureInfo.InvariantCulture);
 
-            RedeemFee           = decimal.Parse(configuration[nameof(RedeemFee)]);
-            RedeemGasLimit      = decimal.Parse(configuration[nameof(RedeemGasLimit)]);
-            RedeemStorageLimit  = decimal.Parse(configuration[nameof(RedeemStorageLimit)]);
+            RedeemFee           = decimal.Parse(configuration[nameof(RedeemFee)], CultureInfo.InvariantCulture);
+            RedeemGasLimit      = decimal.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
+            RedeemStorageLimit  = decimal.Parse(configuration[nameof(RedeemStorageLimit)], CultureInfo.InvariantCulture);
 
-            RefundFee           = decimal.Parse(configuration[nameof(RefundFee)]);
-            RefundGasLimit      = decimal.Parse(configuration[nameof(RefundGasLimit)]);
-            RefundStorageLimit  = decimal.Parse(configuration[nameof(RefundStorageLimit)]);
+            RefundFee           = decimal.Parse(configuration[nameof(RefundFee)], CultureInfo.InvariantCulture);
+            RefundGasLimit      = decimal.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
+            RefundStorageLimit  = decimal.Parse(configuration[nameof(RefundStorageLimit)], CultureInfo.InvariantCulture);
 
-            ActivationFee = decimal.Parse(configuration[nameof(ActivationFee)]);
+            ActivationFee = decimal.Parse(configuration[nameof(ActivationFee)], CultureInfo.InvariantCulture);
 
             Network             = ResolveNetwork(configuration);
             RpcProvider         = TzScanApi.RpcByNetwork(Network);

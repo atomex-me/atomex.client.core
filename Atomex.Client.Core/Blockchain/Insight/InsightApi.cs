@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
@@ -11,6 +12,8 @@ using Atomex.Common;
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Serilog;
 
 namespace Atomex.Blockchain.Insight
 {
@@ -160,6 +163,8 @@ namespace Atomex.Blockchain.Insight
         private const int MinDelayBetweenRequestMs = 500; // 500
         private static readonly RequestLimitChecker RequestLimitChecker = new RequestLimitChecker(MinDelayBetweenRequestMs);
         private string BaseUri { get; }
+        private bool BroadcastThroughBlockcypher { get; }
+        private string BroadcastEndpoint { get; }
 
         public BitcoinBasedCurrency Currency { get; }
         public int MaxRequestAttemptsCount { get; } = 1;
@@ -167,13 +172,19 @@ namespace Atomex.Blockchain.Insight
         public InsightApi(BitcoinBasedCurrency currency, IConfiguration configuration)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
-            BaseUri = configuration["InsightBaseUri"].ToString();
+            BaseUri = configuration["InsightBaseUri"];
+
+            if (configuration["InsightBroadcastThroughBlockcypher"] != null)
+            {
+                BroadcastThroughBlockcypher = bool.Parse(configuration["InsightBroadcastThroughBlockcypher"]);
+                BroadcastEndpoint = configuration["InsightBroadcastEndpoint"];
+            }
         }
 
         public InsightApi(BitcoinBasedCurrency currency, string baseUri)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
-            BaseUri = baseUri ?? throw new ArgumentNullException(nameof(baseUri)); ;
+            BaseUri = baseUri ?? throw new ArgumentNullException(nameof(baseUri));
         }
 
         public async Task<decimal> GetBalanceAsync(
@@ -185,10 +196,7 @@ namespace Atomex.Blockchain.Insight
             return await HttpHelper.GetAsync(
                     baseUri: BaseUri,
                     requestUri: requestUri,
-                    responseHandler: responseContent =>
-                    {
-                        return long.Parse(responseContent, CultureInfo.InvariantCulture) / (decimal)Currency.DigitsMultiplier;
-                    },
+                    responseHandler: responseContent => long.Parse(responseContent, CultureInfo.InvariantCulture) / (decimal)Currency.DigitsMultiplier,
                     requestLimitChecker: RequestLimitChecker,
                     maxAttempts: MaxRequestAttemptsCount,
                     cancellationToken: cancellationToken)
@@ -280,7 +288,7 @@ namespace Atomex.Blockchain.Insight
                                     !o.ScriptPubKey.Addresses.Contains(address))
                                     continue;
 
-                                var spentTxPoint = !string.IsNullOrEmpty(o.SpentTxId)
+                                var spentTxPoint = !string.IsNullOrEmpty(o.SpentTxId) && o.SpentIndex != null
                                     ? new TxPoint(o.SpentIndex.Value, o.SpentTxId)
                                     : null;
 
@@ -323,7 +331,7 @@ namespace Atomex.Blockchain.Insight
 
                         var output = tx.Outputs[(int)outputNo];
 
-                        return !string.IsNullOrEmpty(output.SpentTxId)
+                        return !string.IsNullOrEmpty(output.SpentTxId) && output.SpentIndex != null
                             ? new TxPoint(output.SpentIndex.Value, output.SpentTxId)
                             : null;
                     },
@@ -389,7 +397,11 @@ namespace Atomex.Blockchain.Insight
             var tx = (IBitcoinBasedTransaction)transaction;
             var txHex = tx.ToBytes().ToHexString();
 
-            var requestUri = $"api/tx/send"; //?rawtx={txHex}";
+            if (BroadcastThroughBlockcypher)
+                return await BroadcastThroughBlockcypherAsync(txHex, cancellationToken)
+                    .ConfigureAwait(false);
+
+            const string requestUri = "api/tx/send";
 
             var parameters = new Dictionary<string, string> {{"rawtx", txHex}};
 
@@ -406,6 +418,30 @@ namespace Atomex.Blockchain.Insight
                 .ConfigureAwait(false);
         }
 
+        private async Task<string> BroadcastThroughBlockcypherAsync(
+            string txHex,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            const string requestUri = "txs/push";
+
+            return await HttpHelper.PostAsync(
+                    baseUri: BroadcastEndpoint,
+                    requestUri: requestUri,
+                    content: new StringContent($"{{\"tx\":\"{txHex}\"}}", Encoding.UTF8),
+                    responseHandler: responseContent =>
+                    {
+                        Log.Debug("Blockcypher response: {@response}", responseContent);
+
+                        var responseTx = JsonConvert.DeserializeObject<JObject>(responseContent);
+
+                        return responseTx["tx"]["hash"].ToString();
+                    },
+                    requestLimitChecker: RequestLimitChecker,
+                    maxAttempts: MaxRequestAttemptsCount,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         public async Task<string> GetRawTx(
             string txId,
             CancellationToken cancellationToken = default(CancellationToken))
@@ -415,10 +451,7 @@ namespace Atomex.Blockchain.Insight
             return await HttpHelper.GetAsync(
                     baseUri: BaseUri,
                     requestUri: requestUri,
-                    responseHandler: responseContent =>
-                    {
-                        return JsonConvert.DeserializeObject<RawTx>(responseContent).TxInHex;
-                    },
+                    responseHandler: responseContent => JsonConvert.DeserializeObject<RawTx>(responseContent).TxInHex,
                     requestLimitChecker: RequestLimitChecker,
                     maxAttempts: MaxRequestAttemptsCount,
                     cancellationToken: cancellationToken)

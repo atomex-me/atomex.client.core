@@ -57,9 +57,7 @@ namespace Atomex.Blockchain.BitcoinBased
 
         public bool IsConfirmed() => Confirmations >= DefaultConfirmations;
 
-        private BitcoinBasedTransaction(
-            Currency currency,
-            Transaction tx)
+        private BitcoinBasedTransaction(Currency currency, Transaction tx)
         {
             Currency = currency;
             Tx = tx;
@@ -69,24 +67,17 @@ namespace Atomex.Blockchain.BitcoinBased
             };
         }
 
-        private BitcoinBasedTransaction(
-            BitcoinBasedCurrency currency,
-            string hex)
-                : this(currency, Transaction.Parse(hex, currency.Network))
+        private BitcoinBasedTransaction(BitcoinBasedCurrency currency, string hex)
+            : this(currency, Transaction.Parse(hex, currency.Network))
         {
         }
 
-        public BitcoinBasedTransaction(
-            BitcoinBasedCurrency currency,
-            byte[] bytes)
-                : this(currency, bytes.ToHexString())
+        public BitcoinBasedTransaction(BitcoinBasedCurrency currency, byte[] bytes)
+            : this(currency, bytes.ToHexString())
         {
         }
 
-        public BitcoinBasedTransaction(
-            Currency currency,
-            Transaction tx,
-            BlockInfo blockInfo)
+        public BitcoinBasedTransaction(Currency currency, Transaction tx, BlockInfo blockInfo)
             : this(currency, tx)
         {
             BlockInfo = blockInfo;
@@ -124,47 +115,35 @@ namespace Atomex.Blockchain.BitcoinBased
             return true;
         }
 
-        public void Sign(
-            Key privateKey,
-            ITxOutput spentOutput)
+        public void Sign(Key privateKey, ITxOutput spentOutput)
         {
             var output = (BitcoinBasedTxOutput)spentOutput;
 
             Tx.Sign(privateKey, output.Coin);
         }
 
-        public void Sign(
-            byte[] privateKey,
-            ITxOutput spentOutput)
+        public void Sign(byte[] privateKey, ITxOutput spentOutput)
         {
             Sign(new Key(privateKey), spentOutput);
         }
 
-        public void Sign(
-            Key privateKey,
-            ITxOutput[] spentOutputs)
+        public void Sign(Key privateKey, ITxOutput[] spentOutputs)
         {
             foreach (var output in spentOutputs)
                 Sign(privateKey, output);
         }
 
-        public void Sign(
-            byte[] privateKey,
-            ITxOutput[] spentOutputs)
+        public void Sign(byte[] privateKey, ITxOutput[] spentOutputs)
         {
             Sign(new Key(privateKey), spentOutputs);
         }
 
-        public void NonStandardSign(
-            byte[] sigScript,
-            ITxOutput spentOutput)
+        public void NonStandardSign(byte[] sigScript, ITxOutput spentOutput)
         {
             NonStandardSign(new Script(sigScript), spentOutput);
         }
 
-        public void NonStandardSign(
-            Script sigScript,
-            ITxOutput spentOutput)
+        public void NonStandardSign(Script sigScript, ITxOutput spentOutput)
         {
             var spentOutpoint = ((BitcoinBasedTxOutput) spentOutput).Coin.Outpoint;
             var input = Tx.Inputs.FindIndexedInput(spentOutpoint);
@@ -172,24 +151,19 @@ namespace Atomex.Blockchain.BitcoinBased
             input.ScriptSig = sigScript;
         }
 
-        public void NonStandardSign(
-            byte[] sigScript,
-            int inputNo)
+        public void NonStandardSign(byte[] sigScript, int inputNo)
         {
             NonStandardSign(new Script(sigScript), inputNo);
         }
 
-        public void NonStandardSign(
-            Script sigScript,
-            int inputNo)
+        public void NonStandardSign(Script sigScript, int inputNo)
         {
             var input = Tx.Inputs[inputNo];
 
             input.ScriptSig = sigScript;
         }
 
-        public bool Verify(
-            ITxOutput spentOutput)
+        public bool Verify(ITxOutput spentOutput)
         {
             if (!(Currency is BitcoinBasedCurrency btcBaseCurrency))
                 throw new NotSupportedException("Currency must be Bitcoin based");
@@ -202,15 +176,13 @@ namespace Atomex.Blockchain.BitcoinBased
             return result;
         }
 
-        public bool Verify(
-            ITxOutput spentOutput,
-            out Error[] errors)
+        public bool Verify(ITxOutput spentOutput, out Error[] errors)
         {
             if (!(Currency is BitcoinBasedCurrency btcBaseCurrency))
                 throw new NotSupportedException("Currency must be Bitcoin based");
 
             var result = btcBaseCurrency.Network.CreateTransactionBuilder()
-                .SetTransactionPolicy(new StandardTransactionPolicy {CheckScriptPubKey = false, ScriptVerify = ScriptVerify.Standard })
+                .SetTransactionPolicy(new StandardTransactionPolicy { ScriptVerify = ScriptVerify.Standard })//{CheckScriptPubKey = false, ScriptVerify = ScriptVerify.Standard })
                 .AddCoins(((BitcoinBasedTxOutput)spentOutput).Coin)
                 .Verify(Tx, out var policyErrors);
 
@@ -221,8 +193,7 @@ namespace Atomex.Blockchain.BitcoinBased
             return result;
         }
 
-        public bool Verify(
-            IEnumerable<ITxOutput> spentOutputs)
+        public bool Verify(IEnumerable<ITxOutput> spentOutputs)
         {
             if (!(Currency is BitcoinBasedCurrency btcBaseCurrency))
                 throw new NotSupportedException("Currency must be Bitcoin based");
@@ -238,9 +209,7 @@ namespace Atomex.Blockchain.BitcoinBased
             return result;
         }
 
-        public bool Verify(
-            IEnumerable<ITxOutput> spentOutputs,
-            out Error[] errors)
+        public bool Verify(IEnumerable<ITxOutput> spentOutputs, out Error[] errors)
         {
             if (!(Currency is BitcoinBasedCurrency btcBaseCurrency))
                 throw new NotSupportedException("Currency must be Bitcoin based");
@@ -268,8 +237,7 @@ namespace Atomex.Blockchain.BitcoinBased
             return Tx.Check() == TransactionCheckResult.Success;
         }
 
-        public long GetFee(
-            ITxOutput[] spentOutputs)
+        public long GetFee(ITxOutput[] spentOutputs)
         {
             return Tx.GetFee(spentOutputs
                     .Cast<BitcoinBasedTxOutput>()
@@ -278,14 +246,28 @@ namespace Atomex.Blockchain.BitcoinBased
                 .Satoshi;
         }
 
-        public byte[] GetSignatureHash(
-            ITxOutput spentOutput)
+        public byte[] GetSignatureHash(ITxOutput spentOutput)
         {
             return Tx.GetSignatureHash(((BitcoinBasedTxOutput)spentOutput).Coin).ToBytes();
         }
 
-        public Script GetScriptSig(
-            int inputNo)
+        public byte[] GetSignatureHash(Script redeemScript, ITxOutput spentOutput)
+        {
+            var coin = ((BitcoinBasedTxOutput) spentOutput).Coin;
+
+            var scriptCoint = new ScriptCoin(coin, redeemScript);
+
+            return Tx.GetSignatureHash(scriptCoint).ToBytes();
+
+            //return Tx.GetSignatureHash(
+            //        scriptCode,
+            //        0,
+            //        SigHash.All,
+            //        ((BitcoinBasedTxOutput)spentOutput).Coin.TxOut)
+            //    .ToBytes();
+        }
+
+        public Script GetScriptSig(int inputNo)
         {
             return Tx.Inputs[inputNo].ScriptSig;
         }

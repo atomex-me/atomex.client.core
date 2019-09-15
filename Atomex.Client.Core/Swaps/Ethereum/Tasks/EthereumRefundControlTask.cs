@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Nethereum.JsonRpc.WebSocketClient;
+using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Web3;
 using Serilog;
 
@@ -25,7 +26,9 @@ namespace Atomex.Swaps.Ethereum.Tasks
                     .GetEvent<RefundedEventDTO>(Eth.SwapContractAddress);
 
                 var filter = refundEventHandler
-                    .CreateFilterInput<byte[]>(Swap.SecretHash);
+                    .CreateFilterInput<byte[]>(
+                        Swap.SecretHash,
+                        new BlockParameter(Eth.SwapContractBlockNumber));
 
                 var events = await refundEventHandler
                     .GetAllChanges(filter)

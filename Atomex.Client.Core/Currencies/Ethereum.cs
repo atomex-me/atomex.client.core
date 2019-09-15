@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Numerics;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
@@ -37,6 +38,7 @@ namespace Atomex
 
         public Chain Chain { get; }
         public string SwapContractAddress { get; }
+        public ulong SwapContractBlockNumber { get; }
 
         public Ethereum()
         {
@@ -58,16 +60,17 @@ namespace Atomex
             FeePriceCode = DefaultGasPriceCode;
             FeePriceFormat = DefaultGasPriceFormat;
 
-            GasLimit = decimal.Parse(configuration["GasLimit"]);
-            InitiateGasLimit = decimal.Parse(configuration["InitiateGasLimit"]);
-            InitiateWithRewardGasLimit = decimal.Parse(configuration["InitiateWithRewardGasLimit"]);
-            AddGasLimit = decimal.Parse(configuration["AddGasLimit"]);
-            RefundGasLimit = decimal.Parse(configuration["RefundGasLimit"]);
-            RedeemGasLimit = decimal.Parse(configuration["RedeemGasLimit"]);
-            GasPriceInGwei = decimal.Parse(configuration["GasPriceInGwei"]);
+            GasLimit = decimal.Parse(configuration["GasLimit"], CultureInfo.InvariantCulture);
+            InitiateGasLimit = decimal.Parse(configuration["InitiateGasLimit"], CultureInfo.InvariantCulture);
+            InitiateWithRewardGasLimit = decimal.Parse(configuration["InitiateWithRewardGasLimit"], CultureInfo.InvariantCulture);
+            AddGasLimit = decimal.Parse(configuration["AddGasLimit"], CultureInfo.InvariantCulture);
+            RefundGasLimit = decimal.Parse(configuration["RefundGasLimit"], CultureInfo.InvariantCulture);
+            RedeemGasLimit = decimal.Parse(configuration["RedeemGasLimit"], CultureInfo.InvariantCulture);
+            GasPriceInGwei = decimal.Parse(configuration["GasPriceInGwei"], CultureInfo.InvariantCulture);
 
             Chain = ResolveChain(configuration);
             SwapContractAddress = configuration["SwapContract"];
+            SwapContractBlockNumber = ulong.Parse(configuration["SwapContractBlockNumber"], CultureInfo.InvariantCulture);
             BlockchainApi = ResolveBlockchainApi(
                 configuration: configuration,
                 currency: this,

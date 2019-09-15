@@ -1,11 +1,12 @@
-﻿using Atomex.Blockchain.BitcoinBased;
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Atomex.Blockchain.BitcoinBased;
 using Atomex.Core.Entities;
 using Atomex.Wallet.Abstract;
 using NBitcoin;
 using Serilog;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
+
 
 namespace Atomex.Swaps.BitcoinBased
 {
@@ -99,6 +100,67 @@ namespace Atomex.Swaps.BitcoinBased
                 aliceRefundPubKey: refundAddress.PublicKeyBytes());
 
             tx.NonStandardSign(refundScript, spentOutput);
+
+            if (!tx.Verify(spentOutput, out var errors))
+            {
+                Log.Error("Refund transaction verify errors: {errors}", errors);
+                return null;
+            }
+
+            return tx;
+        }
+
+        public async Task<IBitcoinBasedTransaction> SignHtlcP2PkhP2ShSwapRefundTxAsync(
+            IBitcoinBasedTransaction refundTx,
+            IBitcoinBasedTransaction paymentTx,
+            WalletAddress refundAddress,
+            byte[] redeemScript)
+        {
+            var tx = refundTx.Clone();
+
+            if (tx.Inputs.Length != 1)
+            {
+                Log.Error("Refund transaction has zero or more than one input");
+                return null;
+            }
+
+            var spentOutput = paymentTx.Outputs
+                .Cast<BitcoinBasedTxOutput>()
+                .FirstOrDefault(o => o.IsP2Sh);
+
+            if (spentOutput == null)
+            {
+                Log.Error("Payment transaction hasn't swap output");
+                return null;
+            }
+
+            // firstly check, if transaction is already signed
+            if (tx.Verify(spentOutput))
+                return tx;
+
+            // clean any signature, if exists
+            tx.NonStandardSign(Script.Empty, 0);
+
+            var sigHash = tx.GetSignatureHash(new Script(redeemScript), spentOutput);
+
+            var signature = await Account.Wallet
+                .SignHashAsync(
+                    hash: sigHash,
+                    address: refundAddress)
+                .ConfigureAwait(false);
+
+            if (signature == null)
+            {
+                Log.Error("Refund transaction signature error");
+                return null;
+            }
+
+            var refundScriptSig = BitcoinBasedSwapTemplate.GenerateHtlcP2PkhP2ShSwapRefund(
+                aliceRefundSig: signature,
+                aliceRefundPubKey: refundAddress.PublicKeyBytes(),
+                redeemScript: redeemScript);
+
+            tx.NonStandardSign(refundScriptSig, spentOutput);
 
             if (!tx.Verify(spentOutput, out var errors))
             {

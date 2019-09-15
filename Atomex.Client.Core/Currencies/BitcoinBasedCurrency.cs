@@ -278,6 +278,43 @@ namespace Atomex
                 fee: fee);
         }
 
+        public virtual IBitcoinBasedTransaction CreateHtlcP2PkhScriptSwapPaymentTx(
+            IEnumerable<ITxOutput> unspentOutputs,
+            string aliceRefundAddress,
+            string bobAddress,
+            DateTimeOffset lockTime,
+            byte[] secretHash,
+            int secretSize,
+            long amount,
+            long fee,
+            out byte[] redeemScript)
+        {
+            var coins = unspentOutputs
+                .Cast<BitcoinBasedTxOutput>()
+                .Select(o => o.Coin);
+
+            var swap = BitcoinBasedSwapTemplate.GenerateHtlcP2PkhSwapPayment(
+                aliceRefundAddress: aliceRefundAddress,
+                bobAddress: bobAddress,
+                lockTimeStamp: lockTime.ToUnixTimeSeconds(),
+                secretHash: secretHash,
+                secretSize: secretSize,
+                expectedNetwork: Network);
+
+            redeemScript = swap.ToBytes();
+
+            var change = BitcoinAddress.Create(aliceRefundAddress, Network)
+                .ScriptPubKey;
+
+            return BitcoinBasedTransaction.CreateTransaction(
+                currency: this,
+                coins: coins,
+                destination: swap.PaymentScript,
+                change: change,
+                amount: amount,
+                fee: fee);
+        }
+
         public virtual IBitcoinBasedTransaction CreateSwapRefundTx(
             IEnumerable<ITxOutput> unspentOutputs,
             string destinationAddress,

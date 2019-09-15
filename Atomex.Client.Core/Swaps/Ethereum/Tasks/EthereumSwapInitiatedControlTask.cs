@@ -4,6 +4,7 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Nethereum.JsonRpc.WebSocketClient;
+using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Web3;
 using Serilog;
 
@@ -56,7 +57,9 @@ namespace Atomex.Swaps.Ethereum.Tasks
                     var filterIdInitiated = await eventHandlerInitiated
                         .CreateFilterAsync(
                             Swap.SecretHash,
-                            Swap.ToAddress)
+                            Swap.ToAddress,
+                            new BlockParameter(Eth.SwapContractBlockNumber),
+                            null)
                         .ConfigureAwait(false);
 
                     var eventInitiated = await eventHandlerInitiated

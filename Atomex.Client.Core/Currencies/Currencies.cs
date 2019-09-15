@@ -8,8 +8,7 @@ namespace Atomex
 {
     public class Currencies : List<Currency>, ICurrencies
     {
-        public Currencies(
-            IConfiguration configuration)
+        public Currencies(IConfiguration configuration)
         {
             Add(new Bitcoin(configuration.GetSection("BTC")));
             Add(new Ethereum(configuration.GetSection("ETH")));
@@ -17,8 +16,7 @@ namespace Atomex
             Add(new Tezos(configuration.GetSection("XTZ")));
         }
 
-        public Currency GetByName(
-            string name)
+        public Currency GetByName(string name)
         {
             return this.FirstOrDefault(c => c.Name == name);
         }

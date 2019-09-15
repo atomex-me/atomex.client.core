@@ -16,8 +16,7 @@ namespace Atomex
             Network.TestNet
         };
 
-        public CurrenciesProvider(
-            IConfiguration configuration)
+        public CurrenciesProvider(IConfiguration configuration)
         {
             foreach (var network in Networks)
             {
@@ -28,8 +27,7 @@ namespace Atomex
             }
         }
 
-        public ICurrencies GetCurrencies(
-            Network network)
+        public ICurrencies GetCurrencies(Network network)
         {
             return _currencies[network];
         }
