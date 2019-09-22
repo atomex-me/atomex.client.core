@@ -23,10 +23,10 @@ namespace Atomex.Blockchain.BitcoinBased
         void NonStandardSign(Script sigScript, int inputNo);
 
         bool Check();
-        bool Verify(ITxOutput spentOutput);
-        bool Verify(ITxOutput spentOutput, out Error[] errors);
-        bool Verify(IEnumerable<ITxOutput> spentOutputs);
-        bool Verify(IEnumerable<ITxOutput> spentOutputs, out Error[] errors);
+        bool Verify(ITxOutput spentOutput, bool checkScriptPubKey = true);
+        bool Verify(ITxOutput spentOutput, out Error[] errors, bool checkScriptPubKey = true);
+        bool Verify(IEnumerable<ITxOutput> spentOutputs, bool checkScriptPubKey = true);
+        bool Verify(IEnumerable<ITxOutput> spentOutputs, out Error[] errors, bool checkScriptPubKey = true);
 
         int VirtualSize();
         IBitcoinBasedTransaction Clone();

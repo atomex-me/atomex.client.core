@@ -15,7 +15,7 @@ namespace Atomex.Client.Core.Tests
             foreach (var output in outputs)
                 tx.Outputs.Add(new TxOut(new Money(output), to.Hash)); // p2pkh
 
-            return new BitcoinBasedTransaction(currency, tx.ToBytes());
+            return new BitcoinBasedTransaction(currency, tx);
         }
 
         public static IBitcoinBasedTransaction CreateSegwitPaymentTx(
@@ -34,7 +34,7 @@ namespace Atomex.Client.Core.Tests
                 fee: fee);
         }
 
-        public static IBitcoinBasedTransaction CreateSwapRefundTx(
+        public static IBitcoinBasedTransaction CreatePaymentTx(
             BitcoinBasedCurrency currency,
             IEnumerable<ITxOutput> outputs,
             PubKey from,
@@ -43,7 +43,7 @@ namespace Atomex.Client.Core.Tests
             int fee,
             DateTimeOffset lockTime)
         {
-            return currency.CreateSwapRefundTx(
+            return currency.CreateP2PkhTx(
                 unspentOutputs: outputs,
                 destinationAddress: to.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
                 changeAddress: from.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),

@@ -74,14 +74,16 @@ namespace Atomex.Wallet.Ethereum
                     .GetNonce(Eth, walletAddress.Address)
                     .ConfigureAwait(false);
 
-                var tx = new EthereumTransaction(Eth)
+                var tx = new EthereumTransaction
                 {
+                    Currency = Eth,
+                    Type = BlockchainTransactionType.Output,
+                    CreationTime = DateTime.UtcNow,
                     To = to.ToLowerInvariant(),
                     Amount = new BigInteger(Atomex.Ethereum.EthToWei(addressAmount)),
                     Nonce = nonce,
                     GasPrice = new BigInteger(Atomex.Ethereum.GweiToWei(feePrice)),
                     GasLimit = new BigInteger(feePerTx),
-                    Type = EthereumTransaction.OutputTransaction
                 };
 
                 var signResult = await Wallet
@@ -149,6 +151,7 @@ namespace Atomex.Wallet.Ethereum
         public override async Task<decimal> EstimateFeeAsync(
             string to,
             decimal amount,
+            BlockchainTransactionType type,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var unspentAddresses = (await DataRepository
@@ -156,21 +159,35 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false))
                 .ToList();
 
+            var gasLimit = GasLimitByType(type);
+
             var selectedAddresses = SelectUnspentAddresses(
                     from: unspentAddresses,
                     amount: amount,
-                    fee: Eth.GasLimit,
+                    fee: gasLimit,
                     feePrice: Eth.GasPriceInGwei,
                     isFeePerTransaction: true,
                     addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst)
                 .ToList();
 
-            var feeAmount = Eth.GetFeeAmount(Eth.GasLimit, Eth.GasPriceInGwei);
+            var feeAmount = Eth.GetFeeAmount(gasLimit, Eth.GasPriceInGwei);
 
             if (!selectedAddresses.Any())
                 return unspentAddresses.Count * feeAmount;
 
             return selectedAddresses.Count * feeAmount;
+        }
+
+        private decimal GasLimitByType(BlockchainTransactionType type)
+        {
+            if (type.HasFlag(BlockchainTransactionType.SwapPayment))
+                return Eth.InitiateWithRewardGasLimit;
+            if (type.HasFlag(BlockchainTransactionType.SwapRefund))
+                return Eth.RefundGasLimit;
+            if (type.HasFlag(BlockchainTransactionType.SwapRedeem))
+                return Eth.RedeemGasLimit;
+
+            return Eth.GasLimit;
         }
 
         protected override async Task ResolveTransactionTypeAsync(
@@ -185,19 +202,30 @@ namespace Atomex.Wallet.Ethereum
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
+            if (isFromSelf)
+                ethTx.Type |= BlockchainTransactionType.Output;
+
             var isToSelf = await IsSelfAddressAsync(
                     address: ethTx.To,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (isFromSelf && isToSelf)
-                ethTx.Type = EthereumTransaction.SelfTransaction;
-            else if (isFromSelf)
-                ethTx.Type = EthereumTransaction.OutputTransaction;
-            else if (isToSelf)
-                ethTx.Type = EthereumTransaction.InputTransaction;
-            else
-                ethTx.Type = EthereumTransaction.UnknownTransaction;
+            if (isToSelf)
+                ethTx.Type |= BlockchainTransactionType.Input;
+
+            // todo: recognize swap payment/refund/redeem
+
+            var oldTx = !ethTx.IsInternal
+                ? await DataRepository
+                    .GetTransactionByIdAsync(Currency, tx.Id)
+                    .ConfigureAwait(false)
+                : null;
+
+            if (oldTx != null)
+                ethTx.Type |= oldTx.Type;
+
+            ethTx.InternalTxs?.ForEach(async t => await ResolveTransactionTypeAsync(t, cancellationToken)
+                .ConfigureAwait(false));
         }
 
         #endregion Common
@@ -207,11 +235,19 @@ namespace Atomex.Wallet.Ethereum
         public override async Task UpdateBalanceAsync(
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var transactions = (await DataRepository
+            var txs = (await DataRepository
                 .GetTransactionsAsync(Currency)
                 .ConfigureAwait(false))
                 .Cast<EthereumTransaction>()
                 .ToList();
+
+            var internalTxs = txs.Aggregate(new List<EthereumTransaction>(), (list, tx) =>
+            {
+                if (tx.InternalTxs != null)
+                    list.AddRange(tx.InternalTxs);
+
+                return list;
+            });
 
             // calculate balances
             var totalBalance = 0m;
@@ -219,39 +255,31 @@ namespace Atomex.Wallet.Ethereum
             var totalUnconfirmedOutcome = 0m;
             var addressBalances = new Dictionary<string, WalletAddress>();
 
-            foreach (var tx in transactions)
+            foreach (var tx in txs.Concat(internalTxs))
             {
                 var addresses = new HashSet<string>();
 
-                if (tx.Type == EthereumTransaction.OutputTransaction || tx.Type == EthereumTransaction.SelfTransaction)
+                if (tx.Type.HasFlag(BlockchainTransactionType.Output))
                     addresses.Add(tx.From);
-                if (tx.Type == EthereumTransaction.InputTransaction || tx.Type == EthereumTransaction.SelfTransaction)
+
+                if (tx.Type.HasFlag(BlockchainTransactionType.Input))
                     addresses.Add(tx.To);
 
                 foreach (var address in addresses)
                 {
                     var isIncome = address == tx.To;
                     var isOutcome = address == tx.From;
-                    var isConfirmed = tx.IsConfirmed();
-                    var isFailed = !tx.ReceiptStatus;
-                    var isInternal = tx.IsInternal;
+                    var isConfirmed = tx.IsConfirmed;
+                    var isFailed = tx.State == BlockchainTransactionState.Failed;
 
-                    // check generating tx failed
-                    if (isInternal && !isFailed &&
-                        await DataRepository
-                            .GetTransactionByIdAsync(Currency, tx.Id)
-                            .ConfigureAwait(false) is EthereumTransaction generatingTx)
-                    {
-                        isFailed = !generatingTx.ReceiptStatus;
-                    }
+                    var income = isIncome && !isFailed
+                        ? Atomex.Ethereum.WeiToEth(tx.Amount)
+                        : 0;
 
-                    var gas = tx.GasUsed != 0 ? tx.GasUsed : tx.GasLimit;
-
-                    var income = isIncome && !isFailed ? Atomex.Ethereum.WeiToEth(tx.Amount) : 0;
                     var outcome = isOutcome
                         ? (!isFailed 
-                            ? -Atomex.Ethereum.WeiToEth(tx.Amount + tx.GasPrice * gas)
-                            : -Atomex.Ethereum.WeiToEth(tx.GasPrice * gas))
+                            ? -Atomex.Ethereum.WeiToEth(tx.Amount + tx.GasPrice * (tx.GasUsed != 0 ? tx.GasUsed : tx.GasLimit))
+                            : -Atomex.Ethereum.WeiToEth(tx.GasPrice * tx.GasUsed))
                         : 0;
     
                     if (addressBalances.TryGetValue(address, out var walletAddress))
@@ -296,11 +324,19 @@ namespace Atomex.Wallet.Ethereum
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var transactions = (await DataRepository
+            var txs = (await DataRepository
                 .GetTransactionsAsync(Currency)
                 .ConfigureAwait(false))
                 .Cast<EthereumTransaction>()
                 .ToList();
+
+            var internalTxs = txs.Aggregate(new List<EthereumTransaction>(), (list, tx) =>
+            {
+                if (tx.InternalTxs != null)
+                    list.AddRange(tx.InternalTxs);
+
+                return list;
+            });
 
             var walletAddress = await DataRepository
                 .GetWalletAddressAsync(Currency, address)
@@ -310,30 +346,21 @@ namespace Atomex.Wallet.Ethereum
             var unconfirmedIncome = 0m;
             var unconfirmedOutcome = 0m;
 
-            foreach (var tx in transactions)
+            foreach (var tx in txs.Concat(internalTxs))
             {
                 var isIncome = address == tx.To;
                 var isOutcome = address == tx.From;
-                var isConfirmed = tx.IsConfirmed();
-                var isFailed = !tx.ReceiptStatus;
-                var isInternal = tx.IsInternal;
+                var isConfirmed = tx.IsConfirmed;
+                var isFailed = tx.State == BlockchainTransactionState.Failed;
 
-                // check generating tx failed
-                if (isInternal && !isFailed &&
-                    await DataRepository
-                        .GetTransactionByIdAsync(Currency, tx.Id)
-                        .ConfigureAwait(false) is EthereumTransaction generatingTx)
-                {
-                    isFailed = !generatingTx.ReceiptStatus;
-                }
+                var income = isIncome && !isFailed
+                    ? Atomex.Ethereum.WeiToEth(tx.Amount)
+                    : 0;
 
-                var gas = tx.GasUsed != 0 ? tx.GasUsed : tx.GasLimit;
-
-                var income = isIncome && !isFailed ? Atomex.Ethereum.WeiToEth(tx.Amount) : 0;
                 var outcome = isOutcome
                     ? (!isFailed
-                        ? -Atomex.Ethereum.WeiToEth(tx.Amount + tx.GasPrice * gas)
-                        : -Atomex.Ethereum.WeiToEth(tx.GasPrice * gas))
+                        ? -Atomex.Ethereum.WeiToEth(tx.Amount + tx.GasPrice * (tx.GasUsed != 0 ? tx.GasUsed : tx.GasLimit))
+                        : -Atomex.Ethereum.WeiToEth(tx.GasPrice * tx.GasUsed))
                     : 0;
 
                 balance            += isConfirmed ? income + outcome : 0;

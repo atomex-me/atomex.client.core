@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Security;
 using System.Threading;
@@ -38,10 +39,11 @@ namespace Atomex.Client.Core.Tests
 
                 PaymentTx = new BitcoinBasedTransaction(
                     currency: Common.BtcTestNet,
-                    bytes: Transaction.Create(NBitcoin.Network.TestNet).ToBytes()),
+                    tx: Transaction.Create(NBitcoin.Network.TestNet)),
 
-                PartyPaymentTx = new EthereumTransaction(Common.EthTestNet)
+                PartyPaymentTx = new EthereumTransaction()
                 {
+                    Currency = Common.EthTestNet,
                     From = "abcdefghj",
                     To = "eprstifg"
                 }
@@ -108,6 +110,42 @@ namespace Atomex.Client.Core.Tests
             Assert.True(swap.StateFlags.HasFlag(SwapStateFlags.HasPartyPayment));
             Assert.NotNull(swap.PaymentTx);
             Assert.NotNull(swap.PartyPaymentTx);
+        }
+
+        [Fact]
+        public async void AddEthereumTransactionTest()
+        {
+            var repository = new LiteDbAccountDataRepository(
+                pathToDb: PathToDb,
+                password: Password,
+                currencies: Common.CurrenciesTestNet,
+                symbols: Common.SymbolsTestNet);
+
+            var id = "abcdefgh";
+
+            var tx = new EthereumTransaction
+            {
+                Id = id,
+                Currency = Common.EthTestNet,
+                InternalTxs = new List<EthereumTransaction>
+                {
+                    new EthereumTransaction() {Currency = Common.EthTestNet}
+                }
+            };
+
+            var result = await repository
+                .UpsertTransactionAsync(tx)
+                .ConfigureAwait(false);
+
+            Assert.True(result);
+
+            var readTx = (await repository
+                .GetTransactionByIdAsync(Common.EthTestNet, id)
+                .ConfigureAwait(false)) as EthereumTransaction;
+
+            Assert.NotNull(readTx);
+            Assert.NotNull(readTx.InternalTxs);
+            Assert.Equal(id, readTx.Id);
         }
     }
 }

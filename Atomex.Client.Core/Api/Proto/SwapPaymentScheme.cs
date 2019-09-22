@@ -14,7 +14,8 @@ namespace Atomex.Api.Proto
             Model.Add(typeof(ClientSwap), true)
                 .AddRequired(nameof(ClientSwap.Id))
                 .AddRequired(nameof(ClientSwap.Symbol))
-                .AddRequired(nameof(ClientSwap.PaymentTxId));
+                .AddRequired(nameof(ClientSwap.PaymentTxId))
+                .AddRequired(nameof(ClientSwap.RedeemScript));
         }
     }
 }

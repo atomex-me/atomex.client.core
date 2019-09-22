@@ -31,8 +31,7 @@ namespace Atomex
             }
         }
 
-        public ISymbols GetSymbols(
-            Network network)
+        public ISymbols GetSymbols(Network network)
         {
             return _symbols[network];
         }

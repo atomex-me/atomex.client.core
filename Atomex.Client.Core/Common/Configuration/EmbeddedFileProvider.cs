@@ -10,14 +10,12 @@ namespace Atomex.Common.Configuration
     {
         private readonly Assembly _assembly;
 
-        public EmbeddedFileProvider(
-            Assembly assembly)
+        public EmbeddedFileProvider(Assembly assembly)
         {
             _assembly = assembly ?? throw new ArgumentNullException(nameof(assembly));
         }
 
-        public IFileInfo GetFileInfo(
-            string subPath)
+        public IFileInfo GetFileInfo(string subPath)
         {
             var resourceNames = _assembly.GetManifestResourceNames();
 
@@ -28,14 +26,12 @@ namespace Atomex.Common.Configuration
                 : (IFileInfo)new NotFoundFileInfo(subPath);
         }
 
-        public IDirectoryContents GetDirectoryContents(
-            string subPath)
+        public IDirectoryContents GetDirectoryContents(string subPath)
         {
             throw new NotImplementedException();
         }
 
-        public IChangeToken Watch(
-            string filter)
+        public IChangeToken Watch(string filter)
         {
             throw new NotImplementedException();
         }

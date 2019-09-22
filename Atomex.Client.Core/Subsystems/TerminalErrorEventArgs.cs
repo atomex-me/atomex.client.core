@@ -1,13 +1,17 @@
-﻿namespace Atomex.Subsystems
+﻿using Atomex.Core;
+
+namespace Atomex.Subsystems
 {
     public class TerminalErrorEventArgs : TerminalServiceEventArgs
     {
-        public string Description { get; }
+        public Error Error { get; }
+        public int Code => Error.Code;
+        public string Description => Error.Description;
 
-        public TerminalErrorEventArgs(TerminalService service, string description)
+        public TerminalErrorEventArgs(TerminalService service, Error error)
             : base(service)
         {
-            Description = description;
+            Error = error;
         }
     }
 }

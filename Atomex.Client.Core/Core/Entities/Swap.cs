@@ -26,12 +26,14 @@ namespace Atomex.Core.Entities
         public string InitiatorAddress { get; set; }
         public decimal InitiatorRewardForRedeem { get; set; }
         public string InitiatorPaymentTxId { get; set; }
+        public string InitiatorRedeemScript { get; set; }
         public string AcceptorUserId { get; set; }
         public long AcceptorOrderId { get; set; }
         public Side AcceptorOrderSide { get; set; }
         public string AcceptorAddress { get; set; }
         public decimal AcceptorRewardForRedeem { get; set; }
         public string AcceptorPaymentTxId { get; set; }
+        public string AcceptorRedeemScript { get; set; }
         public byte[] SecretHash { get; set; }
         public DateTime TimeStamp { get; set; }
         public int SymbolId { get; set; }
@@ -57,9 +59,11 @@ namespace Atomex.Core.Entities
                 ToAddress = InitiatorAddress,
                 RewardForRedeem = InitiatorRewardForRedeem,
                 PaymentTxId = InitiatorPaymentTxId,
+                RedeemScript = InitiatorRedeemScript,
                 PartyAddress = AcceptorAddress,
                 PartyRewardForRedeem = AcceptorRewardForRedeem,
                 PartyPaymentTxId = AcceptorPaymentTxId,
+                PartyRedeemScript = AcceptorRedeemScript
             };
         }
 
@@ -81,9 +85,11 @@ namespace Atomex.Core.Entities
                 ToAddress = AcceptorAddress,
                 RewardForRedeem = AcceptorRewardForRedeem,
                 PaymentTxId = AcceptorPaymentTxId,
+                RedeemScript = AcceptorRedeemScript,
                 PartyAddress = InitiatorAddress,
                 PartyRewardForRedeem = InitiatorRewardForRedeem,
-                PartyPaymentTxId = InitiatorPaymentTxId
+                PartyPaymentTxId = InitiatorPaymentTxId,
+                PartyRedeemScript = InitiatorRedeemScript
             };
         }
     }

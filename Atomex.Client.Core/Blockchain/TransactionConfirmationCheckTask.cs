@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Serilog;
@@ -12,19 +10,19 @@ namespace Atomex.Blockchain
         private const int NumberOfConfirmations = 1;
 
         public string TxId { get; set; }
-        public IEnumerable<IBlockchainTransaction> Transactions { get; private set; }
+        public IBlockchainTransaction Tx { get; private set; }
 
         public override async Task<bool> CheckCompletion()
         {
-            IEnumerable<IBlockchainTransaction> txs;
+            IBlockchainTransaction tx;
 
             try
             {
-                txs = await Currency.BlockchainApi
-                    .GetTransactionsByIdAsync(TxId)
+                tx = await Currency.BlockchainApi
+                    .GetTransactionAsync(TxId)
                     .ConfigureAwait(false);
 
-                if (txs == null)
+                if (tx == null)
                     return false;
             }
             catch (Exception e)
@@ -33,14 +31,10 @@ namespace Atomex.Blockchain
                 return false;
             }
 
-            if (txs == null || !txs.Any())
+            if (tx.BlockInfo == null || tx.BlockInfo.Confirmations < NumberOfConfirmations)
                 return false;
 
-            var firstTx = txs.First();
-            if (firstTx.BlockInfo == null || firstTx.BlockInfo.Confirmations < NumberOfConfirmations)
-                return false;
-
-            Transactions = txs;
+            Tx = tx;
 
             CompleteHandler?.Invoke(this);
             return true;

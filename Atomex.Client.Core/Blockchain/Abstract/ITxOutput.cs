@@ -11,7 +11,5 @@ namespace Atomex.Blockchain.Abstract
         bool IsSpent { get; }
         ITxPoint SpentTxPoint { get; set; }
         string DestinationAddress(Currency currency);
-
-        bool IsSwapPayment { get; }
     }
 }

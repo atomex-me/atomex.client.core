@@ -61,7 +61,7 @@ namespace Atomex.Swaps.Tezos.Tasks
 
                     foreach (var tx in txs)
                     {
-                        if (tx.IsConfirmed() && tx.To == contractAddress)
+                        if (tx.IsConfirmed && tx.To == contractAddress)
                         {
                             var detectedPayment = false;
 
@@ -91,7 +91,10 @@ namespace Atomex.Swaps.Tezos.Tasks
                             }
                         }
 
-                        var blockTimeUtc = tx.BlockInfo.BlockTime.ToUniversalTime();
+                        if (tx.BlockInfo?.BlockTime == null)
+                            continue;
+
+                        var blockTimeUtc = tx.BlockInfo.BlockTime.Value.ToUniversalTime();
                         var swapTimeUtc = Swap.TimeStamp.ToUniversalTime();
 
                         if (blockTimeUtc < swapTimeUtc)

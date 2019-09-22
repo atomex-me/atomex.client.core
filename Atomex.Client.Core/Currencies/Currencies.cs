@@ -16,6 +16,14 @@ namespace Atomex
             Add(new Tezos(configuration.GetSection("XTZ")));
         }
 
+        public void Update(IConfiguration configuration)
+        {
+            Get<Bitcoin>().Update(configuration.GetSection("BTC"));
+            Get<Ethereum>().Update(configuration.GetSection("ETH"));
+            Get<Litecoin>().Update(configuration.GetSection("LTC"));
+            Get<Tezos>().Update(configuration.GetSection("XTZ"));
+        }
+
         public Currency GetByName(string name)
         {
             return this.FirstOrDefault(c => c.Name == name);

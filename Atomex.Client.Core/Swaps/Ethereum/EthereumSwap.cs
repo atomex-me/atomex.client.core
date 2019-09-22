@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Threading.Tasks;
 using System.Threading;
 using Atomex.Blockchain;
+using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Atomex.Common.Abstract;
@@ -157,7 +158,7 @@ namespace Atomex.Swaps.Ethereum
 
             var redeemTx = new EthereumTransaction(Eth, txInput)
             {
-                Type = EthereumTransaction.OutputTransaction
+                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
             };
 
             var signResult = await SignTransactionAsync(redeemTx)
@@ -248,7 +249,7 @@ namespace Atomex.Swaps.Ethereum
 
             var redeemTx = new EthereumTransaction(Eth, txInput)
             {
-                Type = EthereumTransaction.OutputTransaction
+                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
             };
 
             var signResult = await SignTransactionAsync(redeemTx)
@@ -305,7 +306,7 @@ namespace Atomex.Swaps.Ethereum
 
             var refundTx = new EthereumTransaction(Eth, txInput)
             {
-                Type = EthereumTransaction.OutputTransaction
+                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
             };
 
             var signResult = await SignTransactionAsync(refundTx, cancellationToken)
@@ -729,7 +730,7 @@ namespace Atomex.Swaps.Ethereum
 
                 transactions.Add(new EthereumTransaction(Eth, txInput)
                 {
-                    Type = EthereumTransaction.OutputTransaction
+                    Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
                 });
 
                 if (isInitTx)

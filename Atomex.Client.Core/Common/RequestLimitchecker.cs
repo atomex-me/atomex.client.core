@@ -10,14 +10,12 @@ namespace Atomex.Common
         private long _lastRequestTimeStampMs;
         private int _minDelayBetweenRequestMs = 1000;
 
-        public RequestLimitChecker(
-            int minDelayBetweenRequestMs)
+        public RequestLimitChecker(int minDelayBetweenRequestMs)
         {
             _minDelayBetweenRequestMs = minDelayBetweenRequestMs;
         }
 
-        public async Task WaitIfNeeded(
-            CancellationToken cancellationToken)
+        public async Task WaitIfNeeded(CancellationToken cancellationToken)
         {
             var isCompleted = false;
 

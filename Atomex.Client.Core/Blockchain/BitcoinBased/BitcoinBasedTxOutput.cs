@@ -25,17 +25,29 @@ namespace Atomex.Blockchain.BitcoinBased
             SpentTxPoint = spentTxPoint;
         }
 
+        public bool IsP2Pk => Coin.TxOut.ScriptPubKey.FindTemplate() == PayToPubkeyTemplate.Instance;
+
         public bool IsP2Pkh => Coin.TxOut.ScriptPubKey.FindTemplate() == PayToPubkeyHashTemplate.Instance;
 
         public bool IsSegwitP2Pkh => Coin.TxOut.ScriptPubKey.FindTemplate() == PayToWitPubKeyHashTemplate.Instance;
 
         public bool IsP2Sh => Coin.TxOut.ScriptPubKey.FindTemplate() == PayToScriptHashTemplate.Instance;
 
+        public bool IsSegwitP2Sh => Coin.TxOut.ScriptPubKey.FindTemplate() == PayToWitScriptHashTemplate.Instance;
+
         public bool IsP2PkhSwapPayment => BitcoinBasedSwapTemplate.IsP2PkhSwapPayment(Coin.TxOut.ScriptPubKey);
 
         public bool IsHtlcP2PkhSwapPayment => BitcoinBasedSwapTemplate.IsHtlcP2PkhSwapPayment(Coin.TxOut.ScriptPubKey);
 
-        public bool IsSwapPayment => IsHtlcP2PkhSwapPayment;
+        public bool IsPayToScriptHash(Script redeemScript)
+        {
+            return IsP2Sh && redeemScript.PaymentScript.Equals(Coin.TxOut.ScriptPubKey);
+        }
+
+        public bool IsPayToScriptHash(byte[] redeemScript)
+        {
+            return IsP2Sh && new Script(redeemScript).PaymentScript.Equals(Coin.TxOut.ScriptPubKey);
+        }
 
         public string DestinationAddress(Currency currency)
         {

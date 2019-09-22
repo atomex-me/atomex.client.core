@@ -528,37 +528,25 @@ namespace Atomex.Blockchain.SoChain
                     {
                         var tx = JsonConvert.DeserializeObject<Response<Tx>>(responseContent);
 
-                        var fees = (long) (decimal.Parse(tx.Data.Fee, CultureInfo.InvariantCulture) * Satoshi);
-
                         return new BitcoinBasedTransaction(
                             currency: Currency,
                             tx: Transaction.Parse(tx.Data.TxHex, Currency.Network),
                             blockInfo: new BlockInfo
                             {
-                                Fees = fees,
                                 Confirmations = tx.Data.Confirmations,
+                                BlockHash = tx.Data.BlockHash,
                                 BlockHeight = tx.Data.BlockNo.GetValueOrDefault(0),
-                                FirstSeen = tx.Data.Time.ToUtcDateTime(),
-                                BlockTime = tx.Data.Time.ToUtcDateTime()
-                            }
+                                BlockTime = tx.Data.Time.ToUtcDateTime(),
+                                FirstSeen = tx.Data.Time.ToUtcDateTime()
+
+                            },
+                            fees: (long)(decimal.Parse(tx.Data.Fee, CultureInfo.InvariantCulture) * Satoshi)
                         );
                     },
                     requestLimitChecker: RequestLimitChecker,
                     maxAttempts: MaxRequestAttemptsCount,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-        }
-
-        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsByIdAsync(
-            string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var tx = await GetTransactionAsync(txId, cancellationToken)
-                .ConfigureAwait(false);
-
-            return tx != null
-                ? new []{ tx }
-                : Enumerable.Empty<IBlockchainTransaction>();
         }
 
         public async Task<bool> IsTransactionConfirmed(
@@ -616,6 +604,8 @@ namespace Atomex.Blockchain.SoChain
             var txHex = tx.ToBytes().ToHexString();
 
             Log.Debug("TxHex: {@txHex}", txHex);
+
+            tx.State = BlockchainTransactionState.Pending;
 
             using (var content = new StringContent(
                 content: JsonConvert.SerializeObject(new SendTx(txHex)),

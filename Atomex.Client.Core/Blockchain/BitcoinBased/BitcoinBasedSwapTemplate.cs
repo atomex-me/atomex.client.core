@@ -551,12 +551,37 @@ namespace Atomex.Blockchain.BitcoinBased
             return ops[3].Code == OpcodeType.OP_0;
         }
 
+        /// <summary>
+        /// Check if the <paramref name="script"/> is P2Sh atomic swap redeem script to P2Pkh address
+        /// </summary>
+        /// <param name="script"></param>
+        /// <returns></returns>
+        public static bool IsP2PkhScriptSwapRedeem(Script script)
+        {
+            var ops = script.ToOps().ToList();
+
+            if (ops.Count != 5)
+                return false;
+
+            return ops[3].Code == OpcodeType.OP_0;
+        }
+
         public static byte[] ExtractSecretFromP2PkhSwapRedeem(Script script)
         {
             var ops = script.ToOps().ToList();
 
             if (ops.Count != 4)
                 throw new ArgumentException("Script is not P2PKH swap redeem", nameof(script));
+
+            return ops[2].PushData;
+        }
+
+        public static byte[] ExtractSecretFromP2PkhScriptSwapRedeem(Script script)
+        {
+            var ops = script.ToOps().ToList();
+
+            if (ops.Count != 5)
+                throw new ArgumentException("Script is not P2PKH script swap redeem", nameof(script));
 
             return ops[2].PushData;
         }

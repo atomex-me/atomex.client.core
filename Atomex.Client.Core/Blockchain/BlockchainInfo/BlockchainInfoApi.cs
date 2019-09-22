@@ -83,24 +83,13 @@ namespace Atomex.Blockchain.BlockchainInfo
                 tx: Transaction.Parse(await GetTxHexAsync(txId).ConfigureAwait(false), _currency.Network),
                 blockInfo: new BlockInfo
                 {
-                    Fees = await GetTxFeeAsync(txId).ConfigureAwait(false),
                     Confirmations = (int) (await GetBlockCountAsync().ConfigureAwait(false) - tx.BlockHeight + 1),
+                    BlockHash = null,
                     BlockHeight = tx.BlockHeight,
                     FirstSeen = tx.Time,
                     BlockTime = tx.Time
-                });
-        }
-
-        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsByIdAsync(
-            string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var tx = await GetTransactionAsync(txId, cancellationToken)
-                .ConfigureAwait(false);
-
-            return tx != null
-                ? new[] { tx }
-                : Enumerable.Empty<IBlockchainTransaction>();
+                },
+                fees: await GetTxFeeAsync(txId).ConfigureAwait(false));
         }
 
         public async Task<string> BroadcastAsync(
@@ -108,10 +97,11 @@ namespace Atomex.Blockchain.BlockchainInfo
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var tx = (IBitcoinBasedTransaction)transaction;
-
             var txHex = tx.ToBytes().ToHexString();
 
             Log.Debug("TxHex: {@txHex}", txHex);
+
+            tx.State = BlockchainTransactionState.Pending;
 
             await new TransactionPusher()
                 .PushTransactionAsync(txHex)

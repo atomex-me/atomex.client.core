@@ -21,6 +21,7 @@ namespace Atomex
 
         IAtomexApp UseCurrenciesProvider(ICurrenciesProvider currenciesProvider);
         IAtomexApp UseSymbolsProvider(ISymbolsProvider symbolsProvider);
+        IAtomexApp UseCurrenciesUpdater(ICurrenciesUpdater currenciesUpdater);
         IAtomexApp UseAccount(IAccount account, bool restartTerminal = false);
         IAtomexApp UseQuotesProvider(ICurrencyQuotesProvider quotesProvider);
         IAtomexApp UseOrderBooksProvider(ICurrencyOrderBookProvider orderBooksProvider);

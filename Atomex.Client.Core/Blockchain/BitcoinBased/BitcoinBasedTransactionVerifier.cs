@@ -23,14 +23,7 @@ namespace Atomex.Blockchain.BitcoinBased
             if (swap == null)
                 throw new ArgumentNullException(nameof(swap));
 
-            // check swap output
-            if (!tx.SwapOutputs().Any()) {
-                error = new Error(
-                    code: Errors.InvalidSwapPaymentTx,
-                    description: $"No swap outputs in tx @{tx.Id}",
-                    swap: swap);
-                return false;
-            }
+            var partyRedeemScript = new Script(Convert.FromBase64String(swap.PartyRedeemScript));
 
             var targetAddressHash = new BitcoinPubKeyAddress(swap.ToAddress)
                 .Hash
@@ -38,21 +31,24 @@ namespace Atomex.Blockchain.BitcoinBased
 
             var hasSwapOutput = false;
 
-            foreach (var txOutput in tx.SwapOutputs())
+            foreach (var txOutput in tx.Outputs)
             {
                 try
                 {
                     var output = (BitcoinBasedTxOutput)txOutput;
 
+                    if (!output.IsPayToScriptHash(partyRedeemScript))
+                        continue;
+
                     // check address
                     var outputTargetAddressHash = BitcoinBasedSwapTemplate.ExtractTargetPkhFromHtlcP2PkhSwapPayment(
-                        script: output.Coin.TxOut.ScriptPubKey);
+                        script: partyRedeemScript);
 
                     if (!outputTargetAddressHash.SequenceEqual(targetAddressHash))
                         continue;
 
                     var outputSecretHash = BitcoinBasedSwapTemplate.ExtractSecretHashFromHtlcP2PkhSwapPayment(
-                        script: output.Coin.TxOut.ScriptPubKey);
+                        script: partyRedeemScript);
 
                     if (!outputSecretHash.SequenceEqual(secretHash))
                         continue;
@@ -61,7 +57,7 @@ namespace Atomex.Blockchain.BitcoinBased
 
                     // check swap output refund lock time
                     var outputLockTime = BitcoinBasedSwapTemplate.ExtractLockTimeFromHtlcP2PkhSwapPayment(
-                        script: output.Coin.TxOut.ScriptPubKey);
+                        script: partyRedeemScript);
 
                     var swapTimeUnix = (long)swap.TimeStamp.ToUniversalTime().ToUnixTime();
 

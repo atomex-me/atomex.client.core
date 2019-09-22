@@ -1,10 +1,9 @@
 ﻿using Atomex.Blockchain.Abstract;
-using Atomex.Common;
-using Atomex.Common.Bson;
+using Atomex.Blockchain.BitcoinBased;
 using LiteDB;
 using NBitcoin;
 
-namespace Atomex.Blockchain.BitcoinBased
+namespace Atomex.Common.Bson
 {
     public class BitcoinBasedTxOutputToBsonSerializer : BsonSerializer<BitcoinBasedTxOutput>
     {

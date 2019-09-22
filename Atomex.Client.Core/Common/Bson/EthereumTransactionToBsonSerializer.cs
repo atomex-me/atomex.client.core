@@ -7,9 +7,10 @@ namespace Atomex.Common.Bson
     {
         public override void Register(BsonMapper bsonMapper)
         {
-            bsonMapper.Entity<EthereumTransaction>()
-                .Id(tx => tx.UniqueId)
-                .Field(tx => tx.Id, "TxId");
+            //bsonMapper.Entity<EthereumTransaction>()
+            //    .DbRef()
+            //    .Id(tx => tx.UniqueId)
+            //    .Field(tx => tx.Id, "TxId");
         }
     }
 }

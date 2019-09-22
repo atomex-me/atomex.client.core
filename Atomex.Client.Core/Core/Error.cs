@@ -45,6 +45,7 @@
         public const int InvalidRequest = 3;
         public const int InvalidMessage = 4;
         public const int PermissionError = 5;
+        public const int InternalError = 6;
 
         public const int IsCriminalWallet = 1000;
         public const int InvalidSymbol = 1001;
@@ -75,6 +76,7 @@
         public const int InvalidSwapPaymentTx = 3006;
         public const int InvalidRefundLockTime = 3007;
         public const int InvalidSwapPaymentTxAmount = 3008;
+        public const int InvalidRedeemScript = 3009;
 
         public const int NoLiquidity = 4000;
     }

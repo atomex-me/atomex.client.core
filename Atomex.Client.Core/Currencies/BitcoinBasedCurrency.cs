@@ -17,8 +17,11 @@ namespace Atomex
         public const int P2PkhSwapRefundSigSize = 146; //1 + 72 + 72 + 1
         public const int P2PkhSwapRedeemSigSize = 82; //65 + 16 + 1;
         public const int P2WPkhScriptSigSize = P2PkhScriptSigSize / 4;
-        //public const int P2WPkhCompressedScriptSigSize = P2PkhCompressedScriptSigSize / 4;
-        public const int RedeemTxSize = 225;
+
+        public const int P2PShSwapRefundScriptSigSize = 208;
+        public const int P2PShSwapRedeemScriptSigSize = 241;
+
+        public const int RedeemTxSize = 300;
 
         public Network Network { get; protected set; }
 
@@ -121,14 +124,16 @@ namespace Atomex
             string destinationAddress,
             string changeAddress,
             long amount,
-            long fee)
+            long fee,
+            DateTimeOffset lockTime)
         {
             return CreateP2PkhTx(
                 unspentOutputs: unspentOutputs,
                 destinationAddress: destinationAddress,
                 changeAddress: changeAddress,
                 amount: amount,
-                fee: fee);
+                fee: fee,
+                lockTime: lockTime);
         }
 
         public IBitcoinBasedTransaction CreateP2PkhTx(
@@ -136,7 +141,8 @@ namespace Atomex
             string destinationAddress,
             string changeAddress,
             long amount,
-            long fee)
+            long fee,
+            DateTimeOffset lockTime)
         {
             var coins = unspentOutputs
                 .Cast<BitcoinBasedTxOutput>()
@@ -154,7 +160,8 @@ namespace Atomex
                 destination: destination,
                 change: change,
                 amount: amount,
-                fee: fee);
+                fee: fee,
+                lockTime: lockTime);
         }
 
         public IBitcoinBasedTransaction CreateP2WPkhTx(
@@ -315,32 +322,32 @@ namespace Atomex
                 fee: fee);
         }
 
-        public virtual IBitcoinBasedTransaction CreateSwapRefundTx(
-            IEnumerable<ITxOutput> unspentOutputs,
-            string destinationAddress,
-            string changeAddress,
-            long amount,
-            long fee,
-            DateTimeOffset lockTime)
-        {
-            var coins = unspentOutputs
-                .Cast<BitcoinBasedTxOutput>()
-                .Select(o => o.Coin);
+        //public virtual IBitcoinBasedTransaction CreateSwapRefundTx(
+        //    IEnumerable<ITxOutput> unspentOutputs,
+        //    string destinationAddress,
+        //    string changeAddress,
+        //    long amount,
+        //    long fee,
+        //    DateTimeOffset lockTime)
+        //{
+        //    var coins = unspentOutputs
+        //        .Cast<BitcoinBasedTxOutput>()
+        //        .Select(o => o.Coin);
 
-            var destination = BitcoinAddress.Create(destinationAddress, Network)
-                .ScriptPubKey;
+        //    var destination = BitcoinAddress.Create(destinationAddress, Network)
+        //        .ScriptPubKey;
 
-            var change = BitcoinAddress.Create(changeAddress, Network)
-                .ScriptPubKey;
+        //    var change = BitcoinAddress.Create(changeAddress, Network)
+        //        .ScriptPubKey;
 
-            return BitcoinBasedTransaction.CreateTransaction(
-                currency: this,
-                coins: coins,
-                destination: destination,
-                change: change,
-                amount: amount,
-                fee: fee,
-                lockTime: lockTime);
-        }
+        //    return BitcoinBasedTransaction.CreateTransaction(
+        //        currency: this,
+        //        coins: coins,
+        //        destination: destination,
+        //        change: change,
+        //        amount: amount,
+        //        fee: fee,
+        //        lockTime: lockTime);
+        //}
     }
 }

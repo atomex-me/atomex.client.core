@@ -27,6 +27,18 @@ namespace Atomex
             }
         }
 
+        public void Update(IConfiguration configuration)
+        {
+            foreach (var network in Networks)
+            {
+                var networkConfiguration = configuration.GetSection(network.ToString());
+
+                if (networkConfiguration != null && _currencies.TryGetValue(network, out var currencies))
+                    currencies.Update(networkConfiguration);
+                
+            }
+        }
+
         public ICurrencies GetCurrencies(Network network)
         {
             return _currencies[network];

@@ -228,7 +228,8 @@ namespace Atomex.Subsystems
 
         private void OnUnconfirmedTransactionAddedEventHandler(object sender, TransactionEventArgs e)
         {
-            TrackUnconfirmedTransaction(e.Transaction);
+            if (!e.Transaction.IsConfirmed && e.Transaction.State != BlockchainTransactionState.Failed)
+                TrackUnconfirmedTransaction(e.Transaction);
         }
 
         #endregion
@@ -271,6 +272,7 @@ namespace Atomex.Subsystems
         private void OnExchangeErrorEventHandler(object sender, ErrorEventArgs args)
         {
             Log.Error("Exchange service error {@Error}", args.Error);
+            Error?.Invoke(this, new TerminalErrorEventArgs(TerminalService.Exchange, args.Error));
         }
 
         private async void OnExchangeOrderEventHandler(object sender, OrderEventArgs args)
@@ -347,6 +349,7 @@ namespace Atomex.Subsystems
         private void OnMarketDataErrorEventHandler(object sender, ErrorEventArgs args)
         {
             Log.Warning("Market data service error {@Error}", args.Error);
+            Error?.Invoke(this, new TerminalErrorEventArgs(TerminalService.Exchange, args.Error));
         }
 
         private void OnQuotesReceivedEventHandler(object sender, QuotesEventArgs args)
@@ -415,7 +418,7 @@ namespace Atomex.Subsystems
                     .ConfigureAwait(false);
 
                 foreach (var tx in txs)
-                    if (!tx.IsConfirmed())
+                    if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
                         TrackUnconfirmedTransaction(tx);
             }
             catch (Exception e)
@@ -426,9 +429,6 @@ namespace Atomex.Subsystems
 
         private void TrackUnconfirmedTransaction(IBlockchainTransaction transaction)
         {
-            if (transaction.IsConfirmed())
-                return;
-
             TaskPerformer.EnqueueTask(new TransactionConfirmationCheckTask
             {
                 Currency = transaction.Currency,
@@ -441,12 +441,9 @@ namespace Atomex.Subsystems
                         if (!(task is TransactionConfirmationCheckTask confirmationCheckTask))
                             return;
 
-                        foreach (var tx in confirmationCheckTask.Transactions)
-                        {
-                            await Account
-                                .UpsertTransactionAsync(tx: tx)
-                                .ConfigureAwait(false);
-                        }
+                        await Account
+                            .UpsertTransactionAsync(confirmationCheckTask.Tx)
+                            .ConfigureAwait(false);
 
                         await Account
                             .UpdateBalanceAsync(confirmationCheckTask.Currency)
@@ -463,13 +460,13 @@ namespace Atomex.Subsystems
         private void OnError(TerminalService service, string description)
         {
             Log.Error(description);
-            Error?.Invoke(this, new TerminalErrorEventArgs(service, description));
+            Error?.Invoke(this, new TerminalErrorEventArgs(service, new Error(Errors.InternalError, description)));
         }
 
         private void OnError(TerminalService service, Exception exception)
         {
             Log.Error(exception, exception.Message);
-            Error?.Invoke(this, new TerminalErrorEventArgs(service, exception.Message));
+            Error?.Invoke(this, new TerminalErrorEventArgs(service, new Error(Errors.InternalError, exception.Message)));
         }
     }
 }

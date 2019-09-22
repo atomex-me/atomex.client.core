@@ -122,6 +122,7 @@ namespace Atomex.Blockchain.Tezos
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var tx = (TezosTransaction) transaction;
+            tx.State = BlockchainTransactionState.Pending;
 
             var rpc = new Rpc(_rpcProvider);
 
@@ -165,38 +166,36 @@ namespace Atomex.Blockchain.Tezos
                     requestUri: requestUri,
                     responseHandler: responseContent =>
                     {
-                        var operationHeader = JsonConvert.DeserializeObject<OperationHeader<OperationType<Operation>>>(responseContent);
+                        var txs = TxsFromOperation(JsonConvert.DeserializeObject<OperationHeader<OperationType<Operation>>>(responseContent))
+                            .Cast<TezosTransaction>()
+                            .ToList();
 
-                        return TxsFromOperation(operationHeader).FirstOrDefault();
+                        var internalTxs = txs
+                            .Where(t => t.IsInternal)
+                            .ToList();
+
+                        var tx = txs.FirstOrDefault(t => !t.IsInternal);
+
+                        if (tx != null)
+                        {
+                            if (internalTxs.Any())
+                                tx.InternalTxs = internalTxs;
+
+                            return tx;
+                        }
+
+                        Log.Warning("Non internal transaction not found");
+                        return null;
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-        }
-
-        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsByIdAsync(
-            string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var requestUri = $"v3/operation/{txId}";
-
-            return await HttpHelper.GetAsync(
-                    baseUri: _apiBaseUrl,
-                    requestUri: requestUri,
-                    responseHandler: responseContent =>
-                    {
-                        var operationHeader = JsonConvert.DeserializeObject<OperationHeader<OperationType<Operation>>>(responseContent);
-
-                        return TxsFromOperation(operationHeader);
-                    },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false) ?? Enumerable.Empty<IBlockchainTransaction>();
         }
 
         public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var transactions = new List<IBlockchainTransaction>();
+            var txs = new List<IBlockchainTransaction>();
 
             for (var p = 0; ; p++)
             {
@@ -207,10 +206,10 @@ namespace Atomex.Blockchain.Tezos
                 if (!txsOnPage.Any())
                     break;
 
-                transactions.AddRange(txsOnPage);
+                txs.AddRange(txsOnPage);
             }
 
-            return transactions;
+            return txs;
         }
 
         public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
@@ -220,20 +219,20 @@ namespace Atomex.Blockchain.Tezos
         {
             var requestUri = $"v3/operations/{address}?type=Transaction&p={page}"; // TODO: use all types!!!
 
-            return await HttpHelper.GetAsync<IEnumerable<IBlockchainTransaction>>(
+            return await HttpHelper.GetAsync(
                     baseUri: _apiBaseUrl,
                     requestUri: requestUri,
                     responseHandler: responseContent =>
                     {
-                        var transactions = new List<IBlockchainTransaction>();
+                        var operations = JsonConvert
+                            .DeserializeObject<List<OperationHeader<OperationType<Operation>>>>(responseContent);
 
-                        var operations =
-                            JsonConvert.DeserializeObject<List<OperationHeader<OperationType<Operation>>>>(responseContent);
+                        var txs = new List<IBlockchainTransaction>();
 
-                        foreach (var operation in operations)
-                            transactions.AddRange(TxsFromOperation(operation));
-
-                        return transactions;
+                        foreach (var operation in operations)    
+                            txs.AddRange(TxsFromOperation(operation));
+                        
+                        return txs;
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false) ?? Enumerable.Empty<IBlockchainTransaction>();
@@ -262,7 +261,7 @@ namespace Atomex.Blockchain.Tezos
         private IEnumerable<IBlockchainTransaction> TxsFromOperation(
             OperationHeader<OperationType<Operation>> operationHeader)
         {
-            var txs = new List<IBlockchainTransaction>();
+            var txs = new List<TezosTransaction>();
 
             var internalCounters = new Dictionary<string, int>();
 
@@ -291,9 +290,16 @@ namespace Atomex.Blockchain.Tezos
                         }
                     }
 
-                    txs.Add(new TezosTransaction(_currency)
+                    var tx = new TezosTransaction
                     {
                         Id = operationHeader.Hash,
+                        Currency = _currency,
+                        State = operation.Failed
+                            ? BlockchainTransactionState.Failed
+                            : BlockchainTransactionState.Confirmed,
+                        Type = BlockchainTransactionType.Unknown,        
+                        CreationTime = operation.TimeStamp,
+
                         From = operation.Source.Tz,
                         To = operation.Destination.Tz,
                         Amount = decimal.Parse(operation.Amount),
@@ -304,19 +310,21 @@ namespace Atomex.Blockchain.Tezos
                         Params = operation.Parameters != null
                             ? JObject.Parse(operation.Parameters)
                             : null,
-                        Type = TezosTransaction.UnknownTransaction,
+
                         IsInternal = operation.Internal,
                         InternalIndex = internalIndex,
 
                         BlockInfo = new BlockInfo
                         {
-                            Fees = operation.Fee,
-                            FirstSeen = operation.TimeStamp,
-                            BlockTime = operation.TimeStamp,
+                            Confirmations = operation.Failed ? 0 : 1,
+                            BlockHash = operationHeader.BlockHash,
                             BlockHeight = operation.OpLevel,
-                            Confirmations = operation.Failed ? 0 : 1
+                            BlockTime = operation.TimeStamp,
+                            FirstSeen = operation.TimeStamp,
                         }
-                    });
+                    };
+
+                    txs.Add(tx);
                 }
                 catch (Exception e)
                 {

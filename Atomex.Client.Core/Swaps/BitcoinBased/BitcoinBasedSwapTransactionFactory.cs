@@ -2,20 +2,18 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
-using Atomex.Core.Entities;
 using Serilog;
 
 namespace Atomex.Swaps.BitcoinBased
 {
     public class BitcoinBasedSwapTransactionFactory : IBitcoinBasedSwapTransactionFactory
     {
-        public async Task<IBitcoinBasedTransaction> CreateSwapPaymentTxAsync(
+        public async Task<(IBitcoinBasedTransaction, byte[])> CreateSwapPaymentTxAsync(
             BitcoinBasedCurrency currency,
-            ClientSwap swap,
+            long amount,
             IEnumerable<string> fromWallets,
             string refundAddress,
             string toAddress,
@@ -30,10 +28,7 @@ namespace Atomex.Swaps.BitcoinBased
                 .ToList();
 
             var fee = 0L;
-            var orderAmount = (long)(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price) *
-                              currency.DigitsMultiplier);
-
-            var requiredAmount = orderAmount + fee;
+            var requiredAmount = amount + fee;
 
             long usedAmount;
             IList<ITxOutput> usedOutputs;
@@ -52,77 +47,77 @@ namespace Atomex.Swaps.BitcoinBased
 
                 var estimatedSigSize = EstimateSigSize(usedOutputs);
 
-                tx = currency.CreateHtlcP2PkhSwapPaymentTx(
+                tx = currency.CreateHtlcP2PkhScriptSwapPaymentTx(
                     unspentOutputs: usedOutputs,
                     aliceRefundAddress: refundAddress,
                     bobAddress: toAddress,
                     lockTime: lockTime,
                     secretHash: secretHash,
                     secretSize: secretSize,
-                    amount: orderAmount,
-                    fee: fee);
+                    amount: amount,
+                    fee: fee,
+                    redeemScript: out var _);
 
                 var txSize = tx.VirtualSize();
 
                 fee = (long)(currency.FeeRate * (txSize + estimatedSigSize));
 
-                requiredAmount = orderAmount + fee;
+                requiredAmount = amount + fee;
 
             } while (usedAmount < requiredAmount);
 
-            tx = currency.CreateHtlcP2PkhSwapPaymentTx(
+            tx = currency.CreateHtlcP2PkhScriptSwapPaymentTx(
                 unspentOutputs: usedOutputs,
                 aliceRefundAddress: refundAddress,
                 bobAddress: toAddress,
                 lockTime: lockTime,
                 secretHash: secretHash,
                 secretSize: secretSize,
-                amount: orderAmount,
-                fee: fee);
+                amount: amount,
+                fee: fee,
+                redeemScript: out var redeemScript);
 
-            return tx;
+            return (tx, redeemScript);
         }
 
         public Task<IBitcoinBasedTransaction> CreateSwapRefundTxAsync(
             IBitcoinBasedTransaction paymentTx,
-            ClientSwap swap,
+            long amount,
             string refundAddress,
-            DateTimeOffset lockTime)
+            DateTimeOffset lockTime,
+            byte[] redeemScript)
         {
             var currency = (BitcoinBasedCurrency)paymentTx.Currency;
-            var orderAmount = (long)(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price) *
-                                     currency.DigitsMultiplier);
 
-            var swapOutputs = paymentTx.Outputs
+            var swapOutput = paymentTx.Outputs
                 .Cast<BitcoinBasedTxOutput>()
-                .Where(o => o.Value == orderAmount && o.IsSwapPayment)
-                .ToList();
+                .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));
 
-            if (swapOutputs.Count != 1)
-                throw new Exception("Payment tx must have only one swap payment output");
+            if (swapOutput == null)
+                throw new Exception("Can't find pay tp script hash output");
 
-            var estimatedSigSize = EstimateSigSize(swapOutputs, forRefund: true);
+            var estimatedSigSize = EstimateSigSize(swapOutput, forRefund: true);
 
             var txSize = currency
-                .CreateSwapRefundTx(
-                    unspentOutputs: swapOutputs,
+                .CreateP2PkhTx(
+                    unspentOutputs: new ITxOutput[] { swapOutput }, 
                     destinationAddress: refundAddress,
                     changeAddress: refundAddress,
-                    amount: orderAmount,
+                    amount: amount,
                     fee: 0,
                     lockTime: lockTime)
                 .VirtualSize();
 
             var fee = (long)(currency.FeeRate * (txSize + estimatedSigSize));
 
-            if (orderAmount - fee < 0)
-                throw new Exception($"Insufficient funds for fee. Available {orderAmount}, required {fee}");
+            if (amount - fee < 0)
+                throw new Exception($"Insufficient funds for fee. Available {amount}, required {fee}");
 
-            var tx = currency.CreateSwapRefundTx(
-                unspentOutputs: swapOutputs,
+            var tx = currency.CreateP2PkhTx(
+                unspentOutputs: new ITxOutput[] { swapOutput },
                 destinationAddress: refundAddress,
                 changeAddress: refundAddress,
-                amount: orderAmount - fee,
+                amount: amount - fee,
                 fee: fee,
                 lockTime: lockTime);
 
@@ -131,65 +126,77 @@ namespace Atomex.Swaps.BitcoinBased
 
         public Task<IBitcoinBasedTransaction> CreateSwapRedeemTxAsync(
             IBitcoinBasedTransaction paymentTx,
-            ClientSwap swap,
-            string redeemAddress)
+            long amount,
+            string redeemAddress,
+            byte[] redeemScript)
         {
             var currency = (BitcoinBasedCurrency)paymentTx.Currency;
-            var orderAmount = (long)(AmountHelper.QtyToAmount(swap.Side.Opposite(), swap.Qty, swap.Price) *
-                                     currency.DigitsMultiplier);
 
-            var swapOutputs = paymentTx
-                .SwapOutputs()
-                .ToList();
+            var swapOutput = paymentTx.Outputs
+                .Cast<BitcoinBasedTxOutput>()
+                .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));
 
-            if (swapOutputs.Count != 1)
-                throw new Exception("Payment tx must have only one swap payment output");
+            if (swapOutput == null)
+                throw new Exception("Can't find pay tp script hash output");
 
-            var estimatedSigSize = EstimateSigSize(swapOutputs);
+            var estimatedSigSize = EstimateSigSize(swapOutput, forRedeem: true);
 
             var txSize = currency
                 .CreateP2PkhTx(
-                    unspentOutputs: swapOutputs,
+                    unspentOutputs: new ITxOutput[] { swapOutput },
                     destinationAddress: redeemAddress,
                     changeAddress: redeemAddress,
-                    amount: orderAmount,
-                    fee: 0)
+                    amount: amount,
+                    fee: 0,
+                    lockTime: DateTimeOffset.MinValue)
                 .VirtualSize();
 
             var fee = (long)(currency.FeeRate * (txSize + estimatedSigSize));
 
-            if (orderAmount - fee < 0)
-                throw new Exception($"Insufficient funds for fee. Available {orderAmount}, required {fee}");
+            if (amount - fee < 0)
+                throw new Exception($"Insufficient funds for fee. Available {amount}, required {fee}");
 
             var tx = currency.CreateP2PkhTx(
-                unspentOutputs: swapOutputs,
+                unspentOutputs: new ITxOutput[] { swapOutput },
                 destinationAddress: redeemAddress,
                 changeAddress: redeemAddress,
-                amount: orderAmount - fee,
-                fee: fee);
+                amount: amount - fee,
+                fee: fee,
+                lockTime: DateTimeOffset.MinValue);
 
             return Task.FromResult(tx);
         }
 
+        private static long EstimateSigSize(ITxOutput output, bool forRefund = false, bool forRedeem = false)
+        {
+            if (!(output is BitcoinBasedTxOutput btcBasedOutput))
+                return 0;
+
+            var sigSize = 0L;
+
+            if (btcBasedOutput.IsP2Pkh)
+                sigSize += BitcoinBasedCurrency.P2PkhScriptSigSize; // use compressed?
+            else if (btcBasedOutput.IsSegwitP2Pkh)
+                sigSize += BitcoinBasedCurrency.P2WPkhScriptSigSize;
+            else if (btcBasedOutput.IsP2PkhSwapPayment || btcBasedOutput.IsHtlcP2PkhSwapPayment)
+                sigSize += forRefund
+                    ? BitcoinBasedCurrency.P2PkhSwapRefundSigSize
+                    : BitcoinBasedCurrency.P2PkhSwapRedeemSigSize;
+            else if (btcBasedOutput.IsP2Sh)
+                sigSize += forRefund
+                    ? BitcoinBasedCurrency.P2PShSwapRefundScriptSigSize
+                    : (forRedeem
+                        ? BitcoinBasedCurrency.P2PShSwapRedeemScriptSigSize
+                        : BitcoinBasedCurrency.P2PkhScriptSigSize); // todo: probably incorrect
+            else
+                Log.Warning("Unknown output type, estimated fee may be wrong");
+
+            return sigSize;
+        }
+
         private static long EstimateSigSize(IEnumerable<ITxOutput> outputs, bool forRefund = false)
         {
-            var result = 0L;
-
-            foreach (var output in outputs.Cast<BitcoinBasedTxOutput>())
-            {
-                if (output.IsP2Pkh)
-                    result += BitcoinBasedCurrency.P2PkhScriptSigSize; // use compressed?
-                else if (output.IsSegwitP2Pkh)
-                    result += BitcoinBasedCurrency.P2WPkhScriptSigSize;
-                else if (output.IsP2PkhSwapPayment || output.IsHtlcP2PkhSwapPayment)
-                    result += forRefund
-                        ? BitcoinBasedCurrency.P2PkhSwapRefundSigSize
-                        : BitcoinBasedCurrency.P2PkhSwapRedeemSigSize;
-                else
-                    Log.Warning("Unknown output type, estimated fee may be wrong");
-            }
-
-            return result;
+            return outputs.ToList().Sum(output => EstimateSigSize(output, forRefund));
         }
     }
 }

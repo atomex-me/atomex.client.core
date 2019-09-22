@@ -53,60 +53,13 @@ namespace Atomex.Swaps.BitcoinBased
             return tx;
         }
 
-        public async Task<IBitcoinBasedTransaction> SignRefundTxAsync(
+        public Task<IBitcoinBasedTransaction> SignRefundTxAsync(
             IBitcoinBasedTransaction refundTx,
             IBitcoinBasedTransaction paymentTx,
-            WalletAddress refundAddress)
+            WalletAddress refundAddress,
+            byte[] redeemScript)
         {
-            var tx = refundTx.Clone();
-
-            if (tx.Inputs.Length != 1)
-            {
-                Log.Error("Refund transaction has zero or more than one input");
-                return null;
-            }
-
-            var spentOutput = paymentTx.Outputs.FirstOrDefault(o => o.IsSwapPayment);
-            if (spentOutput == null)
-            {
-                Log.Error("Payment transaction hasn't swap output");
-                return null;
-            }
-
-            // firstly check, if transaction is already signed
-            if (tx.Verify(spentOutput))
-                return tx;
-
-            // clean any signature, if exists
-            tx.NonStandardSign(Script.Empty, 0);
-
-            var sigHash = tx.GetSignatureHash(spentOutput);
-
-            var signature = await Account.Wallet
-                .SignHashAsync(
-                    hash: sigHash,
-                    address: refundAddress)
-                .ConfigureAwait(false);
-
-            if (signature == null)
-            {
-                Log.Error("Refund transaction signature error");
-                return null;
-            }
-
-            var refundScript = BitcoinBasedSwapTemplate.GenerateHtlcSwapRefund(
-                aliceRefundSig: signature,
-                aliceRefundPubKey: refundAddress.PublicKeyBytes());
-
-            tx.NonStandardSign(refundScript, spentOutput);
-
-            if (!tx.Verify(spentOutput, out var errors))
-            {
-                Log.Error("Refund transaction verify errors: {errors}", errors);
-                return null;
-            }
-
-            return tx;
+            return SignHtlcSwapRefundForP2ShTxAsync(refundTx, paymentTx, refundAddress, redeemScript);
         }
 
         public async Task<IBitcoinBasedTransaction> SignHtlcSwapRefundForP2ShTxAsync(
@@ -125,11 +78,11 @@ namespace Atomex.Swaps.BitcoinBased
 
             var spentOutput = paymentTx.Outputs
                 .Cast<BitcoinBasedTxOutput>()
-                .FirstOrDefault(o => o.IsP2Sh);
+                .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));
 
             if (spentOutput == null)
             {
-                Log.Error("Payment transaction hasn't swap output");
+                Log.Error("Payment transaction hasn't pay to script hash output for redeem script");
                 return null;
             }
 
@@ -170,52 +123,17 @@ namespace Atomex.Swaps.BitcoinBased
             return tx;
         }
 
-        public async Task<IBitcoinBasedTransaction> SignRedeemTxAsync(
+        public Task<IBitcoinBasedTransaction> SignRedeemTxAsync(
             IBitcoinBasedTransaction redeemTx,
             IBitcoinBasedTransaction paymentTx,
             WalletAddress redeemAddress,
-            byte[] secret)
+            byte[] secret,
+            byte[] redeemScript)
         {
-            var tx = redeemTx.Clone();
-
-            var spentOutput = paymentTx.Outputs.FirstOrDefault(o => o.IsSwapPayment);
-            if (spentOutput == null)
-            {
-                Log.Error("Payment transaction hasn't swap output");
-                return null;
-            }
-
-            var sigHash = tx.GetSignatureHash(spentOutput);
-
-            var signature = await Account.Wallet
-                .SignHashAsync(
-                    hash: sigHash,
-                    address: redeemAddress)
-                .ConfigureAwait(false);
-
-            if (signature == null)
-            {
-                Log.Error("Redeem transaction signature error");
-                return null;
-            }
-
-            var redeemScript = BitcoinBasedSwapTemplate.GenerateHtlcP2PkhSwapRedeem(
-                sig: signature,
-                pubKey: redeemAddress.PublicKeyBytes(),
-                secret: secret);
-
-            tx.NonStandardSign(redeemScript, spentOutput);
-
-            if (!tx.Verify(spentOutput, out var errors))
-            {
-                Log.Error("Redeem transaction verify errors: {errors}", errors);
-                return null;
-            }
-
-            return tx;
+            return SignHtlcSwapRedeemForP2ShTxAsync(redeemTx, paymentTx, redeemAddress, secret, redeemScript);
         }
 
-        public async Task<IBitcoinBasedTransaction> SignHtlcRedeemTxForP2ShAsync(
+        public async Task<IBitcoinBasedTransaction> SignHtlcSwapRedeemForP2ShTxAsync(
             IBitcoinBasedTransaction redeemTx,
             IBitcoinBasedTransaction paymentTx,
             WalletAddress redeemAddress,
@@ -226,11 +144,11 @@ namespace Atomex.Swaps.BitcoinBased
 
             var spentOutput = paymentTx.Outputs
                 .Cast<BitcoinBasedTxOutput>()
-                .FirstOrDefault(o => o.IsP2Sh);
+                .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));
 
             if (spentOutput == null)
             {
-                Log.Error("Payment transaction hasn't swap output");
+                Log.Error("Payment transaction hasn't pay to script hash output for redeem script");
                 return null;
             }
 

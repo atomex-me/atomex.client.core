@@ -24,7 +24,7 @@ namespace Atomex.Wallet
 
         private const string DefaultDataFileName = "data.db";
         private const string DefaultAccountKey = "Account:Default";
-        private const string ApiVersion = "1.0";
+        private const string ApiVersion = "1.1";
 
         public event EventHandler<CurrencyEventArgs> BalanceUpdated
         {
@@ -97,10 +97,7 @@ namespace Atomex.Wallet
 
             UserSettings = UserSettings.TryLoadFromFile(
                 pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
-                password: password);
-
-            if (UserSettings == null)
-                UserSettings = UserSettings.DefaultSettings;
+                password: password) ?? UserSettings.DefaultSettings;
         }
 
         #region Common
@@ -165,10 +162,11 @@ namespace Atomex.Wallet
             Currency currency,
             string to,
             decimal amount,
+            BlockchainTransactionType type,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             return GetAccountByCurrency(currency)
-                .EstimateFeeAsync(to, amount, cancellationToken);
+                .EstimateFeeAsync(to, amount, type, cancellationToken);
         }
 
         public async Task<Auth> CreateAuthRequestAsync(AuthNonce nonce, uint keyIndex = 0)
@@ -404,6 +402,11 @@ namespace Atomex.Wallet
             return result;
         }
 
+        public Task<bool> RemoveTransactionAsync(string id)
+        {
+            return DataRepository.RemoveTransactionByIdAsync(id);
+        }
+
         #endregion Transactions
 
         #region Outputs
@@ -445,6 +448,11 @@ namespace Atomex.Wallet
         public Task<IEnumerable<ITxOutput>> GetOutputsAsync(Currency currency, string address)
         {
             return DataRepository.GetOutputsAsync(currency, address);
+        }
+
+        public Task<ITxOutput> GetOutputAsync(Currency currency, string txId, uint index)
+        {
+            return DataRepository.GetOutputAsync(currency, txId, index);
         }
 
         #endregion Outputs

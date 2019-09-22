@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
@@ -12,8 +11,6 @@ using Atomex.Common;
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Serilog;
 
 namespace Atomex.Blockchain.Insight
 {
@@ -163,8 +160,6 @@ namespace Atomex.Blockchain.Insight
         private const int MinDelayBetweenRequestMs = 500; // 500
         private static readonly RequestLimitChecker RequestLimitChecker = new RequestLimitChecker(MinDelayBetweenRequestMs);
         private string BaseUri { get; }
-        private bool BroadcastThroughBlockcypher { get; }
-        private string BroadcastEndpoint { get; }
 
         public BitcoinBasedCurrency Currency { get; }
         public int MaxRequestAttemptsCount { get; } = 1;
@@ -173,12 +168,6 @@ namespace Atomex.Blockchain.Insight
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
             BaseUri = configuration["InsightBaseUri"];
-
-            if (configuration["InsightBroadcastThroughBlockcypher"] != null)
-            {
-                BroadcastThroughBlockcypher = bool.Parse(configuration["InsightBroadcastThroughBlockcypher"]);
-                BroadcastEndpoint = configuration["InsightBroadcastEndpoint"];
-            }
         }
 
         public InsightApi(BitcoinBasedCurrency currency, string baseUri)
@@ -357,37 +346,24 @@ namespace Atomex.Blockchain.Insight
                     {
                         var tx = JsonConvert.DeserializeObject<Tx>(responseContent);
 
-                        var fees = tx.Fees;
-
                         return new BitcoinBasedTransaction(
                             currency: Currency,
                             tx: Transaction.Parse(rawTxHex, Currency.Network),
                             blockInfo: new BlockInfo
                             {
-                                Fees = (long)(fees * Currency.DigitsMultiplier),
                                 Confirmations = tx.Confirmations,
+                                BlockHash = null,
                                 BlockHeight = tx.BlockHeight.GetValueOrDefault(0),
-                                FirstSeen = tx.Time.ToUtcDateTime(),
-                                BlockTime = tx.Time.ToUtcDateTime()
-                            }
+                                BlockTime = tx.BlockTime.ToUtcDateTime(),
+                                FirstSeen = tx.Time.ToUtcDateTime()
+                            },
+                            fees: (long) (tx.Fees * Currency.DigitsMultiplier)
                         );
                     },
                     requestLimitChecker: RequestLimitChecker,
                     maxAttempts: MaxRequestAttemptsCount,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-        }
-
-        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsByIdAsync(
-            string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var tx = await GetTransactionAsync(txId, cancellationToken)
-                .ConfigureAwait(false);
-
-            return tx != null
-                ? new[] { tx }
-                : Enumerable.Empty<IBlockchainTransaction>();
         }
 
         public async Task<string> BroadcastAsync(
@@ -397,9 +373,7 @@ namespace Atomex.Blockchain.Insight
             var tx = (IBitcoinBasedTransaction)transaction;
             var txHex = tx.ToBytes().ToHexString();
 
-            if (BroadcastThroughBlockcypher)
-                return await BroadcastThroughBlockcypherAsync(txHex, cancellationToken)
-                    .ConfigureAwait(false);
+            tx.State = BlockchainTransactionState.Pending;
 
             const string requestUri = "api/tx/send";
 
@@ -412,30 +386,6 @@ namespace Atomex.Blockchain.Insight
                     requestUri: requestUri,
                     content: content,
                     responseHandler: responseContent => JsonConvert.DeserializeObject<SendTxId>(responseContent).TxId,
-                    requestLimitChecker: RequestLimitChecker,
-                    maxAttempts: MaxRequestAttemptsCount,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        private async Task<string> BroadcastThroughBlockcypherAsync(
-            string txHex,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            const string requestUri = "txs/push";
-
-            return await HttpHelper.PostAsync(
-                    baseUri: BroadcastEndpoint,
-                    requestUri: requestUri,
-                    content: new StringContent($"{{\"tx\":\"{txHex}\"}}", Encoding.UTF8),
-                    responseHandler: responseContent =>
-                    {
-                        Log.Debug("Blockcypher response: {@response}", responseContent);
-
-                        var responseTx = JsonConvert.DeserializeObject<JObject>(responseContent);
-
-                        return responseTx["tx"]["hash"].ToString();
-                    },
                     requestLimitChecker: RequestLimitChecker,
                     maxAttempts: MaxRequestAttemptsCount,
                     cancellationToken: cancellationToken)

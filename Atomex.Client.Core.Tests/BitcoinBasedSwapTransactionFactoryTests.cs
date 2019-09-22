@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
+using Atomex.Common;
 using Atomex.Core;
 using Atomex.Core.Entities;
 using Atomex.Swaps.BitcoinBased;
@@ -41,7 +42,7 @@ namespace Atomex.Client.Core.Tests
         }
 
         [Fact]
-        public async Task<IBlockchainTransaction> CreateSwapPaymentTxTest()
+        public async Task<(IBlockchainTransaction, byte[])> CreateSwapPaymentTxTest()
         {
             var bitcoinApi = new Mock<IInOutBlockchainApi>();
             bitcoinApi.Setup(a => a.GetUnspentOutputsAsync(It.IsAny<string>(), null, new CancellationToken()))
@@ -76,10 +77,12 @@ namespace Atomex.Client.Core.Tests
                 Qty = lastQty
             };
 
-            var tx = await new BitcoinBasedSwapTransactionFactory()
+            var amount = (long)(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price) * bitcoin.DigitsMultiplier);
+
+            var (tx, redeemScript) = await new BitcoinBasedSwapTransactionFactory()
                 .CreateSwapPaymentTxAsync(
                     currency: bitcoin,
-                    swap: swap,
+                    amount: amount,
                     fromWallets: new []{ aliceBtcWallet.Address },
                     refundAddress: aliceBtcWallet.Address,
                     toAddress: bobBtcWallet.Address,
@@ -90,8 +93,9 @@ namespace Atomex.Client.Core.Tests
                 .ConfigureAwait(false);
 
             Assert.NotNull(tx);
+            Assert.NotNull(redeemScript);
 
-            return tx;
+            return (tx, redeemScript);
         }
 
 

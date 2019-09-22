@@ -18,6 +18,7 @@ namespace Atomex
         public ITerminal Terminal { get; private set; }
         public ICurrenciesProvider CurrenciesProvider { get; private set; }
         public ISymbolsProvider SymbolsProvider { get; private set; }
+        public ICurrenciesUpdater CurrenciesUpdater { get; private set; }
         public bool HasAccount => Account != null;
         public bool HasQuotesProvider => QuotesProvider != null;
         public bool HasOrderBooksProvider => OrderBooksProvider != null;
@@ -48,6 +49,12 @@ namespace Atomex
             return this;
         }
 
+        public IAtomexApp UseCurrenciesUpdater(ICurrenciesUpdater currenciesUpdater)
+        {
+            CurrenciesUpdater = currenciesUpdater;
+            return this;
+        }
+
         public IAtomexApp UseQuotesProvider(ICurrencyQuotesProvider quotesProvider)
         {
             QuotesProvider = quotesProvider;
@@ -75,6 +82,8 @@ namespace Atomex
             
             if (HasOrderBooksProvider)
                 OrderBooksProvider.Start();
+
+            CurrenciesUpdater?.UpdateAsync().FireAndForget();
 
             return this;
         }

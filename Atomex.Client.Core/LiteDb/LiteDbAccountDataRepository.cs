@@ -6,8 +6,6 @@ using System.Security;
 using System.Threading.Tasks;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
-using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Common.Bson;
 using Atomex.Core;
@@ -20,6 +18,8 @@ namespace Atomex.LiteDb
 {
     public class LiteDbAccountDataRepository : IAccountDataRepository
     {
+        private const ushort Version = 1;
+
         private const string OrdersCollectionName = "Orders";
         private const string SwapsCollectionName = "Swaps";
         private const string TransactionCollectionName = "Transactions";
@@ -68,6 +68,9 @@ namespace Atomex.LiteDb
 
             _sessionPassword = SessionPasswordHelper.GetSessionPassword(password);
             _bsonMapper = CreateBsonMapper(currencies, symbols);
+
+            var migrationManager = new LiteDbMigrationManager();
+            migrationManager.MigrateIfNeed(_pathToDb, _sessionPassword, Version);
         }
 
         private BsonMapper CreateBsonMapper(
@@ -84,7 +87,7 @@ namespace Atomex.LiteDb
                 .UseSerializer(new OrderToBsonSerializer())
                 .UseSerializer(new BitcoinBasedTransactionToBsonSerializer(currencies))
                 .UseSerializer(new BitcoinBasedTxOutputToBsonSerializer())
-                .UseSerializer(new EthereumTransactionToBsonSerializer())
+                //.UseSerializer(new EthereumTransactionToBsonSerializer())
                 .UseSerializer(new TezosTransactionToBsonSerializer())
                 .UseSerializer(new SwapToBsonSerializer(symbols));
         }
@@ -379,7 +382,28 @@ namespace Atomex.LiteDb
             var transactions = await GetTransactionsAsync(currency)
                 .ConfigureAwait(false);
 
-            return transactions.Where(t => !t.IsConfirmed());
+            return transactions.Where(t => !t.IsConfirmed);
+        }
+
+        public Task<bool> RemoveTransactionByIdAsync(string id)
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
+                    {
+                        var transactions = db.GetCollection(TransactionCollectionName);
+                        return Task.FromResult(transactions.Delete(id));
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error removing transaction");
+            }
+
+            return Task.FromResult(false);
         }
 
         #endregion Transactions
@@ -454,11 +478,10 @@ namespace Atomex.LiteDb
 
             foreach (var o in outputs)
             {
-                var isConfirmed = (await GetTransactionByIdAsync(currency, o.TxId)
-                    .ConfigureAwait(false))
-                    .IsConfirmed();
+                var tx = await GetTransactionByIdAsync(currency, o.TxId)
+                    .ConfigureAwait(false);
 
-                if (isConfirmed)
+                if (tx?.IsConfirmed ?? false)
                     confirmedOutputs.Add(o);
             }
 
@@ -522,10 +545,7 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<ITxOutput>());
         }
 
-        public Task<ITxOutput> GetOutputAsync(
-            Currency currency,
-            string txId,
-            uint index)
+        public Task<ITxOutput> GetOutputAsync(Currency currency, string txId, uint index)
         {
             try
             {

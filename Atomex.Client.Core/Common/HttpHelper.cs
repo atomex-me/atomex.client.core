@@ -73,7 +73,7 @@ namespace Atomex.Common
                     await requestLimitChecker.WaitIfNeeded(cancellationToken)
                         .ConfigureAwait(false);
 
-                Log.Debug("Send request: {@request}", requestUri);
+                Log.Debug("Send {@method} request: {@request}", method.ToString(), requestUri);
 
                 try
                 {

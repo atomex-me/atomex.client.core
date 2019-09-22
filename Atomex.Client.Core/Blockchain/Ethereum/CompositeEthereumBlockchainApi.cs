@@ -39,38 +39,44 @@ namespace Atomex.Blockchain.Ethereum
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            return _etherScanApi.GetTransactionsAsync(address, cancellationToken);
+            return _etherScanApi
+                .GetTransactionsAsync(address, cancellationToken);
         }
 
-        public Task<IBlockchainTransaction> GetTransactionAsync(
+        public async Task<IBlockchainTransaction> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            return _web3.GetTransactionAsync(txId, cancellationToken); //_etherScanApi.GetTransactionAsync(txId, cancellationToken); 
-        }
-
-        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsByIdAsync(
-            string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var tx = await _web3.GetTransactionAsync(txId, cancellationToken)
-                .ConfigureAwait(false);
+            var tx = (EthereumTransaction)await _web3
+                .GetTransactionAsync(txId, cancellationToken)
+                .ConfigureAwait(false); //_etherScanApi.GetTransactionAsync(txId, cancellationToken);
 
             if (tx == null)
-                return Enumerable.Empty<IBlockchainTransaction>();
+                return null;
 
-            var internalTransactions = await _etherScanApi
+            var internalTxs = (await _etherScanApi
                 .GetInternalTransactionsAsync(txId, cancellationToken)
-                .ConfigureAwait(false);
+                .ConfigureAwait(false))
+                .ToList();
 
-            return new List<IBlockchainTransaction>() {tx}.AddRangeEx(internalTransactions);
+            if (internalTxs.Any())
+            {
+                tx.InternalTxs = internalTxs
+                    .Cast<EthereumTransaction>()
+                    .ToList()
+                    .ForEachDo(itx => itx.State = tx.State)
+                    .ToList();
+            }
+
+            return tx;
         }
 
         public async Task<string> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            return await _web3.BroadcastAsync(transaction, cancellationToken)
+            return await _web3
+                .BroadcastAsync(transaction, cancellationToken)
                 .ConfigureAwait(false);
         }
     }

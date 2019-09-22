@@ -27,6 +27,7 @@ namespace Atomex.Wallet.Abstract
         Task<IBlockchainTransaction> GetTransactionByIdAsync(Currency currency, string txId);
         Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(Currency currency);
         Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(Currency currency);
+        Task<bool> RemoveTransactionByIdAsync(string id);
 
         #endregion Transactions
 

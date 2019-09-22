@@ -31,9 +31,11 @@ namespace Atomex.Api.Proto
                 .AddRequired(nameof(ClientSwap.ToAddress))
                 .AddRequired(nameof(ClientSwap.RewardForRedeem))
                 .AddRequired(nameof(ClientSwap.PaymentTxId))
+                .AddRequired(nameof(ClientSwap.RedeemScript))
                 .AddRequired(nameof(ClientSwap.PartyAddress))
                 .AddRequired(nameof(ClientSwap.PartyRewardForRedeem))
-                .AddRequired(nameof(ClientSwap.PartyPaymentTxId));
+                .AddRequired(nameof(ClientSwap.PartyPaymentTxId))
+                .AddRequired(nameof(ClientSwap.PartyRedeemScript));
 
             Model.Add(typeof(Response<ClientSwap>), true)
                 .AddRequired(nameof(Response<ClientSwap>.RequestId))

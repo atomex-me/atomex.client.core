@@ -1,18 +1,24 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
-using Atomex.Common;
-using Atomex.Common.Bson;
+using Atomex.Blockchain;
+using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.BitcoinBased;
 using Atomex.Core.Entities;
 using LiteDB;
 using NBitcoin;
 
-namespace Atomex.Blockchain.BitcoinBased
+namespace Atomex.Common.Bson
 {
     public class BitcoinBasedTransactionToBsonSerializer : BsonSerializer<BitcoinBasedTransaction>
     {
-        private const string CurrencyKey = nameof(BitcoinBasedTransaction.Currency);
-        private const string TxKey = nameof(BitcoinBasedTransaction.Tx);
-        private const string BlockInfoKey = nameof(BitcoinBasedTransaction.BlockInfo);
+        private const string CurrencyKey = nameof(IBlockchainTransaction.Currency);
+        private const string TxKey = "Tx";
+        private const string BlockInfoKey = nameof(IBlockchainTransaction.BlockInfo);
+        private const string StateKey = nameof(IBlockchainTransaction.State);
+        private const string TypeKey = nameof(IBlockchainTransaction.Type);
+        private const string FeesKey = nameof(BitcoinBasedTransaction.Fees);
+        private const string AmountKey = nameof(BitcoinBasedTransaction.Amount);
 
         private readonly IEnumerable<Currency> _currencies;
 
@@ -40,8 +46,24 @@ namespace Atomex.Blockchain.BitcoinBased
                     tx: Transaction.Parse(bson[TxKey].AsString, btcBaseCurrency.Network),
                     blockInfo: !bson[BlockInfoKey].IsNull
                         ? BsonMapper.ToObject<BlockInfo>(bson[BlockInfoKey].AsDocument)
+                        : null,
+                    fees: !bson[FeesKey].IsNull
+                        ? (long?)bson[FeesKey].AsInt64
                         : null
-                );
+                )
+                {
+                    State = !bson[StateKey].IsNull
+                        ? (BlockchainTransactionState)Enum.Parse(typeof(BlockchainTransactionState), bson[StateKey].AsString)
+                        : BlockchainTransactionState.Unknown,
+
+                    Type = !bson[TypeKey].IsNull
+                        ? (BlockchainTransactionType)Enum.Parse(typeof(BlockchainTransactionType), bson[TypeKey].AsString)
+                        : BlockchainTransactionType.Unknown,
+
+                    Amount = !bson[AmountKey].IsNull
+                        ? bson[AmountKey].AsInt64
+                        : 0
+                };
             }
 
             return null;
@@ -59,7 +81,11 @@ namespace Atomex.Blockchain.BitcoinBased
                 [TxKey] = tx.ToBytes().ToHexString(),
                 [BlockInfoKey] = tx.BlockInfo != null
                     ? BsonMapper.ToDocument(tx.BlockInfo)
-                    : null
+                    : null,
+                [FeesKey] = tx.Fees,
+                [StateKey] = tx.State.ToString(),
+                [TypeKey] = tx.Type.ToString(),
+                [AmountKey] = tx.Amount
             };
         }
     }

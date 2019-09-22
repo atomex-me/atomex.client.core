@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Threading;
+﻿using System.Threading;
 using System.Threading.Tasks;
 
 namespace Atomex.Blockchain.Abstract
@@ -23,16 +22,6 @@ namespace Atomex.Blockchain.Abstract
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Transaction if success, otherwise null</returns>
         Task<IBlockchainTransaction> GetTransactionAsync(
-            string txId,
-            CancellationToken cancellationToken = default(CancellationToken));
-
-        /// <summary>
-        /// Gets all transactions (including internal) with <paramref name="txId"/>
-        /// </summary>
-        /// <param name="txId">Transaction id</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Transactions if success, otherwise null</returns>
-        Task<IEnumerable<IBlockchainTransaction>> GetTransactionsByIdAsync(
             string txId,
             CancellationToken cancellationToken = default(CancellationToken));
 

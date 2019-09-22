@@ -20,9 +20,11 @@ namespace Atomex.Common.Bson
         private const string ToAddressKey = nameof(ClientSwap.ToAddress);
         private const string RewardForRedeemKey = nameof(ClientSwap.RewardForRedeem);
         private const string PaymentTxIdKey = nameof(ClientSwap.PaymentTxId);
+        private const string RedeemScriptKey = nameof(ClientSwap.RedeemScript);
         private const string PartyAddressKey = nameof(ClientSwap.PartyAddress);
         private const string PartyRewardForRedeemKey = nameof(ClientSwap.PartyRewardForRedeem);
         private const string PartyPaymentTxIdKey = nameof(ClientSwap.PartyPaymentTxId);
+        private const string PartyRedeemScriptKey = nameof(ClientSwap.PartyRedeemScript);
 
         private const string SecretKey = nameof(ClientSwap.Secret);
         private const string SecretHashKey = nameof(ClientSwap.SecretHash);
@@ -67,9 +69,11 @@ namespace Atomex.Common.Bson
                 ToAddress = bson[ToAddressKey].AsString,
                 RewardForRedeem = bson[RewardForRedeemKey].AsDecimal,
                 PaymentTxId = bson[PaymentTxIdKey].AsString,
+                RedeemScript = bson[RedeemScriptKey].AsString,
                 PartyAddress = bson[PartyAddressKey].AsString,
                 PartyRewardForRedeem = bson[PartyRewardForRedeemKey].AsDecimal,
                 PartyPaymentTxId = bson[PartyPaymentTxIdKey].AsString,
+                PartyRedeemScript = bson[PartyRedeemScriptKey].AsString,
 
                 Secret = bson[SecretKey].AsBinary,
                 SecretHash = bson[SecretHashKey].AsBinary,
@@ -116,10 +120,12 @@ namespace Atomex.Common.Bson
                 [ToAddressKey] = swap.ToAddress,
                 [RewardForRedeemKey] = swap.RewardForRedeem,
                 [PaymentTxIdKey] = swap.PaymentTxId,
+                [RedeemScriptKey] = swap.RedeemScript,
                 [PartyAddressKey] = swap.PartyAddress,
                 [PartyRewardForRedeemKey] = swap.PartyRewardForRedeem,
                 [PartyPaymentTxIdKey] = swap.PartyPaymentTxId,
-
+                [PartyRedeemScriptKey] = swap.PartyRedeemScript,
+                
                 [SecretKey] = swap.Secret,
                 [SecretHashKey] = swap.SecretHash,
 

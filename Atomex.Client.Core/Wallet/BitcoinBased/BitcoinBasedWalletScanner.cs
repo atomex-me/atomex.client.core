@@ -203,7 +203,7 @@ namespace Atomex.Wallet.BitcoinBased
                         .ConfigureAwait(false);
 
                     // request only not confirmed transactions
-                    if (tx != null && tx.IsConfirmed())
+                    if (tx != null && tx.IsConfirmed)
                         continue;
 
                     Log.Debug("Scan {@currency} transaction {@txId}", Currency.Name, txId);

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain;
+using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Common.Abstract;
@@ -154,8 +155,10 @@ namespace Atomex.Swaps.Tezos
                 return;
             }
 
-            var redeemTx = new TezosTransaction(Xtz)
+            var redeemTx = new TezosTransaction
             {
+                Currency = Xtz,
+                CreationTime = DateTime.UtcNow,
                 From = walletAddress.Address,
                 To = Xtz.SwapContractAddress,
                 Amount = 0,
@@ -163,7 +166,7 @@ namespace Atomex.Swaps.Tezos
                 GasLimit = Xtz.RedeemGasLimit,
                 StorageLimit = Xtz.RedeemStorageLimit,
                 Params = RedeemParams(swap),
-                Type = TezosTransaction.OutputTransaction
+                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
             };
 
             var signResult = await SignTransactionAsync(redeemTx)
@@ -234,8 +237,10 @@ namespace Atomex.Swaps.Tezos
                 return;
             }
 
-            var redeemTx = new TezosTransaction(Xtz)
+            var redeemTx = new TezosTransaction
             {
+                Currency = Xtz,
+                CreationTime = DateTime.UtcNow,
                 From = walletAddress.Address,
                 To = Xtz.SwapContractAddress,
                 Amount = 0,
@@ -243,7 +248,7 @@ namespace Atomex.Swaps.Tezos
                 GasLimit = Xtz.RedeemGasLimit,
                 StorageLimit = Xtz.RedeemStorageLimit,
                 Params = RedeemParams(swap),
-                Type = TezosTransaction.OutputTransaction
+                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
             };
 
             var signResult = await SignTransactionAsync(redeemTx)
@@ -282,15 +287,17 @@ namespace Atomex.Swaps.Tezos
                 return;
             }
 
-            var refundTx = new TezosTransaction(Xtz)
+            var refundTx = new TezosTransaction
             {
+                Currency = Xtz,
+                CreationTime = DateTime.UtcNow,
                 From = walletAddress.Address,
                 To = Xtz.SwapContractAddress,
                 Fee = Xtz.RefundFee,
                 GasLimit = Xtz.RefundGasLimit,
                 StorageLimit = Xtz.RefundStorageLimit,
                 Params = RefundParams(swap),
-                Type = TezosTransaction.OutputTransaction
+                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
             };
 
             var signResult = await SignTransactionAsync(refundTx, cancellationToken)
@@ -673,8 +680,10 @@ namespace Atomex.Swaps.Tezos
 
                 if (isInitTx)
                 {
-                    transactions.Add(new TezosTransaction(Xtz)
+                    transactions.Add(new TezosTransaction
                     {
+                        Currency     = Xtz,
+                        CreationTime = DateTime.UtcNow,
                         From         = walletAddress.Address,
                         To           = Xtz.SwapContractAddress,
                         Amount       = Math.Round(amountInMtz, 0),
@@ -682,13 +691,15 @@ namespace Atomex.Swaps.Tezos
                         GasLimit     = Xtz.InitiateGasLimit,
                         StorageLimit = Xtz.InitiateStorageLimit,
                         Params       = InitParams(swap, refundTimeStampUtcInSec, (long)rewardForRedeemInMtz),
-                        Type         = TezosTransaction.OutputTransaction
+                        Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
                     });
                 }
                 else
                 {
-                    transactions.Add(new TezosTransaction(Xtz)
+                    transactions.Add(new TezosTransaction
                     {
+                        Currency     = Xtz,
+                        CreationTime = DateTime.UtcNow,
                         From         = walletAddress.Address,
                         To           = Xtz.SwapContractAddress,
                         Amount       = Math.Round(amountInMtz, 0),
@@ -696,7 +707,7 @@ namespace Atomex.Swaps.Tezos
                         GasLimit     = Xtz.AddGasLimit,
                         StorageLimit = Xtz.AddStorageLimit,
                         Params       = AddParams(swap),
-                        Type         = TezosTransaction.OutputTransaction
+                        Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
                     });
                 }
 

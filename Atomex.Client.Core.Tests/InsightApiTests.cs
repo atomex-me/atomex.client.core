@@ -246,7 +246,7 @@ namespace Atomex.Client.Core.Tests
             Assert.True(tx.Id == txId);
             Assert.Equal(inputsCount, tx.Inputs.Length);
             Assert.Equal(outputsCount, tx.Outputs.Length);
-            Assert.Equal(fees, tx.BlockInfo.Fees);
+            Assert.Equal(fees, tx.Fees);
             Assert.Equal(blockHeight, tx.BlockInfo.BlockHeight);
         }
 

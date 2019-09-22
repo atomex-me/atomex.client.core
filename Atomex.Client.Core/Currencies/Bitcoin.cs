@@ -19,6 +19,11 @@ namespace Atomex
 
         public Bitcoin(IConfiguration configuration)
         {
+            Update(configuration);
+        }
+
+        public void Update(IConfiguration configuration)
+        {
             Name = configuration["Name"];
             Description = configuration["Description"];
 

@@ -109,12 +109,14 @@ namespace Atomex.Wallet.Abstract
         /// <param name="currency">Currency</param>
         /// <param name="to">Destination address (can be null)</param>
         /// <param name="amount">Amount to send</param>
+        /// <param name="type">Blockchain transaction type</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Estimated fees</returns>
         Task<decimal> EstimateFeeAsync(
             Currency currency,
             string to,
             decimal amount,
+            BlockchainTransactionType type,
             CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>
@@ -247,6 +249,7 @@ namespace Atomex.Wallet.Abstract
         Task<IBlockchainTransaction> GetTransactionByIdAsync(Currency currency, string txId);
         Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(Currency currency);
         Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync();
+        Task<bool> RemoveTransactionAsync(string id);
 
         #endregion Transactions
 
@@ -262,6 +265,7 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(Currency currency, string address);
         Task<IEnumerable<ITxOutput>> GetOutputsAsync(Currency currency);
         Task<IEnumerable<ITxOutput>> GetOutputsAsync(Currency currency, string address);
+        Task<ITxOutput> GetOutputAsync(Currency currency, string txId, uint index);
 
         #endregion Outputs
 

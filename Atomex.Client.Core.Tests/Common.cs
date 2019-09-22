@@ -15,7 +15,7 @@ namespace Atomex.Client.Core.Tests
     {
         public static Key Alice { get; } = new Key();
         public static Key Bob { get; } = new Key();
-        public static byte[] Secret { get; } = Encoding.UTF8.GetBytes("atomex");
+        public static byte[] Secret { get; } = Encoding.UTF8.GetBytes("_atomexatomexatomexatomexatomex_");
         public static byte[] SecretHash { get; } = CurrencySwap.CreateSwapSecretHash(Secret);
 
         private static Assembly CoreAssembly { get; } = AppDomain.CurrentDomain

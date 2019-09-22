@@ -18,12 +18,19 @@ namespace Atomex.Blockchain.BitcoinBased
     {
         private const int DefaultConfirmations = 1;
 
-        public Transaction Tx { get; }
+        private Transaction Tx { get; }
 
         public string Id => Tx.GetHash().ToString();
         public Currency Currency { get; }
         public BlockInfo BlockInfo { get; }
+        public BlockchainTransactionState State { get; set; }
+        public BlockchainTransactionType Type { get; set; }
+        public DateTime? CreationTime { get; set; }
+        public long? Fees { get; set; }
+
+        public bool IsConfirmed => (BlockInfo?.Confirmations ?? 0) >= DefaultConfirmations;
         public long TotalOut => Tx.TotalOut.Satoshi;
+        public long Amount { get; set; }
         public DateTime LockTime => Tx.LockTime.Date.UtcDateTime;
 
         public ITxPoint[] Inputs
@@ -49,38 +56,40 @@ namespace Atomex.Blockchain.BitcoinBased
             }
         }
 
-        public long Fees => BlockInfo?.Fees ?? 0;
-        public int Confirmations => BlockInfo?.Confirmations ?? 0;
-        public long BlockHeight => BlockInfo?.BlockHeight ?? 0;
-        public DateTime FirstSeen => BlockInfo?.FirstSeen ?? DateTime.MinValue;
-        public DateTime BlockTime => BlockInfo?.BlockTime ?? DateTime.MinValue;
-
-        public bool IsConfirmed() => Confirmations >= DefaultConfirmations;
-
-        private BitcoinBasedTransaction(Currency currency, Transaction tx)
-        {
-            Currency = currency;
-            Tx = tx;
-            BlockInfo = new BlockInfo
-            {
-                FirstSeen = DateTime.UtcNow
-            };
-        }
-
-        private BitcoinBasedTransaction(BitcoinBasedCurrency currency, string hex)
+        public BitcoinBasedTransaction(BitcoinBasedCurrency currency, string hex)
             : this(currency, Transaction.Parse(hex, currency.Network))
         {
         }
 
         public BitcoinBasedTransaction(BitcoinBasedCurrency currency, byte[] bytes)
-            : this(currency, bytes.ToHexString())
+            : this(currency, Transaction.Parse(bytes.ToHexString(), currency.Network))
         {
         }
 
-        public BitcoinBasedTransaction(Currency currency, Transaction tx, BlockInfo blockInfo)
-            : this(currency, tx)
+        public BitcoinBasedTransaction(
+            Currency currency,
+            Transaction tx,
+            BlockInfo blockInfo = null,
+            long? fees = null)
         {
+            Currency = currency;
+            Tx = tx;
             BlockInfo = blockInfo;
+            Fees = fees;
+
+            CreationTime = blockInfo != null
+                ? blockInfo.FirstSeen != null
+                    ? blockInfo.FirstSeen.Value
+                    : blockInfo.BlockTime != null
+                        ? blockInfo.BlockTime.Value
+                        : DateTime.UtcNow
+                : DateTime.UtcNow;
+
+            State = blockInfo != null
+                ? (blockInfo.Confirmations >= DefaultConfirmations
+                    ? BlockchainTransactionState.Confirmed
+                    : BlockchainTransactionState.Unconfirmed)
+                : BlockchainTransactionState.Pending;
         }
 
         public async Task<bool> SignAsync(
@@ -163,26 +172,34 @@ namespace Atomex.Blockchain.BitcoinBased
             input.ScriptSig = sigScript;
         }
 
-        public bool Verify(ITxOutput spentOutput)
+        public bool Verify(ITxOutput spentOutput, bool checkScriptPubKey = true)
         {
             if (!(Currency is BitcoinBasedCurrency btcBaseCurrency))
                 throw new NotSupportedException("Currency must be Bitcoin based");
 
             var result = btcBaseCurrency.Network.CreateTransactionBuilder()
-                .SetTransactionPolicy(new StandardTransactionPolicy {CheckScriptPubKey = false, ScriptVerify = ScriptVerify.Standard})
+                .SetTransactionPolicy(new StandardTransactionPolicy
+                {
+                    CheckScriptPubKey = checkScriptPubKey,
+                    ScriptVerify = ScriptVerify.Standard
+                })
                 .AddCoins(((BitcoinBasedTxOutput)spentOutput).Coin)
                 .Verify(Tx, out _);
 
             return result;
         }
 
-        public bool Verify(ITxOutput spentOutput, out Error[] errors)
+        public bool Verify(ITxOutput spentOutput, out Error[] errors, bool checkScriptPubKey = true)
         {
             if (!(Currency is BitcoinBasedCurrency btcBaseCurrency))
                 throw new NotSupportedException("Currency must be Bitcoin based");
 
             var result = btcBaseCurrency.Network.CreateTransactionBuilder()
-                .SetTransactionPolicy(new StandardTransactionPolicy { ScriptVerify = ScriptVerify.Standard })//{CheckScriptPubKey = false, ScriptVerify = ScriptVerify.Standard })
+                .SetTransactionPolicy(new StandardTransactionPolicy
+                {
+                    CheckScriptPubKey = checkScriptPubKey,
+                    ScriptVerify = ScriptVerify.Standard
+                })
                 .AddCoins(((BitcoinBasedTxOutput)spentOutput).Coin)
                 .Verify(Tx, out var policyErrors);
 
@@ -193,13 +210,17 @@ namespace Atomex.Blockchain.BitcoinBased
             return result;
         }
 
-        public bool Verify(IEnumerable<ITxOutput> spentOutputs)
+        public bool Verify(IEnumerable<ITxOutput> spentOutputs, bool checkScriptPubKey = true)
         {
             if (!(Currency is BitcoinBasedCurrency btcBaseCurrency))
                 throw new NotSupportedException("Currency must be Bitcoin based");
 
             var result = btcBaseCurrency.Network.CreateTransactionBuilder()
-                .SetTransactionPolicy(new StandardTransactionPolicy {CheckScriptPubKey = false, ScriptVerify = ScriptVerify.Standard })
+                .SetTransactionPolicy(new StandardTransactionPolicy
+                {
+                    CheckScriptPubKey = checkScriptPubKey,
+                    ScriptVerify = ScriptVerify.Standard
+                })
                 .AddCoins(spentOutputs
                     .Cast<BitcoinBasedTxOutput>()
                     .Select(o => o.Coin)
@@ -209,13 +230,17 @@ namespace Atomex.Blockchain.BitcoinBased
             return result;
         }
 
-        public bool Verify(IEnumerable<ITxOutput> spentOutputs, out Error[] errors)
+        public bool Verify(IEnumerable<ITxOutput> spentOutputs, out Error[] errors, bool checkScriptPubKey = true)
         {
             if (!(Currency is BitcoinBasedCurrency btcBaseCurrency))
                 throw new NotSupportedException("Currency must be Bitcoin based");
 
             var result = btcBaseCurrency.Network.CreateTransactionBuilder()
-                .SetTransactionPolicy(new StandardTransactionPolicy {CheckScriptPubKey = false, ScriptVerify = ScriptVerify.Standard })
+                .SetTransactionPolicy(new StandardTransactionPolicy
+                {
+                    CheckScriptPubKey = checkScriptPubKey,
+                    ScriptVerify = ScriptVerify.Standard
+                })
                 .AddCoins(spentOutputs
                     .Cast<BitcoinBasedTxOutput>()
                     .Select(o => o.Coin)
@@ -258,13 +283,6 @@ namespace Atomex.Blockchain.BitcoinBased
             var scriptCoint = new ScriptCoin(coin, redeemScript);
 
             return Tx.GetSignatureHash(scriptCoint).ToBytes();
-
-            //return Tx.GetSignatureHash(
-            //        scriptCode,
-            //        0,
-            //        SigHash.All,
-            //        ((BitcoinBasedTxOutput)spentOutput).Coin.TxOut)
-            //    .ToBytes();
         }
 
         public Script GetScriptSig(int inputNo)
@@ -287,7 +305,8 @@ namespace Atomex.Blockchain.BitcoinBased
             return new BitcoinBasedTransaction(
                 currency: (BitcoinBasedCurrency)Currency,
                 tx: Tx.Clone(),
-                blockInfo: (BlockInfo)BlockInfo?.Clone());
+                blockInfo: (BlockInfo)BlockInfo?.Clone(),
+                fees: Fees);
         }
 
         public static BitcoinBasedTransaction CreateTransaction(
@@ -327,7 +346,11 @@ namespace Atomex.Blockchain.BitcoinBased
                     : NBitcoin.LockTime.Zero)
                 .BuildTransaction(false);
 
-            return new BitcoinBasedTransaction(currency, tx);
+            return new BitcoinBasedTransaction(
+                currency: currency,
+                tx: tx,
+                blockInfo: null,
+                fees: fee);
         }
     }
 }

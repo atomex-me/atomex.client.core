@@ -18,6 +18,11 @@ namespace Atomex
 
         public Litecoin(IConfiguration configuration)
         {
+            Update(configuration);
+        }
+
+        public void Update(IConfiguration configuration)
+        {
             Name = configuration["Name"];
             Description = configuration["Description"];
 

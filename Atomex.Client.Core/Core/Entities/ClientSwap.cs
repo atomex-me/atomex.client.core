@@ -30,7 +30,7 @@ namespace Atomex.Core.Entities
         HasPartyPayment = 1 << 15,
         IsPartyPaymentConfirmed = 1 << 16,
 
-        IsCanceled = 1 << 17,
+        IsCanceled = 1 << 17
     }
 
     public class ClientSwap
@@ -49,9 +49,11 @@ namespace Atomex.Core.Entities
         public string ToAddress { get; set; }
         public decimal RewardForRedeem { get; set; }
         public string PaymentTxId { get; set; }
+        public string RedeemScript { get; set; }
         public string PartyAddress { get; set; }
         public decimal PartyRewardForRedeem { get; set; }
         public string PartyPaymentTxId { get; set; }
+        public string PartyRedeemScript { get; set; }
 
         public Currency SoldCurrency => Symbol.SoldCurrency(Side);
         public Currency PurchasedCurrency => Symbol.PurchasedCurrency(Side);

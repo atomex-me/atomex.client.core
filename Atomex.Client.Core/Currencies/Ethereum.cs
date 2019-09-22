@@ -23,28 +23,33 @@ namespace Atomex
         private const string DefaultFeeCode = "GAS";
         private const long EthDigitsMultiplier = GweiInEth; //1_000_000_000;
 
-        public decimal GasLimit { get; }
-        public decimal InitiateGasLimit { get; }
-        public decimal InitiateWithRewardGasLimit { get; }
-        public decimal AddGasLimit { get; }
-        public decimal RefundGasLimit { get; }
-        public decimal RedeemGasLimit { get; }
-        public decimal GasPriceInGwei { get; }
+        public decimal GasLimit { get; private set; }
+        public decimal InitiateGasLimit { get; private set; }
+        public decimal InitiateWithRewardGasLimit { get; private set; }
+        public decimal AddGasLimit { get; private set; }
+        public decimal RefundGasLimit { get; private set; }
+        public decimal RedeemGasLimit { get; private set; }
+        public decimal GasPriceInGwei { get; private set; }
         public decimal InitiateFeeAmount => InitiateGasLimit * GasPriceInGwei / GweiInEth;
         public decimal InitiateWithRewardFeeAmount => InitiateWithRewardGasLimit * GasPriceInGwei / GweiInEth;
         public decimal AddFeeAmount => AddGasLimit * GasPriceInGwei / GweiInEth;
         public decimal RefundFeeAmount => RefundGasLimit * GasPriceInGwei / GweiInEth;
         public decimal RedeemFeeAmount => RedeemGasLimit * GasPriceInGwei / GweiInEth;
 
-        public Chain Chain { get; }
-        public string SwapContractAddress { get; }
-        public ulong SwapContractBlockNumber { get; }
+        public Chain Chain { get; private set; }
+        public string SwapContractAddress { get; private set; }
+        public ulong SwapContractBlockNumber { get; private set; }
 
         public Ethereum()
         {
         }
 
         public Ethereum(IConfiguration configuration)
+        {
+            Update(configuration);
+        }
+
+        public void Update(IConfiguration configuration)
         {
             Name = configuration["Name"];
             Description = configuration["Description"];

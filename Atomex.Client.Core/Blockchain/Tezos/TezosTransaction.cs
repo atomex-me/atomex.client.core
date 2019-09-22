@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -17,17 +18,16 @@ namespace Atomex.Blockchain.Tezos
 {
     public class TezosTransaction : IAddressBasedTransaction
     {
-        public const int UnknownTransaction = 0;
-        public const int InputTransaction = 1;
-        public const int OutputTransaction = 2;
-        public const int SelfTransaction = 3;
-        public const int ActivateAccountTransaction = 4;
         private const int DefaultConfirmations = 1;
-        private const string InternalSuffix = "_internal_";
 
         public string Id { get; set; }
         public Currency Currency { get; set; }
         public BlockInfo BlockInfo { get; set; }
+        public BlockchainTransactionState State { get; set ; }
+        public BlockchainTransactionType Type { get; set; }
+        public DateTime? CreationTime { get; set; }
+        public bool IsConfirmed => BlockInfo?.Confirmations >= DefaultConfirmations;
+
         public string From { get; set; }
         public string To { get; set; }
         public decimal Amount { get; set; }
@@ -36,30 +36,14 @@ namespace Atomex.Blockchain.Tezos
         public decimal StorageLimit { get; set; }
         public decimal Burn { get; set; }
         public JObject Params { get; set; }
-        public int Type { get; set; }
         public bool IsInternal { get; set; }
         public int InternalIndex { get; set; }
-
-        public string UniqueId => Id + (IsInternal ? $"{InternalSuffix}{InternalIndex}" : string.Empty);
 
         public JArray Operations { get; private set; }
         public JObject Head { get; private set; }
         public SignedMessage SignedMessage { get; private set; }
 
-        public bool IsConfirmed() => BlockInfo?.Confirmations >= DefaultConfirmations;
-
-        public TezosTransaction()
-        {
-        }
-
-        public TezosTransaction(Currency currency)
-        {
-            Currency = currency;
-            BlockInfo = new BlockInfo
-            {
-                FirstSeen = DateTime.UtcNow
-            };
-        }
+        public List<TezosTransaction> InternalTxs { get; set; }
 
         public async Task<bool> SignAsync(
             IKeyStorage keyStorage,

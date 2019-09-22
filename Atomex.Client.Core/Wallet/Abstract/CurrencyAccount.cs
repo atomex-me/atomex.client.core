@@ -57,6 +57,7 @@ namespace Atomex.Wallet.Abstract
         public abstract Task<decimal> EstimateFeeAsync(
             string to,
             decimal amount,
+            BlockchainTransactionType type,
             CancellationToken cancellationToken = default(CancellationToken));
 
         protected void RaiseBalanceUpdated(CurrencyEventArgs eventArgs)
@@ -217,11 +218,11 @@ namespace Atomex.Wallet.Abstract
             {
                 case AddressUsagePolicy.UseMinimalBalanceFirst:
                     addresses = addresses
-                        .SortList(comparison: (a, b) => a.AvailableBalance().CompareTo(b.AvailableBalance()));
+                        .SortList((a, b) => a.AvailableBalance().CompareTo(b.AvailableBalance()));
                     break;
                 case AddressUsagePolicy.UseMaximumBalanceFirst:
                     addresses = addresses
-                        .SortList(comparison: (a, b) => b.AvailableBalance().CompareTo(a.AvailableBalance()));
+                        .SortList((a, b) => b.AvailableBalance().CompareTo(a.AvailableBalance()));
                     break;
                 case AddressUsagePolicy.UseOnlyOneAddress:
                     var walletAddress = addresses
@@ -314,7 +315,7 @@ namespace Atomex.Wallet.Abstract
                 await UpdateBalanceAsync(cancellationToken)
                     .ConfigureAwait(false);
 
-            if (notifyIfUnconfirmed && !tx.IsConfirmed())
+            if (notifyIfUnconfirmed && !tx.IsConfirmed)
                 RaiseUnconfirmedTransactionAdded(new TransactionEventArgs(tx));
 
             if (updateBalance && notifyIfBalanceUpdated)

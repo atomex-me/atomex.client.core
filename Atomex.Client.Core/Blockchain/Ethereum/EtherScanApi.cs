@@ -134,13 +134,6 @@ namespace Atomex.Blockchain.Ethereum
             throw new NotImplementedException();
         }
 
-        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsByIdAsync(
-            string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<IEnumerable<IBlockchainTransaction>> GetInternalTransactionsAsync(
             string txId,
             CancellationToken cancellationToken = default(CancellationToken))
@@ -161,30 +154,26 @@ namespace Atomex.Blockchain.Ethereum
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            // TODO: add pagination support
-            var requestUri = $"api?module=account&action=txlist&address={address}&sort=asc&apikey={ApiKey}";
-
-            var transactions = await HttpHelper.GetAsync(
+            // todo: add pagination support
+            var txs = await HttpHelper.GetAsync(
                     baseUri: BaseUrl,
-                    requestUri: requestUri,
+                    requestUri: $"api?module=account&action=txlist&address={address}&sort=asc&apikey={ApiKey}",
                     responseHandler: responseContent => ParseTransactions(responseContent, txId: null, isInternal: false),
                     requestLimitChecker: RequestLimitChecker,
                     maxAttempts: MaxRequestAttemptsCount,
                     cancellationToken: cancellationToken)
-                .ConfigureAwait(false) ?? Enumerable.Empty<IBlockchainTransaction>();
+                .ConfigureAwait(false) ?? Enumerable.Empty<EthereumTransaction>();
 
-            requestUri = $"api?module=account&action=txlistinternal&address={address}&sort=asc&apikey={ApiKey}";
-
-            var internalTransactions = await HttpHelper.GetAsync(
+            var internalTxs = await HttpHelper.GetAsync(
                     baseUri: BaseUrl,
-                    requestUri: requestUri,
+                    requestUri: $"api?module=account&action=txlistinternal&address={address}&sort=asc&apikey={ApiKey}",
                     responseHandler: responseContent => ParseTransactions(responseContent, txId: null, isInternal: true),
                     requestLimitChecker: RequestLimitChecker,
                     maxAttempts: MaxRequestAttemptsCount,
                     cancellationToken: cancellationToken)
-                .ConfigureAwait(false) ?? Enumerable.Empty<IBlockchainTransaction>();
+                .ConfigureAwait(false) ?? Enumerable.Empty<EthereumTransaction>();
 
-            return transactions.Concat(internalTransactions);
+            return txs.Concat(internalTxs);
         }
 
         public Task<string> BroadcastAsync(
@@ -230,28 +219,46 @@ namespace Atomex.Blockchain.Ethereum
                     }
                 }
 
-                result.Add(new EthereumTransaction(Currency)
+                var state = tx.ReceiptStatus != null
+                    ? (tx.ReceiptStatus.Equals("1")
+                        ? BlockchainTransactionState.Confirmed
+                        : BlockchainTransactionState.Failed)
+                    : (isInternal
+                        ? BlockchainTransactionState.Confirmed
+                        : BlockchainTransactionState.Unconfirmed);
+
+                result.Add(new EthereumTransaction
                 {
                     Id = id,
+                    Currency = Currency,
+                    Type = BlockchainTransactionType.Unknown,
+                    State = state,
+                    CreationTime = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
+
                     From = tx.From.ToLowerInvariant(),
                     To = tx.To.ToLowerInvariant(),
                     Input = tx.Input,
                     Amount = BigInteger.Parse(tx.Value),
-                    Nonce = tx.Nonce != null ? BigInteger.Parse(tx.Nonce) : 0,
-                    GasPrice = tx.GasPrice != null ? BigInteger.Parse(tx.GasPrice) : 0,
+                    Nonce = tx.Nonce != null
+                        ? BigInteger.Parse(tx.Nonce)
+                        : 0,
+                    GasPrice = tx.GasPrice != null
+                        ? BigInteger.Parse(tx.GasPrice)
+                        : 0,
                     GasLimit = BigInteger.Parse(tx.Gas),
-                    GasUsed = BigInteger.Parse(tx.GasUsed),
-                    Type = EthereumTransaction.UnknownTransaction,
-                    ReceiptStatus = tx.ReceiptStatus?.Equals("1") ?? true,
+                    GasUsed = BigInteger.Parse(tx.GasUsed), 
+                    ReceiptStatus = state == BlockchainTransactionState.Confirmed,
                     IsInternal = isInternal,
                     InternalIndex = internalIndex,
 
                     BlockInfo = new BlockInfo
                     {
+                        Confirmations = tx.Confirmations != null
+                            ? int.Parse(tx.Confirmations)
+                            : 1,
+                        BlockHash = tx.BlockHash,
                         BlockHeight = long.Parse(tx.BlockNumber),
                         BlockTime = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
-                        Confirmations = tx.Confirmations != null ? int.Parse(tx.Confirmations) : 1,
-                        Fees = long.Parse(tx.GasUsed),
                         FirstSeen = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp))
                     }
                 });

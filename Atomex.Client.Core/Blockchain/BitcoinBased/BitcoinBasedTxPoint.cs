@@ -20,6 +20,8 @@ namespace Atomex.Blockchain.BitcoinBased
         {
             if (BitcoinBasedSwapTemplate.IsP2PkhSwapRedeem(_input.ScriptSig))
                 return BitcoinBasedSwapTemplate.ExtractSecretFromP2PkhSwapRedeem(_input.ScriptSig);
+            if (BitcoinBasedSwapTemplate.IsP2PkhScriptSwapRedeem(_input.ScriptSig))
+                return BitcoinBasedSwapTemplate.ExtractSecretFromP2PkhScriptSwapRedeem(_input.ScriptSig);
 
             // todo: segwit p2pkh swap redeem
 

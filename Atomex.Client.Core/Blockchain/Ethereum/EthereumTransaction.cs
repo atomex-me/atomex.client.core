@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
 using System.Threading;
@@ -15,16 +16,16 @@ namespace Atomex.Blockchain.Ethereum
 {
     public class EthereumTransaction : IAddressBasedTransaction
     {
-        public const int UnknownTransaction = 0;
-        public const int InputTransaction = 1;
-        public const int OutputTransaction = 2;
-        public const int SelfTransaction = 3;
         private const int DefaultConfirmations = 1;
-        private const string InternalSuffix = "_internal_";
 
         public string Id { get; set; }
         public Currency Currency { get; set; }
         public BlockInfo BlockInfo { get; set; }
+        public BlockchainTransactionState State { get; set; }
+        public BlockchainTransactionType Type { get; set; }
+        public DateTime? CreationTime { get; set; }
+        public bool IsConfirmed => BlockInfo?.Confirmations >= DefaultConfirmations;
+
         public string From { get; set; }
         public string To { get; set; }
         public string Input { get; set; }
@@ -34,24 +35,13 @@ namespace Atomex.Blockchain.Ethereum
         public BigInteger GasLimit { get; set; }
         public BigInteger GasUsed { get; set; }
         public string RlpEncodedTx { get; set; }
-        public int Type { get; set; }
         public bool ReceiptStatus { get; set; }
         public bool IsInternal { get; set; }
         public int InternalIndex { get; set; }
-
-        public string UniqueId => Id + (IsInternal ? $"{InternalSuffix}{InternalIndex}" : string.Empty);
+        public List<EthereumTransaction> InternalTxs { get; set; }
 
         public EthereumTransaction()
         {
-        }
-
-        public EthereumTransaction(Currency currency)
-        {
-            Currency = currency;
-            BlockInfo = new BlockInfo
-            {
-                FirstSeen = DateTime.UtcNow
-            };
         }
 
         public EthereumTransaction(
@@ -62,6 +52,14 @@ namespace Atomex.Blockchain.Ethereum
         {
             Currency = currency;
             Id = tx.TransactionHash;
+            Type = BlockchainTransactionType.Unknown;
+            State = txReceipt.Status != null && txReceipt.Status.Value == BigInteger.One
+                ? BlockchainTransactionState.Confirmed
+                : (txReceipt.Status != null
+                    ? BlockchainTransactionState.Failed
+                    : BlockchainTransactionState.Unconfirmed);
+            CreationTime = blockTimeStamp;
+
             From = tx.From.ToLowerInvariant();
             To = tx.To.ToLowerInvariant();
             Input = tx.Input;
@@ -70,18 +68,17 @@ namespace Atomex.Blockchain.Ethereum
             GasPrice = tx.GasPrice;
             GasLimit = tx.Gas;
             GasUsed = txReceipt.GasUsed;
-            Type = UnknownTransaction;
-            ReceiptStatus = txReceipt.Status != null
-                ? txReceipt.Status.Value == BigInteger.One
-                : true;
+            ReceiptStatus = State == BlockchainTransactionState.Confirmed;
             IsInternal = false;
             InternalIndex = 0;
 
             BlockInfo = new BlockInfo
             {
+                Confirmations = txReceipt.Status != null
+                    ? (int)txReceipt.Status.Value
+                    : 0,
+                BlockHash = tx.BlockHash,
                 BlockHeight = (long) tx.TransactionIndex.Value,
-                Fees = (long) txReceipt.GasUsed.Value,
-                Confirmations = (int) txReceipt.Status.Value,
                 BlockTime = blockTimeStamp,
                 FirstSeen = blockTimeStamp
             };
@@ -90,6 +87,10 @@ namespace Atomex.Blockchain.Ethereum
         public EthereumTransaction(Currency currency, TransactionInput txInput)
         {
             Currency = currency;
+            Type = BlockchainTransactionType.Unknown;
+            State = BlockchainTransactionState.Unknown;
+            CreationTime = DateTime.UtcNow;
+
             From = txInput.From.ToLowerInvariant();
             To = txInput.To.ToLowerInvariant();
             Input = txInput.Data;
@@ -97,14 +98,7 @@ namespace Atomex.Blockchain.Ethereum
             Nonce = txInput.Nonce;
             GasPrice = txInput.GasPrice;
             GasLimit = txInput.Gas;
-
-            BlockInfo = new BlockInfo
-            {
-                FirstSeen = DateTime.UtcNow
-            };
         }
-
-        public bool IsConfirmed() => BlockInfo?.Confirmations >= DefaultConfirmations;
 
         public bool Verify()
         {
@@ -128,9 +122,7 @@ namespace Atomex.Blockchain.Ethereum
         {
             if (address.KeyIndex == null)
             {
-                Log.Error(
-                    messageTemplate: "Can't find private key for address {@address}",
-                    propertyValue: address);
+                Log.Error("Can't find private key for address {@address}", address);
                 return false;
             }
 
@@ -145,10 +137,12 @@ namespace Atomex.Blockchain.Ethereum
             if (privateKey == null)
                 throw new ArgumentNullException(nameof(privateKey));
 
+            var chain = ((Atomex.Ethereum) Currency).Chain;
+
             RlpEncodedTx = Web3.OfflineTransactionSigner
                 .SignTransaction(
                     privateKey: privateKey,
-                    chain: GetCurrency().Chain,
+                    chain: chain,
                     to: To,
                     amount: Amount,
                     nonce: Nonce,
@@ -157,15 +151,10 @@ namespace Atomex.Blockchain.Ethereum
                     data: Input);
             
             From = Web3.OfflineTransactionSigner
-                .GetSenderAddress(RlpEncodedTx, GetCurrency().Chain)
+                .GetSenderAddress(RlpEncodedTx, chain)
                 .ToLowerInvariant();
 
             return Task.FromResult(true);
-        }
-
-        private Atomex.Ethereum GetCurrency()
-        {
-            return (Atomex.Ethereum) Currency;
         }
     }
 }
