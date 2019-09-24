@@ -171,17 +171,16 @@ namespace Atomex.Client.Core.Tests
             string outputSpentTxId)
         {
             var api = new InsightApi(currency, baseUri);
-            var outputs = await api.GetOutputsAsync(address);
+            var outputs = (await api
+                .GetOutputsAsync(address))
+                ?.ToList();
 
             Assert.NotNull(outputs);
-            Assert.True(outputs.Count() > 0);
-            Assert.Contains(outputs, o =>
-            {
-                return o.TxId == outputTxId &&
-                       o.Value == outputAmount &&
-                       ((outputSpentTxId != null && o.SpentTxPoint != null && o.SpentTxPoint.Hash == outputSpentTxId) ||
-                        (outputSpentTxId == null && o.SpentTxPoint == null));
-            });
+            Assert.True(outputs.Any());
+            Assert.Contains(outputs, o => o.TxId == outputTxId &&
+                                          o.Value == outputAmount &&
+                                          (outputSpentTxId != null && o.SpentTxPoint != null && o.SpentTxPoint.Hash == outputSpentTxId ||
+                                           outputSpentTxId == null && o.SpentTxPoint == null));
         }
 
         public static IEnumerable<object[]> TransactionTestData => new List<object[]>

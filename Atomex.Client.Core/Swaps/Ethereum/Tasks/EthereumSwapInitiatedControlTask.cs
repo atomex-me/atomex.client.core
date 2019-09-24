@@ -1,11 +1,10 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
-using Nethereum.JsonRpc.WebSocketClient;
-using Nethereum.RPC.Eth.DTOs;
-using Nethereum.Web3;
 using Serilog;
 
 namespace Atomex.Swaps.Ethereum.Tasks
@@ -45,54 +44,48 @@ namespace Atomex.Swaps.Ethereum.Tasks
                 var requiredAmountInWei = Atomex.Ethereum.EthToWei(requiredAmountInEth);
                 var requiredRewardForRedeemInWei = Atomex.Ethereum.EthToWei(Swap.RewardForRedeem);
 
-                var wsUri = Web3BlockchainApi.WsUriByChain(Eth.Chain);
-                var web3 = new Web3(new WebSocketClient(wsUri));
-
-                var contractAddress = Eth.SwapContractAddress;
+                var api = new EtherScanApi(Eth, Eth.Chain);
 
                 if (!Initiated)
                 {
-                    var eventHandlerInitiated = web3.Eth.GetEvent<InitiatedEventDTO>(contractAddress);
+                    var events = (await api.GetContractEventsAsync(
+                            address: Eth.SwapContractAddress,
+                            fromBlock: Eth.SwapContractBlockNumber,
+                            toBlock: ulong.MaxValue,
+                            topic0: EventSignatureExtractor.GetSignatureHash<InitiatedEventDTO>(),
+                            topic1: "0x" + Swap.SecretHash.ToHexString(),
+                            topic2: "0x000000000000000000000000" + Swap.ToAddress.Substring(2))
+                        .ConfigureAwait(false))
+                        ?.ToList() ?? new List<EtherScanApi.ContractEvent>();
 
-                    var filterIdInitiated = await eventHandlerInitiated
-                        .CreateFilterAsync(
-                            Swap.SecretHash,
-                            Swap.ToAddress,
-                            new BlockParameter(Eth.SwapContractBlockNumber),
-                            null)
-                        .ConfigureAwait(false);
-
-                    var eventInitiated = await eventHandlerInitiated
-                        //.GetFilterChanges(filterId)
-                        .GetAllChanges(filterIdInitiated)
-                        .ConfigureAwait(false);
-
-                    if (eventInitiated.Count == 0)
+                    if (!events.Any())
                         return false;
+
+                    var initiatedEvent = events.First().ParseInitiatedEvent();
 
                     Initiated = true;
 
-                    if (eventInitiated[0].Event.Value >= requiredAmountInWei - requiredRewardForRedeemInWei)
+                    if (initiatedEvent.Value >= requiredAmountInWei - requiredRewardForRedeemInWei)
                     {
                         if (Swap.IsAcceptor)
                         {
-                            if (eventInitiated[0].Event.RedeemFee != requiredRewardForRedeemInWei)
+                            if (initiatedEvent.RedeemFee != requiredRewardForRedeemInWei)
                             {
                                 Log.Debug(
                                     "Invalid redeem fee in initiated event. Expected value is {@expected}, actual is {@actual}",
                                     requiredRewardForRedeemInWei,
-                                    (long)eventInitiated[0].Event.RedeemFee);
+                                    (long)initiatedEvent.RedeemFee);
 
                                 CancelHandler?.Invoke(this);
                                 return true;
                             }
 
-                            if (eventInitiated[0].Event.RefundTimestamp != RefundTimestamp)
+                            if (initiatedEvent.RefundTimestamp != RefundTimestamp)
                             {
                                 Log.Debug(
                                     "Invalid refund time in initiated event. Expected value is {@expected}, actual is {@actual}",
                                     RefundTimestamp,
-                                    eventInitiated[0].Event.RefundTimestamp);
+                                    (long)initiatedEvent.RefundTimestamp);
 
                                 CancelHandler?.Invoke(this);
                                 return true;
@@ -106,28 +99,26 @@ namespace Atomex.Swaps.Ethereum.Tasks
                     Log.Debug(
                         "Eth value is not enough. Expected value is {@expected}. Actual value is {@actual}",
                         requiredAmountInWei - requiredRewardForRedeemInWei,
-                        (long)eventInitiated[0].Event.Value);
+                        (long)initiatedEvent.Value);
                 }
 
                 if (Initiated)
                 {
-                    var eventHandlerAdded = web3.Eth.GetEvent<AddedEventDTO>(contractAddress);
+                    var events = (await api.GetContractEventsAsync(
+                            address: Eth.SwapContractAddress,
+                            fromBlock: Eth.SwapContractBlockNumber,
+                            toBlock: ulong.MaxValue,
+                            topic0: EventSignatureExtractor.GetSignatureHash<AddedEventDTO>(),
+                            topic1: "0x" + Swap.SecretHash.ToHexString())
+                        .ConfigureAwait(false))
+                        ?.ToList() ?? new List<EtherScanApi.ContractEvent>();
 
-                    var filterIdAdded = await eventHandlerAdded
-                        .CreateFilterAsync<byte[]>(Swap.SecretHash)
-                        .ConfigureAwait(false);
-
-                    var eventsAdded = await eventHandlerAdded
-                        //.GetFilterChanges(filterId)
-                        .GetAllChanges(filterIdAdded)
-                        .ConfigureAwait(false);
-
-                    if (eventsAdded.Count == 0)
+                    if (!events.Any())
                         return false;
 
-                    foreach (var @event in eventsAdded)
+                    foreach (var @event in events.Select(e => e.ParseAddedEvent()))
                     {
-                        if (@event.Event.Value >= requiredAmountInWei - requiredRewardForRedeemInWei)
+                        if (@event.Value >= requiredAmountInWei - requiredRewardForRedeemInWei)
                         {
                             CompleteHandler?.Invoke(this);
                             return true;
@@ -136,7 +127,7 @@ namespace Atomex.Swaps.Ethereum.Tasks
                         Log.Debug(
                             "Eth value is not enough. Expected value is {@expected}. Actual value is {@actual}",
                             requiredAmountInWei - requiredRewardForRedeemInWei,
-                            (long)@event.Event.Value);
+                            (long)@event.Value);
                     }
                 }
             }

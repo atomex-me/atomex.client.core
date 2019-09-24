@@ -19,15 +19,15 @@ namespace Atomex.Client.Core.Tests
 {
     public class BitcoinBasedSwapTransactionFactoryTests
     {
-        private static WalletAddress GetWallet(BitcoinBasedCurrency currency, PubKey pubKey)
-        {
-            return new WalletAddress
-            {
-                Address = pubKey.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
-                Currency = currency,
-                PublicKey = Convert.ToBase64String(pubKey.ToBytes())
-            };
-        }
+        //private static WalletAddress GetWallet(BitcoinBasedCurrency currency, PubKey pubKey)
+        //{
+        //    return new WalletAddress
+        //    {
+        //        Address = pubKey.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
+        //        Currency = currency,
+        //        PublicKey = Convert.ToBase64String(pubKey.ToBytes())
+        //    };
+        //}
 
         private static IEnumerable<ITxOutput> GetTestOutputs(PubKey pubKey, NBitcoin.Network network)
         {
@@ -60,10 +60,14 @@ namespace Atomex.Client.Core.Tests
             var litecoin = tempCurrencies.Get<Litecoin>();
             litecoin.BlockchainApi = litecoinApi.Object;
 
-            var aliceBtcWallet = GetWallet(bitcoin, Common.Alice.PubKey);
+            var aliceBtcAddress = Common.Alice.PubKey
+                .GetAddress(ScriptPubKeyType.Legacy, bitcoin.Network)
+                .ToString();
             //var aliceLtcWallet = GetWallet(litecoin, Common.Alice.PubKey);
 
-            var bobBtcWallet = GetWallet(bitcoin, Common.Bob.PubKey);
+            var bobBtcAddress = Common.Bob.PubKey
+                .GetAddress(ScriptPubKeyType.Legacy, bitcoin.Network)
+                .ToString();
             //var bobLtcWallet = GetWallet(litecoin, Common.Bob.PubKey);
 
             const decimal lastPrice = 0.000001m;
@@ -83,9 +87,9 @@ namespace Atomex.Client.Core.Tests
                 .CreateSwapPaymentTxAsync(
                     currency: bitcoin,
                     amount: amount,
-                    fromWallets: new []{ aliceBtcWallet.Address },
-                    refundAddress: aliceBtcWallet.Address,
-                    toAddress: bobBtcWallet.Address,
+                    fromWallets: new []{ aliceBtcAddress },
+                    refundAddress: aliceBtcAddress,
+                    toAddress: bobBtcAddress,
                     lockTime: DateTimeOffset.UtcNow.AddHours(1),
                     secretHash: Common.SecretHash,
                     secretSize: Common.Secret.Length,

@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
-using Serilog;
 
 namespace Atomex.Swaps.BitcoinBased
 {
@@ -45,7 +44,7 @@ namespace Atomex.Swaps.BitcoinBased
                 if (usedAmount < requiredAmount)
                     throw new Exception($"Insufficient funds. Available {usedAmount}, required {requiredAmount}");
 
-                var estimatedSigSize = EstimateSigSize(usedOutputs);
+                var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(usedOutputs);
 
                 tx = currency.CreateHtlcP2PkhScriptSwapPaymentTx(
                     unspentOutputs: usedOutputs,
@@ -96,7 +95,7 @@ namespace Atomex.Swaps.BitcoinBased
             if (swapOutput == null)
                 throw new Exception("Can't find pay tp script hash output");
 
-            var estimatedSigSize = EstimateSigSize(swapOutput, forRefund: true);
+            var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(swapOutput, forRefund: true);
 
             var txSize = currency
                 .CreateP2PkhTx(
@@ -139,7 +138,7 @@ namespace Atomex.Swaps.BitcoinBased
             if (swapOutput == null)
                 throw new Exception("Can't find pay tp script hash output");
 
-            var estimatedSigSize = EstimateSigSize(swapOutput, forRedeem: true);
+            var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(swapOutput, forRedeem: true);
 
             var txSize = currency
                 .CreateP2PkhTx(
@@ -165,38 +164,6 @@ namespace Atomex.Swaps.BitcoinBased
                 lockTime: DateTimeOffset.MinValue);
 
             return Task.FromResult(tx);
-        }
-
-        private static long EstimateSigSize(ITxOutput output, bool forRefund = false, bool forRedeem = false)
-        {
-            if (!(output is BitcoinBasedTxOutput btcBasedOutput))
-                return 0;
-
-            var sigSize = 0L;
-
-            if (btcBasedOutput.IsP2Pkh)
-                sigSize += BitcoinBasedCurrency.P2PkhScriptSigSize; // use compressed?
-            else if (btcBasedOutput.IsSegwitP2Pkh)
-                sigSize += BitcoinBasedCurrency.P2WPkhScriptSigSize;
-            else if (btcBasedOutput.IsP2PkhSwapPayment || btcBasedOutput.IsHtlcP2PkhSwapPayment)
-                sigSize += forRefund
-                    ? BitcoinBasedCurrency.P2PkhSwapRefundSigSize
-                    : BitcoinBasedCurrency.P2PkhSwapRedeemSigSize;
-            else if (btcBasedOutput.IsP2Sh)
-                sigSize += forRefund
-                    ? BitcoinBasedCurrency.P2PShSwapRefundScriptSigSize
-                    : (forRedeem
-                        ? BitcoinBasedCurrency.P2PShSwapRedeemScriptSigSize
-                        : BitcoinBasedCurrency.P2PkhScriptSigSize); // todo: probably incorrect
-            else
-                Log.Warning("Unknown output type, estimated fee may be wrong");
-
-            return sigSize;
-        }
-
-        private static long EstimateSigSize(IEnumerable<ITxOutput> outputs, bool forRefund = false)
-        {
-            return outputs.ToList().Sum(output => EstimateSigSize(output, forRefund));
         }
     }
 }

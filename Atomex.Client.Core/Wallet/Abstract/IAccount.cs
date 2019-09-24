@@ -111,11 +111,25 @@ namespace Atomex.Wallet.Abstract
         /// <param name="amount">Amount to send</param>
         /// <param name="type">Blockchain transaction type</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Estimated fees</returns>
-        Task<decimal> EstimateFeeAsync(
+        /// <returns>Estimated fees or null if insufficient funds</returns>
+        Task<decimal?> EstimateFeeAsync(
             Currency currency,
             string to,
             decimal amount,
+            BlockchainTransactionType type,
+            CancellationToken cancellationToken = default(CancellationToken));
+
+        /// <summary>
+        /// Estimate max amount and fee to send
+        /// </summary>
+        /// <param name="currency">Currency</param>
+        /// <param name="to">Destination address (can be null)</param>
+        /// <param name="type">Blockchain transaction type</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Max amount and fee to send</returns>
+        Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
+            Currency currency,
+            string to,
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default(CancellationToken));
 

@@ -148,7 +148,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
         }
 
-        public override async Task<decimal> EstimateFeeAsync(
+        public override async Task<decimal?> EstimateFeeAsync(
             string to,
             decimal amount,
             BlockchainTransactionType type,
@@ -158,6 +158,9 @@ namespace Atomex.Wallet.Ethereum
                 .GetUnspentAddressesAsync(Currency)
                 .ConfigureAwait(false))
                 .ToList();
+
+            if (!unspentAddresses.Any())
+                return null; // insufficient funds
 
             var gasLimit = GasLimitByType(type);
 
@@ -170,12 +173,43 @@ namespace Atomex.Wallet.Ethereum
                     addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst)
                 .ToList();
 
-            var feeAmount = Eth.GetFeeAmount(gasLimit, Eth.GasPriceInGwei);
-
             if (!selectedAddresses.Any())
-                return unspentAddresses.Count * feeAmount;
+                return null; // insufficient funds
 
-            return selectedAddresses.Count * feeAmount;
+            return selectedAddresses.Count * Eth.GetFeeAmount(gasLimit, Eth.GasPriceInGwei);
+        }
+
+        public override async Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
+            string to,
+            BlockchainTransactionType type,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var unspentAddresses = (await DataRepository
+                .GetUnspentAddressesAsync(Currency)
+                .ConfigureAwait(false))
+                .ToList();
+
+            if (!unspentAddresses.Any())
+                return (0m, 0m);
+
+            var gasLimit = GasLimitByType(type);
+            var feePerTx = Eth.GetFeeAmount(gasLimit, Eth.GasPriceInGwei);
+
+            var amount = 0m;
+            var fee = 0m;
+
+            foreach (var address in unspentAddresses)
+            {
+                var usedAmount = Math.Max(address.AvailableBalance() - feePerTx, 0);
+
+                if (usedAmount <= 0)
+                    continue;
+
+                amount += usedAmount;
+                fee += feePerTx;
+            }
+
+            return (amount, fee);
         }
 
         private decimal GasLimitByType(BlockchainTransactionType type)

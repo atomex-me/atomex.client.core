@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Security;
-using System.Text;
 using Atomex.Wallet;
 using NBitcoin;
 using Xunit;

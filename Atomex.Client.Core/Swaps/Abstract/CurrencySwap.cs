@@ -16,10 +16,10 @@ namespace Atomex.Swaps.Abstract
         protected const int DefaultAcceptorLockTimeInSeconds = 3 * 60 * 60; // 3 hours
         protected const int DefaultGetTransactionAttempts = 5;
 
-        protected static TimeSpan DefaultConfirmationCheckInterval = TimeSpan.FromMinutes(1);
-        protected static TimeSpan DefaultOutputSpentCheckInterval = TimeSpan.FromSeconds(30);
-        protected static TimeSpan DefaultGetTransactionInterval = TimeSpan.FromSeconds(10);
-        protected static TimeSpan DefaultRefundInterval = TimeSpan.FromMinutes(1);
+        protected static TimeSpan DefaultConfirmationCheckInterval = TimeSpan.FromSeconds(60);
+        protected static TimeSpan DefaultOutputSpentCheckInterval = TimeSpan.FromSeconds(60);
+        protected static TimeSpan DefaultGetTransactionInterval = TimeSpan.FromSeconds(60);
+        protected static TimeSpan DefaultRefundInterval = TimeSpan.FromSeconds(60);
         protected static TimeSpan DefaultMaxSwapTimeout = TimeSpan.FromMinutes(10);
         protected static TimeSpan DefaultForceRefundInterval = TimeSpan.FromMinutes(5);
 

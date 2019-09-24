@@ -15,8 +15,8 @@ namespace Atomex.Blockchain.Ethereum
         [Parameter("address", "_initiator", 3, false)]
         public string Initiator { get; set; }
 
-        [Parameter("uint", "_refundTimestamp", 4, false)]
-        public uint RefundTimestamp { get; set; }
+        [Parameter("uint256", "_refundTimestamp", 4, false)]
+        public BigInteger RefundTimestamp { get; set; }
 
         [Parameter("uint256", "_value", 5, false)]
         public BigInteger Value { get; set; }

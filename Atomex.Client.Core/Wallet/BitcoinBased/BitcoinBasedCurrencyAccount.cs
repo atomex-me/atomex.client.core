@@ -143,7 +143,7 @@ namespace Atomex.Wallet.BitcoinBased
             return null;
         }
 
-        public override async Task<decimal> EstimateFeeAsync(
+        public override async Task<decimal?> EstimateFeeAsync(
             string to,
             decimal amount,
             BlockchainTransactionType type,
@@ -157,7 +157,7 @@ namespace Atomex.Wallet.BitcoinBased
                 .ToList();
 
             if (!unspentOutputs.Any())
-                return 0;
+                return null; // insufficient funds
 
             var feeInSatoshi = 0L;
 
@@ -168,27 +168,20 @@ namespace Atomex.Wallet.BitcoinBased
                     .ToList();
 
                 if (!selectedOutputs.Any()) // insufficient funds
-                {
-                    var tx = BtcBasedCurrency
-                        .CreatePaymentTx(unspentOutputs,
-                            destinationAddress: BtcBasedCurrency.TestAddress(),
-                            changeAddress: BtcBasedCurrency.TestAddress(),
-                            amount: unspentOutputs.Sum(o => o.Value),
-                            fee: 0,
-                            lockTime: DateTimeOffset.MinValue);
-
-                    return (long)(tx.VirtualSize() * BtcBasedCurrency.FeeRate) / (decimal)BtcBasedCurrency.DigitsMultiplier;
-                }
+                    return null;
 
                 var testTx = BtcBasedCurrency
-                    .CreatePaymentTx(selectedOutputs,
+                    .CreatePaymentTx(
+                        unspentOutputs: selectedOutputs,
                         destinationAddress: BtcBasedCurrency.TestAddress(),
                         changeAddress: BtcBasedCurrency.TestAddress(),
                         amount: amountInSatoshi,
                         fee: feeInSatoshi,
                         lockTime: DateTimeOffset.MinValue);
 
-                var requiredFeeInSatoshi = (long)(testTx.VirtualSize() * BtcBasedCurrency.FeeRate);
+                var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(selectedOutputs);
+
+                var requiredFeeInSatoshi = (long)((testTx.VirtualSize() + estimatedSigSize) * BtcBasedCurrency.FeeRate);
 
                 if (requiredFeeInSatoshi > feeInSatoshi)
                 {
@@ -198,6 +191,41 @@ namespace Atomex.Wallet.BitcoinBased
 
                 return requiredFeeInSatoshi / (decimal)BtcBasedCurrency.DigitsMultiplier;
             }
+        }
+
+        public override async Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
+            string to,
+            BlockchainTransactionType type,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            var unspentOutputs = (await DataRepository
+                .GetAvailableOutputsAsync(Currency)
+                .ConfigureAwait(false))
+                .ToList();
+
+            if (!unspentOutputs.Any())
+                return (0m, 0m);
+
+            var availableAmountInSatoshi = unspentOutputs.Sum(o => o.Value);
+            var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(unspentOutputs);
+
+            var testTx = BtcBasedCurrency
+                .CreatePaymentTx(
+                    unspentOutputs: unspentOutputs,
+                    destinationAddress: BtcBasedCurrency.TestAddress(),
+                    changeAddress: BtcBasedCurrency.TestAddress(),
+                    amount: availableAmountInSatoshi,
+                    fee: 0,
+                    lockTime: DateTimeOffset.MinValue);
+
+            var requiredFeeInSatoshi = (long)((testTx.VirtualSize() + estimatedSigSize) * BtcBasedCurrency.FeeRate);
+
+            var amount = Math.Max(availableAmountInSatoshi - requiredFeeInSatoshi, 0) /
+                         (decimal) BtcBasedCurrency.DigitsMultiplier;
+
+            var fee = requiredFeeInSatoshi / (decimal)BtcBasedCurrency.DigitsMultiplier;
+
+            return (amount, fee);
         }
 
         protected override async Task ResolveTransactionTypeAsync(
@@ -280,19 +308,26 @@ namespace Atomex.Wallet.BitcoinBased
                 //    .FirstOrDefault(t => t.Outputs
                 //        .FirstOrDefault(to => to.Index == o.Index && to.TxId == o.TxId) != null) == null;
 
-                var isConfirmedOutput = (await DataRepository
+                var tx = await DataRepository
                     .GetTransactionByIdAsync(Currency, o.TxId)
-                    .ConfigureAwait(false))
-                    .IsConfirmed;
+                    .ConfigureAwait(false);
+
+                var isConfirmedOutput = tx?.IsConfirmed ?? false;
 
                 //var isConfirmedInput = isSpent && unconfirmedTxs
                 //    .FirstOrDefault(t => t.Inputs
                 //        .FirstOrDefault(ti => ti.Index == o.Index && ti.Hash == o.TxId) != null) == null;
 
-                var isConfirmedInput = isSpent && (await DataRepository
-                    .GetTransactionByIdAsync(Currency, o.SpentTxPoint.Hash)
-                    .ConfigureAwait(false))
-                    .IsConfirmed;
+                var isConfirmedInput = false;
+
+                if (isSpent)
+                {
+                    var spentTx = await DataRepository
+                        .GetTransactionByIdAsync(Currency, o.SpentTxPoint.Hash)
+                        .ConfigureAwait(false);
+
+                    isConfirmedInput = spentTx?.IsConfirmed ?? false;
+                }
 
                 // balance = sum (all confirmed unspended outputs) + sum(all confirmed spent outputs with unconfirmed spent tx)
                 // unconfirmedIncome = sum(all unconfirmed unspended outputs)

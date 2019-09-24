@@ -16,9 +16,11 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var isNewDb = !File.Exists(pathToDb);
+
                 using (var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}"))
                 {
-                    if (db.Engine.UserVersion == 0)
+                    if (db.Engine.UserVersion == 0 && !isNewDb)
                     {
                         // backup firstly
                         var dbDirectory = Path.GetDirectoryName(pathToDb);

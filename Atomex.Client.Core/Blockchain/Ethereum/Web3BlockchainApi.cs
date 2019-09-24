@@ -6,10 +6,8 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core.Entities;
-using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Signer;
 using Nethereum.Web3;
-using Serilog;
 
 namespace Atomex.Blockchain.Ethereum
 {

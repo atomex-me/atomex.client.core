@@ -7,15 +7,19 @@ using Serilog;
 
 namespace Atomex.Swaps.Tezos.Tasks
 {
-    public class TezosRefundControlTask : BlockchainTask
+    public class TezosSwapRedeemControlTask : BlockchainTask
     {
+        public DateTime RefundTimeUtc { get; set; }
+        public byte[] Secret { get; private set; }
+        public bool CancelOnlyWhenRefundTimeReached { get; set; } = true;
+
         private Atomex.Tezos Xtz => (Atomex.Tezos)Currency;
 
         public override async Task<bool> CheckCompletion()
         {
             try
             {
-                Log.Debug("Tezos: check refund event");
+                Log.Debug("Tezos: check redeem event");
 
                 var contractAddress = Xtz.SwapContractAddress;
 
@@ -36,8 +40,13 @@ namespace Atomex.Swaps.Tezos.Tasks
 
                     foreach (var tx in txs)
                     {
-                        if (tx.To == contractAddress && tx.IsSwapRefund(Swap.SecretHash))
+                        if (tx.To == contractAddress && tx.IsSwapRedeem(Swap.SecretHash))
                         {
+                            // redeem!
+                            Secret = tx.GetSecret();
+
+                            Log.Debug("Redeem event received with secret {@secret}", Convert.ToBase64String(Secret));
+
                             CompleteHandler?.Invoke(this);
                             return true;
                         }
@@ -61,11 +70,21 @@ namespace Atomex.Swaps.Tezos.Tasks
             }
             catch (Exception e)
             {
-                Log.Error(e, "Tezos refund control task error");
+                Log.Error(e, "Tezos redeem control task error");
             }
 
-            CancelHandler?.Invoke(this);
-            return true;
+            if (!CancelOnlyWhenRefundTimeReached)
+                CancelHandler?.Invoke(this);
+
+            if (DateTime.UtcNow >= RefundTimeUtc)
+            {
+                Log.Debug("Time for refund reached");
+
+                CancelHandler?.Invoke(this);
+                return true;
+            }
+
+            return false;
         }
     }
 }

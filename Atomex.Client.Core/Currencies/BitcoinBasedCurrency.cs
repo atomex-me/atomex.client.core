@@ -7,6 +7,7 @@ using Atomex.Core.Entities;
 using Atomex.Cryptography;
 using Atomex.Wallet.BitcoinBased;
 using NBitcoin;
+using Serilog;
 
 namespace Atomex
 {
@@ -21,7 +22,7 @@ namespace Atomex
         public const int P2PShSwapRefundScriptSigSize = 208;
         public const int P2PShSwapRedeemScriptSigSize = 241;
 
-        public const int RedeemTxSize = 300;
+        public const int DefaultRedeemTxSize = 300;
 
         public Network Network { get; protected set; }
 
@@ -103,7 +104,7 @@ namespace Atomex
 
         public override decimal GetDefaultRedeemFee()
         {
-            return FeeRate * RedeemTxSize / DigitsMultiplier;
+            return FeeRate * DefaultRedeemTxSize / DigitsMultiplier;
         }
 
         public long CoinToSatoshi(decimal coins)
@@ -322,32 +323,36 @@ namespace Atomex
                 fee: fee);
         }
 
-        //public virtual IBitcoinBasedTransaction CreateSwapRefundTx(
-        //    IEnumerable<ITxOutput> unspentOutputs,
-        //    string destinationAddress,
-        //    string changeAddress,
-        //    long amount,
-        //    long fee,
-        //    DateTimeOffset lockTime)
-        //{
-        //    var coins = unspentOutputs
-        //        .Cast<BitcoinBasedTxOutput>()
-        //        .Select(o => o.Coin);
+        public static long EstimateSigSize(ITxOutput output, bool forRefund = false, bool forRedeem = false)
+        {
+            if (!(output is BitcoinBasedTxOutput btcBasedOutput))
+                return 0;
 
-        //    var destination = BitcoinAddress.Create(destinationAddress, Network)
-        //        .ScriptPubKey;
+            var sigSize = 0L;
 
-        //    var change = BitcoinAddress.Create(changeAddress, Network)
-        //        .ScriptPubKey;
+            if (btcBasedOutput.IsP2Pkh)
+                sigSize += P2PkhScriptSigSize; // use compressed?
+            else if (btcBasedOutput.IsSegwitP2Pkh)
+                sigSize += P2WPkhScriptSigSize;
+            else if (btcBasedOutput.IsP2PkhSwapPayment || btcBasedOutput.IsHtlcP2PkhSwapPayment)
+                sigSize += forRefund
+                    ? P2PkhSwapRefundSigSize
+                    : P2PkhSwapRedeemSigSize;
+            else if (btcBasedOutput.IsP2Sh)
+                sigSize += forRefund
+                    ? P2PShSwapRefundScriptSigSize
+                    : (forRedeem
+                        ? P2PShSwapRedeemScriptSigSize
+                        : P2PkhScriptSigSize); // todo: probably incorrect
+            else
+                Log.Warning("Unknown output type, estimated fee may be wrong");
 
-        //    return BitcoinBasedTransaction.CreateTransaction(
-        //        currency: this,
-        //        coins: coins,
-        //        destination: destination,
-        //        change: change,
-        //        amount: amount,
-        //        fee: fee,
-        //        lockTime: lockTime);
-        //}
+            return sigSize;
+        }
+
+        public static long EstimateSigSize(IEnumerable<ITxOutput> outputs, bool forRefund = false)
+        {
+            return outputs.ToList().Sum(output => EstimateSigSize(output, forRefund));
+        }
     }
 }

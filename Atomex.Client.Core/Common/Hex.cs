@@ -4,9 +4,9 @@ namespace Atomex.Common
 {
     public static class Hex
     {
-        public static byte[] FromString(string hex)
+        public static byte[] FromString(string hex, bool prefixed = false)
         {
-            return HexBouncyCastle.Decode(hex);
+            return HexBouncyCastle.Decode(prefixed ? hex.Substring(2) : hex);
         }
 
         public static string ToHexString(this byte[] bytes, int offset, int count)
@@ -17,13 +17,6 @@ namespace Atomex.Common
         public static string ToHexString(this byte[] bytes)
         {
             return HexBouncyCastle.ToHexString(bytes);
-
-            //var sb = new StringBuilder();
-
-            //foreach (var b in bytes)
-            //    sb.Append(b.ToString("x2"));
-
-            //return sb.ToString();
         }
     }
 }

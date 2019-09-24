@@ -1,15 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
-using Nethereum.JsonRpc.WebSocketClient;
-using Nethereum.RPC.Eth.DTOs;
-using Nethereum.Web3;
+using Atomex.Common;
 using Serilog;
 
 namespace Atomex.Swaps.Ethereum.Tasks
 {
-    public class EthereumRefundControlTask : BlockchainTask
+    public class EthereumSwapRefundControlTask : BlockchainTask
     {
         private Atomex.Ethereum Eth => (Atomex.Ethereum) Currency;
 
@@ -19,20 +19,16 @@ namespace Atomex.Swaps.Ethereum.Tasks
             {
                 Log.Debug("Ethereum: check refund event");
 
-                var wsUri = Web3BlockchainApi.WsUriByChain(Eth.Chain);
-                var web3 = new Web3(new WebSocketClient(wsUri));
+                var api = new EtherScanApi(Eth, Eth.Chain);
 
-                var refundEventHandler = web3.Eth
-                    .GetEvent<RefundedEventDTO>(Eth.SwapContractAddress);
-
-                var filter = refundEventHandler
-                    .CreateFilterInput<byte[]>(
-                        Swap.SecretHash,
-                        new BlockParameter(Eth.SwapContractBlockNumber));
-
-                var events = await refundEventHandler
-                    .GetAllChanges(filter)
-                    .ConfigureAwait(false);
+                var events = (await api.GetContractEventsAsync(
+                        address: Eth.SwapContractAddress,
+                        fromBlock: Eth.SwapContractBlockNumber,
+                        toBlock: ulong.MaxValue,
+                        topic0: EventSignatureExtractor.GetSignatureHash<RefundedEventDTO>(),
+                        topic1: "0x" + Swap.SecretHash.ToHexString())
+                    .ConfigureAwait(false))
+                    ?.ToList() ?? new List<EtherScanApi.ContractEvent>();
 
                 if (events.Count > 0)
                 {

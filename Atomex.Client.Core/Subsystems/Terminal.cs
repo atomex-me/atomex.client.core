@@ -42,6 +42,8 @@ namespace Atomex.Subsystems
         private ClientSwapManager SwapManager { get; set; }
         private IBackgroundTaskPerformer TaskPerformer { get; }
 
+        private TimeSpan TransactionConfirmationCheckInterval { get; } = TimeSpan.FromSeconds(45);
+
         public Terminal(
             IConfiguration configuration,
             IAccount account = null)
@@ -432,7 +434,7 @@ namespace Atomex.Subsystems
             TaskPerformer.EnqueueTask(new TransactionConfirmationCheckTask
             {
                 Currency = transaction.Currency,
-                Interval = TimeSpan.FromSeconds(30),
+                Interval = TransactionConfirmationCheckInterval,
                 TxId = transaction.Id,
                 CompleteHandler = async task =>
                 {

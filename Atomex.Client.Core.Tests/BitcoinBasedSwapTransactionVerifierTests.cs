@@ -10,7 +10,7 @@ namespace Atomex.Client.Core.Tests
 {
     public class BitcoinBasedSwapTransactionVerifierTests
     {
-        public static IEnumerable<object[]> BitcoinBasedCurrencies =>
+        public static IEnumerable<object[]> Currencies =>
             new List<object[]>
             {
                 new object[] {Common.CurrenciesMainNet.Get<Bitcoin>(), Common.SymbolsMainNet.GetByName("ETH/BTC"), Side.Sell},
@@ -20,7 +20,7 @@ namespace Atomex.Client.Core.Tests
             };
 
         [Theory]
-        [MemberData(nameof(BitcoinBasedCurrencies))]
+        [MemberData(nameof(Currencies))]
         public void TryVerifyPartyPaymentTxTest(BitcoinBasedCurrency currency, Symbol symbol, Side side)
         {
             const int initAmount = 1_0000_0000;

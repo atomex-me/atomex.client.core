@@ -78,6 +78,47 @@ namespace Atomex.Blockchain.Ethereum
             public string Confirmations { get; set; }
         }
 
+        public class ContractEvent
+        {
+            [JsonProperty(PropertyName = "address")]
+            public string Address { get; set; }
+
+            [JsonProperty(PropertyName = "topics")]
+            public List<string> Topics { get; set; }
+
+            [JsonProperty(PropertyName = "data")]
+            public string HexData { get; set; }
+
+            [JsonProperty(PropertyName = "blockNumber")]
+            public string HexBlockNumber { get; set; }
+
+            [JsonProperty(PropertyName = "timeStamp")]
+            public string HexTimeStamp { get; set; }
+
+            [JsonProperty(PropertyName = "gasPrice")]
+            public string HexGasPrice { get; set; }
+
+            [JsonProperty(PropertyName = "gasUsed")]
+            public string HexGasUsed { get; set; }
+
+            [JsonProperty(PropertyName = "logIndex")]
+            public string HexLogIndex { get; set; }
+
+            [JsonProperty(PropertyName = "transactionHash")]
+            public string HexTransactionHash { get; set; }
+
+            [JsonProperty(PropertyName = "transactionIndex")]
+            public string HexTransactionIndex { get; set; }
+
+            public string EventSignatureHash()
+            {
+                if (Topics != null && Topics.Count > 0)
+                    return Topics[0];
+
+                throw new Exception("Contract event does not contain event signature hash");
+            }
+        }
+
         private Currency Currency { get; }
 
         public EtherScanApi(Currency currency, Chain chain)
@@ -174,6 +215,97 @@ namespace Atomex.Blockchain.Ethereum
                 .ConfigureAwait(false) ?? Enumerable.Empty<EthereumTransaction>();
 
             return txs.Concat(internalTxs);
+        }
+
+        public Task<IEnumerable<ContractEvent>> GetContractEventsAsync(
+            string address,
+            ulong fromBlock,
+            ulong toBlock,
+            string topic0,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetContractEventsAsync(address, fromBlock, toBlock, cancellationToken, topic0);
+        }
+
+        public Task<IEnumerable<ContractEvent>> GetContractEventsAsync(
+            string address,
+            ulong fromBlock,
+            ulong toBlock,
+            string topic0,
+            string topic1,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetContractEventsAsync(address, fromBlock, toBlock, cancellationToken, topic0, topic1);
+        }
+
+        public Task<IEnumerable<ContractEvent>> GetContractEventsAsync(
+            string address,
+            ulong fromBlock,
+            ulong toBlock,
+            string topic0,
+            string topic1,
+            string topic2,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetContractEventsAsync(address, fromBlock, toBlock, cancellationToken, topic0, topic1, topic2);
+        }
+
+        public async Task<IEnumerable<ContractEvent>> GetContractEventsAsync(
+            string address,
+            ulong fromBlock = ulong.MinValue,
+            ulong toBlock = ulong.MaxValue,
+            CancellationToken cancellationToken = default(CancellationToken),
+            params string[] topics)
+        {
+            var fromBlockStr = BlockNumberToStr(fromBlock);
+            var toBlockStr = BlockNumberToStr(toBlock);
+            var topicsStr = TopicsToStr(topics);
+
+            var uri = $"api?module=logs&action=getLogs&address={address}&fromBlock={fromBlockStr}&toBlock={toBlockStr}{topicsStr}&apikey={ApiKey}";         
+
+            return await HttpHelper.GetAsync(
+                    baseUri: BaseUrl,
+                    requestUri: uri,
+                    responseHandler: responseContent => JsonConvert.DeserializeObject<Response<List<ContractEvent>>>(responseContent).Result,
+                    requestLimitChecker: RequestLimitChecker,
+                    maxAttempts: MaxRequestAttemptsCount,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false) ?? Enumerable.Empty<ContractEvent>();
+        }
+
+        private static string BlockNumberToStr(ulong blockNumber)
+        {
+            if (blockNumber == ulong.MaxValue)
+                return "latest";
+
+            // "earlest" and "pending" not supported by EtherScan yet
+
+            return blockNumber.ToString();
+        }
+
+        private static string TopicsToStr(params string[] topics)
+        {
+            var result = string.Empty;
+
+            if (topics == null)
+                return result;
+
+            var lastTopic = -1;
+
+            for (var i = 0; i < topics.Length; ++i)
+            {
+                if (topics[i] == null)
+                    continue;
+
+                if (lastTopic != -1)                       
+                    result += $"&topic{lastTopic}_{i}_opr=and";  
+
+                result += $"&topic{i}={topics[i]}";
+
+                lastTopic = i;
+            }
+
+            return result;
         }
 
         public Task<string> BroadcastAsync(

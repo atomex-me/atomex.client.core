@@ -20,3 +20,6 @@ test:
   script:
     - "cd $test"
     - "dotnet test"
+  only:
+    - develop
+    - master

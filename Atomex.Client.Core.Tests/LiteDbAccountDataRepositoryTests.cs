@@ -129,7 +129,7 @@ namespace Atomex.Client.Core.Tests
                 Currency = Common.EthTestNet,
                 InternalTxs = new List<EthereumTransaction>
                 {
-                    new EthereumTransaction() {Currency = Common.EthTestNet}
+                    new EthereumTransaction {Currency = Common.EthTestNet}
                 }
             };
 
@@ -139,9 +139,9 @@ namespace Atomex.Client.Core.Tests
 
             Assert.True(result);
 
-            var readTx = (await repository
+            var readTx = await repository
                 .GetTransactionByIdAsync(Common.EthTestNet, id)
-                .ConfigureAwait(false)) as EthereumTransaction;
+                .ConfigureAwait(false) as EthereumTransaction;
 
             Assert.NotNull(readTx);
             Assert.NotNull(readTx.InternalTxs);

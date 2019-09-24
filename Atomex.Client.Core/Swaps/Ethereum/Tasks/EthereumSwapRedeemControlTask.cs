@@ -1,19 +1,19 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
-using Nethereum.JsonRpc.WebSocketClient;
-using Nethereum.RPC.Eth.DTOs;
-using Nethereum.Web3;
+using Atomex.Common;
 using Serilog;
 
 namespace Atomex.Swaps.Ethereum.Tasks
 {
-    public class EthereumRedeemControlTask : BlockchainTask
+    public class EthereumSwapRedeemControlTask : BlockchainTask
     {
         public DateTime RefundTimeUtc { get; set; }
         public byte[] Secret { get; private set; }
+        public bool CancelOnlyWhenRefundTimeReached { get; set; } = true;
 
         private Atomex.Ethereum Eth => (Atomex.Ethereum) Currency;
 
@@ -23,24 +23,20 @@ namespace Atomex.Swaps.Ethereum.Tasks
             {
                 Log.Debug("Ethereum: check redeem event");
 
-                var wsUri = Web3BlockchainApi.WsUriByChain(Eth.Chain);
-                var web3 = new Web3(new WebSocketClient(wsUri));
+                var api = new EtherScanApi(Eth, Eth.Chain);
 
-                var redeemEventHandler = web3.Eth
-                    .GetEvent<RedeemedEventDTO>(Eth.SwapContractAddress);
-
-                var filter = redeemEventHandler
-                    .CreateFilterInput<byte[]>(
-                        Swap.SecretHash,
-                        new BlockParameter(Eth.SwapContractBlockNumber));
-
-                var events = await redeemEventHandler
-                    .GetAllChanges(filter)
-                    .ConfigureAwait(false);
+                var events = (await api.GetContractEventsAsync(
+                        address: Eth.SwapContractAddress,
+                        fromBlock: Eth.SwapContractBlockNumber,
+                        toBlock: ulong.MaxValue,
+                        topic0: EventSignatureExtractor.GetSignatureHash<RedeemedEventDTO>(),
+                        topic1: "0x" + Swap.SecretHash.ToHexString())
+                    .ConfigureAwait(false))
+                    ?.ToList() ?? new List<EtherScanApi.ContractEvent>();
 
                 if (events.Count > 0)
                 {
-                    Secret = events.First().Event.Secret;
+                    Secret = events.First().ParseRedeemedEvent().Secret;
 
                     Log.Debug("Redeem event received with secret {@secret}", Convert.ToBase64String(Secret));
 
@@ -52,6 +48,9 @@ namespace Atomex.Swaps.Ethereum.Tasks
             {
                 Log.Error(e, "Ethereum redeem control task error");
             }
+
+            if (!CancelOnlyWhenRefundTimeReached)
+                CancelHandler?.Invoke(this);
 
             if (DateTime.UtcNow >= RefundTimeUtc)
             {

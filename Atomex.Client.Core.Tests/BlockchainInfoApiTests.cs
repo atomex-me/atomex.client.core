@@ -1,19 +1,11 @@
 using System.Collections.Generic;
 using Atomex.Blockchain.BlockchainInfo;
 using Xunit;
-using Xunit.Abstractions;
 
 namespace Atomex.Client.Core.Tests
 {
     public class BlockchainInfoApiTests
     {
-        private readonly ITestOutputHelper _testOutputHelper;
-
-        public BlockchainInfoApiTests(ITestOutputHelper testOutputHelper)
-        {
-            _testOutputHelper = testOutputHelper;
-        }
-
         public static IEnumerable<object[]> GetTransactionTestData => new List<object[]>
         {
             //new object[] {Common.TestNetBtc, "aa1b99c63f2a28dd4d0e1765194d9810cc937ecb9a25f0ca04a485e0dd433ca8"},

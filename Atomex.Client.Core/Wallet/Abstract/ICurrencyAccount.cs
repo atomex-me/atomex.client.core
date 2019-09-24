@@ -31,9 +31,14 @@ namespace Atomex.Wallet.Abstract
             decimal feePrice,
             CancellationToken cancellationToken = default(CancellationToken));
 
-        Task<decimal> EstimateFeeAsync(
+        Task<decimal?> EstimateFeeAsync(
             string to,
             decimal amount,
+            BlockchainTransactionType type,
+            CancellationToken cancellationToken = default(CancellationToken));
+
+        Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
+            string to,
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default(CancellationToken));
 

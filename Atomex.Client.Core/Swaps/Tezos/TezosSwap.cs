@@ -92,7 +92,7 @@ namespace Atomex.Swaps.Tezos
             }
 
             // start redeem control
-            TaskPerformer.EnqueueTask(new TezosRedeemControlTask
+            TaskPerformer.EnqueueTask(new TezosSwapRedeemControlTask
             {
                 Currency = Currency,
                 RefundTimeUtc = swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
@@ -119,7 +119,7 @@ namespace Atomex.Swaps.Tezos
             {
                 Currency = Currency,
                 Swap = swap,
-                Interval = TimeSpan.FromSeconds(30),
+                Interval = DefaultConfirmationCheckInterval,
                 RefundTimestamp = refundTimeStampUtcInSec,
                 CompleteHandler = handler,
                 CancelHandler = SwapCanceledEventHandler
@@ -204,7 +204,7 @@ namespace Atomex.Swaps.Tezos
             Log.Debug("Wait redeem for swap {@swapId}", swap.Id);
 
             // start redeem control
-            TaskPerformer.EnqueueTask(new TezosRedeemControlTask
+            TaskPerformer.EnqueueTask(new TezosSwapRedeemControlTask
             {
                 Currency = Currency,
                 RefundTimeUtc = swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
@@ -334,6 +334,9 @@ namespace Atomex.Swaps.Tezos
         {
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
             {
+                if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemSigned))
+                    return Task.CompletedTask; // we already have redeem, let's check it in RestoreForPurchasedCurrency
+
                 if (!(swap.PaymentTx is TezosTransaction))
                 {
                     Log.Error("Can't restore swap {@id}. Payment tx is null.", swap.Id);
@@ -345,7 +348,7 @@ namespace Atomex.Swaps.Tezos
                     : DefaultAcceptorLockTimeInSeconds;
 
                 // start redeem control
-                TaskPerformer.EnqueueTask(new TezosRedeemControlTask
+                TaskPerformer.EnqueueTask(new TezosSwapRedeemControlTask
                 {
                     Currency = Currency,
                     RefundTimeUtc = swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
@@ -385,13 +388,32 @@ namespace Atomex.Swaps.Tezos
             if (swap.RewardForRedeem > 0 &&
                 swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
             {
-                // may be swap already redeemed by someone else
+                // may be swap already redeemed by someone else, let's check it
                 await WaitForRedeemAsync(swap)
                     .ConfigureAwait(false);
+            }
+            else if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemSigned) &&
+                     !swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast))
+            {
+                // redeem tx created, signed, but not broadcast.
+                // there is a possibility that tx could successfully broadcast
+                // othersise try again
+
+                TaskPerformer.EnqueueTask(new TezosSwapRedeemControlTask
+                {
+                    Currency = Currency,
+                    RefundTimeUtc = swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
+                    Swap = swap,
+                    CancelOnlyWhenRefundTimeReached = false,
+                    CompleteHandler = RedeemPartyControlCompletedEventHandler,
+                    CancelHandler = RedeemPartyControlCanceledEventHandler
+                });
             }
             else if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast) &&
                     !swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemConfirmed))
             {
+                // redeem broadcast, but not confirmed
+
                 if (!(swap.RedeemTx is TezosTransaction redeemTx))
                 {
                     Log.Error("Can't restore swap {@id}. Redeem tx is null", swap.Id);
@@ -482,7 +504,7 @@ namespace Atomex.Swaps.Tezos
 
         private void RedeemControlCompletedEventHandler(BackgroundTask task)
         {
-            var redeemControlTask = task as TezosRedeemControlTask;
+            var redeemControlTask = task as TezosSwapRedeemControlTask;
             var swap = redeemControlTask?.Swap;
 
             if (swap == null)
@@ -501,7 +523,7 @@ namespace Atomex.Swaps.Tezos
 
         private void RedeemControlCanceledEventHandler(BackgroundTask task)
         {
-            var redeemControlTask = task as TezosRedeemControlTask;
+            var redeemControlTask = task as TezosSwapRedeemControlTask;
             var swap = redeemControlTask?.Swap;
 
             if (swap == null)
@@ -528,7 +550,7 @@ namespace Atomex.Swaps.Tezos
 
             Log.Debug("Refund time reached for swap {@swapId}", swap.Id);
 
-            TaskPerformer.EnqueueTask(new TezosRefundControlTask
+            TaskPerformer.EnqueueTask(new TezosSwapRefundControlTask
             {
                 Currency = Currency,
                 Swap = swap,
@@ -539,7 +561,7 @@ namespace Atomex.Swaps.Tezos
 
         private async void RefundEventHandler(BackgroundTask task)
         {
-            var refundControlTask = task as TezosRefundControlTask;
+            var refundControlTask = task as TezosSwapRefundControlTask;
             var swap = refundControlTask?.Swap;
 
             if (swap == null)
@@ -567,7 +589,7 @@ namespace Atomex.Swaps.Tezos
 
         private void RedeemPartyControlCompletedEventHandler(BackgroundTask task)
         {
-            var redeemControlTask = task as TezosRedeemControlTask;
+            var redeemControlTask = task as TezosSwapRedeemControlTask;
             var swap = redeemControlTask?.Swap;
 
             if (swap == null)
@@ -591,9 +613,9 @@ namespace Atomex.Swaps.Tezos
             }
         }
 
-        private void RedeemPartyControlCanceledEventHandler(BackgroundTask task)
+        private async void RedeemPartyControlCanceledEventHandler(BackgroundTask task)
         {
-            var redeemControlTask = task as TezosRedeemControlTask;
+            var redeemControlTask = task as TezosSwapRedeemControlTask;
             var swap = redeemControlTask?.Swap;
 
             if (swap == null)
@@ -601,13 +623,36 @@ namespace Atomex.Swaps.Tezos
 
             Log.Debug("Handle redeem party control canceled event for swap {@swapId}", swap.Id);
 
-            if (swap.Secret?.Length > 0) //note: we use DefaultCounterPartyLockTimeInSeconds, if secret is not revealed yet, counterparty is refunding in _soldcurrency side and it's OK but if it is revealed we need to panic
+            try
             {
-                //todo: Make some panic here
-                Log.Error(
-                    "Counter counterParty redeem need to be made for swap {@swapId}, using secret {@Secret}",
-                    swap.Id,
-                    Convert.ToBase64String(swap.Secret));
+                if (swap.Secret?.Length > 0)
+                {
+                    var walletAddress = (await Account.GetUnspentAddressesAsync(
+                            currency: Currency,
+                            amount: 0,
+                            fee: Xtz.RedeemFee.ToTez() + Xtz.RedeemStorageLimit.ToTez(),
+                            feePrice: 0,
+                            isFeePerTransaction: true,
+                            addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress)
+                        .ConfigureAwait(false))
+                        .FirstOrDefault();
+
+                    if (walletAddress == null) //todo: make some panic here
+                    {
+                        Log.Error(
+                            "Counter counterParty redeem need to be made for swap {@swapId}, using secret {@Secret}",
+                            swap.Id,
+                            Convert.ToBase64String(swap.Secret));
+                        return;
+                    }
+
+                    await RedeemAsync(swap)
+                        .ConfigureAwait(false);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Redeem party control canceled event error");
             }
         }
 
@@ -657,20 +702,26 @@ namespace Atomex.Swaps.Tezos
                 Log.Debug("Available balance: {@balance}", balanceInTz);
 
                 var balanceInMtz = balanceInTz.ToMicroTez();
-                var feeAmountInMtz = isInitTx
-                    ? Xtz.InitiateFee + Xtz.InitiateStorageLimit
-                    : Xtz.AddFee + Xtz.AddStorageLimit;
 
-                var amountInMtz = Math.Min(balanceInMtz - feeAmountInMtz, requiredAmountInMtz);
+                var feeAmountInMtz = isInitTx
+                    ? Xtz.InitiateFee
+                    : Xtz.AddFee;
+
+                var paidStorageDiffInMtz = isInitTx
+                    ? Xtz.InitiatePaidStorageDiff
+                    : Xtz.AddPaidStorageDiff;
+
+                var amountInMtz = Math.Min(balanceInMtz - feeAmountInMtz - paidStorageDiffInMtz, requiredAmountInMtz);
 
                 if (amountInMtz <= 0)
                 {
                     Log.Warning(
                         "Insufficient funds at {@address}. Balance: {@balance}, " +
-                        "feeAmount: {@feeAmount}, result: {@result}.",
+                        "feeAmount: {@feeAmount}, paidStorageDiffAmount: {@paidStorageDiffAmount}, result: {@result}.",
                         walletAddress.Address,
                         balanceInMtz,
                         feeAmountInMtz,
+                        paidStorageDiffInMtz,
                         amountInMtz);
 
                     continue;

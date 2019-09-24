@@ -158,7 +158,7 @@ namespace Atomex.Wallet
                     cancellationToken: cancellationToken);
         }
 
-        public Task<decimal> EstimateFeeAsync(
+        public Task<decimal?> EstimateFeeAsync(
             Currency currency,
             string to,
             decimal amount,
@@ -167,6 +167,16 @@ namespace Atomex.Wallet
         {
             return GetAccountByCurrency(currency)
                 .EstimateFeeAsync(to, amount, type, cancellationToken);
+        }
+
+        public Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
+            Currency currency,
+            string to,
+            BlockchainTransactionType type,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetAccountByCurrency(currency)
+                .EstimateMaxAmountToSendAsync(to, type, cancellationToken);
         }
 
         public async Task<Auth> CreateAuthRequestAsync(AuthNonce nonce, uint keyIndex = 0)
