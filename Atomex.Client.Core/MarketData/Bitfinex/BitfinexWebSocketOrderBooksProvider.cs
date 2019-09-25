@@ -24,18 +24,20 @@ namespace Atomex.MarketData.Bitfinex
         private readonly Dictionary<string, MarketDataOrderBook> _orderbooks;
         private ClientWebSocket _ws;
         private Task _wsTask;
+        private Task _pingTask;
         private CancellationTokenSource _cts;
 
-        public event EventHandler OrderBookUpdated;
+        public event EventHandler<OrderBookEventArgs> OrderBookUpdated;
         public event EventHandler AvailabilityChanged;
 
         public DateTime LastUpdateTime { get; private set; }
-        public DateTime LastSuccessUpdateTime { get; private set; }
         public int ReceiveBufferSize { get; set; } = DefaultReceiveBufferSize;
+        public int BookDepth { get; set; } = 25;
         public bool IsRunning => _wsTask != null &&
                                  !_wsTask.IsCompleted &&
                                  !_wsTask.IsCanceled &&
                                  !_wsTask.IsFaulted;
+        public bool IsRestart { get; private set; }
 
         private bool _isAvailable;
         public bool IsAvailable
@@ -96,21 +98,25 @@ namespace Atomex.MarketData.Bitfinex
                     var bytesReceived = 0;
                     var buffer = new byte[ReceiveBufferSize];
                     
-                    await _ws.ConnectAsync(new Uri(BaseUrl), _cts.Token);
+                    await _ws.ConnectAsync(new Uri(BaseUrl), _cts.Token)
+                        .ConfigureAwait(false);
 
-                    OnConnected();
+                    await OnConnectedAsync()
+                        .ConfigureAwait(false);
 
                     while (_ws.State == WebSocketState.Open && !_cts.IsCancellationRequested)
                     {
                         var result = await _ws.ReceiveAsync(
-                            buffer: new ArraySegment<byte>(buffer, bytesReceived, buffer.Length - bytesReceived),
-                            cancellationToken: _cts.Token);
+                                buffer: new ArraySegment<byte>(buffer, bytesReceived, buffer.Length - bytesReceived),
+                                cancellationToken: _cts.Token)
+                            .ConfigureAwait(false);
 
                         if (result.EndOfMessage)
                         {
                             bytesReceived += result.Count;
 
-                            OnMessage(result, new ArraySegment<byte>(buffer, 0, bytesReceived));
+                            await OnMessageAsync(result, new ArraySegment<byte>(buffer, 0, bytesReceived))
+                                .ConfigureAwait(false);
 
                             bytesReceived = 0;
                         }
@@ -119,7 +125,10 @@ namespace Atomex.MarketData.Bitfinex
                             if (buffer.Length >= MaxReceiveBufferSize)
                             {
                                 Log.Error("Message too big!");
-                                await _ws.CloseAsync(WebSocketCloseStatus.MessageTooBig, "Message too big", _cts.Token);
+
+                                await _ws.CloseAsync(WebSocketCloseStatus.MessageTooBig, "Message too big", _cts.Token)
+                                    .ConfigureAwait(false);
+
                                 break;
                             }
 
@@ -131,6 +140,10 @@ namespace Atomex.MarketData.Bitfinex
                             buffer = extendedBuffer;   
                         }
                     }
+
+                    if (_ws.State != WebSocketState.Closed && _ws.State != WebSocketState.Aborted)
+                        await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Close", CancellationToken.None)
+                            .ConfigureAwait(false);
                 }
             }
             catch (OperationCanceledException)
@@ -150,18 +163,61 @@ namespace Atomex.MarketData.Bitfinex
             return _orderbooks.TryGetValue($"{currency}{baseCurrency}", out var orderbook) ? orderbook : null;
         }
 
-        private void OnConnected()
+        private async Task OnConnectedAsync()
         {
             IsAvailable = true;
-            SubscribeToTickers();
+
+            await SubscribeToTickersAsync()
+                .ConfigureAwait(false);
+
+            _pingTask = Task.Run(async () =>
+            {
+                try
+                {
+                    while (IsRunning)
+                    {
+                        var message =
+                            $"{{ \"event\": \"ping\", \"cid\": \"0\" }}";
+
+                        var messageBytes = Encoding.UTF8.GetBytes(message);
+
+                        await _ws.SendAsync(
+                                buffer: new ArraySegment<byte>(messageBytes),
+                                messageType: WebSocketMessageType.Text,
+                                endOfMessage: true,
+                                cancellationToken: CancellationToken.None)
+                            .ConfigureAwait(false);
+
+                        await Task.Delay(5000)
+                            .ConfigureAwait(false);
+                    }
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Ping task error");
+
+                    if (_ws.State == WebSocketState.Closed || _ws.State == WebSocketState.Aborted)
+                        OnDisconnected();
+                }
+            });
         }
 
         private void OnDisconnected()
         {
             IsAvailable = false;
+
+            if (IsRestart)
+            {
+                IsRestart = false;
+
+                _wsTask.ContinueWith(t => {
+                    _cts = new CancellationTokenSource();
+                    return _wsTask = Task.Run(Run, _cts.Token);
+                });
+            }
         }
 
-        private void OnMessage(WebSocketReceiveResult result, ArraySegment<byte> buffer)
+        private async Task OnMessageAsync(WebSocketReceiveResult result, ArraySegment<byte> buffer)
         {
             try
             {
@@ -173,7 +229,8 @@ namespace Atomex.MarketData.Bitfinex
 
                     if (responseJson is JObject responseEvent)
                     {
-                        HandleEvent(responseEvent);
+                        await HandleEventAsync(responseEvent)
+                            .ConfigureAwait(false);
                     }
                     else if (responseJson is JArray responseData)
                     {
@@ -187,7 +244,7 @@ namespace Atomex.MarketData.Bitfinex
             }
         }
 
-        private void HandleEvent(JObject response)
+        private async Task HandleEventAsync(JObject response)
         {
             if (!response.ContainsKey("event"))
             {
@@ -210,8 +267,8 @@ namespace Atomex.MarketData.Bitfinex
                     if (code == 20051)
                     {
                         // please reconnect
+                        IsRestart = true;
                         Stop();
-                        Start();
                     }
                     else if (code == 20060)
                     {
@@ -222,9 +279,15 @@ namespace Atomex.MarketData.Bitfinex
                     {
                         // technical service stopped
                         IsAvailable = true;
-                        SubscribeToTickers();
+
+                        await SubscribeToTickersAsync()
+                            .ConfigureAwait(false);
                     }
                 }
+            }
+            else if (@event == "pong")
+            {
+                // nothing todo
             }
             else if (@event == "error")
             {
@@ -241,9 +304,12 @@ namespace Atomex.MarketData.Bitfinex
                 if (response[1] is JArray items)
                 {
                     var timeStamp = DateTime.Now;
+                    var orderBook = _orderbooks[symbol];
 
                     if (items[0] is JArray)
                     {
+                        orderBook.Clear();
+
                         foreach (var item in items) //it's a snapshot
                         {
                             try
@@ -254,12 +320,15 @@ namespace Atomex.MarketData.Bitfinex
                                     Price = item[0].Value<decimal>()
                                 };
 
-                                entry.QtyProfile.Add(item[1].Value<int>() > 0 ? Math.Abs(item[2].Value<decimal>()) : 0);
-                                _orderbooks[symbol].ApplyEntry(entry);
+                                entry.QtyProfile.Add(item[1].Value<int>() > 0
+                                    ? Math.Abs(item[2].Value<decimal>())
+                                    : 0);
+
+                                orderBook.ApplyEntry(entry);
                             }
                             catch (Exception ex)
                             {
-                                Console.WriteLine(ex.ToString());
+                                Log.Error(ex, "Snapshot apply error");
                             }
                         }
                     }
@@ -270,14 +339,17 @@ namespace Atomex.MarketData.Bitfinex
                             Side = items[2].Value<decimal>() > 0 ? Side.Buy : Side.Sell,
                             Price = items[0].Value<decimal>()
                         };
-                        entry.QtyProfile.Add(items[1].Value<int>() > 0 ? Math.Abs(items[2].Value<decimal>()) : 0);
-                        _orderbooks[symbol].ApplyEntry(entry);
+
+                        entry.QtyProfile.Add(items[1].Value<int>() > 0
+                            ? Math.Abs(items[2].Value<decimal>())
+                            : 0);
+
+                        orderBook.ApplyEntry(entry);
                     }
 
                     LastUpdateTime = timeStamp;
-                    LastSuccessUpdateTime = timeStamp;
 
-                    OrderBookUpdated?.Invoke(this, EventArgs.Empty);
+                    OrderBookUpdated?.Invoke(this, new OrderBookEventArgs(orderBook));
                 }
             }
             else
@@ -286,22 +358,23 @@ namespace Atomex.MarketData.Bitfinex
             }
         }
 
-        private async void SubscribeToTickers()
+        private async Task SubscribeToTickersAsync()
         {
             try
             {
                 foreach (var symbol in _orderbooks.Keys)
                 {
                     var message =
-                        $"{{ \"event\": \"subscribe\", \"channel\": \"book\", \"pair\":\"{symbol}\", \"prec\": \"P0\", \"freq\": \"F0\", \"len\": \"25\"}}";
+                        $"{{ \"event\": \"subscribe\", \"channel\": \"book\", \"pair\":\"{symbol}\", \"prec\": \"P0\", \"freq\": \"F0\", \"len\": \"{BookDepth}\"}}";
 
                     var messageBytes = Encoding.UTF8.GetBytes(message);
 
                     await _ws.SendAsync(
-                        buffer: new ArraySegment<byte>(messageBytes),
-                        messageType: WebSocketMessageType.Text,
-                        endOfMessage: true,
-                        cancellationToken: CancellationToken.None);
+                            buffer: new ArraySegment<byte>(messageBytes),
+                            messageType: WebSocketMessageType.Text,
+                            endOfMessage: true,
+                            cancellationToken: CancellationToken.None)
+                        .ConfigureAwait(false);
                 }
             }
             catch (Exception e)
