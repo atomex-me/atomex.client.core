@@ -319,8 +319,9 @@ namespace Atomex.Wallet
             decimal amount,
             decimal fee,
             decimal feePrice,
-            bool isFeePerTransaction,
+            FeeUsagePolicy feeUsagePolicy,
             AddressUsagePolicy addressUsagePolicy,
+            BlockchainTransactionType transactionType,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             return GetAccountByCurrency(currency)
@@ -328,8 +329,9 @@ namespace Atomex.Wallet
                     amount: amount,
                     fee: fee,
                     feePrice: feePrice,
-                    isFeePerTransaction: isFeePerTransaction,
+                    feeUsagePolicy: feeUsagePolicy,
                     addressUsagePolicy: addressUsagePolicy,
+                    transactionType: transactionType,
                     cancellationToken: cancellationToken);
         }
 

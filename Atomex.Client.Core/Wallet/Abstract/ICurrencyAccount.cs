@@ -79,8 +79,9 @@ namespace Atomex.Wallet.Abstract
             decimal amount,
             decimal fee,
             decimal feePrice,
-            bool isFeePerTransaction,
+            FeeUsagePolicy feeUsagePolicy,
             AddressUsagePolicy addressUsagePolicy,
+            BlockchainTransactionType transactionType,
             CancellationToken cancellationToken = default(CancellationToken));
 
         Task<WalletAddress> GetFreeInternalAddressAsync(

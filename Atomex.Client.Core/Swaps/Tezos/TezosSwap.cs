@@ -139,13 +139,15 @@ namespace Atomex.Swaps.Tezos
         {
             Log.Debug("Create redeem for swap {@swapId}", swap.Id);
 
-            var walletAddress = (await Account.GetUnspentAddressesAsync(
+            var walletAddress = (await Account
+                .GetUnspentAddressesAsync(
                     currency: Currency,
                     amount: 0,
-                    fee: Xtz.RedeemFee.ToTez() + Xtz.RedeemStorageLimit.ToTez(),
+                    fee: 0,
                     feePrice: 0,
-                    isFeePerTransaction: true,
-                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress)
+                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
+                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
+                    transactionType: BlockchainTransactionType.SwapRedeem)
                 .ConfigureAwait(false))
                 .FirstOrDefault();
 
@@ -224,10 +226,11 @@ namespace Atomex.Swaps.Tezos
                 .GetUnspentAddressesAsync(
                     currency: Currency,
                     amount: 0,
-                    fee: Xtz.RedeemFee.ToTez() + Xtz.RedeemStorageLimit.ToTez(),
+                    fee: 0,
                     feePrice: 0,
-                    isFeePerTransaction: false,
-                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress)
+                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
+                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
+                    transactionType: BlockchainTransactionType.SwapRedeem)
                 .ConfigureAwait(false))
                 .FirstOrDefault();
 
@@ -270,13 +273,15 @@ namespace Atomex.Swaps.Tezos
         {
             Log.Debug("Create refund for swap {@swap}", swap.Id);
 
-            var walletAddress = (await Account.GetUnspentAddressesAsync(
+            var walletAddress = (await Account
+                .GetUnspentAddressesAsync(
                     currency: Currency,
                     amount: 0,
-                    fee: Xtz.RefundFee.ToTez() + Xtz.RefundStorageLimit.ToTez(),
+                    fee: 0,
                     feePrice: 0,
-                    isFeePerTransaction: true,
+                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
                     addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
+                    transactionType: BlockchainTransactionType.SwapRefund,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false))
                 .FirstOrDefault();
@@ -627,13 +632,15 @@ namespace Atomex.Swaps.Tezos
             {
                 if (swap.Secret?.Length > 0)
                 {
-                    var walletAddress = (await Account.GetUnspentAddressesAsync(
+                    var walletAddress = (await Account
+                        .GetUnspentAddressesAsync(
                             currency: Currency,
                             amount: 0,
-                            fee: Xtz.RedeemFee.ToTez() + Xtz.RedeemStorageLimit.ToTez(),
+                            fee: 0,
                             feePrice: 0,
-                            isFeePerTransaction: true,
-                            addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress)
+                            feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
+                            addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
+                            transactionType: BlockchainTransactionType.SwapRedeem)
                         .ConfigureAwait(false))
                         .FirstOrDefault();
 
@@ -707,21 +714,21 @@ namespace Atomex.Swaps.Tezos
                     ? Xtz.InitiateFee
                     : Xtz.AddFee;
 
-                var paidStorageDiffInMtz = isInitTx
-                    ? Xtz.InitiatePaidStorageDiff
-                    : Xtz.AddPaidStorageDiff;
+                var storageLimitInMtz = isInitTx
+                    ? Xtz.InitiateStorageLimit * 1000
+                    : Xtz.AddStorageLimit * 1000;
 
-                var amountInMtz = Math.Min(balanceInMtz - feeAmountInMtz - paidStorageDiffInMtz, requiredAmountInMtz);
+                var amountInMtz = Math.Min(balanceInMtz - feeAmountInMtz - storageLimitInMtz, requiredAmountInMtz);
 
                 if (amountInMtz <= 0)
                 {
                     Log.Warning(
                         "Insufficient funds at {@address}. Balance: {@balance}, " +
-                        "feeAmount: {@feeAmount}, paidStorageDiffAmount: {@paidStorageDiffAmount}, result: {@result}.",
+                        "feeAmount: {@feeAmount}, storageLimit: {@storageLimit}, result: {@result}.",
                         walletAddress.Address,
                         balanceInMtz,
                         feeAmountInMtz,
-                        paidStorageDiffInMtz,
+                        storageLimitInMtz,
                         amountInMtz);
 
                     continue;

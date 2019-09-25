@@ -41,8 +41,9 @@ namespace Atomex.Wallet.Ethereum
                     amount: amount,
                     fee: fee,
                     feePrice: feePrice,
-                    isFeePerTransaction: false,
-                    addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst)
+                    feeUsagePolicy: FeeUsagePolicy.FeeForAllTransactions,
+                    addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst,
+                    transactionType: BlockchainTransactionType.Output)
                 .ToList();
 
             if (!selectedAddresses.Any())
@@ -63,15 +64,15 @@ namespace Atomex.Wallet.Ethereum
                 feePerTx,
                 feeAmount);
 
-            foreach (var (walletAddress, addressAmount) in selectedAddresses)
+            foreach (var selectedAddress in selectedAddresses)
             {
                 Log.Debug("Send {@amount} ETH from address {@address} with available balance {@balance}",
-                    addressAmount,
-                    walletAddress.Address,
-                    walletAddress.AvailableBalance());
+                    selectedAddress.UsedAmount,
+                    selectedAddress.WalletAddress.Address,
+                    selectedAddress.WalletAddress.AvailableBalance());
 
                 var nonce = await EthereumNonceManager.Instance
-                    .GetNonce(Eth, walletAddress.Address)
+                    .GetNonce(Eth, selectedAddress.WalletAddress.Address)
                     .ConfigureAwait(false);
 
                 var tx = new EthereumTransaction
@@ -80,14 +81,14 @@ namespace Atomex.Wallet.Ethereum
                     Type = BlockchainTransactionType.Output,
                     CreationTime = DateTime.UtcNow,
                     To = to.ToLowerInvariant(),
-                    Amount = new BigInteger(Atomex.Ethereum.EthToWei(addressAmount)),
+                    Amount = new BigInteger(Atomex.Ethereum.EthToWei(selectedAddress.UsedAmount)),
                     Nonce = nonce,
                     GasPrice = new BigInteger(Atomex.Ethereum.GweiToWei(feePrice)),
                     GasLimit = new BigInteger(feePerTx),
                 };
 
                 var signResult = await Wallet
-                    .SignAsync(tx, walletAddress, cancellationToken)
+                    .SignAsync(tx, selectedAddress.WalletAddress, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!signResult)
@@ -162,21 +163,20 @@ namespace Atomex.Wallet.Ethereum
             if (!unspentAddresses.Any())
                 return null; // insufficient funds
 
-            var gasLimit = GasLimitByType(type);
-
             var selectedAddresses = SelectUnspentAddresses(
                     from: unspentAddresses,
                     amount: amount,
-                    fee: gasLimit,
+                    fee: 0,
                     feePrice: Eth.GasPriceInGwei,
-                    isFeePerTransaction: true,
-                    addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst)
+                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
+                    addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst,
+                    transactionType: type)
                 .ToList();
 
             if (!selectedAddresses.Any())
                 return null; // insufficient funds
 
-            return selectedAddresses.Count * Eth.GetFeeAmount(gasLimit, Eth.GasPriceInGwei);
+            return selectedAddresses.Sum(s => s.UsedFee);
         }
 
         public override async Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
@@ -192,30 +192,31 @@ namespace Atomex.Wallet.Ethereum
             if (!unspentAddresses.Any())
                 return (0m, 0m);
 
-            var gasLimit = GasLimitByType(type);
-            var feePerTx = Eth.GetFeeAmount(gasLimit, Eth.GasPriceInGwei);
-
+            var isFirstTx = true;
             var amount = 0m;
             var fee = 0m;
 
             foreach (var address in unspentAddresses)
             {
-                var usedAmount = Math.Max(address.AvailableBalance() - feePerTx, 0);
+                var feeInEth = Eth.GetFeeAmount(GasLimitByType(type, isFirstTx), Eth.GasPriceInGwei);
+                var usedAmountInEth = Math.Max(address.AvailableBalance() - feeInEth, 0);
 
-                if (usedAmount <= 0)
+                if (usedAmountInEth <= 0)
                     continue;
 
-                amount += usedAmount;
-                fee += feePerTx;
+                amount += usedAmountInEth;
+                fee += feeInEth;
             }
 
             return (amount, fee);
         }
 
-        private decimal GasLimitByType(BlockchainTransactionType type)
+        private decimal GasLimitByType(BlockchainTransactionType type, bool isFirstTx)
         {
-            if (type.HasFlag(BlockchainTransactionType.SwapPayment))
+            if (type.HasFlag(BlockchainTransactionType.SwapPayment) && isFirstTx)
                 return Eth.InitiateWithRewardGasLimit;
+            if (type.HasFlag(BlockchainTransactionType.SwapPayment) && !isFirstTx)
+                return Eth.AddGasLimit;
             if (type.HasFlag(BlockchainTransactionType.SwapRefund))
                 return Eth.RefundGasLimit;
             if (type.HasFlag(BlockchainTransactionType.SwapRedeem))
@@ -434,8 +435,9 @@ namespace Atomex.Wallet.Ethereum
             decimal amount,
             decimal fee,
             decimal feePrice,
-            bool isFeePerTransaction,
+            FeeUsagePolicy feeUsagePolicy,
             AddressUsagePolicy addressUsagePolicy,
+            BlockchainTransactionType transactionType,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var unspentAddresses = (await DataRepository
@@ -448,21 +450,23 @@ namespace Atomex.Wallet.Ethereum
                 amount: amount,
                 fee: fee,
                 feePrice: feePrice,
-                isFeePerTransaction: isFeePerTransaction,
-                addressUsagePolicy: addressUsagePolicy);
+                feeUsagePolicy: feeUsagePolicy,
+                addressUsagePolicy: addressUsagePolicy,
+                transactionType: transactionType);
 
             return ResolvePublicKeys(selectedAddresses
-                .Select(w => w.Item1)
+                .Select(w => w.WalletAddress)
                 .ToList());
         }
 
-        private IEnumerable<(WalletAddress, decimal)> SelectUnspentAddresses(
+        private IEnumerable<SelectedWalletAddress> SelectUnspentAddresses(
             IList<WalletAddress> from,
             decimal amount,
             decimal fee,
             decimal feePrice,
-            bool isFeePerTransaction,
-            AddressUsagePolicy addressUsagePolicy)
+            FeeUsagePolicy feeUsagePolicy,
+            AddressUsagePolicy addressUsagePolicy,
+            BlockchainTransactionType transactionType)
         {
             if (addressUsagePolicy == AddressUsagePolicy.UseMinimalBalanceFirst)
             {
@@ -474,34 +478,54 @@ namespace Atomex.Wallet.Ethereum
             }
             else if (addressUsagePolicy == AddressUsagePolicy.UseOnlyOneAddress)
             {
-                var address = from.FirstOrDefault(w => w.AvailableBalance() >= amount + Currency.GetFeeAmount(fee, feePrice));
+                var feeInEth = feeUsagePolicy == FeeUsagePolicy.EstimatedFee
+                    ? Eth.GetFeeAmount(GasLimitByType(transactionType, isFirstTx: true), Eth.GasPriceInGwei)
+                    : Eth.GetFeeAmount(fee, feePrice);
+
+                var address = from.FirstOrDefault(w => w.AvailableBalance() >= amount + feeInEth);
 
                 return address != null
-                    ? new List<(WalletAddress, decimal)> { (address, amount + Currency.GetFeeAmount(fee, feePrice)) }
-                    : Enumerable.Empty<(WalletAddress, decimal)>();
+                    ? new List<SelectedWalletAddress>
+                    {
+                        new SelectedWalletAddress
+                        {
+                            WalletAddress = address,
+                            UsedAmount = amount,
+                            UsedFee = feeInEth
+                        }
+                    }
+                    : Enumerable.Empty<SelectedWalletAddress>();
             }
 
             for (var txCount = 1; txCount <= from.Count; ++txCount)
             {
-                var result = new List<(WalletAddress, decimal)>();
+                var result = new List<SelectedWalletAddress>();
                 var requiredAmount = amount;
 
-                var feePerTx = isFeePerTransaction
-                    ? Currency.GetFeeAmount(fee, feePrice)
-                    : Currency.GetFeeAmount(fee, feePrice) / txCount;
-
+                var isFirstTx = true;
                 var completed = false;
 
                 foreach (var address in from)
                 {
                     var availableBalance = address.AvailableBalance();
 
-                    if (availableBalance <= feePerTx) // ignore address with balance less than fee
+                    var txFee = feeUsagePolicy == FeeUsagePolicy.EstimatedFee
+                        ? Eth.GetFeeAmount(GasLimitByType(transactionType, isFirstTx), Eth.GasPriceInGwei)
+                        : (feeUsagePolicy == FeeUsagePolicy.FeeForAllTransactions
+                            ? Math.Round(Eth.GetFeeAmount(fee, feePrice) / txCount, Eth.Digits)
+                            : Eth.GetFeeAmount(fee, feePrice));
+
+                    if (availableBalance <= txFee) // ignore address with balance less than fee
                         continue;
 
-                    var amountToUse = Math.Min(Math.Max(availableBalance - feePerTx, 0), requiredAmount);
+                    var amountToUse = Math.Min(Math.Max(availableBalance - txFee, 0), requiredAmount);
 
-                    result.Add((address, amountToUse));
+                    result.Add(new SelectedWalletAddress
+                    {
+                        WalletAddress = address,
+                        UsedAmount = amountToUse,
+                        UsedFee = txFee
+                    });
                     requiredAmount -= amountToUse;
 
                     if (requiredAmount <= 0)
@@ -518,7 +542,7 @@ namespace Atomex.Wallet.Ethereum
                     return result;
             }
 
-            return Enumerable.Empty<(WalletAddress, decimal)>();
+            return Enumerable.Empty<SelectedWalletAddress>();
         }
 
         #endregion Addresses

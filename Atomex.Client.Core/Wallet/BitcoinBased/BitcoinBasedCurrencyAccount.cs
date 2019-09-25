@@ -448,11 +448,25 @@ namespace Atomex.Wallet.BitcoinBased
             decimal amount,
             decimal fee,
             decimal feePrice,
-            bool isFeePerTransaction,
+            FeeUsagePolicy feeUsagePolicy,
             AddressUsagePolicy addressUsagePolicy,
+            BlockchainTransactionType transactionType,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            // todo: unspent address using policy (transaction count minimization?)
+            if (feeUsagePolicy == FeeUsagePolicy.EstimatedFee)
+            {
+                var estimatedFee = await EstimateFeeAsync(
+                        to: null,
+                        amount: amount,
+                        type: transactionType,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (estimatedFee == null)
+                    return Enumerable.Empty<WalletAddress>();
+
+                fee = estimatedFee.Value;
+            }
 
             var unspentAddresses = (await DataRepository
                 .GetUnspentAddressesAsync(Currency)

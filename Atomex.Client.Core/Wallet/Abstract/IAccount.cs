@@ -196,8 +196,9 @@ namespace Atomex.Wallet.Abstract
         /// <param name="amount">Required amount</param>
         /// <param name="fee">Required fee</param>
         /// <param name="feePrice">Required fee price</param>
-        /// <param name="isFeePerTransaction">Fee is per transaction</param>
+        /// <param name="feeUsagePolicy">Fee usage policy</param>
         /// <param name="addressUsagePolicy">Address usage policy</param>
+        /// <param name="transactionType">Transaction type</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Set of unspent addresses</returns>
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
@@ -205,8 +206,9 @@ namespace Atomex.Wallet.Abstract
             decimal amount,
             decimal fee,
             decimal feePrice,
-            bool isFeePerTransaction,
+            FeeUsagePolicy feeUsagePolicy,
             AddressUsagePolicy addressUsagePolicy,
+            BlockchainTransactionType transactionType,
             CancellationToken cancellationToken = default(CancellationToken));
 
         /// <summary>

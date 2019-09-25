@@ -142,13 +142,15 @@ namespace Atomex.Swaps.Ethereum
         {
             Log.Debug("Create redeem for swap {@swapId}", swap.Id);
 
-            var walletAddress = (await Account.GetUnspentAddressesAsync(
+            var walletAddress = (await Account
+                .GetUnspentAddressesAsync(
                     currency: Currency,
-                    amount: 0, // todo: account storage fee
-                    fee: Eth.RedeemGasLimit,
-                    feePrice: Eth.GasPriceInGwei,
-                    isFeePerTransaction: true,
-                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress)
+                    amount: 0,
+                    fee: 0,
+                    feePrice: 0,
+                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
+                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
+                    transactionType: BlockchainTransactionType.SwapRedeem)
                 .ConfigureAwait(false))
                 .FirstOrDefault();
 
@@ -236,10 +238,11 @@ namespace Atomex.Swaps.Ethereum
                 .GetUnspentAddressesAsync(
                     currency: Currency,
                     amount: 0,
-                    fee: Eth.RedeemGasLimit,
-                    feePrice: Eth.GasPriceInGwei,
-                    isFeePerTransaction: false,
-                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress)
+                    fee: 0,
+                    feePrice: 0,
+                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
+                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
+                    transactionType: BlockchainTransactionType.SwapRedeem)
                 .ConfigureAwait(false))
                 .FirstOrDefault();
 
@@ -291,13 +294,15 @@ namespace Atomex.Swaps.Ethereum
         {
             Log.Debug("Create refund for swap {@swap}", swap.Id);
 
-            var walletAddress = (await Account.GetUnspentAddressesAsync(
+            var walletAddress = (await Account
+                .GetUnspentAddressesAsync(
                     currency: Currency,
-                    amount: 0, // todo: account storage fee
-                    fee: Eth.RefundGasLimit,
-                    feePrice: Eth.GasPriceInGwei,
-                    isFeePerTransaction: true,
+                    amount: 0,
+                    fee: 0,
+                    feePrice: 0,
+                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
                     addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
+                    transactionType: BlockchainTransactionType.SwapRefund,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false))
                 .FirstOrDefault();
@@ -657,13 +662,15 @@ namespace Atomex.Swaps.Ethereum
             {
                 if (swap.Secret?.Length > 0)
                 {
-                    var walletAddress = (await Account.GetUnspentAddressesAsync(
+                    var walletAddress = (await Account
+                        .GetUnspentAddressesAsync(
                             currency: Currency,
-                            amount: 0, // todo: account storage fee
-                            fee: Eth.RedeemGasLimit,
-                            feePrice: Eth.GasPriceInGwei,
-                            isFeePerTransaction: true,
-                            addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress)
+                            amount: 0,
+                            fee: 0,
+                            feePrice: 0,
+                            feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
+                            addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
+                            transactionType: BlockchainTransactionType.SwapRedeem)
                         .ConfigureAwait(false))
                         .FirstOrDefault();
 

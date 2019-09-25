@@ -22,12 +22,10 @@ namespace Atomex
         public decimal InitiateFee { get; private set; }
         public decimal InitiateGasLimit { get; private set; }
         public decimal InitiateStorageLimit { get; private set; }
-        public decimal InitiatePaidStorageDiff { get; private set; }
 
         public decimal AddFee { get; private set; }
         public decimal AddGasLimit { get; private set; }
         public decimal AddStorageLimit { get; private set; }
-        public decimal AddPaidStorageDiff { get; private set; }
 
         public decimal RedeemFee { get; private set; }
         public decimal RedeemGasLimit { get; private set; }
@@ -71,12 +69,10 @@ namespace Atomex
             InitiateFee = decimal.Parse(configuration[nameof(InitiateFee)], CultureInfo.InvariantCulture);
             InitiateGasLimit = decimal.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
             InitiateStorageLimit = decimal.Parse(configuration[nameof(InitiateStorageLimit)], CultureInfo.InvariantCulture);
-            InitiatePaidStorageDiff = decimal.Parse(configuration[nameof(InitiatePaidStorageDiff)], CultureInfo.InvariantCulture);
 
             AddFee = decimal.Parse(configuration[nameof(AddFee)], CultureInfo.InvariantCulture);
             AddGasLimit = decimal.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
             AddStorageLimit = decimal.Parse(configuration[nameof(AddStorageLimit)], CultureInfo.InvariantCulture);
-            AddPaidStorageDiff = decimal.Parse(configuration[nameof(AddPaidStorageDiff)], CultureInfo.InvariantCulture);
 
             RedeemFee = decimal.Parse(configuration[nameof(RedeemFee)], CultureInfo.InvariantCulture);
             RedeemGasLimit = decimal.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
