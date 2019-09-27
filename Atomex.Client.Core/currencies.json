@@ -60,7 +60,8 @@
       "BlockchainApi": "TzScan",
       "SwapContract": "KT1VG2WtYdSWz5E7chTeAdDPZNy2MpP8pTfL",
       "TxExplorerUri": "https://tzscan.io/",
-      "AddressExplorerUri": "https://tzscan.io/"
+      "AddressExplorerUri": "https://tzscan.io/",
+      "RpcNodeUri": "https://mainnet-node.tzscan.io"
     }
   },
   "TestNet": {
@@ -124,7 +125,8 @@
       "BlockchainApi": "TzScan",
       "SwapContract": "KT1WhouvVKZFH94VXj9pa8v4szvfrBwXoBUj",
       "TxExplorerUri": "https://alphanet.tzscan.io/",
-      "AddressExplorerUri": "https://alphanet.tzscan.io/"
+      "AddressExplorerUri": "https://alphanet.tzscan.io/",
+      "RpcNodeUri": "https://tezos-dev.cryptonomic-infra.tech"
     }
   } 
 }

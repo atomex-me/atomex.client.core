@@ -18,8 +18,9 @@ namespace Atomex.Blockchain.Tezos
         private const string Mainnet = "https://api3.tzscan.io/";
         private const string Alphanet = "https://api.alphanet.tzscan.io/";
 
-        private const string MainnetRpc = "https://mainnet-node.tzscan.io";
-        private const string AlphanetRpc = "http://alphanet-node.tzscan.io:80";
+        //private const string MainnetRpc = "https://mainnet-node.tzscan.io";
+        //private const string AlphanetRpc = "http://alphanet-node.tzscan.io:80";
+        //private const string AlphanetRpc = "https://tezos-dev.cryptonomic-infra.tech";
         //public const string ZeronetRpc = "https://zeronet-node.tzscan.io:80";
 
         internal class OperationHeader<T>
@@ -88,18 +89,17 @@ namespace Atomex.Blockchain.Tezos
         private readonly string _rpcProvider;
         private readonly string _apiBaseUrl;
 
-        public TzScanApi(Currency currency, TezosNetwork network)
+        public TzScanApi(Currency currency, TezosNetwork network, string rpcNodeUri)
         {
             _currency = currency;
+            _rpcProvider = rpcNodeUri;
 
             switch (network)
             {
-                case TezosNetwork.Mainnet:
-                    _rpcProvider = MainnetRpc;
+                case TezosNetwork.Mainnet:     
                     _apiBaseUrl = Mainnet;
                     break;
                 case TezosNetwork.Alphanet:
-                    _rpcProvider = AlphanetRpc;
                     _apiBaseUrl = Alphanet;
                     break;
                 default:
@@ -333,19 +333,6 @@ namespace Atomex.Blockchain.Tezos
             }
 
             return txs;
-        }
-
-        public static string RpcByNetwork(TezosNetwork network)
-        {
-            switch (network)
-            {
-                case TezosNetwork.Mainnet:
-                    return MainnetRpc;
-                case TezosNetwork.Alphanet:
-                    return AlphanetRpc;
-                default:
-                    throw new NotSupportedException("Network not supported");
-            }
         }
     }
 }

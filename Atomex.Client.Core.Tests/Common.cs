@@ -44,6 +44,7 @@ namespace Atomex.Client.Core.Tests
 
         public static Bitcoin BtcMainNet => CurrenciesMainNet.Get<Bitcoin>();
         public static Litecoin LtcMainNet => CurrenciesMainNet.Get<Litecoin>();
+        public static Tezos XtzMainNet => CurrenciesMainNet.Get<Tezos>();
 
         public static Bitcoin BtcTestNet => CurrenciesTestNet.Get<Bitcoin>();
         public static Litecoin LtcTestNet => CurrenciesTestNet.Get<Litecoin>();

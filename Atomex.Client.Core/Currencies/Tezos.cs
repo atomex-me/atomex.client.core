@@ -85,8 +85,8 @@ namespace Atomex
             ActivationFee = decimal.Parse(configuration[nameof(ActivationFee)], CultureInfo.InvariantCulture);
 
             Network = ResolveNetwork(configuration);
-            RpcProvider = TzScanApi.RpcByNetwork(Network);
-            BlockchainApi = new TzScanApi(this, Network);
+            RpcProvider = configuration["RpcNodeUri"];
+            BlockchainApi = new TzScanApi(this, Network, RpcProvider);
             TxExplorerUri = configuration["TxExplorerUri"];
             AddressExplorerUri = configuration["AddressExplorerUri"];
             SwapContractAddress = configuration["SwapContract"];
