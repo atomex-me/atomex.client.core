@@ -8,13 +8,13 @@ namespace Atomex.Client.Core.Tests
         [Fact]
         public async void GetBalanceAsyncTest()
         {
-            var api = new TzScanApi(Common.XtzTestNet);
+            var api = new TzScanApi(Common.XtzMainNet);
 
-            var balanceAsyncResult = await api
-                .GetBalanceAsync("tz1LEggDVuvj94YuyjkLDfELDDk3FCF8iA3W")
+            var balanceResult = await api
+                .GetBalanceAsync("tz1emGQ4PFNUprQv5jfKF3GyrDowPRBvtwnX")
                 .ConfigureAwait(false);
 
-            Assert.False(balanceAsyncResult.HasError);
+            Assert.False(balanceResult.HasError, balanceResult.Error?.Description ?? "");
         }
 
         [Fact]
@@ -22,13 +22,13 @@ namespace Atomex.Client.Core.Tests
         {
             var api = new TzScanApi(Common.XtzMainNet);
 
-            var txAsyncResult = await api
+            var txResult = await api
                 .GetTransactionAsync("oo5fwMjaLq8jzmKH1HJi9Qpg2VAfT3yMsMGtjnbHuCUAWAjiehV")
                 .ConfigureAwait(false);
 
-            Assert.False(txAsyncResult.HasError);
+            Assert.False(txResult.HasError, txResult.Error?.Description ?? "");
 
-            var tx = txAsyncResult.Value;
+            var tx = txResult.Value;
 
             Assert.NotNull(tx);           
         }
@@ -36,15 +36,15 @@ namespace Atomex.Client.Core.Tests
         [Fact]
         public async void GetTransactionsAsyncTest()
         {
-            var api = new TzScanApi(Common.XtzTestNet);
+            var api = new TzScanApi(Common.XtzMainNet);
 
-            var txsAsyncResult = await api
-                .GetTransactionsAsync("tz1LEggDVuvj94YuyjkLDfELDDk3FCF8iA3W")
+            var txsResult = await api
+                .GetTransactionsAsync("tz1emGQ4PFNUprQv5jfKF3GyrDowPRBvtwnX")
                 .ConfigureAwait(false);
 
-            Assert.False(txsAsyncResult.HasError);
+            Assert.False(txsResult.HasError);
 
-            var txs = txsAsyncResult.Value;
+            var txs = txsResult.Value;
 
             Assert.NotNull(txs);
         }

@@ -33,7 +33,7 @@ namespace Atomex.Client.Core.Tests
             var api = new BitCoreApi(currency, baseUri);
             var balanceAsyncResult = await api.GetBalanceAsync(address);
 
-            Assert.False(balanceAsyncResult.HasError);
+            Assert.False(balanceAsyncResult.HasError, balanceAsyncResult.Error?.Description ?? "");
         }
 
         public static IEnumerable<object[]> TransactionTestData => new List<object[]>

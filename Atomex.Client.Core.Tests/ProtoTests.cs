@@ -46,10 +46,10 @@ namespace Atomex.Client.Core.Tests
                 {
                     Assert.NotNull(deserializedOrder.FromWallets[i]);
                     Assert.Equal(Order.FromWallets[i].Address, deserializedOrder.FromWallets[i].Address);
-                    Assert.Equal(Order.FromWallets[i].Currency, deserializedOrder.FromWallets[i].Currency);
+                    Assert.Equal(Order.FromWallets[i].Currency.Name, deserializedOrder.FromWallets[i].Currency.Name);
                 }
 
-                Assert.Equal(Order.Symbol, deserializedOrder.Symbol);
+                Assert.Equal(Order.Symbol.Name, deserializedOrder.Symbol.Name);
             }
         }
     }

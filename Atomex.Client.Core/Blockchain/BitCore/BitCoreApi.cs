@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
 using Microsoft.Extensions.Configuration;
-using NBitcoin;
 using Newtonsoft.Json;
 
 namespace Atomex.Blockchain.BitCore
@@ -69,6 +67,7 @@ namespace Atomex.Blockchain.BitCore
             = new RequestLimitControl(MinDelayBetweenRequestMs);
 
         public BitcoinBasedCurrency Currency { get; }
+        public string Network => Currency.Network == NBitcoin.Network.Main ? "mainnet" : "testnet";
 
         public BitCoreApi(BitcoinBasedCurrency currency, IConfiguration configuration)
         {
@@ -86,7 +85,7 @@ namespace Atomex.Blockchain.BitCore
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var requestUri = $"api/{Currency.Name}/{Currency.Network.ToString().ToLower()}/address/{address}/balance/";
+            var requestUri = $"api/{Currency.Name}/{Network}/address/{address}/balance/";
 
             await RequestLimitControl
                 .Wait(cancellationToken)
@@ -101,7 +100,7 @@ namespace Atomex.Blockchain.BitCore
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default(CancellationToken))
         {
