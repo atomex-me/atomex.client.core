@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
-using Atomex.Core.Entities;
 using Nethereum.Signer;
 
 namespace Atomex.Blockchain.Ethereum
@@ -15,27 +14,27 @@ namespace Atomex.Blockchain.Ethereum
         private readonly Web3BlockchainApi _web3;
         private readonly EtherScanApi _etherScanApi;
 
-        public CompositeEthereumBlockchainApi(Currency currency, Chain chain)
+        public CompositeEthereumBlockchainApi(Atomex.Ethereum currency, Chain chain)
         {
             _web3 = new Web3BlockchainApi(currency, chain);
-            _etherScanApi = new EtherScanApi(currency, chain);
+            _etherScanApi = new EtherScanApi(currency);
         }
 
-        public Task<decimal> GetBalanceAsync(
+        public Task<Result<decimal>> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             return _web3.GetBalanceAsync(address, cancellationToken);
         }
 
-        public Task<BigInteger> GetTransactionCountAsync(
+        public Task<Result<BigInteger>> GetTransactionCountAsync(
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             return _web3.GetTransactionCountAsync(address, cancellationToken);
         }
 
-        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+        public Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -43,35 +42,39 @@ namespace Atomex.Blockchain.Ethereum
                 .GetTransactionsAsync(address, cancellationToken);
         }
 
-        public async Task<IBlockchainTransaction> GetTransactionAsync(
+        public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var tx = (EthereumTransaction)await _web3
+            var txAsyncResult = await _web3
                 .GetTransactionAsync(txId, cancellationToken)
                 .ConfigureAwait(false); //_etherScanApi.GetTransactionAsync(txId, cancellationToken);
 
-            if (tx == null)
-                return null;
+            if (txAsyncResult.HasError || txAsyncResult.Value == null)
+                return txAsyncResult;
 
-            var internalTxs = (await _etherScanApi
+            var tx = (EthereumTransaction)txAsyncResult.Value;
+
+            var internalTxsAsyncResult = await _etherScanApi
                 .GetInternalTransactionsAsync(txId, cancellationToken)
-                .ConfigureAwait(false))
-                .ToList();
+                .ConfigureAwait(false);
 
-            if (internalTxs.Any())
+            if (internalTxsAsyncResult.HasError)
+                return new Result<IBlockchainTransaction>(internalTxsAsyncResult.Error);
+
+            if (internalTxsAsyncResult.Value.Any())
             {
-                tx.InternalTxs = internalTxs
+                tx.InternalTxs = internalTxsAsyncResult.Value
                     .Cast<EthereumTransaction>()
                     .ToList()
                     .ForEachDo(itx => itx.State = tx.State)
                     .ToList();
             }
 
-            return tx;
+            return txAsyncResult;
         }
 
-        public async Task<string> BroadcastAsync(
+        public async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default(CancellationToken))
         {

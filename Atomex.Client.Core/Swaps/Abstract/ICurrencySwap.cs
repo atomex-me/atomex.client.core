@@ -33,7 +33,7 @@ namespace Atomex.Swaps.Abstract
         Task RedeemAsync(ClientSwap swap);
 
         /// <summary>
-        /// Waits for redeem for swap for currency being purchased in case when counterparty doesn't have funds to redeem for himself
+        /// Waits for redeem for swap for currency being purchased in case when acceptor doesn't have funds to redeem for himself
         /// </summary>
         /// <returns></returns>
         Task WaitForRedeemAsync(ClientSwap swap);

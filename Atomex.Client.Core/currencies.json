@@ -3,12 +3,13 @@
     "BTC": {
       "Name": "BTC",
       "Description": "Bitcoin",
-      "FeeRate": 20,
+      "FeeRate": 50,
+      "DustFeeRate": 3, 
       "Chain": "MainNet",
       "BlockchainApi": "Insight",
+      "BlockchainApiBaseUri": "https://insight.bitpay.com/",
       "TxExplorerUri": "https://live.blockcypher.com/btc/tx/",
-      "AddressExplorerUri": "https://live.blockcypher.com/btc/address/",
-      "InsightBaseUri": "https://insight.bitpay.com/"
+      "AddressExplorerUri": "https://live.blockcypher.com/btc/address/"
     },
     "ETH": {
       "Name": "ETH",
@@ -22,6 +23,7 @@
       "GasPriceInGwei": 25,
       "Chain": "MainNet",
       "BlockchainApi": "EtherScan+Web3",
+      "BlockchainApiBaseUri": "https://api.etherscan.io/",
       "SwapContract": "0xe9c251cbb4881f9e056e40135e7d3ea9a7d037df",
       "SwapContractBlockNumber": 8168569,
       "TxExplorerUri": "https://etherscan.io/tx/",
@@ -31,11 +33,12 @@
       "Name": "LTC",
       "Description": "Litecoin",
       "FeeRate": 120,
+      "DustFeeRate": 8,
       "Chain": "MainNet",
       "BlockchainApi": "Insight",
+      "BlockchainApiBaseUri": "https://insight.litecore.io",
       "TxExplorerUri": "https://live.blockcypher.com/ltc/tx/",
-      "AddressExplorerUri": "https://live.blockcypher.com/ltc/address/",
-      "InsightBaseUri": "https://insight.litecore.io"
+      "AddressExplorerUri": "https://live.blockcypher.com/ltc/address/"
     },
     "XTZ": {
       "Name": "XTZ",
@@ -56,24 +59,25 @@
       "RefundGasLimit": 76000,
       "RefundStorageLimit": 257,
       "ActivationFee": 257000,
-      "Chain": "MainNet",
       "BlockchainApi": "TzScan",
+      "BlockchainApiBaseUri": "https://api3.tzscan.io/",
+      "BlockchainRpcNodeUri": "https://mainnet-node.tzscan.io",
       "SwapContract": "KT1VG2WtYdSWz5E7chTeAdDPZNy2MpP8pTfL",
       "TxExplorerUri": "https://tzscan.io/",
-      "AddressExplorerUri": "https://tzscan.io/",
-      "RpcNodeUri": "https://mainnet-node.tzscan.io"
+      "AddressExplorerUri": "https://tzscan.io/"
     }
   },
   "TestNet": {
     "BTC": {
       "Name": "BTC",
       "Description": "Bitcoin",
-      "FeeRate": 20,
+      "FeeRate": 50,
+      "DustFeeRate": 3,
       "Chain": "TestNet",
       "BlockchainApi": "Insight",
+      "BlockchainApiBaseUri": "https://test-insight.bitpay.com/",
       "TxExplorerUri": "https://live.blockcypher.com/btc-testnet/tx/",
-      "AddressExplorerUri": "https://live.blockcypher.com/btc-testnet/address/",
-      "InsightBaseUri": "https://test-insight.bitpay.com/"
+      "AddressExplorerUri": "https://live.blockcypher.com/btc-testnet/address/"
     },
     "ETH": {
       "Name": "ETH",
@@ -87,6 +91,7 @@
       "GasPriceInGwei": 25,
       "Chain": "Ropsten",
       "BlockchainApi": "EtherScan+Web3",
+      "BlockchainApiBaseUri": "http://api-ropsten.etherscan.io/",
       "SwapContract": "0x527d1049837edf5f99c287a41a87702686082bf8",
       "SwapContractBlockNumber": 6000466,
       "TxExplorerUri": "https://ropsten.etherscan.io/tx/",
@@ -96,11 +101,12 @@
       "Name": "LTC",
       "Description": "Litecoin",
       "FeeRate": 120,
+      "DustFeeRate": 8,
       "Chain": "TestNet",
       "BlockchainApi": "Insight",
+      "BlockchainApiBaseUri": "https://testnet.litecore.io",
       "TxExplorerUri": "https://chain.so/tx/LTCTEST/",
-      "AddressExplorerUri": "https://chain.so/address/LTCTEST/",
-      "InsightBaseUri": "https://testnet.litecore.io"
+      "AddressExplorerUri": "https://chain.so/address/LTCTEST/"
     },
     "XTZ": {
       "Name": "XTZ",
@@ -121,12 +127,12 @@
       "RefundGasLimit": 76000,
       "RefundStorageLimit": 257,
       "ActivationFee": 257000,
-      "Chain": "Alphanet",
       "BlockchainApi": "TzScan",
+      "BlockchainApiBaseUri": "https://api.alphanet.tzscan.io/",
+      "BlockchainRpcNodeUri": "http://alphanet-node.tzscan.io:80",
       "SwapContract": "KT1WhouvVKZFH94VXj9pa8v4szvfrBwXoBUj",
       "TxExplorerUri": "https://alphanet.tzscan.io/",
-      "AddressExplorerUri": "https://alphanet.tzscan.io/",
-      "RpcNodeUri": "https://tezos-dev.cryptonomic-infra.tech"
+      "AddressExplorerUri": "https://alphanet.tzscan.io/"
     }
   } 
 }

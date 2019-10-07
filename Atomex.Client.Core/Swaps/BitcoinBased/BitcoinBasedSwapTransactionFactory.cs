@@ -55,11 +55,10 @@ namespace Atomex.Swaps.BitcoinBased
                     secretSize: secretSize,
                     amount: amount,
                     fee: fee,
-                    redeemScript: out var _);
+                    redeemScript: out _);
 
-                var txSize = tx.VirtualSize();
-
-                fee = (long)(currency.FeeRate * (txSize + estimatedSigSize));
+                // fee = txSize * feeRate + dust
+                fee = (long)((tx.VirtualSize() + estimatedSigSize) * currency.FeeRate) + tx.GetDust();
 
                 requiredAmount = amount + fee;
 
@@ -93,26 +92,25 @@ namespace Atomex.Swaps.BitcoinBased
                 .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));
 
             if (swapOutput == null)
-                throw new Exception("Can't find pay tp script hash output");
+                throw new Exception("Can't find pay to script hash output");
 
             var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(swapOutput, forRefund: true);
 
-            var txSize = currency
-                .CreateP2PkhTx(
-                    unspentOutputs: new ITxOutput[] { swapOutput }, 
-                    destinationAddress: refundAddress,
-                    changeAddress: refundAddress,
-                    amount: amount,
-                    fee: 0,
-                    lockTime: lockTime)
-                .VirtualSize();
+            var tx = currency.CreateP2PkhTx(
+                unspentOutputs: new ITxOutput[] { swapOutput },
+                destinationAddress: refundAddress,
+                changeAddress: refundAddress,
+                amount: amount,
+                fee: 0,
+                lockTime: lockTime);
 
-            var fee = (long)(currency.FeeRate * (txSize + estimatedSigSize));
+            // fee = txSize * feeRate without dust, because all coins will be send to one address
+            var fee = (long) ((tx.VirtualSize() + estimatedSigSize) * currency.FeeRate);
 
             if (amount - fee < 0)
                 throw new Exception($"Insufficient funds for fee. Available {amount}, required {fee}");
 
-            var tx = currency.CreateP2PkhTx(
+            tx = currency.CreateP2PkhTx(
                 unspentOutputs: new ITxOutput[] { swapOutput },
                 destinationAddress: refundAddress,
                 changeAddress: refundAddress,
@@ -136,26 +134,25 @@ namespace Atomex.Swaps.BitcoinBased
                 .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));
 
             if (swapOutput == null)
-                throw new Exception("Can't find pay tp script hash output");
+                throw new Exception("Can't find pay to script hash output");
 
             var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(swapOutput, forRedeem: true);
 
-            var txSize = currency
-                .CreateP2PkhTx(
-                    unspentOutputs: new ITxOutput[] { swapOutput },
-                    destinationAddress: redeemAddress,
-                    changeAddress: redeemAddress,
-                    amount: amount,
-                    fee: 0,
-                    lockTime: DateTimeOffset.MinValue)
-                .VirtualSize();
+            var tx = currency.CreateP2PkhTx(
+                unspentOutputs: new ITxOutput[] { swapOutput },
+                destinationAddress: redeemAddress,
+                changeAddress: redeemAddress,
+                amount: amount,
+                fee: 0,
+                lockTime: DateTimeOffset.MinValue);
 
-            var fee = (long)(currency.FeeRate * (txSize + estimatedSigSize));
+            // fee = txSize * feeRate without dust, because all coins will be send to one address
+            var fee = (long) ((tx.VirtualSize() + estimatedSigSize) * currency.FeeRate);
 
             if (amount - fee < 0)
                 throw new Exception($"Insufficient funds for fee. Available {amount}, required {fee}");
 
-            var tx = currency.CreateP2PkhTx(
+            tx = currency.CreateP2PkhTx(
                 unspentOutputs: new ITxOutput[] { swapOutput },
                 destinationAddress: redeemAddress,
                 changeAddress: redeemAddress,

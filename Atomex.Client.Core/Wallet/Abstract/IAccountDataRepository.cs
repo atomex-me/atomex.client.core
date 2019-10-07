@@ -42,11 +42,7 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(Currency currency, string address);
         Task<IEnumerable<ITxOutput>> GetOutputsAsync(Currency currency);
         Task<IEnumerable<ITxOutput>> GetOutputsAsync(Currency currency, string address);
-
-        Task<ITxOutput> GetOutputAsync(
-            Currency currency,
-            string txId,
-            uint index);
+        Task<ITxOutput> GetOutputAsync(Currency currency, string txId,uint index);
 
         #endregion Outputs
 

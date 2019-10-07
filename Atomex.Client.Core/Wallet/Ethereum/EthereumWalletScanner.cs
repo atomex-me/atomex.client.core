@@ -64,13 +64,25 @@ namespace Atomex.Wallet.Ethereum
                         index,
                         walletAddress.Address);
 
-                    var addressTxs = (await((IEthereumBlockchainApi)currency.BlockchainApi)
+                    var asyncResult = await ((IEthereumBlockchainApi) currency.BlockchainApi)
                         .GetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
-                        .ConfigureAwait(false))
-                        .Cast<EthereumTransaction>()
+                        .ConfigureAwait(false);
+
+                    if (asyncResult.HasError)
+                    {
+                        Log.Error(
+                            "Error while scan address transactions for {@address} with code {@code} and description {@description}",
+                            walletAddress.Address,
+                            asyncResult.Error.Code,
+                            asyncResult.Error.Description);
+                        break;
+                    }
+
+                    var addressTxs = asyncResult.Value
+                        ?.Cast<EthereumTransaction>()
                         .ToList();
 
-                    if (addressTxs.Count == 0) // address without activity
+                    if (addressTxs == null || !addressTxs.Any()) // address without activity
                     {
                         freeKeysCount++;
 
@@ -136,13 +148,25 @@ namespace Atomex.Wallet.Ethereum
                 currency.Name,
                 address);
 
-            var addressTxs = (await((IEthereumBlockchainApi)currency.BlockchainApi)
+            var asyncResult = await ((IEthereumBlockchainApi)currency.BlockchainApi)
                 .GetTransactionsAsync(address, cancellationToken: cancellationToken)
-                .ConfigureAwait(false))
-                .Cast<EthereumTransaction>()
+                .ConfigureAwait(false);
+
+            if (asyncResult.HasError)
+            {
+                Log.Error(
+                    "Error while scan address transactions for {@address} with code {@code} and description {@description}",
+                    address,
+                    asyncResult.Error.Code,
+                    asyncResult.Error.Description);
+                return;
+            }
+
+            var addressTxs = asyncResult.Value
+                ?.Cast<EthereumTransaction>()
                 .ToList();
 
-            if (addressTxs.Count == 0)
+            if (addressTxs == null || !addressTxs.Any()) // address without activity
                 return;
 
             var txs = new List<EthereumTransaction>();

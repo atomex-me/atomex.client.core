@@ -9,7 +9,6 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Core.Entities;
 using Atomex.Wallet.Bip;
-using Helpers;
 
 namespace Atomex.Wallet.Abstract
 {

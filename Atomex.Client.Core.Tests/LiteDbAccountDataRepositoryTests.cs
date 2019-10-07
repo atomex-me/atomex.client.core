@@ -12,6 +12,7 @@ using Atomex.Core.Entities;
 using Atomex.LiteDb;
 using NBitcoin;
 using Xunit;
+using Network = Atomex.Core.Network;
 
 namespace Atomex.Client.Core.Tests
 {
@@ -59,7 +60,8 @@ namespace Atomex.Client.Core.Tests
                     pathToDb: PathToDb,
                     password: null,
                     currencies: Common.CurrenciesTestNet,
-                    symbols: Common.SymbolsTestNet);
+                    symbols: Common.SymbolsTestNet,
+                    network: Network.TestNet);
             });
         }
 
@@ -72,7 +74,8 @@ namespace Atomex.Client.Core.Tests
                 pathToDb: PathToDb,
                 password: Password,
                 currencies: Common.CurrenciesTestNet,
-                symbols: Common.SymbolsTestNet);
+                symbols: Common.SymbolsTestNet,
+                network: Network.TestNet);
 
             var swap = CreateSwap();
 
@@ -95,7 +98,8 @@ namespace Atomex.Client.Core.Tests
                 pathToDb: PathToDb,
                 password: Password,
                 currencies: Common.CurrenciesTestNet,
-                symbols: Common.SymbolsTestNet);
+                symbols: Common.SymbolsTestNet,
+                network: Network.TestNet);
 
             var swap = await repository
                 .GetSwapByIdAsync(swapId)
@@ -119,7 +123,8 @@ namespace Atomex.Client.Core.Tests
                 pathToDb: PathToDb,
                 password: Password,
                 currencies: Common.CurrenciesTestNet,
-                symbols: Common.SymbolsTestNet);
+                symbols: Common.SymbolsTestNet,
+                network: Network.TestNet);
 
             var id = "abcdefgh";
 

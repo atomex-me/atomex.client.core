@@ -14,11 +14,15 @@ namespace Atomex.Blockchain
 
             foreach (var a in addresses)
             {
-                var unspentOuts = await ((IInOutBlockchainApi)a.Currency.BlockchainApi)
+                var outputsResult = await ((IInOutBlockchainApi)a.Currency.BlockchainApi)
                     .GetUnspentOutputsAsync(a.Address)
                     .ConfigureAwait(false);
 
-                outputs.AddRange(unspentOuts);
+                if (outputsResult.HasError)
+                    break; // todo: return error
+
+                if (outputsResult.Value != null)
+                    outputs.AddRange(outputsResult.Value);
             }
 
             return outputs;
@@ -32,11 +36,15 @@ namespace Atomex.Blockchain
 
             foreach (var address in addresses)
             {
-                var unspentOuts = await ((IInOutBlockchainApi)currency.BlockchainApi)
+                var outputsResult = await ((IInOutBlockchainApi)currency.BlockchainApi)
                     .GetUnspentOutputsAsync(address)
                     .ConfigureAwait(false);
 
-                outputs.AddRange(unspentOuts);
+                if (outputsResult.HasError)
+                    break; // todo: return error
+
+                if (outputsResult.Value != null)
+                    outputs.AddRange(outputsResult.Value);
             }
 
             return outputs;

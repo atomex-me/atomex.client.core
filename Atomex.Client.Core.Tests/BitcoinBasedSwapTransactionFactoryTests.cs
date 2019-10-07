@@ -19,26 +19,18 @@ namespace Atomex.Client.Core.Tests
 {
     public class BitcoinBasedSwapTransactionFactoryTests
     {
-        //private static WalletAddress GetWallet(BitcoinBasedCurrency currency, PubKey pubKey)
-        //{
-        //    return new WalletAddress
-        //    {
-        //        Address = pubKey.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
-        //        Currency = currency,
-        //        PublicKey = Convert.ToBase64String(pubKey.ToBytes())
-        //    };
-        //}
-
-        private static IEnumerable<ITxOutput> GetTestOutputs(PubKey pubKey, NBitcoin.Network network)
+        private static Result<IEnumerable<ITxOutput>> GetTestOutputs(PubKey pubKey, NBitcoin.Network network)
         {
             var tx = Transaction.Create(network);
-            tx.Outputs.Add(new TxOut(new Money(10000L), pubKey.Hash));
-            tx.Outputs.Add(new TxOut(new Money(20000L), pubKey.Hash));
-            tx.Outputs.Add(new TxOut(new Money(30000L), pubKey.Hash));
+            tx.Outputs.Add(new TxOut(new Money(100000L), pubKey.Hash));
+            tx.Outputs.Add(new TxOut(new Money(200000L), pubKey.Hash));
+            tx.Outputs.Add(new TxOut(new Money(300000L), pubKey.Hash));
 
-            return tx.Outputs
+            var outputs = tx.Outputs
                 .AsCoins()
                 .Select(c => new BitcoinBasedTxOutput(c));
+
+            return new Result<IEnumerable<ITxOutput>>(outputs);
         }
 
         [Fact]
@@ -63,12 +55,10 @@ namespace Atomex.Client.Core.Tests
             var aliceBtcAddress = Common.Alice.PubKey
                 .GetAddress(ScriptPubKeyType.Legacy, bitcoin.Network)
                 .ToString();
-            //var aliceLtcWallet = GetWallet(litecoin, Common.Alice.PubKey);
 
             var bobBtcAddress = Common.Bob.PubKey
                 .GetAddress(ScriptPubKeyType.Legacy, bitcoin.Network)
                 .ToString();
-            //var bobLtcWallet = GetWallet(litecoin, Common.Bob.PubKey);
 
             const decimal lastPrice = 0.000001m;
             const decimal lastQty = 10m;
@@ -101,12 +91,5 @@ namespace Atomex.Client.Core.Tests
 
             return (tx, redeemScript);
         }
-
-
-        //[Fact]
-        //public void SignSwapPaymentTxTest()
-        //{
-        //    throw new NotImplementedException();
-        //}
     }
 }

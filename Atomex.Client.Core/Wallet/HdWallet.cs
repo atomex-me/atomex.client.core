@@ -45,6 +45,14 @@ namespace Atomex.Wallet
                 network: network);
         }
 
+        public HdWallet(Network network = Network.MainNet)
+            : this(mnemonic: new Mnemonic(Wordlist.English, WordCount.Fifteen).ToString(),
+                   wordList: Wordlist.English,
+                   passPhrase: null,
+                   network: network)
+        {
+        }
+
         public void Lock()
         {
             KeyStorage.Lock();
@@ -143,7 +151,7 @@ namespace Atomex.Wallet
                 return false;
             }
 
-            await tx
+            var signResult = await tx
                 .SignAsync(
                     addressResolver: addressResolver,
                     keyStorage: KeyStorage,
@@ -151,9 +159,12 @@ namespace Atomex.Wallet
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            Log.Verbose("Transaction {@id} successfully signed", tx.Id);
+            if (signResult)
+                Log.Verbose("Transaction {@id} successfully signed", tx.Id);
+            else
+                Log.Error("Transaction {@id} signing error", tx.Id);
 
-            return true;
+            return signResult;
         }
 
         public async Task<bool> SignAsync(
@@ -172,13 +183,16 @@ namespace Atomex.Wallet
                 return false;
             }
 
-            await tx
+            var signResult = await tx
                 .SignAsync(KeyStorage, address, cancellationToken)
                 .ConfigureAwait(false);
 
-            Log.Verbose("Transaction {@id} successfully signed", tx.Id);
+            if (signResult)
+                Log.Verbose("Transaction {@id} successfully signed", tx.Id);
+            else
+                Log.Error("Transaction {@id} signing error", tx.Id);
 
-            return true;
+            return signResult;
         }
 
         public Task<byte[]> SignHashAsync(
@@ -212,7 +226,7 @@ namespace Atomex.Wallet
 
             if (!KeyStorage.VerifyHash(address.Currency, hash, signature, address.KeyIndex))
             {
-                Log.Error(messageTemplate: "Signature verify error");
+                Log.Error("Signature verify error");
                 return Task.FromResult<byte[]>(null);
             }
 

@@ -160,16 +160,25 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var nonce = await EthereumNonceManager.Instance
-                .GetNonce(Eth, walletAddress.Address)
+            var nonceAsyncResult = await EthereumNonceManager.Instance
+                .GetNonceAsync(Eth, walletAddress.Address)
                 .ConfigureAwait(false);
+
+            if (nonceAsyncResult.HasError)
+            {
+                Log.Error("Nonce getting error with code {@code} and description {@description}", 
+                    nonceAsyncResult.Error.Code, 
+                    nonceAsyncResult.Error.Description);
+
+                return;
+            }
 
             var message = new RedeemFunctionMessage
             {
                 FromAddress = walletAddress.Address,
                 HashedSecret = swap.SecretHash,
                 Secret = swap.Secret,
-                Nonce = nonce,
+                Nonce = nonceAsyncResult.Value,
                 GasPrice = Atomex.Ethereum.GweiToWei(Eth.GasPriceInGwei),
             };
 
@@ -252,16 +261,25 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var nonce = await EthereumNonceManager.Instance
-                .GetNonce(Eth, walletAddress.Address)
+            var nonceAsyncResult = await EthereumNonceManager.Instance
+                .GetNonceAsync(Eth, walletAddress.Address)
                 .ConfigureAwait(false);
+
+            if (nonceAsyncResult.HasError)
+            {
+                Log.Error("Nonce getting error with code {@code} and description {@description}",
+                    nonceAsyncResult.Error.Code,
+                    nonceAsyncResult.Error.Description);
+
+                return;
+            }
 
             var message = new RedeemFunctionMessage
             {
                 FromAddress = walletAddress.Address,
                 HashedSecret = swap.SecretHash,
                 Secret = swap.Secret,
-                Nonce = nonce,
+                Nonce = nonceAsyncResult.Value,
                 GasPrice = Atomex.Ethereum.GweiToWei(Eth.GasPriceInGwei),
             };
 
@@ -313,16 +331,25 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var nonce = await EthereumNonceManager.Instance
-                .GetNonce(Eth, walletAddress.Address)
+            var nonceAsyncResult = await EthereumNonceManager.Instance
+                .GetNonceAsync(Eth, walletAddress.Address)
                 .ConfigureAwait(false);
+
+            if (nonceAsyncResult.HasError)
+            {
+                Log.Error("Nonce getting error with code {@code} and description {@description}",
+                    nonceAsyncResult.Error.Code,
+                    nonceAsyncResult.Error.Description);
+
+                return;
+            }
 
             var message = new RefundFunctionMessage
             {
                 FromAddress = walletAddress.Address,
                 HashedSecret = swap.SecretHash,
                 GasPrice = Atomex.Ethereum.GweiToWei(Eth.GasPriceInGwei),
-                Nonce = nonce,
+                Nonce = nonceAsyncResult.Value,
             };
 
             message.Gas = await EstimateGasAsync(message, new BigInteger(Eth.RefundGasLimit))
@@ -432,7 +459,7 @@ namespace Atomex.Swaps.Ethereum
             {
                 // redeem tx created, signed, but not broadcast.
                 // there is a possibility that tx could successfully broadcast
-                // othersise try again
+                // otherwise try again
 
                 TaskPerformer.EnqueueTask(new EthereumSwapRedeemControlTask
                 {
@@ -496,7 +523,7 @@ namespace Atomex.Swaps.Ethereum
             try
             {
                 Log.Debug(
-                    "Acceptor's payment transaction received. Now initiator can do self redeem and do party redeem for acceptor (if needs and wants) for swap {@swapId}.",
+                    "Acceptors payment transaction received. Now initiator can do self redeem and do party redeem for acceptor (if needs and wants) for swap {@swapId}.",
                     swap.Id);
 
                 swap.SetHasPartyPayment();
@@ -732,9 +759,9 @@ namespace Atomex.Swaps.Ethereum
                 Log.Debug("Available balance: {@balance}", balanceInEth);
 
                 var feeAmountInEth = isInitTx
-                    ? (rewardForRedeemInEth == 0
+                    ? rewardForRedeemInEth == 0
                         ? Eth.InitiateFeeAmount
-                        : Eth.InitiateWithRewardFeeAmount)
+                        : Eth.InitiateWithRewardFeeAmount
                     : Eth.AddFeeAmount;
 
                 var amountInEth = Math.Min(balanceInEth - feeAmountInEth, requiredAmountInEth);
@@ -753,9 +780,18 @@ namespace Atomex.Swaps.Ethereum
 
                 requiredAmountInEth -= amountInEth;
 
-                var nonce = await EthereumNonceManager.Instance
-                    .GetNonce(Eth, walletAddress.Address)
+                var nonceAsyncResult = await EthereumNonceManager.Instance
+                    .GetNonceAsync(Eth, walletAddress.Address)
                     .ConfigureAwait(false);
+
+                if (nonceAsyncResult.HasError)
+                {
+                    Log.Error("Nonce getting error with code {@code} and description {@description}",
+                        nonceAsyncResult.Error.Code,
+                        nonceAsyncResult.Error.Description);
+
+                    return null;
+                }
 
                 TransactionInput txInput;
 
@@ -769,7 +805,7 @@ namespace Atomex.Swaps.Ethereum
                         AmountToSend = Atomex.Ethereum.EthToWei(amountInEth),
                         FromAddress = walletAddress.Address,
                         GasPrice = Atomex.Ethereum.GweiToWei(Eth.GasPriceInGwei),
-                        Nonce = nonce,
+                        Nonce = nonceAsyncResult.Value,
                         RedeemFee = Atomex.Ethereum.EthToWei(rewardForRedeemInEth)
                     };
 
@@ -790,7 +826,7 @@ namespace Atomex.Swaps.Ethereum
                         AmountToSend = Atomex.Ethereum.EthToWei(amountInEth),
                         FromAddress = walletAddress.Address,
                         GasPrice = Atomex.Ethereum.GweiToWei(Eth.GasPriceInGwei),
-                        Nonce = nonce,
+                        Nonce = nonceAsyncResult.Value,
                     };
 
                     message.Gas = await EstimateGasAsync(message, new BigInteger(Eth.AddGasLimit))
@@ -813,7 +849,7 @@ namespace Atomex.Swaps.Ethereum
 
             if (requiredAmountInEth > 0)
             {
-                Log.Warning("Insufficient funds (left {@requredAmount}).", requiredAmountInEth);
+                Log.Warning("Insufficient funds (left {@requiredAmount}).", requiredAmountInEth);
                 return Enumerable.Empty<EthereumTransaction>();
             }
 
@@ -844,9 +880,14 @@ namespace Atomex.Swaps.Ethereum
             EthereumTransaction tx,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var txId = await Eth.BlockchainApi
+            var asyncResult = await Eth.BlockchainApi
                 .BroadcastAsync(tx, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (asyncResult.HasError)
+                throw new InternalException(asyncResult.Error);
+
+            var txId = asyncResult.Value;
 
             if (txId == null)
                 throw new Exception("Transaction Id is null");

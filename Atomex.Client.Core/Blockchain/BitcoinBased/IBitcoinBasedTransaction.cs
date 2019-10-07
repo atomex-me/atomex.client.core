@@ -31,5 +31,6 @@ namespace Atomex.Blockchain.BitcoinBased
         int VirtualSize();
         IBitcoinBasedTransaction Clone();
         byte[] ToBytes();
+        long GetDust();
     }
 }

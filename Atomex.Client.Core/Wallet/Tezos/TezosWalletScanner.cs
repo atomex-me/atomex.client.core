@@ -64,13 +64,25 @@ namespace Atomex.Wallet.Tezos
                         index,
                         walletAddress.Address);
 
-                    var addressTxs = (await((ITezosBlockchainApi)currency.BlockchainApi)
+                    var asyncResult = await ((ITezosBlockchainApi) currency.BlockchainApi)
                         .GetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
-                        .ConfigureAwait(false))
-                        .Cast<TezosTransaction>()
+                        .ConfigureAwait(false);
+ 
+                    if (asyncResult.HasError)
+                    {
+                        Log.Error(
+                            "Error while scan address transactions for {@address} with code {@code} and description {@description}", 
+                            walletAddress.Address,
+                            asyncResult.Error.Code,
+                            asyncResult.Error.Description);
+                        break;
+                    }
+
+                    var addressTxs = asyncResult.Value
+                        ?.Cast<TezosTransaction>()
                         .ToList();
 
-                    if (addressTxs.Count == 0) // address without activity
+                    if (addressTxs == null || !addressTxs.Any()) // address without activity
                     {
                         freeKeysCount++;
 
@@ -131,13 +143,25 @@ namespace Atomex.Wallet.Tezos
 
             Log.Debug("Scan transactions for address {@address}", address);
 
-            var addressTxs = (await((ITezosBlockchainApi)currency.BlockchainApi)
+            var asyncResult = await ((ITezosBlockchainApi)currency.BlockchainApi)
                 .GetTransactionsAsync(address, cancellationToken: cancellationToken)
-                .ConfigureAwait(false))
-                .Cast<TezosTransaction>()
+                .ConfigureAwait(false);
+
+            if (asyncResult.HasError)
+            {
+                Log.Error(
+                    "Error while scan address transactions for {@address} with code {@code} and description {@description}",
+                    address,
+                    asyncResult.Error.Code,
+                    asyncResult.Error.Description);
+                return;
+            }
+
+            var addressTxs = asyncResult.Value
+                ?.Cast<TezosTransaction>()
                 .ToList();
 
-            if (addressTxs.Count == 0)
+            if (addressTxs == null || !addressTxs.Any()) // address without activity
                 return;
 
             var txs = new List<TezosTransaction>();
@@ -179,8 +203,7 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
         }
 
-        private async Task UpsertTransactionsAsync(
-            IEnumerable<TezosTransaction> transactions)
+        private async Task UpsertTransactionsAsync(IEnumerable<TezosTransaction> transactions)
         {
             foreach (var tx in transactions)
             {

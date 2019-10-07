@@ -54,7 +54,7 @@ namespace Atomex.Wallet.Tezos
 
             var feePerTxInMtz = Math.Round(fee.ToMicroTez() / selectedAddresses.Count);
 
-            // min fee control
+            // todo: min fee control
 
             foreach (var selectedAddress in selectedAddresses)
             {
@@ -87,9 +87,14 @@ namespace Atomex.Wallet.Tezos
                         code: Errors.TransactionSigningError,
                         description: "Transaction signing error");
 
-                var txId = await Currency.BlockchainApi
+                var asyncResult = await Currency.BlockchainApi
                     .BroadcastAsync(tx, cancellationToken)
                     .ConfigureAwait(false);
+
+                if (asyncResult.HasError)
+                    return asyncResult.Error;
+
+                var txId = asyncResult.Value;
 
                 if (txId == null)
                     return new Error(
@@ -357,9 +362,20 @@ namespace Atomex.Wallet.Tezos
 
             foreach (var wa in addresses.Values)
             {
-                wa.Balance = (await api.GetBalanceAsync(wa.Address, cancellationToken)
-                    .ConfigureAwait(false))
-                    .ToTez();
+                var balanceAsyncResult = await api.GetBalanceAsync(wa.Address, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (balanceAsyncResult.HasError)
+                {
+                    Log.Error("Error while getting balance for {@address} with code {@code} and description {@description}",
+                        wa.Address,
+                        balanceAsyncResult.Error.Code,
+                        balanceAsyncResult.Error.Description);
+                    
+                    continue; // todo: may be return?
+                }
+
+                wa.Balance = balanceAsyncResult.Value.ToTez();
 
                 totalBalance += wa.Balance;
             }
@@ -389,9 +405,19 @@ namespace Atomex.Wallet.Tezos
 
             var api = (ITezosBlockchainApi) Xtz.BlockchainApi;
 
-            var balance = (await api.GetBalanceAsync(address, cancellationToken)
-                .ConfigureAwait(false))
-                .ToTez();
+            var balanceAsyncResult = await api.GetBalanceAsync(address, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (balanceAsyncResult.HasError)
+            {
+                Log.Error("Error while balance update for {@address} with code {@code} and description {@description}",
+                    address,
+                    balanceAsyncResult.Error.Code,
+                    balanceAsyncResult.Error.Description);
+                return;
+            }
+                
+            var balance = balanceAsyncResult.Value.ToTez();
 
             // calculate unconfirmed balances
             var unconfirmedTxs = (await DataRepository
@@ -521,7 +547,7 @@ namespace Atomex.Wallet.Tezos
                         {
                             WalletAddress = address,
                             UsedAmount = amount,
-                            UsedFee = feeInTez // without activiation fee and storage fee
+                            UsedFee = feeInTez // without activation fee and storage fee
                         }
                     }
                     : Enumerable.Empty<SelectedWalletAddress>();
@@ -558,7 +584,7 @@ namespace Atomex.Wallet.Tezos
                     {
                         WalletAddress = address,
                         UsedAmount = amountToUse,
-                        UsedFee = txFee // without activiation fee and storage fee
+                        UsedFee = txFee // without activation fee and storage fee
                     });
                     requiredAmount -= amountToUse;
 
@@ -588,11 +614,21 @@ namespace Atomex.Wallet.Tezos
         {
             var api = (ITezosBlockchainApi)Xtz.BlockchainApi;
 
-            var isActive = await api
+            var isActiveAsyncResult = await api
                 .IsActiveAddress(address, cancellationToken)
                 .ConfigureAwait(false);
 
-            return !isActive
+            if (isActiveAsyncResult.HasError)
+            {
+                Log.Error("Error while checking 'isActive' status for address {@address} with code {@code} and description {@description}",
+                    address,
+                    isActiveAsyncResult.Error.Code,
+                    isActiveAsyncResult.Error.Description);
+
+                return Xtz.ActivationFee.ToTez();
+            }
+
+            return !isActiveAsyncResult.Value
                 ? Xtz.ActivationFee.ToTez()
                 : 0;
         }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Common;
@@ -17,9 +18,7 @@ namespace Atomex.MarketData.Poloniex
         public const string Usd = "USDT";
         public string BaseUrl { get; } = "https://poloniex.com/";
 
-        public PoloniexQuotesProvider(
-            IEnumerable<Currency> currencies,
-            string baseCurrency)
+        public PoloniexQuotesProvider(IEnumerable<Currency> currencies, string baseCurrency)
         {
             if (currencies == null)
                 throw new ArgumentNullException(nameof(currencies));
@@ -30,9 +29,7 @@ namespace Atomex.MarketData.Poloniex
             Quotes = currencies.ToDictionary(currency => $"{baseCurrency}_{currency.Name}".ToUpper(), currency => new Quote());
         }
 
-        public override Quote GetQuote(
-            string currency,
-            string baseCurrency)
+        public override Quote GetQuote(string currency, string baseCurrency)
         {
             if (currency == null)
                 throw new ArgumentNullException(nameof(currency));
@@ -58,8 +55,6 @@ namespace Atomex.MarketData.Poloniex
             try
             {
                 const string request = "public?command=returnTicker";
-
-                Log.Debug("Send request: {@request}", request);
 
                 isAvailable = await HttpHelper.GetAsync(
                         baseUri: BaseUrl,
@@ -92,9 +87,15 @@ namespace Atomex.MarketData.Poloniex
                 RiseQuotesUpdatedEvent(EventArgs.Empty);
         }
 
-        private bool ResponseHandler(
-            string responseContent)
+        private bool ResponseHandler(HttpResponseMessage response)
         {
+            if (!response.IsSuccessStatusCode)
+                return false;
+
+            var responseContent = response.Content
+                .ReadAsStringAsync()
+                .WaitForResult();
+
             var data = JsonConvert.DeserializeObject<JObject>(responseContent);
 
             foreach (var symbol in Quotes.Keys.ToList())

@@ -39,7 +39,7 @@ namespace Atomex.Blockchain.Tezos
 
         public async Task<int> GetCounter(Atomex.Tezos tezos, string address, JObject head)
         {
-            var rpc = new Rpc(tezos.RpcProvider);
+            var rpc = new Rpc(tezos.RpcNodeUri);
 
             var account = await rpc
                 .GetAccountForBlock(head["hash"].ToString(), address)
@@ -84,7 +84,7 @@ namespace Atomex.Blockchain.Tezos
 
         public async Task<int> GetCounter(Atomex.Tezos tezos, string address)
         {
-            var rpc = new Rpc(tezos.RpcProvider);
+            var rpc = new Rpc(tezos.RpcNodeUri);
 
             var head = await rpc
                 .GetHeader()

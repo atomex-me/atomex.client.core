@@ -71,9 +71,12 @@ namespace Atomex.Wallet.Ethereum
                     selectedAddress.WalletAddress.Address,
                     selectedAddress.WalletAddress.AvailableBalance());
 
-                var nonce = await EthereumNonceManager.Instance
-                    .GetNonce(Eth, selectedAddress.WalletAddress.Address)
+                var nonceAsyncResult = await EthereumNonceManager.Instance
+                    .GetNonceAsync(Eth, selectedAddress.WalletAddress.Address)
                     .ConfigureAwait(false);
+
+                if (nonceAsyncResult.HasError)
+                    return nonceAsyncResult.Error;
 
                 var tx = new EthereumTransaction
                 {
@@ -82,7 +85,7 @@ namespace Atomex.Wallet.Ethereum
                     CreationTime = DateTime.UtcNow,
                     To = to.ToLowerInvariant(),
                     Amount = new BigInteger(Atomex.Ethereum.EthToWei(selectedAddress.UsedAmount)),
-                    Nonce = nonce,
+                    Nonce = nonceAsyncResult.Value,
                     GasPrice = new BigInteger(Atomex.Ethereum.GweiToWei(feePrice)),
                     GasLimit = new BigInteger(feePerTx),
                 };
@@ -101,9 +104,14 @@ namespace Atomex.Wallet.Ethereum
                         code: Errors.TransactionVerificationError,
                         description: "Transaction verification error");
 
-                var txId = await Currency.BlockchainApi
+                var asyncResult = await Currency.BlockchainApi
                     .BroadcastAsync(tx, cancellationToken)
                     .ConfigureAwait(false);
+
+                if (asyncResult.HasError)
+                    return asyncResult.Error;
+
+                var txId = asyncResult.Value;
 
                 if (txId == null)
                     return new Error(
@@ -206,6 +214,9 @@ namespace Atomex.Wallet.Ethereum
 
                 amount += usedAmountInEth;
                 fee += feeInEth;
+
+                if (isFirstTx)
+                    isFirstTx = false;
             }
 
             return (amount, fee);
@@ -511,9 +522,9 @@ namespace Atomex.Wallet.Ethereum
 
                     var txFee = feeUsagePolicy == FeeUsagePolicy.EstimatedFee
                         ? Eth.GetFeeAmount(GasLimitByType(transactionType, isFirstTx), Eth.GasPriceInGwei)
-                        : (feeUsagePolicy == FeeUsagePolicy.FeeForAllTransactions
+                        : feeUsagePolicy == FeeUsagePolicy.FeeForAllTransactions
                             ? Math.Round(Eth.GetFeeAmount(fee, feePrice) / txCount, Eth.Digits)
-                            : Eth.GetFeeAmount(fee, feePrice));
+                            : Eth.GetFeeAmount(fee, feePrice);
 
                     if (availableBalance <= txFee) // ignore address with balance less than fee
                         continue;
@@ -536,6 +547,9 @@ namespace Atomex.Wallet.Ethereum
 
                     if (result.Count == txCount) // will need more transactions
                         break;
+
+                    if (isFirstTx)
+                        isFirstTx = false;
                 }
 
                 if (completed)

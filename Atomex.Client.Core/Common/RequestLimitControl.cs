@@ -4,18 +4,18 @@ using System.Threading.Tasks;
 
 namespace Atomex.Common
 {
-    public class RequestLimitChecker
+    public class RequestLimitControl
     {
         private readonly object _sync = new object();
+        private readonly int _minDelayBetweenRequestMs;
         private long _lastRequestTimeStampMs;
-        private int _minDelayBetweenRequestMs = 1000;
 
-        public RequestLimitChecker(int minDelayBetweenRequestMs)
+        public RequestLimitControl(int minDelayBetweenRequestMs)
         {
             _minDelayBetweenRequestMs = minDelayBetweenRequestMs;
         }
 
-        public async Task WaitIfNeeded(CancellationToken cancellationToken)
+        public async Task Wait(CancellationToken cancellationToken)
         {
             var isCompleted = false;
 

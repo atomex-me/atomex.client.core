@@ -37,6 +37,7 @@ namespace Atomex
         public decimal RedeemFeeAmount => RedeemGasLimit * GasPriceInGwei / GweiInEth;
 
         public Chain Chain { get; private set; }
+        public string BlockchainApiBaseUri { get; private set; }
         public string SwapContractAddress { get; private set; }
         public ulong SwapContractBlockNumber { get; private set; }
 
@@ -76,10 +77,13 @@ namespace Atomex
             Chain = ResolveChain(configuration);
             SwapContractAddress = configuration["SwapContract"];
             SwapContractBlockNumber = ulong.Parse(configuration["SwapContractBlockNumber"], CultureInfo.InvariantCulture);
+
+            BlockchainApiBaseUri = configuration["BlockchainApiBaseUri"];
             BlockchainApi = ResolveBlockchainApi(
                 configuration: configuration,
                 currency: this,
                 chain: Chain);
+
             TxExplorerUri = configuration["TxExplorerUri"];
             AddressExplorerUri = configuration["AddressExplorerUri"];
             TransactionType = typeof(EthereumTransaction);
@@ -105,7 +109,7 @@ namespace Atomex
 
         private static IBlockchainApi ResolveBlockchainApi(
             IConfiguration configuration,
-            Currency currency,
+            Ethereum currency,
             Chain chain)
         {
             var blockchainApi = configuration["BlockchainApi"]

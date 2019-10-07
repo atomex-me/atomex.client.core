@@ -50,13 +50,22 @@ namespace Atomex.Swaps.Tezos.Tasks
 
                 for (var page = 0;; page++)
                 {
-                    var txs = (await api
+                    var asyncResult = await api
                         .GetTransactionsAsync(contractAddress, page)
-                        .ConfigureAwait(false))
-                        .Cast<TezosTransaction>()
-                        .ToList();
+                        .ConfigureAwait(false);
 
-                    if (txs.Count == 0)
+                    if (asyncResult.HasError)
+                    {
+                        Log.Error("Error while get transactions from contract {@contract} with code {@code} and {@description}", 
+                            contractAddress,
+                            asyncResult.Error.Code,
+                            asyncResult.Error.Description);
+                        break;
+                    }
+
+                    var txs = asyncResult.Value?.Cast<TezosTransaction>().ToList();
+
+                    if (txs == null || !txs.Any())
                         break;
 
                     foreach (var tx in txs)

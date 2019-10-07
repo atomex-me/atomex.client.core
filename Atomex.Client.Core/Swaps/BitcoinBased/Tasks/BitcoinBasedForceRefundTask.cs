@@ -25,9 +25,19 @@ namespace Atomex.Swaps.BitcoinBased.Tasks
 
                 var refundTx = (IBitcoinBasedTransaction)Swap.RefundTx;
 
-                var txId = await Currency.BlockchainApi
+                var asyncResult = await Currency.BlockchainApi
                     .BroadcastAsync(refundTx)
                     .ConfigureAwait(false);
+
+                if (asyncResult.HasError)
+                {
+                    Log.Error("Error while broadcast refund tx with code {@code} and description {@description}",
+                        asyncResult.Error.Code, 
+                        asyncResult.Error.Description);
+                    return false;
+                }
+
+                var txId = asyncResult.Value;
 
                 if (txId != null)
                 {

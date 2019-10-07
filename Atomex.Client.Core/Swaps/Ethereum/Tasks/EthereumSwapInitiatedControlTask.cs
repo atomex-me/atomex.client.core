@@ -44,21 +44,25 @@ namespace Atomex.Swaps.Ethereum.Tasks
                 var requiredAmountInWei = Atomex.Ethereum.EthToWei(requiredAmountInEth);
                 var requiredRewardForRedeemInWei = Atomex.Ethereum.EthToWei(Swap.RewardForRedeem);
 
-                var api = new EtherScanApi(Eth, Eth.Chain);
+                var api = new EtherScanApi(Eth);
 
                 if (!Initiated)
                 {
-                    var events = (await api.GetContractEventsAsync(
+                    var eventsResult = await api.GetContractEventsAsync(
                             address: Eth.SwapContractAddress,
                             fromBlock: Eth.SwapContractBlockNumber,
                             toBlock: ulong.MaxValue,
                             topic0: EventSignatureExtractor.GetSignatureHash<InitiatedEventDTO>(),
                             topic1: "0x" + Swap.SecretHash.ToHexString(),
                             topic2: "0x000000000000000000000000" + Swap.ToAddress.Substring(2))
-                        .ConfigureAwait(false))
-                        ?.ToList() ?? new List<EtherScanApi.ContractEvent>();
+                        .ConfigureAwait(false);
 
-                    if (!events.Any())
+                    if (eventsResult.HasError)
+                        return false; // todo: error message?
+
+                    var events = eventsResult.Value?.ToList();
+
+                    if (events == null || !events.Any())
                         return false;
 
                     var initiatedEvent = events.First().ParseInitiatedEvent();
@@ -104,16 +108,20 @@ namespace Atomex.Swaps.Ethereum.Tasks
 
                 if (Initiated)
                 {
-                    var events = (await api.GetContractEventsAsync(
+                    var eventsResult = await api.GetContractEventsAsync(
                             address: Eth.SwapContractAddress,
                             fromBlock: Eth.SwapContractBlockNumber,
                             toBlock: ulong.MaxValue,
                             topic0: EventSignatureExtractor.GetSignatureHash<AddedEventDTO>(),
                             topic1: "0x" + Swap.SecretHash.ToHexString())
-                        .ConfigureAwait(false))
-                        ?.ToList() ?? new List<EtherScanApi.ContractEvent>();
+                        .ConfigureAwait(false);
 
-                    if (!events.Any())
+                    if (eventsResult.HasError)
+                        return false; // todo: error message?
+
+                    var events = eventsResult.Value?.ToList();
+
+                    if (events == null || !events.Any())
                         return false;
 
                     foreach (var @event in events.Select(e => e.ParseAddedEvent()))

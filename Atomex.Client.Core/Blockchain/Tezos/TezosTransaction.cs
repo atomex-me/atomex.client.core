@@ -70,7 +70,7 @@ namespace Atomex.Blockchain.Tezos
             var publicKey = keyStorage
                 .GetPublicKey(Currency, address.KeyIndex);
 
-            var rpc = new Rpc(xtz.RpcProvider);
+            var rpc = new Rpc(xtz.RpcNodeUri);
 
             Head = await rpc
                 .GetHeader()

@@ -1,7 +1,9 @@
-﻿using System.Threading.Tasks;
+﻿using System.Net;
+using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
+using Serilog;
 
-namespace Atomex.Blockchain.BitcoinBased
+namespace Atomex.Swaps.BitcoinBased.Tasks
 {
     public class BitcoinBasedOutputSpentTask : BlockchainTask
     {
@@ -11,14 +13,29 @@ namespace Atomex.Blockchain.BitcoinBased
 
         public override async Task<bool> CheckCompletion()
         {
-            var spentPoint = await ((IInOutBlockchainApi)Currency.BlockchainApi)
+            var asyncResult = await ((IInOutBlockchainApi)Currency.BlockchainApi)
                 .IsTransactionOutputSpent(OutputHash, OutputIndex)
                 .ConfigureAwait(false);
 
-            if (spentPoint == null)
+            if (asyncResult.HasError)
+            {
+                if (asyncResult.Error.Code == (int) HttpStatusCode.NotFound)
+                    return false;
+
+                Log.Error(
+                    "Error while get spent point for {@hash}:{@index} with code {@code} and description {@description}",
+                    OutputHash,
+                    OutputIndex,
+                    asyncResult.Error.Code,
+                    asyncResult.Error.Description);
+
+                return false;
+            }
+
+            if (asyncResult.Value == null)
                 return false;
 
-            SpentPoint = spentPoint;
+            SpentPoint = asyncResult.Value;
             CompleteHandler(this);
             return true;
         }

@@ -17,8 +17,10 @@ namespace Atomex.Client.Core.Tests
         public async void GetTransactionTest(BitcoinBasedCurrency currency, string txId)
         {
             var api = new BlockchainInfoApi(currency);
-            var tx = await api.GetTransactionAsync(txId);
+            var asyncResult = await api.GetTransactionAsync(txId);
+            var tx = asyncResult.Value;
 
+            Assert.False(asyncResult.HasError);
             Assert.NotNull(tx);
             Assert.True(tx.Id == txId);
         }
@@ -34,8 +36,10 @@ namespace Atomex.Client.Core.Tests
         public async void GetInputTest(BitcoinBasedCurrency currency, string txId, uint inputNo)
         {
             var api = new BlockchainInfoApi(currency);
-            var input = await api.GetInputAsync(txId, inputNo);
+            var asyncResult = await api.GetInputAsync(txId, inputNo);
+            var input = asyncResult.Value;
 
+            Assert.False(asyncResult.HasError);
             Assert.NotNull(input);
         }
 

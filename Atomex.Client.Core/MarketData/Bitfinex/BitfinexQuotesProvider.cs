@@ -52,8 +52,15 @@ namespace Atomex.MarketData.Bitfinex
                 isAvailable = await HttpHelper.GetAsync(
                         baseUri: BaseUrl,
                         requestUri: request,
-                        responseHandler: responseContent =>
+                        responseHandler: response =>
                         {
+                            if (!response.IsSuccessStatusCode)
+                                return false;
+
+                            var responseContent = response.Content
+                                .ReadAsStringAsync()
+                                .WaitForResult();
+
                             var tickers = JsonConvert.DeserializeObject<JArray>(responseContent);
 
                             foreach (var tickerToken in tickers)
@@ -66,7 +73,7 @@ namespace Atomex.MarketData.Bitfinex
                                 var bid = ticker[1].Value<decimal>();
                                 var ask = ticker[3].Value<decimal>();
 
-                                Quotes[symbol] = new Quote()
+                                Quotes[symbol] = new Quote
                                 {
                                     Bid = bid,
                                     Ask = ask

@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core.Entities;
-using Nethereum.Signer;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -16,17 +15,13 @@ namespace Atomex.Blockchain.Ethereum
 {
     public class EtherScanApi : IEthereumBlockchainApi
     {
-        private const string MainNet = "https://api.etherscan.io/";
-        private const string Ropsten = "http://api-ropsten.etherscan.io/";
-
         private const string ApiKey = "2R1AIHZZE5NVSHRQUGAHU8EYNYYZ5B2Y37";
-        private const int MinDelayBetweenRequestMs = 1000; // 500
+        private const int MinDelayBetweenRequestMs = 1000;
 
-        private static readonly RequestLimitChecker RequestLimitChecker 
-            = new RequestLimitChecker(MinDelayBetweenRequestMs);
+        private static readonly RequestLimitControl RequestLimitControl 
+            = new RequestLimitControl(MinDelayBetweenRequestMs);
 
         private string BaseUrl { get; }
-        private int MaxRequestAttemptsCount { get; } = 1;
 
         internal class Response<T>
         {
@@ -121,103 +116,113 @@ namespace Atomex.Blockchain.Ethereum
 
         private Currency Currency { get; }
 
-        public EtherScanApi(Currency currency, Chain chain)
+        public EtherScanApi(Atomex.Ethereum currency)
         {
             Currency = currency;
-
-            switch (chain)
-            {
-                case Chain.MainNet:
-                    BaseUrl = MainNet;
-                    break;
-                case Chain.Ropsten:
-                    BaseUrl = Ropsten;
-                    break;
-                default:
-                    throw new NotSupportedException($"Chain {chain} not supported");
-            }
+            BaseUrl = currency.BlockchainApiBaseUri;
         }
 
-        public async Task<decimal> GetBalanceAsync(
+        public async Task<Result<decimal>> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var requestUri = $"api?module=account&action=balance&address={address}&apikey={ApiKey}";
 
-            return await HttpHelper.GetAsync(
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            return await HttpHelper.GetAsyncResult(
                    baseUri: BaseUrl,
                    requestUri: requestUri,
-                   responseHandler: responseContent =>
+                   responseHandler: (response, content) =>
                    {
-                       var json = JsonConvert.DeserializeObject<JObject>(responseContent);
+                       var json = JsonConvert.DeserializeObject<JObject>(content);
 
-                       return json.ContainsKey("result")
+                       var balance = json.ContainsKey("result")
                            ? Atomex.Ethereum.WeiToEth(new BigInteger(long.Parse(json["result"].ToString())))
                            : 0;
+
+                       return new Result<decimal>(balance);
                    },
-                   requestLimitChecker: RequestLimitChecker,
-                   maxAttempts: MaxRequestAttemptsCount,
                    cancellationToken: cancellationToken)
                .ConfigureAwait(false);
         }
 
-        public Task<BigInteger> GetTransactionCountAsync(
+        public Task<Result<BigInteger>> GetTransactionCountAsync(
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             throw new NotImplementedException();
         }
 
-        public Task<IBlockchainTransaction> GetTransactionAsync(
+        public Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             throw new NotImplementedException();
         }
 
-        public async Task<IEnumerable<IBlockchainTransaction>> GetInternalTransactionsAsync(
+        public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetInternalTransactionsAsync(
             string txId,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var requestUri = $"api?module=account&action=txlistinternal&txhash={txId}&apikey={ApiKey}";
 
-            return await HttpHelper.GetAsync(
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            return await HttpHelper.GetAsyncResult(
                    baseUri: BaseUrl,
                    requestUri: requestUri,
-                   responseHandler: responseContent => ParseTransactions(responseContent, txId: txId, isInternal: true),
-                   requestLimitChecker: RequestLimitChecker,
-                   maxAttempts: MaxRequestAttemptsCount,
+                   responseHandler: (response, content) => new Result<IEnumerable<IBlockchainTransaction>>(
+                       ParseTransactions(content, txId: txId, isInternal: true)),
                    cancellationToken: cancellationToken)
-               .ConfigureAwait(false) ?? Enumerable.Empty<IBlockchainTransaction>();
+               .ConfigureAwait(false);
         }
 
-        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+        public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
             // todo: add pagination support
-            var txs = await HttpHelper.GetAsync(
+            var result = await HttpHelper.GetAsyncResult(
                     baseUri: BaseUrl,
                     requestUri: $"api?module=account&action=txlist&address={address}&sort=asc&apikey={ApiKey}",
-                    responseHandler: responseContent => ParseTransactions(responseContent, txId: null, isInternal: false),
-                    requestLimitChecker: RequestLimitChecker,
-                    maxAttempts: MaxRequestAttemptsCount,
+                    responseHandler: (response, content) => new Result<IEnumerable<IBlockchainTransaction>>(
+                        ParseTransactions(content, txId: null, isInternal: false)),
                     cancellationToken: cancellationToken)
-                .ConfigureAwait(false) ?? Enumerable.Empty<EthereumTransaction>();
+                .ConfigureAwait(false);
 
-            var internalTxs = await HttpHelper.GetAsync(
+            if (result.HasError)
+                return result;
+
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            var internalResult = await HttpHelper.GetAsyncResult(
                     baseUri: BaseUrl,
                     requestUri: $"api?module=account&action=txlistinternal&address={address}&sort=asc&apikey={ApiKey}",
-                    responseHandler: responseContent => ParseTransactions(responseContent, txId: null, isInternal: true),
-                    requestLimitChecker: RequestLimitChecker,
-                    maxAttempts: MaxRequestAttemptsCount,
+                    responseHandler: (response, content) => new Result<IEnumerable<IBlockchainTransaction>>(
+                        ParseTransactions(content, txId: null, isInternal: true)),
                     cancellationToken: cancellationToken)
-                .ConfigureAwait(false) ?? Enumerable.Empty<EthereumTransaction>();
+                .ConfigureAwait(false);
 
-            return txs.Concat(internalTxs);
+            if (internalResult.HasError)
+                return internalResult;
+
+            var txs = result.Value.Concat(internalResult.Value);
+
+            return new Result<IEnumerable<IBlockchainTransaction>>(txs);
         }
 
-        public Task<IEnumerable<ContractEvent>> GetContractEventsAsync(
+        public Task<Result<IEnumerable<ContractEvent>>> GetContractEventsAsync(
             string address,
             ulong fromBlock,
             ulong toBlock,
@@ -227,7 +232,7 @@ namespace Atomex.Blockchain.Ethereum
             return GetContractEventsAsync(address, fromBlock, toBlock, cancellationToken, topic0);
         }
 
-        public Task<IEnumerable<ContractEvent>> GetContractEventsAsync(
+        public Task<Result<IEnumerable<ContractEvent>>> GetContractEventsAsync(
             string address,
             ulong fromBlock,
             ulong toBlock,
@@ -238,7 +243,7 @@ namespace Atomex.Blockchain.Ethereum
             return GetContractEventsAsync(address, fromBlock, toBlock, cancellationToken, topic0, topic1);
         }
 
-        public Task<IEnumerable<ContractEvent>> GetContractEventsAsync(
+        public Task<Result<IEnumerable<ContractEvent>>> GetContractEventsAsync(
             string address,
             ulong fromBlock,
             ulong toBlock,
@@ -250,7 +255,7 @@ namespace Atomex.Blockchain.Ethereum
             return GetContractEventsAsync(address, fromBlock, toBlock, cancellationToken, topic0, topic1, topic2);
         }
 
-        public async Task<IEnumerable<ContractEvent>> GetContractEventsAsync(
+        public async Task<Result<IEnumerable<ContractEvent>>> GetContractEventsAsync(
             string address,
             ulong fromBlock = ulong.MinValue,
             ulong toBlock = ulong.MaxValue,
@@ -261,16 +266,19 @@ namespace Atomex.Blockchain.Ethereum
             var toBlockStr = BlockNumberToStr(toBlock);
             var topicsStr = TopicsToStr(topics);
 
-            var uri = $"api?module=logs&action=getLogs&address={address}&fromBlock={fromBlockStr}&toBlock={toBlockStr}{topicsStr}&apikey={ApiKey}";         
+            var uri = $"api?module=logs&action=getLogs&address={address}&fromBlock={fromBlockStr}&toBlock={toBlockStr}{topicsStr}&apikey={ApiKey}";
 
-            return await HttpHelper.GetAsync(
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            return await HttpHelper.GetAsyncResult(
                     baseUri: BaseUrl,
                     requestUri: uri,
-                    responseHandler: responseContent => JsonConvert.DeserializeObject<Response<List<ContractEvent>>>(responseContent).Result,
-                    requestLimitChecker: RequestLimitChecker,
-                    maxAttempts: MaxRequestAttemptsCount,
+                    responseHandler: (response, content) => new Result<IEnumerable<ContractEvent>>(
+                        JsonConvert.DeserializeObject<Response<List<ContractEvent>>>(content).Result),
                     cancellationToken: cancellationToken)
-                .ConfigureAwait(false) ?? Enumerable.Empty<ContractEvent>();
+                .ConfigureAwait(false);
         }
 
         private static string BlockNumberToStr(ulong blockNumber)
@@ -308,7 +316,7 @@ namespace Atomex.Blockchain.Ethereum
             return result;
         }
 
-        public Task<string> BroadcastAsync(
+        public Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -352,12 +360,12 @@ namespace Atomex.Blockchain.Ethereum
                 }
 
                 var state = tx.ReceiptStatus != null
-                    ? (tx.ReceiptStatus.Equals("1")
+                    ? tx.ReceiptStatus.Equals("1")
                         ? BlockchainTransactionState.Confirmed
-                        : BlockchainTransactionState.Failed)
-                    : (isInternal
+                        : BlockchainTransactionState.Failed
+                    : isInternal
                         ? BlockchainTransactionState.Confirmed
-                        : BlockchainTransactionState.Unconfirmed);
+                        : BlockchainTransactionState.Unconfirmed;
 
                 result.Add(new EthereumTransaction
                 {

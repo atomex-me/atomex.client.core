@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Serilog;
@@ -18,9 +19,24 @@ namespace Atomex.Blockchain
 
             try
             {
-                tx = await Currency.BlockchainApi
+                var txAsyncResult = await Currency.BlockchainApi
                     .GetTransactionAsync(TxId)
                     .ConfigureAwait(false);
+
+                if (txAsyncResult.HasError)
+                {
+                    if (txAsyncResult.Error.Code == (int) HttpStatusCode.NotFound)
+                        return false;
+
+                    Log.Error("Error while get transaction {@txId} with code {@code} and description {@description}", 
+                        TxId,
+                        txAsyncResult.Error.Code, 
+                        txAsyncResult.Error.Description);
+
+                    return false;
+                }
+
+                tx = txAsyncResult.Value;
 
                 if (tx == null)
                     return false;

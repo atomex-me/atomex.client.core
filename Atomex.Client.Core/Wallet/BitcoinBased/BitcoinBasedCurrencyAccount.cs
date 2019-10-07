@@ -47,6 +47,7 @@ namespace Atomex.Wallet.BitcoinBased
                     to: to,
                     amount: amount,
                     fee: fee,
+                    dustUsagePolicy: DustUsagePolicy.Warning,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -68,42 +69,75 @@ namespace Atomex.Wallet.BitcoinBased
                     to: to,
                     amount: amount,
                     fee: fee,
+                    dustUsagePolicy: DustUsagePolicy.Warning,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        private async Task<Error> SendAsync(
+        public async Task<Error> SendAsync(
             List<ITxOutput> outputs,
             string to,
             decimal amount,
             decimal fee,
+            DustUsagePolicy dustUsagePolicy,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var amountSatoshi = BtcBasedCurrency.CoinToSatoshi(amount);
-            var feeSatoshi = BtcBasedCurrency.CoinToSatoshi(fee);
+            var amountInSatoshi = BtcBasedCurrency.CoinToSatoshi(amount);
+            var feeInSatoshi = BtcBasedCurrency.CoinToSatoshi(fee);
+            var requiredInSatoshi = amountInSatoshi + feeInSatoshi;
+
+            // minimum amount and fee control
+            if (amountInSatoshi < BtcBasedCurrency.GetDustFee())
+                return new Error(
+                    code: Errors.InsufficientAmount,
+                    description: $"Insufficient amount to send. Min non-dust amount {BtcBasedCurrency.GetDustFee()}, actual {amountInSatoshi}");
 
             outputs = outputs
-                .SelectOutputsForAmount(amountSatoshi + feeSatoshi)
+                .SelectOutputsForAmount(requiredInSatoshi)
                 .ToList();
+
+            var availableInSatoshi = outputs.Sum(o => o.Value);
 
             if (!outputs.Any())
                 return new Error(
                     code: Errors.InsufficientFunds,
-                    description: "Insufficient funds");
+                    description: $"Insufficient funds. Required {requiredInSatoshi}, available {availableInSatoshi}");
 
             var changeAddress = await GetFreeInternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var tx = BtcBasedCurrency
-                .CreatePaymentTx(
-                    unspentOutputs: outputs,
-                    destinationAddress: to,
-                    changeAddress: changeAddress.Address,
-                    amount: amountSatoshi,
-                    fee: feeSatoshi,
-                    lockTime: DateTimeOffset.MinValue);
+            // minimum change control
+            var changeInSatoshi = availableInSatoshi - requiredInSatoshi;
+            if (changeInSatoshi > 0 && changeInSatoshi < BtcBasedCurrency.GetDustFee())
+            {
+                switch (dustUsagePolicy)
+                {
+                    case DustUsagePolicy.Warning:
+                        return new Error(
+                            code: Errors.InsufficientAmount,
+                            description: $"Change {changeInSatoshi} can be definded by the network as dust and the transaction will be rejected");
+                    case DustUsagePolicy.AddToDestination:
+                        amountInSatoshi += changeInSatoshi;
+                        break;
+                    case DustUsagePolicy.AddToFee:
+                        feeInSatoshi += changeInSatoshi;
+                        break;
+                    default:
+                        return new Error(
+                            code: Errors.InternalError,
+                            description: $"Unknown dust usage policy value {dustUsagePolicy}");
+                }
+            }
 
-            var result = await Wallet
+            var tx = BtcBasedCurrency.CreatePaymentTx(
+                unspentOutputs: outputs,
+                destinationAddress: to,
+                changeAddress: changeAddress.Address,
+                amount: amountInSatoshi,
+                fee: feeInSatoshi,
+                lockTime: DateTimeOffset.MinValue);
+
+            var signResult = await Wallet
                 .SignAsync(
                     tx: tx,
                     spentOutputs: outputs,
@@ -111,19 +145,24 @@ namespace Atomex.Wallet.BitcoinBased
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (!result)
+            if (!signResult)
                 return new Error(
                     code: Errors.TransactionSigningError,
                     description: "Transaction signing error");
 
-            if (!tx.Verify(outputs))
+            if (!tx.Verify(outputs, out var errors))
                 return new Error(
                     code: Errors.TransactionVerificationError,
-                    description: "Transaction verification error");
+                    description: $"Transaction verification error: {string.Join(", ", errors.Select(e => e.Description))}");
 
-            var txId = await Currency.BlockchainApi
+            var broadcastResult = await Currency.BlockchainApi
                 .BroadcastAsync(tx, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (broadcastResult.HasError)
+                return broadcastResult.Error;
+
+            var txId = broadcastResult.Value;
 
             if (txId == null)
                 return new Error(
@@ -181,15 +220,13 @@ namespace Atomex.Wallet.BitcoinBased
 
                 var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(selectedOutputs);
 
-                var requiredFeeInSatoshi = (long)((testTx.VirtualSize() + estimatedSigSize) * BtcBasedCurrency.FeeRate);
+                // requredFee = txSize * feeRate + dust
+                var requiredFeeInSatoshi = (long)((testTx.VirtualSize() + estimatedSigSize) * BtcBasedCurrency.FeeRate) + testTx.GetDust();
 
-                if (requiredFeeInSatoshi > feeInSatoshi)
-                {
-                    feeInSatoshi = requiredFeeInSatoshi;
-                    continue; 
-                }
+                if (requiredFeeInSatoshi <= feeInSatoshi)
+                    return BtcBasedCurrency.SatoshiToCoin(requiredFeeInSatoshi);
 
-                return requiredFeeInSatoshi / (decimal)BtcBasedCurrency.DigitsMultiplier;
+                feeInSatoshi = requiredFeeInSatoshi;
             }
         }
 
@@ -218,12 +255,11 @@ namespace Atomex.Wallet.BitcoinBased
                     fee: 0,
                     lockTime: DateTimeOffset.MinValue);
 
+            // requiredFee = txSize * feeRate without dust, because all coins must be send to one address
             var requiredFeeInSatoshi = (long)((testTx.VirtualSize() + estimatedSigSize) * BtcBasedCurrency.FeeRate);
 
-            var amount = Math.Max(availableAmountInSatoshi - requiredFeeInSatoshi, 0) /
-                         (decimal) BtcBasedCurrency.DigitsMultiplier;
-
-            var fee = requiredFeeInSatoshi / (decimal)BtcBasedCurrency.DigitsMultiplier;
+            var amount = BtcBasedCurrency.SatoshiToCoin(Math.Max(availableAmountInSatoshi - requiredFeeInSatoshi, 0));
+            var fee = BtcBasedCurrency.SatoshiToCoin(requiredFeeInSatoshi);
 
             return (amount, fee);
         }

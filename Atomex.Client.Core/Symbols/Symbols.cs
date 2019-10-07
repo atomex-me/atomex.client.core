@@ -8,9 +8,7 @@ namespace Atomex
 {
     public class Symbols : List<Symbol>, ISymbols
     {
-        public Symbols(
-            IConfiguration configuration,
-            ICurrencies currencies)
+        public Symbols(IConfiguration configuration, ICurrencies currencies)
         {
             var symbols = configuration
                 .GetChildren()
@@ -19,8 +17,7 @@ namespace Atomex
             AddRange(symbols);
         }
 
-        public Symbol GetByName(
-            string name)
+        public Symbol GetByName(string name)
         {
             return this.FirstOrDefault(s => s.Name == name);
         }

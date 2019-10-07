@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
@@ -19,24 +18,28 @@ namespace Atomex.Swaps.Ethereum.Tasks
             {
                 Log.Debug("Ethereum: check refund event");
 
-                var api = new EtherScanApi(Eth, Eth.Chain);
+                var api = new EtherScanApi(Eth);
 
-                var events = (await api.GetContractEventsAsync(
+                var eventsResult = await api.GetContractEventsAsync(
                         address: Eth.SwapContractAddress,
                         fromBlock: Eth.SwapContractBlockNumber,
                         toBlock: ulong.MaxValue,
                         topic0: EventSignatureExtractor.GetSignatureHash<RefundedEventDTO>(),
                         topic1: "0x" + Swap.SecretHash.ToHexString())
-                    .ConfigureAwait(false))
-                    ?.ToList() ?? new List<EtherScanApi.ContractEvent>();
+                    .ConfigureAwait(false);
 
-                if (events.Count > 0)
-                {
-                    Log.Debug("Refund event received");
+                if (eventsResult.HasError)
+                    return false; // todo: error message?
 
-                    CompleteHandler?.Invoke(this);
-                    return true;
-                }
+                var events = eventsResult.Value?.ToList();
+
+                if (events == null || !events.Any())
+                    return false;
+
+                Log.Debug("Refund event received");
+
+                CompleteHandler?.Invoke(this);
+                return true;  
             }
             catch (Exception e)
             {

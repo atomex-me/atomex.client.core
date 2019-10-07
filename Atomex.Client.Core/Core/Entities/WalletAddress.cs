@@ -44,7 +44,7 @@ namespace Atomex.Core.Entities
 
         public override string ToString()
         {
-            return $"{Balance};{UnconfirmedIncome};{UnconfirmedOutcome}";
+            return $"{Address};{Balance};{UnconfirmedIncome};{UnconfirmedOutcome}";
         }
     }
 }

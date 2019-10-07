@@ -402,7 +402,7 @@ namespace Atomex.Swaps.Tezos
             {
                 // redeem tx created, signed, but not broadcast.
                 // there is a possibility that tx could successfully broadcast
-                // othersise try again
+                // otherwise try again
 
                 TaskPerformer.EnqueueTask(new TezosSwapRedeemControlTask
                 {
@@ -809,9 +809,14 @@ namespace Atomex.Swaps.Tezos
             TezosTransaction tx,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var txId = await Xtz.BlockchainApi
+            var asyncResult = await Xtz.BlockchainApi
                 .BroadcastAsync(tx, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (asyncResult.HasError)
+                throw new Exception($"Error while broadcast transaction with code {asyncResult.Error.Code} and description {asyncResult.Error.Description}");
+
+            var txId = asyncResult.Value;
 
             if (txId == null)
                 throw new Exception("Transaction Id is null");

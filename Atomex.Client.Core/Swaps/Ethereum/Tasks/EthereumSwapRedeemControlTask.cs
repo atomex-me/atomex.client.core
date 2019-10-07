@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
@@ -23,26 +22,30 @@ namespace Atomex.Swaps.Ethereum.Tasks
             {
                 Log.Debug("Ethereum: check redeem event");
 
-                var api = new EtherScanApi(Eth, Eth.Chain);
+                var api = new EtherScanApi(Eth);
 
-                var events = (await api.GetContractEventsAsync(
+                var eventsResult = await api.GetContractEventsAsync(
                         address: Eth.SwapContractAddress,
                         fromBlock: Eth.SwapContractBlockNumber,
                         toBlock: ulong.MaxValue,
                         topic0: EventSignatureExtractor.GetSignatureHash<RedeemedEventDTO>(),
                         topic1: "0x" + Swap.SecretHash.ToHexString())
-                    .ConfigureAwait(false))
-                    ?.ToList() ?? new List<EtherScanApi.ContractEvent>();
+                    .ConfigureAwait(false);
 
-                if (events.Count > 0)
-                {
-                    Secret = events.First().ParseRedeemedEvent().Secret;
+                if (eventsResult.HasError)
+                    return false; // todo: error message?
 
-                    Log.Debug("Redeem event received with secret {@secret}", Convert.ToBase64String(Secret));
+                var events = eventsResult.Value?.ToList();
 
-                    CompleteHandler?.Invoke(this);
-                    return true;
-                }
+                if (events == null || !events.Any())
+                    return false;
+
+                Secret = events.First().ParseRedeemedEvent().Secret;
+
+                Log.Debug("Redeem event received with secret {@secret}", Convert.ToBase64String(Secret));
+
+                CompleteHandler?.Invoke(this);
+                return true;
             }
             catch (Exception e)
             {

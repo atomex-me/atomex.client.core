@@ -78,17 +78,13 @@ namespace Atomex.Blockchain.BitcoinBased
             Fees = fees;
 
             CreationTime = blockInfo != null
-                ? blockInfo.FirstSeen != null
-                    ? blockInfo.FirstSeen.Value
-                    : blockInfo.BlockTime != null
-                        ? blockInfo.BlockTime.Value
-                        : DateTime.UtcNow
+                ? blockInfo.FirstSeen ?? (blockInfo.BlockTime ?? DateTime.UtcNow)
                 : DateTime.UtcNow;
 
             State = blockInfo != null
-                ? (blockInfo.Confirmations >= DefaultConfirmations
+                ? blockInfo.Confirmations >= DefaultConfirmations
                     ? BlockchainTransactionState.Confirmed
-                    : BlockchainTransactionState.Unconfirmed)
+                    : BlockchainTransactionState.Unconfirmed
                 : BlockchainTransactionState.Pending;
         }
 
@@ -307,6 +303,13 @@ namespace Atomex.Blockchain.BitcoinBased
                 tx: Tx.Clone(),
                 blockInfo: (BlockInfo)BlockInfo?.Clone(),
                 fees: Fees);
+        }
+
+        public long GetDust()
+        {
+            var currency = (BitcoinBasedCurrency)Currency;
+
+            return Outputs.Where(output => output.Value < currency.GetDustFee()).Sum(output => output.Value);
         }
 
         public static BitcoinBasedTransaction CreateTransaction(

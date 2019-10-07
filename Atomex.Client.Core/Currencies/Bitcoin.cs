@@ -31,7 +31,8 @@ namespace Atomex
             Digits = (int)Math.Log10(BtcDigitsMultiplier);
             Format = $"F{Digits}";
 
-            FeeRate = decimal.Parse(configuration["FeeRate"]); // 16 satoshi per byte
+            FeeRate = decimal.Parse(configuration["FeeRate"]);
+            DustFeeRate = decimal.Parse(configuration["DustFeeRate"]);
             FeeDigits = Digits;
             FeeCode = Name;
             FeeFormat = $"F{FeeDigits}";

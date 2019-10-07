@@ -25,7 +25,18 @@ namespace Atomex.Subsystems
         {
             try
             {
-                var content = await HttpHelper.GetAsync(BaseUri, CurrenciesConfig, s => s)
+                var content = await HttpHelper.GetAsync(
+                        baseUri: BaseUri,
+                        requestUri: CurrenciesConfig,
+                        responseHandler: response =>
+                        {
+                            if (!response.IsSuccessStatusCode)
+                                return null;
+
+                            return response.Content
+                                .ReadAsStringAsync()
+                                .WaitForResult();
+                        })
                     .ConfigureAwait(false);
 
                 if (content != null)

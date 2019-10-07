@@ -13,6 +13,7 @@ namespace Atomex
 {
     public abstract class BitcoinBasedCurrency : Currency
     {
+        public const int P2PkhTxSize = 182;
         public const int P2PkhScriptSigSize = 139; //1 + 72 + 1 + 65;
         public const int P2PkhCompressedScriptSigSize = 107; // 1 + 72 + 1 + 33
         public const int P2PkhSwapRefundSigSize = 146; //1 + 72 + 72 + 1
@@ -24,6 +25,8 @@ namespace Atomex
 
         public const int DefaultRedeemTxSize = 300;
 
+        public decimal FeeRate { get; set; }
+        public decimal DustFeeRate { get; set; }
         public Network Network { get; protected set; }
 
         protected BitcoinBasedCurrency()
@@ -107,9 +110,19 @@ namespace Atomex
             return FeeRate * DefaultRedeemTxSize / DigitsMultiplier;
         }
 
+        public long GetDustFee()
+        {
+            return (long) (DustFeeRate * P2PkhTxSize);
+        }
+
         public long CoinToSatoshi(decimal coins)
         {
             return (long) (coins * DigitsMultiplier);
+        }
+
+        public decimal SatoshiToCoin(long satoshi)
+        {
+            return satoshi / (decimal)DigitsMultiplier;
         }
 
         public string TestAddress()

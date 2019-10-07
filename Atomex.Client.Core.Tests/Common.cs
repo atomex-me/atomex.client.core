@@ -30,17 +30,17 @@ namespace Atomex.Client.Core.Tests
             .AddEmbeddedJsonFile(CoreAssembly, "symbols.json")
             .Build();
 
-        public static readonly ICurrencies CurrenciesTestNet
-            = new Currencies(CurrenciesConfiguration.GetSection(Atomex.Core.Network.TestNet.ToString()));
+        public static ICurrencies CurrenciesTestNet
+            => new Currencies(CurrenciesConfiguration.GetSection(Atomex.Core.Network.TestNet.ToString()));
 
-        public static readonly ISymbols SymbolsTestNet
-            = new Symbols(SymbolsConfiguration.GetSection(Atomex.Core.Network.TestNet.ToString()), CurrenciesTestNet);
+        public static ISymbols SymbolsTestNet
+            => new Symbols(SymbolsConfiguration.GetSection(Atomex.Core.Network.TestNet.ToString()), CurrenciesTestNet);
 
-        public static readonly ICurrencies CurrenciesMainNet
-            = new Currencies(CurrenciesConfiguration.GetSection(Atomex.Core.Network.MainNet.ToString()));
+        public static ICurrencies CurrenciesMainNet
+            => new Currencies(CurrenciesConfiguration.GetSection(Atomex.Core.Network.MainNet.ToString()));
 
-        public static readonly ISymbols SymbolsMainNet
-            = new Symbols(SymbolsConfiguration.GetSection(Atomex.Core.Network.MainNet.ToString()), CurrenciesMainNet);
+        public static ISymbols SymbolsMainNet
+            => new Symbols(SymbolsConfiguration.GetSection(Atomex.Core.Network.MainNet.ToString()), CurrenciesMainNet);
 
         public static Bitcoin BtcMainNet => CurrenciesMainNet.Get<Bitcoin>();
         public static Litecoin LtcMainNet => CurrenciesMainNet.Get<Litecoin>();

@@ -43,7 +43,9 @@ namespace Atomex.Swaps.BitcoinBased
                 (!swap.StateFlags.HasFlag(SwapStateFlags.HasPartyPayment) ||
                  !swap.StateFlags.HasFlag(SwapStateFlags.IsPartyPaymentConfirmed)))
             {
-                Log.Debug("CounterParty is not ready to broadcast payment tx for swap {@swap}", swap.Id);
+                Log.Debug("Acceptor is not ready to broadcast payment tx for swap {@swap} for currency", 
+                    swap.Id,
+                    Currency);
 
                 return;
             }
@@ -60,9 +62,19 @@ namespace Atomex.Swaps.BitcoinBased
             var currency = swap.SoldCurrency;
 
             // broadcast payment transaction
-            var txId = await currency.BlockchainApi
+            var broadcastResult = await currency.BlockchainApi
                 .BroadcastAsync(swap.PaymentTx)
                 .ConfigureAwait(false);
+
+            if (broadcastResult.HasError)
+            {
+                Log.Error("Error while broadcast transaction with code {@code} and description {@description}",
+                    broadcastResult.Error.Code, 
+                    broadcastResult.Error.Description);
+                return;
+            }
+
+            var txId = broadcastResult.Value;
 
             swap.PaymentTxId = txId ?? throw new Exception("Transaction Id is null");
             swap.SetPaymentBroadcast();
@@ -199,9 +211,19 @@ namespace Atomex.Swaps.BitcoinBased
                 // check payment transaction spent
                 var api = (IInOutBlockchainApi)Currency.BlockchainApi;
                 
-                var spentPoint = await api
+                var asyncResult = await api
                     .IsTransactionOutputSpent(tx.Id, swapOutput.Index) // todo: check specific output 
                     .ConfigureAwait(false);
+
+                if (asyncResult.HasError)
+                {
+                    Log.Error("Error while check spent with code {@code} and description {@description}",
+                        asyncResult.Error.Code, 
+                        asyncResult.Error.Description);
+                    return;
+                }
+
+                var spentPoint = asyncResult.Value;
 
                 if (spentPoint != null && (swap.RefundTx == null ||
                                            swap.RefundTx != null && spentPoint.Hash != swap.RefundTx.Id))
@@ -422,9 +444,14 @@ namespace Atomex.Swaps.BitcoinBased
         {
             var currency = swap.PurchasedCurrency;
 
-            var txId = await currency.BlockchainApi
+            var asyncResult = await currency.BlockchainApi
                 .BroadcastAsync(redeemTx)
                 .ConfigureAwait(false);
+
+            if (asyncResult.HasError)
+                throw new Exception($"Error while broadcast transaction with code {asyncResult.Error.Code} and description {asyncResult.Error.Description}");
+
+            var txId = asyncResult.Value;
 
             if (txId == null)
                 throw new Exception("Transaction Id is null");
@@ -797,12 +824,23 @@ namespace Atomex.Swaps.BitcoinBased
             {
                 attempts++;
 
-                var tx = (IBitcoinBasedTransaction)await currency.BlockchainApi
+                var asyncResult = await currency.BlockchainApi
                     .GetTransactionAsync(txId)
                     .ConfigureAwait(false);
 
+                if (asyncResult.HasError)
+                {
+                    Log.Error("Error while get transaction {@txId} with code {@code} and description {@description}", 
+                        txId,
+                        asyncResult.Error.Code, 
+                        asyncResult.Error.Description);
+                    return null;
+                }
+
+                var tx = asyncResult.Value;
+
                 if (tx != null)
-                    return tx;
+                    return (IBitcoinBasedTransaction)tx;
 
                 await Task.Delay(DefaultGetTransactionInterval)
                     .ConfigureAwait(false);
@@ -822,9 +860,14 @@ namespace Atomex.Swaps.BitcoinBased
 
             var soldCurrency = swap.SoldCurrency;
 
-            var swapInput = await ((IInOutBlockchainApi)soldCurrency.BlockchainApi)
+            var asyncResult = await ((IInOutBlockchainApi)soldCurrency.BlockchainApi)
                 .GetInputAsync(spentPoint.Hash, spentPoint.Index)
                 .ConfigureAwait(false);
+
+            if (asyncResult.HasError)
+                throw new InternalException(asyncResult.Error.Code, asyncResult.Error.Description);
+
+            var swapInput = asyncResult.Value;
 
             var secret = swapInput.ExtractSecret();
             var secretHash = CreateSwapSecretHash(secret);

@@ -16,12 +16,12 @@ namespace Atomex.Client.Core.Tests
                 InsightApi.InsightBitPayMainNet, // base uri
                 "17c5d61XW7714Abk7yNxKZkRybiCR9ft6m" // address
             },
-            new object[]
-            {
-                Common.BtcTestNet, // currency
-                InsightApi.InsightBitPayTestNet, // base uri
-                "2MyUqSDvEyhiJmQSWBfyAbdeJyBiDnsFkKn" // address
-            },
+            //new object[]
+            //{
+            //    Common.BtcTestNet, // currency
+            //    InsightApi.InsightBitPayTestNet, // base uri
+            //    "2MyUqSDvEyhiJmQSWBfyAbdeJyBiDnsFkKn" // address
+            //},
             new object[]
             {
                 Common.LtcMainNet, // currency
@@ -44,9 +44,9 @@ namespace Atomex.Client.Core.Tests
             string address)
         {
             var api = new InsightApi(currency, baseUri);
-            var balance = await api.GetBalanceAsync(address);
+            var balanceAsyncResult = await api.GetBalanceAsync(address);
 
-            // todo: catch error
+            Assert.False(balanceAsyncResult.HasError);
         }
 
         public static IEnumerable<object[]> InputTestData => new List<object[]>
@@ -60,15 +60,15 @@ namespace Atomex.Client.Core.Tests
                 "40cb4c38bccc4cabc9d5cadad5f3d5aea41a277c7c10b839b67a6a54155e8911", // prev txid
                 1 // prev tx output index
             },
-            new object[]
-            {
-                Common.BtcTestNet, // currency
-                InsightApi.InsightBitPayTestNet, // base uri
-                "5c9cdb6af858512cc5b3c7d9ff1bb45d80ee5f885b06544cefe41681f062f76d", // txid
-                0, // input index
-                "ce4e2aee1e9789c769ea7110db9f0ab2fc5de3785650ce91f1252fa39bf56088", // prev txid
-                1 // prev tx output index
-            },
+            //new object[]
+            //{
+            //    Common.BtcTestNet, // currency
+            //    InsightApi.InsightBitPayTestNet, // base uri
+            //    "5c9cdb6af858512cc5b3c7d9ff1bb45d80ee5f885b06544cefe41681f062f76d", // txid
+            //    0, // input index
+            //    "ce4e2aee1e9789c769ea7110db9f0ab2fc5de3785650ce91f1252fa39bf56088", // prev txid
+            //    1 // prev tx output index
+            //},
             new object[]
             {
                 Common.LtcMainNet, // currency
@@ -100,7 +100,11 @@ namespace Atomex.Client.Core.Tests
             uint prevTxOutputIndex)
         {
             var api = new InsightApi(currency, baseUri);
-            var input = await api.GetInputAsync(txId, inputIndex);
+            var inputAsyncResult = await api.GetInputAsync(txId, inputIndex);
+
+            Assert.False(inputAsyncResult.HasError);
+
+            var input = inputAsyncResult.Value;
 
             Assert.NotNull(input);
             Assert.Equal(prevTxId, input.Hash);
@@ -115,7 +119,11 @@ namespace Atomex.Client.Core.Tests
             string address)
         {
             var api = new InsightApi(currency, baseUri);
-            var utxo = await api.GetUnspentOutputsAsync(address);
+            var utxoAsyncResult = await api.GetUnspentOutputsAsync(address);
+
+            Assert.False(utxoAsyncResult.HasError);
+
+            var utxo = utxoAsyncResult.Value;
 
             Assert.NotNull(utxo);
         }
@@ -131,15 +139,15 @@ namespace Atomex.Client.Core.Tests
                 11086888, // output amount
                 "d4eb2a63e37391d889c0c8cb9d26bd556ba6721558626af6881049e5b1724b41" // output spent txid
             },
-            new object[]
-            {
-                Common.BtcTestNet, // currency
-                InsightApi.InsightBitPayTestNet, // base uri
-                "2MyUqSDvEyhiJmQSWBfyAbdeJyBiDnsFkKn", // address
-                "8329821b8c77eff08b928b02a6d83d0102b615cf7c2d0a89a96f0a7647f6a3d9", // output txid
-                1098605, // output amount
-                "1e606a544785665544f0ad1bdcc0047d3dfdb0e6006729d0138cfe072781358a" // output spent txid
-            },
+            //new object[]
+            //{
+            //    Common.BtcTestNet, // currency
+            //    InsightApi.InsightBitPayTestNet, // base uri
+            //    "2MyUqSDvEyhiJmQSWBfyAbdeJyBiDnsFkKn", // address
+            //    "8329821b8c77eff08b928b02a6d83d0102b615cf7c2d0a89a96f0a7647f6a3d9", // output txid
+            //    1098605, // output amount
+            //    "1e606a544785665544f0ad1bdcc0047d3dfdb0e6006729d0138cfe072781358a" // output spent txid
+            //},
             new object[]
             {
                 Common.LtcMainNet, // currency
@@ -171,9 +179,11 @@ namespace Atomex.Client.Core.Tests
             string outputSpentTxId)
         {
             var api = new InsightApi(currency, baseUri);
-            var outputs = (await api
-                .GetOutputsAsync(address))
-                ?.ToList();
+            var outputsAsyncResult = await api.GetOutputsAsync(address);
+
+            Assert.False(outputsAsyncResult.HasError);
+
+            var outputs = outputsAsyncResult.Value?.ToList();
 
             Assert.NotNull(outputs);
             Assert.True(outputs.Any());
@@ -195,16 +205,16 @@ namespace Atomex.Client.Core.Tests
                 4775, // fees
                 593212 // blockheight
             },
-            new object[]
-            {
-                Common.BtcTestNet, // currency
-                InsightApi.InsightBitPayTestNet, // base uri
-                "5c9cdb6af858512cc5b3c7d9ff1bb45d80ee5f885b06544cefe41681f062f76d", // txid
-                1, // inputs count
-                2, // outputs count
-                5712, // fees
-                1571477 // blockheight
-            },
+            //new object[]
+            //{
+            //    Common.BtcTestNet, // currency
+            //    InsightApi.InsightBitPayTestNet, // base uri
+            //    "5c9cdb6af858512cc5b3c7d9ff1bb45d80ee5f885b06544cefe41681f062f76d", // txid
+            //    1, // inputs count
+            //    2, // outputs count
+            //    5712, // fees
+            //    1571477 // blockheight
+            //},
             new object[]
             {
                 Common.LtcMainNet, // currency
@@ -239,7 +249,11 @@ namespace Atomex.Client.Core.Tests
             int blockHeight)
         {
             var api = new InsightApi(currency, baseUri);
-            var tx = await api.GetTransactionAsync(txId) as IBitcoinBasedTransaction;
+            var txAsyncResult = await api.GetTransactionAsync(txId);
+
+            Assert.False(txAsyncResult.HasError);
+
+            var tx = txAsyncResult.Value as IBitcoinBasedTransaction;
 
             Assert.NotNull(tx);
             Assert.True(tx.Id == txId);
@@ -260,15 +274,15 @@ namespace Atomex.Client.Core.Tests
                 "a841db57448bbdd8ffae41d50ac133bfecba1c010fb9e6e1b208b58a363dda2c", // spent tx id
                 0, // spent index
             },
-            new object[]
-            {
-                Common.BtcTestNet, // currency
-                InsightApi.InsightBitPayTestNet, // base uri
-                "5c9cdb6af858512cc5b3c7d9ff1bb45d80ee5f885b06544cefe41681f062f76d", // txid
-                1, // output no
-                "06cbdcbbccf0d7c77c5c729e7702436f6f3a78f0e4102236f5a911ffcd21526f", // spent tx id
-                0, // spent index
-            },
+            //new object[]
+            //{
+            //    Common.BtcTestNet, // currency
+            //    InsightApi.InsightBitPayTestNet, // base uri
+            //    "5c9cdb6af858512cc5b3c7d9ff1bb45d80ee5f885b06544cefe41681f062f76d", // txid
+            //    1, // output no
+            //    "06cbdcbbccf0d7c77c5c729e7702436f6f3a78f0e4102236f5a911ffcd21526f", // spent tx id
+            //    0, // spent index
+            //},
             new object[]
             {
                 Common.LtcMainNet, // currency
@@ -300,7 +314,11 @@ namespace Atomex.Client.Core.Tests
             uint spentIndex)
         {
             var api = new InsightApi(currency, baseUri);
-            var spentPoint = await api.IsTransactionOutputSpent(txId, outputNo);
+            var spentPointAsyncResult = await api.IsTransactionOutputSpent(txId, outputNo);
+
+            Assert.False(spentPointAsyncResult.HasError);
+
+            var spentPoint = spentPointAsyncResult.Value;
 
             Assert.NotNull(spentPoint);
             Assert.Equal(spentTxId, spentPoint.Hash);

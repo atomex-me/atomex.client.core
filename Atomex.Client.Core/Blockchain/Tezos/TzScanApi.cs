@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
+using Atomex.Core;
 using Atomex.Core.Entities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -15,8 +16,8 @@ namespace Atomex.Blockchain.Tezos
 {
     public class TzScanApi : ITezosBlockchainApi
     {
-        private const string Mainnet = "https://api3.tzscan.io/";
-        private const string Alphanet = "https://api.alphanet.tzscan.io/";
+        //private const string Mainnet = "https://api3.tzscan.io/";
+        //private const string Alphanet = "https://api.alphanet.tzscan.io/";
 
         //private const string MainnetRpc = "https://mainnet-node.tzscan.io";
         //private const string AlphanetRpc = "http://alphanet-node.tzscan.io:80";
@@ -86,87 +87,92 @@ namespace Atomex.Blockchain.Tezos
         }
 
         private readonly Currency _currency;
-        private readonly string _rpcProvider;
+        private readonly string _rpcNodeUri;
         private readonly string _apiBaseUrl;
 
-        public TzScanApi(Currency currency, TezosNetwork network, string rpcNodeUri)
+        public TzScanApi(Atomex.Tezos currency)
         {
             _currency = currency;
-            _rpcProvider = rpcNodeUri;
-
-            switch (network)
-            {
-                case TezosNetwork.Mainnet:     
-                    _apiBaseUrl = Mainnet;
-                    break;
-                case TezosNetwork.Alphanet:
-                    _apiBaseUrl = Alphanet;
-                    break;
-                default:
-                    throw new NotSupportedException("Network not supported");
-            }
+            _rpcNodeUri = currency.RpcNodeUri;
+            _apiBaseUrl = currency.BaseUri;
         }
 
-        public async Task<decimal> GetBalanceAsync(
+        public async Task<Result<decimal>> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var rpc = new Rpc(_rpcProvider);
+            try
+            {
+                var rpc = new Rpc(_rpcNodeUri);
 
-            return await rpc.GetBalance(address)
-                .ConfigureAwait(false);
+                var balance = await rpc.GetBalance(address)
+                    .ConfigureAwait(false);
+
+                return new Result<decimal>(balance);
+            }
+            catch (Exception e)
+            {
+                return new Result<decimal>(new Error(Errors.RequestError, e.Message));
+            }
         }
 
-        public async Task<string> BroadcastAsync(
+        public async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var tx = (TezosTransaction) transaction;
-            tx.State = BlockchainTransactionState.Pending;
-
-            var rpc = new Rpc(_rpcProvider);
-
-            var opResults = await rpc
-                .PreApplyOperations(tx.Head, tx.Operations, tx.SignedMessage.EncodedSignature)
-                .ConfigureAwait(false);
-
-            if (!opResults.Any())
-                return null;
-
-            string txId = null;
-
-            foreach (var opResult in opResults)
-                Log.Debug("OperationResult {@result}: {@opResult}", opResult.Succeeded, opResult.Data.ToString());
-
-            if (opResults.Any() && opResults.All(op => op.Succeeded))
+            try
             {
-                var injectedOperation = await rpc
-                    .InjectOperations(tx.SignedMessage.SignedBytes)
+                var tx = (TezosTransaction) transaction;
+                tx.State = BlockchainTransactionState.Pending;
+
+                var rpc = new Rpc(_rpcNodeUri);
+
+                var opResults = await rpc
+                    .PreApplyOperations(tx.Head, tx.Operations, tx.SignedMessage.EncodedSignature)
                     .ConfigureAwait(false);
 
-                txId = injectedOperation.ToString();
+                if (!opResults.Any())
+                    return new Result<string>(new Error(Errors.RequestError, "Empty pre apply operations"));
+
+                string txId = null;
+
+                foreach (var opResult in opResults)
+                    Log.Debug("OperationResult {@result}: {@opResult}", opResult.Succeeded, opResult.Data.ToString());
+
+                if (opResults.Any() && opResults.All(op => op.Succeeded))
+                {
+                    var injectedOperation = await rpc
+                        .InjectOperations(tx.SignedMessage.SignedBytes)
+                        .ConfigureAwait(false);
+
+                    txId = injectedOperation.ToString();
+                }
+
+                if (txId == null)
+                    return new Result<string>(new Error(Errors.RequestError, "Null tx id"));
+
+                tx.Id = txId;
+
+                return new Result<string>(tx.Id);
             }
-
-            if (txId == null)
-                Log.Error("TxId is null");
-
-            tx.Id = txId;
-
-            return tx.Id;
+            catch (Exception e)
+            {
+                return new Result<string>(new Error(Errors.RequestError, e.Message));
+            }
         }
 
-        public async Task<IBlockchainTransaction> GetTransactionAsync(
+        public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var requestUri = $"v3/operation/{txId}";
 
-            return await HttpHelper.GetAsync(
+            return await HttpHelper.GetAsyncResult(
                     baseUri: _apiBaseUrl,
                     requestUri: requestUri,
-                    responseHandler: responseContent =>
+                    responseHandler: (response, content) =>
                     {
-                        var txs = TxsFromOperation(JsonConvert.DeserializeObject<OperationHeader<OperationType<Operation>>>(responseContent))
+                        var txs = TxsFromOperation(JsonConvert.DeserializeObject<OperationHeader<OperationType<Operation>>>(content))
                             .Cast<TezosTransaction>()
                             .ToList();
 
@@ -176,22 +182,19 @@ namespace Atomex.Blockchain.Tezos
 
                         var tx = txs.FirstOrDefault(t => !t.IsInternal);
 
-                        if (tx != null)
-                        {
-                            if (internalTxs.Any())
-                                tx.InternalTxs = internalTxs;
+                        if (tx == null)
+                            return new Result<IBlockchainTransaction>((IBlockchainTransaction) null);
 
-                            return tx;
-                        }
+                        if (internalTxs.Any())
+                            tx.InternalTxs = internalTxs;
 
-                        Log.Warning("Non internal transaction not found");
-                        return null;
+                        return new Result<IBlockchainTransaction>(tx);
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+        public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
@@ -199,60 +202,62 @@ namespace Atomex.Blockchain.Tezos
 
             for (var p = 0; ; p++)
             {
-                var txsOnPage = (await GetTransactionsAsync(address, p, cancellationToken)
-                    .ConfigureAwait(false))
-                    .ToList();
+                var result = await GetTransactionsAsync(address, p, cancellationToken)
+                    .ConfigureAwait(false);
 
-                if (!txsOnPage.Any())
+                if (result.HasError)
+                    return result;
+
+                if (result.Value == null || !result.Value.Any())
                     break;
 
-                txs.AddRange(txsOnPage);
+                txs.AddRange(result.Value);
             }
 
-            return txs;
+            return new Result<IEnumerable<IBlockchainTransaction>>(txs);
         }
 
-        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+        public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
             int page,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var requestUri = $"v3/operations/{address}?type=Transaction&p={page}"; // TODO: use all types!!!
 
-            return await HttpHelper.GetAsync(
+            return await HttpHelper.GetAsyncResult(
                     baseUri: _apiBaseUrl,
                     requestUri: requestUri,
-                    responseHandler: responseContent =>
+                    responseHandler: (response, content) =>
                     {
                         var operations = JsonConvert
-                            .DeserializeObject<List<OperationHeader<OperationType<Operation>>>>(responseContent);
+                            .DeserializeObject<List<OperationHeader<OperationType<Operation>>>>(content);
 
                         var txs = new List<IBlockchainTransaction>();
 
                         foreach (var operation in operations)    
                             txs.AddRange(TxsFromOperation(operation));
                         
-                        return txs;
+                        return new Result<IEnumerable<IBlockchainTransaction>>(txs);
                     },
                     cancellationToken: cancellationToken)
-                .ConfigureAwait(false) ?? Enumerable.Empty<IBlockchainTransaction>();
+                .ConfigureAwait(false);
         }
 
-        public async Task<bool> IsActiveAddress(
+        public async Task<Result<bool>> IsActiveAddress(
             string address,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             var requestUri = $"v3/number_operations/{address}?type=Transaction";
 
-            return await HttpHelper.GetAsync(
+            return await HttpHelper.GetAsyncResult(
                     baseUri: _apiBaseUrl,
                     requestUri: requestUri,
-                    responseHandler: responeContent =>
+                    responseHandler: (response, content) =>
                     {
-                        var operationsCount = JsonConvert.DeserializeObject<JArray>(responeContent)
+                        var operationsCount = JsonConvert.DeserializeObject<JArray>(content)
                             .FirstOrDefault()?.Value<long>() ?? 0;
 
-                        return operationsCount > 0;
+                        return new Result<bool>(operationsCount > 0);
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

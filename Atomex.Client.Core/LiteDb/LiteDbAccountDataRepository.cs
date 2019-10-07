@@ -18,8 +18,6 @@ namespace Atomex.LiteDb
 {
     public class LiteDbAccountDataRepository : IAccountDataRepository
     {
-        private const ushort Version = 1;
-
         private const string OrdersCollectionName = "Orders";
         private const string SwapsCollectionName = "Swaps";
         private const string TransactionCollectionName = "Transactions";
@@ -52,7 +50,8 @@ namespace Atomex.LiteDb
             string pathToDb,
             SecureString password,
             ICurrencies currencies,
-            ISymbols symbols)
+            ISymbols symbols,
+            Network network)
         {
             _pathToDb = pathToDb ??
                 throw new ArgumentNullException(nameof(pathToDb));
@@ -69,8 +68,10 @@ namespace Atomex.LiteDb
             _sessionPassword = SessionPasswordHelper.GetSessionPassword(password);
             _bsonMapper = CreateBsonMapper(currencies, symbols);
 
-            var migrationManager = new LiteDbMigrationManager();
-            migrationManager.MigrateIfNeed(_pathToDb, _sessionPassword, Version);
+            LiteDbMigrationManager.Migrate(
+                pathToDb: _pathToDb,
+                sessionPassword: _sessionPassword,
+                network: network);
         }
 
         private BsonMapper CreateBsonMapper(
@@ -159,8 +160,6 @@ namespace Atomex.LiteDb
                 {
                     using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
                     {
-
-
                         var addresses = db.GetCollection(AddressesCollectionName);
                         addresses.EnsureIndex(IndexKey);
                         addresses.EnsureIndex(CurrencyKey);

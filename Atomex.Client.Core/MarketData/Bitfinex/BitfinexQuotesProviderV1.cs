@@ -21,22 +21,17 @@ namespace Atomex.MarketData.Bitfinex
 
         private string BaseUrl { get; } = "https://api.bitfinex.com/v1/";
 
-        public BitfinexQuotesProviderV1(
-            params string[] symbols)
+        public BitfinexQuotesProviderV1(params string[] symbols)
         {
             Quotes = symbols.ToDictionary(s => s, s => new Quote());
         }
 
-        public BitfinexQuotesProviderV1(
-            IEnumerable<Currency> currencies,
-            string baseCurrency)
+        public BitfinexQuotesProviderV1(IEnumerable<Currency> currencies, string baseCurrency)
         {
             Quotes = currencies.ToDictionary(currency => $"{currency.Name}{baseCurrency}".ToUpper(), currency => new Quote());
         }
 
-        public override Quote GetQuote(
-            string currency,
-            string baseCurrency)
+        public override Quote GetQuote(string currency, string baseCurrency)
         {
             return Quotes.TryGetValue($"{currency}{baseCurrency}".ToUpper(), out var rate) ? rate : null;
         }
@@ -57,8 +52,15 @@ namespace Atomex.MarketData.Bitfinex
                     isAvailable = await HttpHelper.GetAsync(
                             baseUri: BaseUrl,
                             requestUri: request,
-                            responseHandler: responseContent =>
+                            responseHandler: response =>
                             {
+                                if (!response.IsSuccessStatusCode)
+                                    return false;
+
+                                var responseContent = response.Content
+                                    .ReadAsStringAsync()
+                                    .WaitForResult();
+
                                 var data = JsonConvert.DeserializeObject<JObject>(responseContent);
 
                                 Quotes[symbol] = new Quote

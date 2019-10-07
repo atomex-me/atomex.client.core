@@ -18,7 +18,7 @@ namespace Atomex.Swaps
 
         private readonly IAccount _account;
         private readonly ISwapClient _swapClient;
-        private readonly IDictionary<string, ICurrencySwap> _swaps;
+        private readonly IDictionary<string, ICurrencySwap> _currencySwaps;
 
         public ClientSwapManager(
             IAccount account,
@@ -28,7 +28,7 @@ namespace Atomex.Swaps
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _swapClient = swapClient ?? throw new ArgumentNullException(nameof(swapClient));
 
-            _swaps = _account.Currencies
+            _currencySwaps = _account.Currencies
                 .Select(c =>
                 {
                     var currencySwap = CurrencySwapCreator.Create(
@@ -47,7 +47,7 @@ namespace Atomex.Swaps
                 .ToDictionary(cs => cs.Currency.Name);
         }
 
-        private ICurrencySwap GetCurrencySwap(Currency currency) => _swaps[currency.Name];
+        private ICurrencySwap GetCurrencySwap(Currency currency) => _currencySwaps[currency.Name];
 
         public async Task HandleSwapAsync(ClientSwap clientSwap)
         {
@@ -334,7 +334,7 @@ namespace Atomex.Swaps
             }
         }
 
-        protected void RaiseSwapUpdated(ClientSwap swap, SwapStateFlags changedFlag)
+        private void RaiseSwapUpdated(ClientSwap swap, SwapStateFlags changedFlag)
         {
             SwapUpdatedHandler(this, new SwapEventArgs(swap, changedFlag));
         }
@@ -368,7 +368,7 @@ namespace Atomex.Swaps
 
             try
             {
-                // broadcast acceptor's payment tx (using sold currency protocol)
+                // broadcast acceptors payment tx (using sold currency protocol)
                 if (swap.IsAcceptor &&
                     swap.IsPurchasedCurrency(currencySwap.Currency))
                 {

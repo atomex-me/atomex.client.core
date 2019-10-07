@@ -57,7 +57,7 @@ namespace Atomex.Common
         public void Clear()
         {
             while (!_tasks.IsEmpty)
-                _tasks.TryDequeue(out var _);
+                _tasks.TryDequeue(out _);
         }
 
         private async Task RunAsync()

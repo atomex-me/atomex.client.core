@@ -88,7 +88,8 @@ namespace Atomex.Wallet
                 pathToDb: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultDataFileName}",
                 password: password,
                 currencies: Currencies,
-                symbols: Symbols);
+                symbols: Symbols,
+                network: wallet.Network);
 
             CurrencyAccounts = Currencies
                 .ToDictionary(

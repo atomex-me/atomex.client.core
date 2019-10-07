@@ -1,5 +1,4 @@
-﻿using System.Security;
-using System.Text;
+﻿using System.Text;
 using Atomex.Common;
 using Atomex.Cryptography;
 using Xunit;

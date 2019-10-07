@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Numerics;
 using System.Threading.Tasks;
+using Atomex.Common;
 
 namespace Atomex.Blockchain.Ethereum
 {
@@ -15,7 +16,7 @@ namespace Atomex.Blockchain.Ethereum
             public DateTime LastUpdatedTimeUtc { get; set; }
         }
 
-        private IDictionary<string, NonceEntry> _nonces;
+        private readonly IDictionary<string, NonceEntry> _nonces;
         private readonly object _syncRoot;
 
         private EthereumNonceManager()
@@ -25,21 +26,18 @@ namespace Atomex.Blockchain.Ethereum
         }
 
         private static EthereumNonceManager _instance;
-        public static EthereumNonceManager Instance
-        {
-            get {
-                if (_instance == null)
-                    _instance = new EthereumNonceManager();
+        public static EthereumNonceManager Instance => _instance ?? (_instance = new EthereumNonceManager());
 
-                return _instance;
-            }
-        }
-
-        public async Task<BigInteger> GetNonce(Atomex.Ethereum ethereum, string address)
+        public async Task<Result<BigInteger>> GetNonceAsync(Atomex.Ethereum ethereum, string address)
         {
-            var nonce = await ((IEthereumBlockchainApi)ethereum.BlockchainApi)
+            var asyncResult = await ((IEthereumBlockchainApi)ethereum.BlockchainApi)
                 .GetTransactionCountAsync(address)
                 .ConfigureAwait(false);
+
+            if (asyncResult.HasError)
+                return asyncResult;
+
+            var nonce = asyncResult.Value;
 
             lock (_syncRoot)
             {
@@ -48,29 +46,25 @@ namespace Atomex.Blockchain.Ethereum
                     if (offlineNonce.Value >= nonce &&
                         DateTime.UtcNow - offlineNonce.LastUpdatedTimeUtc <= ExpirationTimeOut)
                     {
-                        return offlineNonce.Value++;
+                        return new Result<BigInteger>(offlineNonce.Value++);
                     }
-                    else
-                    {
-                        _nonces[address] = new NonceEntry
-                        {
-                            Value = nonce + 1,
-                            LastUpdatedTimeUtc = DateTime.UtcNow
-                        };
 
-                        return nonce;
-                    }
-                }
-                else
-                {
-                    _nonces.Add(address, new NonceEntry
+                    _nonces[address] = new NonceEntry
                     {
                         Value = nonce + 1,
                         LastUpdatedTimeUtc = DateTime.UtcNow
-                    });
+                    };
 
-                    return nonce;
+                    return new Result<BigInteger>(nonce);
                 }
+
+                _nonces.Add(address, new NonceEntry
+                {
+                    Value = nonce + 1,
+                    LastUpdatedTimeUtc = DateTime.UtcNow
+                });
+
+                return new Result<BigInteger>(nonce);
             }
         }
     }

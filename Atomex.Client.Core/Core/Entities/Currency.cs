@@ -15,7 +15,7 @@ namespace Atomex.Core.Entities
         public long DigitsMultiplier { get; protected set; }
         public int Digits { get; set; }
         public string Format { get; set; }
-        public decimal FeeRate { get; set; }
+
         public int FeeDigits { get; set; }
         public string FeeCode { get; set; }
         public string FeeFormat { get; set; }

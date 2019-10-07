@@ -2,22 +2,17 @@
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Atomex.Core;
 using Serilog;
 
 namespace Atomex.Common
 {
     public static class HttpHelper
     {
-        private const int HttpTooManyRequests = 429;
-        private const int TooManyRequestsDelayMs = 20000;
-        private const int MaxDelayMs = 1000;
-
         public static Task<T> GetAsync<T>(
             string baseUri,
             string requestUri,
-            Func<string, T> responseHandler,
-            RequestLimitChecker requestLimitChecker = null,
-            int maxAttempts = 0,
+            Func<HttpResponseMessage, T> responseHandler,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             return SendRequestAsync(
@@ -26,8 +21,28 @@ namespace Atomex.Common
                 method: HttpMethod.Get,
                 content: null,
                 responseHandler: responseHandler,
-                requestLimitChecker: requestLimitChecker,
-                maxAttempts: maxAttempts,
+                cancellationToken: cancellationToken);
+        }
+
+        public static Task<Result<T>> GetAsyncResult<T>(
+            string baseUri,
+            string requestUri,
+            Func<HttpResponseMessage, string, Result<T>> responseHandler,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return GetAsync(
+                baseUri: baseUri,
+                requestUri: requestUri,
+                responseHandler: response =>
+                {
+                    var responseContent = response.Content
+                        .ReadAsStringAsync()
+                        .WaitForResult();
+
+                    return !response.IsSuccessStatusCode
+                        ? new Result<T>(new Error((int)response.StatusCode, responseContent))
+                        : responseHandler(response, responseContent);
+                },
                 cancellationToken: cancellationToken);
         }
 
@@ -35,9 +50,7 @@ namespace Atomex.Common
             string baseUri,
             string requestUri,
             HttpContent content,
-            Func<string, T> responseHandler,
-            RequestLimitChecker requestLimitChecker = null,
-            int maxAttempts = 0,
+            Func<HttpResponseMessage, T> responseHandler,
             CancellationToken cancellationToken = default(CancellationToken))
         {
             return SendRequestAsync(
@@ -46,8 +59,30 @@ namespace Atomex.Common
                 method: HttpMethod.Post,
                 content: content,
                 responseHandler: responseHandler,
-                requestLimitChecker: requestLimitChecker,
-                maxAttempts: maxAttempts,
+                cancellationToken: cancellationToken);
+        }
+
+        public static Task<Result<T>> PostAsyncResult<T>(
+            string baseUri,
+            string requestUri,
+            HttpContent content,
+            Func<HttpResponseMessage, string, Result<T>> responseHandler,
+            CancellationToken cancellationToken = default(CancellationToken))
+        {
+            return PostAsync(
+                baseUri: baseUri,
+                requestUri: requestUri,
+                content: content,
+                responseHandler: response =>
+                {
+                    var responseContent = response.Content
+                        .ReadAsStringAsync()
+                        .WaitForResult();
+
+                    return !response.IsSuccessStatusCode
+                        ? new Result<T>(new Error((int)response.StatusCode, responseContent))
+                        : responseHandler(response, responseContent);
+                },
                 cancellationToken: cancellationToken);
         }
 
@@ -56,69 +91,29 @@ namespace Atomex.Common
             string requestUri,
             HttpMethod method,
             HttpContent content,
-            Func<string, T> responseHandler,
-            RequestLimitChecker requestLimitChecker = null,
-            int maxAttempts = 0,
+            Func<HttpResponseMessage, T> responseHandler,
             CancellationToken cancellationToken = default(CancellationToken))
         {
-            var tryToSend = true;
-            var attempts = 0;
+            Log.Debug("Send {@method} request: {@baseUri}{@request}", 
+                method.ToString(),
+                baseUri,
+                requestUri);
 
-            while (tryToSend)
+            try
             {
-                if (cancellationToken.IsCancellationRequested)
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                if (requestLimitChecker != null)
-                    await requestLimitChecker.WaitIfNeeded(cancellationToken)
-                        .ConfigureAwait(false);
-
-                Log.Debug("Send {@method} request: {@request}", method.ToString(), requestUri);
-
-                try
+                using (var response = await SendRequest(baseUri, requestUri, method, content, cancellationToken)
+                    .ConfigureAwait(false))
                 {
-                    attempts++;
+                    Log.Debug(
+                        response.IsSuccessStatusCode ? "Success status code: {@code}" : "Http error code: {@code}",
+                        response.StatusCode);
 
-                    using (var response = await SendRequest(baseUri, requestUri, method, content, cancellationToken)
-                        .ConfigureAwait(false))
-                    {
-                        if (response.IsSuccessStatusCode)
-                        {
-                            var responseContent = await response.Content
-                                .ReadAsStringAsync()
-                                .ConfigureAwait(false);
-
-                            Log.Verbose($"Raw response content: {responseContent}");
-
-                            return responseHandler(responseContent);
-                        }
-                        if ((int)response.StatusCode == HttpTooManyRequests)
-                        {
-                            Log.Debug("Too many requests");
-
-                            for (var i = 0; i < TooManyRequestsDelayMs / MaxDelayMs; ++i)
-                                await Task.Delay(MaxDelayMs, cancellationToken)
-                                    .ConfigureAwait(false);
-
-                            continue;
-                        }
-
-                        var responseText = await response.Content
-                            .ReadAsStringAsync()
-                            .ConfigureAwait(false);
-
-                        Log.Error("Invalid response: {@code} {@text}", response.StatusCode, responseText);
-                    }
+                    return responseHandler(response);
                 }
-                catch (Exception e)
-                {
-                    Log.Error(e, "Http request error");
-
-                    if (attempts < maxAttempts)
-                        continue;
-                }
-
-                tryToSend = false;
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "SendRequestAsync error");
             }
 
             return default(T);

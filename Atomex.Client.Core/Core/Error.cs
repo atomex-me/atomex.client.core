@@ -46,6 +46,9 @@
         public const int InvalidMessage = 4;
         public const int PermissionError = 5;
         public const int InternalError = 6;
+        public const int RequestError = 7;
+
+        // from 1xx to 5xx the same with HTTP codes
 
         public const int IsCriminalWallet = 1000;
         public const int InvalidSymbol = 1001;
@@ -66,6 +69,7 @@
         public const int InsufficientFunds = 2004;
         public const int InsufficientGas = 2005;
         public const int InsufficientFee = 2006;
+        public const int InsufficientAmount = 2007;
 
         public const int SwapError = 3000;
         public const int SwapNotFound = 3001;

@@ -1,56 +1,62 @@
 ﻿using System;
 using System.IO;
+using Atomex.Core;
 using LiteDB;
 using Serilog;
 
 namespace Atomex.LiteDb
 {
-    public class LiteDbMigrationManager
+    public static class LiteDbMigrationManager
     {
-        public bool IsTransactionsReloadNeeded { get; private set; }
-
-        public void MigrateIfNeed(
+        public static void Migrate(
             string pathToDb,
             string sessionPassword,
-            ushort targetVersion)
+            Network network)
         {
             try
             {
-                var isNewDb = !File.Exists(pathToDb);
-
-                using (var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}"))
+                if (!File.Exists(pathToDb))
                 {
-                    if (db.Engine.UserVersion == 0 && !isNewDb)
-                    {
-                        // backup firstly
-                        var dbDirectory = Path.GetDirectoryName(pathToDb);
-                        var pathToBackups = $"{dbDirectory}/backups";
+                    CreateDataBase(
+                        pathToDb: pathToDb,
+                        sessionPassword: sessionPassword,
+                        targetVersion: LiteDbMigrations.Version2);
 
-                        if (!Directory.Exists(pathToBackups))
-                            Directory.CreateDirectory(pathToBackups);
-
-                        var pathToBackup = $"{pathToBackups}/data_{DateTime.Now:ddMMyyyy_HHmmss_fff}";
-                        File.Copy(Path.GetFullPath(pathToDb), Path.GetFullPath(pathToBackup));
-
-                        // first "raw" version, simply reload all transaction from blockchains
-                        var removed = db.GetCollection("Transactions").Delete(Query.All());
-
-                        Log.Debug($"{removed} transactions removed by migration");
-
-                        db.Shrink(sessionPassword);
-
-                        Log.Debug("Db successfully shrinked");
-
-                        IsTransactionsReloadNeeded = true;
-                    }
-
-                    // update current version
-                    db.Engine.UserVersion = targetVersion;
+                    return;
                 }
+
+                var currentVersion = GetDataBaseVersion(pathToDb, sessionPassword);
+
+                if (currentVersion == LiteDbMigrations.Version0)
+                    currentVersion = LiteDbMigrations.MigrateFrom_0_to_1(pathToDb, sessionPassword);
+
+                if (currentVersion == LiteDbMigrations.Version1)
+                    LiteDbMigrations.MigrateFrom_1_to_2(pathToDb, sessionPassword, network);
             }
             catch (Exception e)
             {
                 Log.Error(e, "LiteDb migration error");
+            }
+        }
+
+        private static ushort GetDataBaseVersion(
+            string pathToDb,
+            string sessionPassword)
+        {
+            using (var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}"))
+            {
+                return db.Engine.UserVersion;
+            }
+        }
+
+        private static void CreateDataBase(
+            string pathToDb,
+            string sessionPassword,
+            ushort targetVersion)
+        {
+            using (var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}"))
+            {
+                db.Engine.UserVersion = targetVersion;
             }
         }
     }

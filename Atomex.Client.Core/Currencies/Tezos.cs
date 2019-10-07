@@ -37,8 +37,8 @@ namespace Atomex
 
         public decimal ActivationFee { get; private set; }
 
-        private TezosNetwork Network { get; set; }
-        public string RpcProvider { get; private set; }
+        public string BaseUri { get; private set; }
+        public string RpcNodeUri { get; private set; }
         public string SwapContractAddress { get; private set; }
 
         public Tezos()
@@ -84,9 +84,9 @@ namespace Atomex
 
             ActivationFee = decimal.Parse(configuration[nameof(ActivationFee)], CultureInfo.InvariantCulture);
 
-            Network = ResolveNetwork(configuration);
-            RpcProvider = configuration["RpcNodeUri"];
-            BlockchainApi = new TzScanApi(this, Network, RpcProvider);
+            BaseUri = configuration["BlockchainApiBaseUri"];
+            RpcNodeUri = configuration["BlockchainRpcNodeUri"];
+            BlockchainApi = new TzScanApi(this);
             TxExplorerUri = configuration["TxExplorerUri"];
             AddressExplorerUri = configuration["AddressExplorerUri"];
             SwapContractAddress = configuration["SwapContract"];
@@ -95,20 +95,6 @@ namespace Atomex
             IsTransactionsAvailable = true;
             IsSwapAvailable = true;
             Bip44Code = Bip44.Tezos;
-        }
-
-        private static TezosNetwork ResolveNetwork(IConfiguration configuration)
-        {
-            var chain = configuration["Chain"]
-                .ToLowerInvariant();
-
-            if (chain.Equals("mainnet"))
-                return TezosNetwork.Mainnet;
-
-            if (chain.Equals("alphanet"))
-                return TezosNetwork.Alphanet;
-
-            throw new NotSupportedException($"Chain {chain} not supported");
         }
 
         public override IExtKey CreateExtKey(byte[] seed)

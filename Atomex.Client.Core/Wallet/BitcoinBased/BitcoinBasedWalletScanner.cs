@@ -55,13 +55,23 @@ namespace Atomex.Wallet.BitcoinBased
                 Currency.Name,
                 address);
 
-            var outputs = (await ((IInOutBlockchainApi)Currency.BlockchainApi)
+            var asyncResult = await ((IInOutBlockchainApi) Currency.BlockchainApi)
                 .GetOutputsAsync(address, cancellationToken: cancellationToken)
-                .ConfigureAwait(false))
-                .RemoveDuplicates()
-                .ToList();
+                .ConfigureAwait(false);
 
-            if (outputs.Count == 0)
+            if (asyncResult.HasError)
+            {
+                Log.Error(
+                    "Error while scan outputs for {@address} with code {@code} and description {@description}",
+                    address,
+                    asyncResult.Error.Code,
+                    asyncResult.Error.Description);
+                return;
+            }
+
+            var outputs = asyncResult.Value?.RemoveDuplicates().ToList();
+
+            if (outputs == null || !outputs.Any())
                 return;
 
             await Account
@@ -136,13 +146,23 @@ namespace Atomex.Wallet.BitcoinBased
                         index,
                         walletAddress.Address);
 
-                    var outputs = (await ((IInOutBlockchainApi)Currency.BlockchainApi)
+                    var asyncResult = await ((IInOutBlockchainApi)Currency.BlockchainApi)
                         .GetOutputsAsync(walletAddress.Address, cancellationToken: cancellationToken)
-                        .ConfigureAwait(false))
-                        .RemoveDuplicates()
-                        .ToList();
+                        .ConfigureAwait(false);
 
-                    if (outputs.Count == 0) // address without activity
+                    if (asyncResult.HasError)
+                    {
+                        Log.Error(
+                            "Error while scan outputs for {@address} with code {@code} and description {@description}",
+                            walletAddress.Address,
+                            asyncResult.Error.Code,
+                            asyncResult.Error.Description);
+                        break;
+                    }
+
+                    var outputs = asyncResult.Value?.RemoveDuplicates().ToList();
+
+                    if (outputs == null || !outputs.Any()) // address without activity
                     {
                         freeKeysCount++;
 
@@ -198,29 +218,41 @@ namespace Atomex.Wallet.BitcoinBased
 
                 foreach (var txId in txIds)
                 {
-                    var tx = await Account
+                    var localTx = await Account
                         .GetTransactionByIdAsync(Currency, txId)
                         .ConfigureAwait(false);
 
                     // request only not confirmed transactions
-                    if (tx != null && tx.IsConfirmed)
+                    if (localTx != null && localTx.IsConfirmed)
                         continue;
 
                     Log.Debug("Scan {@currency} transaction {@txId}", Currency.Name, txId);
 
-                    var transaction = await Currency.BlockchainApi
+                    var asyncResult = await Currency.BlockchainApi
                         .GetTransactionAsync(txId, cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (transaction == null)
+                    if (asyncResult.HasError)
                     {
-                        Log.Warning("Wow! Transaction with id {@id} not found", txId);
+                        Log.Error(
+                            "Error while get transactions {@txId} with code {@code} and description {@description}",
+                            txId,
+                            asyncResult.Error.Code,
+                            asyncResult.Error.Description);
+                        continue;
+                    }
+
+                    var tx = asyncResult.Value;
+
+                    if (tx == null)
+                    {
+                        Log.Warning("Wow! Transaction with id {@txId} not found", txId);
                         continue;
                     }
 
                     await Account
                         .UpsertTransactionAsync(
-                            tx: transaction,
+                            tx: tx,
                             updateBalance: false,
                             notifyIfUnconfirmed: false,
                             notifyIfBalanceUpdated: false,
