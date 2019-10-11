@@ -321,7 +321,7 @@ namespace Atomex.Blockchain.SoChain
 
         public async Task<Result<decimal>> GetBalanceAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var utxoResult = await GetUnspentOutputsAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -338,7 +338,7 @@ namespace Atomex.Blockchain.SoChain
         public async Task<Result<ITxPoint>> GetInputAsync(
             string txId,
             uint inputNo,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var requestUri = $"api/v2/get_tx_inputs/{NetworkAcronym}/{txId}/{inputNo}";
 
@@ -360,7 +360,7 @@ namespace Atomex.Blockchain.SoChain
                         
                         var txInput = new BitcoinBasedTxPoint(new IndexedTxIn
                         {
-                            TxIn = new TxIn(new OutPoint(new uint256(input.FromOutput.TxId), input.FromOutput.OutputNo), new Script(input.Script)),
+                            TxIn = new TxIn(new OutPoint(new uint256(input.FromOutput.TxId), input.FromOutput.OutputNo), Script.FromHex(input.Script)),
                             Index = input.InputNo,
                             WitScript = witScript,
                         });
@@ -373,7 +373,7 @@ namespace Atomex.Blockchain.SoChain
 
         public async Task<Result<IEnumerable<ITxPoint>>> GetInputsAsync(
             string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var requestUri = $"api/v2/get_tx_inputs/{NetworkAcronym}/{txId}";
 
@@ -398,7 +398,7 @@ namespace Atomex.Blockchain.SoChain
 
                                 return new BitcoinBasedTxPoint(new IndexedTxIn
                                 {
-                                    TxIn = new TxIn(new OutPoint(new uint256(i.FromOutput.TxId), i.FromOutput.OutputNo), new Script(i.Script)),
+                                    TxIn = new TxIn(new OutPoint(new uint256(i.FromOutput.TxId), i.FromOutput.OutputNo), Script.FromHex(i.Script)),
                                     Index = i.InputNo,
                                     WitScript = witScript,
                                 });
@@ -413,7 +413,7 @@ namespace Atomex.Blockchain.SoChain
         public async Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var addParams = afterTxId != null ? $"{address}/{afterTxId}" : $"{address}";
             var requestUri = $"api/v2/get_tx_unspent/{NetworkAcronym}/{addParams}";
@@ -437,7 +437,7 @@ namespace Atomex.Blockchain.SoChain
                                         fromOutputIndex: (uint) u.OutputNo,
                                         amount: new Money(decimal.Parse(u.Value, CultureInfo.InvariantCulture),
                                             MoneyUnit.BTC),
-                                        scriptPubKey: new Script(Hex.FromString(u.ScriptHex))),
+                                        scriptPubKey: Script.FromHex(u.ScriptHex)),
                                     spentTxPoint: null));
 
                         return new Result<IEnumerable<ITxOutput>>(result);
@@ -449,7 +449,7 @@ namespace Atomex.Blockchain.SoChain
         public async Task<Result<IEnumerable<ITxOutput>>> GetReceivedOutputsAsync(
             string address,
             string afterTxId = null,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var addParams = afterTxId != null ? $"{address}/{afterTxId}" : $"{address}";
             var requestUri = $"api/v2/get_tx_received/{NetworkAcronym}/{addParams}";
@@ -473,7 +473,7 @@ namespace Atomex.Blockchain.SoChain
                                         fromOutputIndex: (uint)u.OutputNo,
                                         amount: new Money(decimal.Parse(u.Value, CultureInfo.InvariantCulture),
                                             MoneyUnit.BTC),
-                                        scriptPubKey: new Script(Hex.FromString(u.ScriptHex))),
+                                        scriptPubKey: Script.FromHex(u.ScriptHex)),
                                     spentTxPoint: null));
 
                         return new Result<IEnumerable<ITxOutput>>(result);
@@ -485,7 +485,7 @@ namespace Atomex.Blockchain.SoChain
         public async Task<Result<IEnumerable<ITxOutput>>> GetOutputsAsync(
             string address,
             string afterTxId = null,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var requestUri = $"api/v2/address/{NetworkAcronym}/{address}";
 
@@ -514,7 +514,7 @@ namespace Atomex.Blockchain.SoChain
                             var amount = new Money(decimal.Parse(tx.Incoming.Value, CultureInfo.InvariantCulture),
                                 MoneyUnit.BTC);
 
-                            var script = new Script(Hex.FromString(tx.Incoming.ScriptHex));
+                            var script = Script.FromHex(tx.Incoming.ScriptHex);
 
                             outputs.Add(new BitcoinBasedTxOutput(
                                 coin: new Coin(
@@ -533,7 +533,7 @@ namespace Atomex.Blockchain.SoChain
 
         public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var requestUri = $"api/v2/tx/{NetworkAcronym}/{txId}";
 
@@ -570,7 +570,7 @@ namespace Atomex.Blockchain.SoChain
 
         public async Task<Result<bool>> IsTransactionConfirmed(
             string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var requestUri = $"api/v2/is_tx_confirmed/{NetworkAcronym}/{txId}";
 
@@ -594,7 +594,7 @@ namespace Atomex.Blockchain.SoChain
         public async Task<Result<ITxPoint>> IsTransactionOutputSpent(
             string txId,
             uint outputNo,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var requestUri = $"api/v2/is_tx_spent/{NetworkAcronym}/{txId}/{outputNo}";
 
@@ -621,7 +621,7 @@ namespace Atomex.Blockchain.SoChain
 
         public async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var tx = (IBitcoinBasedTransaction) transaction;
 
@@ -655,7 +655,7 @@ namespace Atomex.Blockchain.SoChain
 
         public async Task<Result<ConfidenceInformation>> GetConfidenceAsync(
             string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var requestUri = $"api/v2/get_confidence/{NetworkAcronym}/{txId}";
 

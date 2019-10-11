@@ -16,6 +16,6 @@ namespace Atomex.Wallet.Abstract
         Task<WalletAddress> ResolveAddressAsync(
             Currency currency,
             string address,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
     }
 }

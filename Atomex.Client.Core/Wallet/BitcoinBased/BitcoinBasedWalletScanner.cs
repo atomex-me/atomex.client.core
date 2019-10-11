@@ -30,7 +30,7 @@ namespace Atomex.Wallet.BitcoinBased
 
         public async Task ScanAsync(
             bool skipUsed = false,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             await ScanOutputsAsync(
                     skipUsed: skipUsed,
@@ -49,27 +49,27 @@ namespace Atomex.Wallet.BitcoinBased
 
         public async Task ScanAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             Log.Debug("Scan {@currency} outputs for {@address}",
                 Currency.Name,
                 address);
 
-            var asyncResult = await ((IInOutBlockchainApi) Currency.BlockchainApi)
+            var outputsResult = await ((IInOutBlockchainApi) Currency.BlockchainApi)
                 .GetOutputsAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (asyncResult.HasError)
+            if (outputsResult.HasError)
             {
                 Log.Error(
                     "Error while scan outputs for {@address} with code {@code} and description {@description}",
                     address,
-                    asyncResult.Error.Code,
-                    asyncResult.Error.Description);
+                    outputsResult.Error.Code,
+                    outputsResult.Error.Description);
                 return;
             }
 
-            var outputs = asyncResult.Value?.RemoveDuplicates().ToList();
+            var outputs = outputsResult.Value?.RemoveDuplicates().ToList();
 
             if (outputs == null || !outputs.Any())
                 return;
@@ -95,7 +95,7 @@ namespace Atomex.Wallet.BitcoinBased
 
         private async Task ScanOutputsAsync(
            bool skipUsed,
-           CancellationToken cancellationToken = default(CancellationToken))
+           CancellationToken cancellationToken = default)
         {
             Log.Debug("Scan outputs for {@name}", Currency.Name);
 
@@ -146,21 +146,21 @@ namespace Atomex.Wallet.BitcoinBased
                         index,
                         walletAddress.Address);
 
-                    var asyncResult = await ((IInOutBlockchainApi)Currency.BlockchainApi)
+                    var result = await ((IInOutBlockchainApi)Currency.BlockchainApi)
                         .GetOutputsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (asyncResult.HasError)
+                    if (result.HasError)
                     {
                         Log.Error(
                             "Error while scan outputs for {@address} with code {@code} and description {@description}",
                             walletAddress.Address,
-                            asyncResult.Error.Code,
-                            asyncResult.Error.Description);
+                            result.Error.Code,
+                            result.Error.Description);
                         break;
                     }
 
-                    var outputs = asyncResult.Value?.RemoveDuplicates().ToList();
+                    var outputs = result.Value?.RemoveDuplicates().ToList();
 
                     if (outputs == null || !outputs.Any()) // address without activity
                     {
@@ -191,7 +191,7 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         private async Task ScanTransactionsAsync(
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             if (!Currency.IsTransactionsAvailable)
                 return;
@@ -206,7 +206,7 @@ namespace Atomex.Wallet.BitcoinBased
 
         private async Task ScanTransactionsAsync(
             IEnumerable<ITxOutput> outputs,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             foreach (var output in outputs)
             {
@@ -228,21 +228,21 @@ namespace Atomex.Wallet.BitcoinBased
 
                     Log.Debug("Scan {@currency} transaction {@txId}", Currency.Name, txId);
 
-                    var asyncResult = await Currency.BlockchainApi
+                    var txResult = await Currency.BlockchainApi
                         .GetTransactionAsync(txId, cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (asyncResult.HasError)
+                    if (txResult.HasError)
                     {
                         Log.Error(
                             "Error while get transactions {@txId} with code {@code} and description {@description}",
                             txId,
-                            asyncResult.Error.Code,
-                            asyncResult.Error.Description);
+                            txResult.Error.Code,
+                            txResult.Error.Description);
                         continue;
                     }
 
-                    var tx = asyncResult.Value;
+                    var tx = txResult.Value;
 
                     if (tx == null)
                     {

@@ -44,9 +44,9 @@ namespace Atomex.Client.Core.Tests
             string address)
         {
             var api = new InsightApi(currency, baseUri);
-            var balanceAsyncResult = await api.GetBalanceAsync(address);
+            var balanceResult = await api.GetBalanceAsync(address);
 
-            Assert.False(balanceAsyncResult.HasError);
+            Assert.False(balanceResult.HasError, balanceResult.Error?.Description ?? "");
         }
 
         public static IEnumerable<object[]> InputTestData => new List<object[]>
@@ -100,11 +100,11 @@ namespace Atomex.Client.Core.Tests
             uint prevTxOutputIndex)
         {
             var api = new InsightApi(currency, baseUri);
-            var inputAsyncResult = await api.GetInputAsync(txId, inputIndex);
+            var inputResult = await api.GetInputAsync(txId, inputIndex);
 
-            Assert.False(inputAsyncResult.HasError);
+            Assert.False(inputResult.HasError, inputResult.Error?.Description ?? "");
 
-            var input = inputAsyncResult.Value;
+            var input = inputResult.Value;
 
             Assert.NotNull(input);
             Assert.Equal(prevTxId, input.Hash);
@@ -119,11 +119,11 @@ namespace Atomex.Client.Core.Tests
             string address)
         {
             var api = new InsightApi(currency, baseUri);
-            var utxoAsyncResult = await api.GetUnspentOutputsAsync(address);
+            var utxoResult = await api.GetUnspentOutputsAsync(address);
 
-            Assert.False(utxoAsyncResult.HasError);
+            Assert.False(utxoResult.HasError, utxoResult.Error?.Description ?? "");
 
-            var utxo = utxoAsyncResult.Value;
+            var utxo = utxoResult.Value;
 
             Assert.NotNull(utxo);
         }
@@ -179,18 +179,17 @@ namespace Atomex.Client.Core.Tests
             string outputSpentTxId)
         {
             var api = new InsightApi(currency, baseUri);
-            var outputsAsyncResult = await api.GetOutputsAsync(address);
+            var outputsResult = await api.GetOutputsAsync(address);
 
-            Assert.False(outputsAsyncResult.HasError);
+            Assert.False(outputsResult.HasError, outputsResult.Error?.Description ?? "");
 
-            var outputs = outputsAsyncResult.Value?.ToList();
+            var outputs = outputsResult.Value?.ToList();
 
             Assert.NotNull(outputs);
             Assert.True(outputs.Any());
-            Assert.Contains(outputs, o => o.TxId == outputTxId &&
-                                          o.Value == outputAmount &&
-                                          (outputSpentTxId != null && o.SpentTxPoint != null && o.SpentTxPoint.Hash == outputSpentTxId ||
-                                           outputSpentTxId == null && o.SpentTxPoint == null));
+            Assert.Contains(outputs, o => o.TxId == outputTxId && o.Value == outputAmount &&
+                (outputSpentTxId != null && o.SpentTxPoint != null && o.SpentTxPoint.Hash == outputSpentTxId ||
+                outputSpentTxId == null && o.SpentTxPoint == null));
         }
 
         public static IEnumerable<object[]> TransactionTestData => new List<object[]>
@@ -249,11 +248,11 @@ namespace Atomex.Client.Core.Tests
             int blockHeight)
         {
             var api = new InsightApi(currency, baseUri);
-            var txAsyncResult = await api.GetTransactionAsync(txId);
+            var txResult = await api.GetTransactionAsync(txId);
 
-            Assert.False(txAsyncResult.HasError);
+            Assert.False(txResult.HasError, txResult.Error?.Description ?? "");
 
-            var tx = txAsyncResult.Value as IBitcoinBasedTransaction;
+            var tx = txResult.Value as IBitcoinBasedTransaction;
 
             Assert.NotNull(tx);
             Assert.True(tx.Id == txId);
@@ -314,11 +313,11 @@ namespace Atomex.Client.Core.Tests
             uint spentIndex)
         {
             var api = new InsightApi(currency, baseUri);
-            var spentPointAsyncResult = await api.IsTransactionOutputSpent(txId, outputNo);
+            var spentPointResult = await api.IsTransactionOutputSpent(txId, outputNo);
 
-            Assert.False(spentPointAsyncResult.HasError);
+            Assert.False(spentPointResult.HasError, spentPointResult.Error?.Description ?? "");
 
-            var spentPoint = spentPointAsyncResult.Value;
+            var spentPoint = spentPointResult.Value;
 
             Assert.NotNull(spentPoint);
             Assert.Equal(spentTxId, spentPoint.Hash);

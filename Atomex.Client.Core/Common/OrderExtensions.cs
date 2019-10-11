@@ -201,7 +201,7 @@ namespace Atomex.Common
         public static async Task<Order> ResolveWallets(
             this Order order,
             IAccount account,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             if (order.FromWallets == null)
                 return order;

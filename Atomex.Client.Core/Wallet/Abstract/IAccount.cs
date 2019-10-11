@@ -83,7 +83,7 @@ namespace Atomex.Wallet.Abstract
             decimal amount,
             decimal fee,
             decimal feePrice,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Send <paramref name="amount"/> with <paramref name="fee"/> and <paramref name="feePrice"/> to address <paramref name="to"/>
@@ -101,7 +101,7 @@ namespace Atomex.Wallet.Abstract
             decimal amount,
             decimal fee,
             decimal feePrice,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Estimate fee for transfer <paramref name="amount"/> to address <paramref name="to"/> for <paramref name="currency"/>
@@ -117,7 +117,7 @@ namespace Atomex.Wallet.Abstract
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Estimate max amount and fee to send
@@ -131,7 +131,7 @@ namespace Atomex.Wallet.Abstract
             Currency currency,
             string to,
             BlockchainTransactionType type,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Create auth request for service key with <paramref name="keyIndex"/>, which can be used for authentication using server <paramref name="nonce"/>
@@ -147,21 +147,21 @@ namespace Atomex.Wallet.Abstract
 
         Task<Balance> GetBalanceAsync(
             Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         Task<Balance> GetAddressBalanceAsync(
             Currency currency,
             string address,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         Task UpdateBalanceAsync(
             Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         Task UpdateBalanceAsync(
             Currency currency,
             string address,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         #endregion Balances
 
@@ -187,7 +187,7 @@ namespace Atomex.Wallet.Abstract
         /// <returns>Set of unspent addresses</returns>
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets unspent addresses for <paramref name="currency"/> and <paramref name="amount"/> with <paramref name="fee"/>
@@ -209,7 +209,7 @@ namespace Atomex.Wallet.Abstract
             FeeUsagePolicy feeUsagePolicy,
             AddressUsagePolicy addressUsagePolicy,
             BlockchainTransactionType transactionType,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets free internal address for <paramref name="currency"/>
@@ -219,7 +219,7 @@ namespace Atomex.Wallet.Abstract
         /// <returns>Wallet address</returns>
         Task<WalletAddress> GetFreeInternalAddressAsync(
             Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets free external address for <paramref name="currency"/>
@@ -229,7 +229,7 @@ namespace Atomex.Wallet.Abstract
         /// <returns>Wallet address</returns>
         Task<WalletAddress> GetFreeExternalAddressAsync(
             Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Get refund address for <paramref name="currency"/>
@@ -239,7 +239,7 @@ namespace Atomex.Wallet.Abstract
         /// <returns>Wallet address</returns>
         Task<WalletAddress> GetRefundAddressAsync(
             Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Get redeem address for <paramref name="currency"/>
@@ -249,7 +249,7 @@ namespace Atomex.Wallet.Abstract
         /// <returns>Wallet address</returns>
         Task<WalletAddress> GetRedeemAddressAsync(
             Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         #endregion Addresses
 
@@ -260,7 +260,7 @@ namespace Atomex.Wallet.Abstract
             bool updateBalance = false,
             bool notifyIfUnconfirmed = true,
             bool notifyIfBalanceUpdated = true,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         Task<IBlockchainTransaction> GetTransactionByIdAsync(Currency currency, string txId);
         Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(Currency currency);

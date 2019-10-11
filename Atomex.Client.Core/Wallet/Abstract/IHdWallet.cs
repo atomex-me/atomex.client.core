@@ -70,7 +70,7 @@ namespace Atomex.Wallet.Abstract
         Task<byte[]> SignAsync(
             byte[] data,
             WalletAddress address,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Sign input/output <paramref name="tx"/> corresponding to <paramref name="spentOutputs"/>
@@ -84,7 +84,7 @@ namespace Atomex.Wallet.Abstract
             IInOutTransaction tx,
             IEnumerable<ITxOutput> spentOutputs,
             IAddressResolver addressResolver,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Sign address based <paramref name="tx"/> by key for <paramref name="address"/>
@@ -96,7 +96,7 @@ namespace Atomex.Wallet.Abstract
         Task<bool> SignAsync(
             IAddressBasedTransaction tx,
             WalletAddress address,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Sign transaction <paramref name="hash"/> using public key corresponding to <paramref name="address"/>
@@ -108,7 +108,7 @@ namespace Atomex.Wallet.Abstract
         Task<byte[]> SignHashAsync(
             byte[] hash,
             WalletAddress address,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Sign <paramerf name="data"/> using service key with <paramref name="keyIndex"/>
@@ -120,7 +120,7 @@ namespace Atomex.Wallet.Abstract
         Task<byte[]> SignByServiceKeyAsync(
             byte[] data,
             uint keyIndex,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         //bool Verify(
         //    WalletAddress walletAddress,

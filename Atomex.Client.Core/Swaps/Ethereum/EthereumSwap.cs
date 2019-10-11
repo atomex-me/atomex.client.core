@@ -308,7 +308,7 @@ namespace Atomex.Swaps.Ethereum
 
         private async Task RefundAsync(
             ClientSwap swap,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             Log.Debug("Create refund for swap {@swap}", swap.Id);
 
@@ -727,7 +727,7 @@ namespace Atomex.Swaps.Ethereum
         private async Task<IEnumerable<EthereumTransaction>> CreatePaymentTxsAsync(
             ClientSwap swap,
             int lockTimeInSeconds,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             Log.Debug("Create payment transactions for swap {@swapId}", swap.Id);
 
@@ -858,7 +858,7 @@ namespace Atomex.Swaps.Ethereum
 
         private async Task<bool> SignTransactionAsync(
             EthereumTransaction tx,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var walletAddress = await Account
                 .ResolveAddressAsync(
@@ -878,7 +878,7 @@ namespace Atomex.Swaps.Ethereum
         private async Task BroadcastTxAsync(
             ClientSwap swap,
             EthereumTransaction tx,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var asyncResult = await Eth.BlockchainApi
                 .BroadcastAsync(tx, cancellationToken)

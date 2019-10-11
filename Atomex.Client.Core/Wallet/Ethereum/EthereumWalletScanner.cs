@@ -26,7 +26,7 @@ namespace Atomex.Wallet.Ethereum
 
         public async Task ScanAsync(
             bool skipUsed = false,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var currency = Account.Currencies.Get<Atomex.Ethereum>();
 
@@ -140,7 +140,7 @@ namespace Atomex.Wallet.Ethereum
 
         public async Task ScanAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var currency = Account.Currencies.Get<Atomex.Ethereum>();
 

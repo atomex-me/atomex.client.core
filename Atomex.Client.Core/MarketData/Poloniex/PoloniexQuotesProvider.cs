@@ -46,7 +46,7 @@ namespace Atomex.MarketData.Poloniex
         }
 
         protected override async Task UpdateAsync(
-            CancellationToken cancellation = default(CancellationToken))
+            CancellationToken cancellation = default)
         {
             Log.Debug("Start of update");
 

@@ -33,7 +33,7 @@ namespace Atomex.Common.Bson
                     fromTxHash: new uint256(bson[TxIdKey].AsString),
                     fromOutputIndex: (uint)bson[IndexKey].AsInt32,
                     amount: new Money(bson[ValueKey].AsInt64),
-                    scriptPubKey: new Script(Hex.FromString(bson[ScriptKey].AsString))
+                    scriptPubKey: Script.FromHex(bson[ScriptKey].AsString)
                 ),
                 spentTxPoint: spentPoint
             );

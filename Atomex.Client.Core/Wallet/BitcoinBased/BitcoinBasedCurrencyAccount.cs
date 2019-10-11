@@ -34,7 +34,7 @@ namespace Atomex.Wallet.BitcoinBased
             decimal amount,
             decimal fee,
             decimal feePrice,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var unspentOutputs = (await DataRepository
                 .GetAvailableOutputsAsync(Currency)
@@ -57,7 +57,7 @@ namespace Atomex.Wallet.BitcoinBased
             decimal amount,
             decimal fee,
             decimal feePrice,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var unspentOutputs = (await DataRepository
                 .GetAvailableOutputsAsync(Currency)
@@ -80,7 +80,7 @@ namespace Atomex.Wallet.BitcoinBased
             decimal amount,
             decimal fee,
             DustUsagePolicy dustUsagePolicy,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var amountInSatoshi = BtcBasedCurrency.CoinToSatoshi(amount);
             var feeInSatoshi = BtcBasedCurrency.CoinToSatoshi(fee);
@@ -186,7 +186,7 @@ namespace Atomex.Wallet.BitcoinBased
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var amountInSatoshi = BtcBasedCurrency.CoinToSatoshi(amount);
 
@@ -233,7 +233,7 @@ namespace Atomex.Wallet.BitcoinBased
         public override async Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var unspentOutputs = (await DataRepository
                 .GetAvailableOutputsAsync(Currency)
@@ -266,7 +266,7 @@ namespace Atomex.Wallet.BitcoinBased
 
         protected override async Task ResolveTransactionTypeAsync(
             IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var outputs = await DataRepository
                 .GetOutputsAsync(Currency)
@@ -314,7 +314,7 @@ namespace Atomex.Wallet.BitcoinBased
         #region Balances
 
         public override async Task UpdateBalanceAsync(
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var outputs = (await DataRepository
                 .GetOutputsAsync(Currency)
@@ -408,7 +408,7 @@ namespace Atomex.Wallet.BitcoinBased
 
         public override async Task UpdateBalanceAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var outputs = (await DataRepository
                 .GetOutputsAsync(Currency, address)
@@ -487,7 +487,7 @@ namespace Atomex.Wallet.BitcoinBased
             FeeUsagePolicy feeUsagePolicy,
             AddressUsagePolicy addressUsagePolicy,
             BlockchainTransactionType transactionType,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             if (feeUsagePolicy == FeeUsagePolicy.EstimatedFee)
             {
@@ -549,7 +549,7 @@ namespace Atomex.Wallet.BitcoinBased
             bool updateBalance = false,
             bool notifyIfUnconfirmed = true,
             bool notifyIfBalanceUpdated = true,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             if (!(tx is IBitcoinBasedTransaction btcBasedTx))
                 throw new NotSupportedException("Transaction has incorrect type");
@@ -586,7 +586,7 @@ namespace Atomex.Wallet.BitcoinBased
 
         private async Task UpsertOutputsAsync(
             IInOutTransaction tx,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             // update & save self outputs
             foreach (var output in tx.Outputs.Cast<BitcoinBasedTxOutput>())
@@ -662,7 +662,7 @@ namespace Atomex.Wallet.BitcoinBased
         public Task<WalletAddress> ResolveAddressAsync(
             Currency currency,
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return ResolveAddressAsync(address, cancellationToken);
         }

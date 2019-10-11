@@ -11,10 +11,10 @@ namespace Atomex.Blockchain.Ethereum
     {
         Task<Result<BigInteger>> GetTransactionCountAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
     }
 }

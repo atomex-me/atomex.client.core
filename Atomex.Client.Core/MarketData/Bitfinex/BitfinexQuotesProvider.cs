@@ -37,7 +37,7 @@ namespace Atomex.MarketData.Bitfinex
         }
 
         protected override async Task UpdateAsync(
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             Log.Debug("Start of update");
 

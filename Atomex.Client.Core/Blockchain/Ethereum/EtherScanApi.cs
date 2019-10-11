@@ -124,7 +124,7 @@ namespace Atomex.Blockchain.Ethereum
 
         public async Task<Result<decimal>> GetBalanceAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var requestUri = $"api?module=account&action=balance&address={address}&apikey={ApiKey}";
 
@@ -151,21 +151,21 @@ namespace Atomex.Blockchain.Ethereum
 
         public Task<Result<BigInteger>> GetTransactionCountAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
         public Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetInternalTransactionsAsync(
             string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var requestUri = $"api?module=account&action=txlistinternal&txhash={txId}&apikey={ApiKey}";
 
@@ -184,7 +184,7 @@ namespace Atomex.Blockchain.Ethereum
 
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
                 .Wait(cancellationToken)
@@ -227,7 +227,7 @@ namespace Atomex.Blockchain.Ethereum
             ulong fromBlock,
             ulong toBlock,
             string topic0,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetContractEventsAsync(address, fromBlock, toBlock, cancellationToken, topic0);
         }
@@ -238,7 +238,7 @@ namespace Atomex.Blockchain.Ethereum
             ulong toBlock,
             string topic0,
             string topic1,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetContractEventsAsync(address, fromBlock, toBlock, cancellationToken, topic0, topic1);
         }
@@ -250,7 +250,7 @@ namespace Atomex.Blockchain.Ethereum
             string topic0,
             string topic1,
             string topic2,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetContractEventsAsync(address, fromBlock, toBlock, cancellationToken, topic0, topic1, topic2);
         }
@@ -259,7 +259,7 @@ namespace Atomex.Blockchain.Ethereum
             string address,
             ulong fromBlock = ulong.MinValue,
             ulong toBlock = ulong.MaxValue,
-            CancellationToken cancellationToken = default(CancellationToken),
+            CancellationToken cancellationToken = default,
             params string[] topics)
         {
             var fromBlockStr = BlockNumberToStr(fromBlock);
@@ -318,7 +318,7 @@ namespace Atomex.Blockchain.Ethereum
 
         public Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }

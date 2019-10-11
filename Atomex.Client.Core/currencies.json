@@ -74,8 +74,8 @@
       "FeeRate": 50,
       "DustFeeRate": 3,
       "Chain": "TestNet",
-      "BlockchainApi": "Insight",
-      "BlockchainApiBaseUri": "https://test-insight.bitpay.com/",
+      "BlockchainApi": "BitCore+BlockCypher",
+      "BlockchainApiBaseUri": "https://api.bitcore.io/",
       "TxExplorerUri": "https://live.blockcypher.com/btc-testnet/tx/",
       "AddressExplorerUri": "https://live.blockcypher.com/btc-testnet/address/"
     },

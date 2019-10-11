@@ -1,16 +1,34 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
 using Microsoft.Extensions.Configuration;
+using NBitcoin;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Atomex.Blockchain.BitCore
 {
     public class BitCoreApi : IInOutBlockchainApi
     {
+        internal class RawTx
+        {
+            [JsonProperty(PropertyName = "rawTx")]
+            public string RawTxHex { get; set; }
+        }
+
+        internal class SendTxId
+        {
+            [JsonProperty(PropertyName = "txid")]
+            public string TxId { get; set; }
+        }
+
         internal class AddressBalance
         {
             [JsonProperty(PropertyName = "confirmed")]
@@ -54,8 +72,49 @@ namespace Atomex.Blockchain.BitCore
 
             [JsonProperty(PropertyName = "confirmations")]
             public int Confirmations { get; set; }
+
+            [JsonProperty(PropertyName = "coins")]
+            public Coins Coins { get; set; }
         }
 
+        internal class Coins
+        {
+            [JsonProperty(PropertyName = "inputs")]
+            public List<Output> Inputs { get; set; }
+
+            [JsonProperty(PropertyName = "outputs")]
+            public List<Output> Outputs { get; set; }
+        }
+
+        internal class Output
+        {
+            [JsonProperty(PropertyName = "chain")]
+            public string Chain { get; set; }
+
+            [JsonProperty(PropertyName = "network")]
+            public string Network { get; set; }
+
+            [JsonProperty(PropertyName = "address")]
+            public string Address { get; set; }
+
+            [JsonProperty(PropertyName = "mintTxid")]
+            public string TxId { get; set; }
+
+            [JsonProperty(PropertyName = "mintIndex")]
+            public uint Index { get; set; }
+
+            [JsonProperty(PropertyName = "spentTxid")]
+            public string SpentTxId { get; set; }
+
+            [JsonProperty(PropertyName = "script")]
+            public string Script { get; set; }
+
+            [JsonProperty(PropertyName = "value")]
+            public decimal Value { get; set; }
+
+            [JsonProperty(PropertyName = "confirmations")]
+            public int Confirmations { get; set; }
+        }
 
         public const string BitCoreBaseUri = "https://api.bitcore.io/";
 
@@ -83,7 +142,7 @@ namespace Atomex.Blockchain.BitCore
 
         public async Task<Result<decimal>> GetBalanceAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var requestUri = $"api/{Currency.Name}/{Network}/address/{address}/balance/";
 
@@ -100,80 +159,225 @@ namespace Atomex.Blockchain.BitCore
                 .ConfigureAwait(false);
         }
 
-        public Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
-            //var txHex = Rpc.GetRawTransaction(txId, 0).Hex;
+            var txHexResult = await GetRawTxAsync(txId, cancellationToken)
+                .ConfigureAwait(false);
 
-            //var requestUri = $"api/{Currency.Name}/{Currency.Network.ToString().ToLower()}/tx/{txId}";
+            if (txHexResult.HasError)
+                return new Result<IBlockchainTransaction>(txHexResult.Error);
 
-            //await RequestLimitControl
-            //    .Wait(cancellationToken)
-            //    .ConfigureAwait(false);
+            var requestUri = $"api/{Currency.Name}/{Currency.Network.ToString().ToLower()}/tx/{txId}";
 
-            //return await HttpHelper.GetAsyncResult(
-            //        baseUri: BaseUri,
-            //        requestUri: requestUri,
-            //        responseHandler: (response, content) =>
-            //        {
-            //            var tx = JsonConvert.DeserializeObject<Tx>(content);
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
 
-            //            return new Result<IBlockchainTransaction>(new BitcoinBasedTransaction(
-            //                currency: Currency,
-            //                tx: Transaction.Parse(txHex, Currency.Network),
-            //                blockInfo: new BlockInfo
-            //                {
-            //                    Confirmations = tx.Confirmations,
-            //                    BlockHeight = tx.BlockHeight.GetValueOrDefault(0),
-            //                    FirstSeen = tx.BlockTime,
-            //                    BlockTime = tx.BlockTime
-            //                },
-            //                fees: tx.Fee
-            //            ));
-            //        },
-            //        cancellationToken: cancellationToken)
-            //    .ConfigureAwait(false);
+            return await HttpHelper.GetAsyncResult(
+                    baseUri: BaseUri,
+                    requestUri: requestUri,
+                    responseHandler: (response, content) =>
+                    {
+                        var tx = JsonConvert.DeserializeObject<Tx>(content);
+
+                        return new Result<IBlockchainTransaction>(new BitcoinBasedTransaction(
+                            currency: Currency,
+                            tx: Transaction.Parse(txHexResult.Value, Currency.Network),
+                            blockInfo: new BlockInfo
+                            {
+                                Confirmations = tx.Confirmations,
+                                BlockHeight = tx.BlockHeight.GetValueOrDefault(0),
+                                FirstSeen = tx.BlockTime,
+                                BlockTime = tx.BlockTime
+                            },
+                            fees: tx.Fee
+                        ));
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        public Task<Result<string>> BroadcastAsync(
+        public async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            var tx = (IBitcoinBasedTransaction)transaction;
+            var txHex = tx.ToBytes().ToHexString();
+
+            tx.State = BlockchainTransactionState.Pending;
+
+            var requestUri = $"api/{Currency.Name}/{Currency.Network.ToString().ToLower()}/tx/send";
+            var requestContent = JsonConvert.ToString(new RawTx {RawTxHex = txHex});
+            
+            return await HttpHelper.PostAsyncResult(
+                    baseUri: BaseUri,
+                    requestUri: requestUri,
+                    content: new StringContent(requestContent, Encoding.UTF8),
+                    responseHandler: (response, content) => new Result<string>(JsonConvert.DeserializeObject<SendTxId>(content).TxId),
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        public Task<Result<ITxPoint>> GetInputAsync(
+        public async Task<Result<ITxPoint>> GetInputAsync(
             string txId,
             uint inputNo,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var txHexResult = await GetRawTxAsync(txId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (txHexResult.HasError)
+                return new Result<ITxPoint>(txHexResult.Error);
+
+            var tx = Transaction.Parse(txHexResult.Value, Currency.Network);
+            var txInput = tx.Inputs.AsIndexedInputs().ToList()[(int) inputNo];
+
+            return new Result<ITxPoint>(new BitcoinBasedTxPoint(txInput));
         }
 
-        public Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
+        public async Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            var requestUri = $"api/{Currency.Name}/{Currency.Network.ToString().ToLower()}/address/{address}/?unspent=true";
+
+            return await HttpHelper.GetAsyncResult(
+                    baseUri: BaseUri,
+                    requestUri: requestUri,
+                    responseHandler: (response, content) =>
+                    {
+                        var outputs = JsonConvert.DeserializeObject<List<Output>>(content);
+
+                        return new Result<IEnumerable<ITxOutput>>(outputs.Select(o => new BitcoinBasedTxOutput(
+                            coin: new Coin(
+                                fromTxHash: new uint256(o.TxId),
+                                fromOutputIndex: o.Index,
+                                amount: new Money(o.Value, MoneyUnit.Satoshi),
+                                scriptPubKey: Script.FromHex(o.Script)),
+                            spentTxPoint: null)));
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        public Task<Result<IEnumerable<ITxOutput>>> GetOutputsAsync(
+        public async Task<Result<IEnumerable<ITxOutput>>> GetOutputsAsync(
             string address,
             string afterTxId = null,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            var requestUri = $"api/{Currency.Name}/{Currency.Network.ToString().ToLower()}/address/{address}";
+
+            return await HttpHelper.GetAsyncResult(
+                    baseUri: BaseUri,
+                    requestUri: requestUri,
+                    responseHandler: (response, content) =>
+                    {
+                        var outputs = JsonConvert.DeserializeObject<List<Output>>(content);
+
+                        return new Result<IEnumerable<ITxOutput>>(outputs.Select(o =>
+                        {
+                            var spentPoint = !string.IsNullOrEmpty(o.SpentTxId)
+                                ? new TxPoint(0, o.SpentTxId)
+                                : null;
+
+                            return new BitcoinBasedTxOutput(
+                                coin: new Coin(
+                                    fromTxHash: new uint256(o.TxId),
+                                    fromOutputIndex: o.Index,
+                                    amount: new Money(o.Value, MoneyUnit.Satoshi),
+                                    scriptPubKey: Script.FromHex(o.Script)),
+                                spentTxPoint: spentPoint);
+                        }));
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        public Task<Result<ITxPoint>> IsTransactionOutputSpent(
+        public async Task<Result<ITxPoint>> IsTransactionOutputSpent(
             string txId,
             uint outputNo,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            var txResult = await HttpHelper.GetAsyncResult(
+                    baseUri: BaseUri,
+                    requestUri: $"api/{Currency.Name}/{Currency.Network.ToString().ToLower()}/tx/{txId}/populated",
+                    responseHandler: (response, content) => new Result<Tx>(JsonConvert.DeserializeObject<Tx>(content)),
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (txResult.HasError)
+                return new Result<ITxPoint>(txResult.Error);
+
+            var spentTxId = txResult.Value
+                ?.Coins
+                ?.Outputs
+                ?.FirstOrDefault(o => o.Index == outputNo)
+                ?.SpentTxId;
+
+            if (spentTxId == null)
+                return new Result<ITxPoint>((ITxPoint)null);
+
+            var spentTxHexResult = await GetRawTxAsync(spentTxId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (spentTxHexResult.HasError)
+                return new Result<ITxPoint>(spentTxHexResult.Error);
+
+            var spentTx = Transaction.Parse(spentTxHexResult.Value, Currency.Network);
+
+            var spentTxInputs = spentTx.Inputs.AsIndexedInputs().ToList();
+
+            for (var i = 0; i < spentTxInputs.Count; ++i)
+            {
+                if (spentTxInputs[i].PrevOut.Hash.ToString() == txId &&
+                    spentTxInputs[i].PrevOut.N == outputNo)
+                    return new Result<ITxPoint>(new TxPoint((uint)i, spentTxId));
+            }
+
+            return new Result<ITxPoint>((ITxPoint)null);
+        }
+
+        private async Task<Result<string>> GetRawTxAsync(
+            string txId,
+            CancellationToken cancellationToken = default)
+        {
+            // todo: change to rpc node!
+            const string baseUri = "https://api.blockcypher.com/";
+            var network = Currency.Network == NBitcoin.Network.Main
+                ? "main"
+                : "test3";
+
+            var requestUri = $"v1/btc/{network}/txs/{txId}?includeHex=true";
+
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            return await HttpHelper.GetAsyncResult(
+                    baseUri: baseUri,
+                    requestUri: requestUri,
+                    responseHandler: (response, content) => new Result<string>(JObject.Parse(content)["hex"].ToString()),
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 }

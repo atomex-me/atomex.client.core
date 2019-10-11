@@ -10,6 +10,6 @@ namespace Atomex.Blockchain.Abstract
         Task<bool> SignAsync(
             IKeyStorage keyStorage,
             WalletAddress address,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
     }
 }

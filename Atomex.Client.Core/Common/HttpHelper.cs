@@ -13,7 +13,7 @@ namespace Atomex.Common
             string baseUri,
             string requestUri,
             Func<HttpResponseMessage, T> responseHandler,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return SendRequestAsync(
                 baseUri: baseUri,
@@ -28,7 +28,7 @@ namespace Atomex.Common
             string baseUri,
             string requestUri,
             Func<HttpResponseMessage, string, Result<T>> responseHandler,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAsync(
                 baseUri: baseUri,
@@ -51,7 +51,7 @@ namespace Atomex.Common
             string requestUri,
             HttpContent content,
             Func<HttpResponseMessage, T> responseHandler,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return SendRequestAsync(
                 baseUri: baseUri,
@@ -67,7 +67,7 @@ namespace Atomex.Common
             string requestUri,
             HttpContent content,
             Func<HttpResponseMessage, string, Result<T>> responseHandler,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return PostAsync(
                 baseUri: baseUri,
@@ -92,7 +92,7 @@ namespace Atomex.Common
             HttpMethod method,
             HttpContent content,
             Func<HttpResponseMessage, T> responseHandler,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             Log.Debug("Send {@method} request: {@baseUri}{@request}", 
                 method.ToString(),
@@ -116,7 +116,7 @@ namespace Atomex.Common
                 Log.Error(e, "SendRequestAsync error");
             }
 
-            return default(T);
+            return default;
         }
 
         public static async Task<HttpResponseMessage> SendRequest(
@@ -124,7 +124,7 @@ namespace Atomex.Common
             string requestUri,
             HttpMethod method,
             HttpContent content,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             using (var httpClient = new HttpClient { BaseAddress = new Uri(baseUri) })
             {

@@ -33,7 +33,7 @@ namespace Atomex.Wallet.Tezos
             decimal amount,
             decimal fee,
             decimal feePrice,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var selectedAddresses = (await SelectUnspentAddressesAsync(
                     from: from.ToList(),
@@ -123,7 +123,7 @@ namespace Atomex.Wallet.Tezos
             decimal amount,
             decimal fee,
             decimal feePrice,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
                 .GetUnspentAddressesAsync(Currency)
@@ -144,7 +144,7 @@ namespace Atomex.Wallet.Tezos
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
                 .GetUnspentAddressesAsync(Currency)
@@ -175,7 +175,7 @@ namespace Atomex.Wallet.Tezos
         public override async Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
                 .GetUnspentAddressesAsync(Currency)
@@ -218,7 +218,7 @@ namespace Atomex.Wallet.Tezos
 
         protected override async Task ResolveTransactionTypeAsync(
             IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             if (!(tx is TezosTransaction xtzTx))
                 throw new ArgumentException("Invalid tx type", nameof(tx));
@@ -287,7 +287,7 @@ namespace Atomex.Wallet.Tezos
         #region Balances
 
         public override async Task UpdateBalanceAsync(
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var txs = (await DataRepository
                 .GetTransactionsAsync(Currency)
@@ -394,7 +394,7 @@ namespace Atomex.Wallet.Tezos
 
         public override async Task UpdateBalanceAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var walletAddress = await DataRepository
                 .GetWalletAddressAsync(Currency, address)
@@ -484,7 +484,7 @@ namespace Atomex.Wallet.Tezos
             FeeUsagePolicy feeUsagePolicy,
             AddressUsagePolicy addressUsagePolicy,
             BlockchainTransactionType transactionType,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
                 .GetUnspentAddressesAsync(Currency)
@@ -515,7 +515,7 @@ namespace Atomex.Wallet.Tezos
             FeeUsagePolicy feeUsagePolicy,
             AddressUsagePolicy addressUsagePolicy,
             BlockchainTransactionType transactionType,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var activationFeeInTez = to != null
                 ? await GetActivationFeeAsync(to, cancellationToken)
@@ -610,7 +610,7 @@ namespace Atomex.Wallet.Tezos
 
         private async Task<decimal> GetActivationFeeAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var api = (ITezosBlockchainApi)Xtz.BlockchainApi;
 

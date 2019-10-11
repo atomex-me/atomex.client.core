@@ -39,7 +39,7 @@ namespace Atomex.Blockchain.BlockchainInfo
 
         public async Task<Result<decimal>> GetBalanceAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -61,7 +61,7 @@ namespace Atomex.Blockchain.BlockchainInfo
 
         public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -96,7 +96,7 @@ namespace Atomex.Blockchain.BlockchainInfo
 
         public async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -122,7 +122,7 @@ namespace Atomex.Blockchain.BlockchainInfo
         public async Task<Result<ITxPoint>> GetInputAsync(
             string txId,
             uint inputNo,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -140,7 +140,7 @@ namespace Atomex.Blockchain.BlockchainInfo
                     prevout: new OutPoint(
                         hashIn: new uint256(prevTx.Hash),
                         nIn: input.PreviousOutput.N),
-                    scriptSig: new Script(input.ScriptSignature));
+                    scriptSig: Script.FromHex(input.ScriptSignature));
 
                 return new Result<ITxPoint>(new BitcoinBasedTxPoint(new IndexedTxIn
                 {
@@ -190,7 +190,7 @@ namespace Atomex.Blockchain.BlockchainInfo
         public async Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -203,7 +203,7 @@ namespace Atomex.Blockchain.BlockchainInfo
                         fromTxHash: new uint256(u.TransactionHash),
                         fromOutputIndex: (uint) u.N,
                         amount: new Money(u.Value.Satoshis, MoneyUnit.Satoshi),
-                        scriptPubKey: new Script(u.Script)),
+                        scriptPubKey: Script.FromHex(u.Script)),
                     spentTxPoint: null));
 
                 return new Result<IEnumerable<ITxOutput>>(result);
@@ -217,7 +217,7 @@ namespace Atomex.Blockchain.BlockchainInfo
         public async Task<Result<IEnumerable<ITxOutput>>> GetOutputsAsync(
             string address,
             string afterTxId = null,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -243,7 +243,7 @@ namespace Atomex.Blockchain.BlockchainInfo
 
                         var amount = new Money(output.Value.Satoshis, MoneyUnit.Satoshi);
 
-                        var script = new Script(Hex.FromString(output.Script));
+                        var script = Script.FromHex(output.Script);
 
                         outputs.Add(new BitcoinBasedTxOutput(
                             coin: new Coin(
@@ -266,7 +266,7 @@ namespace Atomex.Blockchain.BlockchainInfo
         public async Task<Result<ITxPoint>> IsTransactionOutputSpent(
             string txId,
             uint outputNo,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             try
             {

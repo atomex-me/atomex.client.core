@@ -269,7 +269,7 @@ namespace Atomex.Swaps.Tezos
 
         private async Task RefundAsync(
             ClientSwap swap,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             Log.Debug("Create refund for swap {@swap}", swap.Id);
 
@@ -670,7 +670,7 @@ namespace Atomex.Swaps.Tezos
         private async Task<IEnumerable<TezosTransaction>> CreatePaymentTxsAsync(
             ClientSwap swap,
             int lockTimeSeconds,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             Log.Debug("Create payment transactions for swap {@swapId}", swap.Id);
 
@@ -787,7 +787,7 @@ namespace Atomex.Swaps.Tezos
 
         private async Task<bool> SignTransactionAsync(
             TezosTransaction tx,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var walletAddress = await Account
                 .ResolveAddressAsync(
@@ -807,7 +807,7 @@ namespace Atomex.Swaps.Tezos
         private async Task BroadcastTxAsync(
             ClientSwap swap,
             TezosTransaction tx,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var asyncResult = await Xtz.BlockchainApi
                 .BroadcastAsync(tx, cancellationToken)

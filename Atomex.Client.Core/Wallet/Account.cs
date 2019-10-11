@@ -130,7 +130,7 @@ namespace Atomex.Wallet
             decimal amount,
             decimal fee,
             decimal feePrice,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(currency)
                 .SendAsync(
@@ -148,7 +148,7 @@ namespace Atomex.Wallet
             decimal amount,
             decimal fee,
             decimal feePrice,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(currency)
                 .SendAsync(
@@ -164,7 +164,7 @@ namespace Atomex.Wallet
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(currency)
                 .EstimateFeeAsync(to, amount, type, cancellationToken);
@@ -174,7 +174,7 @@ namespace Atomex.Wallet
             Currency currency,
             string to,
             BlockchainTransactionType type,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(currency)
                 .EstimateMaxAmountToSendAsync(to, type, cancellationToken);
@@ -254,7 +254,7 @@ namespace Atomex.Wallet
 
         public Task<Balance> GetBalanceAsync(
             Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return Task.FromResult(GetAccountByCurrency(currency).GetBalance());
         }
@@ -262,7 +262,7 @@ namespace Atomex.Wallet
         public Task<Balance> GetAddressBalanceAsync(
             Currency currency,
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(currency)
                 .GetAddressBalanceAsync(address, cancellationToken);
@@ -270,7 +270,7 @@ namespace Atomex.Wallet
 
         public Task UpdateBalanceAsync(
             Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(currency)
                 .UpdateBalanceAsync(cancellationToken);
@@ -279,7 +279,7 @@ namespace Atomex.Wallet
         public Task UpdateBalanceAsync(
             Currency currency,
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(currency)
                 .UpdateBalanceAsync(address, cancellationToken);
@@ -301,7 +301,7 @@ namespace Atomex.Wallet
         public Task<WalletAddress> ResolveAddressAsync(
             Currency currency,
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(currency)
                 .ResolveAddressAsync(address, cancellationToken);
@@ -309,7 +309,7 @@ namespace Atomex.Wallet
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(currency)
                 .GetUnspentAddressesAsync(cancellationToken);
@@ -323,7 +323,7 @@ namespace Atomex.Wallet
             FeeUsagePolicy feeUsagePolicy,
             AddressUsagePolicy addressUsagePolicy,
             BlockchainTransactionType transactionType,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(currency)
                 .GetUnspentAddressesAsync(
@@ -338,7 +338,7 @@ namespace Atomex.Wallet
 
         public Task<WalletAddress> GetFreeInternalAddressAsync(
             Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(currency)
                 .GetFreeInternalAddressAsync(cancellationToken);
@@ -346,7 +346,7 @@ namespace Atomex.Wallet
 
         public Task<WalletAddress> GetFreeExternalAddressAsync(
             Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(currency)
                 .GetFreeExternalAddressAsync(cancellationToken);
@@ -354,7 +354,7 @@ namespace Atomex.Wallet
 
         public Task<WalletAddress> GetRefundAddressAsync(
             Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(currency)
                 .GetRefundAddressAsync(cancellationToken);
@@ -362,7 +362,7 @@ namespace Atomex.Wallet
 
         public Task<WalletAddress> GetRedeemAddressAsync(
             Currency currency,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(currency)
                 .GetRedeemAddressAsync(cancellationToken);
@@ -377,7 +377,7 @@ namespace Atomex.Wallet
             bool updateBalance = false,
             bool notifyIfUnconfirmed = true,
             bool notifyIfBalanceUpdated = true,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetAccountByCurrency(tx.Currency)
                 .UpsertTransactionAsync(

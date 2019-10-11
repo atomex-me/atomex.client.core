@@ -22,21 +22,21 @@ namespace Atomex.Blockchain.Ethereum
 
         public Task<Result<decimal>> GetBalanceAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return _web3.GetBalanceAsync(address, cancellationToken);
         }
 
         public Task<Result<BigInteger>> GetTransactionCountAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return _web3.GetTransactionCountAsync(address, cancellationToken);
         }
 
         public Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return _etherScanApi
                 .GetTransactionsAsync(address, cancellationToken);
@@ -44,7 +44,7 @@ namespace Atomex.Blockchain.Ethereum
 
         public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var txAsyncResult = await _web3
                 .GetTransactionAsync(txId, cancellationToken)
@@ -76,7 +76,7 @@ namespace Atomex.Blockchain.Ethereum
 
         public async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return await _web3
                 .BroadcastAsync(transaction, cancellationToken)

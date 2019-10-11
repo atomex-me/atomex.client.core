@@ -21,7 +21,7 @@ namespace Atomex.Wallet
 
         public async Task ScanAsync(
             bool skipUsed = false,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             foreach (var currency in Account.Currencies)
                 if (currency.IsTransactionsAvailable)
@@ -32,14 +32,14 @@ namespace Atomex.Wallet
         public Task ScanAsync(
             Currency currency,
             bool skipUsed = false,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             return GetCurrencyScanner(currency)
                 .ScanAsync(skipUsed, cancellationToken);
         }
 
         public async Task ScanFreeAddressesAsync(
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             foreach (var currency in Account.Currencies)
             {
@@ -63,7 +63,7 @@ namespace Atomex.Wallet
         public async Task ScanAddressAsync(
             Currency currency,
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             try
             {

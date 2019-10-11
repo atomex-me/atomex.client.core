@@ -32,7 +32,7 @@ namespace Atomex.Blockchain.Ethereum
 
         public async Task<Result<decimal>> GetBalanceAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -54,7 +54,7 @@ namespace Atomex.Blockchain.Ethereum
 
         public async Task<Result<BigInteger>> GetTransactionCountAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -75,7 +75,7 @@ namespace Atomex.Blockchain.Ethereum
 
         public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -119,14 +119,14 @@ namespace Atomex.Blockchain.Ethereum
 
         public Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
 
         public async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             try
             {

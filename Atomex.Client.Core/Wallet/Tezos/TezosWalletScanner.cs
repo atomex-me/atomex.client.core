@@ -26,7 +26,7 @@ namespace Atomex.Wallet.Tezos
 
         public async Task ScanAsync(
             bool skipUsed = false,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var currency = Account.Currencies.Get<Atomex.Tezos>();
 
@@ -137,7 +137,7 @@ namespace Atomex.Wallet.Tezos
 
         public async Task ScanAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var currency = Account.Currencies.Get<Atomex.Tezos>();
 

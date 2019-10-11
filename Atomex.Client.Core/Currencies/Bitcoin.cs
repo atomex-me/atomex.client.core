@@ -1,5 +1,6 @@
 ﻿using System;
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.BitCore;
 using Atomex.Blockchain.BlockchainInfo;
 using Atomex.Blockchain.Insight;
 using Atomex.Blockchain.SoChain;
@@ -76,6 +77,9 @@ namespace Atomex
 
             if (blockchainApi.Equals("insight"))
                 return new InsightApi(this, configuration);
+
+            if (blockchainApi.Equals("bitcore+blockcypher"))
+                return new BitCoreApi(this, configuration);
 
             throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported");
         }

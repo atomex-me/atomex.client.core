@@ -48,7 +48,7 @@ namespace Atomex.Blockchain.Tezos
         public async Task<bool> SignAsync(
             IKeyStorage keyStorage,
             WalletAddress address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var xtz = (Atomex.Tezos) Currency;
 

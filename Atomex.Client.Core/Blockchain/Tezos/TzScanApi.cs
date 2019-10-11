@@ -99,7 +99,7 @@ namespace Atomex.Blockchain.Tezos
 
         public async Task<Result<decimal>> GetBalanceAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -118,7 +118,7 @@ namespace Atomex.Blockchain.Tezos
 
         public async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -163,7 +163,7 @@ namespace Atomex.Blockchain.Tezos
 
         public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var requestUri = $"v3/operation/{txId}";
 
@@ -196,7 +196,7 @@ namespace Atomex.Blockchain.Tezos
 
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var txs = new List<IBlockchainTransaction>();
 
@@ -220,7 +220,7 @@ namespace Atomex.Blockchain.Tezos
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
             int page,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var requestUri = $"v3/operations/{address}?type=Transaction&p={page}"; // TODO: use all types!!!
 
@@ -245,7 +245,7 @@ namespace Atomex.Blockchain.Tezos
 
         public async Task<Result<bool>> IsActiveAddress(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var requestUri = $"v3/number_operations/{address}?type=Transaction";
 

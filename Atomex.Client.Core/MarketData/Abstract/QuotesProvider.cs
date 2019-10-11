@@ -74,7 +74,7 @@ namespace Atomex.MarketData.Abstract
 
         public abstract Quote GetQuote(string currency, string baseCurrency);
 
-        protected abstract Task UpdateAsync(CancellationToken cancellation = default(CancellationToken));
+        protected abstract Task UpdateAsync(CancellationToken cancellation = default);
 
         protected void RiseQuotesUpdatedEvent(EventArgs args)
         {

@@ -14,7 +14,7 @@ namespace Atomex.Blockchain.Abstract
         /// <returns>Balance if success, otherwise error</returns>
         Task<Result<decimal>> GetBalanceAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets transaction with <paramref name="txId"/>
@@ -24,7 +24,7 @@ namespace Atomex.Blockchain.Abstract
         /// <returns>Transaction if success, otherwise error</returns>
         Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Broadcast <paramref name="transaction"/> to network
@@ -34,6 +34,6 @@ namespace Atomex.Blockchain.Abstract
         /// <returns>Transaction id if success, otherwise error</returns>
         Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
     }
 }

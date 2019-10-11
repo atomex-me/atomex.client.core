@@ -34,7 +34,7 @@ namespace Atomex.Wallet.Ethereum
             decimal amount,
             decimal fee,
             decimal feePrice,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var selectedAddresses = SelectUnspentAddresses(
                     from: from.ToList(),
@@ -140,7 +140,7 @@ namespace Atomex.Wallet.Ethereum
             decimal amount,
             decimal fee,
             decimal feePrice,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
                 .GetUnspentAddressesAsync(Currency)
@@ -161,7 +161,7 @@ namespace Atomex.Wallet.Ethereum
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
                 .GetUnspentAddressesAsync(Currency)
@@ -190,7 +190,7 @@ namespace Atomex.Wallet.Ethereum
         public override async Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
                 .GetUnspentAddressesAsync(Currency)
@@ -238,7 +238,7 @@ namespace Atomex.Wallet.Ethereum
 
         protected override async Task ResolveTransactionTypeAsync(
             IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             if (!(tx is EthereumTransaction ethTx))
                 throw new ArgumentException("Invalid tx type", nameof(tx));
@@ -279,7 +279,7 @@ namespace Atomex.Wallet.Ethereum
         #region Balances
 
         public override async Task UpdateBalanceAsync(
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var txs = (await DataRepository
                 .GetTransactionsAsync(Currency)
@@ -368,7 +368,7 @@ namespace Atomex.Wallet.Ethereum
 
         public override async Task UpdateBalanceAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var txs = (await DataRepository
                 .GetTransactionsAsync(Currency)
@@ -449,7 +449,7 @@ namespace Atomex.Wallet.Ethereum
             FeeUsagePolicy feeUsagePolicy,
             AddressUsagePolicy addressUsagePolicy,
             BlockchainTransactionType transactionType,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
                 .GetUnspentAddressesAsync(Currency)

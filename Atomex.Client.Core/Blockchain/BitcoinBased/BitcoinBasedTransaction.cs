@@ -92,7 +92,7 @@ namespace Atomex.Blockchain.BitcoinBased
             IAddressResolver addressResolver,
             IKeyStorage keyStorage,
             IEnumerable<ITxOutput> spentOutputs,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             if (spentOutputs == null)
                 throw new ArgumentNullException(nameof(spentOutputs));

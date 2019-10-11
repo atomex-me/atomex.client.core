@@ -180,13 +180,13 @@ namespace Atomex.Blockchain.Insight
 
         public async Task<Result<decimal>> GetBalanceAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
-            var requestUri = $"api/addr/{address}/balance";
-
             await RequestLimitControl
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
+
+            var requestUri = $"api/addr/{address}/balance";
 
             return await HttpHelper.GetAsyncResult(
                     baseUri: BaseUri,
@@ -197,16 +197,89 @@ namespace Atomex.Blockchain.Insight
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<ITxPoint>> GetInputAsync(
+        public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
-            uint inputNo,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
-            var requestUri = $"api/tx/{txId}";
+            var rawTxResult = await GetRawTxAsync(txId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (rawTxResult.HasError)
+                return new Result<IBlockchainTransaction>(rawTxResult.Error);
+
+            if (string.IsNullOrEmpty(rawTxResult.Value))
+                return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
 
             await RequestLimitControl
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
+
+            var requestUri = $"api/tx/{txId}";
+
+            return await HttpHelper.GetAsyncResult(
+                    baseUri: BaseUri,
+                    requestUri: requestUri,
+                    responseHandler: (response, content) =>
+                    {
+                        var tx = JsonConvert.DeserializeObject<Tx>(content);
+
+                        var result = new BitcoinBasedTransaction(
+                            currency: Currency,
+                            tx: Transaction.Parse(rawTxResult.Value, Currency.Network),
+                            blockInfo: new BlockInfo
+                            {
+                                Confirmations = tx.Confirmations,
+                                BlockHash = null,
+                                BlockHeight = tx.BlockHeight.GetValueOrDefault(0),
+                                BlockTime = tx.BlockTime.ToUtcDateTime(),
+                                FirstSeen = tx.Time.ToUtcDateTime()
+                            },
+                            fees: (long) (tx.Fees * Currency.DigitsMultiplier)
+                        );
+
+                        return new Result<IBlockchainTransaction>(result);
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        public async Task<Result<string>> BroadcastAsync(
+            IBlockchainTransaction transaction,
+            CancellationToken cancellationToken = default)
+        {
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            var tx = (IBitcoinBasedTransaction)transaction;
+            var txHex = tx.ToBytes().ToHexString();
+
+            tx.State = BlockchainTransactionState.Pending;
+
+            const string requestUri = "api/tx/send";
+            var parameters = new Dictionary<string, string> { { "rawtx", txHex } };
+            var requestContent = new FormUrlEncodedContent(parameters);
+
+            return await HttpHelper.PostAsyncResult(
+                    baseUri: BaseUri,
+                    requestUri: requestUri,
+                    content: requestContent,
+                    responseHandler: (response, responseContent) => new Result<string>(
+                        JsonConvert.DeserializeObject<SendTxId>(responseContent).TxId),
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        public async Task<Result<ITxPoint>> GetInputAsync(
+            string txId,
+            uint inputNo,
+            CancellationToken cancellationToken = default)
+        {
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            var requestUri = $"api/tx/{txId}";
 
             return await HttpHelper.GetAsyncResult(
                     baseUri: BaseUri,
@@ -220,7 +293,7 @@ namespace Atomex.Blockchain.Insight
                         var txInput = new BitcoinBasedTxPoint(new IndexedTxIn
                         {
                             TxIn = new TxIn(new OutPoint(new uint256(txIn.TxId), txIn.VOut),
-                                new Script(Hex.FromString(txIn.ScriptSig.Hex))),
+                                Script.FromHex(txIn.ScriptSig.Hex)),
                             Index = txIn.N,
                             //WitScript = null,
                         });
@@ -234,13 +307,13 @@ namespace Atomex.Blockchain.Insight
         public async Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
-            var requestUri = $"api/addr/{address}/utxo";
-
             await RequestLimitControl
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
+
+            var requestUri = $"api/addr/{address}/utxo";
 
             return await HttpHelper.GetAsyncResult(
                     baseUri: BaseUri,
@@ -254,7 +327,7 @@ namespace Atomex.Blockchain.Insight
                                 fromTxHash: new uint256(u.TxId),
                                 fromOutputIndex: u.VOut,
                                 amount: new Money(u.Satoshis, MoneyUnit.Satoshi),
-                                scriptPubKey: new Script(Hex.FromString(u.ScriptPubKey))),
+                                scriptPubKey: Script.FromHex(u.ScriptPubKey)),
                             spentTxPoint: null));
 
                         return new Result<IEnumerable<ITxOutput>>(outputs);
@@ -266,7 +339,7 @@ namespace Atomex.Blockchain.Insight
         public async Task<Result<IEnumerable<ITxOutput>>> GetOutputsAsync(
             string address,
             string afterTxId = null,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             var requestUri = $"api/txs/?address={address}"; // todo: pagination?
 
@@ -302,7 +375,7 @@ namespace Atomex.Blockchain.Insight
                                 var amountDecimal = decimal.Parse(o.Value, CultureInfo.InvariantCulture);
                                 var amount = new Money(amountDecimal, MoneyUnit.BTC);
 
-                                var script = new Script(Hex.FromString(o.ScriptPubKey.Hex));
+                                var script = Script.FromHex(o.ScriptPubKey.Hex);
 
                                 outputs.Add(new BitcoinBasedTxOutput(
                                     coin: new Coin(
@@ -323,13 +396,13 @@ namespace Atomex.Blockchain.Insight
         public async Task<Result<ITxPoint>> IsTransactionOutputSpent(
             string txId,
             uint outputNo,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
-            var requestUri = $"api/tx/{txId}";
-
             await RequestLimitControl
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
+
+            var requestUri = $"api/tx/{txId}";
 
             return await HttpHelper.GetAsyncResult(
                     baseUri: BaseUri,
@@ -350,90 +423,15 @@ namespace Atomex.Blockchain.Insight
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public async Task<Result<string>> GetRawTxAsync(
             string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
-            var rawTxResult = await GetRawTx(txId, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (rawTxResult.HasError)
-                return new Result<IBlockchainTransaction>(rawTxResult.Error);
-
-            if (string.IsNullOrEmpty(rawTxResult.Value))
-                return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
-
-            var requestUri = $"api/tx/{txId}";
-
             await RequestLimitControl
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult(
-                    baseUri: BaseUri,
-                    requestUri: requestUri,
-                    responseHandler: (response, content) =>
-                    {
-                        var tx = JsonConvert.DeserializeObject<Tx>(content);
-
-                        var result = new BitcoinBasedTransaction(
-                            currency: Currency,
-                            tx: Transaction.Parse(rawTxResult.Value, Currency.Network),
-                            blockInfo: new BlockInfo
-                            {
-                                Confirmations = tx.Confirmations,
-                                BlockHash = null,
-                                BlockHeight = tx.BlockHeight.GetValueOrDefault(0),
-                                BlockTime = tx.BlockTime.ToUtcDateTime(),
-                                FirstSeen = tx.Time.ToUtcDateTime()
-                            },
-                            fees: (long) (tx.Fees * Currency.DigitsMultiplier)
-                        );
-
-                        return new Result<IBlockchainTransaction>(result);
-                    },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        public async Task<Result<string>> BroadcastAsync(
-            IBlockchainTransaction transaction,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
-            var tx = (IBitcoinBasedTransaction)transaction;
-            var txHex = tx.ToBytes().ToHexString();
-
-            tx.State = BlockchainTransactionState.Pending;
-
-            const string requestUri = "api/tx/send";
-
-            var parameters = new Dictionary<string, string> {{"rawtx", txHex}};
-
-            var requestContent = new FormUrlEncodedContent(parameters);
-
-            await RequestLimitControl
-                .Wait(cancellationToken)
-                .ConfigureAwait(false);
-
-            return await HttpHelper.PostAsyncResult(
-                    baseUri: BaseUri,
-                    requestUri: requestUri,
-                    content: requestContent,
-                    responseHandler: (response, responseContent) => new Result<string>(
-                        JsonConvert.DeserializeObject<SendTxId>(responseContent).TxId),
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        public async Task<Result<string>> GetRawTx(
-            string txId,
-            CancellationToken cancellationToken = default(CancellationToken))
-        {
             var requestUri = $"api/rawtx/{txId}";
-
-            await RequestLimitControl
-                .Wait(cancellationToken)
-                .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult(
                     baseUri: BaseUri,

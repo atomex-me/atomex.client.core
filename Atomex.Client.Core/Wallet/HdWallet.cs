@@ -94,7 +94,7 @@ namespace Atomex.Wallet
         public Task<byte[]> SignAsync(
             byte[] data,
             WalletAddress address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));
@@ -138,7 +138,7 @@ namespace Atomex.Wallet
             IInOutTransaction tx,
             IEnumerable<ITxOutput> spentOutputs,
             IAddressResolver addressResolver,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             if (tx == null)
                 throw new ArgumentNullException(nameof(tx));
@@ -170,7 +170,7 @@ namespace Atomex.Wallet
         public async Task<bool> SignAsync(
             IAddressBasedTransaction tx,
             WalletAddress address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             if (tx == null)
                 throw new ArgumentNullException(nameof(tx));
@@ -198,7 +198,7 @@ namespace Atomex.Wallet
         public Task<byte[]> SignHashAsync(
             byte[] hash,
             WalletAddress address,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             if (hash == null)
                 throw new ArgumentNullException(nameof(hash));
@@ -238,7 +238,7 @@ namespace Atomex.Wallet
         public Task<byte[]> SignByServiceKeyAsync(
             byte[] data,
             uint keyIndex,
-            CancellationToken cancellationToken = default(CancellationToken))
+            CancellationToken cancellationToken = default)
         {
             if (data == null)
                 throw new ArgumentNullException(nameof(data));

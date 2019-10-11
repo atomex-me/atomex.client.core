@@ -10,15 +10,15 @@ namespace Atomex.Blockchain.Tezos
     {
         Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
             int page,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
 
         Task<Result<bool>> IsActiveAddress(
             string address,
-            CancellationToken cancellationToken = default(CancellationToken));
+            CancellationToken cancellationToken = default);
     }
 }
