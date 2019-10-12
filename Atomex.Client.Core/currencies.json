@@ -128,7 +128,7 @@
       "RefundStorageLimit": 257,
       "ActivationFee": 257000,
       "BlockchainApi": "TzScan",
-      "BlockchainApiBaseUri": "https://api.alphanet.tzscan.io/",
+      "BlockchainApiBaseUri": "http://api.alphanet.tzscan.io/",
       "BlockchainRpcNodeUri": "http://alphanet-node.tzscan.io:80",
       "SwapContract": "KT1WhouvVKZFH94VXj9pa8v4szvfrBwXoBUj",
       "TxExplorerUri": "https://alphanet.tzscan.io/",

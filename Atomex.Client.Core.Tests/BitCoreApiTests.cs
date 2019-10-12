@@ -2,7 +2,6 @@
 using System.Linq;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Blockchain.BitCore;
-using NBitcoin;
 using Xunit;
 
 namespace Atomex.Client.Core.Tests

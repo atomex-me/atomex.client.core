@@ -213,12 +213,12 @@ namespace Atomex.Blockchain.BitCore
             tx.State = BlockchainTransactionState.Pending;
 
             var requestUri = $"api/{Currency.Name}/{Currency.Network.ToString().ToLower()}/tx/send";
-            var requestContent = JsonConvert.ToString(new RawTx {RawTxHex = txHex});
-            
+            var requestContent = JsonConvert.SerializeObject(new RawTx {RawTxHex = txHex});
+
             return await HttpHelper.PostAsyncResult(
                     baseUri: BaseUri,
                     requestUri: requestUri,
-                    content: new StringContent(requestContent, Encoding.UTF8),
+                    content: new StringContent(requestContent, Encoding.UTF8, "application/json"),
                     responseHandler: (response, content) => new Result<string>(JsonConvert.DeserializeObject<SendTxId>(content).TxId),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
