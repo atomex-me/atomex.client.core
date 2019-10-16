@@ -14,7 +14,7 @@ namespace Atomex.Swaps.Abstract
 
         protected const int DefaultInitiatorLockTimeInSeconds = 7 * 60 * 60; // 7 hours
         protected const int DefaultAcceptorLockTimeInSeconds = 3 * 60 * 60; // 3 hours
-        protected const int DefaultGetTransactionAttempts = 5;
+        protected const int DefaultGetTransactionAttempts = 10;
 
         protected static TimeSpan DefaultConfirmationCheckInterval = TimeSpan.FromSeconds(60);
         protected static TimeSpan DefaultOutputSpentCheckInterval = TimeSpan.FromSeconds(60);

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using System.Net;
 using System.Threading.Tasks;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
@@ -444,14 +445,14 @@ namespace Atomex.Swaps.BitcoinBased
         {
             var currency = swap.PurchasedCurrency;
 
-            var asyncResult = await currency.BlockchainApi
+            var broadcastResult = await currency.BlockchainApi
                 .BroadcastAsync(redeemTx)
                 .ConfigureAwait(false);
 
-            if (asyncResult.HasError)
-                throw new Exception($"Error while broadcast transaction with code {asyncResult.Error.Code} and description {asyncResult.Error.Description}");
+            if (broadcastResult.HasError)
+                throw new Exception($"Error while broadcast transaction with code {broadcastResult.Error.Code} and description {broadcastResult.Error.Description}");
 
-            var txId = asyncResult.Value;
+            var txId = broadcastResult.Value;
 
             if (txId == null)
                 throw new Exception("Transaction Id is null");
@@ -824,20 +825,20 @@ namespace Atomex.Swaps.BitcoinBased
             {
                 attempts++;
 
-                var asyncResult = await currency.BlockchainApi
+                var txResult = await currency.BlockchainApi
                     .GetTransactionAsync(txId)
                     .ConfigureAwait(false);
 
-                if (asyncResult.HasError)
+                if (txResult.HasError && txResult.Error?.Code != (int)HttpStatusCode.NotFound)
                 {
                     Log.Error("Error while get transaction {@txId} with code {@code} and description {@description}", 
                         txId,
-                        asyncResult.Error.Code, 
-                        asyncResult.Error.Description);
+                        txResult.Error.Code,
+                        txResult.Error.Description);
                     return null;
                 }
 
-                var tx = asyncResult.Value;
+                var tx = txResult.Value;
 
                 if (tx != null)
                     return (IBitcoinBasedTransaction)tx;
