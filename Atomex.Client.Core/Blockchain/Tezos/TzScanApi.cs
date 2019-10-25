@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -198,31 +199,7 @@ namespace Atomex.Blockchain.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            var txs = new List<IBlockchainTransaction>();
-
-            for (var p = 0; ; p++)
-            {
-                var result = await GetTransactionsAsync(address, p, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (result.HasError)
-                    return result;
-
-                if (result.Value == null || !result.Value.Any())
-                    break;
-
-                txs.AddRange(result.Value);
-            }
-
-            return new Result<IEnumerable<IBlockchainTransaction>>(txs);
-        }
-
-        public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
-            string address,
-            int page,
-            CancellationToken cancellationToken = default)
-        {
-            var requestUri = $"v3/operations/{address}?type=Transaction&p={page}"; // TODO: use all types!!!
+            var requestUri = $"v3/operations/{address}?type=Transaction"; // TODO: use all types!!!
 
             return await HttpHelper.GetAsyncResult(
                     baseUri: _apiBaseUrl,
@@ -234,9 +211,9 @@ namespace Atomex.Blockchain.Tezos
 
                         var txs = new List<IBlockchainTransaction>();
 
-                        foreach (var operation in operations)    
+                        foreach (var operation in operations)
                             txs.AddRange(TxsFromOperation(operation));
-                        
+
                         return new Result<IEnumerable<IBlockchainTransaction>>(txs);
                     },
                     cancellationToken: cancellationToken)
@@ -307,12 +284,12 @@ namespace Atomex.Blockchain.Tezos
 
                         From = operation.Source.Tz,
                         To = operation.Destination.Tz,
-                        Amount = decimal.Parse(operation.Amount),
+                        Amount = decimal.Parse(operation.Amount, CultureInfo.InvariantCulture),
                         Fee = operation.Fee,
-                        GasLimit = decimal.Parse(operation.GasLimit),
-                        StorageLimit = decimal.Parse(operation.StorageLimit),
+                        GasLimit = decimal.Parse(operation.GasLimit, CultureInfo.InvariantCulture),
+                        StorageLimit = decimal.Parse(operation.StorageLimit, CultureInfo.InvariantCulture),
                         Burn = operation.Burn,
-                        Params = operation.Parameters != null
+                        Params = !string.IsNullOrEmpty(operation.Parameters)
                             ? JObject.Parse(operation.Parameters)
                             : null,
 

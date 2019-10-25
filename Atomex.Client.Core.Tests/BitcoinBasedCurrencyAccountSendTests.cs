@@ -34,17 +34,8 @@ namespace Atomex.Client.Core.Tests
                 .Select(c => new BitcoinBasedTxOutput(c));
         }
 
-        private T GetCurrency<T>(IBlockchainApi api = null) where T : Currency
-        {
-            var currency = Common.CurrenciesTestNet.Get<T>();
-
-            if (api != null)
-                currency.BlockchainApi = api;
-
-            return currency;
-        }
-
         private Error Send(
+            BitcoinBasedCurrency currency,
             decimal available,
             decimal amount,
             decimal fee,
@@ -55,7 +46,8 @@ namespace Atomex.Client.Core.Tests
             var apiMock = new Mock<IInOutBlockchainApi>();
             apiSetup?.Invoke(apiMock);
 
-            var currency = GetCurrency<Bitcoin>(apiMock.Object);
+            currency.BlockchainApi = apiMock.Object;
+
             var wallet = new HdWallet(Network.TestNet);
             var fromAddress = wallet.GetAddress(currency, 0, 0);
             var fromOutputs = GetOutputs(fromAddress.Address, NBitcoin.Network.TestNet, currency.CoinToSatoshi(available)).ToList();
@@ -77,18 +69,28 @@ namespace Atomex.Client.Core.Tests
                 .WaitForResult();
         }
 
-        [Fact]
-        public void SendTest()
-        {
-            const decimal available = 0.00100000m;
-            const decimal amount = 0.00090000m;
-            const decimal fee = 0.00010000m;
+        public static IEnumerable<object[]> SendTestData =>
+            new List<object[]>
+            {
+                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>(), 0.001m, 0.0009m, 0.0001m, DustUsagePolicy.Warning},
+                new object[] {Common.CurrenciesTestNet.Get<Litecoin>(), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.Warning}
+            };
 
+        [Theory]
+        [MemberData(nameof(SendTestData))]
+        public void SendTest(
+            BitcoinBasedCurrency currency,
+            decimal available,
+            decimal amount,
+            decimal fee,
+            DustUsagePolicy dustUsagePolicy)
+        {
             var error = Send(
+                currency: currency,
                 available: available,
                 amount: amount,
                 fee: fee,
-                dustUsagePolicy: DustUsagePolicy.Warning,
+                dustUsagePolicy: dustUsagePolicy,
                 apiSetup: apiMock =>
                 {
                     apiMock.Setup(a => a.BroadcastAsync(It.IsAny<IBlockchainTransaction>(), CancellationToken.None))
@@ -103,15 +105,24 @@ namespace Atomex.Client.Core.Tests
             Assert.Null(error);
         }
 
-        [Fact]
-        public void SendDustAmountFailTest()
-        {
-            const decimal available = 0.00100000m;
-            const decimal amount = 0.00000090m; // dust amount
-            const decimal fee = 0.00010000m;
-            const DustUsagePolicy dustUsagePolicy = DustUsagePolicy.Warning;
+        public static IEnumerable<object[]> SendDustAmountFailTestData =>
+            new List<object[]>
+            {
+                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>(), 0.001m, 0.0000009m, 0.0001m, DustUsagePolicy.Warning},
+                new object[] {Common.CurrenciesTestNet.Get<Litecoin>(), 0.001m, 0.0000009m, 0.0001m, DustUsagePolicy.Warning}
+            };
 
+        [Theory]
+        [MemberData(nameof(SendDustAmountFailTestData))]
+        public void SendDustAmountFailTest(
+            BitcoinBasedCurrency currency,
+            decimal available,
+            decimal amount,
+            decimal fee,
+            DustUsagePolicy dustUsagePolicy)
+        {
             var error = Send(
+                currency: currency,
                 available: available,
                 amount: amount,
                 fee: fee,
@@ -121,15 +132,24 @@ namespace Atomex.Client.Core.Tests
             Assert.Equal(Errors.InsufficientAmount, error.Code);
         }
 
-        [Fact]
-        public void SendInsufficientFundsFailTest()
-        {
-            const decimal available = 0.00100000m;
-            const decimal amount = 0.00090001m; // amount + fee = 100001 > 100000
-            const decimal fee = 0.00010000m;
-            const DustUsagePolicy dustUsagePolicy = DustUsagePolicy.Warning;
+        public static IEnumerable<object[]> SendInsufficientFundsFailTestData =>
+            new List<object[]>
+            {
+                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>(), 0.001m, 0.00090001m, 0.0001m, DustUsagePolicy.Warning},
+                new object[] {Common.CurrenciesTestNet.Get<Litecoin>(), 0.0011m, 0.0010001m, 0.0001m, DustUsagePolicy.Warning}
+            };
 
+        [Theory]
+        [MemberData(nameof(SendInsufficientFundsFailTestData))]
+        public void SendInsufficientFundsFailTest(
+            BitcoinBasedCurrency currency,
+            decimal available,
+            decimal amount,
+            decimal fee,
+            DustUsagePolicy dustUsagePolicy)
+        {
             var error = Send(
+                currency: currency,
                 available: available,
                 amount: amount,
                 fee: fee,
@@ -139,15 +159,24 @@ namespace Atomex.Client.Core.Tests
             Assert.Equal(Errors.InsufficientFunds, error.Code);
         }
 
-        [Fact]
-        public void SendDustChangeFailTest()
-        {
-            const decimal available = 0.00100000m;
-            const decimal amount = 0.00090000m; // change {500} is dust 
-            const decimal fee = 0.00009500m;
-            const DustUsagePolicy dustUsagePolicy = DustUsagePolicy.Warning;
+        public static IEnumerable<object[]> SendDustChangeFailTestData =>
+            new List<object[]>
+            {
+                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>(), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.Warning},
+                new object[] {Common.CurrenciesTestNet.Get<Litecoin>(), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.Warning}
+            };
 
+        [Theory]
+        [MemberData(nameof(SendDustChangeFailTestData))]
+        public void SendDustChangeFailTest(
+            BitcoinBasedCurrency currency,
+            decimal available,
+            decimal amount,
+            decimal fee,
+            DustUsagePolicy dustUsagePolicy)
+        {
             var error = Send(
+                currency: currency,
                 available: available,
                 amount: amount,
                 fee: fee,
@@ -157,21 +186,32 @@ namespace Atomex.Client.Core.Tests
             Assert.Equal(Errors.InsufficientAmount, error.Code);
         }
 
-        [Fact]
-        public void SendDustAsAmountTest()
+        public static IEnumerable<object[]> SendDustAsAmountTestData =>
+            new List<object[]>
+            {
+                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>(), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.AddToDestination},
+                new object[] {Common.CurrenciesTestNet.Get<Litecoin>(), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.AddToDestination}
+            };
+
+        [Theory]
+        [MemberData(nameof(SendDustAsAmountTestData))]
+        public void SendDustAsAmountTest(
+            BitcoinBasedCurrency currency,
+            decimal available,
+            decimal amount,
+            decimal fee,
+            DustUsagePolicy dustUsagePolicy)
         {
-            const decimal available = 0.00100000m;
-            const decimal amount = 0.00090000m; // change {500} is dust and will be add to amount {90000 + 500}
-            const decimal fee = 0.00009500m;
-            const DustUsagePolicy dustUsagePolicy = DustUsagePolicy.AddToDestination;
+            var change = available - amount - fee;
 
             var broadcastCallback = new Action<IBlockchainTransaction, CancellationToken>((tx, token) =>
             {
                 var btcBasedTx = (IBitcoinBasedTransaction) tx;
-                Assert.NotNull(btcBasedTx.Outputs.FirstOrDefault(o => o.Value == 90500L));
+                Assert.NotNull(btcBasedTx.Outputs.FirstOrDefault(o => o.Value == currency.CoinToSatoshi(amount + change)));
             });
 
             var error = Send(
+                currency: currency,
                 available: available,
                 amount: amount,
                 fee: fee,
@@ -191,21 +231,32 @@ namespace Atomex.Client.Core.Tests
             Assert.Null(error);
         }
 
-        [Fact]
-        public void SendDustAsFeeTest()
+        public static IEnumerable<object[]> SendDustAsFeeTestData =>
+            new List<object[]>
+            {
+                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>(), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.AddToFee},
+                new object[] {Common.CurrenciesTestNet.Get<Litecoin>(), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.AddToFee}
+            };
+
+        [Theory]
+        [MemberData(nameof(SendDustAsFeeTestData))]
+        public void SendDustAsFeeTest(
+            BitcoinBasedCurrency currency,
+            decimal available,
+            decimal amount,
+            decimal fee,
+            DustUsagePolicy dustUsagePolicy)
         {
-            const decimal available = 0.00100000m;
-            const decimal amount = 0.00090000m; 
-            const decimal fee = 0.00009500m; // change {500} is dust and will be add to fee {9500 + 500}
-            const DustUsagePolicy dustUsagePolicy = DustUsagePolicy.AddToFee;
+            var change = available - amount - fee;
 
             var broadcastCallback = new Action<IBlockchainTransaction, CancellationToken>((tx, token) =>
             {
                 var btcBasedTx = (IBitcoinBasedTransaction)tx;
-                Assert.True(btcBasedTx.Fees == 10000L);
+                Assert.True(btcBasedTx.Fees == currency.CoinToSatoshi(fee + change));
             });
 
             var error = Send(
+                currency: currency,
                 available: available,
                 amount: amount,
                 fee: fee,

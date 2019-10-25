@@ -184,7 +184,8 @@ namespace Atomex.Client.Core.Tests
             uint spentIndex)
         {
             var api = new BitCoreApi(currency, baseUri);
-            var spentPointResult = await api.IsTransactionOutputSpent(txId, outputNo);
+            var spentPointResult = await api
+                .IsTransactionOutputSpent(txId, outputNo);
 
             Assert.False(spentPointResult.HasError, spentPointResult.Error?.Description ?? "");
 

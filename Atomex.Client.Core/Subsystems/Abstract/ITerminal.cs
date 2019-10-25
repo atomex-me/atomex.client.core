@@ -16,13 +16,13 @@ namespace Atomex.Subsystems.Abstract
         event EventHandler<TerminalErrorEventArgs> Error;
         event EventHandler<OrderEventArgs> OrderReceived;
         event EventHandler<MarketDataEventArgs> QuotesUpdated;
-        //event EventHandler<MarketDataEventArgs> OrderBookUpdated;
         event EventHandler<SwapEventArgs> SwapUpdated;
+
+        IAccount Account { get; }
 
         bool IsServiceConnected(TerminalService service);
         Task StartAsync();
         Task StopAsync();
-        Task ChangeAccountAsync(IAccount account, bool restart = true);
 
         void OrderSendAsync(Order order);
         void OrderCancelAsync(Order order);

@@ -235,7 +235,7 @@ namespace Atomex.Wallet.BitcoinBased
                     if (txResult.HasError)
                     {
                         Log.Error(
-                            "Error while get transactions {@txId} with code {@code} and description {@description}",
+                            "Error while get transactions {@txId}. Code: {@code}. Description: {@desc}",
                             txId,
                             txResult.Error.Code,
                             txResult.Error.Description);

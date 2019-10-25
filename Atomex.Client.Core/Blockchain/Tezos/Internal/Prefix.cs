@@ -9,5 +9,6 @@
         public static readonly byte[] Edpk = { 13, 15, 37, 217 };
         public static readonly byte[] Edsk = { 43, 246, 78, 7 };
         public static readonly byte[] Edsig = { 9, 245, 205, 134, 18 };
+        public static readonly byte[] b = { 1, 52 };
     }
 }

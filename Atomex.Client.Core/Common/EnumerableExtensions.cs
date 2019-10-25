@@ -1,0 +1,25 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace Atomex.Common
+{
+    public static class EnumerableExtensions
+    {
+        public static T MaxBy<T, TKey>(this IEnumerable<T> source, Func<T, TKey> selector)
+            where TKey : IComparable
+        {
+            var maxElement = source.First();
+            var maxKey = selector(maxElement);
+
+            foreach (var element in source)
+            {
+                var key = selector(element);
+                if (key.CompareTo(maxKey) > 0)
+                    maxElement = element;
+            }
+
+            return maxElement;
+        }
+    }
+}

@@ -9,24 +9,23 @@ namespace Atomex
 {
     public interface IAtomexApp
     {
-        event EventHandler<AccountChangedEventArgs> AccountChanged;
+        event EventHandler<TerminalChangedEventArgs> TerminalChanged;
 
+        ITerminal Terminal { get; }
         IAccount Account { get; }
         ICurrencyQuotesProvider QuotesProvider { get; }
         ICurrencyOrderBookProvider OrderBooksProvider { get; }
-        ITerminal Terminal { get; }
         ICurrenciesProvider CurrenciesProvider { get; }
         ISymbolsProvider SymbolsProvider { get; }
         bool HasQuotesProvider { get; }
 
+        IAtomexApp Start();
+        IAtomexApp Stop();
+        IAtomexApp UseTerminal(ITerminal terminal, bool restart = false);
         IAtomexApp UseCurrenciesProvider(ICurrenciesProvider currenciesProvider);
         IAtomexApp UseSymbolsProvider(ISymbolsProvider symbolsProvider);
         IAtomexApp UseCurrenciesUpdater(ICurrenciesUpdater currenciesUpdater);
-        IAtomexApp UseAccount(IAccount account, bool restartTerminal = false);
         IAtomexApp UseQuotesProvider(ICurrencyQuotesProvider quotesProvider);
         IAtomexApp UseOrderBooksProvider(ICurrencyOrderBookProvider orderBooksProvider);
-        IAtomexApp UseTerminal(ITerminal terminal);
-        IAtomexApp Start();
-        IAtomexApp Stop();
     }
 }

@@ -85,7 +85,8 @@ namespace Atomex.Blockchain.Tezos
             var gas = GasLimit.ToString(CultureInfo.InvariantCulture);
             var storage = StorageLimit.ToString(CultureInfo.InvariantCulture);
 
-            if (managerKey["key"] == null)
+           // if (managerKey["key"] == null)
+            if (managerKey.Value<string>() == null)
             {
                 var revealOpCounter = await TezosCounter.Instance
                     .GetCounter(xtz, From, Head)
@@ -113,7 +114,7 @@ namespace Atomex.Blockchain.Tezos
             {
                 ["kind"] = OperationType.Transaction,
                 ["source"] = From,
-                ["fee"] = Fee.ToString(CultureInfo.InvariantCulture),
+                ["fee"] = ((int)Fee).ToString(CultureInfo.InvariantCulture),
                 ["counter"] = counter.ToString(),
                 ["gas_limit"] = gas,
                 ["storage_limit"] = storage,
@@ -125,20 +126,31 @@ namespace Atomex.Blockchain.Tezos
 
             if (Params != null)
                 transaction["parameters"] = Params;
-            else
-            {
-                var parameters = new JObject
-                {
-                    ["prim"] = "Unit",
-                    ["args"] = new JArray()
-                };
 
-                transaction["parameters"] = parameters;
+            var fill = await rpc
+                .AutoFillOperations(xtz, Head, Operations)
+                .ConfigureAwait(false);
+
+            if (!fill)
+            {
+                Log.Error("Transaction autofilling error");
+                return false;
             }
 
             var forgedOpGroup = await rpc
                 .ForgeOperations(Head, Operations)
                 .ConfigureAwait(false);
+
+            var forgedOpGroupLocal = Forge.ForgeOperationsLocal(Head, Operations);
+
+            if (true)  //if (config.CheckForge == true) add option for higher security tezos mode to config
+            {
+                if (forgedOpGroupLocal.ToString() != forgedOpGroup.ToString())
+                {
+                    Log.Error("Local and remote forge results differ");
+                    return false;
+                }
+            }
 
             SignedMessage = TezosSigner.SignHash(
                 data: Hex.FromString(forgedOpGroup.ToString()),

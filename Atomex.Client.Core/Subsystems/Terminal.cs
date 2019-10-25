@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Api.Proto;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Helpers;
 using Atomex.Common;
-using Atomex.Common.Abstract;
 using Atomex.Core;
 using Atomex.Core.Entities;
 using Atomex.MarketData;
@@ -29,47 +30,27 @@ namespace Atomex.Subsystems
         public event EventHandler<TerminalErrorEventArgs> Error;
         public event EventHandler<OrderEventArgs> OrderReceived;
         public event EventHandler<MarketDataEventArgs> QuotesUpdated;
-        //public event EventHandler<MarketDataEventArgs> OrderBookUpdated;
         public event EventHandler<SwapEventArgs> SwapUpdated;
 
-        private ProtoSchemes Schemes { get; set; }
+        private readonly CancellationTokenSource _cts;
         private ExchangeWebClient ExchangeClient { get; set; }
         private MarketDataWebClient MarketDataClient { get; set; }
 
+        public IAccount Account { get; set; }
         private IConfiguration Configuration { get; }
-        private IAccount Account { get; set; }
         private IMarketDataRepository MarketDataRepository { get; set; }
         private ClientSwapManager SwapManager { get; set; }
-        private IBackgroundTaskPerformer TaskPerformer { get; }
 
         private TimeSpan TransactionConfirmationCheckInterval { get; } = TimeSpan.FromSeconds(45);
 
-        public Terminal(
-            IConfiguration configuration,
-            IAccount account = null)
+        public Terminal(IConfiguration configuration, IAccount account)
         {
             Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            TaskPerformer = new BackgroundTaskPerformer();
-            Account = account;
 
-            if (Account != null)
-                Account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
-        }
+            Account = account ?? throw new ArgumentNullException(nameof(account));
+            Account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
 
-        public async Task ChangeAccountAsync(IAccount account, bool restart = true)
-        {
-            if (restart)
-                await StopAsync()
-                    .ConfigureAwait(false);
-
-            Account = account;
-
-            if (Account != null)
-                Account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
-
-            if (restart && Account != null)
-                await StartAsync()
-                    .ConfigureAwait(false);
+            _cts = new CancellationTokenSource();
         }
 
         public bool IsServiceConnected(TerminalService service)
@@ -95,7 +76,7 @@ namespace Atomex.Subsystems
             var configuration = Configuration.GetSection($"Services:{Account.Network}");
 
             // init schemes
-            Schemes = new ProtoSchemes(
+            var schemes = new ProtoSchemes(
                 currencies: Account.Currencies,
                 symbols: Account.Symbols);
 
@@ -103,7 +84,7 @@ namespace Atomex.Subsystems
             MarketDataRepository = new MarketDataRepository(Account.Symbols);
 
             // init exchange client
-            ExchangeClient = new ExchangeWebClient(configuration, Schemes);
+            ExchangeClient = new ExchangeWebClient(configuration, schemes);
             ExchangeClient.Connected     += OnExchangeConnectedEventHandler;
             ExchangeClient.Disconnected  += OnExchangeDisconnectedEventHandler;
             ExchangeClient.AuthOk        += OnExchangeAuthOkEventHandler;
@@ -113,7 +94,7 @@ namespace Atomex.Subsystems
             ExchangeClient.SwapReceived  += OnSwapReceivedEventHandler;
 
             // init market data client
-            MarketDataClient = new MarketDataWebClient(configuration, Schemes);
+            MarketDataClient = new MarketDataWebClient(configuration, schemes);
             MarketDataClient.Connected        += OnMarketDataConnectedEventHandler;
             MarketDataClient.Disconnected     += OnMarketDataDisconnectedEventHandler;
             MarketDataClient.AuthOk           += OnMarketDataAuthOkEventHandler;
@@ -123,33 +104,26 @@ namespace Atomex.Subsystems
             MarketDataClient.EntriesReceived  += OnEntriesReceivedEventHandler;
             MarketDataClient.SnapshotReceived += OnSnapshotReceivedEventHandler;
 
+            // start services
+            var exchangeConnectTask = ExchangeClient.ConnectAsync();
+            var marketDataConnectTask = MarketDataClient.ConnectAsync();
+            await Task.WhenAll(exchangeConnectTask, marketDataConnectTask)
+                .ConfigureAwait(false);
+
+            // start async balance update task
+            BalanceUpdateLoopAsync(_cts.Token).FireAndForget();
+
+            // start async unconfirmed transactions tracking
+            TrackUnconfirmedTransactionsAsync(_cts.Token).FireAndForget();
+
             // init swap manager
             SwapManager = new ClientSwapManager(
                 account: Account,
-                swapClient: ExchangeClient,
-                taskPerformer: TaskPerformer);
+                swapClient: ExchangeClient);
             SwapManager.SwapUpdated += (sender, args) => SwapUpdated?.Invoke(sender, args);
 
-            // run services
-            await Task.WhenAll(
-                    ExchangeClient.ConnectAsync(),
-                    MarketDataClient.ConnectAsync())
-                .ConfigureAwait(false);
-
-            // run tracker
-            TaskPerformer.EnqueueTask(new BalanceUpdateTask
-            {
-                Account = Account,
-                Interval = TimeSpan.FromSeconds(Account.UserSettings.BalanceUpdateIntervalInSec)
-            });
-            TaskPerformer.Start();
-
-            // start to track unconfirmed transactions
-            await TrackUnconfirmedTransactionsAsync()
-                .ConfigureAwait(false);
-
-            // restore swaps
-            SwapManager.RestoreSwapsAsync().FireAndForget();
+            // start async swaps restore
+            SwapManager.RestoreSwapsAsync(_cts.Token).FireAndForget();
         }
 
         public async Task StopAsync()
@@ -159,12 +133,12 @@ namespace Atomex.Subsystems
 
             Log.Information("Stop terminal services");
 
-            TaskPerformer.Stop();
-            TaskPerformer.Clear();
+            // cancel all terminal background tasks
+            _cts.Cancel();
 
-            await Task.WhenAll(
-                ExchangeClient.CloseAsync(),
-                MarketDataClient.CloseAsync());
+            // close services
+            await Task.WhenAll(ExchangeClient.CloseAsync(), MarketDataClient.CloseAsync())
+                .ConfigureAwait(false);
 
             ExchangeClient.Connected     -= OnExchangeConnectedEventHandler;
             ExchangeClient.Disconnected  -= OnExchangeDisconnectedEventHandler;
@@ -231,7 +205,7 @@ namespace Atomex.Subsystems
         private void OnUnconfirmedTransactionAddedEventHandler(object sender, TransactionEventArgs e)
         {
             if (!e.Transaction.IsConfirmed && e.Transaction.State != BlockchainTransactionState.Failed)
-                TrackUnconfirmedTransaction(e.Transaction);
+                TrackTransactionAsync(e.Transaction, _cts.Token);
         }
 
         #endregion
@@ -382,9 +356,7 @@ namespace Atomex.Subsystems
             MarketDataRepository.ApplyEntries(args.Entries);
         }
 
-        private void OnSnapshotReceivedEventHandler(
-            object sender,
-            SnapshotEventArgs args)
+        private void OnSnapshotReceivedEventHandler(object sender, SnapshotEventArgs args)
         {
             Log.Verbose("Snapshot: {@snapshot}", args.Snapshot);
 
@@ -411,7 +383,34 @@ namespace Atomex.Subsystems
 
         #endregion
 
-        private async Task TrackUnconfirmedTransactionsAsync()
+        private Task BalanceUpdateLoopAsync(CancellationToken cancellationToken)
+        {
+            return Task.Run(async () =>
+            {
+                try
+                {
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        await new HdWalletScanner(Account)
+                            .ScanFreeAddressesAsync(cancellationToken)
+                            .ConfigureAwait(false);
+
+                        await Task.Delay(TimeSpan.FromSeconds(Account.UserSettings.BalanceUpdateIntervalInSec), cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("Balance autoupdate task canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Balance autoupdate task error");
+                }
+            });
+        }
+
+        private async Task TrackUnconfirmedTransactionsAsync(CancellationToken cancellationToken)
         {
             try
             {
@@ -421,7 +420,7 @@ namespace Atomex.Subsystems
 
                 foreach (var tx in txs)
                     if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
-                        TrackUnconfirmedTransaction(tx);
+                        TrackTransactionAsync(tx, cancellationToken).FireAndForget();
             }
             catch (Exception e)
             {
@@ -429,34 +428,56 @@ namespace Atomex.Subsystems
             }
         }
 
-        private void TrackUnconfirmedTransaction(IBlockchainTransaction transaction)
+        private Task TrackTransactionAsync(
+            IBlockchainTransaction transaction,
+            CancellationToken cancellationToken)
         {
-            TaskPerformer.EnqueueTask(new TransactionConfirmationCheckTask
+            return Task.Run(async () =>
             {
-                Currency = transaction.Currency,
-                Interval = TransactionConfirmationCheckInterval,
-                TxId = transaction.Id,
-                CompleteHandler = async task =>
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    try
-                    {
-                        if (!(task is TransactionConfirmationCheckTask confirmationCheckTask))
-                            return;
+                    var result = await transaction
+                        .IsTransactionConfirmed(
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
 
-                        await Account
-                            .UpsertTransactionAsync(confirmationCheckTask.Tx)
-                            .ConfigureAwait(false);
+                    if (result.HasError) // todo: additional reaction
+                        break;
 
-                        await Account
-                            .UpdateBalanceAsync(confirmationCheckTask.Currency)
-                            .ConfigureAwait(false);
-                    }
-                    catch (Exception e)
+                    if (result.Value.IsConfirmed)
                     {
-                        Log.Error(e, "Error in transaction confirmed handler");
+                        TransactionConfirmedHandler(result.Value.Transaction, cancellationToken);
+                        break;
                     }
+
+                    await Task.Delay(TransactionConfirmationCheckInterval, cancellationToken)
+                        .ConfigureAwait(false);
                 }
-            });
+            }, _cts.Token);
+        }
+
+        private async void TransactionConfirmedHandler(
+            IBlockchainTransaction tx,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await Account
+                    .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                await Account
+                    .UpdateBalanceAsync(tx.Currency, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("Transaction confirmation handler task canceled.");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error in transaction confirmed handler");
+            }
         }
 
         private void OnError(TerminalService service, string description)

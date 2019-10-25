@@ -62,6 +62,9 @@ namespace Atomex.Core.Entities
         public bool IsCanceled => StateFlags.HasFlag(SwapStateFlags.IsCanceled);
         public bool IsInitiator => IsInitiative;
         public bool IsAcceptor => !IsInitiative;
+        public bool HasPartyPayment => 
+            StateFlags.HasFlag(SwapStateFlags.HasPartyPayment) &&
+            StateFlags.HasFlag(SwapStateFlags.IsPartyPaymentConfirmed);
 
         private byte[] _secret;
         public byte[] Secret
@@ -109,7 +112,7 @@ namespace Atomex.Core.Entities
 
         public bool IsPurchasedCurrency(Currency currency) => PurchasedCurrency.Name == currency.Name;
 
-        public bool IsStatusChanged(SwapStatus status, Enum flag)
+        public bool IsStatusSet(SwapStatus status, Enum flag)
         {
             return !Status.HasFlag(flag) && status.HasFlag(flag);
         }

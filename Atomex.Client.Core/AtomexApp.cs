@@ -10,29 +10,70 @@ namespace Atomex
 {
     public class AtomexApp : IAtomexApp
     {
-        public event EventHandler<AccountChangedEventArgs> AccountChanged;
+        public event EventHandler<TerminalChangedEventArgs> TerminalChanged;
 
-        public IAccount Account { get; private set; }
+        public ITerminal Terminal { get; private set; }
+        public IAccount Account => Terminal?.Account;
         public ICurrencyQuotesProvider QuotesProvider { get; private set; }
         public ICurrencyOrderBookProvider OrderBooksProvider { get; private set; }
-        public ITerminal Terminal { get; private set; }
         public ICurrenciesProvider CurrenciesProvider { get; private set; }
         public ISymbolsProvider SymbolsProvider { get; private set; }
         public ICurrenciesUpdater CurrenciesUpdater { get; private set; }
-        public bool HasAccount => Account != null;
         public bool HasQuotesProvider => QuotesProvider != null;
         public bool HasOrderBooksProvider => OrderBooksProvider != null;
         public bool HasTerminal => Terminal != null;
 
-        public IAtomexApp UseAccount(IAccount account, bool restartTerminal = false)
+        public IAtomexApp Start()
         {
-            var previousAccount = Account;
-            Account = account;
-
-            AccountChanged?.Invoke(this, new AccountChangedEventArgs(previousAccount, Account));
-
             if (HasTerminal)
-                Terminal.ChangeAccountAsync(account, restartTerminal).FireAndForget();
+                StartTerminal();
+
+            if (HasQuotesProvider)
+                QuotesProvider.Start();
+
+            if (HasOrderBooksProvider)
+                OrderBooksProvider.Start();
+
+            CurrenciesUpdater?.UpdateAsync().FireAndForget();
+
+            return this;
+        }
+
+        public IAtomexApp Stop()
+        {
+            if (HasTerminal)
+                StopTerminal();
+
+            if (HasQuotesProvider)
+                QuotesProvider.Stop();
+
+            if (HasOrderBooksProvider)
+                OrderBooksProvider.Stop();
+
+            return this;
+        }
+
+        private void StartTerminal()
+        {
+            Terminal.StartAsync().FireAndForget();
+        }
+
+        private void StopTerminal()
+        {
+            Terminal.Account.Lock();
+            Terminal.StopAsync().FireAndForget();
+        }
+
+        public IAtomexApp UseTerminal(ITerminal terminal, bool restart = false)
+        {
+            if (HasTerminal)
+                StopTerminal();
+
+            Terminal = terminal;
+            TerminalChanged?.Invoke(this, new TerminalChangedEventArgs(Terminal));
+
+            if (HasTerminal && restart)
+                StartTerminal();
 
             return this;
         }
@@ -63,42 +104,6 @@ namespace Atomex
         public IAtomexApp UseOrderBooksProvider(ICurrencyOrderBookProvider orderBooksProvider)
         {
             OrderBooksProvider = orderBooksProvider;
-            return this;
-        }
-
-        public IAtomexApp UseTerminal(ITerminal terminal)
-        {
-            Terminal = terminal;
-            return this;
-        }
-
-        public IAtomexApp Start()
-        {
-            if (HasTerminal && HasAccount) // now client can connect only with authorization by wallet
-                Terminal.StartAsync().FireAndForget();
-
-            if (HasQuotesProvider)
-                QuotesProvider.Start();
-            
-            if (HasOrderBooksProvider)
-                OrderBooksProvider.Start();
-
-            CurrenciesUpdater?.UpdateAsync().FireAndForget();
-
-            return this;
-        }
-
-        public IAtomexApp Stop()
-        {
-            if (HasTerminal)
-                Terminal.StopAsync().FireAndForget();
-
-            if (HasQuotesProvider)
-                QuotesProvider.Stop();
-
-            if (HasOrderBooksProvider)
-                OrderBooksProvider.Stop();
-
             return this;
         }
     }

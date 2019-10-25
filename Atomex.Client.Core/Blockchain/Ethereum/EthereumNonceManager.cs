@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Common;
 
@@ -28,16 +29,19 @@ namespace Atomex.Blockchain.Ethereum
         private static EthereumNonceManager _instance;
         public static EthereumNonceManager Instance => _instance ?? (_instance = new EthereumNonceManager());
 
-        public async Task<Result<BigInteger>> GetNonceAsync(Atomex.Ethereum ethereum, string address)
+        public async Task<Result<BigInteger>> GetNonceAsync(
+            Atomex.Ethereum ethereum,
+            string address,
+            CancellationToken cancellationToken = default)
         {
-            var asyncResult = await ((IEthereumBlockchainApi)ethereum.BlockchainApi)
-                .GetTransactionCountAsync(address)
+            var transactionCountResult = await ((IEthereumBlockchainApi)ethereum.BlockchainApi)
+                .GetTransactionCountAsync(address, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (asyncResult.HasError)
-                return asyncResult;
+            if (transactionCountResult.HasError)
+                return transactionCountResult;
 
-            var nonce = asyncResult.Value;
+            var nonce = transactionCountResult.Value;
 
             lock (_syncRoot)
             {

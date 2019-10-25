@@ -1,5 +1,4 @@
 ﻿using System;
-using Atomex.Common.Abstract;
 using Atomex.Core.Entities;
 using Atomex.Swaps.Abstract;
 using Atomex.Swaps.BitcoinBased;
@@ -14,8 +13,7 @@ namespace Atomex.Swaps
         public static ICurrencySwap Create(
             Currency currency,
             IAccount account,
-            ISwapClient swapClient,
-            IBackgroundTaskPerformer taskPerformer)
+            ISwapClient swapClient)
         {
             switch (currency)
             {
@@ -24,20 +22,17 @@ namespace Atomex.Swaps
                         currency: currency,
                         account: account,
                         swapClient: swapClient,
-                        taskPerformer: taskPerformer,
                         transactionFactory: new BitcoinBasedSwapTransactionFactory());
                 case Atomex.Ethereum _:
                     return new EthereumSwap(
                         currency: currency,
                         account: account,
-                        swapClient: swapClient,
-                        taskPerformer: taskPerformer);
+                        swapClient: swapClient);
                 case Atomex.Tezos _:
                     return new TezosSwap(
                         currency: currency,
                         account: account,
-                        swapClient: swapClient,
-                        taskPerformer: taskPerformer);
+                        swapClient: swapClient);
                 default:
                     throw new NotSupportedException($"Not supported currency {currency.Name}");
             }

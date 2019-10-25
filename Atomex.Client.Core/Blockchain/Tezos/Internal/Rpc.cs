@@ -11,6 +11,7 @@ using Atomex.Common;
 using Atomex.Cryptography;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Serilog;
 
 namespace Atomex.Blockchain.Tezos.Internal
 {
@@ -150,7 +151,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             var gas = gasLimit.ToString(CultureInfo.InvariantCulture);
             var storage = storageLimit.ToString(CultureInfo.InvariantCulture);
 
-            if (keys != null && managerKey["key"] == null)
+            if (managerKey.Value<string>() == null)
             {
                 var revealOp = new JObject
                 {
@@ -170,7 +171,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             {
                 ["kind"] = OperationType.Transaction,
                 ["source"] = from,
-                ["fee"] = fee.ToString(CultureInfo.InvariantCulture),
+                ["fee"] = ((int)fee).ToString(CultureInfo.InvariantCulture),
                 ["counter"] = (++counter).ToString(),
                 ["gas_limit"] = gas,
                 ["storage_limit"] = storage,
@@ -264,12 +265,85 @@ namespace Atomex.Blockchain.Tezos.Internal
             return opResults;
         }
 
-        public Task<JToken> ForgeOperations(JObject blockHead, JArray operations)
+        public async Task<bool> AutoFillOperations(Atomex.Tezos tezos, JObject head, JArray operations)
+        {
+            JObject runResults = await RunOperations(head, operations)
+                .ConfigureAwait(false);
+
+            foreach (var result in runResults.SelectToken("contents"))
+            {
+                decimal gas = 0, storage = 0, storage_diff = 0, size = 0, fee = 0;
+                if (result["metadata"]?["operation_result"]?["status"]?.ToString() == "applied")
+                {
+                    try
+                    {
+                        gas = tezos.GasReserve + result["metadata"]?["operation_result"]?["consumed_gas"]?.Value<decimal>() ?? 0;
+                        gas += result["metadata"]?.SelectToken("internal_operation_results")?.Sum(res => res["result"]?["consumed_gas"]?.Value<decimal>() ?? 0) ?? 0;
+
+                        storage = result["metadata"]?["operation_result"]?["storage_size"]?.Value<decimal>() ?? 0;
+
+                        storage_diff = result["metadata"]?["operation_result"]?["paid_storage_size_diff"]?.Value<decimal>() ?? 0;
+                        storage_diff += tezos.ActivationStorage * (result["metadata"]?["operation_result"]?["allocated_destination_contract"]?.ToString() == "True" ? 1 : 0);
+                        storage_diff += tezos.ActivationStorage * result["metadata"]?["internal_operation_results"]?.Where(res => res["result"]?["allocated_destination_contract"]?.ToString() == "True").Count() ?? 0;
+
+                        var op = operations.Children<JObject>().FirstOrDefault(o => o["counter"] != null && o["counter"].ToString() == result["counter"].ToString());
+                        op["gas_limit"] = gas.ToString();
+                        op["storage_limit"] = storage_diff.ToString();
+
+                        JToken forgedOpLocal = Forge.ForgeOperationsLocal(null, op);
+
+                        //JToken forgedOp = await ForgeOperations(head, op);
+
+                        //if (forgedOpLocal.ToString() != forgedOp.ToString().Substring((int)tezos.HeadSizeInBytes * 2))
+                        //    Log.Error("Local operation forge result differs from remote"); //process the error
+
+                        size = forgedOpLocal.ToString().Length / 2 + Math.Ceiling((tezos.HeadSizeInBytes + tezos.SigSizeInBytes) / operations.Count);
+                        fee = tezos.MinimalFee + tezos.MinimalNanotezPerByte * size + (long)Math.Ceiling(tezos.MinimalNanotezPerGasUnit * gas) + 1;
+                        op["fee"] = fee.ToString();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error("Transaction autofilling error: " + ex.Message.ToString()); //process the error
+                        return false;
+                    }
+                }
+                else
+                {
+                    Log.Error("Transaction running failed: "); //process the error
+                    Log.Error(result.ToString());
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private async Task<JObject> RunOperations(JObject blockHead, JArray operations)
         {
             var contents = new JObject
             {
+                ["operation"] = new JObject()
+                {
+                    { "branch", blockHead["hash"] },
+                    { "contents", operations },
+                    { "signature", "edsigtePsnVcZ3FPzmenoU9NS1ubUsMmzSCmJgumPjUozCGLz7UwgpbPkpFP2LzC43pBS5B5tFNvDRbJ56s8by5W4Q4SrYPy6Qp" } //random sig
+                },
+                ["chain_id"] = blockHead["chain_id"]
+            };
+
+            var result = await QueryJ<JObject>($"chains/{_chain}/blocks/head/helpers/scripts/run_operation", contents);
+
+            return result;
+        }
+
+        public Task<JToken> ForgeOperations(JObject blockHead, JToken operations)
+        {
+            if (!(operations is JArray arrOps))
+                arrOps = new JArray(operations);
+
+            var contents = new JObject
+            {
                 ["branch"] = blockHead["hash"],
-                ["contents"] = operations
+                ["contents"] = arrOps
             };
 
             return QueryJ($"chains/{_chain}/blocks/head/helpers/forge/operations", contents);
@@ -355,7 +429,9 @@ namespace Atomex.Blockchain.Tezos.Internal
 
             var httpMethod = get ? HttpMethod.Get : HttpMethod.Post;
 
-            using (var request = new HttpRequestMessage(httpMethod, $"{_provider}/{ep}"))
+            var requestUri = $"{_provider}/{ep}";
+
+            using (var request = new HttpRequestMessage(httpMethod, requestUri))
             {
                 request.Version = HttpVersion.Version11;
 
@@ -363,8 +439,10 @@ namespace Atomex.Blockchain.Tezos.Internal
                 {
                     request.Content = new StringContent(data.ToString());
                     request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-                }
 
+                    Log.Debug("Send request:\nUri: {requestUri}\nContent: {content}", requestUri, data.ToString());
+                }
+                
                 using (var httpClient = new HttpClient())
                 using (var response = await httpClient
                     .SendAsync(request)

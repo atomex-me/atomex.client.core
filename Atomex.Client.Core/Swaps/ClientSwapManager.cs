@@ -1,9 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Common;
-using Atomex.Common.Abstract;
 using Atomex.Core;
 using Atomex.Core.Entities;
 using Atomex.Swaps.Abstract;
@@ -20,10 +20,7 @@ namespace Atomex.Swaps
         private readonly ISwapClient _swapClient;
         private readonly IDictionary<string, ICurrencySwap> _currencySwaps;
 
-        public ClientSwapManager(
-            IAccount account,
-            ISwapClient swapClient,
-            IBackgroundTaskPerformer taskPerformer)
+        public ClientSwapManager(IAccount account, ISwapClient swapClient)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _swapClient = swapClient ?? throw new ArgumentNullException(nameof(swapClient));
@@ -34,8 +31,7 @@ namespace Atomex.Swaps
                     var currencySwap = CurrencySwapCreator.Create(
                         currency: c,
                         account: _account,
-                        swapClient: swapClient,
-                        taskPerformer: taskPerformer);
+                        swapClient: swapClient);
 
                     currencySwap.InitiatorPaymentConfirmed += InitiatorPaymentConfirmed;
                     currencySwap.AcceptorPaymentConfirmed += AcceptorPaymentConfirmed;
@@ -167,7 +163,7 @@ namespace Atomex.Swaps
                 }
                 else if (IsPartyPayment(swap, clientSwap))
                 {
-                    // party payment
+                    // handle party payment
                     await GetCurrencySwap(swap.PurchasedCurrency)
                         .HandlePartyPaymentAsync(swap, clientSwap)
                         .ConfigureAwait(false);
@@ -185,18 +181,18 @@ namespace Atomex.Swaps
 
         private bool IsInitiate(ClientSwap swap, ClientSwap clientSwap)
         {
-            return swap.IsStatusChanged(clientSwap.Status, SwapStatus.Initiated);
+            return swap.IsStatusSet(clientSwap.Status, SwapStatus.Initiated);
         }
 
         private bool IsAccept(ClientSwap swap, ClientSwap clientSwap)
         {
-            return swap.IsStatusChanged(clientSwap.Status, SwapStatus.Accepted);
+            return swap.IsStatusSet(clientSwap.Status, SwapStatus.Accepted);
         }
 
         private bool IsPartyPayment(ClientSwap swap, ClientSwap clientSwap)
         {
-            var isInitiatorPaymentReceived = swap.IsStatusChanged(clientSwap.Status, SwapStatus.InitiatorPaymentReceived);
-            var isAcceptorPaymentReceived = swap.IsStatusChanged(clientSwap.Status, SwapStatus.AcceptorPaymentReceived);
+            var isInitiatorPaymentReceived = swap.IsStatusSet(clientSwap.Status, SwapStatus.InitiatorPaymentReceived);
+            var isAcceptorPaymentReceived = swap.IsStatusSet(clientSwap.Status, SwapStatus.AcceptorPaymentReceived);
 
             return swap.IsAcceptor && isInitiatorPaymentReceived ||
                    swap.IsInitiator && isAcceptorPaymentReceived;
@@ -291,7 +287,7 @@ namespace Atomex.Swaps
 
             // broadcast initiator payment
             await GetCurrencySwap(swap.SoldCurrency)
-                .BroadcastPaymentAsync(swap)
+                .PayAsync(swap)
                 .ConfigureAwait(false);
 
             await GetCurrencySwap(swap.PurchasedCurrency)
@@ -299,7 +295,7 @@ namespace Atomex.Swaps
                 .ConfigureAwait(false);
         }
 
-        public async Task RestoreSwapsAsync()
+        public async Task RestoreSwapsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -315,11 +311,11 @@ namespace Atomex.Swaps
                     try
                     {
                         await GetCurrencySwap(swap.SoldCurrency)
-                            .RestoreSwapAsync(swap)
+                            .RestoreSwapForSoldCurrencyAsync(swap)
                             .ConfigureAwait(false);
 
                         await GetCurrencySwap(swap.PurchasedCurrency)
-                            .RestoreSwapAsync(swap)
+                            .RestoreSwapForPurchasedCurrencyAsync(swap)
                             .ConfigureAwait(false);
                     }
                     catch (Exception e)
@@ -339,7 +335,9 @@ namespace Atomex.Swaps
             SwapUpdatedHandler(this, new SwapEventArgs(swap, changedFlag));
         }
 
-        private async void SwapUpdatedHandler(object sender, SwapEventArgs args)
+        private async void SwapUpdatedHandler(
+            object sender,
+            SwapEventArgs args)
         {
             try
             {
@@ -373,7 +371,7 @@ namespace Atomex.Swaps
                     swap.IsPurchasedCurrency(currencySwap.Currency))
                 {
                     await GetCurrencySwap(swap.SoldCurrency)
-                        .BroadcastPaymentAsync(swap)
+                        .PayAsync(swap)
                         .ConfigureAwait(false);
 
                     // wait for redeem by other party or someone else

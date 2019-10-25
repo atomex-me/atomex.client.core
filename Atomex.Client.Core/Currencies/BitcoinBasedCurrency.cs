@@ -24,9 +24,12 @@ namespace Atomex
         public const int P2PShSwapRedeemScriptSigSize = 241;
 
         public const int DefaultRedeemTxSize = 300;
+        public const int OutputSize = 34;
 
         public decimal FeeRate { get; set; }
         public decimal DustFeeRate { get; set; }
+        public decimal MinTxFeeRate { get; set; }
+        public decimal MinRelayTxFeeRate { get; set; }
         public Network Network { get; protected set; }
 
         protected BitcoinBasedCurrency()
@@ -110,7 +113,16 @@ namespace Atomex
             return FeeRate * DefaultRedeemTxSize / DigitsMultiplier;
         }
 
-        public long GetDustFee()
+        public long GetMinimumFee(int txSize)
+        {
+            return (long)(MinTxFeeRate * txSize);
+        }
+        public long GetMinimumRelayFee(int txSize)
+        {
+            return (long)(MinRelayTxFeeRate * txSize);
+        }
+
+        public virtual long GetDust()
         {
             return (long) (DustFeeRate * P2PkhTxSize);
         }

@@ -34,6 +34,9 @@ namespace Atomex
 
             FeeRate = decimal.Parse(configuration["FeeRate"]);
             DustFeeRate = decimal.Parse(configuration["DustFeeRate"]);
+            MinTxFeeRate = decimal.Parse(configuration["MinTxFeeRate"]);
+            MinRelayTxFeeRate = decimal.Parse(configuration["MinRelayTxFeeRate"]);
+
             FeeDigits = Digits;
             FeeCode = Name;
             FeeFormat = $"F{FeeDigits}";

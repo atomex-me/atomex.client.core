@@ -126,7 +126,7 @@ namespace Atomex.Common
             HttpContent content,
             CancellationToken cancellationToken = default)
         {
-            using (var httpClient = new HttpClient { BaseAddress = new Uri(baseUri) })
+            using (var httpClient = new HttpClient {BaseAddress = new Uri(baseUri)})
             {
                 if (method == HttpMethod.Get)
                 {

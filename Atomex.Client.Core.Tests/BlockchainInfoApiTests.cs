@@ -17,10 +17,10 @@ namespace Atomex.Client.Core.Tests
         public async void GetTransactionTest(BitcoinBasedCurrency currency, string txId)
         {
             var api = new BlockchainInfoApi(currency);
-            var asyncResult = await api.GetTransactionAsync(txId);
-            var tx = asyncResult.Value;
+            var txResult = await api.GetTransactionAsync(txId);
+            var tx = txResult.Value;
 
-            Assert.False(asyncResult.HasError);
+            Assert.False(txResult.HasError);
             Assert.NotNull(tx);
             Assert.True(tx.Id == txId);
         }

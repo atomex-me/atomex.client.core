@@ -51,11 +51,6 @@ namespace Atomex.Common
             swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
         }
 
-        public static void SetPaymentConfirmed(this ClientSwap swap)
-        {
-            swap.StateFlags |= SwapStateFlags.IsPaymentConfirmed;
-        }
-
         public static void SetRefundSigned(this ClientSwap swap)
         {
             swap.StateFlags |= SwapStateFlags.IsRefundSigned;
@@ -66,11 +61,6 @@ namespace Atomex.Common
             swap.StateFlags |= SwapStateFlags.IsRefundBroadcast;
         }
 
-        public static void SetRefundConfirmed(this ClientSwap swap)
-        {
-            swap.StateFlags |= SwapStateFlags.IsRefundConfirmed;
-        }
-
         public static void SetRedeemSigned(this ClientSwap swap)
         {
             swap.StateFlags |= SwapStateFlags.IsRedeemSigned;
@@ -79,21 +69,6 @@ namespace Atomex.Common
         public static void SetRedeemBroadcast(this ClientSwap swap)
         {
             swap.StateFlags |= SwapStateFlags.IsRedeemBroadcast;
-        }
-
-        public static void SetRedeemConfirmed(this ClientSwap swap)
-        {
-            swap.StateFlags |= SwapStateFlags.IsRedeemConfirmed;
-        }
-
-        public static void SetHasPartyPayment(this ClientSwap swap)
-        {
-            swap.StateFlags |= SwapStateFlags.HasPartyPayment;
-        }
-
-        public static void SetPartyPaymentConfirmed(this ClientSwap swap)
-        {
-            swap.StateFlags |= SwapStateFlags.IsPartyPaymentConfirmed;
         }
     }
 }

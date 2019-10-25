@@ -309,7 +309,9 @@ namespace Atomex.Blockchain.BitcoinBased
         {
             var currency = (BitcoinBasedCurrency)Currency;
 
-            return Outputs.Where(output => output.Value < currency.GetDustFee()).Sum(output => output.Value);
+            return Outputs
+                .Where(output => output.Value < currency.GetDust())
+                .Sum(output => output.Value);
         }
 
         public static BitcoinBasedTransaction CreateTransaction(
@@ -340,6 +342,7 @@ namespace Atomex.Blockchain.BitcoinBased
             DateTimeOffset lockTime)
         {
             var tx = currency.Network.CreateTransactionBuilder()
+                .SetDustPrevention(false)
                 .AddCoins(coins)
                 .Send(destination, new Money(amount))
                 .SendFees(new Money(fee))
@@ -353,7 +356,7 @@ namespace Atomex.Blockchain.BitcoinBased
                 currency: currency,
                 tx: tx,
                 blockInfo: null,
-                fees: fee);
+                fees: (long)tx.GetFee(coins.ToArray()).ToUnit(MoneyUnit.Satoshi));
         }
     }
 }

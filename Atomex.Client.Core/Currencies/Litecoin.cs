@@ -12,6 +12,8 @@ namespace Atomex
     {
         private const long LtcDigitsMultiplier = 100_000_000;
 
+        public long DustThreshold { get; set; }
+
         public Litecoin()
         {
         }
@@ -32,6 +34,11 @@ namespace Atomex
 
             FeeRate = decimal.Parse(configuration["FeeRate"]);
             DustFeeRate = decimal.Parse(configuration["DustFeeRate"]);
+            DustThreshold = long.Parse(configuration["DustThreshold"]);
+
+            MinTxFeeRate = decimal.Parse(configuration["MinTxFeeRate"]);
+            MinRelayTxFeeRate = decimal.Parse(configuration["MinRelayTxFeeRate"]);
+
             FeeDigits = Digits;
             FeeCode = Name;
             FeeFormat = $"F{FeeDigits}";
@@ -46,6 +53,11 @@ namespace Atomex
             IsTransactionsAvailable = true;
             IsSwapAvailable = true;
             Bip44Code = Bip44.Litecoin;
+        }
+
+        public override long GetDust()
+        {
+            return DustThreshold;
         }
 
         private static Network ResolveNetwork(IConfiguration configuration)

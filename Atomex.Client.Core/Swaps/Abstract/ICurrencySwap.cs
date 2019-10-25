@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Core.Entities;
 
@@ -15,47 +16,89 @@ namespace Atomex.Swaps.Abstract
         Currency Currency { get; }
 
         /// <summary>
-        /// Broadcast payment transactions for currency being sold
+        /// Broadcast payment transaction(s) for currency being sold
         /// </summary>
+        /// <param name="swap">Swap</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
-        Task BroadcastPaymentAsync(ClientSwap swap);
+        Task PayAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Preparing to receive the purchased currency
         /// </summary>
         /// <returns></returns>
-        Task PrepareToReceiveAsync(ClientSwap swap);
+        Task PrepareToReceiveAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Redeems swap for currency being purchased
         /// </summary>
+        /// <param name="swap">Swap</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
-        Task RedeemAsync(ClientSwap swap);
+        Task RedeemAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Refund swap for currency begin sold
+        /// </summary>
+        /// <param name="swap">Swap</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns></returns>
+        Task RefundAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Waits for redeem for swap for currency being purchased in case when acceptor doesn't have funds to redeem for himself
         /// </summary>
         /// <returns></returns>
-        Task WaitForRedeemAsync(ClientSwap swap);
+        Task WaitForRedeemAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Redeems swap for party
         /// </summary>
         /// <returns></returns>
-        Task PartyRedeemAsync(ClientSwap swap);
+        Task PartyRedeemAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Restores swap
+        /// Restores swap for sold currency
         /// </summary>
+        /// <param name="swap">Swap</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
-        Task RestoreSwapAsync(ClientSwap swap);
+        Task RestoreSwapForSoldCurrencyAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Restores swap for purchased currency
+        /// </summary>
+        /// <param name="swap">Swap</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns></returns>
+        Task RestoreSwapForPurchasedCurrencyAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Handle party payment tx
         /// </summary>
         /// <param name="swap">Local swap</param>
         /// <param name="clientSwap">Received swap</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns></returns>
-        Task HandlePartyPaymentAsync(ClientSwap swap, ClientSwap clientSwap);
+        Task HandlePartyPaymentAsync(
+            ClientSwap swap,
+            ClientSwap clientSwap,
+            CancellationToken cancellationToken = default);
     }
 }

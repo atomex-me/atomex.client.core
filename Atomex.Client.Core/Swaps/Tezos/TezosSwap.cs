@@ -3,17 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
-using Atomex.Common.Abstract;
 using Atomex.Core;
 using Atomex.Core.Entities;
 using Atomex.Swaps.Abstract;
-using Atomex.Swaps.Tasks;
-using Atomex.Swaps.Tezos.Tasks;
-using Atomex.Wallet;
+using Atomex.Swaps.Helpers;
+using Atomex.Swaps.Tezos.Helpers;
 using Atomex.Wallet.Abstract;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -22,28 +19,22 @@ namespace Atomex.Swaps.Tezos
 {
     public class TezosSwap : CurrencySwap
     {
-        public TezosSwap(
-            Currency currency,
-            IAccount account,
-            ISwapClient swapClient,
-            IBackgroundTaskPerformer taskPerformer)
-            : base(
-                currency,
-                account,
-                swapClient,
-                taskPerformer)
+        public TezosSwap(Currency currency, IAccount account, ISwapClient swapClient)
+            : base(currency, account, swapClient)
         {
         }
 
         private Atomex.Tezos Xtz => (Atomex.Tezos)Currency;
 
-        public override async Task BroadcastPaymentAsync(ClientSwap swap)
+        public override async Task PayAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
         {
             var lockTimeInSeconds = swap.IsInitiator
                 ? DefaultInitiatorLockTimeInSeconds
                 : DefaultAcceptorLockTimeInSeconds;
 
-            var txs = (await CreatePaymentTxsAsync(swap, lockTimeInSeconds)
+            var txs = (await CreatePaymentTxsAsync(swap, lockTimeInSeconds, cancellationToken)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -57,7 +48,7 @@ namespace Atomex.Swaps.Tezos
 
             foreach (var tx in txs)
             {
-                var signResult = await SignTransactionAsync(tx)
+                var signResult = await SignTransactionAsync(tx, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!signResult)
@@ -69,73 +60,72 @@ namespace Atomex.Swaps.Tezos
                 if (isInitiateTx)
                 {
                     swap.PaymentTx = tx;
-                    swap.SetPaymentSigned();
+                    swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
                     RaiseSwapUpdated(swap, SwapStateFlags.IsPaymentSigned);
                 }
 
-                await BroadcastTxAsync(swap, tx)
+                await BroadcastTxAsync(swap, tx, cancellationToken)
                         .ConfigureAwait(false);
 
                 if (isInitiateTx)
                 {
                     swap.PaymentTx = tx;
-                    swap.SetPaymentBroadcast();
+                    swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
                     RaiseSwapUpdated(swap, SwapStateFlags.IsPaymentBroadcast);
 
                     isInitiateTx = false;
 
                     // delay for contract initiation
                     if (txs.Count > 1)
-                        await Task.Delay(TimeSpan.FromSeconds(60))
+                        await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken)
                             .ConfigureAwait(false);
                 }
             }
 
-            // start redeem control
-            TaskPerformer.EnqueueTask(new TezosSwapRedeemControlTask
-            {
-                Currency = Currency,
-                RefundTimeUtc = swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
-                Swap = swap,
-                CompleteHandler = RedeemControlCompletedEventHandler,
-                CancelHandler = RedeemControlCanceledEventHandler
-            });
+            // start redeem control async
+            TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+                    swap: swap,
+                    currency: Currency,
+                    refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
+                    interval: TimeSpan.FromSeconds(30),
+                    cancelOnlyIfRefundTimeReached: true,
+                    redeemedHandler: RedeemControlCompletedEventHandler,
+                    canceledHandler: RedeemControlCanceledEventHandler,
+                    cancellationToken: cancellationToken)
+                .FireAndForget();
         }
 
-        public override Task PrepareToReceiveAsync(ClientSwap swap)
+        public override Task PrepareToReceiveAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
         {
             // initiator waits "accepted" event, acceptor waits "initiated" event
-            var handler = swap.IsInitiator
-                ? SwapAcceptedEventHandler
-                : (OnTaskDelegate)SwapInitiatedEventHandler;
+            var initiatedHandler = swap.IsInitiator
+                ? new Action<ClientSwap, CancellationToken>(SwapAcceptedEventHandler)
+                : new Action<ClientSwap, CancellationToken>(SwapInitiatedEventHandler);
 
             var lockTimeSeconds = swap.IsInitiator
                 ? DefaultAcceptorLockTimeInSeconds
                 : DefaultInitiatorLockTimeInSeconds;
 
-            var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();
+            var refundTimeUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();
 
-            TaskPerformer.EnqueueTask(new TezosSwapInitiatedControlTask
-            {
-                Currency = Currency,
-                Swap = swap,
-                Interval = DefaultConfirmationCheckInterval,
-                RefundTimestamp = refundTimeStampUtcInSec,
-                CompleteHandler = handler,
-                CancelHandler = SwapCanceledEventHandler
-            });
+            TezosSwapInitiatedHelper.StartSwapInitiatedControlAsync(
+                    swap: swap,
+                    currency: Currency,
+                    refundTimeStamp: refundTimeUtcInSec,
+                    interval: DefaultConfirmationCheckInterval,
+                    initiatedHandler: initiatedHandler,
+                    canceledHandler: SwapCanceledEventHandler,
+                    cancellationToken: cancellationToken)
+                .FireAndForget();
 
             return Task.CompletedTask;
         }
 
-        public override Task RestoreSwapAsync(ClientSwap swap)
-        {
-            return swap.IsSoldCurrency(Currency)
-                ? RestoreForSoldCurrencyAsync(swap)
-                : RestoreForPurchasedCurrencyAsync(swap);
-        }
-
-        public override async Task RedeemAsync(ClientSwap swap)
+        public override async Task RedeemAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
         {
             Log.Debug("Create redeem for swap {@swapId}", swap.Id);
 
@@ -147,7 +137,8 @@ namespace Atomex.Swaps.Tezos
                     feePrice: 0,
                     feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
                     addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
-                    transactionType: BlockchainTransactionType.SwapRedeem)
+                    transactionType: BlockchainTransactionType.SwapRedeem,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false))
                 .FirstOrDefault();
 
@@ -171,7 +162,7 @@ namespace Atomex.Swaps.Tezos
                 Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
             };
 
-            var signResult = await SignTransactionAsync(redeemTx)
+            var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
                 .ConfigureAwait(false);
 
             if (!signResult)
@@ -181,93 +172,26 @@ namespace Atomex.Swaps.Tezos
             }
 
             swap.RedeemTx = redeemTx;
-            swap.SetRedeemSigned();
+            swap.StateFlags |= SwapStateFlags.IsRedeemSigned;
             RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemSigned);
 
-            await BroadcastTxAsync(swap, redeemTx)
+            await BroadcastTxAsync(swap, redeemTx, cancellationToken)
                 .ConfigureAwait(false);
 
             swap.RedeemTx = redeemTx;
-            swap.SetRedeemBroadcast();
+            swap.StateFlags |= SwapStateFlags.IsRedeemBroadcast;
             RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemBroadcast);
 
-            TaskPerformer.EnqueueTask(new TransactionConfirmationCheckTask
-            {
-                Currency = Currency,
-                Swap = swap,
-                Interval = DefaultConfirmationCheckInterval,
-                TxId = redeemTx.Id,
-                CompleteHandler = RedeemConfirmedEventHandler
-            });
-        }
-
-        public override Task WaitForRedeemAsync(ClientSwap swap)
-        {
-            Log.Debug("Wait redeem for swap {@swapId}", swap.Id);
-
-            // start redeem control
-            TaskPerformer.EnqueueTask(new TezosSwapRedeemControlTask
-            {
-                Currency = Currency,
-                RefundTimeUtc = swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
-                Swap = swap,
-                CompleteHandler = RedeemPartyControlCompletedEventHandler,
-                CancelHandler = RedeemPartyControlCanceledEventHandler
-            });
-
-            return Task.CompletedTask;
-        }
-
-        public override async Task PartyRedeemAsync(ClientSwap swap)
-        {
-            Log.Debug("Create redeem for acceptor for swap {@swapId}", swap.Id);
-
-            var walletAddress = (await Account
-                .GetUnspentAddressesAsync(
+            TrackTransactionConfirmationAsync(
+                    swap: swap,
                     currency: Currency,
-                    amount: 0,
-                    fee: 0,
-                    feePrice: 0,
-                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
-                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
-                    transactionType: BlockchainTransactionType.SwapRedeem)
-                .ConfigureAwait(false))
-                .FirstOrDefault();
-
-            if (walletAddress == null)
-            {
-                Log.Error("Insufficient balance for party redeem. Cannot find the address containing the required amount of funds.");
-                return;
-            }
-
-            var redeemTx = new TezosTransaction
-            {
-                Currency = Xtz,
-                CreationTime = DateTime.UtcNow,
-                From = walletAddress.Address,
-                To = Xtz.SwapContractAddress,
-                Amount = 0,
-                Fee = Xtz.RedeemFee,
-                GasLimit = Xtz.RedeemGasLimit,
-                StorageLimit = Xtz.RedeemStorageLimit,
-                Params = RedeemParams(swap),
-                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
-            };
-
-            var signResult = await SignTransactionAsync(redeemTx)
-                .ConfigureAwait(false);
-
-            if (!signResult)
-            {
-                Log.Error("Transaction signing error");
-                return;
-            }
-
-            await BroadcastTxAsync(swap, redeemTx)
-                .ConfigureAwait(false);
+                    txId: redeemTx.Id,
+                    confirmationHandler: RedeemConfirmedEventHandler,
+                    cancellationToken: cancellationToken)
+                .FireAndForget();
         }
 
-        private async Task RefundAsync(
+        public override async Task RefundAsync(
             ClientSwap swap,
             CancellationToken cancellationToken = default)
         {
@@ -315,27 +239,101 @@ namespace Atomex.Swaps.Tezos
             }
 
             swap.RefundTx = refundTx;
-            swap.SetRefundSigned();
+            swap.StateFlags |= SwapStateFlags.IsRefundSigned;
             RaiseSwapUpdated(swap, SwapStateFlags.IsRefundSigned);
 
             await BroadcastTxAsync(swap, refundTx, cancellationToken)
                 .ConfigureAwait(false);
 
             swap.RefundTx = refundTx;
-            swap.SetRefundBroadcast();
+            swap.StateFlags |= SwapStateFlags.IsRefundBroadcast;
             RaiseSwapUpdated(swap, SwapStateFlags.IsRefundBroadcast);
 
-            TaskPerformer.EnqueueTask(new TransactionConfirmationCheckTask
-            {
-                Currency = Currency,
-                Swap = swap,
-                Interval = DefaultConfirmationCheckInterval,
-                TxId = refundTx.Id,
-                CompleteHandler = RefundConfirmedEventHandler
-            });
+            TrackTransactionConfirmationAsync(
+                    swap: swap,
+                    currency: Currency,
+                    txId: refundTx.Id,
+                    confirmationHandler: RefundConfirmedEventHandler,
+                    cancellationToken: cancellationToken)
+                .FireAndForget();
         }
 
-        private Task RestoreForSoldCurrencyAsync(ClientSwap swap)
+        public override Task WaitForRedeemAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
+        {
+            Log.Debug("Wait redeem for swap {@swapId}", swap.Id);
+
+            // start redeem control async
+            TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+                    swap: swap,
+                    currency: Currency,
+                    refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
+                    interval: TimeSpan.FromSeconds(30),
+                    cancelOnlyIfRefundTimeReached: true,
+                    redeemedHandler: RedeemPartyControlCompletedEventHandler,
+                    canceledHandler: RedeemPartyControlCanceledEventHandler,
+                    cancellationToken: cancellationToken)
+                .FireAndForget();
+
+            return Task.CompletedTask;
+        }
+
+        public override async Task PartyRedeemAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
+        {
+            Log.Debug("Create redeem for acceptor for swap {@swapId}", swap.Id);
+
+            var walletAddress = (await Account
+                .GetUnspentAddressesAsync(
+                    currency: Currency,
+                    amount: 0,
+                    fee: 0,
+                    feePrice: 0,
+                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
+                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
+                    transactionType: BlockchainTransactionType.SwapRedeem,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false))
+                .FirstOrDefault();
+
+            if (walletAddress == null)
+            {
+                Log.Error("Insufficient balance for party redeem. Cannot find the address containing the required amount of funds.");
+                return;
+            }
+
+            var redeemTx = new TezosTransaction
+            {
+                Currency = Xtz,
+                CreationTime = DateTime.UtcNow,
+                From = walletAddress.Address,
+                To = Xtz.SwapContractAddress,
+                Amount = 0,
+                Fee = Xtz.RedeemFee,
+                GasLimit = Xtz.RedeemGasLimit,
+                StorageLimit = Xtz.RedeemStorageLimit,
+                Params = RedeemParams(swap),
+                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
+            };
+
+            var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!signResult)
+            {
+                Log.Error("Transaction signing error");
+                return;
+            }
+
+            await BroadcastTxAsync(swap, redeemTx, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        public override Task RestoreSwapForSoldCurrencyAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
         {
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
             {
@@ -352,15 +350,17 @@ namespace Atomex.Swaps.Tezos
                     ? DefaultInitiatorLockTimeInSeconds
                     : DefaultAcceptorLockTimeInSeconds;
 
-                // start redeem control
-                TaskPerformer.EnqueueTask(new TezosSwapRedeemControlTask
-                {
-                    Currency = Currency,
-                    RefundTimeUtc = swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
-                    Swap = swap,
-                    CompleteHandler = RedeemControlCompletedEventHandler,
-                    CancelHandler = RedeemControlCanceledEventHandler
-                });
+                // start redeem control async 
+                TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+                        swap: swap,
+                        currency: Currency,
+                        refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
+                        interval: TimeSpan.FromSeconds(30),
+                        cancelOnlyIfRefundTimeReached: true,
+                        redeemedHandler: RedeemControlCompletedEventHandler,
+                        canceledHandler: RedeemControlCanceledEventHandler,
+                        cancellationToken: cancellationToken)
+                    .FireAndForget();
             }
             else
             {
@@ -388,8 +388,16 @@ namespace Atomex.Swaps.Tezos
             return Task.CompletedTask;
         }
 
-        private async Task RestoreForPurchasedCurrencyAsync(ClientSwap swap)
+        public override async Task RestoreSwapForPurchasedCurrencyAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
         {
+            //if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast) &&
+            //    swap.StateFlags.HasFlag(SwapStateFlags.HasPartyPayment)
+            //{
+
+            //}
+            //else 
             if (swap.RewardForRedeem > 0 &&
                 swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
             {
@@ -404,15 +412,16 @@ namespace Atomex.Swaps.Tezos
                 // there is a possibility that tx could successfully broadcast
                 // otherwise try again
 
-                TaskPerformer.EnqueueTask(new TezosSwapRedeemControlTask
-                {
-                    Currency = Currency,
-                    RefundTimeUtc = swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
-                    Swap = swap,
-                    CancelOnlyWhenRefundTimeReached = false,
-                    CompleteHandler = RedeemPartyControlCompletedEventHandler,
-                    CancelHandler = RedeemPartyControlCanceledEventHandler
-                });
+                TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+                        swap: swap,
+                        currency: Currency,
+                        refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
+                        interval: TimeSpan.FromSeconds(30),
+                        cancelOnlyIfRefundTimeReached: false,
+                        redeemedHandler: RedeemPartyControlCompletedEventHandler,
+                        canceledHandler: RedeemPartyControlCanceledEventHandler,
+                        cancellationToken: cancellationToken)
+                    .FireAndForget();
             }
             else if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast) &&
                     !swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemConfirmed))
@@ -425,59 +434,50 @@ namespace Atomex.Swaps.Tezos
                     return;
                 }
 
-                TaskPerformer.EnqueueTask(new TransactionConfirmationCheckTask
-                {
-                    Currency = Currency,
-                    Swap = swap,
-                    Interval = DefaultConfirmationCheckInterval,
-                    TxId = redeemTx.Id,
-                    CompleteHandler = RedeemConfirmedEventHandler
-                });
+                TrackTransactionConfirmationAsync(
+                        swap: swap,
+                        currency: Currency,
+                        txId: redeemTx.Id,
+                        confirmationHandler: RedeemConfirmedEventHandler,
+                        cancellationToken: cancellationToken)
+                    .FireAndForget();
             }
         }
 
         #region Event Handlers
 
-        private void SwapInitiatedEventHandler(BackgroundTask task)
+        private void SwapInitiatedEventHandler(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
         {
-            var initiatedControlTask = task as TezosSwapInitiatedControlTask;
-            var swap = initiatedControlTask?.Swap;
-
-            if (swap == null)
-                return;
-
             Log.Debug(
                 "Initiator's payment transaction received. Now acceptor can broadcast payment tx for swap {@swapId}",
                 swap.Id);
 
-            swap.SetHasPartyPayment();
-            swap.SetPartyPaymentConfirmed();
+            swap.StateFlags |= SwapStateFlags.HasPartyPayment;
+            swap.StateFlags |= SwapStateFlags.IsPartyPaymentConfirmed;
             RaiseSwapUpdated(swap, SwapStateFlags.HasPartyPayment | SwapStateFlags.IsPartyPaymentConfirmed);
 
             InitiatorPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap));
         }
 
-        private async void SwapAcceptedEventHandler(BackgroundTask task)
+        private async void SwapAcceptedEventHandler(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
         {
-            var initiatedControlTask = task as TezosSwapInitiatedControlTask;
-            var swap = initiatedControlTask?.Swap;
-
-            if (swap == null)
-                return;
-
             try
             {
                 Log.Debug(
                     "Acceptor's payment transaction received. Now initiator can do self redeem and do party redeem for acceptor (if needs and wants) for swap {@swapId}.",
                     swap.Id);
 
-                swap.SetHasPartyPayment();
-                swap.SetPartyPaymentConfirmed();
+                swap.StateFlags |= SwapStateFlags.HasPartyPayment;
+                swap.StateFlags |= SwapStateFlags.IsPartyPaymentConfirmed;
                 RaiseSwapUpdated(swap, SwapStateFlags.HasPartyPayment | SwapStateFlags.IsPartyPaymentConfirmed);
 
                 RaiseAcceptorPaymentConfirmed(swap);
 
-                await RedeemAsync(swap)
+                await RedeemAsync(swap, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (Exception e)
@@ -486,146 +486,124 @@ namespace Atomex.Swaps.Tezos
             }
         }
 
-        private void SwapCanceledEventHandler(BackgroundTask task)
+        private void SwapCanceledEventHandler(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
         {
-            var initiatedControlTask = task as TezosSwapInitiatedControlTask;
-            var swap = initiatedControlTask?.Swap;
-
-            if (swap == null)
-                return;
-
             // todo: do smth here
             Log.Debug("Swap canceled due to wrong counterParty params {@swapId}", swap.Id);
         }
 
-        private void RedeemConfirmedEventHandler(BackgroundTask task)
+        private void RedeemConfirmedEventHandler(
+            ClientSwap swap,
+            IBlockchainTransaction tx,
+            CancellationToken cancellationToken = default)
         {
-            var confirmationCheckTask = task as TransactionConfirmationCheckTask;
-            var swap = confirmationCheckTask?.Swap;
-
-            swap?.SetRedeemConfirmed();
+            swap.StateFlags |= SwapStateFlags.IsRedeemConfirmed;
             RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemConfirmed);
         }
 
-        private void RedeemControlCompletedEventHandler(BackgroundTask task)
+        private void RedeemControlCompletedEventHandler(
+            ClientSwap swap,
+            byte[] secret,
+            CancellationToken cancellationToken = default)
         {
-            var redeemControlTask = task as TezosSwapRedeemControlTask;
-            var swap = redeemControlTask?.Swap;
-
-            if (swap == null)
-                return;
-
             Log.Debug("Handle redeem control completed event for swap {@swapId}", swap.Id);
 
             if (swap.IsAcceptor)
             {
-                swap.Secret = redeemControlTask.Secret;
+                swap.Secret = secret;
                 RaiseSwapUpdated(swap, SwapStateFlags.HasSecret);
 
                 RaiseAcceptorPaymentSpent(swap);
             }
         }
 
-        private void RedeemControlCanceledEventHandler(BackgroundTask task)
+        private void RedeemControlCanceledEventHandler(
+            ClientSwap swap,
+            DateTime refundTimeUtc,
+            CancellationToken cancellationToken = default)
         {
-            var redeemControlTask = task as TezosSwapRedeemControlTask;
-            var swap = redeemControlTask?.Swap;
-
-            if (swap == null)
-                return;
-
             Log.Debug("Handle redeem control canceled event for swap {@swapId}", swap.Id);
 
-            TaskPerformer.EnqueueTask(new RefundTimeControlTask
-            {
-                Currency = Currency,
-                RefundTimeUtc = redeemControlTask.RefundTimeUtc,
-                Swap = swap,
-                CompleteHandler = RefundTimeReachedEventHandler
-            });
+            ControlRefundTimeAsync(
+                    swap: swap,
+                    refundTimeUtc: refundTimeUtc,
+                    refundTimeReachedHandler: RefundTimeReachedEventHandler,
+                    cancellationToken: cancellationToken)
+                .FireAndForget();
         }
 
-        private void RefundTimeReachedEventHandler(BackgroundTask task)
+        private async void RefundTimeReachedEventHandler(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
         {
-            var refundTimeControlTask = task as RefundTimeControlTask;
-            var swap = refundTimeControlTask?.Swap;
-
-            if (swap == null)
-                return;
-
             Log.Debug("Refund time reached for swap {@swapId}", swap.Id);
-
-            TaskPerformer.EnqueueTask(new TezosSwapRefundControlTask
-            {
-                Currency = Currency,
-                Swap = swap,
-                CompleteHandler = RefundConfirmedEventHandler,
-                CancelHandler = RefundEventHandler
-            });
-        }
-
-        private async void RefundEventHandler(BackgroundTask task)
-        {
-            var refundControlTask = task as TezosSwapRefundControlTask;
-            var swap = refundControlTask?.Swap;
-
-            if (swap == null)
-                return;
 
             try
             {
-                await RefundAsync(swap)
+                var isRefundedResult = await TezosSwapRefundedHelper.IsRefundedAsync(
+                        swap: swap,
+                        currency: Currency,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
+
+                if (!isRefundedResult.HasError)
+                {
+                    if (isRefundedResult.Value)
+                    {
+                        RefundConfirmedEventHandler(swap, swap.RefundTx, cancellationToken);
+                    }
+                    else
+                    {
+                        await RefundAsync(swap, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                }
             }
             catch (Exception e)
             {
-                Log.Error(e, "Refund error");
+                Log.Error(e, "Error in refund time reached handler");
             }
         }
 
-        private void RefundConfirmedEventHandler(BackgroundTask task)
+        private void RefundConfirmedEventHandler(
+            ClientSwap swap,
+            IBlockchainTransaction tx,
+            CancellationToken cancellationToken = default)
         {
-            var confirmationCheckTask = task as TransactionConfirmationCheckTask;
-            var swap = confirmationCheckTask?.Swap;
-
-            swap?.SetRefundConfirmed();
+            swap.StateFlags |= SwapStateFlags.IsRefundConfirmed;
             RaiseSwapUpdated(swap, SwapStateFlags.IsRefundConfirmed);
         }
 
-        private void RedeemPartyControlCompletedEventHandler(BackgroundTask task)
+        private void RedeemPartyControlCompletedEventHandler(
+            ClientSwap swap,
+            byte[] secret,
+            CancellationToken cancellationToken = default)
         {
-            var redeemControlTask = task as TezosSwapRedeemControlTask;
-            var swap = redeemControlTask?.Swap;
-
-            if (swap == null)
-                return;
-
             Log.Debug("Handle redeem party control completed event for swap {@swapId}", swap.Id);
 
             if (swap.IsAcceptor)
             {
-                swap.Secret = redeemControlTask.Secret;
-                swap.SetRedeemConfirmed();
+                swap.Secret = secret;
+                swap.StateFlags |= SwapStateFlags.IsRedeemConfirmed;
                 RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemConfirmed);
 
-                // get transactions & update balance for address
-                TaskPerformer.EnqueueTask(new AddressBalanceUpdateTask
-                {
-                    Account = Account,
-                    Address = swap.ToAddress,
-                    Currency = Currency,
-                });
+                // get transactions & update balance for address async 
+                AddressHelper.UpdateAddressBalanceAsync(
+                        account: Account,
+                        currency: Currency,
+                        address: swap.ToAddress,
+                        cancellationToken: cancellationToken)
+                    .FireAndForget();
             }
         }
 
-        private async void RedeemPartyControlCanceledEventHandler(BackgroundTask task)
+        private async void RedeemPartyControlCanceledEventHandler(
+            ClientSwap swap,
+            DateTime refundTimeUtc,
+            CancellationToken cancellationToken = default)
         {
-            var redeemControlTask = task as TezosSwapRedeemControlTask;
-            var swap = redeemControlTask?.Swap;
-
-            if (swap == null)
-                return;
-
             Log.Debug("Handle redeem party control canceled event for swap {@swapId}", swap.Id);
 
             try
@@ -640,7 +618,8 @@ namespace Atomex.Swaps.Tezos
                             feePrice: 0,
                             feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
                             addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
-                            transactionType: BlockchainTransactionType.SwapRedeem)
+                            transactionType: BlockchainTransactionType.SwapRedeem,
+                            cancellationToken: cancellationToken)
                         .ConfigureAwait(false))
                         .FirstOrDefault();
 
@@ -653,7 +632,7 @@ namespace Atomex.Swaps.Tezos
                         return;
                     }
 
-                    await RedeemAsync(swap)
+                    await RedeemAsync(swap, cancellationToken)
                         .ConfigureAwait(false);
                 }
             }
@@ -809,14 +788,14 @@ namespace Atomex.Swaps.Tezos
             TezosTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            var asyncResult = await Xtz.BlockchainApi
+            var broadcastResult = await Xtz.BlockchainApi
                 .BroadcastAsync(tx, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (asyncResult.HasError)
-                throw new Exception($"Error while broadcast transaction with code {asyncResult.Error.Code} and description {asyncResult.Error.Description}");
+            if (broadcastResult.HasError)
+                throw new Exception($"Error while broadcast transaction with code {broadcastResult.Error.Code} and description {broadcastResult.Error.Description}");
 
-            var txId = asyncResult.Value;
+            var txId = broadcastResult.Value;
 
             if (txId == null)
                 throw new Exception("Transaction Id is null");
@@ -841,22 +820,22 @@ namespace Atomex.Swaps.Tezos
             long refundTimestamp,
             long redeemFeeAmount)
         {
-            return JObject.Parse(@"{'prim':'Left','args':[{'prim':'Left','args':[{'prim':'Pair','args':[{'string':'" + swap.PartyAddress + "'},{'prim':'Pair','args':[{'prim':'Pair','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'},{'int':'" + refundTimestamp + "'}]},{'int':'" + redeemFeeAmount + "'}]}]}]}]}");
+            return JObject.Parse(@"{'entrypoint':'default','value':{'prim':'Left','args':[{'prim':'Left','args':[{'prim':'Pair','args':[{'string':'" + swap.PartyAddress + "'},{'prim':'Pair','args':[{'prim':'Pair','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'},{'int':'" + refundTimestamp + "'}]},{'int':'" + redeemFeeAmount + "'}]}]}]}]}}");
         }
 
         private JObject AddParams(ClientSwap swap)
         {
-            return JObject.Parse(@"{'prim':'Left','args':[{'prim':'Right','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'}]}]}");
+            return JObject.Parse(@"{'entrypoint':'default','value':{'prim':'Left','args':[{'prim':'Right','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'}]}]}}");
         }
 
         private JObject RedeemParams(ClientSwap swap)
         {
-            return JObject.Parse(@"{'prim':'Right','args':[{'prim':'Left','args':[{'bytes':'" + swap.Secret.ToHexString() + "'}]}]}");
+            return JObject.Parse(@"{'entrypoint':'default','value':{'prim':'Right','args':[{'prim':'Left','args':[{'bytes':'" + swap.Secret.ToHexString() + "'}]}]}}");
         }
 
         private JObject RefundParams(ClientSwap swap)
         {
-            return JObject.Parse(@"{'prim':'Right','args':[{'prim':'Right','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'}]}]}");
+            return JObject.Parse(@"{'entrypoint':'default','value':{'prim':'Right','args':[{'prim':'Right','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'}]}]}}");
         }
 
         #endregion Helpers
