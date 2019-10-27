@@ -166,12 +166,16 @@ namespace Atomex.Swaps.BitcoinBased
                     redeemScript: partyRedeemScript)
                 .ConfigureAwait(false);
 
+            var toAddress = await Account
+                .ResolveAddressAsync(currency, swap.ToAddress, cancellationToken)
+                .ConfigureAwait(false);
+
             // sign redeem tx
             swap.RedeemTx = await SignRedeemTxAsync(
                     swap: swap,
                     redeemTx: (IBitcoinBasedTransaction)swap.RedeemTx,
                     paymentTx: (IBitcoinBasedTransaction)swap.PartyPaymentTx,
-                    redeemAddress: redeemAddress,
+                    redeemAddress: toAddress,
                     redeemScript: partyRedeemScript)
                 .ConfigureAwait(false);
 
