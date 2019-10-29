@@ -158,14 +158,12 @@ namespace Atomex.Blockchain.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            var activated = await HttpHelper.GetAsync(
+            return await HttpHelper.GetAsyncResult(
                     baseUri: _apiBaseUrl,
                     requestUri: $"accounts/{address}",
-                    responseHandler: responseContent => responseContent.ToString() == "true",
+                    responseHandler: (response, content) => new Result<bool>(content == "true"),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-
-            return new Result<bool>(activated);
         }
 
         private Result<IEnumerable<TezosTransaction>> ParseTxs(JArray data)

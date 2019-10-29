@@ -134,6 +134,7 @@ namespace Atomex.Swaps.Ethereum
 
             var walletAddress = (await Account
                 .GetUnspentAddressesAsync(
+                    toAddress: swap.ToAddress,
                     currency: Currency,
                     amount: 0,
                     fee: 0,
@@ -220,6 +221,7 @@ namespace Atomex.Swaps.Ethereum
 
             var walletAddress = (await Account
                 .GetUnspentAddressesAsync(
+                    toAddress: null, // get refund address
                     currency: Currency,
                     amount: 0,
                     fee: 0,
@@ -326,6 +328,7 @@ namespace Atomex.Swaps.Ethereum
 
             var walletAddress = (await Account
                 .GetUnspentAddressesAsync(
+                    toAddress: null, // todo: get participant address
                     currency: Currency,
                     amount: 0,
                     fee: 0,
@@ -661,6 +664,7 @@ namespace Atomex.Swaps.Ethereum
                 {
                     var walletAddress = (await Account
                         .GetUnspentAddressesAsync(
+                            toAddress: swap.ToAddress,
                             currency: Currency,
                             amount: 0,
                             fee: 0,

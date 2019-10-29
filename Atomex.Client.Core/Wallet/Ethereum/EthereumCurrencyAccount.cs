@@ -104,14 +104,14 @@ namespace Atomex.Wallet.Ethereum
                         code: Errors.TransactionVerificationError,
                         description: "Transaction verification error");
 
-                var asyncResult = await Currency.BlockchainApi
+                var broadcastResult = await Currency.BlockchainApi
                     .BroadcastAsync(tx, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (asyncResult.HasError)
-                    return asyncResult.Error;
+                if (broadcastResult.HasError)
+                    return broadcastResult.Error;
 
-                var txId = asyncResult.Value;
+                var txId = broadcastResult.Value;
 
                 if (txId == null)
                     return new Error(
@@ -199,6 +199,12 @@ namespace Atomex.Wallet.Ethereum
 
             if (!unspentAddresses.Any())
                 return (0m, 0m);
+
+            // minimum balance first
+            unspentAddresses = unspentAddresses
+                .ToList()
+                .SortList((a, b) => a.AvailableBalance()
+                    .CompareTo(b.AvailableBalance()));
 
             var isFirstTx = true;
             var amount = 0m;
@@ -443,6 +449,7 @@ namespace Atomex.Wallet.Ethereum
         #region Addresses
 
         public override async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+            string toAddress,
             decimal amount,
             decimal fee,
             decimal feePrice,

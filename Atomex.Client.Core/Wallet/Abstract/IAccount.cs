@@ -193,6 +193,7 @@ namespace Atomex.Wallet.Abstract
         /// Gets unspent addresses for <paramref name="currency"/> and <paramref name="amount"/> with <paramref name="fee"/>
         /// </summary>
         /// <param name="currency">Currency</param>
+        /// <param name="toAddress">Destination adderss</param>
         /// <param name="amount">Required amount</param>
         /// <param name="fee">Required fee</param>
         /// <param name="feePrice">Required fee price</param>
@@ -203,6 +204,7 @@ namespace Atomex.Wallet.Abstract
         /// <returns>Set of unspent addresses</returns>
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             Currency currency,
+            string toAddress,
             decimal amount,
             decimal fee,
             decimal feePrice,

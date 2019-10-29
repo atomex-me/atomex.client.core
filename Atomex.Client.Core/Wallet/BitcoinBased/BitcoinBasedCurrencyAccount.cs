@@ -507,6 +507,7 @@ namespace Atomex.Wallet.BitcoinBased
         #region Addresses
 
         public override async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+            string toAddress,
             decimal amount,
             decimal fee,
             decimal feePrice,
@@ -518,7 +519,7 @@ namespace Atomex.Wallet.BitcoinBased
             if (feeUsagePolicy == FeeUsagePolicy.EstimatedFee)
             {
                 var estimatedFee = await EstimateFeeAsync(
-                        to: null,
+                        to: toAddress,
                         amount: amount,
                         type: transactionType,
                         cancellationToken: cancellationToken)

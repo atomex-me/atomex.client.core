@@ -185,6 +185,7 @@ namespace Atomex.Wallet.Abstract
         }
 
         public abstract Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+            string toAddress,
             decimal amount,
             decimal fee,
             decimal feePrice,

@@ -131,6 +131,7 @@ namespace Atomex.Swaps.Tezos
 
             var walletAddress = (await Account
                 .GetUnspentAddressesAsync(
+                    toAddress: swap.ToAddress,
                     currency: Currency,
                     amount: 0,
                     fee: 0,
@@ -199,6 +200,7 @@ namespace Atomex.Swaps.Tezos
 
             var walletAddress = (await Account
                 .GetUnspentAddressesAsync(
+                    toAddress: null, // todo: get refund address
                     currency: Currency,
                     amount: 0,
                     fee: 0,
@@ -287,6 +289,7 @@ namespace Atomex.Swaps.Tezos
 
             var walletAddress = (await Account
                 .GetUnspentAddressesAsync(
+                    toAddress: null, // todo: get party address
                     currency: Currency,
                     amount: 0,
                     fee: 0,
@@ -612,6 +615,7 @@ namespace Atomex.Swaps.Tezos
                 {
                     var walletAddress = (await Account
                         .GetUnspentAddressesAsync(
+                            toAddress: swap.ToAddress,
                             currency: Currency,
                             amount: 0,
                             fee: 0,

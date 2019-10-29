@@ -189,6 +189,12 @@ namespace Atomex.Wallet.Tezos
             if (!unspentAddresses.Any())
                 return (0m, 0m);
 
+            // minimum balance first
+            unspentAddresses = unspentAddresses
+                .ToList()
+                .SortList((a, b) => a.AvailableBalance()
+                    .CompareTo(b.AvailableBalance()));
+
             var isFirstTx = true;
             var amount = 0m;
             var fee = 0m;
@@ -202,6 +208,7 @@ namespace Atomex.Wallet.Tezos
                         isFirstTx: isFirstTx,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
+
                 var usedAmountInTez = Math.Max(address.AvailableBalance() - feeInTez - storageFeeInTez, 0);
 
                 if (usedAmountInTez <= 0)
@@ -285,7 +292,7 @@ namespace Atomex.Wallet.Tezos
             if(type.HasFlag(BlockchainTransactionType.SwapRefund))
                 return Xtz.RefundStorageLimit / 1000;
             if (type.HasFlag(BlockchainTransactionType.SwapRedeem))
-                return isActive || !isFirstTx
+                return isActive
                     ? Math.Max((Xtz.RedeemStorageLimit - Xtz.ActivationStorage) / 1000, 0) // without activation storage fee
                     : Xtz.RedeemStorageLimit / 1000;
 
@@ -580,6 +587,7 @@ namespace Atomex.Wallet.Tezos
         }
 
         public override async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+            string toAddress,
             decimal amount,
             decimal fee,
             decimal feePrice,
@@ -595,7 +603,7 @@ namespace Atomex.Wallet.Tezos
 
             var selectedAddresses = await SelectUnspentAddressesAsync(
                     from: unspentAddresses,
-                    to: null,
+                    to: toAddress,
                     amount: amount,
                     fee: fee,
                     feeUsagePolicy: feeUsagePolicy,

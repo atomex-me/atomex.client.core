@@ -317,6 +317,7 @@ namespace Atomex.Wallet
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             Currency currency,
+            string toAddress,
             decimal amount,
             decimal fee,
             decimal feePrice,
@@ -327,6 +328,7 @@ namespace Atomex.Wallet
         {
             return GetAccountByCurrency(currency)
                 .GetUnspentAddressesAsync(
+                    toAddress: toAddress,
                     amount: amount,
                     fee: fee,
                     feePrice: feePrice,
