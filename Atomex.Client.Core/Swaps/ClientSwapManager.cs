@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -19,6 +20,7 @@ namespace Atomex.Swaps
         private readonly IAccount _account;
         private readonly ISwapClient _swapClient;
         private readonly IDictionary<string, ICurrencySwap> _currencySwaps;
+        private ConcurrentDictionary<long, SemaphoreSlim> semaphores;
 
         public ClientSwapManager(IAccount account, ISwapClient swapClient)
         {
@@ -41,26 +43,44 @@ namespace Atomex.Swaps
                     return currencySwap;
                 })
                 .ToDictionary(cs => cs.Currency.Name);
+
+            semaphores = new ConcurrentDictionary<long, SemaphoreSlim>();
         }
 
         private ICurrencySwap GetCurrencySwap(Currency currency) => _currencySwaps[currency.Name];
 
         public async Task HandleSwapAsync(ClientSwap clientSwap)
         {
-            var swap = await _account
-                .GetSwapByIdAsync(clientSwap.Id)
+            Log.Debug("Handle swap {@swap}", clientSwap.ToString());
+
+            await LockSwapAsync(clientSwap.Id)
                 .ConfigureAwait(false);
 
-            if (swap == null)
+            try
             {
-                await RunSwapAsync(clientSwap)
+                var swap = await _account
+                    .GetSwapByIdAsync(clientSwap.Id)
                     .ConfigureAwait(false);
+
+                if (swap == null)
+                {
+                    await RunSwapAsync(clientSwap)
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    await HandleExistingSwapAsync(swap, clientSwap)
+                        .ConfigureAwait(false);
+                }
             }
-            else
+            catch (Exception)
             {
-                await HandleExistingSwapAsync(swap, clientSwap)
-                    .ConfigureAwait(false);
+                UnlockSwap(clientSwap.Id);
+
+                throw;
             }
+
+            UnlockSwap(clientSwap.Id);
         }
 
         private async Task RunSwapAsync(ClientSwap clientSwap)
@@ -341,6 +361,8 @@ namespace Atomex.Swaps
         {
             try
             {
+                Log.Debug("Update swap {@swap} in db", args.Swap.Id);
+
                 var result = await _account
                     .UpdateSwapAsync(args.Swap)
                     .ConfigureAwait(false);
@@ -437,6 +459,49 @@ namespace Atomex.Swaps
             {
                 Log.Error(e, "Acceptor payment spent handler error");
             }
+        }
+
+        private async Task LockSwapAsync(long swapId)
+        {
+            if (semaphores.TryGetValue(swapId, out SemaphoreSlim semaphore))
+            {
+                await semaphore
+                    .WaitAsync()
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                semaphore = new SemaphoreSlim(1, 1);
+
+                await semaphore
+                    .WaitAsync()
+                    .ConfigureAwait(false);
+
+                if (!semaphores.TryAdd(swapId, semaphore))
+                {
+                    semaphore.Release();
+                    semaphore.Dispose();
+
+                    if (semaphores.TryGetValue(swapId, out semaphore))
+                    {
+                        await semaphore
+                            .WaitAsync()
+                            .ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        Log.Error("There is no semaphore =(");
+
+                        throw new Exception("Swap lock error");
+                    }
+                }
+            }
+        }
+
+        private void UnlockSwap(long id)
+        {
+            if (semaphores.TryGetValue(id, out var semaphore))
+                semaphore.Release();
         }
     }
 }

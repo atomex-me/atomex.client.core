@@ -116,5 +116,23 @@ namespace Atomex.Core.Entities
         {
             return !Status.HasFlag(flag) && status.HasFlag(flag);
         }
+
+        public override string ToString()
+        {
+            return $"Id: {Id}, " +
+                $"Status: {Status}, " +
+                $"StateFlags: {StateFlags}, " +
+                $"Side: {Side}, " +
+                $"Price: {Price}, " +
+                $"Qty: {Qty}, " +
+                $"ToAddresS: {ToAddress}, " +
+                $"RerawdForRedeem: {RewardForRedeem}, " +
+                $"PaymentTxId: {PaymentTxId}, " +
+                $"RedeemScript: {RedeemScript}, " +
+                $"PartyAddress: {PartyAddress}, " +
+                $"PartyRewardForRedeem: {PartyRewardForRedeem}, " +
+                $"PartyPaymentTxId: {PartyPaymentTxId}, " +
+                $"PartyRedeemScript: {PartyRedeemScript}";
+        }
     }
 }
