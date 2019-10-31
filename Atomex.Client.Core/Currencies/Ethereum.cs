@@ -185,9 +185,9 @@ namespace Atomex
             return GasPriceInGwei;
         }
 
-        public static long EthToWei(decimal eth)
+        public static BigInteger EthToWei(decimal eth)
         {
-            return (long)(eth * WeiInEth);
+            return new BigInteger(eth * WeiInEth);
         }
 
         public static long GweiToWei(decimal gwei)

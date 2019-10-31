@@ -91,8 +91,8 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
                 Log.Debug(
                     "Eth value is not enough. Expected value is {@expected}. Actual value is {@actual}",
-                    requiredAmountInWei - requiredRewardForRedeemInWei,
-                    (long)initiatedEvent.Value);
+                    (decimal)(requiredAmountInWei - requiredRewardForRedeemInWei),
+                    (decimal)initiatedEvent.Value);
                 
 
                 var addEventsResult = await api

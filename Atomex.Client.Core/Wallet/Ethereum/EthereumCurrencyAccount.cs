@@ -84,7 +84,7 @@ namespace Atomex.Wallet.Ethereum
                     Type = BlockchainTransactionType.Output,
                     CreationTime = DateTime.UtcNow,
                     To = to.ToLowerInvariant(),
-                    Amount = new BigInteger(Atomex.Ethereum.EthToWei(selectedAddress.UsedAmount)),
+                    Amount = Atomex.Ethereum.EthToWei(selectedAddress.UsedAmount),
                     Nonce = nonceAsyncResult.Value,
                     GasPrice = new BigInteger(Atomex.Ethereum.GweiToWei(feePrice)),
                     GasLimit = new BigInteger(feePerTx),
