@@ -671,7 +671,7 @@ namespace Atomex.Swaps.Tezos
                 .GetUnspentAddressesAsync(Xtz, cancellationToken)
                 .ConfigureAwait(false))
                 .ToList()
-                .SortList((a, b) => a.AvailableBalance().CompareTo(b.AvailableBalance()));
+                .SortList(new AvailableBalanceAscending(Account.AssetWarrantyManager));
 
             var transactions = new List<TezosTransaction>();
 

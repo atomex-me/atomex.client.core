@@ -14,6 +14,7 @@ using Atomex.MarketData;
 using Atomex.MarketData.Abstract;
 using Atomex.Subsystems.Abstract;
 using Atomex.Swaps;
+using Atomex.Swaps.Abstract;
 using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Atomex.Web;
@@ -39,8 +40,7 @@ namespace Atomex.Subsystems
         public IAccount Account { get; set; }
         private IConfiguration Configuration { get; }
         private IMarketDataRepository MarketDataRepository { get; set; }
-        private ClientSwapManager SwapManager { get; set; }
-
+        private IClientSwapManager SwapManager { get; set; }
         private TimeSpan TransactionConfirmationCheckInterval { get; } = TimeSpan.FromSeconds(45);
 
         public Terminal(IConfiguration configuration, IAccount account)

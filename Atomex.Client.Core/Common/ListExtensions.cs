@@ -34,5 +34,11 @@ namespace Atomex.Common
             list.Sort(comparison);
             return list;
         }
+
+        public static List<T> SortList<T>(this List<T> list, IComparer<T> comparer)
+        {
+            list.Sort(comparer);
+            return list;
+        }
     }
 }

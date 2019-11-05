@@ -58,7 +58,8 @@ namespace Atomex.Client.Core.Tests
             var account = new BitcoinBasedCurrencyAccount(
                 currency: currency,
                 wallet: wallet,
-                dataRepository: repositoryMock.Object);
+                dataRepository: repositoryMock.Object,
+                assetWarrantyManager: new AssetWarrantyManager());
 
             return account.SendAsync(
                     outputs: fromOutputs,

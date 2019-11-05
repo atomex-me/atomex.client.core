@@ -12,6 +12,8 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Core.Entities;
 using Atomex.LiteDb;
+using Atomex.Subsystems;
+using Atomex.Subsystems.Abstract;
 using Atomex.Wallet.Abstract;
 using Microsoft.Extensions.Configuration;
 using Serilog;
@@ -56,6 +58,7 @@ namespace Atomex.Wallet
         public IHdWallet Wallet { get; }
         public ICurrencies Currencies { get; }
         public ISymbols Symbols { get; }
+        public IAssetWarrantyManager AssetWarrantyManager { get; }
         public UserSettings UserSettings { get; private set; }
 
         private IAccountDataRepository DataRepository { get; }
@@ -94,7 +97,13 @@ namespace Atomex.Wallet
             CurrencyAccounts = Currencies
                 .ToDictionary(
                     c => c.Name,
-                    c => CurrencyAccountCreator.Create(c, Wallet, DataRepository));
+                    c => CurrencyAccountCreator.Create(
+                        currency: c,
+                        wallet: Wallet,
+                        dataRepository: DataRepository,
+                        assetWarrantyManager: AssetWarrantyManager));
+
+            AssetWarrantyManager = new AssetWarrantyManager();
 
             UserSettings = UserSettings.TryLoadFromFile(
                 pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",

@@ -715,7 +715,7 @@ namespace Atomex.Swaps.Ethereum
                 .GetUnspentAddressesAsync(Eth, cancellationToken)
                 .ConfigureAwait(false))
                 .ToList()
-                .SortList((a, b) => a.AvailableBalance().CompareTo(b.AvailableBalance()));
+                .SortList(new AvailableBalanceAscending(Account.AssetWarrantyManager));
 
             var transactions = new List<EthereumTransaction>();
 

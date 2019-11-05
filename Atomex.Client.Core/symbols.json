@@ -3,44 +3,44 @@
     {
       "Id": 1,
       "Name": "ETH/BTC",
-      "MinimumQty": 0.0001
+      "MinimumQty": 0.1
     },
     {
       "Id": 2,
       "Name": "LTC/BTC",
-      "MinimumQty": 0.0001
+      "MinimumQty": 0.3
     },
     {
       "Id": 3,
       "Name": "XTZ/BTC",
-      "MinimumQty": 0.0001
+      "MinimumQty": 20
     },
     {
       "Id": 4,
       "Name": "XTZ/ETH",
-      "MinimumQty": 0.0001
+      "MinimumQty": 20
     }
   ],
   "TestNet": [
     {
       "Id": 1,
       "Name": "ETH/BTC",
-      "MinimumQty": 0.0001
+      "MinimumQty": 0.1
     },
     {
       "Id": 2,
       "Name": "LTC/BTC",
-      "MinimumQty": 0.0001
+      "MinimumQty": 0.3
     },
     {
       "Id": 3,
       "Name": "XTZ/BTC",
-      "MinimumQty": 0.0001
+      "MinimumQty": 20
     },
     {
       "Id": 4,
       "Name": "XTZ/ETH",
-      "MinimumQty": 0.0001
+      "MinimumQty": 20
     }
   ]
 }

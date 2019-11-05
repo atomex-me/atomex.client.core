@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Atomex.Core.Entities;
+using Atomex.Wallet.Abstract;
 
 namespace Atomex.Common
 {
@@ -35,6 +36,13 @@ namespace Atomex.Common
                 throw new Exception("Currency resolving error");
 
             return walletAddress;
+        }
+
+        public static decimal AvailableBalance(
+            this WalletAddress address,
+            IAssetWarrantyManager assetWarrantyManager)
+        {
+            return Math.Max(address.AvailableBalance() - assetWarrantyManager.Locked(address), 0);
         }
     }
 }

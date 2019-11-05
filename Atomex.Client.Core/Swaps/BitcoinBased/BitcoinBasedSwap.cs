@@ -510,7 +510,7 @@ namespace Atomex.Swaps.BitcoinBased
                 .GetUnspentAddressesAsync(currency)
                 .ConfigureAwait(false))
                 .ToList()
-                .SortList((a, b) => a.AvailableBalance().CompareTo(b.AvailableBalance()))
+                .SortList(new AvailableBalanceAscending(Account.AssetWarrantyManager))
                 .Select(a => a.Address);
 
             var amount = (long)(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price) * currency.DigitsMultiplier);
