@@ -92,8 +92,8 @@ namespace Atomex.Swaps.Ethereum
                     refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
                     interval: TimeSpan.FromSeconds(30),
                     cancelOnlyIfRefundTimeReached: true,
-                    redeemedHandler: RedeemedHandler,
-                    canceledHandler: RedeemControlCanceledHandler,
+                    redeemedHandler: RedeemCompletedEventHandler,
+                    canceledHandler: RedeemCanceledEventHandler,
                     cancellationToken: cancellationToken)
                 .FireAndForget();
         }
@@ -213,6 +213,77 @@ namespace Atomex.Swaps.Ethereum
                 .FireAndForget();
         }
 
+        public override async Task RedeemForPartyAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
+        {
+            Log.Debug("Create redeem for counterParty for swap {@swapId}", swap.Id);
+
+            var walletAddress = (await Account
+                .GetUnspentAddressesAsync(
+                    toAddress: null, // todo: get participant address
+                    currency: Currency,
+                    amount: 0,
+                    fee: 0,
+                    feePrice: 0,
+                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
+                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
+                    transactionType: BlockchainTransactionType.SwapRedeem,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false))
+                .FirstOrDefault();
+
+            if (walletAddress == null)
+            {
+                Log.Error("Insufficient balance for party redeem. Cannot find the address containing the required amount of funds.");
+                return;
+            }
+
+            var nonceResult = await EthereumNonceManager.Instance
+                .GetNonceAsync(Eth, walletAddress.Address, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (nonceResult.HasError)
+            {
+                Log.Error("Nonce getting error with code {@code} and description {@description}",
+                    nonceResult.Error.Code,
+                    nonceResult.Error.Description);
+
+                return;
+            }
+
+            var message = new RedeemFunctionMessage
+            {
+                FromAddress = walletAddress.Address,
+                HashedSecret = swap.SecretHash,
+                Secret = swap.Secret,
+                Nonce = nonceResult.Value,
+                GasPrice = Atomex.Ethereum.GweiToWei(Eth.GasPriceInGwei),
+            };
+
+            message.Gas = await EstimateGasAsync(message, new BigInteger(Eth.RedeemGasLimit))
+                .ConfigureAwait(false);
+
+            var txInput = message.CreateTransactionInput(Eth.SwapContractAddress);
+
+            var redeemTx = new EthereumTransaction(Eth, txInput)
+            {
+                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
+            };
+
+            var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!signResult)
+            {
+                Log.Error("Transaction signing error");
+                return;
+            }
+
+            await BroadcastTxAsync(swap, redeemTx, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         public override async Task RefundAsync(
             ClientSwap swap,
             CancellationToken cancellationToken = default)
@@ -299,7 +370,30 @@ namespace Atomex.Swaps.Ethereum
                 .FireAndForget();
         }
 
-        public override Task WaitForRedeemAsync(
+        public override Task StartWaitForRedeemAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
+        {
+            var lockTimeInSeconds = swap.IsInitiator
+                ? DefaultInitiatorLockTimeInSeconds
+                : DefaultAcceptorLockTimeInSeconds;
+
+            // start redeem control async
+            EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+                    swap: swap,
+                    currency: Currency,
+                    refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
+                    interval: TimeSpan.FromSeconds(30),
+                    cancelOnlyIfRefundTimeReached: true,
+                    redeemedHandler: RedeemCompletedEventHandler,
+                    canceledHandler: RedeemCanceledEventHandler,
+                    cancellationToken: cancellationToken)
+                .FireAndForget();
+
+            return Task.CompletedTask;
+        }
+
+        public override Task StartWaitForRedeemBySomeoneAsync(
             ClientSwap swap,
             CancellationToken cancellationToken = default)
         {
@@ -312,189 +406,118 @@ namespace Atomex.Swaps.Ethereum
                     refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
                     interval: TimeSpan.FromSeconds(30),
                     cancelOnlyIfRefundTimeReached: true,
-                    redeemedHandler: RedeemedBySomeoneHandler,
-                    canceledHandler: RedeemPartyControlCanceledHandler,
+                    redeemedHandler: RedeemBySomeoneCompletedEventHandler,
+                    canceledHandler: RedeemBySomeoneCanceledEventHandler,
                     cancellationToken: cancellationToken)
                 .FireAndForget();
 
             return Task.CompletedTask;
         }
 
-        public override async Task PartyRedeemAsync(
-            ClientSwap swap,
-            CancellationToken cancellationToken = default)
-        {
-            Log.Debug("Create redeem for counterParty for swap {@swapId}", swap.Id);
+        //public override Task RestoreSwapForSoldCurrencyAsync(
+        //    ClientSwap swap,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
+        //    {
+        //        if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemSigned))
+        //            return Task.CompletedTask; // we already have redeem, let's check it in RestoreForPurchasedCurrency
 
-            var walletAddress = (await Account
-                .GetUnspentAddressesAsync(
-                    toAddress: null, // todo: get participant address
-                    currency: Currency,
-                    amount: 0,
-                    fee: 0,
-                    feePrice: 0,
-                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
-                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
-                    transactionType: BlockchainTransactionType.SwapRedeem,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false))
-                .FirstOrDefault();
+        //        if (!(swap.PaymentTx is EthereumTransaction))
+        //        {
+        //            Log.Error("Can't restore swap {@id}. Payment tx is null.", swap.Id);
+        //            return Task.CompletedTask;
+        //        }
 
-            if (walletAddress == null)
-            {
-                Log.Error("Insufficient balance for party redeem. Cannot find the address containing the required amount of funds.");
-                return;
-            }
+        //        var lockTimeInSeconds = swap.IsInitiator
+        //            ? DefaultInitiatorLockTimeInSeconds
+        //            : DefaultAcceptorLockTimeInSeconds;
 
-            var nonceResult = await EthereumNonceManager.Instance
-                .GetNonceAsync(Eth, walletAddress.Address, cancellationToken)
-                .ConfigureAwait(false);
+        //        // start redeem control async
+        //        EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+        //                swap: swap,
+        //                currency: Currency,
+        //                refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
+        //                interval: TimeSpan.FromSeconds(30),
+        //                cancelOnlyIfRefundTimeReached: true,
+        //                redeemedHandler: RedeemedHandler,
+        //                canceledHandler: RedeemControlCanceledHandler,
+        //                cancellationToken: cancellationToken)
+        //            .FireAndForget();
+        //    }
+        //    else
+        //    {
+        //        if (DateTime.UtcNow < swap.TimeStamp.ToUniversalTime() + DefaultMaxSwapTimeout)
+        //        {
+        //            if (swap.IsInitiator)
+        //            {
+        //                // todo: initiate swap
 
-            if (nonceResult.HasError)
-            {
-                Log.Error("Nonce getting error with code {@code} and description {@description}",
-                    nonceResult.Error.Code,
-                    nonceResult.Error.Description);
+        //                //await InitiateSwapAsync(swapState)
+        //                //    .ConfigureAwait(false);
+        //            }
+        //            else
+        //            {
+        //                // todo: request secret hash from server
+        //            }
+        //        }
+        //        else
+        //        {
+        //            swap.Cancel();
+        //            RaiseSwapUpdated(swap, SwapStateFlags.IsCanceled);
+        //        }
+        //    }
 
-                return;
-            }
+        //    return Task.CompletedTask;
+        //}
 
-            var message = new RedeemFunctionMessage
-            {
-                FromAddress = walletAddress.Address,
-                HashedSecret = swap.SecretHash,
-                Secret = swap.Secret,
-                Nonce = nonceResult.Value,
-                GasPrice = Atomex.Ethereum.GweiToWei(Eth.GasPriceInGwei),
-            };
+        //public override async Task RestoreSwapForPurchasedCurrencyAsync(
+        //    ClientSwap swap,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    if (swap.RewardForRedeem > 0 &&
+        //        swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
+        //    {
+        //        // may be swap already redeemed by someone else
+        //        await WaitForRedeemAsync(swap, cancellationToken)
+        //            .ConfigureAwait(false);
+        //    }
+        //    else if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemSigned) &&
+        //             !swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast))
+        //    {
+        //        // redeem tx created, signed, but not broadcast.
+        //        // there is a possibility that tx could successfully broadcast
+        //        // otherwise try again
 
-            message.Gas = await EstimateGasAsync(message, new BigInteger(Eth.RedeemGasLimit))
-                .ConfigureAwait(false);
+        //        EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+        //                swap: swap,
+        //                currency: Currency,
+        //                refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
+        //                interval: TimeSpan.FromSeconds(30),
+        //                cancelOnlyIfRefundTimeReached: false,
+        //                redeemedHandler: RedeemedBySomeoneHandler,
+        //                canceledHandler: RedeemPartyControlCanceledHandler,
+        //                cancellationToken: cancellationToken)
+        //            .FireAndForget();
+        //    }
+        //    else if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast) &&
+        //            !swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemConfirmed))
+        //    {
+        //        if (!(swap.RedeemTx is EthereumTransaction redeemTx))
+        //        {
+        //            Log.Error("Can't restore swap {@id}. Redeem tx is null", swap.Id);
+        //            return;
+        //        }
 
-            var txInput = message.CreateTransactionInput(Eth.SwapContractAddress);
-
-            var redeemTx = new EthereumTransaction(Eth, txInput)
-            {
-                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
-            };
-
-            var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!signResult)
-            {
-                Log.Error("Transaction signing error");
-                return;
-            }
-
-            await BroadcastTxAsync(swap, redeemTx, cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        public override Task RestoreSwapForSoldCurrencyAsync(
-            ClientSwap swap,
-            CancellationToken cancellationToken = default)
-        {
-            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-            {
-                if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemSigned))
-                    return Task.CompletedTask; // we already have redeem, let's check it in RestoreForPurchasedCurrency
-
-                if (!(swap.PaymentTx is EthereumTransaction))
-                {
-                    Log.Error("Can't restore swap {@id}. Payment tx is null.", swap.Id);
-                    return Task.CompletedTask;
-                }
-
-                var lockTimeInSeconds = swap.IsInitiator
-                    ? DefaultInitiatorLockTimeInSeconds
-                    : DefaultAcceptorLockTimeInSeconds;
-
-                // start redeem control async
-                EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
-                        swap: swap,
-                        currency: Currency,
-                        refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
-                        interval: TimeSpan.FromSeconds(30),
-                        cancelOnlyIfRefundTimeReached: true,
-                        redeemedHandler: RedeemedHandler,
-                        canceledHandler: RedeemControlCanceledHandler,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
-            }
-            else
-            {
-                if (DateTime.UtcNow < swap.TimeStamp.ToUniversalTime() + DefaultMaxSwapTimeout)
-                {
-                    if (swap.IsInitiator)
-                    {
-                        // todo: initiate swap
-
-                        //await InitiateSwapAsync(swapState)
-                        //    .ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        // todo: request secret hash from server
-                    }
-                }
-                else
-                {
-                    swap.Cancel();
-                    RaiseSwapUpdated(swap, SwapStateFlags.IsCanceled);
-                }
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public override async Task RestoreSwapForPurchasedCurrencyAsync(
-            ClientSwap swap,
-            CancellationToken cancellationToken = default)
-        {
-            if (swap.RewardForRedeem > 0 &&
-                swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-            {
-                // may be swap already redeemed by someone else
-                await WaitForRedeemAsync(swap, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            else if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemSigned) &&
-                     !swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast))
-            {
-                // redeem tx created, signed, but not broadcast.
-                // there is a possibility that tx could successfully broadcast
-                // otherwise try again
-
-                EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
-                        swap: swap,
-                        currency: Currency,
-                        refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
-                        interval: TimeSpan.FromSeconds(30),
-                        cancelOnlyIfRefundTimeReached: false,
-                        redeemedHandler: RedeemedBySomeoneHandler,
-                        canceledHandler: RedeemPartyControlCanceledHandler,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
-            }
-            else if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast) &&
-                    !swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemConfirmed))
-            {
-                if (!(swap.RedeemTx is EthereumTransaction redeemTx))
-                {
-                    Log.Error("Can't restore swap {@id}. Redeem tx is null", swap.Id);
-                    return;
-                }
-
-                TrackTransactionConfirmationAsync(
-                        swap: swap,
-                        currency: Currency,
-                        txId: redeemTx.Id,
-                        confirmationHandler: RedeemConfirmedHandler,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
-            }
-        }
+        //        TrackTransactionConfirmationAsync(
+        //                swap: swap,
+        //                currency: Currency,
+        //                txId: redeemTx.Id,
+        //                confirmationHandler: RedeemConfirmedHandler,
+        //                cancellationToken: cancellationToken)
+        //            .FireAndForget();
+        //    }
+        //}
 
         #region Event Handlers
 
@@ -555,7 +578,7 @@ namespace Atomex.Swaps.Ethereum
             RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemConfirmed);
         }
 
-        private void RedeemedHandler(
+        private void RedeemCompletedEventHandler(
             ClientSwap swap,
             byte[] secret,
             CancellationToken cancellationToken = default)
@@ -571,7 +594,7 @@ namespace Atomex.Swaps.Ethereum
             }
         }
 
-        private void RedeemControlCanceledHandler(
+        private void RedeemCanceledEventHandler(
             ClientSwap swap,
             DateTime refundTimeUtc,
             CancellationToken cancellationToken = default)
@@ -628,7 +651,7 @@ namespace Atomex.Swaps.Ethereum
             RaiseSwapUpdated(swap, SwapStateFlags.IsRefundConfirmed);
         }
 
-        private void RedeemedBySomeoneHandler(
+        private void RedeemBySomeoneCompletedEventHandler(
             ClientSwap swap,
             byte[] secret,
             CancellationToken cancellationToken = default)
@@ -651,7 +674,7 @@ namespace Atomex.Swaps.Ethereum
             }
         }
 
-        private async void RedeemPartyControlCanceledHandler(
+        private async void RedeemBySomeoneCanceledEventHandler(
             ClientSwap swap,
             DateTime refundTimeUtc,
             CancellationToken cancellationToken)

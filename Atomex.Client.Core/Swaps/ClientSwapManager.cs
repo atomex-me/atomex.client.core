@@ -15,6 +15,8 @@ namespace Atomex.Swaps
 {
     public class ClientSwapManager : IClientSwapManager
     {
+        protected static TimeSpan DefaultMaxSwapTimeout = TimeSpan.FromMinutes(10);
+
         public event EventHandler<SwapEventArgs> SwapUpdated;
 
         private readonly IAccount _account;
@@ -312,19 +314,11 @@ namespace Atomex.Swaps
                     .GetSwapsAsync()
                     .ConfigureAwait(false);
 
-                foreach (var swap in swaps)
+                foreach (var swap in swaps.Where(s => s.IsActive))
                 {
-                    if (swap.IsComplete || swap.IsCanceled || swap.IsRefunded)
-                        continue;
-
                     try
                     {
-                        await GetCurrencySwap(swap.SoldCurrency)
-                            .RestoreSwapForSoldCurrencyAsync(swap)
-                            .ConfigureAwait(false);
-
-                        await GetCurrencySwap(swap.PurchasedCurrency)
-                            .RestoreSwapForPurchasedCurrencyAsync(swap)
+                        await RestoreSwapAsync(swap, cancellationToken)
                             .ConfigureAwait(false);
                     }
                     catch (Exception e)
@@ -337,6 +331,77 @@ namespace Atomex.Swaps
             {
                 Log.Error(e, "Swaps restore error");
             }
+        }
+
+        private async Task RestoreSwapAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
+        {
+            // Если payment транзакция отправлена
+            //    Если payment транзакция выкуплена (контрагентом)
+            //       Если инициатор
+            //       Иначе (если ассептор)
+            //
+            //    Иначе (еще не выкуплена)
+            //       Если был отправлен refund
+            //          Проверить, что с refund
+            //          Если всё ок
+            //             Ждать подтверждения
+            //          Иначе
+            //             TODO
+            //       Иначе (refund еще не отправлен)
+            //
+            // Иначе (если payment транзакция не отправлена)
+            //    Если текущее время меньше, чем таймаут для свопа
+            //       Если инициатор
+            //          Initiate swap (с шага, на котором своп был прерван)
+            //       Иначе (если контрагент)
+            //          Accept swap (с шага, на котором своп был прерван)
+            //    Иначе (таймаут прошёл)
+            //       Отменить своп и обновить статус свопа
+
+            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
+            {       
+                if (!swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed))
+                {
+                    // if payment tx unconfirmed
+                }
+                else
+                {
+                    // if payment tx confirmed start wait for redeem for sold currency
+
+                    await GetCurrencySwap(swap.SoldCurrency)
+                        .StartWaitForRedeemAsync(swap, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
+            else
+            {
+                if (DateTime.UtcNow < swap.TimeStamp.ToUniversalTime() + DefaultMaxSwapTimeout)
+                {
+                    if (swap.IsInitiator)
+                    {
+                        // todo: reinitiate swap
+                    }
+                    else
+                    {
+                        // todo: reaccept swap
+                    }
+                }
+                else
+                {
+                    swap.Cancel();
+                    RaiseSwapUpdated(swap, SwapStateFlags.IsCanceled);
+                }
+            }
+
+            //await GetCurrencySwap(swap.SoldCurrency)
+            //    .RestoreSwapForSoldCurrencyAsync(swap)
+            //    .ConfigureAwait(false);
+
+            //await GetCurrencySwap(swap.PurchasedCurrency)
+            //    .RestoreSwapForPurchasedCurrencyAsync(swap)
+            //    .ConfigureAwait(false);
         }
 
         private void RaiseSwapUpdated(ClientSwap swap, SwapStateFlags changedFlag)
@@ -359,7 +424,7 @@ namespace Atomex.Swaps
                 if (!result)
                     Log.Error("Swap update error");
 
-                
+                //_account.AssetWarrantyManager.Alloc()
 
                 SwapUpdated?.Invoke(this, args);
             }
@@ -390,7 +455,7 @@ namespace Atomex.Swaps
                     // wait for redeem by other party or someone else
                     if (swap.RewardForRedeem > 0)
                         await GetCurrencySwap(swap.PurchasedCurrency)
-                            .WaitForRedeemAsync(swap)
+                            .StartWaitForRedeemBySomeoneAsync(swap)
                             .ConfigureAwait(false);
                 }
             }
@@ -416,7 +481,7 @@ namespace Atomex.Swaps
                     swap.PartyRewardForRedeem > 0) // todo: user param >= 2*RedeemFee
                 {
                     await GetCurrencySwap(swap.SoldCurrency)
-                        .PartyRedeemAsync(swap)
+                        .RedeemForPartyAsync(swap)
                         .ConfigureAwait(false);
                 }
             }

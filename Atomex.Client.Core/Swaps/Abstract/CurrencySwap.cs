@@ -23,7 +23,6 @@ namespace Atomex.Swaps.Abstract
         protected static TimeSpan DefaultOutputSpentCheckInterval = TimeSpan.FromSeconds(60);
         protected static TimeSpan DefaultGetTransactionInterval = TimeSpan.FromSeconds(60);
         protected static TimeSpan DefaultRefundTimeCheckInterval = TimeSpan.FromSeconds(60);
-        protected static TimeSpan DefaultMaxSwapTimeout = TimeSpan.FromMinutes(10);
         protected static TimeSpan DefaultForceRefundInterval = TimeSpan.FromMinutes(5);
 
         public OnSwapUpdatedDelegate InitiatorPaymentConfirmed { get; set; }
@@ -57,23 +56,19 @@ namespace Atomex.Swaps.Abstract
             ClientSwap swap,
             CancellationToken cancellationToken = default);
 
+        public abstract Task RedeemForPartyAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default);
+
         public abstract Task RefundAsync(
             ClientSwap swap,
             CancellationToken cancellationToken = default);
 
-        public abstract Task WaitForRedeemAsync(
+        public abstract Task StartWaitForRedeemAsync(
             ClientSwap swap,
             CancellationToken cancellationToken = default);
 
-        public abstract Task PartyRedeemAsync(
-            ClientSwap swap,
-            CancellationToken cancellationToken = default);
-
-        public abstract Task RestoreSwapForSoldCurrencyAsync(
-            ClientSwap swap,
-            CancellationToken cancellationToken = default);
-
-        public abstract Task RestoreSwapForPurchasedCurrencyAsync(
+        public abstract Task StartWaitForRedeemBySomeoneAsync(
             ClientSwap swap,
             CancellationToken cancellationToken = default);
 

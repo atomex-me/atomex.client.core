@@ -1,6 +1,6 @@
-﻿using Atomex.Blockchain.Abstract;
+﻿using System;
+using Atomex.Blockchain.Abstract;
 using Atomex.Common;
-using System;
 
 namespace Atomex.Core.Entities
 {
@@ -30,7 +30,8 @@ namespace Atomex.Core.Entities
         HasPartyPayment = 1 << 15,
         IsPartyPaymentConfirmed = 1 << 16,
 
-        IsCanceled = 1 << 17
+        IsCanceled = 1 << 17,
+        IsUnsettled = 1 << 18
     }
 
     public class ClientSwap
@@ -60,6 +61,8 @@ namespace Atomex.Core.Entities
         public bool IsComplete => StateFlags.HasFlag(SwapStateFlags.IsRedeemConfirmed);
         public bool IsRefunded => StateFlags.HasFlag(SwapStateFlags.IsRefundConfirmed);
         public bool IsCanceled => StateFlags.HasFlag(SwapStateFlags.IsCanceled);
+        public bool IsUnsettled => StateFlags.HasFlag(SwapStateFlags.IsUnsettled);
+        public bool IsActive => !IsComplete && !IsRefunded && !IsCanceled && !IsUnsettled;
         public bool IsInitiator => IsInitiative;
         public bool IsAcceptor => !IsInitiative;
         public bool HasPartyPayment => 
@@ -125,8 +128,8 @@ namespace Atomex.Core.Entities
                 $"Side: {Side}, " +
                 $"Price: {Price}, " +
                 $"Qty: {Qty}, " +
-                $"ToAddresS: {ToAddress}, " +
-                $"RerawdForRedeem: {RewardForRedeem}, " +
+                $"ToAddress: {ToAddress}, " +
+                $"RewardForRedeem: {RewardForRedeem}, " +
                 $"PaymentTxId: {PaymentTxId}, " +
                 $"RedeemScript: {RedeemScript}, " +
                 $"PartyAddress: {PartyAddress}, " +
