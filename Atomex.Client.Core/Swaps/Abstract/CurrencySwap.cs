@@ -48,7 +48,7 @@ namespace Atomex.Swaps.Abstract
             ClientSwap swap,
             CancellationToken cancellationToken = default);
 
-        public abstract Task PrepareToReceiveAsync(
+        public abstract Task StartPartyPaymentControlAsync(
             ClientSwap swap,
             CancellationToken cancellationToken = default);
 

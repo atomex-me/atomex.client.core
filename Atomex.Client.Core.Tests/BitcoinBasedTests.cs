@@ -592,10 +592,12 @@ namespace Atomex.Client.Core.Tests
         {
             var tx = SignHtlcP2PkhScriptSwapRedeemTx(currency);
 
-            var secret = tx.Inputs.First().ExtractSecret();
+            var data = (tx.Inputs.First() as BitcoinBasedTxPoint)
+                .ExtractAllPushData();
+
+            var secret = data.FirstOrDefault(d => d.SequenceEqual(Common.Secret));
 
             Assert.NotNull(secret);
-            Assert.Equal(Common.Secret, secret);
         }
     }
 }

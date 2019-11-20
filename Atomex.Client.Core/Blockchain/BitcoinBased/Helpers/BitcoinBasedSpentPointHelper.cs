@@ -49,6 +49,6 @@ namespace Atomex.Blockchain.BitcoinBased.Helpers
 
                 return new Result<ITxPoint>(new Error(Errors.InternalError, e.Message));
             }
-        }
+        }  
     }
 }

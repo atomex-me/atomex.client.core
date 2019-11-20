@@ -26,10 +26,12 @@ namespace Atomex.Swaps.Abstract
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Preparing to receive the purchased currency
+        /// Start to control party payment transaction confirmation
         /// </summary>
+        /// <param name="swap">Swap</param>
+        /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Task</returns>
-        Task PrepareToReceiveAsync(
+        Task StartPartyPaymentControlAsync(
             ClientSwap swap,
             CancellationToken cancellationToken = default);
 
