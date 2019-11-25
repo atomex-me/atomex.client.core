@@ -21,8 +21,9 @@ namespace Atomex.Wallet.BitcoinBased
         public BitcoinBasedCurrencyAccount(
             Currency currency,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository)
-                : base(currency, wallet, dataRepository)
+            IAccountDataRepository dataRepository,
+            IAssetWarrantyManager assetWarrantyManager)
+                : base(currency, wallet, dataRepository, assetWarrantyManager)
         {
         }
 
@@ -558,7 +559,7 @@ namespace Atomex.Wallet.BitcoinBased
                     break;
 
                 usedAddresses.Add(walletAddress);
-                usedAmount += walletAddress.AvailableBalance();
+                usedAmount += walletAddress.AvailableBalance(AssetWarrantyManager);
             }
 
             if (requiredAmount > 0 && usedAmount < requiredAmount)

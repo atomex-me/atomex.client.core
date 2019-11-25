@@ -545,10 +545,10 @@ namespace Atomex.Blockchain.BitcoinBased
         {
             var ops = script.ToOps().ToList();
 
-            if (ops.Count != 4)
+            if (ops.Count < 4)
                 return false;
 
-            return ops[3].Code == OpcodeType.OP_0;
+            return ops.Last().Code == OpcodeType.OP_FALSE;
         }
 
         /// <summary>
@@ -560,31 +560,69 @@ namespace Atomex.Blockchain.BitcoinBased
         {
             var ops = script.ToOps().ToList();
 
-            if (ops.Count != 5)
+            if (ops.Count < 5)
                 return false;
 
-            return ops[3].Code == OpcodeType.OP_0;
+            return ops[ops.Count - 2].Code == OpcodeType.OP_FALSE;
         }
 
-        public static byte[] ExtractSecretFromP2PkhSwapRedeem(Script script)
+        /// <summary>
+        /// Check if <paramref name="script"/> is P2PKH atomic swap refund script
+        /// </summary>
+        /// <param name="script">Script</param>
+        /// <returns>True if <paramref name="script"/> is a P2PKH atomic swap refund script, else false</returns>
+        public static bool IsP2PkhSwapRefund(Script script)
         {
             var ops = script.ToOps().ToList();
 
-            if (ops.Count != 4)
-                throw new ArgumentException("Script is not P2PKH swap redeem", nameof(script));
+            if (ops.Count < 3)
+                return false;
 
-            return ops[2].PushData;
+            return ops.Last().Code != OpcodeType.OP_FALSE;
         }
 
-        public static byte[] ExtractSecretFromP2PkhScriptSwapRedeem(Script script)
+        /// <summary>
+        /// Check if <paramref name="script"/> is P2Sh atomic swap refund script
+        /// </summary>
+        /// <param name="script">Script</param>
+        /// <returns>True if <paramref name="script"/> is P2Sh atomic swap refund script, else false</returns>
+        public static bool IsP2PkhScriptSwapRefund(Script script)
         {
             var ops = script.ToOps().ToList();
 
-            if (ops.Count != 5)
-                throw new ArgumentException("Script is not P2PKH script swap redeem", nameof(script));
+            if (ops.Count < 4)
+                return false;
 
-            return ops[2].PushData;
+            return ops[ops.Count - 2].Code != OpcodeType.OP_FALSE;
         }
+
+        public static IEnumerable<byte[]> ExtractAllPushData(Script script)
+        {
+            return script
+                .ToOps()
+                .Where(op => op.PushData != null)
+                .Select(op => op.PushData);
+        }
+
+        //public static byte[] ExtractSecretFromP2PkhSwapRedeem(Script script)
+        //{
+        //    var ops = script.ToOps().ToList();
+
+        //    if (ops.Count != 4)
+        //        throw new ArgumentException("Script is not P2PKH swap redeem", nameof(script));
+
+        //    return ops[2].PushData;
+        //}
+
+        //public static byte[] ExtractSecretFromP2PkhScriptSwapRedeem(Script script)
+        //{
+        //    var ops = script.ToOps().ToList();
+
+        //    if (ops.Count != 5)
+        //        throw new ArgumentException("Script is not P2PKH script swap redeem", nameof(script));
+
+        //    return ops[2].PushData;
+        //}
 
         public static long ExtractLockTimeFromHtlcP2PkhSwapPayment(Script script)
         {
@@ -607,14 +645,14 @@ namespace Atomex.Blockchain.BitcoinBased
             return ops[18].PushData;
         }
 
-        public static byte[] ExtractSignFromP2PkhSwapRefund(Script script)
-        {
-            var ops = script.ToOps().ToList();
+        //public static byte[] ExtractSignFromP2PkhSwapRefund(Script script)
+        //{
+        //    var ops = script.ToOps().ToList();
 
-            if (ops.Count != 1)
-                throw new ArgumentException("Script is not P2PKH one side signed swap refund", nameof(script));
+        //    if (ops.Count != 1)
+        //        throw new ArgumentException("Script is not P2PKH one side signed swap refund", nameof(script));
 
-            return ops[0].PushData;
-        }
+        //    return ops[0].PushData;
+        //}
     }
 }

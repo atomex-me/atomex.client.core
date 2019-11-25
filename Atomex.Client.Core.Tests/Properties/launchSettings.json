@@ -1,0 +1,7 @@
+{
+  "profiles": {
+    "Atomex.Client.Core.Tests": {
+      "commandName": "Project"
+    }
+  }
+}

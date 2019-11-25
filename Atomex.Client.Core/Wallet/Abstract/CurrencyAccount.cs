@@ -8,6 +8,7 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Core.Entities;
+using Atomex.Subsystems.Abstract;
 using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Abstract
@@ -20,6 +21,7 @@ namespace Atomex.Wallet.Abstract
         protected Currency Currency { get; }
         protected IHdWallet Wallet { get; }
         protected IAccountDataRepository DataRepository { get; }
+        protected IAssetWarrantyManager AssetWarrantyManager { get; }
         protected decimal Balance { get; set; }
         protected decimal UnconfirmedIncome { get; set; }
         protected decimal UnconfirmedOutcome { get; set; }
@@ -27,11 +29,13 @@ namespace Atomex.Wallet.Abstract
         protected CurrencyAccount(
             Currency currency,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository)
+            IAccountDataRepository dataRepository,
+            IAssetWarrantyManager assetWarrantyManager)
         {
-            Currency = currency;
-            Wallet = wallet;
-            DataRepository = dataRepository;
+            Currency = currency ?? throw new ArgumentNullException(nameof(currency));
+            Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
+            DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
+            AssetWarrantyManager = assetWarrantyManager ?? throw new ArgumentNullException(nameof(assetWarrantyManager));
 
             PreloadBalances();
         }
@@ -223,16 +227,14 @@ namespace Atomex.Wallet.Abstract
             switch (addressUsagePolicy)
             {
                 case AddressUsagePolicy.UseMinimalBalanceFirst:
-                    addresses = addresses
-                        .SortList((a, b) => a.AvailableBalance().CompareTo(b.AvailableBalance()));
+                    addresses = addresses.SortList(new AvailableBalanceAscending(AssetWarrantyManager));
                     break;
                 case AddressUsagePolicy.UseMaximumBalanceFirst:
-                    addresses = addresses
-                        .SortList((a, b) => b.AvailableBalance().CompareTo(a.AvailableBalance()));
+                    addresses = addresses.SortList(new AvailableBalanceDescending(AssetWarrantyManager));
                     break;
                 case AddressUsagePolicy.UseOnlyOneAddress:
                     var walletAddress = addresses
-                        .FirstOrDefault(w => w.AvailableBalance() >= amount + Currency.GetFeeAmount(fee, feePrice));
+                        .FirstOrDefault(w => w.AvailableBalance(AssetWarrantyManager) >= amount + Currency.GetFeeAmount(fee, feePrice));
 
                     return walletAddress != null
                         ? new List<WalletAddress> { walletAddress }

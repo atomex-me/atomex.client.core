@@ -19,8 +19,9 @@ namespace Atomex.Wallet.Ethereum
         public EthereumCurrencyAccount(
             Currency currency,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository)
-                : base(currency, wallet, dataRepository)
+            IAccountDataRepository dataRepository,
+            IAssetWarrantyManager assetWarrantyManager)
+                : base(currency, wallet, dataRepository, assetWarrantyManager)
         {
         }
 
@@ -69,7 +70,7 @@ namespace Atomex.Wallet.Ethereum
                 Log.Debug("Send {@amount} ETH from address {@address} with available balance {@balance}",
                     selectedAddress.UsedAmount,
                     selectedAddress.WalletAddress.Address,
-                    selectedAddress.WalletAddress.AvailableBalance());
+                    selectedAddress.WalletAddress.AvailableBalance(AssetWarrantyManager));
 
                 var nonceAsyncResult = await EthereumNonceManager.Instance
                     .GetNonceAsync(Eth, selectedAddress.WalletAddress.Address)
@@ -203,8 +204,7 @@ namespace Atomex.Wallet.Ethereum
             // minimum balance first
             unspentAddresses = unspentAddresses
                 .ToList()
-                .SortList((a, b) => a.AvailableBalance()
-                    .CompareTo(b.AvailableBalance()));
+                .SortList(new AvailableBalanceAscending(AssetWarrantyManager));
 
             var isFirstTx = true;
             var amount = 0m;
@@ -213,7 +213,7 @@ namespace Atomex.Wallet.Ethereum
             foreach (var address in unspentAddresses)
             {
                 var feeInEth = Eth.GetFeeAmount(GasLimitByType(type, isFirstTx), Eth.GasPriceInGwei);
-                var usedAmountInEth = Math.Max(address.AvailableBalance() - feeInEth, 0);
+                var usedAmountInEth = Math.Max(address.AvailableBalance(AssetWarrantyManager) - feeInEth, 0);
 
                 if (usedAmountInEth <= 0)
                     continue;
@@ -488,11 +488,11 @@ namespace Atomex.Wallet.Ethereum
         {
             if (addressUsagePolicy == AddressUsagePolicy.UseMinimalBalanceFirst)
             {
-                from = from.ToList().SortList((a, b) => a.AvailableBalance().CompareTo(b.AvailableBalance()));
+                from = from.ToList().SortList(new AvailableBalanceAscending(AssetWarrantyManager));
             }
             else if (addressUsagePolicy == AddressUsagePolicy.UseMaximumBalanceFirst)
             {
-                from = from.ToList().SortList((a, b) => b.AvailableBalance().CompareTo(a.AvailableBalance()));
+                from = from.ToList().SortList(new AvailableBalanceDescending(AssetWarrantyManager));
             }
             else if (addressUsagePolicy == AddressUsagePolicy.UseOnlyOneAddress)
             {
@@ -500,7 +500,7 @@ namespace Atomex.Wallet.Ethereum
                     ? Eth.GetFeeAmount(GasLimitByType(transactionType, isFirstTx: true), Eth.GasPriceInGwei)
                     : Eth.GetFeeAmount(fee, feePrice);
 
-                var address = from.FirstOrDefault(w => w.AvailableBalance() >= amount + feeInEth);
+                var address = from.FirstOrDefault(w => w.AvailableBalance(AssetWarrantyManager) >= amount + feeInEth);
 
                 return address != null
                     ? new List<SelectedWalletAddress>
@@ -525,7 +525,7 @@ namespace Atomex.Wallet.Ethereum
 
                 foreach (var address in from)
                 {
-                    var availableBalance = address.AvailableBalance();
+                    var availableBalance = address.AvailableBalance(AssetWarrantyManager);
 
                     var txFee = feeUsagePolicy == FeeUsagePolicy.EstimatedFee
                         ? Eth.GetFeeAmount(GasLimitByType(transactionType, isFirstTx), Eth.GasPriceInGwei)

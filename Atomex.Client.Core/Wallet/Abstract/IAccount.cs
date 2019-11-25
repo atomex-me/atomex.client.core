@@ -8,6 +8,7 @@ using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Core;
 using Atomex.Core.Entities;
+using Atomex.Subsystems.Abstract;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -39,6 +40,11 @@ namespace Atomex.Wallet.Abstract
         /// Get all symbols supported by wallet
         /// </summary>
         ISymbols Symbols { get; }
+
+        /// <summary>
+        /// Get asset warranty manager
+        /// </summary>
+        IAssetWarrantyManager AssetWarrantyManager { get; }
 
         /// <summary>
         /// Get user settings

@@ -56,6 +56,7 @@ namespace Atomex.Wallet
         public IHdWallet Wallet { get; }
         public ICurrencies Currencies { get; }
         public ISymbols Symbols { get; }
+        public IAssetWarrantyManager AssetWarrantyManager { get; }
         public UserSettings UserSettings { get; private set; }
 
         private IAccountDataRepository DataRepository { get; }
@@ -91,10 +92,16 @@ namespace Atomex.Wallet
                 symbols: Symbols,
                 network: wallet.Network);
 
+            AssetWarrantyManager = new AssetWarrantyManager();
+
             CurrencyAccounts = Currencies
                 .ToDictionary(
                     c => c.Name,
-                    c => CurrencyAccountCreator.Create(c, Wallet, DataRepository));
+                    c => CurrencyAccountCreator.Create(
+                        currency: c,
+                        wallet: Wallet,
+                        dataRepository: DataRepository,
+                        assetWarrantyManager: AssetWarrantyManager));
 
             UserSettings = UserSettings.TryLoadFromFile(
                 pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",

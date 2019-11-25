@@ -83,19 +83,11 @@ namespace Atomex.Swaps.Tezos
             }
 
             // start redeem control async
-            TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
-                    swap: swap,
-                    currency: Currency,
-                    refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
-                    interval: TimeSpan.FromSeconds(30),
-                    cancelOnlyIfRefundTimeReached: true,
-                    redeemedHandler: RedeemControlCompletedEventHandler,
-                    canceledHandler: RedeemControlCanceledEventHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            await StartWaitForRedeemAsync(swap, cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        public override Task PrepareToReceiveAsync(
+        public override Task StartPartyPaymentControlAsync(
             ClientSwap swap,
             CancellationToken cancellationToken = default)
         {
@@ -127,6 +119,20 @@ namespace Atomex.Swaps.Tezos
             ClientSwap swap,
             CancellationToken cancellationToken = default)
         {
+            if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast))
+            {
+                // redeem already broadcast
+                TrackTransactionConfirmationAsync(
+                        swap: swap,
+                        currency: Currency,
+                        txId: swap.RedeemTx.Id,
+                        confirmationHandler: RedeemConfirmedEventHandler,
+                        cancellationToken: cancellationToken)
+                    .FireAndForget();
+
+                return;
+            }
+
             Log.Debug("Create redeem for swap {@swapId}", swap.Id);
 
             var walletAddress = (await Account
@@ -192,10 +198,76 @@ namespace Atomex.Swaps.Tezos
                 .FireAndForget();
         }
 
+        public override async Task RedeemForPartyAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
+        {
+            Log.Debug("Create redeem for acceptor for swap {@swapId}", swap.Id);
+
+            var walletAddress = (await Account
+                .GetUnspentAddressesAsync(
+                    toAddress: null, // todo: get party address
+                    currency: Currency,
+                    amount: 0,
+                    fee: 0,
+                    feePrice: 0,
+                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
+                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
+                    transactionType: BlockchainTransactionType.SwapRedeem,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false))
+                .FirstOrDefault();
+
+            if (walletAddress == null)
+            {
+                Log.Error("Insufficient balance for party redeem. Cannot find the address containing the required amount of funds.");
+                return;
+            }
+
+            var redeemTx = new TezosTransaction
+            {
+                Currency = Xtz,
+                CreationTime = DateTime.UtcNow,
+                From = walletAddress.Address,
+                To = Xtz.SwapContractAddress,
+                Amount = 0,
+                Fee = Xtz.RedeemFee,
+                GasLimit = Xtz.RedeemGasLimit,
+                StorageLimit = Xtz.RedeemStorageLimit,
+                Params = RedeemParams(swap),
+                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
+            };
+
+            var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!signResult)
+            {
+                Log.Error("Transaction signing error");
+                return;
+            }
+
+            await BroadcastTxAsync(swap, redeemTx, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         public override async Task RefundAsync(
             ClientSwap swap,
             CancellationToken cancellationToken = default)
         {
+            if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast))
+            {
+                TrackTransactionConfirmationAsync(
+                        swap: swap,
+                        currency: Currency,
+                        txId: swap.RefundTx.Id,
+                        confirmationHandler: RefundConfirmedEventHandler,
+                        cancellationToken: cancellationToken)
+                    .FireAndForget();
+
+                return;
+            }
+
             Log.Debug("Create refund for swap {@swap}", swap.Id);
 
             var walletAddress = (await Account
@@ -260,7 +332,30 @@ namespace Atomex.Swaps.Tezos
                 .FireAndForget();
         }
 
-        public override Task WaitForRedeemAsync(
+        public override Task StartWaitForRedeemAsync(
+            ClientSwap swap,
+            CancellationToken cancellationToken = default)
+        {
+            var lockTimeInSeconds = swap.IsInitiator
+                ? DefaultInitiatorLockTimeInSeconds
+                : DefaultAcceptorLockTimeInSeconds;
+
+            // start redeem control async
+            TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+                    swap: swap,
+                    currency: Currency,
+                    refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
+                    interval: TimeSpan.FromSeconds(30),
+                    cancelOnlyIfRefundTimeReached: true,
+                    redeemedHandler: RedeemCompletedEventHandler,
+                    canceledHandler: RedeemCanceledEventHandler,
+                    cancellationToken: cancellationToken)
+                .FireAndForget();
+
+            return Task.CompletedTask;
+        }
+
+        public override Task StartWaitForRedeemBySomeoneAsync(
             ClientSwap swap,
             CancellationToken cancellationToken = default)
         {
@@ -273,178 +368,12 @@ namespace Atomex.Swaps.Tezos
                     refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
                     interval: TimeSpan.FromSeconds(30),
                     cancelOnlyIfRefundTimeReached: true,
-                    redeemedHandler: RedeemPartyControlCompletedEventHandler,
-                    canceledHandler: RedeemPartyControlCanceledEventHandler,
+                    redeemedHandler: RedeemBySomeoneCompletedEventHandler,
+                    canceledHandler: RedeemBySomeoneCanceledEventHandler,
                     cancellationToken: cancellationToken)
                 .FireAndForget();
 
             return Task.CompletedTask;
-        }
-
-        public override async Task PartyRedeemAsync(
-            ClientSwap swap,
-            CancellationToken cancellationToken = default)
-        {
-            Log.Debug("Create redeem for acceptor for swap {@swapId}", swap.Id);
-
-            var walletAddress = (await Account
-                .GetUnspentAddressesAsync(
-                    toAddress: null, // todo: get party address
-                    currency: Currency,
-                    amount: 0,
-                    fee: 0,
-                    feePrice: 0,
-                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
-                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
-                    transactionType: BlockchainTransactionType.SwapRedeem,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false))
-                .FirstOrDefault();
-
-            if (walletAddress == null)
-            {
-                Log.Error("Insufficient balance for party redeem. Cannot find the address containing the required amount of funds.");
-                return;
-            }
-
-            var redeemTx = new TezosTransaction
-            {
-                Currency = Xtz,
-                CreationTime = DateTime.UtcNow,
-                From = walletAddress.Address,
-                To = Xtz.SwapContractAddress,
-                Amount = 0,
-                Fee = Xtz.RedeemFee,
-                GasLimit = Xtz.RedeemGasLimit,
-                StorageLimit = Xtz.RedeemStorageLimit,
-                Params = RedeemParams(swap),
-                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
-            };
-
-            var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!signResult)
-            {
-                Log.Error("Transaction signing error");
-                return;
-            }
-
-            await BroadcastTxAsync(swap, redeemTx, cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        public override Task RestoreSwapForSoldCurrencyAsync(
-            ClientSwap swap,
-            CancellationToken cancellationToken = default)
-        {
-            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-            {
-                if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemSigned))
-                    return Task.CompletedTask; // we already have redeem, let's check it in RestoreForPurchasedCurrency
-
-                if (!(swap.PaymentTx is TezosTransaction))
-                {
-                    Log.Error("Can't restore swap {@id}. Payment tx is null.", swap.Id);
-                    return Task.CompletedTask;
-                }
-
-                var lockTimeInSeconds = swap.IsInitiator
-                    ? DefaultInitiatorLockTimeInSeconds
-                    : DefaultAcceptorLockTimeInSeconds;
-
-                // start redeem control async 
-                TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
-                        swap: swap,
-                        currency: Currency,
-                        refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
-                        interval: TimeSpan.FromSeconds(30),
-                        cancelOnlyIfRefundTimeReached: true,
-                        redeemedHandler: RedeemControlCompletedEventHandler,
-                        canceledHandler: RedeemControlCanceledEventHandler,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
-            }
-            else
-            {
-                if (DateTime.UtcNow < swap.TimeStamp.ToUniversalTime() + DefaultMaxSwapTimeout)
-                {
-                    if (swap.IsInitiator)
-                    {
-                        // todo: initiate swap
-
-                        //await InitiateSwapAsync(swapState)
-                        //    .ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        // todo: request secret hash from server
-                    }
-                }
-                else
-                {
-                    swap.Cancel();
-                    RaiseSwapUpdated(swap, SwapStateFlags.IsCanceled);
-                }
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public override async Task RestoreSwapForPurchasedCurrencyAsync(
-            ClientSwap swap,
-            CancellationToken cancellationToken = default)
-        {
-            //if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast) &&
-            //    swap.StateFlags.HasFlag(SwapStateFlags.HasPartyPayment)
-            //{
-
-            //}
-            //else 
-            if (swap.RewardForRedeem > 0 &&
-                swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-            {
-                // may be swap already redeemed by someone else, let's check it
-                await WaitForRedeemAsync(swap)
-                    .ConfigureAwait(false);
-            }
-            else if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemSigned) &&
-                     !swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast))
-            {
-                // redeem tx created, signed, but not broadcast.
-                // there is a possibility that tx could successfully broadcast
-                // otherwise try again
-
-                TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
-                        swap: swap,
-                        currency: Currency,
-                        refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
-                        interval: TimeSpan.FromSeconds(30),
-                        cancelOnlyIfRefundTimeReached: false,
-                        redeemedHandler: RedeemPartyControlCompletedEventHandler,
-                        canceledHandler: RedeemPartyControlCanceledEventHandler,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
-            }
-            else if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast) &&
-                    !swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemConfirmed))
-            {
-                // redeem broadcast, but not confirmed
-
-                if (!(swap.RedeemTx is TezosTransaction redeemTx))
-                {
-                    Log.Error("Can't restore swap {@id}. Redeem tx is null", swap.Id);
-                    return;
-                }
-
-                TrackTransactionConfirmationAsync(
-                        swap: swap,
-                        currency: Currency,
-                        txId: redeemTx.Id,
-                        confirmationHandler: RedeemConfirmedEventHandler,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
-            }
         }
 
         #region Event Handlers
@@ -506,7 +435,7 @@ namespace Atomex.Swaps.Tezos
             RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemConfirmed);
         }
 
-        private void RedeemControlCompletedEventHandler(
+        private void RedeemCompletedEventHandler(
             ClientSwap swap,
             byte[] secret,
             CancellationToken cancellationToken = default)
@@ -522,7 +451,7 @@ namespace Atomex.Swaps.Tezos
             }
         }
 
-        private void RedeemControlCanceledEventHandler(
+        private void RedeemCanceledEventHandler(
             ClientSwap swap,
             DateTime refundTimeUtc,
             CancellationToken cancellationToken = default)
@@ -579,7 +508,7 @@ namespace Atomex.Swaps.Tezos
             RaiseSwapUpdated(swap, SwapStateFlags.IsRefundConfirmed);
         }
 
-        private void RedeemPartyControlCompletedEventHandler(
+        private void RedeemBySomeoneCompletedEventHandler(
             ClientSwap swap,
             byte[] secret,
             CancellationToken cancellationToken = default)
@@ -602,7 +531,7 @@ namespace Atomex.Swaps.Tezos
             }
         }
 
-        private async void RedeemPartyControlCanceledEventHandler(
+        private async void RedeemBySomeoneCanceledEventHandler(
             ClientSwap swap,
             DateTime refundTimeUtc,
             CancellationToken cancellationToken = default)
@@ -671,7 +600,7 @@ namespace Atomex.Swaps.Tezos
                 .GetUnspentAddressesAsync(Xtz, cancellationToken)
                 .ConfigureAwait(false))
                 .ToList()
-                .SortList((a, b) => a.AvailableBalance().CompareTo(b.AvailableBalance()));
+                .SortList(new AvailableBalanceAscending(Account.AssetWarrantyManager));
 
             var transactions = new List<TezosTransaction>();
 
