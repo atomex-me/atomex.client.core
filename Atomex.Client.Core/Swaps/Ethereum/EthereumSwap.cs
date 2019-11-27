@@ -22,12 +22,14 @@ namespace Atomex.Swaps.Ethereum
 {
     public class EthereumSwap : CurrencySwap
     {
+        private static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(10);
+        private static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(30);
+        private Atomex.Ethereum Eth => (Atomex.Ethereum)Currency;
+
         public EthereumSwap(Currency currency, IAccount account, ISwapClient swapClient)
             : base(currency, account, swapClient)
         {
         }
-
-        private Atomex.Ethereum Eth => (Atomex.Ethereum)Currency;
 
         public override async Task PayAsync(
             ClientSwap swap,
@@ -37,11 +39,11 @@ namespace Atomex.Swaps.Ethereum
                 ? DefaultInitiatorLockTimeInSeconds
                 : DefaultAcceptorLockTimeInSeconds;
 
-            var txs = (await CreatePaymentTxsAsync(swap, lockTimeInSeconds)
+            var paymentTxs = (await CreatePaymentTxsAsync(swap, lockTimeInSeconds, cancellationToken)
                 .ConfigureAwait(false))
                 .ToList();
 
-            if (txs.Count == 0)
+            if (paymentTxs.Count == 0)
             {
                 Log.Error("Can't create payment transactions");
                 return;
@@ -49,45 +51,65 @@ namespace Atomex.Swaps.Ethereum
 
             var isInitiateTx = true;
 
-            foreach (var tx in txs)
+            try
             {
-                var signResult = await SignTransactionAsync(tx)
-                    .ConfigureAwait(false);
 
-                if (!signResult)
+                foreach (var paymentTx in paymentTxs)
                 {
-                    Log.Error("Transaction signing error");
-                    return;
-                }
+                    var signResult = await SignTransactionAsync(paymentTx, cancellationToken)
+                        .ConfigureAwait(false);
 
-                if (isInitiateTx)
-                {
-                    swap.PaymentTx = tx;
-                    swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
-                    RaiseSwapUpdated(swap, SwapStateFlags.IsPaymentSigned);
-                }
+                    if (!signResult)
+                    {
+                        Log.Error("Transaction signing error");
+                        return;
+                    }
 
-                await BroadcastTxAsync(swap, tx)
-                    .ConfigureAwait(false);
+                    if (isInitiateTx)
+                    {
+                        swap.PaymentTx = paymentTx;
+                        swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
+                        RaiseSwapUpdated(swap, SwapStateFlags.IsPaymentSigned);
+                    }
 
-                if (isInitiateTx)
-                {
-                    swap.PaymentTx = tx;
-                    swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
-                    RaiseSwapUpdated(swap, SwapStateFlags.IsPaymentBroadcast);
+                    await BroadcastTxAsync(swap, paymentTx, cancellationToken)
+                        .ConfigureAwait(false);
 
-                    isInitiateTx = false;
+                    if (isInitiateTx)
+                    {
+                        swap.PaymentTx = paymentTx;
+                        swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
+                        RaiseSwapUpdated(swap, SwapStateFlags.IsPaymentBroadcast);
 
-                    // delay for contract initiation
-                    if (txs.Count > 1)
-                        await Task.Delay(TimeSpan.FromSeconds(60))
-                            .ConfigureAwait(false);
+                        isInitiateTx = false;
+
+                        // check initiate payment tx confirmation
+                        if (paymentTxs.Count > 1)
+                        {
+                            var isInitiated = await WaitPaymentConfirmationAsync(paymentTx.Id, InitiationTimeout, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            if (!isInitiated)
+                            {
+                                Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
+                                return;
+                            }
+                        }
+                    }
                 }
             }
+            catch (Exception e)
+            {
+                Log.Error(e, "Swap payment error for swap {@swapId}", swap.Id);
+                return;
+            }
 
-            // start redeem control async
-            await StartWaitForRedeemAsync(swap, cancellationToken)
-                .ConfigureAwait(false);
+            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
+            {
+                // start redeem control async
+                await StartWaitForRedeemAsync(swap, cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
 
         public override Task StartPartyPaymentControlAsync(
@@ -815,8 +837,6 @@ namespace Atomex.Swaps.Ethereum
                     notifyIfBalanceUpdated: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-
-            // todo: transaction receipt status control
         }
 
         private async Task<BigInteger> EstimateGasAsync<TMessage>(
@@ -842,6 +862,28 @@ namespace Atomex.Swaps.Ethereum
             }
 
             return defaultGas;
+        }
+
+        private async Task<bool> WaitPaymentConfirmationAsync(
+            string txId,
+            TimeSpan timeout,
+            CancellationToken cancellationToken = default)
+        {
+            var timeStamp = DateTime.UtcNow;
+
+            while (DateTime.UtcNow < timeStamp + timeout)
+            {
+                await Task.Delay(InitiationCheckInterval, cancellationToken)
+                    .ConfigureAwait(false);
+
+                var tx = await Eth.BlockchainApi.GetTransactionAsync(txId, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!tx.HasError && tx.Value != null && tx.Value.State == BlockchainTransactionState.Confirmed)
+                    return true;
+            }
+
+            return false;
         }
 
         #endregion Helpers

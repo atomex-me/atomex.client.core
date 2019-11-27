@@ -19,12 +19,14 @@ namespace Atomex.Swaps.Tezos
 {
     public class TezosSwap : CurrencySwap
     {
+        private static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(10);
+        private static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(30);
+        private Atomex.Tezos Xtz => (Atomex.Tezos)Currency;
+
         public TezosSwap(Currency currency, IAccount account, ISwapClient swapClient)
             : base(currency, account, swapClient)
         {
         }
-
-        private Atomex.Tezos Xtz => (Atomex.Tezos)Currency;
 
         public override async Task PayAsync(
             ClientSwap swap,
@@ -34,11 +36,11 @@ namespace Atomex.Swaps.Tezos
                 ? DefaultInitiatorLockTimeInSeconds
                 : DefaultAcceptorLockTimeInSeconds;
 
-            var txs = (await CreatePaymentTxsAsync(swap, lockTimeInSeconds, cancellationToken)
+            var paymentTxs = (await CreatePaymentTxsAsync(swap, lockTimeInSeconds, cancellationToken)
                 .ConfigureAwait(false))
                 .ToList();
 
-            if (txs.Count == 0)
+            if (paymentTxs.Count == 0)
             {
                 Log.Error("Can't create payment transactions");
                 return;
@@ -46,45 +48,64 @@ namespace Atomex.Swaps.Tezos
 
             var isInitiateTx = true;
 
-            foreach (var tx in txs)
+            try
             {
-                var signResult = await SignTransactionAsync(tx, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (!signResult)
+                foreach (var paymentTx in paymentTxs)
                 {
-                    Log.Error("Transaction signing error");
-                    return;
-                }
-
-                if (isInitiateTx)
-                {
-                    swap.PaymentTx = tx;
-                    swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
-                    RaiseSwapUpdated(swap, SwapStateFlags.IsPaymentSigned);
-                }
-
-                await BroadcastTxAsync(swap, tx, cancellationToken)
+                    var signResult = await SignTransactionAsync(paymentTx, cancellationToken)
                         .ConfigureAwait(false);
 
-                if (isInitiateTx)
-                {
-                    swap.PaymentTx = tx;
-                    swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
-                    RaiseSwapUpdated(swap, SwapStateFlags.IsPaymentBroadcast);
+                    if (!signResult)
+                    {
+                        Log.Error("Transaction signing error");
+                        return;
+                    }
 
-                    isInitiateTx = false;
+                    if (isInitiateTx)
+                    {
+                        swap.PaymentTx = paymentTx;
+                        swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
+                        RaiseSwapUpdated(swap, SwapStateFlags.IsPaymentSigned);
+                    }
 
-                    // delay for contract initiation
-                    if (txs.Count > 1)
-                        await Task.Delay(TimeSpan.FromSeconds(60), cancellationToken)
+                    await BroadcastTxAsync(swap, paymentTx, cancellationToken)
                             .ConfigureAwait(false);
+
+                    if (isInitiateTx)
+                    {
+                        swap.PaymentTx = paymentTx;
+                        swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
+                        RaiseSwapUpdated(swap, SwapStateFlags.IsPaymentBroadcast);
+
+                        isInitiateTx = false;
+
+                        // check initiate payment tx confirmation
+                        if (paymentTxs.Count > 1)
+                        {
+                            var isInitiated = await WaitPaymentConfirmationAsync(paymentTx.Id, InitiationTimeout, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            if (!isInitiated)
+                            {
+                                Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
+                                return;
+                            }
+                        }
+                    }
                 }
             }
+            catch (Exception e)
+            {
+                Log.Error(e, "Swap payment error for swap {@swapId}", swap.Id);
+                return;
+            }
 
-            // start redeem control async
-            await StartWaitForRedeemAsync(swap, cancellationToken)
-                .ConfigureAwait(false);
+            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
+            {
+                // start redeem control async
+                await StartWaitForRedeemAsync(swap, cancellationToken)
+                    .ConfigureAwait(false);
+            }
         }
 
         public override Task StartPartyPaymentControlAsync(
@@ -745,7 +766,31 @@ namespace Atomex.Swaps.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
+
+
             // todo: transaction receipt status control
+        }
+
+        private async Task<bool> WaitPaymentConfirmationAsync(
+            string txId,
+            TimeSpan timeout,
+            CancellationToken cancellationToken = default)
+        {
+            var timeStamp = DateTime.UtcNow;
+
+            while (DateTime.UtcNow < timeStamp + timeout)
+            {
+                await Task.Delay(InitiationCheckInterval, cancellationToken)
+                    .ConfigureAwait(false);
+
+                var tx = await Xtz.BlockchainApi.GetTransactionAsync(txId, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!tx.HasError && tx.Value != null && tx.Value.State == BlockchainTransactionState.Confirmed)
+                    return true;
+            }
+
+            return false;
         }
 
         private JObject InitParams(

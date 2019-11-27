@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
-using Atomex.Common;
 
 namespace Atomex.Swaps.BitcoinBased
 {

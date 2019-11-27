@@ -83,5 +83,8 @@
         public const int InvalidRedeemScript = 3009;
 
         public const int NoLiquidity = 4000;
+        public const int PriceHasChanged = 4001;
+        public const int TimeoutReached = 4002;
+        public const int OrderRejected = 4003;
     }
 }
