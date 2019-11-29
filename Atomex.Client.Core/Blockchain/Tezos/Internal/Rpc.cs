@@ -29,7 +29,8 @@ namespace Atomex.Blockchain.Tezos.Internal
         {
             { OperationType.ActivateAccount, new ActivateAccountOperationHandler() },
             { OperationType.Transaction, new TransactionOperationHandler() },
-            { OperationType.Reveal, new RevealOperationHandler() }
+            { OperationType.Reveal, new RevealOperationHandler() },
+            { OperationType.Delegation, new DelegationOperationHandler() }
         };
 
         private readonly string _provider;
@@ -66,6 +67,11 @@ namespace Atomex.Blockchain.Tezos.Internal
         public Task<JObject> GetHead()
         {
             return QueryJ<JObject>($"chains/{_chain}/blocks/head");
+        }
+
+        public Task<JObject> GetDelegate(string address)
+        {
+            return QueryJ<JObject>($"chains/{_chain}/blocks/head/context/delegates/{address}");
         }
 
         public Task<JObject> GetHeader()
@@ -200,6 +206,67 @@ namespace Atomex.Blockchain.Tezos.Internal
             return sendResults.LastOrDefault() as SendTransactionOperationResult;
         }
 
+        public async Task<SendTransactionOperationResult> SendDelegation(
+            Keys keys,
+            string from,
+            string to,
+            decimal fee,
+            decimal gasLimit,
+            decimal storageLimit)
+        {
+            gasLimit = gasLimit != 0 ? gasLimit : 200;
+
+            var head = await GetHeader()
+                .ConfigureAwait(false);
+
+            var account = await GetAccountForBlock(head["hash"].ToString(), from)
+                .ConfigureAwait(false);
+
+            var counter = int.Parse(account["counter"].ToString());
+
+            var operations = new JArray();
+
+            var managerKey = await GetManagerKey(from)
+                .ConfigureAwait(false);
+
+            var gas = gasLimit.ToString(CultureInfo.InvariantCulture);
+            var storage = storageLimit.ToString(CultureInfo.InvariantCulture);
+
+            if (managerKey.Value<string>() == null)
+            {
+                var revealOp = new JObject
+                {
+                    ["kind"] = OperationType.Reveal,
+                    ["fee"] = "0",
+                    ["public_key"] = keys.DecryptPublicKey(),
+                    ["source"] = from,
+                    ["storage_limit"] = storage,
+                    ["gas_limit"] = gas,
+                    ["counter"] = (++counter).ToString()
+                };
+
+                operations.AddFirst(revealOp);
+            }
+
+            var delegation = new JObject
+            {
+                ["kind"] = OperationType.Transaction,
+                ["source"] = from,
+                ["fee"] = ((int)fee).ToString(CultureInfo.InvariantCulture),
+                ["counter"] = (++counter).ToString(),
+                ["gas_limit"] = gas,
+                ["storage_limit"] = storage,
+                ["delegate"] = to
+            };
+
+            operations.Add(delegation);
+
+            var sendResults = await SendOperations(operations, keys, head)
+                .ConfigureAwait(false);
+
+            return sendResults.LastOrDefault() as SendTransactionOperationResult;
+        }
+
         private async Task<List<OperationResult>> SendOperations(
             JToken operations,
             Keys keys,
@@ -265,7 +332,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             return opResults;
         }
 
-        public async Task<bool> AutoFillOperations(Atomex.Tezos tezos, JObject head, JArray operations)
+        public async Task<bool> AutoFillOperations(Atomex.Tezos tezos, JObject head, JArray operations, bool defaultFee = true)
         {
             JObject runResults = await RunOperations(head, operations)
                 .ConfigureAwait(false);
@@ -299,7 +366,8 @@ namespace Atomex.Blockchain.Tezos.Internal
 
                         size = forgedOpLocal.ToString().Length / 2 + Math.Ceiling((tezos.HeadSizeInBytes + tezos.SigSizeInBytes) / operations.Count);
                         fee = tezos.MinimalFee + tezos.MinimalNanotezPerByte * size + (long)Math.Ceiling(tezos.MinimalNanotezPerGasUnit * gas) + 1;
-                        op["fee"] = fee.ToString();
+                        if(defaultFee)
+                            op["fee"] = fee.ToString();
                     }
                     catch (Exception ex)
                     {

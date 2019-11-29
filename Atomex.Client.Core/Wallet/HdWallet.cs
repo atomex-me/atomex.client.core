@@ -16,7 +16,7 @@ namespace Atomex.Wallet
 {
     public class HdWallet : IHdWallet
     {
-        private HdKeyStorage KeyStorage { get; }
+        public HdKeyStorage KeyStorage { get; }
 
         public string PathToWallet { get; set; }
         public Network Network => KeyStorage.Network;
@@ -168,6 +168,34 @@ namespace Atomex.Wallet
         }
 
         public async Task<bool> SignAsync(
+            IAddressBasedTransaction tx,
+            WalletAddress address,
+            CancellationToken cancellationToken = default)
+        {
+            if (tx == null)
+                throw new ArgumentNullException(nameof(tx));
+
+            Log.Verbose("Sign request for transaction {@id}", tx.Id);
+
+            if (IsLocked)
+            {
+                Log.Warning("Wallet locked");
+                return false;
+            }
+
+            var signResult = await tx
+                .SignAsync(KeyStorage, address, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (signResult)
+                Log.Verbose("Transaction {@id} successfully signed", tx.Id);
+            else
+                Log.Error("Transaction {@id} signing error", tx.Id);
+
+            return signResult;
+        }
+
+        public async Task<bool> SignDelegationOperationAsync(
             IAddressBasedTransaction tx,
             WalletAddress address,
             CancellationToken cancellationToken = default)

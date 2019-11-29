@@ -83,5 +83,8 @@
         public const int InvalidRedeemScript = 3009;
 
         public const int NoLiquidity = 4000;
+
+        public const int WrongDelegationAddress = 5000;
+        public const int AlreadyDelegated = 5001;
     }
 }

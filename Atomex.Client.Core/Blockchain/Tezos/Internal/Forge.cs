@@ -49,9 +49,9 @@ namespace Atomex.Blockchain.Tezos.Internal
                     //case "origination":
                     //    res += forge_origination(op);
                     //    break;
-                    //case "delegation":
-                    //    res += forge_delegation(op);
-                    //    break;
+                    case "delegation":
+                        res += forge_delegation(op);
+                        break;
                     default:
                         Log.Error("Not implemented forge error");
                         //
@@ -92,6 +92,27 @@ namespace Atomex.Blockchain.Tezos.Internal
                 res += forge_bool(true);
                 res += ForgeMichelson.forge_entrypoint(op["parameters"]["entrypoint"].Value<string>());
                 res += forge_array(ForgeMichelson.forge_micheline(op["parameters"]["value"]));
+            }
+            else
+                res += forge_bool(false);
+
+            return res;
+        }
+
+        private static string forge_delegation(JObject op)
+        {
+            string res = forge_nat((ulong)operation_tags[op["kind"].ToString()]);
+            res += forge_source(op["source"].ToString());
+            res += forge_nat(op["fee"].Value<ulong>());
+            res += forge_nat(op["counter"].Value<ulong>());
+            res += forge_nat(op["gas_limit"].Value<ulong>());
+            res += forge_nat(op["storage_limit"].Value<ulong>());
+
+
+            if (op["delegate"] != null)
+            {
+                res += forge_bool(true);
+                res += forge_source(op["delegate"].ToString());
             }
             else
                 res += forge_bool(false);
