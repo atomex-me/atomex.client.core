@@ -195,34 +195,6 @@ namespace Atomex.Wallet
             return signResult;
         }
 
-        public async Task<bool> SignDelegationOperationAsync(
-            IAddressBasedTransaction tx,
-            WalletAddress address,
-            CancellationToken cancellationToken = default)
-        {
-            if (tx == null)
-                throw new ArgumentNullException(nameof(tx));
-
-            Log.Verbose("Sign request for transaction {@id}", tx.Id);
-
-            if (IsLocked)
-            {
-                Log.Warning("Wallet locked");
-                return false;
-            }
-
-            var signResult = await tx
-                .SignAsync(KeyStorage, address, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (signResult)
-                Log.Verbose("Transaction {@id} successfully signed", tx.Id);
-            else
-                Log.Error("Transaction {@id} signing error", tx.Id);
-
-            return signResult;
-        }
-
         public Task<byte[]> SignHashAsync(
             byte[] hash,
             WalletAddress address,
