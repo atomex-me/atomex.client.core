@@ -140,6 +140,16 @@ namespace Atomex.Swaps.Tezos
             ClientSwap swap,
             CancellationToken cancellationToken = default)
         {
+            var secretResult = await TezosSwapRedeemedHelper
+                .IsRedeemedAsync(swap, Currency, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!secretResult.HasError && secretResult.Value != null)
+            {
+                RedeemConfirmedEventHandler(swap, null, cancellationToken);
+                return;
+            }
+
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast))
             {
                 // redeem already broadcast

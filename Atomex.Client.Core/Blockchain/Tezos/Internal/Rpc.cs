@@ -433,6 +433,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
             using (var request = new HttpRequestMessage(httpMethod, requestUri))
             {
+                request.Headers.Add("User-Agent", "Atomex");
                 request.Version = HttpVersion.Version11;
 
                 if (!get)
