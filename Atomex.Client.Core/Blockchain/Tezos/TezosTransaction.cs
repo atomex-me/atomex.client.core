@@ -164,8 +164,59 @@ namespace Atomex.Blockchain.Tezos
         public async Task<bool> SignDelegationOperationAsync(
             IKeyStorage keyStorage,
             WalletAddress address,
-            CancellationToken cancellationToken = default,
-            bool useDefaultFee = true)
+            CancellationToken cancellationToken = default)
+        {
+            var xtz = (Atomex.Tezos) Currency;
+
+            if (address.KeyIndex == null)
+            {
+                Log.Error("Can't find private key for address {@address}", address);
+                return false;
+            }
+
+            var privateKey = keyStorage
+                .GetPrivateKey(Currency, address.KeyIndex);
+
+            if (privateKey == null)
+            {
+                Log.Error("Can't find private key for address {@address}", address);
+                return false;
+            }
+            
+            var rpc = new Rpc(xtz.RpcNodeUri);
+
+            Head = await rpc
+                .GetHeader()
+                .ConfigureAwait(false);
+
+            var forgedOpGroup = await rpc
+                .ForgeOperations(Head, Operations)
+                .ConfigureAwait(false);
+
+            var forgedOpGroupLocal = Forge.ForgeOperationsLocal(Head, Operations);
+
+            if (true)  //if (config.CheckForge == true) add option for higher security tezos mode to config
+            {
+                if (forgedOpGroupLocal.ToString() != forgedOpGroup.ToString())
+                {
+                    Log.Error("Local and remote forge results differ");
+                    return false;
+                }
+            }
+
+            SignedMessage = TezosSigner.SignHash(
+                data: Hex.FromString(forgedOpGroup.ToString()),
+                privateKey: privateKey,
+                watermark: Watermark.Generic,
+                isExtendedKey: privateKey.Length == 64);
+
+            return true;
+        }
+
+        public async Task<bool> AutoFillAsync(
+            IKeyStorage keyStorage,
+            WalletAddress address,
+            bool useDefaultFee)
         {
             var xtz = (Atomex.Tezos) Currency;
 
@@ -202,7 +253,6 @@ namespace Atomex.Blockchain.Tezos
             var gas = GasLimit.ToString(CultureInfo.InvariantCulture);
             var storage = StorageLimit.ToString(CultureInfo.InvariantCulture);
 
-           // if (managerKey["key"] == null)
             if (managerKey.Value<string>() == null)
             {
                 var revealOpCounter = await TezosCounter.Instance
@@ -253,27 +303,8 @@ namespace Atomex.Blockchain.Tezos
                 return false;
             }
 
-            var forgedOpGroup = await rpc
-                .ForgeOperations(Head, Operations)
-                .ConfigureAwait(false);
-
-            var forgedOpGroupLocal = Forge.ForgeOperationsLocal(Head, Operations);
-
-            if (true)  //if (config.CheckForge == true) add option for higher security tezos mode to config
-            {
-                if (forgedOpGroupLocal.ToString() != forgedOpGroup.ToString())
-                {
-                    Log.Error("Local and remote forge results differ");
-                    return false;
-                }
-            }
-
-            SignedMessage = TezosSigner.SignHash(
-                data: Hex.FromString(forgedOpGroup.ToString()),
-                privateKey: privateKey,
-                watermark: Watermark.Generic,
-                isExtendedKey: privateKey.Length == 64);
-
+            Fee = Operations[0]["fee"].Value<decimal>() / 1_000_000;
+            
             return true;
         }
 
