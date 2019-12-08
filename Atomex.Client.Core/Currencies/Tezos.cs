@@ -139,7 +139,7 @@ namespace Atomex
                 return new TzScanApi(tezos);
 
             if (blockchainApi.Equals("tzkt"))
-                return new TzktApi(tezos);
+                return new BabyTzktApi(tezos);
 
             throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported");
         }

@@ -14,10 +14,10 @@ using Serilog;
 
 namespace Atomex.Blockchain.Tezos
 {
-    public class TzktApi : ITezosBlockchainApi
+    public class BabyTzktApi : ITezosBlockchainApi
     {
-        private const string Mainnet = "https://api3.tzscan.io/";
-        private const string Alphanet = "https://baby.tzkt.io/";
+        //private const string Mainnet = "https://api3.tzscan.io/";
+        //private const string Alphanet = "https://baby.tzkt.io/";
         //private const string Alphanet = "https://api.babylonnet.tzscan.io/";
 
         //private const string MainnetRpc = "https://mainnet-node.tzscan.io";
@@ -29,7 +29,7 @@ namespace Atomex.Blockchain.Tezos
         private readonly string _rpcNodeUri;
         private readonly string _apiBaseUrl;
 
-        public TzktApi(Atomex.Tezos currency)
+        public BabyTzktApi(Atomex.Tezos currency)
         {
             _currency = currency;
             _rpcNodeUri = currency.RpcNodeUri;
