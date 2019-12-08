@@ -58,35 +58,26 @@ namespace Atomex.Blockchain.Tezos.Internal
             _chain = chain;
         }
 
-        public Task<JObject> Describe()
-        {
-            // There is curently a weird situation in alpha where the RPC will not honor any request without a recurse=true arg. // 8 Aug 2018
-            return QueryJ<JObject>("describe?recurse=true");
-        }
+        public Task<JObject> Describe() =>
+            QueryJ<JObject>("describe?recurse=true");
 
-        public Task<JObject> GetHead()
-        {
-            return QueryJ<JObject>($"chains/{_chain}/blocks/head");
-        }
+        public Task<JObject> GetHead() =>
+            QueryJ<JObject>($"chains/{_chain}/blocks/head");
 
-        public Task<JObject> GetDelegate(string address)
-        {
-            return QueryJ<JObject>($"chains/{_chain}/blocks/head/context/delegates/{address}");
-        }
+        public Task<JObject> GetDelegate(string address) =>
+            QueryJ<JObject>($"chains/{_chain}/blocks/head/context/delegates/{address}");
 
-        public Task<JObject> GetHeader()
-        {
-            return QueryJ<JObject>($"chains/{_chain}/blocks/head/header");
-        }
-        public Task<JObject> GetBlockById(string id)
-        {
-            return QueryJ<JObject>($"chains/{_chain}/blocks/{id}");
-        }
+        public Task<JObject> GetHeader() =>
+            QueryJ<JObject>($"chains/{_chain}/blocks/head/header");
 
-        public Task<JObject> GetAccountForBlock(string blockHash, string address)
-        {
-            return QueryJ<JObject>($"chains/{_chain}/blocks/{blockHash}/context/contracts/{address}");
-        }
+        public Task<JObject> GetBlockById(string id) =>
+            QueryJ<JObject>($"chains/{_chain}/blocks/{id}");
+
+        public Task<JObject> GetAccount(string address) =>
+            GetAccountForBlock("head", address);
+
+        public Task<JObject> GetAccountForBlock(string blockHash, string address) =>
+            QueryJ<JObject>($"chains/{_chain}/blocks/{blockHash}/context/contracts/{address}");
 
         public async Task<decimal> GetBalance(string address)
         {
@@ -96,10 +87,8 @@ namespace Atomex.Blockchain.Tezos.Internal
             return decimal.Parse(response.ToString());
         }
 
-        public Task<JObject> GetNetworkStat()
-        {
-            return QueryJ<JObject>("network/stat");
-        }
+        public Task<JObject> GetNetworkStat() =>
+            QueryJ<JObject>("network/stat");
 
         public async Task<int> GetCounter(string address)
         {
@@ -109,10 +98,8 @@ namespace Atomex.Blockchain.Tezos.Internal
             return Convert.ToInt32(counter.ToString());
         }
 
-        public Task<JToken> GetManagerKey(string address)
-        {
-            return QueryJ($"chains/{_chain}/blocks/head/context/contracts/{address}/manager_key");
-        }
+        public Task<JToken> GetManagerKey(string address) =>
+            QueryJ($"chains/{_chain}/blocks/head/context/contracts/{address}/manager_key");
 
         public async Task<ActivateAccountOperationResult> Activate(string address, string secret)
         {
@@ -475,10 +462,8 @@ namespace Atomex.Blockchain.Tezos.Internal
             return operationResults;
         }
 
-        private Task<JToken> QueryJ(string ep, JToken data = null)
-        {
-            return QueryJ<JToken>(ep, data);
-        }
+        private Task<JToken> QueryJ(string ep, JToken data = null) =>
+            QueryJ<JToken>(ep, data);
 
         private async Task<TJType> QueryJ<TJType>(string ep, JToken data = null)
             where TJType : JToken

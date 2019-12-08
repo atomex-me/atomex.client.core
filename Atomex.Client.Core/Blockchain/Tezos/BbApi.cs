@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Newtonsoft.Json;
 using Serilog;
 
@@ -19,15 +18,13 @@ namespace Atomex.Blockchain.Tezos
         public BbApi(Atomex.Tezos currency)
         {
             _rpcNodeUri = currency.RpcNodeUri;
-            _apiBaseUrl = "https://apia.baking-bad.org/";
+            _apiBaseUrl = "https://api.baking-bad.org/";
         }
         
-        public async Task<IEnumerable<BakerData>> GetBakers( Network network,CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<BakerData>> GetBakers(Network network, CancellationToken cancellationToken = default)
         {
             if (network == Network.TestNet)
-            {
                 return new List<BakerData>();
-            }
             
             var rpc = new Rpc(_rpcNodeUri);
 
@@ -40,6 +37,7 @@ namespace Atomex.Blockchain.Tezos
                     responseHandler: response => ParseBakersToViewModel(JsonConvert.DeserializeObject<List<Baker>>(response.Content.ReadAsStringAsync().WaitForResult()), currentCycle),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
             if (result == null)
             {
                 Log.Error("Error while trying to fetch bakers list");
@@ -49,12 +47,10 @@ namespace Atomex.Blockchain.Tezos
             return result;
         }
         
-        public async Task<BakerData> GetBaker(string address, Network network,CancellationToken cancellationToken = default)
+        public async Task<BakerData> GetBaker(string address, Network network, CancellationToken cancellationToken = default)
         {
             if (network == Network.TestNet)
-            {
                 return new BakerData();
-            }
             
             var rpc = new Rpc(_rpcNodeUri);
 
@@ -153,7 +149,5 @@ namespace Atomex.Blockchain.Tezos
             public int cycle { get; set; }
             public T value { get; set; }
         }
-
-
     }
 }
