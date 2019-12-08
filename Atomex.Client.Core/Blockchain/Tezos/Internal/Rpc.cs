@@ -29,7 +29,8 @@ namespace Atomex.Blockchain.Tezos.Internal
         {
             { OperationType.ActivateAccount, new ActivateAccountOperationHandler() },
             { OperationType.Transaction, new TransactionOperationHandler() },
-            { OperationType.Reveal, new RevealOperationHandler() }
+            { OperationType.Reveal, new RevealOperationHandler() },
+            { OperationType.Delegation, new DelegationOperationHandler() }
         };
 
         private readonly string _provider;
@@ -57,30 +58,26 @@ namespace Atomex.Blockchain.Tezos.Internal
             _chain = chain;
         }
 
-        public Task<JObject> Describe()
-        {
-            // There is curently a weird situation in alpha where the RPC will not honor any request without a recurse=true arg. // 8 Aug 2018
-            return QueryJ<JObject>("describe?recurse=true");
-        }
+        public Task<JObject> Describe() =>
+            QueryJ<JObject>("describe?recurse=true");
 
-        public Task<JObject> GetHead()
-        {
-            return QueryJ<JObject>($"chains/{_chain}/blocks/head");
-        }
+        public Task<JObject> GetHead() =>
+            QueryJ<JObject>($"chains/{_chain}/blocks/head");
 
-        public Task<JObject> GetHeader()
-        {
-            return QueryJ<JObject>($"chains/{_chain}/blocks/head/header");
-        }
-        public Task<JObject> GetBlockById(string id)
-        {
-            return QueryJ<JObject>($"chains/{_chain}/blocks/{id}");
-        }
+        public Task<JObject> GetDelegate(string address) =>
+            QueryJ<JObject>($"chains/{_chain}/blocks/head/context/delegates/{address}");
 
-        public Task<JObject> GetAccountForBlock(string blockHash, string address)
-        {
-            return QueryJ<JObject>($"chains/{_chain}/blocks/{blockHash}/context/contracts/{address}");
-        }
+        public Task<JObject> GetHeader() =>
+            QueryJ<JObject>($"chains/{_chain}/blocks/head/header");
+
+        public Task<JObject> GetBlockById(string id) =>
+            QueryJ<JObject>($"chains/{_chain}/blocks/{id}");
+
+        public Task<JObject> GetAccount(string address) =>
+            GetAccountForBlock("head", address);
+
+        public Task<JObject> GetAccountForBlock(string blockHash, string address) =>
+            QueryJ<JObject>($"chains/{_chain}/blocks/{blockHash}/context/contracts/{address}");
 
         public async Task<decimal> GetBalance(string address)
         {
@@ -90,10 +87,8 @@ namespace Atomex.Blockchain.Tezos.Internal
             return decimal.Parse(response.ToString());
         }
 
-        public Task<JObject> GetNetworkStat()
-        {
-            return QueryJ<JObject>("network/stat");
-        }
+        public Task<JObject> GetNetworkStat() =>
+            QueryJ<JObject>("network/stat");
 
         public async Task<int> GetCounter(string address)
         {
@@ -103,10 +98,8 @@ namespace Atomex.Blockchain.Tezos.Internal
             return Convert.ToInt32(counter.ToString());
         }
 
-        public Task<JToken> GetManagerKey(string address)
-        {
-            return QueryJ($"chains/{_chain}/blocks/head/context/contracts/{address}/manager_key");
-        }
+        public Task<JToken> GetManagerKey(string address) =>
+            QueryJ($"chains/{_chain}/blocks/head/context/contracts/{address}/manager_key");
 
         public async Task<ActivateAccountOperationResult> Activate(string address, string secret)
         {
@@ -200,6 +193,67 @@ namespace Atomex.Blockchain.Tezos.Internal
             return sendResults.LastOrDefault() as SendTransactionOperationResult;
         }
 
+        public async Task<SendTransactionOperationResult> SendDelegation(
+            Keys keys,
+            string from,
+            string to,
+            decimal fee,
+            decimal gasLimit,
+            decimal storageLimit)
+        {
+            gasLimit = gasLimit != 0 ? gasLimit : 200;
+
+            var head = await GetHeader()
+                .ConfigureAwait(false);
+
+            var account = await GetAccountForBlock(head["hash"].ToString(), from)
+                .ConfigureAwait(false);
+
+            var counter = int.Parse(account["counter"].ToString());
+
+            var operations = new JArray();
+
+            var managerKey = await GetManagerKey(from)
+                .ConfigureAwait(false);
+
+            var gas = gasLimit.ToString(CultureInfo.InvariantCulture);
+            var storage = storageLimit.ToString(CultureInfo.InvariantCulture);
+
+            if (managerKey.Value<string>() == null)
+            {
+                var revealOp = new JObject
+                {
+                    ["kind"] = OperationType.Reveal,
+                    ["fee"] = "0",
+                    ["public_key"] = keys.DecryptPublicKey(),
+                    ["source"] = from,
+                    ["storage_limit"] = storage,
+                    ["gas_limit"] = gas,
+                    ["counter"] = (++counter).ToString()
+                };
+
+                operations.AddFirst(revealOp);
+            }
+
+            var delegation = new JObject
+            {
+                ["kind"] = OperationType.Transaction,
+                ["source"] = from,
+                ["fee"] = ((int)fee).ToString(CultureInfo.InvariantCulture),
+                ["counter"] = (++counter).ToString(),
+                ["gas_limit"] = gas,
+                ["storage_limit"] = storage,
+                ["delegate"] = to
+            };
+
+            operations.Add(delegation);
+
+            var sendResults = await SendOperations(operations, keys, head)
+                .ConfigureAwait(false);
+
+            return sendResults.LastOrDefault() as SendTransactionOperationResult;
+        }
+
         private async Task<List<OperationResult>> SendOperations(
             JToken operations,
             Keys keys,
@@ -265,7 +319,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             return opResults;
         }
 
-        public async Task<bool> AutoFillOperations(Atomex.Tezos tezos, JObject head, JArray operations)
+        public async Task<bool> AutoFillOperations(Atomex.Tezos tezos, JObject head, JArray operations, bool defaultFee = true)
         {
             JObject runResults = await RunOperations(head, operations)
                 .ConfigureAwait(false);
@@ -299,7 +353,8 @@ namespace Atomex.Blockchain.Tezos.Internal
 
                         size = forgedOpLocal.ToString().Length / 2 + Math.Ceiling((tezos.HeadSizeInBytes + tezos.SigSizeInBytes) / operations.Count);
                         fee = tezos.MinimalFee + tezos.MinimalNanotezPerByte * size + (long)Math.Ceiling(tezos.MinimalNanotezPerGasUnit * gas) + 1;
-                        op["fee"] = fee.ToString();
+                        if(defaultFee)
+                            op["fee"] = fee.ToString();
                     }
                     catch (Exception ex)
                     {
@@ -407,10 +462,8 @@ namespace Atomex.Blockchain.Tezos.Internal
             return operationResults;
         }
 
-        private Task<JToken> QueryJ(string ep, JToken data = null)
-        {
-            return QueryJ<JToken>(ep, data);
-        }
+        private Task<JToken> QueryJ(string ep, JToken data = null) =>
+            QueryJ<JToken>(ep, data);
 
         private async Task<TJType> QueryJ<TJType>(string ep, JToken data = null)
             where TJType : JToken

@@ -16,7 +16,7 @@ namespace Atomex.Wallet
 {
     public class HdWallet : IHdWallet
     {
-        private HdKeyStorage KeyStorage { get; }
+        public HdKeyStorage KeyStorage { get; }
 
         public string PathToWallet { get; set; }
         public Network Network => KeyStorage.Network;

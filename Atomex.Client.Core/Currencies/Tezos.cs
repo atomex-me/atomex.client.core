@@ -53,6 +53,7 @@ namespace Atomex
 
         public string BaseUri { get; private set; }
         public string RpcNodeUri { get; private set; }
+        public string BbApiUri { get; private set; }
         public string SwapContractAddress { get; private set; }
 
         public Tezos()
@@ -114,6 +115,7 @@ namespace Atomex
 
             BaseUri    = configuration["BlockchainApiBaseUri"];
             RpcNodeUri = configuration["BlockchainRpcNodeUri"];
+            BbApiUri = configuration["BbApiUri"];
 
             BlockchainApi       = ResolveBlockchainApi(configuration, this);
             TxExplorerUri       = configuration["TxExplorerUri"];
@@ -137,7 +139,7 @@ namespace Atomex
                 return new TzScanApi(tezos);
 
             if (blockchainApi.Equals("tzkt"))
-                return new TzktApi(tezos);
+                return new BabyTzktApi(tezos);
 
             throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported");
         }

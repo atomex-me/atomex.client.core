@@ -86,5 +86,8 @@
         public const int PriceHasChanged = 4001;
         public const int TimeoutReached = 4002;
         public const int OrderRejected = 4003;
+
+        public const int WrongDelegationAddress = 5000;
+        public const int AlreadyDelegated = 5001;
     }
 }
