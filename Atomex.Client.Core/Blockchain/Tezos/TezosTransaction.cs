@@ -253,11 +253,15 @@ namespace Atomex.Blockchain.Tezos
             var gas = GasLimit.ToString(CultureInfo.InvariantCulture);
             var storage = StorageLimit.ToString(CultureInfo.InvariantCulture);
 
+            var counter = await TezosCounter.Instance
+                .GetCounter(xtz, From, Head, ignoreCache: true)
+                .ConfigureAwait(false);
+
             if (managerKey.Value<string>() == null)
             {
-                var revealOpCounter = await TezosCounter.Instance
-                    .GetCounter(xtz, From, Head)
-                    .ConfigureAwait(false);
+                //var revealOpCounter = await TezosCounter.Instance
+                //    .GetCounter(xtz, From, Head, ignoreCache: true)
+                //    .ConfigureAwait(false);
 
                 var revealOp = new JObject
                 {
@@ -267,15 +271,17 @@ namespace Atomex.Blockchain.Tezos
                     ["source"] = From,
                     ["storage_limit"] = storage,
                     ["gas_limit"] = gas,
-                    ["counter"] = revealOpCounter.ToString()
+                    ["counter"] = counter.ToString()//revealOpCounter.ToString()
                 };
 
                 Operations.AddFirst(revealOp);
+
+                counter++;
             }
 
-            var counter = await TezosCounter.Instance
-                .GetCounter(xtz, From, Head)
-                .ConfigureAwait(false);
+            //var counter = await TezosCounter.Instance
+            //    .GetCounter(xtz, From, Head)
+            //    .ConfigureAwait(false);
 
             var transaction = new JObject
             {

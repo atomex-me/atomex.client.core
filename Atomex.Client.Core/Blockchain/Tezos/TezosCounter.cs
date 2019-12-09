@@ -37,7 +37,11 @@ namespace Atomex.Blockchain.Tezos
             }
         }
 
-        public async Task<int> GetCounter(Atomex.Tezos tezos, string address, JObject head)
+        public async Task<int> GetCounter(
+            Atomex.Tezos tezos,
+            string address,
+            JObject head,
+            bool ignoreCache = false)
         {
             var rpc = new Rpc(tezos.RpcNodeUri);
 
@@ -51,7 +55,8 @@ namespace Atomex.Blockchain.Tezos
             {
                 if (_counters.TryGetValue(address, out var offlineCounter))
                 {
-                    if (offlineCounter.Value > counter &&
+                    if (!ignoreCache &&
+                        offlineCounter.Value > counter &&
                         DateTime.UtcNow - offlineCounter.LastUpdatedTimeUtc <= ExpirationTimeOut)
                     {
                         return ++offlineCounter.Value;
