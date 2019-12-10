@@ -75,7 +75,8 @@ namespace Atomex.Blockchain.Tezos
                     Address = x.address,
                     Logo = $"{_apiBaseUrl}/logos/{x.logo}",
                     Name = x.name,
-                    Fee = x.config.fee.FirstOrDefault(y => y.cycle <= currentCycle)?.value ?? 0
+                    Fee = x.config.fee.FirstOrDefault(y => y.cycle <= currentCycle)?.value ?? 0,
+                    StakingAvailable = x.stakingCapacity - x.stakingBalance
                 });
 
             return result;
@@ -88,7 +89,8 @@ namespace Atomex.Blockchain.Tezos
                 Address = baker.address,
                 Logo = $"{_apiBaseUrl}/logos/{baker.logo}",
                 Name = baker.name,
-                Fee = baker.config.fee.FirstOrDefault(y => y.cycle <= currentCycle)?.value ?? 0
+                Fee = baker.config.fee.FirstOrDefault(y => y.cycle <= currentCycle)?.value ?? 0,
+                StakingAvailable = baker.stakingCapacity - baker.stakingBalance
             };
 
             return result;
