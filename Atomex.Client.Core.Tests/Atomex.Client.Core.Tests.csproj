@@ -8,6 +8,8 @@
     <AssemblyName>Atomex.Client.Core.Tests</AssemblyName>
 
     <RootNamespace>Atomex.Client.Core.Tests</RootNamespace>
+
+    <Copyright>Copyright © 2018 Igor Matsak</Copyright>
   </PropertyGroup>
 
   <ItemGroup>

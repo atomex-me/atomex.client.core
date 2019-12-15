@@ -4,6 +4,8 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Atomex</RootNamespace>
     <AssemblyName>Atomex.Client.Core</AssemblyName>
+    <Copyright>Copyright © 2018 Igor Matsak</Copyright>
+    <Description>Atomex client core library</Description>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
