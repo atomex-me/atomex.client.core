@@ -19,6 +19,10 @@ namespace Atomex.Swaps.Tezos
 {
     public class TezosSwap : CurrencySwap
     {
+        private const int MaxRedeemCheckAttempts = 10;
+        private const int MaxRefundCheckAttempts = 10;
+        private const int RedeemCheckAttemptIntervalInSec = 5;
+        private const int RefundCheckAttemptIntervalInSec = 5;
         private static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(10);
         private static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(30);
         private Atomex.Tezos Xtz => (Atomex.Tezos)Currency;
@@ -141,7 +145,12 @@ namespace Atomex.Swaps.Tezos
             CancellationToken cancellationToken = default)
         {
             var secretResult = await TezosSwapRedeemedHelper
-                .IsRedeemedAsync(swap, Currency, cancellationToken)
+                .IsRedeemedAsync(
+                    swap: swap,
+                    currency: Currency,
+                    attempts: MaxRedeemCheckAttempts,
+                    attemptIntervalInSec: RedeemCheckAttemptIntervalInSec,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (!secretResult.HasError && secretResult.Value != null)
@@ -508,6 +517,8 @@ namespace Atomex.Swaps.Tezos
                 var isRefundedResult = await TezosSwapRefundedHelper.IsRefundedAsync(
                         swap: swap,
                         currency: Currency,
+                        attempts: MaxRefundCheckAttempts,
+                        attemptIntervalInSec: RefundCheckAttemptIntervalInSec,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -776,8 +787,6 @@ namespace Atomex.Swaps.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-
-
             // todo: transaction receipt status control
         }
 
@@ -793,10 +802,11 @@ namespace Atomex.Swaps.Tezos
                 await Task.Delay(InitiationCheckInterval, cancellationToken)
                     .ConfigureAwait(false);
 
-                var tx = await Xtz.BlockchainApi.GetTransactionAsync(txId, cancellationToken)
+                var tx = await Xtz.BlockchainApi
+                    .GetTransactionAsync(txId, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (!tx.HasError && tx.Value != null && tx.Value.State == BlockchainTransactionState.Confirmed)
+                if (tx != null && !tx.HasError && tx.Value != null && tx.Value.State == BlockchainTransactionState.Confirmed)
                     return true;
             }
 

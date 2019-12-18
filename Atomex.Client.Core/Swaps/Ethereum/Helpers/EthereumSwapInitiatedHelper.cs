@@ -45,6 +45,9 @@ namespace Atomex.Swaps.Ethereum.Helpers
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
+                if (initiateEventsResult == null)
+                    return new Result<bool>(new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} initiate event"));
+
                 if (initiateEventsResult.HasError)
                     return new Result<bool>(initiateEventsResult.Error);
 
@@ -105,6 +108,9 @@ namespace Atomex.Swaps.Ethereum.Helpers
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
+                if (addEventsResult == null)
+                    return new Result<bool>(new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} add event"));
+
                 if (addEventsResult.HasError)
                     return new Result<bool>(addEventsResult.Error);
 
@@ -157,11 +163,13 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
                     if (isInitiatedResult.HasError)
                     {
-                        canceledHandler?.Invoke(swap, cancellationToken);
-                        break;
+                        if (isInitiatedResult.Error.Code != Errors.RequestError)
+                        {
+                            canceledHandler?.Invoke(swap, cancellationToken);
+                            break;
+                        }
                     }
-
-                    if (isInitiatedResult.Value)
+                    else if (isInitiatedResult.Value)
                     {
                         initiatedHandler?.Invoke(swap, cancellationToken);
                         break;

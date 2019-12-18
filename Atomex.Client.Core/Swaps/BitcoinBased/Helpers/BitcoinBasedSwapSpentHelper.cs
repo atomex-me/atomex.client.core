@@ -45,7 +45,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (!result.HasError)
+                    if (result != null && !result.HasError)
                     {
                         if (result.Value != null)
                         {

@@ -19,6 +19,8 @@ namespace Atomex.Swaps.BitcoinBased
 {
     public class BitcoinBasedSwap : CurrencySwap
     {
+        private const int MaxInputGettingAttemps = 10;
+        private const int InputGettingIntervalInSec = 5;
         private readonly IBitcoinBasedSwapTransactionFactory _transactionFactory;
 
         public BitcoinBasedSwap(
@@ -700,15 +702,35 @@ namespace Atomex.Swaps.BitcoinBased
             {
                 var soldCurrency = swap.SoldCurrency;
 
-                var inputResult = await ((IInOutBlockchainApi)soldCurrency.BlockchainApi)
-                    .GetInputAsync(spentPoint.Hash, spentPoint.Index, cancellationToken)
-                    .ConfigureAwait(false);
+                BitcoinBasedTxPoint spentTxInput = null;
+                var attempts = 0;
 
-                if (inputResult.HasError)
-                    throw new InternalException(inputResult.Error.Code, inputResult.Error.Description);
+                while (attempts < MaxInputGettingAttemps)
+                {
+                    attempts++;
 
-                if (!(inputResult.Value is BitcoinBasedTxPoint spentTxInput))
-                    throw new InternalException(Errors.InvalidSpentPoint, "Spent point is not bitcoin based tx point");
+                    var inputResult = await ((IInOutBlockchainApi)soldCurrency.BlockchainApi)
+                        .GetInputAsync(spentPoint.Hash, spentPoint.Index, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (inputResult == null || (inputResult.HasError && inputResult.Error?.Code == Errors.RequestError))
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(InputGettingIntervalInSec), cancellationToken)
+                            .ConfigureAwait(false);
+
+                        continue;
+                    }
+
+                    if (inputResult.HasError)
+                        throw new InternalException(inputResult.Error.Code, inputResult.Error.Description);
+
+                    spentTxInput = inputResult.Value as BitcoinBasedTxPoint;
+
+                    if (spentTxInput == null)
+                        throw new InternalException(Errors.InvalidSpentPoint, "Spent point is not bitcoin based tx point");
+
+                    break;
+                }
 
                 var secret = spentTxInput
                     .ExtractAllPushData()
@@ -748,7 +770,7 @@ namespace Atomex.Swaps.BitcoinBased
         {
             var attempts = 0;
 
-            while (attempts < DefaultGetTransactionAttempts && !cancellationToken.IsCancellationRequested)
+            while (attempts < DefaultGetTransactionAttempts)
             {
                 attempts++;
 
@@ -756,7 +778,10 @@ namespace Atomex.Swaps.BitcoinBased
                     .GetTransactionAsync(txId, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (txResult.HasError && txResult.Error?.Code != (int)HttpStatusCode.NotFound)
+                if (txResult != null &&
+                    txResult.HasError &&
+                    txResult.Error?.Code != (int)HttpStatusCode.NotFound &&
+                    txResult.Error?.Code != Errors.RequestError)
                 {
                     Log.Error("Error while get transaction {@txId}. Code: {@code}. Description: {@desc}", 
                         txId,
@@ -766,7 +791,7 @@ namespace Atomex.Swaps.BitcoinBased
                     return null;
                 }
 
-                var tx = txResult.Value;
+                var tx = txResult?.Value;
 
                 if (tx != null)
                     return (IBitcoinBasedTransaction)tx;

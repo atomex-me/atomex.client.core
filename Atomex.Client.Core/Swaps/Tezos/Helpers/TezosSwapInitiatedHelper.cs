@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Tezos;
@@ -141,11 +139,13 @@ namespace Atomex.Swaps.Tezos.Helpers
 
                     if (isInitiatedResult.HasError)
                     {
-                        canceledHandler?.Invoke(swap, cancellationToken);
-                        break;
+                        if (isInitiatedResult.Error.Code != Errors.RequestError)
+                        {
+                            canceledHandler?.Invoke(swap, cancellationToken);
+                            break;
+                        }
                     }
-
-                    if (isInitiatedResult.Value)
+                    else if (isInitiatedResult.Value)
                     {
                         initiatedHandler?.Invoke(swap, cancellationToken);
                         break;

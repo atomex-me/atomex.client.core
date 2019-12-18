@@ -25,7 +25,8 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
                 var api = new EtherScanApi(ethereum);
 
-                var refundEventsResult = await api.GetContractEventsAsync(
+                var refundEventsResult = await api
+                    .GetContractEventsAsync(
                         address: ethereum.SwapContractAddress,
                         fromBlock: ethereum.SwapContractBlockNumber,
                         toBlock: ulong.MaxValue,
@@ -33,6 +34,9 @@ namespace Atomex.Swaps.Ethereum.Helpers
                         topic1: "0x" + swap.SecretHash.ToHexString(),
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
+
+                if (refundEventsResult == null)
+                    return new Result<bool>(new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} refund event"));
 
                 if (refundEventsResult.HasError)
                     return new Result<bool>(refundEventsResult.Error);
@@ -54,40 +58,37 @@ namespace Atomex.Swaps.Ethereum.Helpers
             }
         }
 
-        //public static Task StartSwapRefundedControlAsync(
-        //    ClientSwap swap,
-        //    Currency currency,
-        //    TimeSpan interval,
-        //    Action<ClientSwap, CancellationToken> refundedHandler = null,
-        //    Action<ClientSwap, CancellationToken> canceledHandler = null,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return Task.Run(async () =>
-        //    {
-        //        while (!cancellationToken.IsCancellationRequested)
-        //        {
-        //            var isRefundedResult = await IsRefundedAsync(
-        //                    swap: swap,
-        //                    currency: currency,
-        //                    cancellationToken: cancellationToken)
-        //                .ConfigureAwait(false);
+        public static async Task<Result<bool>> IsRefundedAsync(
+            ClientSwap swap,
+            Currency currency,
+            int attempts,
+            int attemptIntervalInSec,
+            CancellationToken cancellationToken = default)
+        {
+            var attempt = 0;
 
-        //            if (isRefundedResult.HasError) // has error
-        //            {
-        //                canceledHandler?.Invoke(swap, cancellationToken);
-        //                break;
-        //            }
+            while (!cancellationToken.IsCancellationRequested && attempt < attempts)
+            {
+                ++attempt;
 
-        //            if (isRefundedResult.Value)
-        //            {
-        //                refundedHandler?.Invoke(swap, cancellationToken);
-        //                break;
-        //            }
+                var isRefundedResult = await IsRefundedAsync(
+                        swap: swap,
+                        currency: currency,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
 
-        //            await Task.Delay(interval, cancellationToken)
-        //                .ConfigureAwait(false);
-        //        }
-        //    }, cancellationToken);
-        //}
+                if (isRefundedResult.HasError) // has error
+                {
+                    if (isRefundedResult.Error.Code != Errors.RequestError) // ignore connection errors
+                        return isRefundedResult;
+                }
+                else return isRefundedResult;
+
+                await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            return new Result<bool>(new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for refund check"));
+        }
     }
 }

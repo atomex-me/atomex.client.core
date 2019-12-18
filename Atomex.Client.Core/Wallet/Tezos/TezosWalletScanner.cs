@@ -64,21 +64,21 @@ namespace Atomex.Wallet.Tezos
                         index,
                         walletAddress.Address);
 
-                    var asyncResult = await ((ITezosBlockchainApi) currency.BlockchainApi)
+                    var txsResult = await ((ITezosBlockchainApi) currency.BlockchainApi)
                         .GetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
  
-                    if (asyncResult.HasError)
+                    if (txsResult.HasError)
                     {
                         Log.Error(
                             "Error while scan address transactions for {@address} with code {@code} and description {@description}", 
                             walletAddress.Address,
-                            asyncResult.Error.Code,
-                            asyncResult.Error.Description);
+                            txsResult.Error.Code,
+                            txsResult.Error.Description);
                         break;
                     }
 
-                    var addressTxs = asyncResult.Value
+                    var addressTxs = txsResult.Value
                         ?.Cast<TezosTransaction>()
                         .ToList();
 
@@ -143,21 +143,21 @@ namespace Atomex.Wallet.Tezos
 
             Log.Debug("Scan transactions for address {@address}", address);
 
-            var asyncResult = await ((ITezosBlockchainApi)currency.BlockchainApi)
+            var txsResult = await ((ITezosBlockchainApi)currency.BlockchainApi)
                 .GetTransactionsAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (asyncResult.HasError)
+            if (txsResult.HasError)
             {
                 Log.Error(
                     "Error while scan address transactions for {@address} with code {@code} and description {@description}",
                     address,
-                    asyncResult.Error.Code,
-                    asyncResult.Error.Description);
+                    txsResult.Error.Code,
+                    txsResult.Error.Description);
                 return;
             }
 
-            var addressTxs = asyncResult.Value
+            var addressTxs = txsResult.Value
                 ?.Cast<TezosTransaction>()
                 .ToList();
 

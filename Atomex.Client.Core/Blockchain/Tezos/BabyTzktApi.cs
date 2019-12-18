@@ -138,6 +138,10 @@ namespace Atomex.Blockchain.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
+            if (inputTxsResult == null)
+                return new Result<IEnumerable<IBlockchainTransaction>>(
+                    new Error(Errors.RequestError, $"Connection error while trying to get input transactions for address {address}"));
+
             if (inputTxsResult.HasError)
                 return new Result<IEnumerable<IBlockchainTransaction>>(inputTxsResult.Error);
 
@@ -147,6 +151,10 @@ namespace Atomex.Blockchain.Tezos
                     responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            if (outputTxsResult == null)
+                return new Result<IEnumerable<IBlockchainTransaction>>(
+                    new Error(Errors.RequestError, $"Connection error while trying to get output transactions for address {address}"));
 
             if (outputTxsResult.HasError)
                 return new Result<IEnumerable<IBlockchainTransaction>>(outputTxsResult.Error);

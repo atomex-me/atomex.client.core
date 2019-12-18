@@ -10,7 +10,6 @@ using Serilog;
 
 namespace Atomex.Swaps.Ethereum.Helpers
 {
-
     public static class EthereumSwapRedeemedHelper
     {
         public static async Task<Result<byte[]>> IsRedeemedAsync(
@@ -26,7 +25,8 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
                 var api = new EtherScanApi(ethereum);
 
-                var redeemEventsResult = await api.GetContractEventsAsync(
+                var redeemEventsResult = await api
+                    .GetContractEventsAsync(
                         address: ethereum.SwapContractAddress,
                         fromBlock: ethereum.SwapContractBlockNumber,
                         toBlock: ulong.MaxValue,
@@ -34,6 +34,9 @@ namespace Atomex.Swaps.Ethereum.Helpers
                         topic1: "0x" + swap.SecretHash.ToHexString(),
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
+
+                if (redeemEventsResult == null)
+                    return new Result<byte[]>(new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} redeem events"));
 
                 if (redeemEventsResult.HasError)
                     return new Result<byte[]>(redeemEventsResult.Error);
@@ -55,6 +58,42 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
                 return new Result<byte[]>(new Error(Errors.InternalError, e.Message));
             }
+        }
+
+        public static async Task<Result<byte[]>> IsRedeemedAsync(
+            ClientSwap swap,
+            Currency currency,
+            int attempts,
+            int attemptIntervalInSec,
+            CancellationToken cancellationToken = default)
+        {
+            var attempt = 0;
+
+            while (!cancellationToken.IsCancellationRequested && attempt < attempts)
+            {
+                ++attempt;
+
+                var isRedeemedResult = await IsRedeemedAsync(
+                        swap: swap,
+                        currency: currency,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (isRedeemedResult.HasError) // has error
+                {
+                    if (isRedeemedResult.Error.Code != Errors.RequestError) // ignore connection errors
+                        return isRedeemedResult;
+                }
+                else if (isRedeemedResult.Value != null) // has secret
+                {
+                    return isRedeemedResult;
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            return new Result<byte[]>(new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for redeem check"));
         }
 
         public static Task StartSwapRedeemedControlAsync(
@@ -79,11 +118,13 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
                     if (isRedeemedResult.HasError) // has error
                     {
-                        canceledHandler?.Invoke(swap, refundTimeUtc, cancellationToken);
-                        break;
+                        if (isRedeemedResult.Error.Code != Errors.RequestError) // ignore connection errors
+                        {
+                            canceledHandler?.Invoke(swap, refundTimeUtc, cancellationToken);
+                            break;
+                        }
                     }
-
-                    if (isRedeemedResult.Value != null) // has secret
+                    else if (isRedeemedResult.Value != null) // has secret
                     {
                         redeemedHandler?.Invoke(swap, isRedeemedResult.Value, cancellationToken);
                         break;

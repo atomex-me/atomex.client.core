@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Tezos;
@@ -82,6 +80,42 @@ namespace Atomex.Swaps.Tezos.Helpers
             return new Result<byte[]>((byte[])null);
         }
 
+        public static async Task<Result<byte[]>> IsRedeemedAsync(
+            ClientSwap swap,
+            Currency currency,
+            int attempts,
+            int attemptIntervalInSec,
+            CancellationToken cancellationToken = default)
+        {
+            var attempt = 0;
+
+            while (!cancellationToken.IsCancellationRequested && attempt < attempts)
+            {
+                ++attempt;
+
+                var isRedeemedResult = await IsRedeemedAsync(
+                        swap: swap,
+                        currency: currency,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (isRedeemedResult.HasError) // has error
+                {
+                    if (isRedeemedResult.Error.Code != Errors.RequestError) // ignore connection errors
+                        return isRedeemedResult;
+                }
+                else if (isRedeemedResult.Value != null) // has secret
+                {
+                    return isRedeemedResult;
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            return new Result<byte[]>(new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for redeem check"));
+        }
+
         public static Task StartSwapRedeemedControlAsync(
             ClientSwap swap,
             Currency currency,
@@ -104,11 +138,13 @@ namespace Atomex.Swaps.Tezos.Helpers
 
                     if (isRedeemedResult.HasError) // has error
                     {
-                        canceledHandler?.Invoke(swap, refundTimeUtc, cancellationToken);
-                        break;
+                        if (isRedeemedResult.Error.Code != Errors.RequestError) // ignore connection errors
+                        {
+                            canceledHandler?.Invoke(swap, refundTimeUtc, cancellationToken);
+                            break;
+                        }
                     }
-
-                    if (isRedeemedResult.Value != null) // has secret
+                    else if (isRedeemedResult.Value != null) // has secret
                     {
                         redeemedHandler?.Invoke(swap, isRedeemedResult.Value, cancellationToken);
                         break;

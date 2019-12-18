@@ -47,7 +47,7 @@
         public const int PermissionError = 5;
         public const int InternalError = 6;
         public const int RequestError = 7;
-
+        public const int MaxAttemptsCountReached = 8;
         // from 1xx to 5xx the same with HTTP codes
 
         public const int IsCriminalWallet = 1000;

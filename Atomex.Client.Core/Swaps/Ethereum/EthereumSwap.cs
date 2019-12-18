@@ -2,8 +2,8 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Threading.Tasks;
 using System.Threading;
+using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
@@ -11,17 +11,22 @@ using Atomex.Core;
 using Atomex.Core.Entities;
 using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Ethereum.Helpers;
+using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Abstract;
 using Nethereum.Contracts;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Web3;
 using Serilog;
-using Atomex.Swaps.Helpers;
+
 
 namespace Atomex.Swaps.Ethereum
 {
     public class EthereumSwap : CurrencySwap
     {
+        private const int MaxRedeemCheckAttempts = 10;
+        private const int MaxRefundCheckAttempts = 10;
+        private const int RedeemCheckAttemptIntervalInSec = 5;
+        private const int RefundCheckAttemptIntervalInSec = 5;
         private static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(10);
         private static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(30);
         private Atomex.Ethereum Eth => (Atomex.Ethereum)Currency;
@@ -145,7 +150,12 @@ namespace Atomex.Swaps.Ethereum
             CancellationToken cancellationToken = default)
         {
             var secretResult = await EthereumSwapRedeemedHelper
-                .IsRedeemedAsync(swap, Currency, cancellationToken)
+                .IsRedeemedAsync(
+                    swap: swap,
+                    currency: Currency,
+                    attempts: MaxRedeemCheckAttempts,
+                    attemptIntervalInSec: RedeemCheckAttemptIntervalInSec,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (!secretResult.HasError && secretResult.Value != null)
@@ -566,6 +576,8 @@ namespace Atomex.Swaps.Ethereum
                 var isRefundedResult = await EthereumSwapRefundedHelper.IsRefundedAsync(
                         swap: swap,
                         currency: Currency,
+                        attempts: MaxRefundCheckAttempts,
+                        attemptIntervalInSec: RefundCheckAttemptIntervalInSec,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -886,10 +898,11 @@ namespace Atomex.Swaps.Ethereum
                 await Task.Delay(InitiationCheckInterval, cancellationToken)
                     .ConfigureAwait(false);
 
-                var tx = await Eth.BlockchainApi.GetTransactionAsync(txId, cancellationToken)
+                var tx = await Eth.BlockchainApi
+                    .GetTransactionAsync(txId, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (!tx.HasError && tx.Value != null && tx.Value.State == BlockchainTransactionState.Confirmed)
+                if (tx != null && !tx.HasError && tx.Value != null && tx.Value.State == BlockchainTransactionState.Confirmed)
                     return true;
             }
 

@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
+using Atomex.Core;
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
 using Newtonsoft.Json;
@@ -166,6 +167,9 @@ namespace Atomex.Blockchain.BitCore
             var txHexResult = await GetRawTxAsync(txId, cancellationToken)
                 .ConfigureAwait(false);
 
+            if (txHexResult == null)
+                return new Result<IBlockchainTransaction>(new Error(Errors.RequestError, "Connection error while getting tx"));
+
             if (txHexResult.HasError)
                 return new Result<IBlockchainTransaction>(txHexResult.Error);
 
@@ -231,6 +235,9 @@ namespace Atomex.Blockchain.BitCore
         {
             var txHexResult = await GetRawTxAsync(txId, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (txHexResult == null)
+                return new Result<ITxPoint>(new Error(Errors.RequestError, "Connection error while getting input"));
 
             if (txHexResult.HasError)
                 return new Result<ITxPoint>(txHexResult.Error);
@@ -324,6 +331,9 @@ namespace Atomex.Blockchain.BitCore
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
+            if (txResult == null)
+                return new Result<ITxPoint>(new Error(Errors.RequestError, "Connection error while getting output spent point"));
+
             if (txResult.HasError)
                 return new Result<ITxPoint>(txResult.Error);
 
@@ -338,6 +348,9 @@ namespace Atomex.Blockchain.BitCore
 
             var spentTxHexResult = await GetRawTxAsync(spentTxId, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (spentTxHexResult == null)
+                return new Result<ITxPoint>(new Error(Errors.RequestError, "Connection error while getting raw tx"));
 
             if (spentTxHexResult.HasError)
                 return new Result<ITxPoint>(spentTxHexResult.Error);

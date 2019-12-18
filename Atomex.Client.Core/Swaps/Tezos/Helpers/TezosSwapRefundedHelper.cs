@@ -31,6 +31,9 @@ namespace Atomex.Swaps.Tezos.Helpers
                     .GetTransactionsAsync(contractAddress, cancellationToken)
                     .ConfigureAwait(false);
 
+                if (txsResult == null)
+                    return new Result<bool>(new Error(Errors.RequestError, $"Connection error while trying to get {contractAddress} transactions"));
+
                 if (txsResult.HasError)
                 {
                     Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Description: {@desc}",
@@ -71,6 +74,39 @@ namespace Atomex.Swaps.Tezos.Helpers
             }
 
             return new Result<bool>(false);
+        }
+
+        public static async Task<Result<bool>> IsRefundedAsync(
+            ClientSwap swap,
+            Currency currency,
+            int attempts,
+            int attemptIntervalInSec,
+            CancellationToken cancellationToken = default)
+        {
+            var attempt = 0;
+
+            while (!cancellationToken.IsCancellationRequested && attempt < attempts)
+            {
+                ++attempt;
+
+                var isRefundedResult = await IsRefundedAsync(
+                        swap: swap,
+                        currency: currency,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (isRefundedResult.HasError) // has error
+                {
+                    if (isRefundedResult.Error.Code != Errors.RequestError) // ignore connection errors
+                        return isRefundedResult;
+                }
+                else return isRefundedResult;
+
+                await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            return new Result<bool>(new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for refund check"));
         }
     }
 }

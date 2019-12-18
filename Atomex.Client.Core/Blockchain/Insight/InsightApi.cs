@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
+using Atomex.Core;
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
 using Newtonsoft.Json;
@@ -203,6 +204,9 @@ namespace Atomex.Blockchain.Insight
         {
             var rawTxResult = await GetRawTxAsync(txId, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (rawTxResult == null)
+                return new Result<IBlockchainTransaction>(new Error(Errors.RequestError, "Connection error while getting tx"));
 
             if (rawTxResult.HasError)
                 return new Result<IBlockchainTransaction>(rawTxResult.Error);
