@@ -44,14 +44,12 @@ namespace Atomex.Blockchain.Tezos
             {
                 var rpc = new Rpc(_rpcNodeUri);
 
-                var balance = await rpc.GetBalance(address)
+                return await rpc.GetBalance(address)
                     .ConfigureAwait(false);
-
-                return new Result<decimal>(balance);
             }
             catch (Exception e)
             {
-                return new Result<decimal>(new Error(Errors.RequestError, e.Message));
+                return new Error(Errors.RequestError, e.Message);
             }
         }
 
@@ -71,7 +69,7 @@ namespace Atomex.Blockchain.Tezos
                     .ConfigureAwait(false);
 
                 if (!opResults.Any())
-                    return new Result<string>(new Error(Errors.RequestError, "Empty pre apply operations"));
+                    return new Error(Errors.RequestError, "Empty pre apply operations");
 
                 string txId = null;
 
@@ -88,15 +86,15 @@ namespace Atomex.Blockchain.Tezos
                 }
 
                 if (txId == null)
-                    return new Result<string>(new Error(Errors.RequestError, "Null tx id"));
+                    return new Error(Errors.RequestError, "Null tx id");
 
                 tx.Id = txId;
 
-                return new Result<string>(tx.Id);
+                return tx.Id;
             }
             catch (Exception e)
             {
-                return new Result<string>(new Error(Errors.RequestError, e.Message));
+                return new Error(Errors.RequestError, e.Message);
             }
         }
 
@@ -106,7 +104,7 @@ namespace Atomex.Blockchain.Tezos
         {
             var requestUri = $"transactions/{txId}";
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
                     baseUri: _apiBaseUrl,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
@@ -114,14 +112,9 @@ namespace Atomex.Blockchain.Tezos
                         var txResult = ParseTxs(JsonConvert.DeserializeObject<JArray>(content));
 
                         if (txResult.HasError)
-                            return new Result<IBlockchainTransaction>(txResult.Error);
+                            return txResult.Error;
 
-                        var tx = txResult.Value?.FirstOrDefault();
-
-                        if (tx == null)
-                            return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
-
-                        return new Result<IBlockchainTransaction>(tx);
+                        return txResult.Value?.FirstOrDefault();
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -139,11 +132,10 @@ namespace Atomex.Blockchain.Tezos
                 .ConfigureAwait(false);
 
             if (inputTxsResult == null)
-                return new Result<IEnumerable<IBlockchainTransaction>>(
-                    new Error(Errors.RequestError, $"Connection error while trying to get input transactions for address {address}"));
+                return new Error(Errors.RequestError, $"Connection error while trying to get input transactions for address {address}");
 
             if (inputTxsResult.HasError)
-                return new Result<IEnumerable<IBlockchainTransaction>>(inputTxsResult.Error);
+                return inputTxsResult.Error;
 
             var outputTxsResult = await HttpHelper.GetAsyncResult(
                     baseUri: _apiBaseUrl,
@@ -153,11 +145,10 @@ namespace Atomex.Blockchain.Tezos
                 .ConfigureAwait(false);
 
             if (outputTxsResult == null)
-                return new Result<IEnumerable<IBlockchainTransaction>>(
-                    new Error(Errors.RequestError, $"Connection error while trying to get output transactions for address {address}"));
+                return new Error(Errors.RequestError, $"Connection error while trying to get output transactions for address {address}");
 
             if (outputTxsResult.HasError)
-                return new Result<IEnumerable<IBlockchainTransaction>>(outputTxsResult.Error);
+                return outputTxsResult.Error;
 
             return new Result<IEnumerable<IBlockchainTransaction>>(inputTxsResult.Value.Concat(outputTxsResult.Value));
         }
@@ -166,10 +157,10 @@ namespace Atomex.Blockchain.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<bool>(
                     baseUri: _apiBaseUrl,
                     requestUri: $"accounts/{address}",
-                    responseHandler: (response, content) => new Result<bool>(content == "true"),
+                    responseHandler: (response, content) => content == "true",
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -181,7 +172,7 @@ namespace Atomex.Blockchain.Tezos
             foreach (var op in data)
             {
                 if (!(op is JObject operation))
-                    return new Result<IEnumerable<TezosTransaction>>(new Error(Errors.RequestError, "Null operation in response"));
+                    return new Error(Errors.RequestError, "Null operation in response");
 
                 var content = operation["content"] as JObject;
 
@@ -235,7 +226,7 @@ namespace Atomex.Blockchain.Tezos
                 result.Add(tx);
             }
 
-            return new Result<IEnumerable<TezosTransaction>>(result);
+            return result;
         }
     }
 }

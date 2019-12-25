@@ -32,7 +32,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                     .ConfigureAwait(false);
 
                 if (txsResult == null)
-                    return new Result<bool>(new Error(Errors.RequestError, $"Connection error while trying to get {contractAddress} transactions"));
+                    return new Error(Errors.RequestError, $"Connection error while getting {contractAddress} transactions");
 
                 if (txsResult.HasError)
                 {
@@ -41,7 +41,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                         txsResult.Error.Code,
                         txsResult.Error.Description);
 
-                    return new Result<bool>(txsResult.Error);
+                    return txsResult.Error;
                 }
 
                 var txs = txsResult.Value
@@ -53,7 +53,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                     foreach (var tx in txs)
                     {
                         if (tx.To == contractAddress && tx.IsSwapRefund(swap.SecretHash))
-                            return new Result<bool>(true);
+                            return true;
 
                         if (tx.BlockInfo?.BlockTime == null)
                             continue;
@@ -70,10 +70,10 @@ namespace Atomex.Swaps.Tezos.Helpers
             {
                 Log.Error(e, "Tezos refund control task error");
 
-                return new Result<bool>(new Error(Errors.InternalError, e.Message));
+                return new Error(Errors.InternalError, e.Message);
             }
 
-            return new Result<bool>(false);
+            return false;
         }
 
         public static async Task<Result<bool>> IsRefundedAsync(
@@ -95,18 +95,17 @@ namespace Atomex.Swaps.Tezos.Helpers
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (isRefundedResult.HasError) // has error
-                {
-                    if (isRefundedResult.Error.Code != Errors.RequestError) // ignore connection errors
-                        return isRefundedResult;
-                }
-                else return isRefundedResult;
+                if (isRefundedResult.HasError && isRefundedResult.Error.Code != Errors.RequestError) // has error
+                    return isRefundedResult;
+                
+                if (!isRefundedResult.HasError)
+                    return isRefundedResult;
 
                 await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
                     .ConfigureAwait(false);
             }
 
-            return new Result<bool>(new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for refund check"));
+            return new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for refund check");
         }
     }
 }

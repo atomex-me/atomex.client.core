@@ -46,20 +46,32 @@ namespace Atomex.Swaps.Ethereum.Helpers
                     .ConfigureAwait(false);
 
                 if (initiateEventsResult == null)
-                    return new Result<bool>(new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} initiate event"));
+                    return new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} initiate event");
 
                 if (initiateEventsResult.HasError)
-                    return new Result<bool>(initiateEventsResult.Error);
+                    return initiateEventsResult.Error;
 
                 var events = initiateEventsResult.Value?.ToList();
 
                 if (events == null || !events.Any())
-                    return new Result<bool>(false);
+                    return false;
 
                 var initiatedEvent = events.First().ParseInitiatedEvent();
 
                 if (initiatedEvent.Value >= requiredAmountInWei - requiredRewardForRedeemInWei)
                 {
+                    if (initiatedEvent.RefundTimestamp != refundTimeStamp)
+                    {
+                        Log.Debug(
+                            "Invalid refund time in initiated event. Expected value is {@expected}, actual is {@actual}",
+                            refundTimeStamp,
+                            (long)initiatedEvent.RefundTimestamp);
+
+                        return new Error(
+                            code: Errors.InvalidRefundLockTime,
+                            description: $"Invalid refund time in initiated event. Expected value is {refundTimeStamp}, actual is {(long)initiatedEvent.RefundTimestamp}");
+                    }
+
                     if (swap.IsAcceptor)
                     {
                         if (initiatedEvent.RedeemFee != requiredRewardForRedeemInWei)
@@ -69,27 +81,13 @@ namespace Atomex.Swaps.Ethereum.Helpers
                                 requiredRewardForRedeemInWei,
                                 (long)initiatedEvent.RedeemFee);
 
-                            return new Result<bool>(
-                                new Error(
-                                    code: Errors.InvalidRewardForRedeem,
-                                    description: $"Invalid redeem fee in initiated event. Expected value is {requiredRewardForRedeemInWei}, actual is {(long)initiatedEvent.RedeemFee}"));
-                        }
-
-                        if (initiatedEvent.RefundTimestamp != refundTimeStamp)
-                        {
-                            Log.Debug(
-                                "Invalid refund time in initiated event. Expected value is {@expected}, actual is {@actual}",
-                                refundTimeStamp,
-                                (long)initiatedEvent.RefundTimestamp);
-
-                            return new Result<bool>(
-                                new Error(
-                                    code: Errors.InvalidRefundLockTime,
-                                    description: $"Invalid refund time in initiated event. Expected value is {refundTimeStamp}, actual is {(long)initiatedEvent.RefundTimestamp}"));
+                            return new Error(
+                                code: Errors.InvalidRewardForRedeem,
+                                description: $"Invalid redeem fee in initiated event. Expected value is {requiredRewardForRedeemInWei}, actual is {(long)initiatedEvent.RedeemFee}");
                         }
                     }
 
-                    return new Result<bool>(true);
+                    return true;
                 }
 
                 Log.Debug(
@@ -97,7 +95,6 @@ namespace Atomex.Swaps.Ethereum.Helpers
                     (decimal)(requiredAmountInWei - requiredRewardForRedeemInWei),
                     (decimal)initiatedEvent.Value);
                 
-
                 var addEventsResult = await api
                     .GetContractEventsAsync(
                         address: ethereum.SwapContractAddress,
@@ -109,20 +106,20 @@ namespace Atomex.Swaps.Ethereum.Helpers
                     .ConfigureAwait(false);
 
                 if (addEventsResult == null)
-                    return new Result<bool>(new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} add event"));
+                    return new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} add event");
 
                 if (addEventsResult.HasError)
-                    return new Result<bool>(addEventsResult.Error);
+                    return addEventsResult.Error;
 
                 events = addEventsResult.Value?.ToList();
 
                 if (events == null || !events.Any())
-                    return new Result<bool>(false);
+                    return false;
 
                 foreach (var @event in events.Select(e => e.ParseAddedEvent()))
                 {
                     if (@event.Value >= requiredAmountInWei - requiredRewardForRedeemInWei)
-                        return new Result<bool>(true);
+                        return true;
 
                     Log.Debug(
                         "Eth value is not enough. Expected value is {@expected}. Actual value is {@actual}",
@@ -135,10 +132,10 @@ namespace Atomex.Swaps.Ethereum.Helpers
             {
                 Log.Error(e, "Ethereum swap initiated control task error");
 
-                return new Result<bool>(new Error(Errors.InternalError, e.Message));
+                return new Error(Errors.InternalError, e.Message);
             }
 
-            return new Result<bool>(false);
+            return false;
         }
 
         public static Task StartSwapInitiatedControlAsync(
@@ -161,15 +158,12 @@ namespace Atomex.Swaps.Ethereum.Helpers
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (isInitiatedResult.HasError)
+                    if (isInitiatedResult.HasError && isInitiatedResult.Error.Code != Errors.RequestError)
                     {
-                        if (isInitiatedResult.Error.Code != Errors.RequestError)
-                        {
-                            canceledHandler?.Invoke(swap, cancellationToken);
-                            break;
-                        }
+                        canceledHandler?.Invoke(swap, cancellationToken);
+                        break;
                     }
-                    else if (isInitiatedResult.Value)
+                    else if (!isInitiatedResult.HasError && isInitiatedResult.Value)
                     {
                         initiatedHandler?.Invoke(swap, cancellationToken);
                         break;

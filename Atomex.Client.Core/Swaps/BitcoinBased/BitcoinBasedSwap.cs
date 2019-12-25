@@ -47,6 +47,17 @@ namespace Atomex.Swaps.BitcoinBased
                 return;
             }
 
+            if (swap.IsAcceptor)
+            {
+                var paymentDeadline = swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds) - PaymentTimeReserve;
+
+                if (DateTime.UtcNow > paymentDeadline)
+                {
+                    Log.Error("Payment dedline reached for swap {@swap}", swap.Id);
+                    return;
+                }
+            }
+
             var lockTimeInSeconds = swap.IsInitiator
                 ? DefaultInitiatorLockTimeInSeconds
                 : DefaultAcceptorLockTimeInSeconds;
@@ -140,6 +151,17 @@ namespace Atomex.Swaps.BitcoinBased
                 return;
             }
 
+            if (swap.IsInitiator)
+            {
+                var redeemDeadline = swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds) - RedeemTimeReserve;
+
+                if (DateTime.UtcNow > redeemDeadline)
+                {
+                    Log.Error("Redeem dedline reached for swap {@swap}", swap.Id);
+                    return;
+                }
+            }
+
             var currency = swap.PurchasedCurrency;
 
             var redeemAddress = await Account
@@ -226,7 +248,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             swap.RefundTx.ForceBroadcast(
                     swap: swap,
-                    interval: DefaultForceRefundInterval,
+                    interval: ForceRefundInterval,
                     completionHandler: RefundBroadcastEventHandler,
                     cancellationToken: cancellationToken)
                 .FireAndForget();
@@ -246,7 +268,7 @@ namespace Atomex.Swaps.BitcoinBased
                     swap: swap,
                     currency: Currency,
                     refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
-                    interval: DefaultOutputSpentCheckInterval,
+                    interval: OutputSpentCheckInterval,
                     completionHandler: PaymentSpentEventHandler,
                     refundTimeReachedHandler: RefundTimeReachedEventHandler,
                     cancellationToken: cancellationToken)
@@ -796,7 +818,7 @@ namespace Atomex.Swaps.BitcoinBased
                 if (tx != null)
                     return (IBitcoinBasedTransaction)tx;
 
-                await Task.Delay(DefaultGetTransactionInterval, cancellationToken)
+                await Task.Delay(GetTransactionInterval, cancellationToken)
                     .ConfigureAwait(false);
             }
 

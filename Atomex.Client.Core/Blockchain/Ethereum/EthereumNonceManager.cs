@@ -50,7 +50,7 @@ namespace Atomex.Blockchain.Ethereum
                     if (offlineNonce.Value >= nonce &&
                         DateTime.UtcNow - offlineNonce.LastUpdatedTimeUtc <= ExpirationTimeOut)
                     {
-                        return new Result<BigInteger>(offlineNonce.Value++);
+                        return offlineNonce.Value++;
                     }
 
                     _nonces[address] = new NonceEntry
@@ -59,7 +59,7 @@ namespace Atomex.Blockchain.Ethereum
                         LastUpdatedTimeUtc = DateTime.UtcNow
                     };
 
-                    return new Result<BigInteger>(nonce);
+                    return nonce;
                 }
 
                 _nonces.Add(address, new NonceEntry
@@ -68,7 +68,7 @@ namespace Atomex.Blockchain.Ethereum
                     LastUpdatedTimeUtc = DateTime.UtcNow
                 });
 
-                return new Result<BigInteger>(nonce);
+                return nonce;
             }
         }
     }

@@ -24,7 +24,7 @@ namespace Atomex.Wallet
 
         private const string DefaultDataFileName = "data.db";
         private const string DefaultAccountKey = "Account:Default";
-        private const string ApiVersion = "1.1";
+        private const string ApiVersion = "1.2";
 
         public event EventHandler<CurrencyEventArgs> BalanceUpdated
         {
@@ -489,6 +489,11 @@ namespace Atomex.Wallet
         public Order GetOrderById(string clientOrderId)
         {
             return DataRepository.GetOrderById(clientOrderId);
+        }
+
+        public Order GetOrderById(long id)
+        {
+            return DataRepository.GetOrderById(id);
         }
 
         #endregion Orders

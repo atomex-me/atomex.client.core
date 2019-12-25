@@ -40,6 +40,17 @@ namespace Atomex.Swaps.Ethereum
             ClientSwap swap,
             CancellationToken cancellationToken = default)
         {
+            if (swap.IsAcceptor)
+            {
+                var paymentDeadline = swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds) - PaymentTimeReserve;
+
+                if (DateTime.UtcNow > paymentDeadline)
+                {
+                    Log.Error("Payment dedline reached for swap {@swap}", swap.Id);
+                    return;
+                }
+            }
+
             var lockTimeInSeconds = swap.IsInitiator
                 ? DefaultInitiatorLockTimeInSeconds
                 : DefaultAcceptorLockTimeInSeconds;
@@ -136,7 +147,7 @@ namespace Atomex.Swaps.Ethereum
                     swap: swap,
                     currency: Currency,
                     refundTimeStamp: refundTimeUtcInSec,
-                    interval: DefaultConfirmationCheckInterval,
+                    interval: ConfirmationCheckInterval,
                     initiatedHandler: initiatedHandler,
                     canceledHandler: SwapCanceledHandler,
                     cancellationToken: cancellationToken)
@@ -176,6 +187,17 @@ namespace Atomex.Swaps.Ethereum
                     .FireAndForget();
 
                 return;
+            }
+
+            if (swap.IsInitiator)
+            {
+                var redeemDeadline = swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds) - RedeemTimeReserve;
+
+                if (DateTime.UtcNow > redeemDeadline)
+                {
+                    Log.Error("Redeem dedline reached for swap {@swap}", swap.Id);
+                    return;
+                }
             }
 
             Log.Debug("Create redeem for swap {@swapId}", swap.Id);
@@ -265,6 +287,17 @@ namespace Atomex.Swaps.Ethereum
             ClientSwap swap,
             CancellationToken cancellationToken = default)
         {
+            if (swap.IsInitiator)
+            {
+                var partyRedeemDeadline = swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds) - PartyRedeemTimeReserve;
+
+                if (DateTime.UtcNow > partyRedeemDeadline)
+                {
+                    Log.Error("Party redeem dedline reached for swap {@swap}", swap.Id);
+                    return;
+                }
+            }
+
             Log.Debug("Create redeem for counterParty for swap {@swapId}", swap.Id);
 
             var walletAddress = (await Account
@@ -336,7 +369,10 @@ namespace Atomex.Swaps.Ethereum
             ClientSwap swap,
             CancellationToken cancellationToken = default)
         {
-            if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast))
+            if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast) &&
+                swap.RefundTx != null &&
+                swap.RefundTx.CreationTime != null &&
+                swap.RefundTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
             {
                 TrackTransactionConfirmationAsync(
                         swap: swap,

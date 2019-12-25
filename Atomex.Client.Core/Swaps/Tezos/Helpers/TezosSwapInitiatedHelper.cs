@@ -42,6 +42,9 @@ namespace Atomex.Swaps.Tezos.Helpers
                     .GetTransactionsAsync(contractAddress, cancellationToken)
                     .ConfigureAwait(false);
 
+                if (txsResult == null)
+                    return new Error(Errors.RequestError, $"Connection error while getting txs from contract {contractAddress}");
+
                 if (txsResult.HasError)
                 {
                     Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Description: {@desc}",
@@ -49,7 +52,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                         txsResult.Error.Code,
                         txsResult.Error.Description);
 
-                    return new Result<bool>(txsResult.Error);
+                    return txsResult.Error;
                 }
 
                 var txs = txsResult.Value
@@ -57,7 +60,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                     .ToList();
 
                 if (txs == null || !txs.Any())
-                    return new Result<bool>(false);
+                    return false;
 
                 foreach (var tx in txs)
                 {
@@ -87,13 +90,12 @@ namespace Atomex.Swaps.Tezos.Helpers
                                     requiredRewardForRedeemInMtz,
                                     detectedRedeemFeeAmountInMtz);
 
-                                return new Result<bool>(
-                                    new Error(
-                                        code: Errors.InvalidRewardForRedeem,
-                                        description: $"Invalid redeem fee in initiated event. Expected value is {requiredRewardForRedeemInMtz}, actual is {detectedRedeemFeeAmountInMtz}"));
+                                return new Error(
+                                    code: Errors.InvalidRewardForRedeem,
+                                    description: $"Invalid redeem fee in initiated event. Expected value is {requiredRewardForRedeemInMtz}, actual is {detectedRedeemFeeAmountInMtz}");
                             }
 
-                            return new Result<bool>(true);
+                            return true;
                         }
                     }
 
@@ -104,17 +106,17 @@ namespace Atomex.Swaps.Tezos.Helpers
                     var swapTimeUtc = swap.TimeStamp.ToUniversalTime();
 
                     if (blockTimeUtc < swapTimeUtc)
-                        return new Result<bool>(false);
+                        return false;
                 }
             }
             catch (Exception e)
             {
                 Log.Error(e, "Tezos swap initiated control task error");
 
-                return new Result<bool>(new Error(Errors.InternalError, e.Message));
+                return new Error(Errors.InternalError, e.Message);
             }
 
-            return new Result<bool>(false);
+            return false;
         }
 
         public static Task StartSwapInitiatedControlAsync(
@@ -137,15 +139,12 @@ namespace Atomex.Swaps.Tezos.Helpers
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (isInitiatedResult.HasError)
+                    if (isInitiatedResult.HasError && isInitiatedResult.Error.Code != Errors.RequestError)
                     {
-                        if (isInitiatedResult.Error.Code != Errors.RequestError)
-                        {
-                            canceledHandler?.Invoke(swap, cancellationToken);
-                            break;
-                        }
+                        canceledHandler?.Invoke(swap, cancellationToken);
+                        break;
                     }
-                    else if (isInitiatedResult.Value)
+                    else if (!isInitiatedResult.HasError && isInitiatedResult.Value)
                     {
                         initiatedHandler?.Invoke(swap, cancellationToken);
                         break;

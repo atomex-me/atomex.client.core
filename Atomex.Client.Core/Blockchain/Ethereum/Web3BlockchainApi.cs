@@ -42,13 +42,13 @@ namespace Atomex.Blockchain.Ethereum
                     .SendRequestAsync(address)
                     .ConfigureAwait(false);
 
-                return new Result<decimal>(balance != null
+                return balance != null
                     ? Atomex.Ethereum.WeiToEth(balance.Value)
-                    : 0);
+                    : 0;
             }
             catch (Exception e)
             {
-                return new Result<decimal>(new Error(Errors.RequestError, e.Message));
+                return new Error(Errors.RequestError, e.Message);
             }
         }
 
@@ -69,7 +69,7 @@ namespace Atomex.Blockchain.Ethereum
             }
             catch (Exception e)
             {
-                return new Result<BigInteger>(new Error(Errors.RequestError, e.Message));
+                return new Error(Errors.RequestError, e.Message);
             }
         }
 
@@ -109,11 +109,11 @@ namespace Atomex.Blockchain.Ethereum
                     return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
                 }
 
-                return new Result<IBlockchainTransaction>(new EthereumTransaction(_currency, tx, txReceipt, utcTimeStamp));
+                return new EthereumTransaction(_currency, tx, txReceipt, utcTimeStamp);
             }
             catch (Exception e)
             {
-                return new Result<IBlockchainTransaction>(new Error(Errors.RequestError, e.Message));
+                return new Error(Errors.RequestError, e.Message);
             }
         }
 
@@ -144,11 +144,11 @@ namespace Atomex.Blockchain.Ethereum
 
                 ethTx.Id = txId; // todo: wtf?
 
-                return new Result<string>(txId);
+                return txId;
             }
             catch (Exception e)
             {
-                return new Result<string>(new Error(Errors.RequestError, e.Message));
+                return new Error(Errors.RequestError, e.Message);
             }
         }
 

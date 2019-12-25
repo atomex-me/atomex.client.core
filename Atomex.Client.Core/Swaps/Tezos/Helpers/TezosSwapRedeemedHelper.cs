@@ -31,6 +31,9 @@ namespace Atomex.Swaps.Tezos.Helpers
                     .GetTransactionsAsync(contractAddress, cancellationToken)
                     .ConfigureAwait(false);
 
+                if (txsResult == null)
+                    return new Error(Errors.RequestError, $"Connection error while getting txs from contract {contractAddress}");
+
                 if (txsResult.HasError)
                 {
                     Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Description: {@desc}",
@@ -38,7 +41,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                         txsResult.Error.Code,
                         txsResult.Error.Description);
 
-                    return new Result<byte[]>(txsResult.Error);
+                    return txsResult.Error;
                 }
 
                 var txs = txsResult.Value
@@ -56,7 +59,7 @@ namespace Atomex.Swaps.Tezos.Helpers
 
                             Log.Debug("Redeem event received with secret {@secret}", Convert.ToBase64String(secret));
 
-                            return new Result<byte[]>(secret);
+                            return secret;
                         }
 
                         if (tx.BlockInfo?.BlockTime == null)
@@ -74,10 +77,10 @@ namespace Atomex.Swaps.Tezos.Helpers
             {
                 Log.Error(e, "Tezos redeem control task error");
 
-                return new Result<byte[]>(new Error(Errors.InternalError, e.Message));
+                return new Error(Errors.InternalError, e.Message);
             }
 
-            return new Result<byte[]>((byte[])null);
+            return (byte[])null;
         }
 
         public static async Task<Result<byte[]>> IsRedeemedAsync(
@@ -99,21 +102,17 @@ namespace Atomex.Swaps.Tezos.Helpers
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (isRedeemedResult.HasError) // has error
-                {
-                    if (isRedeemedResult.Error.Code != Errors.RequestError) // ignore connection errors
-                        return isRedeemedResult;
-                }
-                else if (isRedeemedResult.Value != null) // has secret
-                {
+                if (isRedeemedResult.HasError && isRedeemedResult.Error.Code != Errors.RequestError) // has error
                     return isRedeemedResult;
-                }
+  
+                if (!isRedeemedResult.HasError && isRedeemedResult.Value != null) // has secret
+                    return isRedeemedResult;
 
                 await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
                     .ConfigureAwait(false);
             }
 
-            return new Result<byte[]>(new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for redeem check"));
+            return new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for redeem check");
         }
 
         public static Task StartSwapRedeemedControlAsync(
@@ -136,15 +135,12 @@ namespace Atomex.Swaps.Tezos.Helpers
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (isRedeemedResult.HasError) // has error
+                    if (isRedeemedResult.HasError && isRedeemedResult.Error.Code != Errors.RequestError) // has error
                     {
-                        if (isRedeemedResult.Error.Code != Errors.RequestError) // ignore connection errors
-                        {
-                            canceledHandler?.Invoke(swap, refundTimeUtc, cancellationToken);
-                            break;
-                        }
+                        canceledHandler?.Invoke(swap, refundTimeUtc, cancellationToken);
+                        break;
                     }
-                    else if (isRedeemedResult.Value != null) // has secret
+                    else if (!isRedeemedResult.HasError && isRedeemedResult.Value != null) // has secret
                     {
                         redeemedHandler?.Invoke(swap, isRedeemedResult.Value, cancellationToken);
                         break;

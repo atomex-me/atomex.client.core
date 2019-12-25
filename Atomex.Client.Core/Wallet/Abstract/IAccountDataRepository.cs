@@ -51,6 +51,8 @@ namespace Atomex.Wallet.Abstract
         Task<bool> UpsertOrderAsync(Order order);
         Order GetOrderById(string clientOrderId);
 
+        Order GetOrderById(long id);
+
         #endregion Orders
 
         #region Swaps

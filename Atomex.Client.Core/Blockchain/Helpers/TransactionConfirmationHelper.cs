@@ -51,7 +51,7 @@ namespace Atomex.Blockchain.Helpers
                 if (txResult.HasError)
                 {
                     if (txResult.Error.Code == (int) HttpStatusCode.NotFound)
-                        return new Result<ConfirmationCheckResult>(new ConfirmationCheckResult(false, null));
+                        return new ConfirmationCheckResult(false, null);
 
                     Log.Error("Error while get {@currency} transaction {@txId}. Code: {@code}. Description: {@desc}",
                         currency.Name,
@@ -59,20 +59,20 @@ namespace Atomex.Blockchain.Helpers
                         txResult.Error.Code, 
                         txResult.Error.Description);
 
-                    return new Result<ConfirmationCheckResult>(txResult.Error);
+                    return txResult.Error;
                 }
 
                 var tx = txResult.Value;
 
                 if (tx == null || tx.BlockInfo == null || tx.BlockInfo.Confirmations < NumberOfConfirmations)
-                    return new Result<ConfirmationCheckResult>(new ConfirmationCheckResult(false, null));
+                    return new ConfirmationCheckResult(false, null);
 
-                return new Result<ConfirmationCheckResult>(new ConfirmationCheckResult(true, tx));
+                return new ConfirmationCheckResult(true, tx);
             }
             catch (Exception e)
             {
                 Log.Error(e, "Transaction confirmation check error");
-                return new Result<ConfirmationCheckResult>(new Error(Errors.InternalError, e.Message));
+                return new Error(Errors.InternalError, e.Message);
             }
         }
     }

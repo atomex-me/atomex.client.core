@@ -31,17 +31,17 @@ namespace Atomex.Client.Core.Tests
             new object[] {Common.BtcMainNet, "2ba30a70e5b0bfc0186cd6fe53d7a817a3072cad26392f38aaca0ffacd790a68", 0}
         };
 
-        [Theory]
-        [MemberData(nameof(InputTestData))]
-        public async void GetInputTest(BitcoinBasedCurrency currency, string txId, uint inputNo)
-        {
-            var api = new BlockchainInfoApi(currency);
-            var asyncResult = await api.GetInputAsync(txId, inputNo);
-            var input = asyncResult.Value;
+        //[Theory]
+        //[MemberData(nameof(InputTestData))]
+        //public async void GetInputTest(BitcoinBasedCurrency currency, string txId, uint inputNo)
+        //{
+        //    var api = new BlockchainInfoApi(currency);
+        //    var asyncResult = await api.GetInputAsync(txId, inputNo);
+        //    var input = asyncResult.Value;
 
-            Assert.False(asyncResult.HasError);
-            Assert.NotNull(input);
-        }
+        //    Assert.False(asyncResult.HasError);
+        //    Assert.NotNull(input);
+        //}
 
         //[Fact]
         //public async void GetTransactionTest()

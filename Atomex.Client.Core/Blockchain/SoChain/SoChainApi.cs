@@ -327,12 +327,12 @@ namespace Atomex.Blockchain.SoChain
                 .ConfigureAwait(false);
 
             if (utxoResult.HasError)
-                return new Result<decimal>(utxoResult.Error);
+                return utxoResult.Error;
 
             if (utxoResult.Value == null)
-                return new Result<decimal>(0);
+                return 0;
 
-            return new Result<decimal>(utxoResult.Value.Sum(o => o.Value));
+            return utxoResult.Value.Sum(o => o.Value);
         }
 
         public async Task<Result<ITxPoint>> GetInputAsync(
@@ -346,7 +346,7 @@ namespace Atomex.Blockchain.SoChain
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<ITxPoint>(
                     baseUri: BaseUrl,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
@@ -358,14 +358,12 @@ namespace Atomex.Blockchain.SoChain
                         if (input.Witness != null)
                             witScript = input.Witness.Aggregate(witScript, (current, witness) => current + new WitScript(witness));
                         
-                        var txInput = new BitcoinBasedTxPoint(new IndexedTxIn
+                        return new BitcoinBasedTxPoint(new IndexedTxIn
                         {
                             TxIn = new TxIn(new OutPoint(new uint256(input.FromOutput.TxId), input.FromOutput.OutputNo), Script.FromHex(input.Script)),
                             Index = input.InputNo,
                             WitScript = witScript,
                         });
-
-                        return new Result<ITxPoint>(txInput);
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -541,14 +539,14 @@ namespace Atomex.Blockchain.SoChain
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
                     baseUri: BaseUrl,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
                     {
                         var tx = JsonConvert.DeserializeObject<Response<Tx>>(content);
 
-                        var result = new BitcoinBasedTransaction(
+                        return new BitcoinBasedTransaction(
                             currency: Currency,
                             tx: Transaction.Parse(tx.Data.TxHex, Currency.Network),
                             blockInfo: new BlockInfo
@@ -561,8 +559,6 @@ namespace Atomex.Blockchain.SoChain
                             },
                             fees: (long)(decimal.Parse(tx.Data.Fee, CultureInfo.InvariantCulture) * Satoshi)
                         );
-
-                        return new Result<IBlockchainTransaction>(result);
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -578,14 +574,14 @@ namespace Atomex.Blockchain.SoChain
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<bool>(
                     baseUri: BaseUrl,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
                     {
                         var info = JsonConvert.DeserializeObject<Response<TxConfirmationInfo>>(content);
 
-                        return new Result<bool>(info.Data.IsConfirmed);
+                        return info.Data.IsConfirmed;
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -602,18 +598,16 @@ namespace Atomex.Blockchain.SoChain
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<ITxPoint>(
                     baseUri: BaseUrl,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
                     {
                         var info = JsonConvert.DeserializeObject<Response<TxOutputSpentInfo>>(content);
 
-                        var txOutput = info.Data.IsSpent
+                        return info.Data.IsSpent
                             ? new TxPoint(info.Data.Spent.InputNo, info.Data.Spent.TxId)
                             : null;
-
-                        return new Result<ITxPoint>(txOutput);
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -642,12 +636,11 @@ namespace Atomex.Blockchain.SoChain
                 encoding: Encoding.UTF8,
                 mediaType: "application/json"))
             {
-                return await HttpHelper.PostAsyncResult(
+                return await HttpHelper.PostAsyncResult<string>(
                         baseUri: BaseUrl,
                         requestUri: requestUri,
                         content: requestContent,
-                        responseHandler: (response, content) => new Result<string>(
-                            JsonConvert.DeserializeObject<Response<SendTxId>>(content).Data.TxId),
+                        responseHandler: (response, content) => JsonConvert.DeserializeObject<Response<SendTxId>>(content).Data.TxId,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -663,21 +656,19 @@ namespace Atomex.Blockchain.SoChain
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<ConfidenceInformation>(
                     baseUri: BaseUrl,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
                     {
                         var info = JsonConvert.DeserializeObject<Response<ConfidenceInfo>>(content);
 
-                        var result = new ConfidenceInformation
+                        return new ConfidenceInformation
                         {
                             TxId = info.Data.TxId,
                             Confidence = info.Data.Confidence,
                             Confirmations = info.Data.Confirmations
                         };
-
-                        return new Result<ConfidenceInformation>(result);
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

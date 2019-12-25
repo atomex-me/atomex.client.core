@@ -35,8 +35,6 @@ namespace Atomex.Blockchain.BitcoinBased.Helpers
                         index,
                         result.Error.Code,
                         result.Error.Description);
-
-                    return result;
                 }
 
                 return result;
@@ -47,7 +45,7 @@ namespace Atomex.Blockchain.BitcoinBased.Helpers
                     hash,
                     index);
 
-                return new Result<ITxPoint>(new Error(Errors.InternalError, e.Message));
+                return new Error(Errors.InternalError, e.Message);
             }
         }  
     }

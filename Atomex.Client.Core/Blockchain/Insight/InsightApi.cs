@@ -189,11 +189,10 @@ namespace Atomex.Blockchain.Insight
 
             var requestUri = $"api/addr/{address}/balance";
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<decimal>(
                     baseUri: BaseUri,
                     requestUri: requestUri,
-                    responseHandler: (response, content) => new Result<decimal>(
-                        long.Parse(content, CultureInfo.InvariantCulture) / (decimal) Currency.DigitsMultiplier),
+                    responseHandler: (response, content) => long.Parse(content, CultureInfo.InvariantCulture) / (decimal) Currency.DigitsMultiplier,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -206,10 +205,10 @@ namespace Atomex.Blockchain.Insight
                 .ConfigureAwait(false);
 
             if (rawTxResult == null)
-                return new Result<IBlockchainTransaction>(new Error(Errors.RequestError, "Connection error while getting tx"));
+                return new Error(Errors.RequestError, "Connection error while getting tx");
 
             if (rawTxResult.HasError)
-                return new Result<IBlockchainTransaction>(rawTxResult.Error);
+                return rawTxResult.Error;
 
             if (string.IsNullOrEmpty(rawTxResult.Value))
                 return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
@@ -220,14 +219,14 @@ namespace Atomex.Blockchain.Insight
 
             var requestUri = $"api/tx/{txId}";
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
                     baseUri: BaseUri,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
                     {
                         var tx = JsonConvert.DeserializeObject<Tx>(content);
 
-                        var result = new BitcoinBasedTransaction(
+                        return new BitcoinBasedTransaction(
                             currency: Currency,
                             tx: Transaction.Parse(rawTxResult.Value, Currency.Network),
                             blockInfo: new BlockInfo
@@ -240,8 +239,6 @@ namespace Atomex.Blockchain.Insight
                             },
                             fees: (long) (tx.Fees * Currency.DigitsMultiplier)
                         );
-
-                        return new Result<IBlockchainTransaction>(result);
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -264,12 +261,11 @@ namespace Atomex.Blockchain.Insight
             var parameters = new Dictionary<string, string> { { "rawtx", txHex } };
             var requestContent = new FormUrlEncodedContent(parameters);
 
-            return await HttpHelper.PostAsyncResult(
+            return await HttpHelper.PostAsyncResult<string>(
                     baseUri: BaseUri,
                     requestUri: requestUri,
                     content: requestContent,
-                    responseHandler: (response, responseContent) => new Result<string>(
-                        JsonConvert.DeserializeObject<SendTxId>(responseContent).TxId),
+                    responseHandler: (response, responseContent) => JsonConvert.DeserializeObject<SendTxId>(responseContent).TxId,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -285,7 +281,7 @@ namespace Atomex.Blockchain.Insight
 
             var requestUri = $"api/tx/{txId}";
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<ITxPoint>(
                     baseUri: BaseUri,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
@@ -302,7 +298,7 @@ namespace Atomex.Blockchain.Insight
                             //WitScript = null,
                         });
 
-                        return new Result<ITxPoint>(txInput);
+                        return txInput;
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -408,7 +404,7 @@ namespace Atomex.Blockchain.Insight
 
             var requestUri = $"api/tx/{txId}";
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<ITxPoint>(
                     baseUri: BaseUri,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
@@ -421,7 +417,7 @@ namespace Atomex.Blockchain.Insight
                             ? new TxPoint(output.SpentIndex.Value, output.SpentTxId)
                             : null;
 
-                        return new Result<ITxPoint>(txOutput);
+                        return txOutput;
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -437,11 +433,10 @@ namespace Atomex.Blockchain.Insight
 
             var requestUri = $"api/rawtx/{txId}";
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<string>(
                     baseUri: BaseUri,
                     requestUri: requestUri,
-                    responseHandler: (response, content) => new Result<string>(
-                        JsonConvert.DeserializeObject<RawTx>(content).TxInHex),
+                    responseHandler: (response, content) => JsonConvert.DeserializeObject<RawTx>(content).TxInHex,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }

@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
+using Atomex.Core;
 using Nethereum.Signer;
 
 namespace Atomex.Blockchain.Ethereum
@@ -50,6 +51,9 @@ namespace Atomex.Blockchain.Ethereum
                 .GetTransactionAsync(txId, cancellationToken)
                 .ConfigureAwait(false); //_etherScanApi.GetTransactionAsync(txId, cancellationToken);
 
+            if (txAsyncResult == null)
+                return new Error(Errors.RequestError, "Connection error while getting transaction");
+
             if (txAsyncResult.HasError || txAsyncResult.Value == null)
                 return txAsyncResult;
 
@@ -60,7 +64,7 @@ namespace Atomex.Blockchain.Ethereum
                 .ConfigureAwait(false);
 
             if (internalTxsAsyncResult.HasError)
-                return new Result<IBlockchainTransaction>(internalTxsAsyncResult.Error);
+                return internalTxsAsyncResult.Error;
 
             if (internalTxsAsyncResult.Value.Any())
             {

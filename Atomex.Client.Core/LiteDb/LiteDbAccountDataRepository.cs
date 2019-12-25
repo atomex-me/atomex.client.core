@@ -732,6 +732,32 @@ namespace Atomex.LiteDb
             }
         }
 
+        public Order GetOrderById(long id)
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
+                    {
+                        var orders = db.GetCollection(OrdersCollectionName);
+
+                        var documents = orders.Find(Query.EQ("OrderId", id));
+
+                        return documents != null && documents.Any()
+                            ? _bsonMapper.ToObject<Order>(documents.First())
+                            : null;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error getting order");
+
+                return null;
+            }
+        }
+
         #endregion Orders
 
         #region Swaps

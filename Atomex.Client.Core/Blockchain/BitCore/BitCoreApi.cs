@@ -151,11 +151,10 @@ namespace Atomex.Blockchain.BitCore
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<decimal>(
                     baseUri: BaseUri,
                     requestUri: requestUri,
-                    responseHandler: (response, content) => new Result<decimal>(
-                        JsonConvert.DeserializeObject<AddressBalance>(content).Balance),
+                    responseHandler: (response, content) => JsonConvert.DeserializeObject<AddressBalance>(content).Balance,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -168,10 +167,10 @@ namespace Atomex.Blockchain.BitCore
                 .ConfigureAwait(false);
 
             if (txHexResult == null)
-                return new Result<IBlockchainTransaction>(new Error(Errors.RequestError, "Connection error while getting tx"));
+                return new Error(Errors.RequestError, "Connection error while getting tx");
 
             if (txHexResult.HasError)
-                return new Result<IBlockchainTransaction>(txHexResult.Error);
+                return txHexResult.Error;
 
             var requestUri = $"api/{Currency.Name}/{Currency.Network.ToString().ToLower()}/tx/{txId}";
 
@@ -179,14 +178,14 @@ namespace Atomex.Blockchain.BitCore
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
                     baseUri: BaseUri,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
                     {
                         var tx = JsonConvert.DeserializeObject<Tx>(content);
 
-                        return new Result<IBlockchainTransaction>(new BitcoinBasedTransaction(
+                        return new BitcoinBasedTransaction(
                             currency: Currency,
                             tx: Transaction.Parse(txHexResult.Value, Currency.Network),
                             blockInfo: new BlockInfo
@@ -197,7 +196,7 @@ namespace Atomex.Blockchain.BitCore
                                 BlockTime = tx.BlockTime
                             },
                             fees: tx.Fee
-                        ));
+                        );
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -219,11 +218,11 @@ namespace Atomex.Blockchain.BitCore
             var requestUri = $"api/{Currency.Name}/{Currency.Network.ToString().ToLower()}/tx/send";
             var requestContent = JsonConvert.SerializeObject(new RawTx {RawTxHex = txHex});
 
-            return await HttpHelper.PostAsyncResult(
+            return await HttpHelper.PostAsyncResult<string>(
                     baseUri: BaseUri,
                     requestUri: requestUri,
                     content: new StringContent(requestContent, Encoding.UTF8, "application/json"),
-                    responseHandler: (response, content) => new Result<string>(JsonConvert.DeserializeObject<SendTxId>(content).TxId),
+                    responseHandler: (response, content) => JsonConvert.DeserializeObject<SendTxId>(content).TxId,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -237,15 +236,15 @@ namespace Atomex.Blockchain.BitCore
                 .ConfigureAwait(false);
 
             if (txHexResult == null)
-                return new Result<ITxPoint>(new Error(Errors.RequestError, "Connection error while getting input"));
+                return new Error(Errors.RequestError, "Connection error while getting input");
 
             if (txHexResult.HasError)
-                return new Result<ITxPoint>(txHexResult.Error);
+                return txHexResult.Error;
 
             var tx = Transaction.Parse(txHexResult.Value, Currency.Network);
             var txInput = tx.Inputs.AsIndexedInputs().ToList()[(int) inputNo];
 
-            return new Result<ITxPoint>(new BitcoinBasedTxPoint(txInput));
+            return new BitcoinBasedTxPoint(txInput);
         }
 
         public async Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
@@ -324,18 +323,18 @@ namespace Atomex.Blockchain.BitCore
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            var txResult = await HttpHelper.GetAsyncResult(
+            var txResult = await HttpHelper.GetAsyncResult<Tx>(
                     baseUri: BaseUri,
                     requestUri: $"api/{Currency.Name}/{Currency.Network.ToString().ToLower()}/tx/{txId}/populated",
-                    responseHandler: (response, content) => new Result<Tx>(JsonConvert.DeserializeObject<Tx>(content)),
+                    responseHandler: (response, content) => JsonConvert.DeserializeObject<Tx>(content),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (txResult == null)
-                return new Result<ITxPoint>(new Error(Errors.RequestError, "Connection error while getting output spent point"));
+                return new Error(Errors.RequestError, "Connection error while getting output spent point");
 
             if (txResult.HasError)
-                return new Result<ITxPoint>(txResult.Error);
+                return txResult.Error;
 
             var spentTxId = txResult.Value
                 ?.Coins
@@ -343,17 +342,17 @@ namespace Atomex.Blockchain.BitCore
                 ?.FirstOrDefault(o => o.Index == outputNo)
                 ?.SpentTxId;
 
-            if (spentTxId == null)
+            if (string.IsNullOrEmpty(spentTxId))
                 return new Result<ITxPoint>((ITxPoint)null);
 
             var spentTxHexResult = await GetRawTxAsync(spentTxId, cancellationToken)
                 .ConfigureAwait(false);
 
             if (spentTxHexResult == null)
-                return new Result<ITxPoint>(new Error(Errors.RequestError, "Connection error while getting raw tx"));
+                return new Error(Errors.RequestError, "Connection error while getting raw tx");
 
             if (spentTxHexResult.HasError)
-                return new Result<ITxPoint>(spentTxHexResult.Error);
+                return spentTxHexResult.Error;
 
             var spentTx = Transaction.Parse(spentTxHexResult.Value, Currency.Network);
 
@@ -363,7 +362,7 @@ namespace Atomex.Blockchain.BitCore
             {
                 if (spentTxInputs[i].PrevOut.Hash.ToString() == txId &&
                     spentTxInputs[i].PrevOut.N == outputNo)
-                    return new Result<ITxPoint>(new TxPoint((uint)i, spentTxId));
+                    return new TxPoint((uint)i, spentTxId);
             }
 
             return new Result<ITxPoint>((ITxPoint)null);
@@ -385,10 +384,10 @@ namespace Atomex.Blockchain.BitCore
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<string>(
                     baseUri: baseUri,
                     requestUri: requestUri,
-                    responseHandler: (response, content) => new Result<string>(JObject.Parse(content)["hex"].ToString()),
+                    responseHandler: (response, content) => JObject.Parse(content)["hex"].ToString(),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }

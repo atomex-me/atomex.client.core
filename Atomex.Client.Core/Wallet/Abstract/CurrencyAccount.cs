@@ -8,7 +8,6 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Core.Entities;
-using Atomex.Subsystems.Abstract;
 using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Abstract

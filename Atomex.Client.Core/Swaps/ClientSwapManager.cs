@@ -15,7 +15,9 @@ namespace Atomex.Swaps
 {
     public class ClientSwapManager : IClientSwapManager
     {
+        protected static TimeSpan DefaultCredentialsExchangeTimeout = TimeSpan.FromMinutes(5);
         protected static TimeSpan DefaultMaxSwapTimeout = TimeSpan.FromMinutes(20);
+
 
         public event EventHandler<SwapEventArgs> SwapUpdated;
 
@@ -58,6 +60,8 @@ namespace Atomex.Swaps
             await LockSwapAsync(receivedSwap.Id)
                 .ConfigureAwait(false);
 
+            Log.Debug("Swap {@swap} locked", receivedSwap.Id);
+
             try
             {
                 var swap = await _account
@@ -87,13 +91,14 @@ namespace Atomex.Swaps
 
         private async Task RunSwapAsync(ClientSwap receivedSwap)
         {
-            //var order = _account.GetOrderById(clientSwap.Order.ClientOrderId);
+            var order = await GetOrderAsync(receivedSwap)
+                .ConfigureAwait(false);
 
-            //if (order == null || !clientSwap.Order.IsContinuationOf(order))
-            //{
-            //    Log.Warning("Probably swap {@swapId} created on another device", clientSwap.Id);
-            //    return;
-            //}
+            if (order == null) // || !clientSwap.Order.IsContinuationOf(order))
+            {
+                Log.Warning("Probably swap {@swapId} created on another device", receivedSwap.Id);
+                return;
+            }
 
             var swap = new ClientSwap
             {
@@ -122,6 +127,31 @@ namespace Atomex.Swaps
                 await InitiateSwapAsync(swap)
                     .ConfigureAwait(false);
             }
+        }
+
+        private Task<Order> GetOrderAsync(ClientSwap receivedSwap)
+        {
+            return Task.Run(async () =>
+            {
+                const int attemptIntervalMs = 100;
+                const int maxAttempts = 200;
+                var attempts = 0;
+
+                while (attempts < maxAttempts)
+                {
+                    attempts++;
+
+                    var order = _account.GetOrderById(receivedSwap.OrderId);
+
+                    if (order != null)
+                        return order;
+
+                    await Task.Delay(attemptIntervalMs)
+                        .ConfigureAwait(false);
+                }
+
+                return null;
+            });
         }
 
         private async Task InitiateSwapAsync(ClientSwap swap)
@@ -217,6 +247,16 @@ namespace Atomex.Swaps
 
         private async Task HandleInitiateAsync(ClientSwap swap, ClientSwap receivedSwap)
         {
+            if (DateTime.UtcNow > swap.TimeStamp.ToUniversalTime() + DefaultCredentialsExchangeTimeout)
+            {
+                Log.Error("Handle initiate after swap {@swap} timeout", swap.Id);
+
+                swap.Cancel();
+                RaiseSwapUpdated(swap, SwapStateFlags.IsCanceled);
+
+                return;
+            }
+
             if (swap.SecretHash != null)
             {
                 if (!swap.SecretHash.SequenceEqual(receivedSwap.SecretHash))
@@ -276,6 +316,16 @@ namespace Atomex.Swaps
 
         private async Task HandleAcceptAsync(ClientSwap swap, ClientSwap receivedSwap)
         {
+            if (DateTime.UtcNow > swap.TimeStamp.ToUniversalTime() + DefaultCredentialsExchangeTimeout)
+            {
+                Log.Error("Handle accept after swap {@swap} timeout", swap.Id);
+
+                swap.Cancel();
+                RaiseSwapUpdated(swap, SwapStateFlags.IsCanceled);
+
+                return;
+            }
+
             // check party requisites
             if (receivedSwap.PartyAddress == null)
                 throw new InternalException(

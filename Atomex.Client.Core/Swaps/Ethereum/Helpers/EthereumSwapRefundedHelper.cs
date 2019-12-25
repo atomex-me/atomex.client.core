@@ -36,25 +36,25 @@ namespace Atomex.Swaps.Ethereum.Helpers
                     .ConfigureAwait(false);
 
                 if (refundEventsResult == null)
-                    return new Result<bool>(new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} refund event"));
+                    return new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} refund event");
 
                 if (refundEventsResult.HasError)
-                    return new Result<bool>(refundEventsResult.Error);
+                    return refundEventsResult.Error;
 
                 var events = refundEventsResult.Value?.ToList();
 
                 if (events == null || !events.Any())
-                    return new Result<bool>(false);
+                    return false;
 
                 Log.Debug("Refund event received for swap {@swap}", swap.Id);
 
-                return new Result<bool>(true);
+                return true;
             }
             catch (Exception e)
             {
                 Log.Error(e, "Ethereum refund control task error");
 
-                return new Result<bool>(new Error(Errors.InternalError, e.Message));
+                return new Error(Errors.InternalError, e.Message);
             }
         }
 
@@ -77,18 +77,17 @@ namespace Atomex.Swaps.Ethereum.Helpers
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (isRefundedResult.HasError) // has error
-                {
-                    if (isRefundedResult.Error.Code != Errors.RequestError) // ignore connection errors
-                        return isRefundedResult;
-                }
-                else return isRefundedResult;
+                if (isRefundedResult.HasError && isRefundedResult.Error.Code != Errors.RequestError) // has error
+                    return isRefundedResult;
+
+                if (!isRefundedResult.HasError)
+                    return isRefundedResult;
 
                 await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
                     .ConfigureAwait(false);
             }
 
-            return new Result<bool>(new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for refund check"));
+            return new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for refund check");
         }
     }
 }

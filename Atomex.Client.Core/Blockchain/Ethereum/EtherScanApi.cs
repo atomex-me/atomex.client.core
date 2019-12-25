@@ -132,18 +132,16 @@ namespace Atomex.Blockchain.Ethereum
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<decimal>(
                    baseUri: BaseUrl,
                    requestUri: requestUri,
                    responseHandler: (response, content) =>
                    {
                        var json = JsonConvert.DeserializeObject<JObject>(content);
 
-                       var balance = json.ContainsKey("result")
+                       return json.ContainsKey("result")
                            ? Atomex.Ethereum.WeiToEth(new BigInteger(long.Parse(json["result"].ToString())))
                            : 0;
-
-                       return new Result<decimal>(balance);
                    },
                    cancellationToken: cancellationToken)
                .ConfigureAwait(false);

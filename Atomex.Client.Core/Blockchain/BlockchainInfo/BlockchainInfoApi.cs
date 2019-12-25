@@ -47,7 +47,7 @@ namespace Atomex.Blockchain.BlockchainInfo
                     .GetBase58AddressAsync(address)
                     .ConfigureAwait(false);
 
-                return new Result<decimal>(addressInfo.FinalBalance.GetBtc());
+                return addressInfo.FinalBalance.GetBtc();
             }
             catch (Exception e)
             {
@@ -55,7 +55,7 @@ namespace Atomex.Blockchain.BlockchainInfo
                     address,
                     ResolveExceptionMessage(e));
 
-                return new Result<decimal>(new Error(Errors.RequestError, ResolveExceptionMessage(e)));
+                return new Error(Errors.RequestError, ResolveExceptionMessage(e));
             }
         }
 
@@ -82,7 +82,7 @@ namespace Atomex.Blockchain.BlockchainInfo
                     },
                     fees: await GetTxFeeAsync(txId).ConfigureAwait(false));
 
-                return new Result<IBlockchainTransaction>(result);
+                return result;
             }
             catch (Exception e)
             {
@@ -90,7 +90,7 @@ namespace Atomex.Blockchain.BlockchainInfo
                     txId,
                     ResolveExceptionMessage(e));
 
-                return new Result<IBlockchainTransaction>(new Error(Errors.RequestError, ResolveExceptionMessage(e)));
+                return new Error(Errors.RequestError, ResolveExceptionMessage(e));
             }
         }
 
@@ -111,11 +111,11 @@ namespace Atomex.Blockchain.BlockchainInfo
                     .PushTransactionAsync(txHex)
                     .ConfigureAwait(false);
 
-                return new Result<string>(tx.Id); // todo: receive id from network!!!
+                return tx.Id; // todo: receive id from network!!!
             }
             catch (Exception e)
             {
-                return new Result<string>(new Error(Errors.RequestError, ResolveExceptionMessage(e)));
+                return new Error(Errors.RequestError, ResolveExceptionMessage(e));
             }
         }
 
@@ -142,16 +142,16 @@ namespace Atomex.Blockchain.BlockchainInfo
                         nIn: input.PreviousOutput.N),
                     scriptSig: Script.FromHex(input.ScriptSignature));
 
-                return new Result<ITxPoint>(new BitcoinBasedTxPoint(new IndexedTxIn
+                return new BitcoinBasedTxPoint(new IndexedTxIn
                 {
                     Index = inputNo,
                     TxIn = txIn,
                     WitScript = new WitScript(input.Witness)
-                }));
+                });
             }
             catch (Exception e)
             {
-                return new Result<ITxPoint>(new Error(Errors.RequestError, ResolveExceptionMessage(e)));
+                return new Error(Errors.RequestError, ResolveExceptionMessage(e));
             }
         }
 
@@ -210,7 +210,7 @@ namespace Atomex.Blockchain.BlockchainInfo
             }
             catch (Exception e)
             {
-                return new Result<IEnumerable<ITxOutput>>(new Error(Errors.RequestError, ResolveExceptionMessage(e)));
+                return new Error(Errors.RequestError, ResolveExceptionMessage(e));
             }
         }
 
@@ -255,11 +255,11 @@ namespace Atomex.Blockchain.BlockchainInfo
                     }
                 }
 
-                return new Result<IEnumerable<ITxOutput>>(outputs);
+                return outputs;
             }
             catch (Exception e)
             {
-                return new Result<IEnumerable<ITxOutput>>(new Error(Errors.RequestError, ResolveExceptionMessage(e)));
+                return new Error(Errors.RequestError, ResolveExceptionMessage(e));
             }
         }
 
@@ -282,11 +282,11 @@ namespace Atomex.Blockchain.BlockchainInfo
                         (await _explorer.GetTransactionByIndexAsync(tx.Outputs[(int)outputNo].SpendingOutpoints[0].TxIndex).ConfigureAwait(false)).Hash)
                     : null;
 
-                return new Result<ITxPoint>(result);
+                return result;
             }
             catch (Exception e)
             {
-                return new Result<ITxPoint>(new Error(Errors.RequestError, ResolveExceptionMessage(e)));
+                return new Error(Errors.RequestError, ResolveExceptionMessage(e));
             }
         }
 

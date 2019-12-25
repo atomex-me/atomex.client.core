@@ -40,7 +40,7 @@ namespace Atomex.Common
                         .WaitForResult();
 
                     return !response.IsSuccessStatusCode
-                        ? new Result<T>(new Error((int)response.StatusCode, responseContent))
+                        ? new Error((int)response.StatusCode, responseContent)
                         : responseHandler(response, responseContent);
                 },
                 cancellationToken: cancellationToken);
@@ -80,7 +80,7 @@ namespace Atomex.Common
                         .WaitForResult();
 
                     return !response.IsSuccessStatusCode
-                        ? new Result<T>(new Error((int)response.StatusCode, responseContent))
+                        ? new Error((int)response.StatusCode, responseContent)
                         : responseHandler(response, responseContent);
                 },
                 cancellationToken: cancellationToken);

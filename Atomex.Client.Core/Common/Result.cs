@@ -10,5 +10,8 @@ namespace Atomex.Common
 
         public Result(T value) => Value = value;
         public Result(Error error) => Error = error;
+
+        public static implicit operator Result<T>(T value) => new Result<T>(value);
+        public static implicit operator Result<T>(Error error) => new Result<T>(error);
     }
 }

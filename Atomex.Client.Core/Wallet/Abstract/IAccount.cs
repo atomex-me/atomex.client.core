@@ -8,7 +8,6 @@ using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Core;
 using Atomex.Core.Entities;
-using Atomex.Subsystems.Abstract;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -297,6 +296,7 @@ namespace Atomex.Wallet.Abstract
 
         Task<bool> UpsertOrderAsync(Order order);
         Order GetOrderById(string clientOrderId);
+        Order GetOrderById(long id);
 
         #endregion Orders
 

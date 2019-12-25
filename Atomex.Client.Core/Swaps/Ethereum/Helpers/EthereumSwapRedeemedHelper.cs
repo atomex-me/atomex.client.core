@@ -36,27 +36,27 @@ namespace Atomex.Swaps.Ethereum.Helpers
                     .ConfigureAwait(false);
 
                 if (redeemEventsResult == null)
-                    return new Result<byte[]>(new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} redeem events"));
+                    return new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} redeem events");
 
                 if (redeemEventsResult.HasError)
-                    return new Result<byte[]>(redeemEventsResult.Error);
+                    return redeemEventsResult.Error;
 
                 var events = redeemEventsResult.Value?.ToList();
 
                 if (events == null || !events.Any())
-                    return new Result<byte[]>((byte[])null);
+                    return (byte[])null;
 
                 var secret = events.First().ParseRedeemedEvent().Secret;
 
                 Log.Debug("Redeem event received with secret {@secret}", Convert.ToBase64String(secret));
 
-                return new Result<byte[]>(secret);
+                return secret;
             }
             catch (Exception e)
             {
                 Log.Error(e, "Ethereum redeem control task error");
 
-                return new Result<byte[]>(new Error(Errors.InternalError, e.Message));
+                return new Error(Errors.InternalError, e.Message);
             }
         }
 
@@ -79,21 +79,17 @@ namespace Atomex.Swaps.Ethereum.Helpers
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (isRedeemedResult.HasError) // has error
-                {
-                    if (isRedeemedResult.Error.Code != Errors.RequestError) // ignore connection errors
-                        return isRedeemedResult;
-                }
-                else if (isRedeemedResult.Value != null) // has secret
-                {
+                if (isRedeemedResult.HasError && isRedeemedResult.Error.Code != Errors.RequestError) // has error
                     return isRedeemedResult;
-                }
+
+                if (!isRedeemedResult.HasError && isRedeemedResult.Value != null) // has secret
+                    return isRedeemedResult;
 
                 await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
                     .ConfigureAwait(false);
             }
 
-            return new Result<byte[]>(new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for redeem check"));
+            return new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for redeem check");
         }
 
         public static Task StartSwapRedeemedControlAsync(
@@ -116,15 +112,12 @@ namespace Atomex.Swaps.Ethereum.Helpers
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (isRedeemedResult.HasError) // has error
+                    if (isRedeemedResult.HasError && isRedeemedResult.Error.Code != Errors.RequestError) // has error
                     {
-                        if (isRedeemedResult.Error.Code != Errors.RequestError) // ignore connection errors
-                        {
-                            canceledHandler?.Invoke(swap, refundTimeUtc, cancellationToken);
-                            break;
-                        }
+                        canceledHandler?.Invoke(swap, refundTimeUtc, cancellationToken);
+                        break;
                     }
-                    else if (isRedeemedResult.Value != null) // has secret
+                    else if (!isRedeemedResult.HasError && isRedeemedResult.Value != null) // has secret
                     {
                         redeemedHandler?.Invoke(swap, isRedeemedResult.Value, cancellationToken);
                         break;
