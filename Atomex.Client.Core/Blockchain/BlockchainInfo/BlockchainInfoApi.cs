@@ -17,7 +17,7 @@ using Transaction = NBitcoin.Transaction;
 
 namespace Atomex.Blockchain.BlockchainInfo
 {
-    public class BlockchainInfoApi : IInOutBlockchainApi
+    public class BlockchainInfoApi : BlockchainApi, IInOutBlockchainApi
     {
         private readonly BitcoinBasedCurrency _currency;
         private readonly BlockchainHttpClient _client;
@@ -37,7 +37,7 @@ namespace Atomex.Blockchain.BlockchainInfo
             _explorer = new BlockchainApiHelper(apiCode: _apiCode, baseHttpClient: new BlockchainHttpClient(uri: baseUrl)).blockExplorer;
         }
 
-        public async Task<Result<decimal>> GetBalanceAsync(
+        public override async Task<Result<decimal>> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -59,7 +59,7 @@ namespace Atomex.Blockchain.BlockchainInfo
             }
         }
 
-        public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
@@ -94,7 +94,7 @@ namespace Atomex.Blockchain.BlockchainInfo
             }
         }
 
-        public async Task<Result<string>> BroadcastAsync(
+        public override async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default)
         {

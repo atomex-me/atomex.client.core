@@ -18,19 +18,19 @@ namespace Atomex.Wallet
             switch (currency)
             {
                 case BitcoinBasedCurrency _:
-                    return new BitcoinBasedCurrencyAccount(
+                    return new BitcoinBasedAccount(
                         currency,
                         wallet,
                         dataRepository,
                         assetWarrantyManager);
                 case Atomex.Ethereum _:
-                    return new EthereumCurrencyAccount(
+                    return new EthereumAccount(
                         currency,
                         wallet,
                         dataRepository,
                         assetWarrantyManager);
                 case Atomex.Tezos _:
-                    return new TezosCurrencyAccount(
+                    return new TezosAccount(
                         currency,
                         wallet,
                         dataRepository,

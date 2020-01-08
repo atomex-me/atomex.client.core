@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core.Entities;
@@ -229,7 +230,7 @@ namespace Atomex.Wallet.BitcoinBased
                     Log.Debug("Scan {@currency} transaction {@txId}", Currency.Name, txId);
 
                     var txResult = await Currency.BlockchainApi
-                        .GetTransactionAsync(txId, cancellationToken)
+                        .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
                     if (txResult.HasError)
@@ -239,6 +240,7 @@ namespace Atomex.Wallet.BitcoinBased
                             txId,
                             txResult.Error.Code,
                             txResult.Error.Description);
+
                         continue;
                     }
 

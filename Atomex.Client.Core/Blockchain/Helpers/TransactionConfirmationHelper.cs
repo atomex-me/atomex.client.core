@@ -23,7 +23,6 @@ namespace Atomex.Blockchain.Helpers
     }
 
     public static class TransactionConfirmationHelper
-
     {
         private const int NumberOfConfirmations = 1;
 
@@ -45,7 +44,7 @@ namespace Atomex.Blockchain.Helpers
             try
             {
                 var txResult = await currency.BlockchainApi
-                    .GetTransactionAsync(txId, cancellationToken)
+                    .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (txResult.HasError)

@@ -46,7 +46,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
                     .ConfigureAwait(false);
 
                 if (initiateEventsResult == null)
-                    return new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} initiate event");
+                    return new Error(Errors.RequestError, $"Connection error while getting contract {ethereum.SwapContractAddress} initiate event");
 
                 if (initiateEventsResult.HasError)
                     return initiateEventsResult.Error;
@@ -106,7 +106,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
                     .ConfigureAwait(false);
 
                 if (addEventsResult == null)
-                    return new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} add event");
+                    return new Error(Errors.RequestError, $"Connection error while getting contract {ethereum.SwapContractAddress} add event");
 
                 if (addEventsResult.HasError)
                     return addEventsResult.Error;

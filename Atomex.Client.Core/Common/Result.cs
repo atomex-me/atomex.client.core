@@ -13,5 +13,8 @@ namespace Atomex.Common
 
         public static implicit operator Result<T>(T value) => new Result<T>(value);
         public static implicit operator Result<T>(Error error) => new Result<T>(error);
+
+        public bool IsConnectionError =>
+            Error != null && Error.Code == Errors.RequestError;
     }
 }

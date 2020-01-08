@@ -14,11 +14,11 @@ using Serilog;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class TezosCurrencyAccount : CurrencyAccount
+    public class TezosAccount : CurrencyAccount
     {
         private readonly TezosActivationChecker _tezosActivationChecker;
 
-        public TezosCurrencyAccount(
+        public TezosAccount(
             Currency currency,
             IHdWallet wallet,
             IAccountDataRepository dataRepository,
@@ -93,7 +93,7 @@ namespace Atomex.Wallet.Tezos
                         description: "Transaction signing error");
 
                 var broadcastResult = await Currency.BlockchainApi
-                    .BroadcastAsync(tx, cancellationToken)
+                    .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (broadcastResult.HasError)
@@ -413,12 +413,11 @@ namespace Atomex.Wallet.Tezos
             }
 
             var totalBalance = 0m;
-            var api = (ITezosBlockchainApi)Xtz.BlockchainApi;
 
             foreach (var wa in addresses.Values)
             {
-                var balanceResult = await api
-                    .GetBalanceAsync(
+                var balanceResult = await Xtz.BlockchainApi
+                    .TryGetBalanceAsync(
                         address: wa.Address,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
@@ -461,10 +460,8 @@ namespace Atomex.Wallet.Tezos
             if (walletAddress == null)
                 return;
 
-            var api = (ITezosBlockchainApi) Xtz.BlockchainApi;
-
-            var balanceResult = await api
-                .GetBalanceAsync(address, cancellationToken)
+            var balanceResult = await Xtz.BlockchainApi
+                .TryGetBalanceAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (balanceResult.HasError)

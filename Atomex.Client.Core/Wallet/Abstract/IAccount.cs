@@ -146,6 +146,9 @@ namespace Atomex.Wallet.Abstract
         /// <returns>Auth request</returns>
         Task<Auth> CreateAuthRequestAsync(AuthNonce nonce, uint keyIndex = 0);
 
+        ICurrencyAccount GetCurrencyAccount(string currency);
+        T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount;
+
         #endregion
 
         #region Balances

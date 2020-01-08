@@ -14,7 +14,7 @@ using Serilog;
 
 namespace Atomex.Blockchain.Tezos
 {
-    public class BabyTzktApi : ITezosBlockchainApi
+    public class BabyTzktApi : BlockchainApi, ITezosBlockchainApi
     {
         //private const string Mainnet = "https://api3.tzscan.io/";
         //private const string Alphanet = "https://baby.tzkt.io/";
@@ -36,7 +36,7 @@ namespace Atomex.Blockchain.Tezos
             _apiBaseUrl = currency.BaseUri;
         }
 
-        public async Task<Result<decimal>> GetBalanceAsync(
+        public override async Task<Result<decimal>> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -53,7 +53,7 @@ namespace Atomex.Blockchain.Tezos
             }
         }
 
-        public async Task<Result<string>> BroadcastAsync(
+        public override async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default)
         {
@@ -98,7 +98,7 @@ namespace Atomex.Blockchain.Tezos
             }
         }
 
-        public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
@@ -132,7 +132,7 @@ namespace Atomex.Blockchain.Tezos
                 .ConfigureAwait(false);
 
             if (inputTxsResult == null)
-                return new Error(Errors.RequestError, $"Connection error while trying to get input transactions for address {address}");
+                return new Error(Errors.RequestError, $"Connection error while getting input transactions for address {address}");
 
             if (inputTxsResult.HasError)
                 return inputTxsResult.Error;
@@ -145,12 +145,22 @@ namespace Atomex.Blockchain.Tezos
                 .ConfigureAwait(false);
 
             if (outputTxsResult == null)
-                return new Error(Errors.RequestError, $"Connection error while trying to get output transactions for address {address}");
+                return new Error(Errors.RequestError, $"Connection error while getting output transactions for address {address}");
 
             if (outputTxsResult.HasError)
                 return outputTxsResult.Error;
 
             return new Result<IEnumerable<IBlockchainTransaction>>(inputTxsResult.Value.Concat(outputTxsResult.Value));
+        }
+
+        public async Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
+            string address,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResultHelper.TryDo((c) => GetTransactionsAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
+                ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
         }
 
         public async Task<Result<bool>> IsActiveAddress(

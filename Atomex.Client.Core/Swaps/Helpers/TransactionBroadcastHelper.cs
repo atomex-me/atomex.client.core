@@ -23,7 +23,7 @@ namespace Atomex.Swaps.Helpers
                     while (!cancellationToken.IsCancellationRequested)
                     {
                         var broadcastResult = await tx.Currency.BlockchainApi
-                            .BroadcastAsync(tx)
+                            .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
                         if (!broadcastResult.HasError)

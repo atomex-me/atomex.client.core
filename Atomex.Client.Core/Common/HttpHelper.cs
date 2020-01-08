@@ -111,6 +111,10 @@ namespace Atomex.Common
                     return responseHandler(response);
                 }
             }
+            catch (HttpRequestException e)
+            {
+                Log.Error("SendRequestAsync error: {@message}", e.Message);
+            }
             catch (Exception e)
             {
                 Log.Error(e, "SendRequestAsync error");

@@ -14,11 +14,11 @@ using Serilog;
 
 namespace Atomex.Wallet.BitcoinBased
 {
-    public class BitcoinBasedCurrencyAccount : CurrencyAccount, IAddressResolver
+    public class BitcoinBasedAccount : CurrencyAccount, IAddressResolver
     {
         private BitcoinBasedCurrency BtcBasedCurrency => (BitcoinBasedCurrency) Currency;
 
-        public BitcoinBasedCurrencyAccount(
+        public BitcoinBasedAccount(
             Currency currency,
             IHdWallet wallet,
             IAccountDataRepository dataRepository,
@@ -157,7 +157,7 @@ namespace Atomex.Wallet.BitcoinBased
                     description: $"Transaction verification error: {string.Join(", ", errors.Select(e => e.Description))}");
 
             var broadcastResult = await Currency.BlockchainApi
-                .BroadcastAsync(tx, cancellationToken)
+                .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (broadcastResult.HasError)

@@ -15,7 +15,7 @@ using Serilog;
 
 namespace Atomex.Blockchain.Tezos
 {
-    public class TzScanApi : ITezosBlockchainApi
+    public class TzScanApi : BlockchainApi, ITezosBlockchainApi
     {
         //private const string Mainnet = "https://api3.tzscan.io/";
         //private const string Alphanet = "https://api.alphanet.tzscan.io/";
@@ -98,7 +98,7 @@ namespace Atomex.Blockchain.Tezos
             _apiBaseUrl = currency.BaseUri;
         }
 
-        public async Task<Result<decimal>> GetBalanceAsync(
+        public override async Task<Result<decimal>> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -117,7 +117,7 @@ namespace Atomex.Blockchain.Tezos
             }
         }
 
-        public async Task<Result<string>> BroadcastAsync(
+        public override async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default)
         {
@@ -162,13 +162,13 @@ namespace Atomex.Blockchain.Tezos
             }
         }
 
-        public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
             var requestUri = $"v3/operation/{txId}";
 
-            return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
+            return await HttpHelper.GetAsyncResult(
                     baseUri: _apiBaseUrl,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
@@ -218,6 +218,16 @@ namespace Atomex.Blockchain.Tezos
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+        }
+
+        public async Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
+            string address,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResultHelper.TryDo((c) => GetTransactionsAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
+                ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
         }
 
         public async Task<Result<bool>> IsActiveAddress(

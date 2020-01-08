@@ -6,6 +6,7 @@
     <AssemblyName>Atomex.Client.Core</AssemblyName>
     <Copyright>Copyright © 2018 Igor Matsak</Copyright>
     <Description>Atomex client core library</Description>
+	<LangVersion>preview</LangVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

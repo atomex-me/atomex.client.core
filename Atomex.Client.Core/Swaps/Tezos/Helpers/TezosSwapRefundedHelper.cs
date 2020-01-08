@@ -28,7 +28,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                 var blockchainApi = (ITezosBlockchainApi)tezos.BlockchainApi;
 
                 var txsResult = await blockchainApi
-                    .GetTransactionsAsync(contractAddress, cancellationToken)
+                    .TryGetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (txsResult == null)

@@ -116,144 +116,6 @@ namespace Atomex.Blockchain.Tezos.Internal
             return sendResults.LastOrDefault() as ActivateAccountOperationResult;
         }
 
-        public async Task<SendTransactionOperationResult> SendTransaction(
-            Keys keys,
-            string from,
-            string to,
-            decimal amount,
-            decimal fee,
-            decimal gasLimit,
-            decimal storageLimit,
-            JObject param = null)
-        {
-            gasLimit = gasLimit != 0 ? gasLimit : 200;
-
-            var head = await GetHeader()
-                .ConfigureAwait(false);
-
-            var account = await GetAccountForBlock(head["hash"].ToString(), from)
-                .ConfigureAwait(false);
-
-            var counter = int.Parse(account["counter"].ToString());
-
-            var operations = new JArray();
-
-            var managerKey = await GetManagerKey(from)
-                .ConfigureAwait(false);
-
-            var gas = gasLimit.ToString(CultureInfo.InvariantCulture);
-            var storage = storageLimit.ToString(CultureInfo.InvariantCulture);
-
-            if (managerKey.Value<string>() == null)
-            {
-                var revealOp = new JObject
-                {
-                    ["kind"] = OperationType.Reveal,
-                    ["fee"] = "0",
-                    ["public_key"] = keys.DecryptPublicKey(),
-                    ["source"] = from,
-                    ["storage_limit"] = storage,
-                    ["gas_limit"] = gas,
-                    ["counter"] = (++counter).ToString()
-                };
-
-                operations.AddFirst(revealOp);
-            }
-
-            var transaction = new JObject
-            {
-                ["kind"] = OperationType.Transaction,
-                ["source"] = from,
-                ["fee"] = ((int)fee).ToString(CultureInfo.InvariantCulture),
-                ["counter"] = (++counter).ToString(),
-                ["gas_limit"] = gas,
-                ["storage_limit"] = storage,
-                ["amount"] = Math.Round(amount.ToMicroTez(), 0).ToString(CultureInfo.InvariantCulture),
-                ["destination"] = to
-            };
-
-            operations.Add(transaction);
-
-            if (param != null)
-                transaction["parameters"] = param;
-            else
-            {
-                var parameters = new JObject
-                {
-                    ["prim"] = "Unit",
-                    ["args"] = new JArray() // No args for this contract.
-                };
-
-                transaction["parameters"] = parameters;
-            }
-
-            var sendResults = await SendOperations(operations, keys, head)
-                .ConfigureAwait(false);
-
-            return sendResults.LastOrDefault() as SendTransactionOperationResult;
-        }
-
-        public async Task<SendTransactionOperationResult> SendDelegation(
-            Keys keys,
-            string from,
-            string to,
-            decimal fee,
-            decimal gasLimit,
-            decimal storageLimit)
-        {
-            gasLimit = gasLimit != 0 ? gasLimit : 200;
-
-            var head = await GetHeader()
-                .ConfigureAwait(false);
-
-            var account = await GetAccountForBlock(head["hash"].ToString(), from)
-                .ConfigureAwait(false);
-
-            var counter = int.Parse(account["counter"].ToString());
-
-            var operations = new JArray();
-
-            var managerKey = await GetManagerKey(from)
-                .ConfigureAwait(false);
-
-            var gas = gasLimit.ToString(CultureInfo.InvariantCulture);
-            var storage = storageLimit.ToString(CultureInfo.InvariantCulture);
-
-            if (managerKey.Value<string>() == null)
-            {
-                var revealOp = new JObject
-                {
-                    ["kind"] = OperationType.Reveal,
-                    ["fee"] = "0",
-                    ["public_key"] = keys.DecryptPublicKey(),
-                    ["source"] = from,
-                    ["storage_limit"] = storage,
-                    ["gas_limit"] = gas,
-                    ["counter"] = (++counter).ToString()
-                };
-
-                operations.AddFirst(revealOp);
-            }
-
-            var delegation = new JObject
-            {
-                ["kind"] = OperationType.Transaction,
-                ["source"] = from,
-                ["fee"] = ((int)fee).ToString(CultureInfo.InvariantCulture),
-                ["counter"] = (++counter).ToString(),
-                ["gas_limit"] = gas,
-                ["storage_limit"] = storage,
-                ["delegate"] = to
-            };
-
-            operations.Add(delegation);
-
-            var sendResults = await SendOperations(operations, keys, head)
-                .ConfigureAwait(false);
-
-            return sendResults.LastOrDefault() as SendTransactionOperationResult;
-        }
-
         private async Task<List<OperationResult>> SendOperations(
             JToken operations,
             Keys keys,
@@ -321,26 +183,37 @@ namespace Atomex.Blockchain.Tezos.Internal
 
         public async Task<bool> AutoFillOperations(Atomex.Tezos tezos, JObject head, JArray operations, bool defaultFee = true)
         {
-            JObject runResults = await RunOperations(head, operations)
+            var runResults = await RunOperations(head, operations)
                 .ConfigureAwait(false);
 
             foreach (var result in runResults.SelectToken("contents"))
             {
                 decimal gas = 0, storage = 0, storage_diff = 0, size = 0, fee = 0;
-                if (result["metadata"]?["operation_result"]?["status"]?.ToString() == "applied")
+
+                var metaData = result["metadata"];
+                var operationResult = metaData?["operation_result"];
+
+                if (operationResult?["status"]?.ToString() == "applied")
                 {
                     try
                     {
-                        gas = tezos.GasReserve + result["metadata"]?["operation_result"]?["consumed_gas"]?.Value<decimal>() ?? 0;
-                        gas += result["metadata"]?.SelectToken("internal_operation_results")?.Sum(res => res["result"]?["consumed_gas"]?.Value<decimal>() ?? 0) ?? 0;
+                        gas = tezos.GasReserve + operationResult?["consumed_gas"]?.Value<decimal>() ?? 0;
+                        gas += metaData
+                            ?.SelectToken("internal_operation_results")
+                            ?.Sum(res => res["result"]?["consumed_gas"]?.Value<decimal>() ?? 0) ?? 0;
 
-                        storage = result["metadata"]?["operation_result"]?["storage_size"]?.Value<decimal>() ?? 0;
+                        storage = operationResult?["storage_size"]?.Value<decimal>() ?? 0;
 
-                        storage_diff = result["metadata"]?["operation_result"]?["paid_storage_size_diff"]?.Value<decimal>() ?? 0;
-                        storage_diff += tezos.ActivationStorage * (result["metadata"]?["operation_result"]?["allocated_destination_contract"]?.ToString() == "True" ? 1 : 0);
-                        storage_diff += tezos.ActivationStorage * result["metadata"]?["internal_operation_results"]?.Where(res => res["result"]?["allocated_destination_contract"]?.ToString() == "True").Count() ?? 0;
+                        storage_diff = operationResult?["paid_storage_size_diff"]?.Value<decimal>() ?? 0;
+                        storage_diff += tezos.ActivationStorage * (operationResult?["allocated_destination_contract"]?.ToString() == "True" ? 1 : 0);
+                        storage_diff += tezos.ActivationStorage * metaData?["internal_operation_results"]
+                            ?.Where(res => res["result"]?["allocated_destination_contract"]?.ToString() == "True")
+                            .Count() ?? 0;
 
-                        var op = operations.Children<JObject>().FirstOrDefault(o => o["counter"] != null && o["counter"].ToString() == result["counter"].ToString());
+                        var op = operations
+                            .Children<JObject>()
+                            .FirstOrDefault(o => o["counter"] != null && o["counter"].ToString() == result["counter"].ToString());
+
                         op["gas_limit"] = gas.ToString();
                         op["storage_limit"] = storage_diff.ToString();
 
@@ -385,7 +258,8 @@ namespace Atomex.Blockchain.Tezos.Internal
                 ["chain_id"] = blockHead["chain_id"]
             };
 
-            var result = await QueryJ<JObject>($"chains/{_chain}/blocks/head/helpers/scripts/run_operation", contents);
+            var result = await QueryJ<JObject>($"chains/{_chain}/blocks/head/helpers/scripts/run_operation", contents)
+                .ConfigureAwait(false);
 
             return result;
         }
@@ -484,41 +358,37 @@ namespace Atomex.Blockchain.Tezos.Internal
 
             var requestUri = $"{_provider}/{ep}";
 
-            using (var request = new HttpRequestMessage(httpMethod, requestUri))
+            using var request = new HttpRequestMessage(httpMethod, requestUri);
+            request.Headers.Add("User-Agent", "Atomex");
+            request.Version = HttpVersion.Version11;
+
+            if (!get)
             {
-                request.Headers.Add("User-Agent", "Atomex");
-                request.Version = HttpVersion.Version11;
+                request.Content = new StringContent(data.ToString());
+                request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
 
-                if (!get)
-                {
-                    request.Content = new StringContent(data.ToString());
-                    request.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
-
-                    Log.Debug("Send request:\nUri: {requestUri}\nContent: {content}", requestUri, data.ToString());
-                }
-                
-                using (var httpClient = new HttpClient())
-                using (var response = await httpClient
-                    .SendAsync(request)
-                    .ConfigureAwait(false))
-                {
-                    var responseBody = await response.Content
-                        .ReadAsStringAsync()
-                        .ConfigureAwait(false);
-
-                    if (response.IsSuccessStatusCode == false)
-                    {
-                        // If failed, throw the body as the exception message.
-                        if (!string.IsNullOrWhiteSpace(responseBody))
-                            throw new HttpRequestException(responseBody);
-
-                        // Otherwise, throw a generic exception.
-                        response.EnsureSuccessStatusCode();
-                    }
-
-                    return responseBody;
-                }
+                Log.Debug("Send request:\nUri: {requestUri}\nContent: {content}", requestUri, data.ToString());
             }
+
+            using var httpClient = new HttpClient();
+            using var response = await httpClient
+                .SendAsync(request)
+                .ConfigureAwait(false);
+            var responseBody = await response.Content
+                .ReadAsStringAsync()
+                .ConfigureAwait(false);
+
+            if (response.IsSuccessStatusCode == false)
+            {
+                // If failed, throw the body as the exception message.
+                if (!string.IsNullOrWhiteSpace(responseBody))
+                    throw new HttpRequestException(responseBody);
+
+                // Otherwise, throw a generic exception.
+                response.EnsureSuccessStatusCode();
+            }
+
+            return responseBody;
         }
     }
 }

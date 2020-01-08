@@ -139,7 +139,7 @@ namespace Atomex.Wallet
             decimal feePrice,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .SendAsync(
                     from: from,
                     to: to,
@@ -157,7 +157,7 @@ namespace Atomex.Wallet
             decimal feePrice,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .SendAsync(
                     to: to,
                     amount: amount,
@@ -173,7 +173,7 @@ namespace Atomex.Wallet
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .EstimateFeeAsync(to, amount, type, cancellationToken);
         }
 
@@ -183,7 +183,7 @@ namespace Atomex.Wallet
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .EstimateMaxAmountToSendAsync(to, type, cancellationToken);
         }
 
@@ -247,13 +247,16 @@ namespace Atomex.Wallet
             return new Account(pathToAccount, password, currenciesProvider, symbolsProvider);
         }
 
-        private ICurrencyAccount GetAccountByCurrency(Currency currency)
+        public ICurrencyAccount GetCurrencyAccount(string currency)
         {
-            if (CurrencyAccounts.TryGetValue(currency.Name, out var account))
+            if (CurrencyAccounts.TryGetValue(currency, out var account))
                 return account;
 
-            throw new NotSupportedException($"Not supported currency {currency.Name}");
+            throw new NotSupportedException($"Not supported currency {currency}");
         }
+
+        public T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount =>
+            GetCurrencyAccount(currency) as T;
 
         #endregion Common
 
@@ -263,7 +266,7 @@ namespace Atomex.Wallet
             Currency currency,
             CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(GetAccountByCurrency(currency).GetBalance());
+            return Task.FromResult(GetCurrencyAccount(currency.Name).GetBalance());
         }
 
         public Task<Balance> GetAddressBalanceAsync(
@@ -271,7 +274,7 @@ namespace Atomex.Wallet
             string address,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .GetAddressBalanceAsync(address, cancellationToken);
         }
 
@@ -279,7 +282,7 @@ namespace Atomex.Wallet
             Currency currency,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .UpdateBalanceAsync(cancellationToken);
         }
 
@@ -288,7 +291,7 @@ namespace Atomex.Wallet
             string address,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .UpdateBalanceAsync(address, cancellationToken);
         }
 
@@ -301,7 +304,7 @@ namespace Atomex.Wallet
             int chain,
             uint index)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .DivideAddressAsync(chain, index);
         }
 
@@ -310,7 +313,7 @@ namespace Atomex.Wallet
             string address,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .ResolveAddressAsync(address, cancellationToken);
         }
 
@@ -318,7 +321,7 @@ namespace Atomex.Wallet
             Currency currency,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .GetUnspentAddressesAsync(cancellationToken);
         }
 
@@ -333,7 +336,7 @@ namespace Atomex.Wallet
             BlockchainTransactionType transactionType,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .GetUnspentAddressesAsync(
                     toAddress: toAddress,
                     amount: amount,
@@ -349,7 +352,7 @@ namespace Atomex.Wallet
             Currency currency,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .GetFreeInternalAddressAsync(cancellationToken);
         }
 
@@ -357,7 +360,7 @@ namespace Atomex.Wallet
             Currency currency,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .GetFreeExternalAddressAsync(cancellationToken);
         }
 
@@ -365,7 +368,7 @@ namespace Atomex.Wallet
             Currency currency,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .GetRefundAddressAsync(cancellationToken);
         }
 
@@ -373,7 +376,7 @@ namespace Atomex.Wallet
             Currency currency,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .GetRedeemAddressAsync(cancellationToken);
         }
 
@@ -388,7 +391,7 @@ namespace Atomex.Wallet
             bool notifyIfBalanceUpdated = true,
             CancellationToken cancellationToken = default)
         {
-            return GetAccountByCurrency(tx.Currency)
+            return GetCurrencyAccount(tx.Currency.Name)
                 .UpsertTransactionAsync(
                     tx: tx,
                     updateBalance: updateBalance,
@@ -439,7 +442,7 @@ namespace Atomex.Wallet
             string address,
             bool notifyIfBalanceUpdated = true)
         {
-            return GetAccountByCurrency(currency)
+            return GetCurrencyAccount(currency.Name)
                 .UpsertOutputsAsync(
                     outputs: outputs,
                     currency: currency,

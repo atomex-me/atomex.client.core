@@ -15,9 +15,9 @@ using Serilog;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class EthereumCurrencyAccount : CurrencyAccount
+    public class EthereumAccount : CurrencyAccount
     {
-        public EthereumCurrencyAccount(
+        public EthereumAccount(
             Currency currency,
             IHdWallet wallet,
             IAccountDataRepository dataRepository,
@@ -107,7 +107,7 @@ namespace Atomex.Wallet.Ethereum
                         description: "Transaction verification error");
 
                 var broadcastResult = await Currency.BlockchainApi
-                    .BroadcastAsync(tx, cancellationToken)
+                    .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (broadcastResult.HasError)
@@ -367,7 +367,7 @@ namespace Atomex.Wallet.Ethereum
             foreach (var wa in addressBalances.Values)
             {
                 var balanceResult = await api
-                    .GetBalanceAsync(
+                    .TryGetBalanceAsync(
                         address: wa.Address,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
@@ -410,10 +410,8 @@ namespace Atomex.Wallet.Ethereum
             if (walletAddress == null)
                 return;
 
-            var api = Eth.BlockchainApi;
-
-            var balanceResult = await api
-                .GetBalanceAsync(address, cancellationToken)
+            var balanceResult = await Eth.BlockchainApi
+                .TryGetBalanceAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (balanceResult.HasError)
@@ -422,6 +420,7 @@ namespace Atomex.Wallet.Ethereum
                     address,
                     balanceResult.Error.Code,
                     balanceResult.Error.Description);
+
                 return;
             }
 

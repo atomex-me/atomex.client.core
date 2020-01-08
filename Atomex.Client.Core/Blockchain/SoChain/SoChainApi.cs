@@ -15,7 +15,7 @@ using Serilog;
 
 namespace Atomex.Blockchain.SoChain
 {
-    public class SoChainApi : IInOutBlockchainApi
+    public class SoChainApi : BlockchainApi, IInOutBlockchainApi
     {
         internal class SendTx
         {
@@ -319,7 +319,7 @@ namespace Atomex.Blockchain.SoChain
             NetworkAcronym = networkAcronym;
         }
 
-        public async Task<Result<decimal>> GetBalanceAsync(
+        public override async Task<Result<decimal>> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -529,7 +529,7 @@ namespace Atomex.Blockchain.SoChain
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
@@ -613,7 +613,7 @@ namespace Atomex.Blockchain.SoChain
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<string>> BroadcastAsync(
+        public override async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default)
         {

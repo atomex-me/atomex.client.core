@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
@@ -873,7 +874,7 @@ namespace Atomex.Swaps.Ethereum
             CancellationToken cancellationToken = default)
         {
             var broadcastResult = await Eth.BlockchainApi
-                .BroadcastAsync(tx, cancellationToken)
+                .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (broadcastResult.HasError)
@@ -935,7 +936,7 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
 
                 var tx = await Eth.BlockchainApi
-                    .GetTransactionAsync(txId, cancellationToken)
+                    .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (tx != null && !tx.HasError && tx.Value != null && tx.Value.State == BlockchainTransactionState.Confirmed)

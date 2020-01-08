@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
+using Atomex.Core;
 using Atomex.Core.Entities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -13,7 +14,7 @@ using Serilog;
 
 namespace Atomex.Blockchain.Ethereum
 {
-    public class EtherScanApi : IEthereumBlockchainApi
+    public class EtherScanApi : BlockchainApi, IEthereumBlockchainApi
     {
         private const string ApiKey = "2R1AIHZZE5NVSHRQUGAHU8EYNYYZ5B2Y37";
         private const int MinDelayBetweenRequestMs = 1000;
@@ -122,7 +123,7 @@ namespace Atomex.Blockchain.Ethereum
             BaseUrl = currency.BlockchainApiBaseUri;
         }
 
-        public async Task<Result<decimal>> GetBalanceAsync(
+        public override async Task<Result<decimal>> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -154,7 +155,16 @@ namespace Atomex.Blockchain.Ethereum
             throw new NotImplementedException();
         }
 
-        public Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public Task<Result<BigInteger>> TryGetTransactionCountAsync(
+            string address,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
@@ -197,6 +207,9 @@ namespace Atomex.Blockchain.Ethereum
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
+            if (result == null)
+                return new Error(Errors.RequestError, "Connection error while getting transactions");
+
             if (result.HasError)
                 return result;
 
@@ -212,12 +225,25 @@ namespace Atomex.Blockchain.Ethereum
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
+            if (internalResult == null)
+                return new Error(Errors.RequestError, "Connection error while getting internal transactions");
+
             if (internalResult.HasError)
                 return internalResult;
 
             var txs = result.Value.Concat(internalResult.Value);
 
             return new Result<IEnumerable<IBlockchainTransaction>>(txs);
+        }
+
+        public async Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
+            string address,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResultHelper.TryDo((c) => GetTransactionsAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
+                ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
         }
 
         public Task<Result<IEnumerable<ContractEvent>>> GetContractEventsAsync(
@@ -314,7 +340,7 @@ namespace Atomex.Blockchain.Ethereum
             return result;
         }
 
-        public Task<Result<string>> BroadcastAsync(
+        public override Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default)
         {

@@ -15,7 +15,7 @@ using Newtonsoft.Json;
 
 namespace Atomex.Blockchain.Insight
 {
-    public class InsightApi : IInOutBlockchainApi
+    public class InsightApi : BlockchainApi, IInOutBlockchainApi
     {
         internal class RawTx
         {
@@ -179,7 +179,7 @@ namespace Atomex.Blockchain.Insight
             BaseUri = baseUri ?? throw new ArgumentNullException(nameof(baseUri));
         }
 
-        public async Task<Result<decimal>> GetBalanceAsync(
+        public override async Task<Result<decimal>> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -197,7 +197,7 @@ namespace Atomex.Blockchain.Insight
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
@@ -244,7 +244,7 @@ namespace Atomex.Blockchain.Insight
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<string>> BroadcastAsync(
+        public override async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default)
         {

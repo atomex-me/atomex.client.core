@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Core.Entities;
@@ -128,7 +129,7 @@ namespace Atomex
             Bip44Code = Bip44.Tezos;
         }
 
-        private static ITezosBlockchainApi ResolveBlockchainApi(
+        private static IBlockchainApi ResolveBlockchainApi(
             IConfiguration configuration,
             Tezos tezos)
         {

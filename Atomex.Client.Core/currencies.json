@@ -20,7 +20,7 @@
       "InitiateGasLimit": 160000,
       "InitiateWithRewardGasLimit": 180000,
       "AddGasLimit": 50000,
-      "RefundGasLimit": 50000,
+      "RefundGasLimit": 60000,
       "RedeemGasLimit": 70000,
       "GasPriceInGwei": 25,
       "Chain": "MainNet",
@@ -80,8 +80,8 @@
       "BlockchainRpcNodeUri": "https://rpc.tzkt.io/mainnet/",
       "BbApiUri": "https://api.baking-bad.org/",
       "SwapContract": "KT1VG2WtYdSWz5E7chTeAdDPZNy2MpP8pTfL",
-      "TxExplorerUri": "https://tzstats.com/operation/",
-      "AddressExplorerUri": "https://tzstats.com/account/"
+      "TxExplorerUri": "https://tzkt.io/",
+      "AddressExplorerUri": "https://tzkt.io/"
     }
   },
   "TestNet": {
@@ -105,7 +105,7 @@
       "InitiateGasLimit": 160000,
       "InitiateWithRewardGasLimit": 180000,
       "AddGasLimit": 50000,
-      "RefundGasLimit": 50000,
+      "RefundGasLimit": 60000,
       "RedeemGasLimit": 70000,
       "GasPriceInGwei": 25,
       "Chain": "Ropsten",
@@ -165,8 +165,8 @@
       "BlockchainRpcNodeUri": "https://rpc.tzkt.io/babylonnet/",
       "BbApiUri": "https://api.baking-bad.org/",
       "SwapContract": "KT1Fc7XHbZhpd8wkYvzSJnAj37GxNyqSsHhZ",
-      "TxExplorerUri": "https://babylonnet.tzstats.com/operation/",
-      "AddressExplorerUri": "https://babylonnet.tzstats.com/account/"
+      "TxExplorerUri": "https://babylon.tzkt.io/",
+      "AddressExplorerUri": "https://babylon.tzkt.io/"
     }
-  } 
+  }
 }

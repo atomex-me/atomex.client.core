@@ -10,7 +10,7 @@ using Nethereum.Signer;
 
 namespace Atomex.Blockchain.Ethereum
 {
-    public class CompositeEthereumBlockchainApi : IEthereumBlockchainApi
+    public class CompositeEthereumBlockchainApi : BlockchainApi, IEthereumBlockchainApi
     {
         private readonly Web3BlockchainApi _web3;
         private readonly EtherScanApi _etherScanApi;
@@ -21,7 +21,7 @@ namespace Atomex.Blockchain.Ethereum
             _etherScanApi = new EtherScanApi(currency);
         }
 
-        public Task<Result<decimal>> GetBalanceAsync(
+        public override Task<Result<decimal>> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -35,6 +35,16 @@ namespace Atomex.Blockchain.Ethereum
             return _web3.GetTransactionCountAsync(address, cancellationToken);
         }
 
+        public async Task<Result<BigInteger>> TryGetTransactionCountAsync(
+            string address,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResultHelper.TryDo((c) => GetTransactionCountAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
+                ?? new Error(Errors.RequestError, $"Connection error while getting transaction count after {attempts} attempts");
+        }
+
         public Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
             CancellationToken cancellationToken = default)
@@ -43,42 +53,55 @@ namespace Atomex.Blockchain.Ethereum
                 .GetTransactionsAsync(address, cancellationToken);
         }
 
-        public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public async Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
+            string address,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResultHelper.TryDo((c) => GetTransactionsAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
+                ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
+        }
+
+        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
-            var txAsyncResult = await _web3
+            var txResult = await _web3
                 .GetTransactionAsync(txId, cancellationToken)
                 .ConfigureAwait(false); //_etherScanApi.GetTransactionAsync(txId, cancellationToken);
 
-            if (txAsyncResult == null)
+            if (txResult == null)
                 return new Error(Errors.RequestError, "Connection error while getting transaction");
 
-            if (txAsyncResult.HasError || txAsyncResult.Value == null)
-                return txAsyncResult;
+            if (txResult.HasError || txResult.Value == null)
+                return txResult;
 
-            var tx = (EthereumTransaction)txAsyncResult.Value;
+            var tx = (EthereumTransaction)txResult.Value;
 
-            var internalTxsAsyncResult = await _etherScanApi
+            var internalTxsResult = await _etherScanApi
                 .GetInternalTransactionsAsync(txId, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (internalTxsAsyncResult.HasError)
-                return internalTxsAsyncResult.Error;
+            if (internalTxsResult == null)
+                return new Error(Errors.RequestError, "Connection error while getting internal transactions");
 
-            if (internalTxsAsyncResult.Value.Any())
+            if (internalTxsResult.HasError)
+                return internalTxsResult.Error;
+
+            if (internalTxsResult.Value.Any())
             {
-                tx.InternalTxs = internalTxsAsyncResult.Value
+                tx.InternalTxs = internalTxsResult.Value
                     .Cast<EthereumTransaction>()
                     .ToList()
                     .ForEachDo(itx => itx.State = tx.State)
                     .ToList();
             }
 
-            return txAsyncResult;
+            return txResult;
         }
 
-        public async Task<Result<string>> BroadcastAsync(
+        public override async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default)
         {

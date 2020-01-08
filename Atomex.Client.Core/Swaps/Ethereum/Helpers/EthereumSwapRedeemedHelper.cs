@@ -36,7 +36,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
                     .ConfigureAwait(false);
 
                 if (redeemEventsResult == null)
-                    return new Error(Errors.RequestError, $"Connection error while trying to get contract {ethereum.SwapContractAddress} redeem events");
+                    return new Error(Errors.RequestError, $"Connection error while getting contract {ethereum.SwapContractAddress} redeem events");
 
                 if (redeemEventsResult.HasError)
                     return redeemEventsResult.Error;

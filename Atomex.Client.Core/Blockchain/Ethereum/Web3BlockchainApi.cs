@@ -12,7 +12,7 @@ using Nethereum.Web3;
 
 namespace Atomex.Blockchain.Ethereum
 {
-    public class Web3BlockchainApi : IEthereumBlockchainApi
+    public class Web3BlockchainApi : BlockchainApi, IEthereumBlockchainApi
     {
         private const string InfuraMainNet = "https://mainnet.infura.io";
         private const string InfuraRinkeby = "https://rinkeby.infura.io";
@@ -30,7 +30,7 @@ namespace Atomex.Blockchain.Ethereum
                 throw new NotSupportedException($"Chain {chain} not supported");
         }
 
-        public async Task<Result<decimal>> GetBalanceAsync(
+        public override async Task<Result<decimal>> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -73,7 +73,17 @@ namespace Atomex.Blockchain.Ethereum
             }
         }
 
-        public async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public async Task<Result<BigInteger>> TryGetTransactionCountAsync(
+            string address,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResultHelper.TryDo((c) => GetTransactionCountAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
+                ?? new Error(Errors.RequestError, $"Connection error while getting transaction count after {attempts} attempts");
+        }
+
+        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
@@ -124,7 +134,16 @@ namespace Atomex.Blockchain.Ethereum
             throw new NotImplementedException();
         }
 
-        public async Task<Result<string>> BroadcastAsync(
+        public Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
+            string address,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default)
         {
@@ -154,17 +173,13 @@ namespace Atomex.Blockchain.Ethereum
 
         public static string UriByChain(Chain chain)
         {
-            switch (chain)
+            return chain switch
             {
-                case Chain.MainNet:
-                    return InfuraMainNet;
-                case Chain.Ropsten:
-                    return InfuraRopsten;
-                case Chain.Rinkeby:
-                    return InfuraRinkeby; 
-                default:
-                    return null;
-            }
+                Chain.MainNet => InfuraMainNet,
+                Chain.Ropsten => InfuraRopsten,
+                Chain.Rinkeby => InfuraRinkeby,
+                _ => null,
+            };
         }
     }
 }

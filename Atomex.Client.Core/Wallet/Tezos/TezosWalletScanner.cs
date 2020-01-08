@@ -65,7 +65,7 @@ namespace Atomex.Wallet.Tezos
                         walletAddress.Address);
 
                     var txsResult = await ((ITezosBlockchainApi) currency.BlockchainApi)
-                        .GetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
+                        .TryGetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
  
                     if (txsResult.HasError)
@@ -144,7 +144,7 @@ namespace Atomex.Wallet.Tezos
             Log.Debug("Scan transactions for address {@address}", address);
 
             var txsResult = await ((ITezosBlockchainApi)currency.BlockchainApi)
-                .GetTransactionsAsync(address, cancellationToken: cancellationToken)
+                .TryGetTransactionsAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (txsResult.HasError)
@@ -154,6 +154,7 @@ namespace Atomex.Wallet.Tezos
                     address,
                     txsResult.Error.Code,
                     txsResult.Error.Description);
+
                 return;
             }
 

@@ -19,14 +19,17 @@ namespace Atomex.Wallet
             Account = account ?? throw new ArgumentNullException(nameof(account));
         }
 
-        public async Task ScanAsync(
+        public Task ScanAsync(
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
-            foreach (var currency in Account.Currencies)
-                if (currency.IsTransactionsAvailable)
-                    await ScanAsync(currency, skipUsed, cancellationToken)
-                        .ConfigureAwait(false);
+            return Task.Run(async () =>
+            {
+                foreach (var currency in Account.Currencies)
+                    if (currency.IsTransactionsAvailable)
+                        await ScanAsync(currency, skipUsed, cancellationToken)
+                            .ConfigureAwait(false);
+            }, cancellationToken);
         }
 
         public Task ScanAsync(
@@ -34,8 +37,12 @@ namespace Atomex.Wallet
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyScanner(currency)
-                .ScanAsync(skipUsed, cancellationToken);
+            return Task.Run(async () =>
+            {
+                await GetCurrencyScanner(currency)
+                    .ScanAsync(skipUsed, cancellationToken)
+                    .ConfigureAwait(false);
+            }, cancellationToken);
         }
 
         public async Task ScanFreeAddressesAsync(

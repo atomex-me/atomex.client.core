@@ -3,6 +3,7 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
@@ -73,7 +74,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             // broadcast payment transaction
             var broadcastResult = await currency.BlockchainApi
-                .BroadcastAsync(swap.PaymentTx)
+                .TryBroadcastAsync(swap.PaymentTx, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (broadcastResult.HasError)
@@ -102,7 +103,8 @@ namespace Atomex.Swaps.BitcoinBased
                 .UpsertTransactionAsync(
                     tx: swap.PaymentTx,
                     updateBalance: true,
-                    notifyIfUnconfirmed: false)
+                    notifyIfUnconfirmed: false,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             // send payment txId to party
@@ -402,7 +404,7 @@ namespace Atomex.Swaps.BitcoinBased
             var currency = swap.PurchasedCurrency;
 
             var broadcastResult = await currency.BlockchainApi
-                .BroadcastAsync(redeemTx, cancellationToken)
+                .TryBroadcastAsync(redeemTx, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (broadcastResult.HasError)
@@ -797,13 +799,13 @@ namespace Atomex.Swaps.BitcoinBased
                 attempts++;
 
                 var txResult = await currency.BlockchainApi
-                    .GetTransactionAsync(txId, cancellationToken)
+                    .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (txResult != null &&
                     txResult.HasError &&
-                    txResult.Error?.Code != (int)HttpStatusCode.NotFound &&
-                    txResult.Error?.Code != Errors.RequestError)
+                    txResult.Error.Code != (int)HttpStatusCode.NotFound &&
+                    txResult.Error.Code != Errors.RequestError)
                 {
                     Log.Error("Error while get transaction {@txId}. Code: {@code}. Description: {@desc}", 
                         txId,

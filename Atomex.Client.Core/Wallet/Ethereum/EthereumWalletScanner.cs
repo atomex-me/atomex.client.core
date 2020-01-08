@@ -57,6 +57,25 @@ namespace Atomex.Wallet.Ethereum
                     if (walletAddress == null)
                         break;
 
+                    if (skipUsed)
+                    {
+                        var resolvedAddress = await Account
+                            .ResolveAddressAsync(currency, walletAddress.Address, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (resolvedAddress != null &&
+                            resolvedAddress.HasActivity &&
+                            resolvedAddress.Balance == 0 &&
+                            resolvedAddress.UnconfirmedIncome == 0 &&
+                            resolvedAddress.UnconfirmedOutcome == 0)
+                        {
+                            freeKeysCount = 0;
+                            index++;
+
+                            continue;
+                        }
+                    }
+
                     Log.Debug(
                         "Scan transactions for {@name} address {@chain}:{@index}:{@address}",
                         currency.Name,
@@ -64,21 +83,22 @@ namespace Atomex.Wallet.Ethereum
                         index,
                         walletAddress.Address);
 
-                    var asyncResult = await ((IEthereumBlockchainApi) currency.BlockchainApi)
-                        .GetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
+                    var txsResult = await ((IEthereumBlockchainApi) currency.BlockchainApi)
+                        .TryGetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (asyncResult.HasError)
+                    if (txsResult.HasError)
                     {
                         Log.Error(
                             "Error while scan address transactions for {@address} with code {@code} and description {@description}",
                             walletAddress.Address,
-                            asyncResult.Error.Code,
-                            asyncResult.Error.Description);
+                            txsResult.Error.Code,
+                            txsResult.Error.Description);
+
                         break;
                     }
 
-                    var addressTxs = asyncResult.Value
+                    var addressTxs = txsResult.Value
                         ?.Cast<EthereumTransaction>()
                         .ToList();
 
@@ -148,21 +168,22 @@ namespace Atomex.Wallet.Ethereum
                 currency.Name,
                 address);
 
-            var asyncResult = await ((IEthereumBlockchainApi)currency.BlockchainApi)
-                .GetTransactionsAsync(address, cancellationToken: cancellationToken)
+            var txsResult = await ((IEthereumBlockchainApi)currency.BlockchainApi)
+                .TryGetTransactionsAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (asyncResult.HasError)
+            if (txsResult.HasError)
             {
                 Log.Error(
                     "Error while scan address transactions for {@address} with code {@code} and description {@description}",
                     address,
-                    asyncResult.Error.Code,
-                    asyncResult.Error.Description);
+                    txsResult.Error.Code,
+                    txsResult.Error.Description);
+
                 return;
             }
 
-            var addressTxs = asyncResult.Value
+            var addressTxs = txsResult.Value
                 ?.Cast<EthereumTransaction>()
                 .ToList();
 

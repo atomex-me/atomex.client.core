@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
@@ -800,7 +801,7 @@ namespace Atomex.Swaps.Tezos
             CancellationToken cancellationToken = default)
         {
             var broadcastResult = await Xtz.BlockchainApi
-                .BroadcastAsync(tx, cancellationToken)
+                .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (broadcastResult.HasError)
@@ -839,7 +840,7 @@ namespace Atomex.Swaps.Tezos
                     .ConfigureAwait(false);
 
                 var tx = await Xtz.BlockchainApi
-                    .GetTransactionAsync(txId, cancellationToken)
+                    .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (tx != null && !tx.HasError && tx.Value != null && tx.Value.State == BlockchainTransactionState.Confirmed)
