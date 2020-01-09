@@ -1,33 +1,33 @@
-﻿using Serilog;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Tezos;
-using Atomex.Core.Entities;
+using Atomex.Core;
+using Serilog;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class TezosActivationChecker
+    public class TezosRevealChecker
     {
         private class TezosAddressInfo
         {
-            public bool IsActivated { get; set; }
+            public bool IsRevealed { get; set; }
             public DateTime LastCheckTimeUtc { get; set; }
         }
 
-        private readonly Currency _tezos;
+        private readonly Network _network;
         private readonly IDictionary<string, TezosAddressInfo> _addresses;
 
         public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromSeconds(60);
 
-        public TezosActivationChecker(Currency tezos)
+        public TezosRevealChecker(Network network)
         {
-            _tezos = tezos;
+            _network = network;
             _addresses = new Dictionary<string, TezosAddressInfo>();
         }
 
-        public async Task<bool> IsActivateAsync(
+        public async Task<bool> IsRevealedAsync(
             string address,
             CancellationToken cancellationToken)
         {
@@ -36,27 +36,27 @@ namespace Atomex.Wallet.Tezos
                 if (_addresses.TryGetValue(address, out var info))
                 {
                     if (info.LastCheckTimeUtc + UpdateInterval > DateTime.UtcNow)
-                        return info.IsActivated;
+                        return info.IsRevealed;
                 }
             }
 
-            if (!(_tezos.BlockchainApi is ITezosBlockchainApi api))
+            var isRevealedResult = await new TzStatsApi(_network)
+                .IsRevealedAsync(address, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (isRevealedResult == null)
             {
-                Log.Error("Invalid api type");
+                Log.Error("Connection error while checking reveal status for address {@address}", address);
 
                 return false;
             }
 
-            var isActiveResult = await api
-                .IsActiveAddress(address, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (isActiveResult.HasError)
+            if (isRevealedResult.HasError)
             {
-                Log.Error("Error while checking 'isActive' status for address {@address}. Code: {@code}. Description: {@desc}",
+                Log.Error("Error while checking reveal status for address {@address}. Code: {@code}. Description: {@desc}",
                     address,
-                    isActiveResult.Error.Code,
-                    isActiveResult.Error.Description);
+                    isRevealedResult.Error.Code,
+                    isRevealedResult.Error.Description);
 
                 return false;
             }
@@ -65,20 +65,20 @@ namespace Atomex.Wallet.Tezos
             {
                 if (_addresses.TryGetValue(address, out var info))
                 {
-                    info.IsActivated = isActiveResult.Value;
+                    info.IsRevealed = isRevealedResult.Value;
                     info.LastCheckTimeUtc = DateTime.UtcNow;
                 }
                 else
                 {
                     _addresses.Add(address, new TezosAddressInfo()
                     {
-                        IsActivated = isActiveResult.Value,
+                        IsRevealed = isRevealedResult.Value,
                         LastCheckTimeUtc = DateTime.UtcNow
                     });
                 }
             }
 
-            return isActiveResult.Value;
+            return isRevealedResult.Value;
         }
     }
 }

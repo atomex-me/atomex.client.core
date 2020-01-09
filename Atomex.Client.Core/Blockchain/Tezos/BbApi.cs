@@ -70,7 +70,8 @@ namespace Atomex.Blockchain.Tezos
             var result = bakers
                 .Where(x => x.rating.status != 2 && x.rating.status != 6)
                 .OrderByDescending(x => (x.insurance?.coverage ?? 0))
-                .ThenByDescending(y => y.rating.actualRoi).Select(x => new BakerData
+                .ThenByDescending(y => y.rating.actualRoi)
+                .Select(x => new BakerData
                 {
                     Address = x.address,
                     Logo = $"{_apiBaseUrl}/logos/{x.logo}",

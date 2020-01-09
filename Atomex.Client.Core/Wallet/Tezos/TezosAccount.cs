@@ -16,7 +16,7 @@ namespace Atomex.Wallet.Tezos
 {
     public class TezosAccount : CurrencyAccount
     {
-        private readonly TezosActivationChecker _tezosActivationChecker;
+        private readonly TezosRevealChecker _tezosActivationChecker;
 
         public TezosAccount(
             Currency currency,
@@ -25,7 +25,7 @@ namespace Atomex.Wallet.Tezos
             IAssetWarrantyManager assetWarrantyManager)
                 : base(currency, wallet, dataRepository, assetWarrantyManager)
         {
-            _tezosActivationChecker = new TezosActivationChecker(currency);
+            _tezosActivationChecker = new TezosRevealChecker(wallet.Network);
         }
 
         #region Common
@@ -309,7 +309,7 @@ namespace Atomex.Wallet.Tezos
             if (to != null)
             {
                 return await _tezosActivationChecker
-                    .IsActivateAsync(to, cancellationToken)
+                    .IsRevealedAsync(to, cancellationToken)
                     .ConfigureAwait(false);
             }
             else if (type == BlockchainTransactionType.SwapRedeem || type == BlockchainTransactionType.SwapRefund)
@@ -318,7 +318,7 @@ namespace Atomex.Wallet.Tezos
                     .ConfigureAwait(false);
 
                 return await _tezosActivationChecker
-                    .IsActivateAsync(redeemAddress.Address, cancellationToken)
+                    .IsRevealedAsync(redeemAddress.Address, cancellationToken)
                     .ConfigureAwait(false);
             }
             else if (type == BlockchainTransactionType.SwapRefund)
@@ -327,7 +327,7 @@ namespace Atomex.Wallet.Tezos
                     .ConfigureAwait(false);
 
                 return await _tezosActivationChecker
-                    .IsActivateAsync(refundAddress.Address, cancellationToken)
+                    .IsRevealedAsync(refundAddress.Address, cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -365,10 +365,18 @@ namespace Atomex.Wallet.Tezos
             {
                 var selfAddresses = new HashSet<string>();
 
-                if (tx.Type.HasFlag(BlockchainTransactionType.Output))
+                var isFromSelf = await IsSelfAddressAsync(tx.From, cancellationToken)
+                    .ConfigureAwait(false);
+
+                //if (tx.Type.HasFlag(BlockchainTransactionType.Output))
+                if (isFromSelf)
                     selfAddresses.Add(tx.From);
 
-                if (tx.Type.HasFlag(BlockchainTransactionType.Input))
+                var isToSelf = await IsSelfAddressAsync(tx.To, cancellationToken)
+                    .ConfigureAwait(false);
+
+                //if (tx.Type.HasFlag(BlockchainTransactionType.Input))
+                if (isToSelf)
                     selfAddresses.Add(tx.To);
 
                 foreach (var address in selfAddresses)

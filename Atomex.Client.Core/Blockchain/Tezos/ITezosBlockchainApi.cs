@@ -18,7 +18,7 @@ namespace Atomex.Blockchain.Tezos
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);
 
-        Task<Result<bool>> IsActiveAddress(
+        Task<Result<bool>> IsRevealedAsync(
             string address,
             CancellationToken cancellationToken = default);
     }

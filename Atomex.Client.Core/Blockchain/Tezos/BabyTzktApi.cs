@@ -163,7 +163,7 @@ namespace Atomex.Blockchain.Tezos
                 ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
         }
 
-        public async Task<Result<bool>> IsActiveAddress(
+        public async Task<Result<bool>> IsRevealedAsync(
             string address,
             CancellationToken cancellationToken = default)
         {

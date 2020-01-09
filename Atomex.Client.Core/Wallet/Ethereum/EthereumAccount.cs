@@ -303,7 +303,7 @@ namespace Atomex.Wallet.Ethereum
             });
 
             // calculate balances
-            
+
             var totalUnconfirmedIncome = 0m;
             var totalUnconfirmedOutcome = 0m;
             var addressBalances = new Dictionary<string, WalletAddress>();
@@ -312,10 +312,16 @@ namespace Atomex.Wallet.Ethereum
             {
                 var addresses = new HashSet<string>();
 
-                if (tx.Type.HasFlag(BlockchainTransactionType.Output))
+                var isFromSelf = await IsSelfAddressAsync(tx.From, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (isFromSelf)
                     addresses.Add(tx.From);
 
-                if (tx.Type.HasFlag(BlockchainTransactionType.Input))
+                var isToSelf = await IsSelfAddressAsync(tx.To, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (isToSelf)
                     addresses.Add(tx.To);
 
                 foreach (var address in addresses)
@@ -330,15 +336,15 @@ namespace Atomex.Wallet.Ethereum
                         : 0;
 
                     var outcome = isOutcome
-                        ? (!isFailed 
+                        ? (!isFailed
                             ? -Atomex.Ethereum.WeiToEth(tx.Amount + tx.GasPrice * (tx.GasUsed != 0 ? tx.GasUsed : tx.GasLimit))
                             : -Atomex.Ethereum.WeiToEth(tx.GasPrice * tx.GasUsed))
                         : 0;
-    
+
                     if (addressBalances.TryGetValue(address, out var walletAddress))
                     {
                         //walletAddress.Balance            += isConfirmed ? income + outcome : 0;
-                        walletAddress.UnconfirmedIncome  += !isConfirmed ? income : 0;
+                        walletAddress.UnconfirmedIncome += !isConfirmed ? income : 0;
                         walletAddress.UnconfirmedOutcome += !isConfirmed ? outcome : 0;
                     }
                     else
@@ -348,7 +354,7 @@ namespace Atomex.Wallet.Ethereum
                             .ConfigureAwait(false);
 
                         //walletAddress.Balance            = isConfirmed ? income + outcome : 0;
-                        walletAddress.UnconfirmedIncome  = !isConfirmed ? income : 0;
+                        walletAddress.UnconfirmedIncome = !isConfirmed ? income : 0;
                         walletAddress.UnconfirmedOutcome = !isConfirmed ? outcome : 0;
                         walletAddress.HasActivity = true;
 
@@ -356,7 +362,7 @@ namespace Atomex.Wallet.Ethereum
                     }
 
                     //totalBalance            += isConfirmed ? income + outcome : 0;
-                    totalUnconfirmedIncome  += !isConfirmed ? income : 0;
+                    totalUnconfirmedIncome += !isConfirmed ? income : 0;
                     totalUnconfirmedOutcome += !isConfirmed ? outcome : 0;
                 }
             }

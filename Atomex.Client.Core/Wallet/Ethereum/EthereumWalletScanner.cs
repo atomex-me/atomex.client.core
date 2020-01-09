@@ -83,7 +83,7 @@ namespace Atomex.Wallet.Ethereum
                         index,
                         walletAddress.Address);
 
-                    var txsResult = await ((IEthereumBlockchainApi) currency.BlockchainApi)
+                    var txsResult = await ((IEthereumBlockchainApi)currency.BlockchainApi)
                         .TryGetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 

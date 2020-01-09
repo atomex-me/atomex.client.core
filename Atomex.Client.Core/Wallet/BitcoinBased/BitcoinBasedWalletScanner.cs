@@ -60,6 +60,12 @@ namespace Atomex.Wallet.BitcoinBased
                 .GetOutputsAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
+            if (outputsResult == null)
+            {
+                Log.Error("Connection error while scan outputs for {@address}", address);
+                return;
+            }
+
             if (outputsResult.HasError)
             {
                 Log.Error(
@@ -67,6 +73,7 @@ namespace Atomex.Wallet.BitcoinBased
                     address,
                     outputsResult.Error.Code,
                     outputsResult.Error.Description);
+
                 return;
             }
 
