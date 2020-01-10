@@ -171,7 +171,10 @@ namespace Atomex.Swaps.Tezos
                 return;
             }
 
-            if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast))
+            if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast) &&
+                swap.RedeemTx != null &&
+                swap.RedeemTx.CreationTime != null &&
+                swap.RedeemTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
             {
                 // redeem already broadcast
                 TrackTransactionConfirmationAsync(
@@ -183,6 +186,24 @@ namespace Atomex.Swaps.Tezos
                     .FireAndForget();
 
                 return;
+            }
+
+            // check already refunded by initiator
+            if (swap.IsAcceptor &&
+                swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultInitiatorLockTimeInSeconds) < DateTime.UtcNow)
+            {
+                var isRefundedByParty = await TezosSwapRefundedHelper
+                    .IsRefundedAsync(swap, Currency, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (isRefundedByParty != null &&
+                    !isRefundedByParty.HasError &&
+                    isRefundedByParty.Value)
+                {
+                    swap.StateFlags |= SwapStateFlags.IsUnsettled;
+                    RaiseSwapUpdated(swap, SwapStateFlags.IsUnsettled);
+                    return;
+                }
             }
 
             if (swap.IsInitiator)
