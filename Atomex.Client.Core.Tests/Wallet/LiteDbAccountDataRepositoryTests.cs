@@ -8,7 +8,6 @@ using Atomex.Blockchain.BitcoinBased;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.LiteDb;
 using NBitcoin;
 using Xunit;
@@ -24,11 +23,11 @@ namespace Atomex.Client.Core.Tests
         private long _id;
         private DateTime UtcNow { get; } = DateTime.UtcNow;
 
-        private ClientSwap CreateSwap()
+        private Swap CreateSwap()
         {
             var id = Interlocked.Increment(ref _id);
 
-            return new ClientSwap
+            return new Swap
             {
                 Id = id,
                 Secret = new byte[] { 0x01, 0x02, 0x03 },
@@ -145,7 +144,7 @@ namespace Atomex.Client.Core.Tests
             Assert.True(result);
 
             var readTx = await repository
-                .GetTransactionByIdAsync(Common.EthTestNet, id)
+                .GetTransactionByIdAsync(Common.EthTestNet.Name, id, Common.EthTestNet.TransactionType)
                 .ConfigureAwait(false) as EthereumTransaction;
 
             Assert.NotNull(readTx);

@@ -2,7 +2,7 @@
 using System.IO;
 using Atomex.Api.Proto;
 using Atomex.Common;
-using Atomex.Core.Entities;
+using Atomex.Core;
 using Xunit;
 
 namespace Atomex.Client.Core.Tests

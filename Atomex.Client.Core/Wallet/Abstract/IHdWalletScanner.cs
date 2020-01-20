@@ -1,13 +1,12 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Core.Entities;
 
 namespace Atomex.Wallet.Abstract
 {
     public interface IHdWalletScanner
     {
         Task ScanAsync(
-            Currency currency,
+            string currency,
             bool skipUsed = false,
             CancellationToken cancellationToken = default);
 
@@ -19,7 +18,7 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default);
 
         Task ScanAddressAsync(
-            Currency currency,
+            string currency,
             string address,
             CancellationToken cancellationToken = default);
     }

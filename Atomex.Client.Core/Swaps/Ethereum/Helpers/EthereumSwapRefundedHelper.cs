@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Serilog;
 
 namespace Atomex.Swaps.Ethereum.Helpers
@@ -13,7 +12,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
     public static class EthereumSwapRefundedHelper
     {
         public static async Task<Result<bool>> IsRefundedAsync(
-            ClientSwap swap,
+            Swap swap,
             Currency currency,
             CancellationToken cancellationToken = default)
         {
@@ -59,7 +58,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
         }
 
         public static async Task<Result<bool>> IsRefundedAsync(
-            ClientSwap swap,
+            Swap swap,
             Currency currency,
             int attempts,
             int attemptIntervalInSec,

@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Text;
 using Atomex.Abstract;
 using Atomex.Common.Configuration;
-using Atomex.Core.Entities;
+using Atomex.Core;
 using Atomex.Swaps.Abstract;
 using Microsoft.Extensions.Configuration;
 using NBitcoin;

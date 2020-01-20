@@ -12,6 +12,13 @@ namespace Atomex.Blockchain.Abstract
             uint inputNo,
             CancellationToken cancellationToken = default);
 
+        Task<Result<ITxPoint>> TryGetInputAsync(
+            string txId,
+            uint inputNo,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default);
+
         Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
@@ -22,9 +29,23 @@ namespace Atomex.Blockchain.Abstract
             string afterTxId = null,
             CancellationToken cancellationToken = default);
 
+        Task<Result<IEnumerable<ITxOutput>>> TryGetOutputsAsync(
+            string address,
+            string afterTxId = null,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default);
+
         Task<Result<ITxPoint>> IsTransactionOutputSpent(
             string txId,
             uint outputNo,
+            CancellationToken cancellationToken = default);
+
+        Task<Result<ITxPoint>> TryIsTransactionOutputSpent(
+            string txId,
+            uint outputNo,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);
     }
 }

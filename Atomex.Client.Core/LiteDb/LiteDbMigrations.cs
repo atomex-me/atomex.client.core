@@ -82,7 +82,7 @@ namespace Atomex.LiteDb
 
         private static void UpdateVersion(LiteDatabase db, ushort fromVersion, ushort toVersion)
         {
-            db.Engine.UserVersion = Version2;
+            db.Engine.UserVersion = toVersion;
 
             Log.Debug(
                 "Db successfully update from version {@from} to version {@to}",

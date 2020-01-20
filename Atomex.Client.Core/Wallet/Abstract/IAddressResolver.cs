@@ -1,6 +1,6 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Core.Entities;
+using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -14,7 +14,7 @@ namespace Atomex.Wallet.Abstract
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Wallet's address</returns>
         Task<WalletAddress> ResolveAddressAsync(
-            Currency currency,
+            string currency,
             string address,
             CancellationToken cancellationToken = default);
     }

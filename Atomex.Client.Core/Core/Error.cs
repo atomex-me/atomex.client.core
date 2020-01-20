@@ -22,13 +22,10 @@
         public Error(int code, string description, string requestId)
             : this(code, description) => RequestId = requestId;
 
-        public Error(int code, string description, Entities.Order order)
+        public Error(int code, string description, Order order)
             : this(code, description) => OrderId = order.ClientOrderId;
 
-        public Error(int code, string description, Entities.Swap swap)
-            : this(code, description) => SwapId = swap.Id;
-
-        public Error(int code, string description, Entities.ClientSwap swap)
+        public Error(int code, string description, Swap swap)
             : this(code, description) => SwapId = swap.Id;
 
         public override string ToString()

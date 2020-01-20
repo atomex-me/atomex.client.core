@@ -6,7 +6,6 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Blockchain.BitcoinBased.Helpers;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Serilog;
 
 namespace Atomex.Swaps.BitcoinBased.Helpers
@@ -14,12 +13,12 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
     public static class BitcoinBasedSwapSpentHelper
     {
         public static Task StartSwapSpentControlAsync(
-            ClientSwap swap,
+            Swap swap,
             Currency currency,
             DateTime refundTimeUtc,
             TimeSpan interval,
-            Action<ClientSwap, ITxPoint, CancellationToken> completionHandler = null,
-            Action<ClientSwap, CancellationToken> refundTimeReachedHandler = null,
+            Action<Swap, ITxPoint, CancellationToken> completionHandler = null,
+            Action<Swap, CancellationToken> refundTimeReachedHandler = null,
             CancellationToken cancellationToken = default)
         {
             var swapOutput = ((IBitcoinBasedTransaction)swap.PaymentTx)

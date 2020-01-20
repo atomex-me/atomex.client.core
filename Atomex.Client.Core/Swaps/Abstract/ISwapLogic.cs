@@ -1,5 +1,5 @@
 using System.Threading.Tasks;
-using Atomex.Core.Entities;
+using Atomex.Core;
 
 namespace Atomex.Swaps.Abstract
 {
@@ -10,6 +10,6 @@ namespace Atomex.Swaps.Abstract
         /// </summary>
         /// <param name="swap">Swap</param>
         /// <returns></returns>
-        Task HandleSwap(ClientSwap swap);
+        Task HandleSwap(Swap swap);
     }
 }

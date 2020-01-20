@@ -1,5 +1,5 @@
 ﻿using System.Collections.Generic;
-using Atomex.Core.Entities;
+using Atomex.Core;
 using Atomex.MarketData.Abstract;
 using Serilog;
 

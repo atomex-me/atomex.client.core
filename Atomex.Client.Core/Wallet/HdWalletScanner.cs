@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Core.Entities;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
 using Atomex.Wallet.Ethereum;
@@ -27,13 +26,13 @@ namespace Atomex.Wallet
             {
                 foreach (var currency in Account.Currencies)
                     if (currency.IsTransactionsAvailable)
-                        await ScanAsync(currency, skipUsed, cancellationToken)
+                        await ScanAsync(currency.Name, skipUsed, cancellationToken)
                             .ConfigureAwait(false);
             }, cancellationToken);
         }
 
         public Task ScanAsync(
-            Currency currency,
+            string currency,
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
@@ -45,30 +44,33 @@ namespace Atomex.Wallet
             }, cancellationToken);
         }
 
-        public async Task ScanFreeAddressesAsync(
+        public Task ScanFreeAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            foreach (var currency in Account.Currencies)
+            return Task.Run(async () =>
             {
-                var walletAddress = await Account
-                    .GetFreeExternalAddressAsync(currency, cancellationToken)
-                    .ConfigureAwait(false);
-
-                try
+                foreach (var currency in Account.Currencies)
                 {
-                    await GetCurrencyScanner(currency)
-                        .ScanAsync(walletAddress.Address, cancellationToken)
+                    var walletAddress = await Account
+                        .GetFreeExternalAddressAsync(currency.Name, cancellationToken)
                         .ConfigureAwait(false);
+
+                    try
+                    {
+                        await GetCurrencyScanner(currency.Name)
+                            .ScanAsync(walletAddress.Address, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error(e, "Free address scan error for currency: {@currency}", currency.Name);
+                    }
                 }
-                catch (Exception e)
-                {
-                    Log.Error(e, "Free address scan error for currency: {@currency}", currency.Name);
-                }
-            }
+            }, cancellationToken);
         }
 
         public async Task ScanAddressAsync(
-            Currency currency,
+            string currency,
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -80,20 +82,20 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "Address scan error for currency {@currency} and address {@address}", currency.Name, address);
+                Log.Error(e, "Address scan error for currency {@currency} and address {@address}", currency, address);
             }
         }
 
-        private ICurrencyHdWalletScanner GetCurrencyScanner(Currency currency)
+        private ICurrencyHdWalletScanner GetCurrencyScanner(string currency)
         {
-            if (currency is BitcoinBasedCurrency)
-                return new BitcoinBasedWalletScanner(currency, Account);
-            if (currency is Atomex.Ethereum)
-                return new EthereumWalletScanner(Account);
-            if (currency is Atomex.Tezos)
-                return new TezosWalletScanner(Account);
-
-            throw new NotSupportedException($"Currency {currency.Name} not supported");
+            return currency switch
+            {
+                "BTC" => (ICurrencyHdWalletScanner)new BitcoinBasedWalletScanner(Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
+                "LTC" => (ICurrencyHdWalletScanner)new BitcoinBasedWalletScanner(Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
+                "ETH" => (ICurrencyHdWalletScanner)new EthereumWalletScanner(Account.GetCurrencyAccount<EthereumAccount>(currency)),
+                "XTZ" => (ICurrencyHdWalletScanner)new TezosWalletScanner(Account.GetCurrencyAccount<TezosAccount>(currency)),
+                _ => throw new NotSupportedException($"Currency {currency} not supported")
+            };
         }
     }
 }

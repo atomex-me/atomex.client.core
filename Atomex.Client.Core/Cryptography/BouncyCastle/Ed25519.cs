@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
 using Atomex.Common;
-using Info.Blockchain.API.Models;
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Math.EC.Rfc7748;
@@ -1091,7 +1090,6 @@ namespace Atomex.Cryptography.BouncyCastle
         }
 
         private const int PrivateKeySize = 32;
-        private const int ExpandedPrivateKeySize = 64;
 
         public static byte[] Sign(
             byte[] data,
@@ -1160,48 +1158,58 @@ namespace Atomex.Cryptography.BouncyCastle
         }
 
         public static void GenerateKeyPair(
-            byte[] seed,
-            out byte[] privateKey,
-            out byte[] publicKey)
+            SecureBytes seed,
+            out SecureBytes privateKey,
+            out SecureBytes publicKey)
         {
-            privateKey = new byte[PrivateKeySize];
-            publicKey = new byte[PublicKeySize];
+            using var scopedSeed = seed.ToUnsecuredBytes();
+            using var scopedPrivateKey = new ScopedBytes(PrivateKeySize);
+            using var scopedPublicKey = new ScopedBytes(PublicKeySize);
 
             // copy first 32-bytes from seed to expandedPrivateKey left part ([0-31] bytes)
             Array.Copy(
-                sourceArray: seed,
+                sourceArray: scopedSeed,
                 sourceIndex: 0,
-                destinationArray: privateKey,
+                destinationArray: scopedPrivateKey,
                 destinationIndex: 0,
                 length: PrivateKeySize);
 
             // use first 32-bytes from seed (private key) to generate public key
             GeneratePublicKey(
-                sk: seed,
+                sk: scopedSeed,
                 skOff: 0,
-                pk: publicKey,
+                pk: scopedPublicKey,
                 pkOff: 0);
+
+            privateKey = new SecureBytes(scopedPrivateKey);
+            publicKey = new SecureBytes(scopedPublicKey);
         }
 
         public static void GeneratePublicKey(
-            byte[] privateKey,
-            out byte[] publicKey)
+            SecureBytes privateKey,
+            out SecureBytes publicKey)
         {
-            publicKey = new byte[PublicKeySize];
+            using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
+            using var scopedPublicKey = new ScopedBytes(PublicKeySize);
 
             GeneratePublicKey(
-                sk: privateKey,
+                sk: scopedPrivateKey,
                 skOff: 0,
-                pk: publicKey,
+                pk: scopedPublicKey,
                 pkOff: 0);
+
+            publicKey = new SecureBytes(scopedPublicKey);
         }
 
         public static void GeneratePublicKeyFromExtended(
-            byte[] extendedPrivateKey,
-            out byte[] publicKey)
+            SecureBytes extendedPrivateKey,
+            out SecureBytes publicKey)
         {
-            publicKey = new byte[PointBytes];
-            ScalarMultBaseEncoded(extendedPrivateKey, publicKey, 0);
+            using var scopedExtentedPrivateKey = extendedPrivateKey.ToUnsecuredBytes();
+            using var scopedPublicKey = new ScopedBytes(PointBytes);
+            ScalarMultBaseEncoded(scopedExtentedPrivateKey, scopedPublicKey, 0);
+
+            publicKey = new SecureBytes(scopedPublicKey);
         }
     }
 }

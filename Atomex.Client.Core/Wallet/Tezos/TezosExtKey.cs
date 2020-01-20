@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using Atomex.Blockchain.Tezos;
-using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Cryptography;
 using Atomex.Cryptography.BouncyCastle;
@@ -18,7 +17,8 @@ namespace Atomex.Wallet.Tezos
         private const int ChainCodeLength = 32;
         private const int ScalarBytes = 32;
 
-        private Keys Keys { get; }
+        private readonly SecureBytes _privateKey;
+        private readonly SecureBytes _publicKey;
         private byte[] ChainCode { get; }
         private uint Child { get; }
         private uint Depth { get; }
@@ -28,25 +28,25 @@ namespace Atomex.Wallet.Tezos
         {
         }
 
-        public TezosExtKey(byte[] seed)
+        public TezosExtKey(SecureBytes seed)
         {
+            using var scopedSeed = seed.ToUnsecuredBytes();
             //var masterSecret = Hashes.HMACSHA512(key: HashKey, data: seed);
-            var masterSecret = new byte[PrivateKeyLength];
+            using var masterSecret = new ScopedBytes(PrivateKeyLength);
 
             Buffer.BlockCopy(
-                src: seed,
+                src: scopedSeed,
                 srcOffset: 0,
                 dst: masterSecret,
                 dstOffset: 0,
-                count: 32);         
+                count: 32);
 
             // check third highest bit of the last byte of kL, where
             // k = H512(masterSecret) and kL is its left 32-bytes
-            byte[] k;
 
             while (true)
             {
-                k = Hashes.SHA512(masterSecret);
+                using var k = new ScopedBytes(Hashes.SHA512(masterSecret));
 
                 if ((k[31] & 0b00100000) > 0)
                 {
@@ -57,38 +57,36 @@ namespace Atomex.Wallet.Tezos
                         dst: masterSecret,
                         dstOffset: 0,
                         count: 32);
-
-                    k.Clear();
                 }
-                else break;
+                else
+                {
+                    _privateKey = new SecureBytes(k);
+                    break;
+                };
             }
 
-            PruneScalar(k);
+            PruneScalar(_privateKey);
 
             Ed25519.GeneratePublicKeyFromExtended(
-                extendedPrivateKey: k,
-                publicKey: out var publicKey);
+                extendedPrivateKey: _privateKey,
+                publicKey: out _publicKey);
 
-            var prefix = new byte[] {0x01};
-            var data = prefix.ConcatArrays(masterSecret);
+            var prefix = new byte[] { 0x01 };
+            using var data = new ScopedBytes(prefix.ConcatArrays(masterSecret));
             ChainCode = Hashes.SHA256(data);
-
-            Keys = new Keys(sk: k, pk: publicKey);
-
-            masterSecret.Clear();
-            k.Clear();
-            data.Clear();
-            publicKey.Clear();
         }
 
         protected TezosExtKey(
-            Keys keys,
+            SecureBytes privateKey,
+            SecureBytes publicKey,
             byte depth,
             uint child,
             byte[] chainCode,
             uint fingerPrint)
         {
-            Keys = keys;
+            _privateKey = privateKey.Clone();
+            _publicKey = publicKey.Clone();
+
             Depth = depth;
             Child = child;
             Fingerprint = fingerPrint;
@@ -104,30 +102,25 @@ namespace Atomex.Wallet.Tezos
 
         public IExtKey Derive(uint index)
         {
-            var childKeys = Derive(
+            var (childPrivateKey, childPublicKey) = Derive(
                 chainCode: ChainCode,
                 child: index,
                 childChainCode: out var childChainCode);
 
-            GetPublicKey(out var publicKey);
+            using var securePublicKey = GetPublicKey();
+            using var scopedPublicKey = securePublicKey.ToUnsecuredBytes();
 
-            try
-            {
-                var fingerPrint = Utils.ToUInt32(
-                    value: Hashes.Hash160(publicKey).ToBytes(),
-                    littleEndian: true);
+            var fingerPrint = Utils.ToUInt32(
+                value: Hashes.Hash160(scopedPublicKey).ToBytes(),
+                littleEndian: true);
 
-                return new TezosExtKey(
-                    keys: childKeys,
-                    depth: (byte)(Depth + 1),
-                    child: index,
-                    chainCode: childChainCode,
-                    fingerPrint: fingerPrint);
-            }
-            finally
-            {
-                publicKey.Clear();
-            }
+            return new TezosExtKey(
+                privateKey: childPrivateKey,
+                publicKey: childPublicKey,
+                depth: (byte)(Depth + 1),
+                child: index,
+                chainCode: childChainCode,
+                fingerPrint: fingerPrint);
         }
 
         public IExtKey Derive(KeyPath keyPath)
@@ -140,91 +133,61 @@ namespace Atomex.Wallet.Tezos
             return keyPath.Indexes.Aggregate(result, (current, index) => current.Derive(index));
         }
 
-        public void GetPrivateKey(out byte[] privateKey)
+        public SecureBytes GetPrivateKey()
         {
-            // todo: dot not store key in heap
-            privateKey = Base58Check.Decode(Keys.DecryptPrivateKey(), Prefix.Edsk);
+            return _privateKey.Clone();
         }
 
-        public void GetPublicKey(out byte[] publicKey)
+        public SecureBytes GetPublicKey()
         {
-            // todo: dot not store key in heap
-            publicKey = Base58Check.Decode(Keys.DecryptPublicKey(), Prefix.Edpk);
+            return _publicKey.Clone();
         }
 
         public byte[] SignHash(byte[] hash)
         {
-            GetPrivateKey(out var extendedPrivateKey);
+            using var scopedExtendedPrivateKey = _privateKey.ToUnsecuredBytes();
 
-            try
-            {
-                return TezosSigner.SignByExtendedKey(
-                    data: hash,
-                    extendedPrivateKey: extendedPrivateKey);
-            }
-            finally
-            {
-                extendedPrivateKey.Clear();
-            }
+            return TezosSigner.SignByExtendedKey(
+                data: hash,
+                extendedPrivateKey: scopedExtendedPrivateKey);
         }
 
         public byte[] SignMessage(byte[] data)
         {
-            GetPrivateKey(out var extendedPrivateKey);
+            using var scopedExtendedPrivateKey = _privateKey.ToUnsecuredBytes();
 
-            try
-            {
-                return TezosSigner.SignByExtendedKey(
-                    data: data,
-                    extendedPrivateKey: extendedPrivateKey);
-            }
-            finally
-            {
-                extendedPrivateKey.Clear();
-            }
+            return TezosSigner.SignByExtendedKey(
+                data: data,
+                extendedPrivateKey: scopedExtendedPrivateKey);
         }
 
         public bool VerifyHash(byte[] hash, byte[] signature)
         {
-            GetPublicKey(out var publicKey);
+            using var scopedPublicKey = _publicKey.ToUnsecuredBytes();
 
-            try
-            {
-                return TezosSigner.Verify(
-                    data: hash,
-                    signature: signature,
-                    publicKey: publicKey);
-            }
-            finally
-            {
-                publicKey.Clear();
-            }
+            return TezosSigner.Verify(
+                data: hash,
+                signature: signature,
+                publicKey: scopedPublicKey);
         }
 
         public bool VerifyMessage(byte[] data, byte[] signature)
         {
-            GetPublicKey(out var publicKey);
+            using var scopedPublicKey = _publicKey.ToUnsecuredBytes();
 
-            try
-            {
-                return TezosSigner.Verify(
-                    data: data,
-                    signature: signature,
-                    publicKey: publicKey);
-            }
-            finally
-            {
-                publicKey.Clear();
-            }
+            return TezosSigner.Verify(
+                data: data,
+                signature: signature,
+                publicKey: scopedPublicKey);
         }
 
-        private Keys Derive(
+        private (SecureBytes, SecureBytes) Derive(
             byte[] chainCode,
             uint child,
             out byte[] childChainCode)
         {
-            GetPrivateKey(out var k); // extended 64-bit private key k
-            GetPublicKey(out var publicKey);
+            using var k = _privateKey.ToUnsecuredBytes();  // extended 64-bit private key k
+            using var publicKey = _publicKey.ToUnsecuredBytes();
 
             byte[] keyData;
             byte[] chainData;
@@ -313,12 +276,11 @@ namespace Atomex.Wallet.Tezos
                 dstOffset: 0,
                 count: ChainCodeLength);
 
-            var childK = new byte[ExtendedPrivateKeyLength];
-            byte[] childPublicKey = null;
+            using var childK = new ScopedBytes(ExtendedPrivateKeyLength);
 
             var klNumberBytes = kl.ToByteArrayUnsigned();
 
-            var klBytes = new byte[ScalarBytes];
+            using var klBytes = new ScopedBytes(ScalarBytes);
             Buffer.BlockCopy(
                 src: klNumberBytes,
                 srcOffset: 0,
@@ -343,26 +305,23 @@ namespace Atomex.Wallet.Tezos
                     src: krBytes,
                     srcOffset: 0,
                     dst: childK,
-                    dstOffset: 32, 
+                    dstOffset: 32,
                     count: 32);
 
-                Ed25519.GeneratePublicKeyFromExtended(
-                    extendedPrivateKey: childK,
-                    publicKey: out childPublicKey);
+                var childPrivateKey = new SecureBytes(childK);
 
-                return new Keys(childK, childPublicKey);
+                Ed25519.GeneratePublicKeyFromExtended(
+                    extendedPrivateKey: childPrivateKey,
+                    publicKey: out var childPublicKey);
+
+                return (childPrivateKey, childPublicKey);
             }
             finally
             {
-                publicKey.Clear();
-                k.Clear();
                 keyData.Clear();
                 z.Clear();
                 c.Clear();
-                childK.Clear();
-                childPublicKey.Clear();
                 klNumberBytes.Clear();
-                klBytes.Clear();
                 krBytes.Clear();
             }
         }
@@ -378,11 +337,29 @@ namespace Atomex.Wallet.Tezos
             return num;
         }
 
-        private static void PruneScalar(byte[] data)
+        private static void PruneScalar(ScopedBytes data)
         {
             data[0] &= 0b11111000;  // the lowest 3 bits kL are cleared (&= 0xF8)
             data[ScalarBytes - 1] &= 0b01111111; // the highest bit kL is cleared (&= 7F)
             data[ScalarBytes - 1] |= 0b01000000; // the second highest bit kL is set (|= 0x40)
+        }
+
+        private static void PruneScalar(SecureBytes data)
+        {
+            using var scopedData = data.ToUnsecuredBytes();
+
+            PruneScalar(scopedData);
+
+            data.Reset(scopedData);
+        }
+
+        public void Dispose()
+        {
+            if (_privateKey != null)
+                _privateKey.Dispose();
+
+            if (_publicKey != null)
+                _publicKey.Dispose();
         }
     }
 }

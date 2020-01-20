@@ -8,7 +8,6 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 using Serilog;
@@ -20,9 +19,8 @@ namespace Atomex.Wallet.Ethereum
         public EthereumAccount(
             Currency currency,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository,
-            IAssetWarrantyManager assetWarrantyManager)
-                : base(currency, wallet, dataRepository, assetWarrantyManager)
+            IAccountDataRepository dataRepository)
+                : base(currency, wallet, dataRepository)
         {
         }
 
@@ -71,7 +69,7 @@ namespace Atomex.Wallet.Ethereum
                 Log.Debug("Send {@amount} ETH from address {@address} with available balance {@balance}",
                     selectedAddress.UsedAmount,
                     selectedAddress.WalletAddress.Address,
-                    selectedAddress.WalletAddress.AvailableBalance(AssetWarrantyManager));
+                    selectedAddress.WalletAddress.AvailableBalance());
 
                 var nonceAsyncResult = await EthereumNonceManager.Instance
                     .GetNonceAsync(Eth, selectedAddress.WalletAddress.Address)
@@ -145,7 +143,7 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetUnspentAddressesAsync(Currency)
+                .GetUnspentAddressesAsync(Currency.Name)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -166,7 +164,7 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetUnspentAddressesAsync(Currency)
+                .GetUnspentAddressesAsync(Currency.Name)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -195,7 +193,7 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetUnspentAddressesAsync(Currency)
+                .GetUnspentAddressesAsync(Currency.Name)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -205,7 +203,7 @@ namespace Atomex.Wallet.Ethereum
             // minimum balance first
             unspentAddresses = unspentAddresses
                 .ToList()
-                .SortList(new AvailableBalanceAscending(AssetWarrantyManager));
+                .SortList(new AvailableBalanceAscending());
 
             var isFirstTx = true;
             var amount = 0m;
@@ -214,7 +212,7 @@ namespace Atomex.Wallet.Ethereum
             foreach (var address in unspentAddresses)
             {
                 var feeInEth = Eth.GetFeeAmount(GasLimitByType(type, isFirstTx), Eth.GasPriceInGwei);
-                var usedAmountInEth = Math.Max(address.AvailableBalance(AssetWarrantyManager) - feeInEth, 0);
+                var usedAmountInEth = Math.Max(address.AvailableBalance() - feeInEth, 0);
 
                 if (usedAmountInEth <= 0)
                     continue;
@@ -270,7 +268,7 @@ namespace Atomex.Wallet.Ethereum
 
             var oldTx = !ethTx.IsInternal
                 ? await DataRepository
-                    .GetTransactionByIdAsync(Currency, tx.Id)
+                    .GetTransactionByIdAsync(Currency.Name, tx.Id, Currency.TransactionType)
                     .ConfigureAwait(false)
                 : null;
 
@@ -289,7 +287,7 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             var txs = (await DataRepository
-                .GetTransactionsAsync(Currency)
+                .GetTransactionsAsync(Currency.Name, Currency.TransactionType)
                 .ConfigureAwait(false))
                 .Cast<EthereumTransaction>()
                 .ToList();
@@ -350,7 +348,7 @@ namespace Atomex.Wallet.Ethereum
                     else
                     {
                         walletAddress = await DataRepository
-                            .GetWalletAddressAsync(Currency, address)
+                            .GetWalletAddressAsync(Currency.Name, address)
                             .ConfigureAwait(false);
 
                         //walletAddress.Balance            = isConfirmed ? income + outcome : 0;
@@ -410,7 +408,7 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await DataRepository
-                .GetWalletAddressAsync(Currency, address)
+                .GetWalletAddressAsync(Currency.Name, address)
                 .ConfigureAwait(false);
 
             if (walletAddress == null)
@@ -434,7 +432,7 @@ namespace Atomex.Wallet.Ethereum
 
             // calculate unconfirmed balances
             var unconfirmedTxs = (await DataRepository
-                .GetUnconfirmedTransactionsAsync(Currency)
+                .GetUnconfirmedTransactionsAsync(Currency.Name, Currency.TransactionType)
                 .ConfigureAwait(false))
                 .Cast<EthereumTransaction>()
                 .ToList();
@@ -497,13 +495,13 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
-                return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance(AssetWarrantyManager)));
+                return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance()));
 
             foreach (var chain in new[] { Bip44.Internal, Bip44.External })
             {
                 var lastActiveAddress = await DataRepository
                     .GetLastActiveWalletAddressAsync(
-                        currency: Currency,
+                        currency: Currency.Name,
                         chain: chain)
                     .ConfigureAwait(false);
 
@@ -522,13 +520,13 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
-                return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance(AssetWarrantyManager)));
+                return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance()));
 
             foreach (var chain in new[] { Bip44.Internal, Bip44.External })
             {
                 var lastActiveAddress = await DataRepository
                     .GetLastActiveWalletAddressAsync(
-                        currency: Currency,
+                        currency: Currency.Name,
                         chain: chain)
                     .ConfigureAwait(false);
 
@@ -551,7 +549,7 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetUnspentAddressesAsync(Currency)
+                .GetUnspentAddressesAsync(Currency.Name)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -580,11 +578,11 @@ namespace Atomex.Wallet.Ethereum
         {
             if (addressUsagePolicy == AddressUsagePolicy.UseMinimalBalanceFirst)
             {
-                from = from.ToList().SortList(new AvailableBalanceAscending(AssetWarrantyManager));
+                from = from.ToList().SortList(new AvailableBalanceAscending());
             }
             else if (addressUsagePolicy == AddressUsagePolicy.UseMaximumBalanceFirst)
             {
-                from = from.ToList().SortList(new AvailableBalanceDescending(AssetWarrantyManager));
+                from = from.ToList().SortList(new AvailableBalanceDescending());
             }
             else if (addressUsagePolicy == AddressUsagePolicy.UseOnlyOneAddress)
             {
@@ -592,7 +590,7 @@ namespace Atomex.Wallet.Ethereum
                     ? Eth.GetFeeAmount(GasLimitByType(transactionType, isFirstTx: true), Eth.GasPriceInGwei)
                     : Eth.GetFeeAmount(fee, feePrice);
 
-                var address = from.FirstOrDefault(w => w.AvailableBalance(AssetWarrantyManager) >= amount + feeInEth);
+                var address = from.FirstOrDefault(w => w.AvailableBalance() >= amount + feeInEth);
 
                 return address != null
                     ? new List<SelectedWalletAddress>
@@ -617,7 +615,7 @@ namespace Atomex.Wallet.Ethereum
 
                 foreach (var address in from)
                 {
-                    var availableBalance = address.AvailableBalance(AssetWarrantyManager);
+                    var availableBalance = address.AvailableBalance();
 
                     var txFee = feeUsagePolicy == FeeUsagePolicy.EstimatedFee
                         ? Eth.GetFeeAmount(GasLimitByType(transactionType, isFirstTx), Eth.GasPriceInGwei)

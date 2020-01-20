@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
-using Atomex.Core.Entities;
+using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 using Serilog;
@@ -18,14 +17,13 @@ namespace Atomex.Wallet.BitcoinBased
         private const int DefaultInternalLookAhead = 3;
         private const int DefaultExternalLookAhead = 3;
 
-        private IAccount Account { get; }
-        private Currency Currency { get; }
+        private BitcoinBasedAccount Account { get; }
+        private Currency Currency => Account.Currency;
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
 
-        public BitcoinBasedWalletScanner(Currency currency, IAccount account)
+        public BitcoinBasedWalletScanner(BitcoinBasedAccount account)
         {
-            Currency = currency ?? throw new ArgumentNullException(nameof(currency));
             Account = account ?? throw new ArgumentNullException(nameof(account));
         }
 
@@ -42,9 +40,7 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
 
             await Account
-                .UpdateBalanceAsync(
-                    currency: Currency,
-                    cancellationToken: cancellationToken)
+                .UpdateBalanceAsync(cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -57,7 +53,7 @@ namespace Atomex.Wallet.BitcoinBased
                 address);
 
             var outputsResult = await ((IInOutBlockchainApi) Currency.BlockchainApi)
-                .GetOutputsAsync(address, cancellationToken: cancellationToken)
+                .TryGetOutputsAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (outputsResult == null)
@@ -85,7 +81,6 @@ namespace Atomex.Wallet.BitcoinBased
             await Account
                 .UpsertOutputsAsync(
                     outputs: outputs,
-                    currency: Currency,
                     address: address,
                     notifyIfBalanceUpdated: false)
                 .ConfigureAwait(false);
@@ -94,10 +89,7 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
 
             await Account
-                .UpdateBalanceAsync(
-                    currency: Currency,
-                    address: address,
-                    cancellationToken: cancellationToken)
+                .UpdateBalanceAsync(address, cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -124,7 +116,7 @@ namespace Atomex.Wallet.BitcoinBased
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var walletAddress = await Account
-                        .DivideAddressAsync(Currency, param.Chain, index)
+                        .DivideAddressAsync(param.Chain, index, cancellationToken)
                         .ConfigureAwait(false);
 
                     if (walletAddress == null)
@@ -133,7 +125,7 @@ namespace Atomex.Wallet.BitcoinBased
                     if (skipUsed) // check, if the address marked as "used" and skip in this case
                     {
                         var resolvedAddress = await Account
-                            .ResolveAddressAsync(Currency, walletAddress.Address, cancellationToken)
+                            .ResolveAddressAsync(Currency.Name, walletAddress.Address, cancellationToken)
                             .ConfigureAwait(false);
 
                         if (resolvedAddress != null &&
@@ -155,8 +147,14 @@ namespace Atomex.Wallet.BitcoinBased
                         walletAddress.Address);
 
                     var result = await ((IInOutBlockchainApi)Currency.BlockchainApi)
-                        .GetOutputsAsync(walletAddress.Address, cancellationToken: cancellationToken)
+                        .TryGetOutputsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
+
+                    if (result == null)
+                    {
+                        Log.Error("Error while scan outputs for {@address}", walletAddress.Address);
+                        break;
+                    }
 
                     if (result.HasError)
                     {
@@ -187,7 +185,6 @@ namespace Atomex.Wallet.BitcoinBased
                         await Account
                             .UpsertOutputsAsync(
                                 outputs: outputs,
-                                currency: Currency,
                                 address: walletAddress.Address,
                                 notifyIfBalanceUpdated: false)
                             .ConfigureAwait(false);
@@ -205,7 +202,7 @@ namespace Atomex.Wallet.BitcoinBased
                 return;
 
             var outputs = await Account
-                .GetOutputsAsync(Currency)
+                .GetOutputsAsync(Currency.Name)
                 .ConfigureAwait(false);
 
             await ScanTransactionsAsync(outputs, cancellationToken)
@@ -227,7 +224,7 @@ namespace Atomex.Wallet.BitcoinBased
                 foreach (var txId in txIds)
                 {
                     var localTx = await Account
-                        .GetTransactionByIdAsync(Currency, txId)
+                        .GetTransactionByIdAsync(txId)
                         .ConfigureAwait(false);
 
                     // request only not confirmed transactions
@@ -239,6 +236,12 @@ namespace Atomex.Wallet.BitcoinBased
                     var txResult = await Currency.BlockchainApi
                         .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
+
+                    if (txResult == null)
+                    {
+                        Log.Error("Error while get transactions {@txId}", txId);
+                        continue;
+                    }
 
                     if (txResult.HasError)
                     {

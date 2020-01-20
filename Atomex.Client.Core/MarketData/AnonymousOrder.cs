@@ -1,6 +1,5 @@
 ﻿using System;
 using Atomex.Core;
-using Atomex.Core.Entities;
 
 namespace Atomex.MarketData
 {

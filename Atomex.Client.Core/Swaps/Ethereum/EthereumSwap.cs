@@ -4,16 +4,14 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Ethereum.Helpers;
 using Atomex.Swaps.Helpers;
-using Atomex.Wallet.Abstract;
+using Atomex.Wallet.Ethereum;
 using Nethereum.Contracts;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Web3;
@@ -31,14 +29,16 @@ namespace Atomex.Swaps.Ethereum
         private static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(10);
         private static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(30);
         private Atomex.Ethereum Eth => (Atomex.Ethereum)Currency;
+        private readonly EthereumAccount _account;
 
-        public EthereumSwap(Currency currency, IAccount account, ISwapClient swapClient)
-            : base(currency, account, swapClient)
+        public EthereumSwap(EthereumAccount account, ISwapClient swapClient)
+            : base(account.Currency, swapClient)
         {
+            _account = account ?? throw new ArgumentNullException(nameof(account));
         }
 
         public override async Task PayAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default)
         {
             if (swap.IsAcceptor)
@@ -130,13 +130,13 @@ namespace Atomex.Swaps.Ethereum
         }
 
         public override Task StartPartyPaymentControlAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default)
         {
             // initiator waits "accepted" event, acceptor waits "initiated" event
             var initiatedHandler = swap.IsInitiator
-                ? new Action<ClientSwap, CancellationToken>(SwapAcceptedHandler)
-                : new Action<ClientSwap, CancellationToken>(SwapInitiatedHandler);
+                ? new Action<Swap, CancellationToken>(SwapAcceptedHandler)
+                : new Action<Swap, CancellationToken>(SwapInitiatedHandler);
 
             var lockTimeInSeconds = swap.IsInitiator
                 ? DefaultAcceptorLockTimeInSeconds
@@ -158,7 +158,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         public override async Task RedeemAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default)
         {
             var secretResult = await EthereumSwapRedeemedHelper
@@ -203,10 +203,9 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create redeem for swap {@swapId}", swap.Id);
 
-            var walletAddress = (await Account
+            var walletAddress = (await _account
                 .GetUnspentAddressesAsync(
                     toAddress: swap.ToAddress,
-                    currency: Currency,
                     amount: 0,
                     fee: 0,
                     feePrice: 0,
@@ -285,7 +284,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         public override async Task RedeemForPartyAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default)
         {
             if (swap.IsInitiator)
@@ -301,10 +300,9 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create redeem for counterParty for swap {@swapId}", swap.Id);
 
-            var walletAddress = (await Account
+            var walletAddress = (await _account
                 .GetUnspentAddressesAsync(
                     toAddress: null, // todo: get participant address
-                    currency: Currency,
                     amount: 0,
                     fee: 0,
                     feePrice: 0,
@@ -367,7 +365,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         public override async Task RefundAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default)
         {
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast) &&
@@ -388,10 +386,9 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create refund for swap {@swap}", swap.Id);
 
-            var walletAddress = (await Account
+            var walletAddress = (await _account
                 .GetUnspentAddressesAsync(
                     toAddress: null, // get refund address
-                    currency: Currency,
                     amount: 0,
                     fee: 0,
                     feePrice: 0,
@@ -469,7 +466,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         public override Task StartWaitForRedeemAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default)
         {
             var lockTimeInSeconds = swap.IsInitiator
@@ -492,7 +489,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         public override Task StartWaitForRedeemBySomeoneAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default)
         {
             Log.Debug("Wait redeem for swap {@swapId}", swap.Id);
@@ -515,7 +512,7 @@ namespace Atomex.Swaps.Ethereum
         #region Event Handlers
 
         private void SwapInitiatedHandler(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default)
         {
             Log.Debug(
@@ -530,7 +527,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         private async void SwapAcceptedHandler(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default)
         {
             try
@@ -555,7 +552,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         private void SwapCanceledHandler(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default)
         {
             // todo: do smth here
@@ -563,7 +560,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         private void RedeemConfirmedEventHandler(
-            ClientSwap swap,
+            Swap swap,
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default)
         {
@@ -572,7 +569,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         private void RedeemCompletedEventHandler(
-            ClientSwap swap,
+            Swap swap,
             byte[] secret,
             CancellationToken cancellationToken = default)
         {
@@ -588,7 +585,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         private void RedeemCanceledEventHandler(
-            ClientSwap swap,
+            Swap swap,
             DateTime refundTimeUtc,
             CancellationToken cancellationToken = default)
         {
@@ -603,7 +600,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         private async void RefundTimeReachedHandler(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default)
         {
             Log.Debug("Refund time reached for swap {@swapId}", swap.Id);
@@ -638,7 +635,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         private void RefundConfirmedEventHandler(
-            ClientSwap swap,
+            Swap swap,
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default)
         {
@@ -647,7 +644,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         private void RedeemBySomeoneCompletedEventHandler(
-            ClientSwap swap,
+            Swap swap,
             byte[] secret,
             CancellationToken cancellationToken = default)
         {
@@ -660,9 +657,8 @@ namespace Atomex.Swaps.Ethereum
                 RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemConfirmed);
 
                 // get transactions & update balance for address async
-                AddressHelper.UpdateAddressBalanceAsync(
-                        account: Account,
-                        currency: Currency,
+                AddressHelper.UpdateAddressBalanceAsync<EthereumWalletScanner, EthereumAccount>(
+                        account: _account,
                         address: swap.ToAddress,
                         cancellationToken: cancellationToken)
                     .FireAndForget();
@@ -670,7 +666,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         private async void RedeemBySomeoneCanceledEventHandler(
-            ClientSwap swap,
+            Swap swap,
             DateTime refundTimeUtc,
             CancellationToken cancellationToken)
         {
@@ -680,10 +676,9 @@ namespace Atomex.Swaps.Ethereum
             {
                 if (swap.Secret?.Length > 0)
                 {
-                    var walletAddress = (await Account
+                    var walletAddress = (await _account
                         .GetUnspentAddressesAsync(
                             toAddress: swap.ToAddress,
-                            currency: Currency,
                             amount: 0,
                             fee: 0,
                             feePrice: 0,
@@ -718,7 +713,7 @@ namespace Atomex.Swaps.Ethereum
         #region Helpers
 
         private async Task<IEnumerable<EthereumTransaction>> CreatePaymentTxsAsync(
-            ClientSwap swap,
+            Swap swap,
             int lockTimeInSeconds,
             CancellationToken cancellationToken = default)
         {
@@ -729,11 +724,11 @@ namespace Atomex.Swaps.Ethereum
             var isInitTx = true;
             var rewardForRedeemInEth = swap.PartyRewardForRedeem;
 
-            var unspentAddresses = (await Account
-                .GetUnspentAddressesAsync(Eth, cancellationToken)
+            var unspentAddresses = (await _account
+                .GetUnspentAddressesAsync(cancellationToken)
                 .ConfigureAwait(false))
                 .ToList()
-                .SortList(new AvailableBalanceAscending(Account.AssetWarrantyManager));
+                .SortList(new AvailableBalanceAscending());
 
             var transactions = new List<EthereumTransaction>();
 
@@ -741,9 +736,8 @@ namespace Atomex.Swaps.Ethereum
             {
                 Log.Debug("Create swap payment tx from address {@address} for swap {@swapId}", walletAddress.Address, swap.Id);
 
-                var balanceInEth = (await Account
+                var balanceInEth = (await _account
                     .GetAddressBalanceAsync(
-                        currency: Eth,
                         address: walletAddress.Address,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false))
@@ -853,14 +847,13 @@ namespace Atomex.Swaps.Ethereum
             EthereumTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            var walletAddress = await Account
+            var walletAddress = await _account
                 .ResolveAddressAsync(
-                    currency: tx.Currency,
                     address: tx.From,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            return await Account.Wallet
+            return await _account.Wallet
                 .SignAsync(
                     tx: tx,
                     address: walletAddress,
@@ -869,7 +862,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         private async Task BroadcastTxAsync(
-            ClientSwap swap,
+            Swap swap,
             EthereumTransaction tx,
             CancellationToken cancellationToken = default)
         {
@@ -888,7 +881,7 @@ namespace Atomex.Swaps.Ethereum
             Log.Debug("TxId {@id} for swap {@swapId}", txId, swap.Id);
 
             // account new unconfirmed transaction
-            await Account
+            await _account
                 .UpsertTransactionAsync(
                     tx: tx,
                     updateBalance: true,

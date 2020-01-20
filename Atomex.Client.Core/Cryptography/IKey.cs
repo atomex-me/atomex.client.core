@@ -1,9 +1,12 @@
-﻿namespace Atomex.Cryptography
+﻿using Atomex.Common;
+using System;
+
+namespace Atomex.Cryptography
 {
-    public interface IKey
+    public interface IKey : IDisposable
     {
-        void GetPrivateKey(out byte[] privateKey);
-        void GetPublicKey(out byte[] publicKey);
+        SecureBytes GetPrivateKey();
+        SecureBytes GetPublicKey();
         byte[] SignHash(byte[] hash);
         byte[] SignMessage(byte[] data);
         bool VerifyHash(byte[] hash, byte[] signature);

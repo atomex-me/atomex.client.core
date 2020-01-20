@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Core.Entities;
-using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Serilog;
 
@@ -10,18 +8,21 @@ namespace Atomex.Swaps.Helpers
 {
     public static class AddressHelper
     {
-        public static Task UpdateAddressBalanceAsync(
-            IAccount account,
-            Currency currency,
+        public static Task UpdateAddressBalanceAsync<TWalletScanner, TCurrencyAccount>(
+            TCurrencyAccount account,
             string address,
             CancellationToken cancellationToken = default)
+                where TWalletScanner : ICurrencyHdWalletScanner
+                where TCurrencyAccount : ICurrencyAccount
         {
             return Task.Run(async () =>
             {
                 try
                 {
-                    await new HdWalletScanner(account)
-                        .ScanAddressAsync(currency, address, cancellationToken)
+                    var scanner = (ICurrencyHdWalletScanner)Activator.CreateInstance(typeof(TWalletScanner), account);
+
+                    await scanner
+                        .ScanAsync(address, cancellationToken)
                         .ConfigureAwait(false);
                 }
                 catch (Exception e)

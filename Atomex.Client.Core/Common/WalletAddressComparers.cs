@@ -1,37 +1,29 @@
-﻿using System;
-using System.Collections.Generic;
-using Atomex.Core.Entities;
-using Atomex.Wallet.Abstract;
+﻿using System.Collections.Generic;
+using Atomex.Core;
 
 namespace Atomex.Common
 {
     public class AvailableBalanceAscending : IComparer<WalletAddress>
     {
-        private readonly IAssetWarrantyManager _assetWarrantyManager;
-
-        public AvailableBalanceAscending(IAssetWarrantyManager assetWarrantyManager)
+        public AvailableBalanceAscending()
         {
-            _assetWarrantyManager = assetWarrantyManager ?? throw new ArgumentNullException(nameof(assetWarrantyManager));
         }
 
         public int Compare(WalletAddress x, WalletAddress y)
         {
-            return x.AvailableBalance(_assetWarrantyManager).CompareTo(y.AvailableBalance(_assetWarrantyManager));
+            return x.AvailableBalance().CompareTo(y.AvailableBalance());
         }
     }
 
     public class AvailableBalanceDescending : IComparer<WalletAddress>
     {
-        private readonly IAssetWarrantyManager _assetWarrantyManager;
-
-        public AvailableBalanceDescending(IAssetWarrantyManager assetWarrantyManager)
+        public AvailableBalanceDescending()
         {
-            _assetWarrantyManager = assetWarrantyManager ?? throw new ArgumentNullException(nameof(assetWarrantyManager));
         }
 
         public int Compare(WalletAddress x, WalletAddress y)
         {
-            return y.AvailableBalance(_assetWarrantyManager).CompareTo(x.AvailableBalance(_assetWarrantyManager));
+            return y.AvailableBalance().CompareTo(x.AvailableBalance());
         }
     }
 }

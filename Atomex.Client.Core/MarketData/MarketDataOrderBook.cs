@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 
 namespace Atomex.MarketData
 {

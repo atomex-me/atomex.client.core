@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Atomex.Blockchain.Abstract;
+using Atomex.Common;
 using Atomex.Core;
 using NBitcoin;
 
@@ -14,7 +15,7 @@ namespace Atomex.Blockchain.BitcoinBased
         byte[] GetSignatureHash(Script redeemScript, ITxOutput spentOutput);
         Script GetScriptSig(int inputNo);
 
-        void Sign(byte[] privateKey, ITxOutput[] spentOutputs);
+        void Sign(SecureBytes privateKey, ITxOutput[] spentOutputs);
         void Sign(Key privateKey, ITxOutput spentOutput);
         void Sign(Key privateKey, ITxOutput[] spentOutputs);
         void NonStandardSign(byte[] sigScript, ITxOutput spentOutput);

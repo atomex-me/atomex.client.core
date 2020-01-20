@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Threading.Tasks;
-using Atomex.Core.Entities;
+using Atomex.Core;
 
 namespace Atomex.Blockchain.Abstract
 {
@@ -10,7 +10,7 @@ namespace Atomex.Blockchain.Abstract
             IEnumerable<WalletAddress> addresses);
 
         Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
-            Currency currency,
+            string currency,
             IEnumerable<string> addresses);
     }
 }

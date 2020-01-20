@@ -5,7 +5,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
-using Atomex.Core.Entities;
+using Atomex.Common;
+using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Web3;
@@ -126,22 +127,24 @@ namespace Atomex.Blockchain.Ethereum
                 return false;
             }
 
-            var privateKey = keyStorage.GetPrivateKey(Currency, address.KeyIndex);
+            using var privateKey = keyStorage.GetPrivateKey(Currency, address.KeyIndex);
 
             return await SignAsync(privateKey)
                 .ConfigureAwait(false);
         }
 
-        private Task<bool> SignAsync(byte[] privateKey)
+        private Task<bool> SignAsync(SecureBytes privateKey)
         {
             if (privateKey == null)
                 throw new ArgumentNullException(nameof(privateKey));
+
+            using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
 
             var chain = ((Atomex.Ethereum) Currency).Chain;
 
             RlpEncodedTx = Web3.OfflineTransactionSigner
                 .SignTransaction(
-                    privateKey: privateKey,
+                    privateKey: scopedPrivateKey,
                     chain: chain,
                     to: To,
                     amount: Amount,

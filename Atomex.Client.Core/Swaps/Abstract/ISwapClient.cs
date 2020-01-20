@@ -1,11 +1,11 @@
-﻿using Atomex.Core.Entities;
+﻿using Atomex.Core;
 
 namespace Atomex.Swaps.Abstract
 {
     public interface ISwapClient
     {
-        void SwapInitiateAsync(ClientSwap swap);
-        void SwapAcceptAsync(ClientSwap swap);
-        void SwapPaymentAsync(ClientSwap swap);
+        void SwapInitiateAsync(Swap swap);
+        void SwapAcceptAsync(Swap swap);
+        void SwapPaymentAsync(Swap swap);
     }
 }

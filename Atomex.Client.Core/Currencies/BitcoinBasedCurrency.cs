@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
-using Atomex.Core.Entities;
+using Atomex.Common;
+using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.BitcoinBased;
 using NBitcoin;
@@ -30,24 +31,24 @@ namespace Atomex
         public decimal DustFeeRate { get; set; }
         public decimal MinTxFeeRate { get; set; }
         public decimal MinRelayTxFeeRate { get; set; }
-        public Network Network { get; protected set; }
+        public NBitcoin.Network Network { get; protected set; }
 
         protected BitcoinBasedCurrency()
         {
             TransactionType = typeof(BitcoinBasedTransaction);
         }
 
-        public override IExtKey CreateExtKey(byte[] seed)
+        public override IExtKey CreateExtKey(SecureBytes seed)
         {
             return CreateExtKeyFromSeed(seed);
         }
 
-        public static IExtKey CreateExtKeyFromSeed(byte[] seed)
+        public static IExtKey CreateExtKeyFromSeed(SecureBytes seed)
         {
             return new BitcoinBasedExtKey(seed);
         }
 
-        public override IKey CreateKey(byte[] seed)
+        public override IKey CreateKey(SecureBytes seed)
         {
             return new BitcoinBasedKey(seed);
         }

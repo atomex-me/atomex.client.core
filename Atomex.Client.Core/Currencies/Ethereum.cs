@@ -3,7 +3,8 @@ using System.Globalization;
 using System.Numerics;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
-using Atomex.Core.Entities;
+using Atomex.Common;
+using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.Bip;
 using Atomex.Wallet.Ethereum;
@@ -121,12 +122,12 @@ namespace Atomex
             throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported");
         }
 
-        public override IExtKey CreateExtKey(byte[] seed)
+        public override IExtKey CreateExtKey(SecureBytes seed)
         {
             return new EthereumExtKey(seed);
         }
 
-        public override IKey CreateKey(byte[] seed)
+        public override IKey CreateKey(SecureBytes seed)
         {
             return new EthereumKey(seed);
         }

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
-using Atomex.Core.Entities;
+using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
@@ -58,17 +58,21 @@ namespace Atomex.Blockchain.Tezos
                 return false;
             }
 
-            var privateKey = keyStorage
+            using var securePrivateKey = keyStorage
                 .GetPrivateKey(Currency, address.KeyIndex);
 
-            if (privateKey == null)
+            if (securePrivateKey == null)
             {
                 Log.Error("Can't find private key for address {@address}", address);
                 return false;
             }
 
-            var publicKey = keyStorage
+            using var privateKey = securePrivateKey.ToUnsecuredBytes();
+
+            using var securePublicKey = keyStorage
                 .GetPublicKey(Currency, address.KeyIndex);
+
+            using var publicKey = securePublicKey.ToUnsecuredBytes();
 
             var rpc = new Rpc(xtz.RpcNodeUri);
 
@@ -174,15 +178,17 @@ namespace Atomex.Blockchain.Tezos
                 return false;
             }
 
-            var privateKey = keyStorage
+            using var securePrivateKey = keyStorage
                 .GetPrivateKey(Currency, address.KeyIndex);
 
-            if (privateKey == null)
+            if (securePrivateKey == null)
             {
                 Log.Error("Can't find private key for address {@address}", address);
                 return false;
             }
-            
+
+            using var privateKey = securePrivateKey.ToUnsecuredBytes();
+
             var rpc = new Rpc(xtz.RpcNodeUri);
 
             Head = await rpc
@@ -226,17 +232,21 @@ namespace Atomex.Blockchain.Tezos
                 return false;
             }
 
-            var privateKey = keyStorage
+            using var securePrivateKey = keyStorage
                 .GetPrivateKey(Currency, address.KeyIndex);
 
-            if (privateKey == null)
+            if (securePrivateKey == null)
             {
                 Log.Error("Can't find private key for address {@address}", address);
                 return false;
             }
 
-            var publicKey = keyStorage
+            using var privateKey = securePrivateKey.ToUnsecuredBytes();
+
+            using var securePublicKey = keyStorage
                 .GetPublicKey(Currency, address.KeyIndex);
+
+            using var publicKey = securePublicKey.ToUnsecuredBytes();
 
             var rpc = new Rpc(xtz.RpcNodeUri);
 

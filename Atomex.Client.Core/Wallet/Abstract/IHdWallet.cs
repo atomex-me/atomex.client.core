@@ -4,8 +4,8 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
+using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -58,7 +58,7 @@ namespace Atomex.Wallet.Abstract
         /// </summary>
         /// <param name="index">Service key index</param>
         /// <returns>Public key bytes</returns>
-        byte[] GetServicePublicKey(uint index);
+        SecureBytes GetServicePublicKey(uint index);
 
         /// <summary>
         /// Sign <paramref name="data"/> using public key corresponding to <paramref name="address"/>

@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Xunit;
 
 namespace Atomex.Client.Core.Tests

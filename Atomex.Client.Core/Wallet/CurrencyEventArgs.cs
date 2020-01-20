@@ -1,5 +1,5 @@
 ﻿using System;
-using Atomex.Core.Entities;
+using Atomex.Core;
 
 namespace Atomex.Wallet
 {

@@ -2,8 +2,8 @@
 using System.Linq;
 using System.Threading.Tasks;
 using Atomex.Blockchain.BitcoinBased;
-using Atomex.Core.Entities;
-using Atomex.Wallet.Abstract;
+using Atomex.Core;
+using Atomex.Wallet.BitcoinBased;
 using NBitcoin;
 using Serilog;
 
@@ -11,9 +11,9 @@ namespace Atomex.Swaps.BitcoinBased
 {
     public class BitcoinBasedSwapSigner
     {
-        private IAccount Account { get; }
+        private BitcoinBasedAccount Account { get; }
 
-        public BitcoinBasedSwapSigner(IAccount account)
+        public BitcoinBasedSwapSigner(BitcoinBasedAccount account)
         {
             Account = account ?? throw new ArgumentNullException(nameof(account));
         }
@@ -24,7 +24,7 @@ namespace Atomex.Swaps.BitcoinBased
             var tx = paymentTx.Clone();
 
             var outputs = await Account
-                .GetAvailableOutputsAsync(tx.Currency)
+                .GetAvailableOutputsAsync(tx.Currency.Name)
                 .ConfigureAwait(false);
 
             var spentOutputs = outputs

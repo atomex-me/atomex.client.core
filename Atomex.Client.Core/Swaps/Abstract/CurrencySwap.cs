@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Helpers;
-using Atomex.Core.Entities;
+using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.Abstract;
 using Serilog;
@@ -34,71 +34,68 @@ namespace Atomex.Swaps.Abstract
         public OnSwapUpdatedDelegate SwapUpdated { get; set; }
 
         public Currency Currency { get; }
-        protected readonly IAccount Account;
         protected readonly ISwapClient SwapClient;
 
         protected CurrencySwap(
             Currency currency,
-            IAccount account,
             ISwapClient swapClient)
         {
             Currency = currency;
-            Account = account ?? throw new ArgumentNullException(nameof(account));
             SwapClient = swapClient ?? throw new ArgumentNullException(nameof(swapClient));
         }
 
         public abstract Task PayAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default);
 
         public abstract Task StartPartyPaymentControlAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default);
 
         public abstract Task RedeemAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default);
 
         public abstract Task RedeemForPartyAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default);
 
         public abstract Task RefundAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default);
 
         public abstract Task StartWaitForRedeemAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default);
 
         public abstract Task StartWaitForRedeemBySomeoneAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default);
 
         public virtual Task HandlePartyPaymentAsync(
-            ClientSwap swap,
-            ClientSwap clientSwap,
+            Swap swap,
+            Swap clientSwap,
             CancellationToken cancellationToken = default)
         {
             return Task.CompletedTask;
         }
 
-        protected void RaiseInitiatorPaymentConfirmed(ClientSwap swap)
+        protected void RaiseInitiatorPaymentConfirmed(Swap swap)
         {
             InitiatorPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap));
         }
 
-        protected void RaiseAcceptorPaymentConfirmed(ClientSwap swap)
+        protected void RaiseAcceptorPaymentConfirmed(Swap swap)
         {
             AcceptorPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap));
         }
 
-        protected void RaiseAcceptorPaymentSpent(ClientSwap swap)
+        protected void RaiseAcceptorPaymentSpent(Swap swap)
         {
             AcceptorPaymentSpent?.Invoke(this, new SwapEventArgs(swap));
         }
 
-        protected void RaiseSwapUpdated(ClientSwap swap, SwapStateFlags changedFlag)
+        protected void RaiseSwapUpdated(Swap swap, SwapStateFlags changedFlag)
         {
             SwapUpdated?.Invoke(this, new SwapEventArgs(swap, changedFlag));
         }
@@ -119,10 +116,10 @@ namespace Atomex.Swaps.Abstract
         }
 
         protected Task TrackTransactionConfirmationAsync(
-            ClientSwap swap,
+            Swap swap,
             Currency currency,
             string txId,
-            Action<ClientSwap, IBlockchainTransaction, CancellationToken> confirmationHandler = null,
+            Action<Swap, IBlockchainTransaction, CancellationToken> confirmationHandler = null,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -151,9 +148,9 @@ namespace Atomex.Swaps.Abstract
         }
 
         protected Task ControlRefundTimeAsync(
-            ClientSwap swap,
+            Swap swap,
             DateTime refundTimeUtc,
-            Action<ClientSwap, CancellationToken> refundTimeReachedHandler = null,
+            Action<Swap, CancellationToken> refundTimeReachedHandler = null,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>

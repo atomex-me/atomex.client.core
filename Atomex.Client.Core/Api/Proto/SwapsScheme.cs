@@ -1,16 +1,15 @@
 ﻿using Atomex.Common.Proto;
 using Atomex.Core;
-using Atomex.Core.Entities;
 
 namespace Atomex.Api.Proto
 {
-    public class SwapsScheme : ProtoScheme<Request<ClientSwap>>
+    public class SwapsScheme : ProtoScheme<Request<Swap>>
     {
         public SwapsScheme(byte messageId)
             : base(messageId)
         {
-            Model.Add(typeof(Request<ClientSwap>), true)
-                .AddRequired(nameof(Request<ClientSwap>.Id));
+            Model.Add(typeof(Request<Swap>), true)
+                .AddRequired(nameof(Request<Swap>.Id));
         }
     }
 }

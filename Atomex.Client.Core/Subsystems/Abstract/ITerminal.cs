@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.MarketData;
 using Atomex.Swaps;
 using Atomex.Wallet.Abstract;

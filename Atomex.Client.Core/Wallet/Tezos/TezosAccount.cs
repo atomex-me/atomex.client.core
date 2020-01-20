@@ -7,7 +7,6 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 using Serilog;
@@ -21,9 +20,8 @@ namespace Atomex.Wallet.Tezos
         public TezosAccount(
             Currency currency,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository,
-            IAssetWarrantyManager assetWarrantyManager)
-                : base(currency, wallet, dataRepository, assetWarrantyManager)
+            IAccountDataRepository dataRepository)
+                : base(currency, wallet, dataRepository)
         {
             _tezosActivationChecker = new TezosRevealChecker(wallet.Network);
         }
@@ -68,7 +66,7 @@ namespace Atomex.Wallet.Tezos
                 Log.Debug("Send {@amount} XTZ from address {@address} with available balance {@balance}",
                     addressAmountMtz,
                     selectedAddress.WalletAddress.Address,
-                    selectedAddress.WalletAddress.AvailableBalance(AssetWarrantyManager));
+                    selectedAddress.WalletAddress.AvailableBalance());
 
                 var tx = new TezosTransaction
                 {
@@ -131,7 +129,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetUnspentAddressesAsync(Currency)
+                .GetUnspentAddressesAsync(Currency.Name)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -152,7 +150,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetUnspentAddressesAsync(Currency)
+                .GetUnspentAddressesAsync(Currency.Name)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -183,7 +181,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetUnspentAddressesAsync(Currency)
+                .GetUnspentAddressesAsync(Currency.Name)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -193,7 +191,7 @@ namespace Atomex.Wallet.Tezos
             // minimum balance first
             unspentAddresses = unspentAddresses
                 .ToList()
-                .SortList(new AvailableBalanceAscending(AssetWarrantyManager));
+                .SortList(new AvailableBalanceAscending());
 
             var isFirstTx = true;
             var amount = 0m;
@@ -209,7 +207,7 @@ namespace Atomex.Wallet.Tezos
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                var usedAmountInTez = Math.Max(address.AvailableBalance(AssetWarrantyManager) - feeInTez - storageFeeInTez, 0);
+                var usedAmountInTez = Math.Max(address.AvailableBalance() - feeInTez - storageFeeInTez, 0);
 
                 if (usedAmountInTez <= 0)
                     continue;
@@ -249,7 +247,7 @@ namespace Atomex.Wallet.Tezos
 
             var oldTx = !xtzTx.IsInternal
                 ? await DataRepository
-                    .GetTransactionByIdAsync(Currency, tx.Id)
+                    .GetTransactionByIdAsync(Currency.Name, tx.Id, Currency.TransactionType)
                     .ConfigureAwait(false)
                 : null;
 
@@ -342,7 +340,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var txs = (await DataRepository
-                .GetTransactionsAsync(Currency)
+                .GetTransactionsAsync(Currency.Name, Currency.TransactionType)
                 .ConfigureAwait(false))
                 .Cast<TezosTransaction>()
                 .ToList();
@@ -402,7 +400,7 @@ namespace Atomex.Wallet.Tezos
                     else
                     {
                         walletAddress = await DataRepository
-                            .GetWalletAddressAsync(Currency, address)
+                            .GetWalletAddressAsync(Currency.Name, address)
                             .ConfigureAwait(false);
 
                         if (walletAddress == null)
@@ -462,7 +460,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await DataRepository
-                .GetWalletAddressAsync(Currency, address)
+                .GetWalletAddressAsync(Currency.Name, address)
                 .ConfigureAwait(false);
 
             if (walletAddress == null)
@@ -485,7 +483,7 @@ namespace Atomex.Wallet.Tezos
 
             // calculate unconfirmed balances
             var unconfirmedTxs = (await DataRepository
-                .GetUnconfirmedTransactionsAsync(Currency)
+                .GetUnconfirmedTransactionsAsync(Currency.Name, Currency.TransactionType)
                 .ConfigureAwait(false))
                 .Cast<TezosTransaction>()
                 .ToList();
@@ -548,13 +546,13 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
-                return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance(AssetWarrantyManager)));
+                return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance()));
 
             foreach (var chain in new[] {Bip44.Internal, Bip44.External})
             {
                 var lastActiveAddress = await DataRepository
                     .GetLastActiveWalletAddressAsync(
-                        currency: Currency,
+                        currency: Currency.Name,
                         chain: chain)
                     .ConfigureAwait(false);
 
@@ -573,13 +571,13 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
-                return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance(AssetWarrantyManager)));
+                return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance()));
 
             foreach (var chain in new[] {Bip44.Internal, Bip44.External})
             {
                 var lastActiveAddress = await DataRepository
                     .GetLastActiveWalletAddressAsync(
-                        currency: Currency,
+                        currency: Currency.Name,
                         chain: chain)
                     .ConfigureAwait(false);
 
@@ -602,7 +600,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetUnspentAddressesAsync(Currency)
+                .GetUnspentAddressesAsync(Currency.Name)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -634,11 +632,11 @@ namespace Atomex.Wallet.Tezos
         {
             if (addressUsagePolicy == AddressUsagePolicy.UseMinimalBalanceFirst)
             {
-                from = from.ToList().SortList(new AvailableBalanceAscending(AssetWarrantyManager));
+                from = from.ToList().SortList(new AvailableBalanceAscending());
             }
             else if (addressUsagePolicy == AddressUsagePolicy.UseMaximumBalanceFirst)
             {
-                from = from.ToList().SortList(new AvailableBalanceDescending(AssetWarrantyManager));
+                from = from.ToList().SortList(new AvailableBalanceDescending());
             }
             else if (addressUsagePolicy == AddressUsagePolicy.UseOnlyOneAddress)
             {
@@ -654,7 +652,7 @@ namespace Atomex.Wallet.Tezos
                     .ConfigureAwait(false);
                 var requiredAmountInTez = amount + feeInTez + storageFeeInTez;
 
-                var address = from.FirstOrDefault(w => w.AvailableBalance(AssetWarrantyManager) >= requiredAmountInTez);
+                var address = from.FirstOrDefault(w => w.AvailableBalance() >= requiredAmountInTez);
 
                 return address != null
                     ? new List<SelectedWalletAddress> {
@@ -678,7 +676,7 @@ namespace Atomex.Wallet.Tezos
 
                 foreach (var address in from)
                 {
-                    var availableBalanceInTez = address.AvailableBalance(AssetWarrantyManager);
+                    var availableBalanceInTez = address.AvailableBalance();
 
                     var txFeeInTez = feeUsagePolicy == FeeUsagePolicy.EstimatedFee
                         ? FeeByType(transactionType, isFirstTx)

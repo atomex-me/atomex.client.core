@@ -1,11 +1,10 @@
 ﻿using Atomex.Abstract;
 using Atomex.Common.Proto;
 using Atomex.Core;
-using Atomex.Core.Entities;
 
 namespace Atomex.Api.Proto
 {
-    public class SwapScheme : ProtoScheme<Response<ClientSwap>>
+    public class SwapScheme : ProtoScheme<Response<Swap>>
     {
         public SwapScheme(byte messageId, ICurrencies currencies)
             : base(messageId)
@@ -17,30 +16,30 @@ namespace Atomex.Api.Proto
             Model.Add(typeof(Symbol), true)
                 .AddRequired(nameof(Symbol.Name));
 
-            Model.Add(typeof(ClientSwap), true)
-                .AddRequired(nameof(ClientSwap.Id))
-                .AddRequired(nameof(ClientSwap.Status))
-                .AddRequired(nameof(ClientSwap.SecretHash))
-                .AddRequired(nameof(ClientSwap.TimeStamp))
-                .AddRequired(nameof(ClientSwap.OrderId))
-                .AddRequired(nameof(ClientSwap.Symbol))
-                .AddRequired(nameof(ClientSwap.Side))
-                .AddRequired(nameof(ClientSwap.Price))
-                .AddRequired(nameof(ClientSwap.Qty))
-                .AddRequired(nameof(ClientSwap.IsInitiative))
-                .AddRequired(nameof(ClientSwap.ToAddress))
-                .AddRequired(nameof(ClientSwap.RewardForRedeem))
-                .AddRequired(nameof(ClientSwap.PaymentTxId))
-                .AddRequired(nameof(ClientSwap.RedeemScript))
-                .AddRequired(nameof(ClientSwap.PartyAddress))
-                .AddRequired(nameof(ClientSwap.PartyRewardForRedeem))
-                .AddRequired(nameof(ClientSwap.PartyPaymentTxId))
-                .AddRequired(nameof(ClientSwap.PartyRedeemScript));
+            Model.Add(typeof(Swap), true)
+                .AddRequired(nameof(Swap.Id))
+                .AddRequired(nameof(Swap.Status))
+                .AddRequired(nameof(Swap.SecretHash))
+                .AddRequired(nameof(Swap.TimeStamp))
+                .AddRequired(nameof(Swap.OrderId))
+                .AddRequired(nameof(Swap.Symbol))
+                .AddRequired(nameof(Swap.Side))
+                .AddRequired(nameof(Swap.Price))
+                .AddRequired(nameof(Swap.Qty))
+                .AddRequired(nameof(Swap.IsInitiative))
+                .AddRequired(nameof(Swap.ToAddress))
+                .AddRequired(nameof(Swap.RewardForRedeem))
+                .AddRequired(nameof(Swap.PaymentTxId))
+                .AddRequired(nameof(Swap.RedeemScript))
+                .AddRequired(nameof(Swap.PartyAddress))
+                .AddRequired(nameof(Swap.PartyRewardForRedeem))
+                .AddRequired(nameof(Swap.PartyPaymentTxId))
+                .AddRequired(nameof(Swap.PartyRedeemScript));
 
-            Model.Add(typeof(Response<ClientSwap>), true)
-                .AddRequired(nameof(Response<ClientSwap>.RequestId))
-                .AddRequired(nameof(Response<ClientSwap>.Data))
-                .AddRequired(nameof(Response<ClientSwap>.EndOfMessage));
+            Model.Add(typeof(Response<Swap>), true)
+                .AddRequired(nameof(Response<Swap>.RequestId))
+                .AddRequired(nameof(Response<Swap>.Data))
+                .AddRequired(nameof(Response<Swap>.EndOfMessage));
         }
     }
 }

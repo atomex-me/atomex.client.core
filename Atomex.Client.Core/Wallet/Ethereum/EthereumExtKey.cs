@@ -8,7 +8,7 @@ namespace Atomex.Wallet.Ethereum
 {
     public class EthereumExtKey : BitcoinBasedExtKey
     {
-        public EthereumExtKey(byte[] seed)
+        public EthereumExtKey(SecureBytes seed)
             : base(seed)
         {
         }
@@ -56,17 +56,11 @@ namespace Atomex.Wallet.Ethereum
 
         private EthECKey GetEcKey()
         {
-            GetPrivateKey(out var privateKey);
+            using var securePrivateKey = GetPrivateKey();
+            using var privateKey = securePrivateKey.ToUnsecuredBytes();
 
-            try
-            {
-                // todo: use SecureString instead
-                return new EthECKey(privateKey.ToHexString());
-            }
-            finally
-            {
-                privateKey.Clear();
-            }
+            return new EthECKey(privateKey, true);
         }
     }
+
 }

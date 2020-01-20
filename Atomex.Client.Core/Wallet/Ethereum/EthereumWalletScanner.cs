@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Ethereum;
+using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 using Serilog;
@@ -17,9 +18,10 @@ namespace Atomex.Wallet.Ethereum
 
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
-        private IAccount Account { get; }
+        private EthereumAccount Account { get; }
+        private Currency Currency => Account.Currency;
 
-        public EthereumWalletScanner(IAccount account)
+        public EthereumWalletScanner(EthereumAccount account)
         {
             Account = account ?? throw new ArgumentNullException(nameof(account));
         }
@@ -28,8 +30,6 @@ namespace Atomex.Wallet.Ethereum
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
-            var currency = Account.Currencies.Get<Atomex.Ethereum>();
-
             var scanParams = new[]
             {
                 new {Chain = HdKeyStorage.NonHdKeysChain, LookAhead = 0},
@@ -51,7 +51,7 @@ namespace Atomex.Wallet.Ethereum
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var walletAddress = await Account
-                        .DivideAddressAsync(currency, param.Chain, index)
+                        .DivideAddressAsync(param.Chain, index)
                         .ConfigureAwait(false);
 
                     if (walletAddress == null)
@@ -60,7 +60,7 @@ namespace Atomex.Wallet.Ethereum
                     if (skipUsed)
                     {
                         var resolvedAddress = await Account
-                            .ResolveAddressAsync(currency, walletAddress.Address, cancellationToken)
+                            .ResolveAddressAsync(walletAddress.Address, cancellationToken)
                             .ConfigureAwait(false);
 
                         if (resolvedAddress != null &&
@@ -78,12 +78,12 @@ namespace Atomex.Wallet.Ethereum
 
                     Log.Debug(
                         "Scan transactions for {@name} address {@chain}:{@index}:{@address}",
-                        currency.Name,
+                        Currency.Name,
                         param.Chain,
                         index,
                         walletAddress.Address);
 
-                    var txsResult = await ((IEthereumBlockchainApi)currency.BlockchainApi)
+                    var txsResult = await ((IEthereumBlockchainApi)Currency.BlockchainApi)
                         .TryGetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -152,9 +152,7 @@ namespace Atomex.Wallet.Ethereum
                     .ConfigureAwait(false);
 
             await Account
-                .UpdateBalanceAsync(
-                    currency: currency,
-                    cancellationToken: cancellationToken)
+                .UpdateBalanceAsync(cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -162,13 +160,11 @@ namespace Atomex.Wallet.Ethereum
             string address,
             CancellationToken cancellationToken = default)
         {
-            var currency = Account.Currencies.Get<Atomex.Ethereum>();
-
             Log.Debug("Scan transactions for {@currency} address {@address}",
-                currency.Name,
+                Currency.Name,
                 address);
 
-            var txsResult = await ((IEthereumBlockchainApi)currency.BlockchainApi)
+            var txsResult = await ((IEthereumBlockchainApi)Currency.BlockchainApi)
                 .TryGetTransactionsAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -225,10 +221,7 @@ namespace Atomex.Wallet.Ethereum
                     .ConfigureAwait(false);
 
             await Account
-                .UpdateBalanceAsync(
-                    currency: currency,
-                    address: address,
-                    cancellationToken: cancellationToken)
+                .UpdateBalanceAsync(address, cancellationToken)
                 .ConfigureAwait(false);
         }
 

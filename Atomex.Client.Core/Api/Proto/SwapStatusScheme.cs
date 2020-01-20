@@ -1,20 +1,19 @@
 ﻿using Atomex.Common.Proto;
 using Atomex.Core;
-using Atomex.Core.Entities;
 
 namespace Atomex.Api.Proto
 {
-    public class SwapStatusScheme : ProtoScheme<Request<ClientSwap>>
+    public class SwapStatusScheme : ProtoScheme<Request<Swap>>
     {
         public SwapStatusScheme(byte messageId)
             : base(messageId)
         {
-            Model.Add(typeof(ClientSwap), true)
-                .AddRequired(nameof(ClientSwap.Id));
+            Model.Add(typeof(Swap), true)
+                .AddRequired(nameof(Swap.Id));
 
-            Model.Add(typeof(Request<ClientSwap>), true)
-                .AddRequired(nameof(Request<ClientSwap>.Id))
-                .AddRequired(nameof(Request<ClientSwap>.Data));
+            Model.Add(typeof(Request<Swap>), true)
+                .AddRequired(nameof(Request<Swap>.Id))
+                .AddRequired(nameof(Request<Swap>.Data));
         }
     }
 }

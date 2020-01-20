@@ -2,8 +2,8 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Atomex.Core;
 using Atomex.Blockchain.Abstract;
-using Atomex.Core.Entities;
 
 namespace Atomex.Swaps.Helpers
 {
@@ -11,9 +11,9 @@ namespace Atomex.Swaps.Helpers
     {
         public static Task<string> ForceBroadcast(
             this IBlockchainTransaction tx,
-            ClientSwap swap,
+            Swap swap,
             TimeSpan interval,
-            Action<ClientSwap, string, CancellationToken> completionHandler = null,
+            Action<Swap, string, CancellationToken> completionHandler = null,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>

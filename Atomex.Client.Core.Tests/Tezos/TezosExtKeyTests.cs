@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using Atomex.Common;
 using Atomex.Wallet.Tezos;
 using NBitcoin;
 using Xunit;
@@ -17,12 +18,11 @@ namespace Atomex.Client.Core.Tests
         {
             var messageBytes = Encoding.UTF8.GetBytes(Message);
 
-            var seed = new Mnemonic(Mnemonic).DeriveSeed();
-
-            var extKey = new TrustWalletTezosExtKey(seed);
-
-            var childKey = extKey.Derive(new KeyPath("m/44'/1729'/0'/0'"));
-            childKey.GetPublicKey(out var childPublicKey);
+            using var seed = new SecureBytes(new Mnemonic(Mnemonic).DeriveSeed());
+            using var extKey = new TrustWalletTezosExtKey(seed);
+            using var childKey = extKey.Derive(new KeyPath("m/44'/1729'/0'/0'"));
+            using var secureChildPublicKey = childKey.GetPublicKey();
+            using var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
 
             var signature = childKey.SignMessage(messageBytes);
             Assert.True(childKey.VerifyMessage(messageBytes, signature));
@@ -36,12 +36,11 @@ namespace Atomex.Client.Core.Tests
         {
             var messageBytes = Encoding.UTF8.GetBytes(Message);
 
-            var seed = new Mnemonic(Mnemonic).DeriveSeed();
-
-            var extKey = new TezosExtKey(seed);
-
-            var childKey = extKey.Derive(new KeyPath("m/44'/1729'/0'/0'"));
-            childKey.GetPublicKey(out var childPublicKey);
+            using var seed = new SecureBytes(new Mnemonic(Mnemonic).DeriveSeed());
+            using var extKey = new TezosExtKey(seed);
+            using var childKey = extKey.Derive(new KeyPath("m/44'/1729'/0'/0'"));
+            using var secureChildPublicKey = childKey.GetPublicKey();
+            using var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
 
             var signature = childKey.SignMessage(messageBytes);
             Assert.True(childKey.VerifyMessage(messageBytes, signature));
@@ -55,14 +54,14 @@ namespace Atomex.Client.Core.Tests
         {
             var messageBytes = Encoding.UTF8.GetBytes(Message);
 
-            var seed = new Mnemonic(Mnemonic).DeriveSeed();
-
-            var extKey = new TezosExtKey(seed);
+            using var seed = new SecureBytes(new Mnemonic(Mnemonic).DeriveSeed());
+            using var extKey = new TezosExtKey(seed);
 
             for (var i = 0; i < 100; ++i)
             {
-                var childKey = extKey.Derive(new KeyPath($"m/44'/1729'/0'/0/{i}"));
-                childKey.GetPublicKey(out var childPublicKey);
+                using var childKey = extKey.Derive(new KeyPath($"m/44'/1729'/0'/0/{i}"));
+                using var secureChildPublicKey = childKey.GetPublicKey();
+                using var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
 
                 var signature = childKey.SignMessage(messageBytes);
                 Assert.True(childKey.VerifyMessage(messageBytes, signature));

@@ -5,7 +5,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Common;
-using Atomex.Core.Entities;
+using Atomex.Core;
 using Atomex.MarketData.Abstract;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;

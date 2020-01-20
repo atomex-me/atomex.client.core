@@ -5,7 +5,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.Wallet.Abstract;
 using Serilog;
 
@@ -212,7 +211,7 @@ namespace Atomex.Common
                     continue;
 
                 var resolvedAddress = await account
-                    .ResolveAddressAsync(wallet.Currency, wallet.Address, cancellationToken)
+                    .ResolveAddressAsync(wallet.Currency.Name, wallet.Address, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (resolvedAddress == null)

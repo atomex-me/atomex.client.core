@@ -4,7 +4,7 @@ using System.Linq;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
-using Atomex.Core.Entities;
+using Atomex.Core;
 using LiteDB;
 using NBitcoin;
 

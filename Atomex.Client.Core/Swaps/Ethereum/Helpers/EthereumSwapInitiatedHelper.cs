@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Serilog;
 
 namespace Atomex.Swaps.Ethereum.Helpers
@@ -13,7 +12,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
     public static class EthereumSwapInitiatedHelper
     {
         public static async Task<Result<bool>> IsInitiatedAsync(
-            ClientSwap swap,
+            Swap swap,
             Currency currency,
             long refundTimeStamp,
             CancellationToken cancellationToken = default)
@@ -139,12 +138,12 @@ namespace Atomex.Swaps.Ethereum.Helpers
         }
 
         public static Task StartSwapInitiatedControlAsync(
-            ClientSwap swap,
+            Swap swap,
             Currency currency,
             long refundTimeStamp,
             TimeSpan interval,
-            Action<ClientSwap, CancellationToken> initiatedHandler = null,
-            Action<ClientSwap, CancellationToken> canceledHandler = null,
+            Action<Swap, CancellationToken> initiatedHandler = null,
+            Action<Swap, CancellationToken> canceledHandler = null,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>

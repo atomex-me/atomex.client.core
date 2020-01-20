@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Core;
-using Atomex.Core.Entities;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -108,17 +107,8 @@ namespace Atomex.Wallet.Abstract
             bool notifyIfBalanceUpdated = true,
             CancellationToken cancellationToken = default);
 
+        Task<IBlockchainTransaction> GetTransactionByIdAsync(string txId);
+
         #endregion Transactions
-
-        #region Outputs
-
-        Task UpsertOutputsAsync(
-            IEnumerable<ITxOutput> outputs,
-            Currency currency,
-            string address,
-            bool notifyIfBalanceUpdated = true,
-            CancellationToken cancellationToken = default);
-
-        #endregion Outputs
     }
 }

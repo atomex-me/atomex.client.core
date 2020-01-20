@@ -2,16 +2,16 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
-using Atomex.Core.Entities;
-using Atomex.Wallet.Abstract;
+using Atomex.Core;
+using Atomex.Wallet.BitcoinBased;
 
 namespace Atomex.Wallet
 {
     public class LocalTxOutputSource : ITxOutputSource
     {
-        private readonly IAccount _account;
+        private readonly BitcoinBasedAccount _account;
 
-        public LocalTxOutputSource(IAccount account)
+        public LocalTxOutputSource(BitcoinBasedAccount account)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
         }
@@ -24,7 +24,7 @@ namespace Atomex.Wallet
             foreach (var a in addresses)
             {
                 var unspentOuts = await _account
-                    .GetAvailableOutputsAsync(a.Currency, a.Address)
+                    .GetAvailableOutputsAsync(a.Address)
                     .ConfigureAwait(false);
 
                 outputs.AddRange(unspentOuts);
@@ -34,7 +34,7 @@ namespace Atomex.Wallet
         }
 
         public async Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
-            Currency currency,
+            string currency,
             IEnumerable<string> addresses)
         {
             var outputs = new List<ITxOutput>();
@@ -42,7 +42,7 @@ namespace Atomex.Wallet
             foreach (var address in addresses)
             {
                 var unspentOuts = await _account
-                    .GetAvailableOutputsAsync(currency, address)
+                    .GetAvailableOutputsAsync(address)
                     .ConfigureAwait(false);
 
                 outputs.AddRange(unspentOuts);

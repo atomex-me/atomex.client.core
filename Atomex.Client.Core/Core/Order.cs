@@ -3,8 +3,31 @@ using System.Collections.Generic;
 using Atomex.Common.Json;
 using Newtonsoft.Json;
 
-namespace Atomex.Core.Entities
+namespace Atomex.Core
 {
+    public enum Side
+    {
+        Buy,
+        Sell
+    }
+
+    public enum OrderStatus
+    {
+        Pending,
+        Placed,
+        PartiallyFilled,
+        Filled,
+        Canceled,
+        Rejected
+    }
+
+    public enum OrderType
+    {
+        Return,
+        FillOrKill,
+        ImmediateOrCancel
+    }
+
     public class Order
     {
         public long Id { get; set; }

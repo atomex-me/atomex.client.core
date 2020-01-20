@@ -2,7 +2,6 @@
 using System.Linq;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using NBitcoin;
 using Serilog;
 
@@ -12,7 +11,7 @@ namespace Atomex.Blockchain.BitcoinBased
     {
         public static bool TryVerifyPartyPaymentTx(
             IBitcoinBasedTransaction tx,
-            ClientSwap swap,
+            Swap swap,
             byte[] secretHash,
             long refundLockTime,
             out Error error)
@@ -23,9 +22,11 @@ namespace Atomex.Blockchain.BitcoinBased
             if (swap == null)
                 throw new ArgumentNullException(nameof(swap));
 
+            var currency = (BitcoinBasedCurrency)swap.PurchasedCurrency;
+
             var partyRedeemScript = new Script(Convert.FromBase64String(swap.PartyRedeemScript));
 
-            var targetAddressHash = new BitcoinPubKeyAddress(swap.ToAddress)
+            var targetAddressHash = new BitcoinPubKeyAddress(swap.ToAddress, currency.Network)
                 .Hash
                 .ToBytes();
 
@@ -72,8 +73,6 @@ namespace Atomex.Blockchain.BitcoinBased
                     }
 
                     // check swap amount
-                    var currency = (BitcoinBasedCurrency) swap.PurchasedCurrency;
-
                     var side = swap.Symbol
                         .OrderSideForBuyCurrency(currency)
                         .Opposite();

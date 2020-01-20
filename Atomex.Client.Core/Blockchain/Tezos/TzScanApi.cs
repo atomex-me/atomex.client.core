@@ -8,7 +8,6 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;

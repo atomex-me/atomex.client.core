@@ -1,4 +1,5 @@
 ﻿using System;
+using Atomex.Common;
 using Atomex.Cryptography;
 using NBitcoin;
 
@@ -8,15 +9,14 @@ namespace Atomex.Wallet.BitcoinBased
     {
         protected ExtKey Key { get; }
 
-        public BitcoinBasedExtKey(byte[] seed)
+        public BitcoinBasedExtKey(SecureBytes seed)
         {
-            Key = new ExtKey(seed);
+            using var scopedSeed = seed.ToUnsecuredBytes();
+
+            Key = new ExtKey(scopedSeed);
         }
 
-        protected BitcoinBasedExtKey(ExtKey key)
-        {
-            Key = key;
-        }
+        protected BitcoinBasedExtKey(ExtKey key) => Key = key;
 
         public virtual IExtKey Derive(uint index)
         {
@@ -28,16 +28,18 @@ namespace Atomex.Wallet.BitcoinBased
             return new BitcoinBasedExtKey(Key.Derive(keyPath));
         }
 
-        public virtual void GetPrivateKey(out byte[] privateKey)
+        public virtual SecureBytes GetPrivateKey()
         {
-            // todo: dot not store key in heap
-            privateKey = Key.PrivateKey.ToBytes();
+            using var privateKey = new ScopedBytes(Key.PrivateKey.ToBytes());
+
+            return new SecureBytes(privateKey);
         }
 
-        public virtual void GetPublicKey(out byte[] publicKey)
+        public virtual SecureBytes GetPublicKey()
         {
-            // todo: dot not store key in heap
-            publicKey = Key.PrivateKey.PubKey.ToBytes();
+            using var publicKey = new ScopedBytes(Key.PrivateKey.PubKey.ToBytes());
+
+            return new SecureBytes(publicKey);
         }
 
         public virtual byte[] SignHash(byte[] hash)
@@ -81,6 +83,11 @@ namespace Atomex.Wallet.BitcoinBased
                 .PrivateKey
                 .PubKey
                 .VerifyMessage(data, Convert.ToBase64String(signature));
+        }
+
+        public void Dispose()
+        {
+            //Key.Dispose(); // may be nbitcoin learn to dispose keys?
         }
     }
 }

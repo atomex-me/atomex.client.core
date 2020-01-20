@@ -3,11 +3,9 @@ using System.IO;
 using Atomex.Api.Proto;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
 using Microsoft.Extensions.Configuration;
-using ClientSwap = Atomex.Core.Entities.ClientSwap;
 
 namespace Atomex.Web
 {
@@ -71,17 +69,17 @@ namespace Atomex.Web
             SendAsync(Schemes.Orders.SerializeWithMessageId(request));
         }
 
-        public void SwapInitiateAsync(ClientSwap swap)
+        public void SwapInitiateAsync(Swap swap)
         {
             SendAsync(Schemes.SwapInitiate.SerializeWithMessageId(swap));
         }
 
-        public void SwapAcceptAsync(ClientSwap swap)
+        public void SwapAcceptAsync(Swap swap)
         {
             SendAsync(Schemes.SwapAccept.SerializeWithMessageId(swap));
         }
 
-        public void SwapPaymentAsync(ClientSwap swap)
+        public void SwapPaymentAsync(Swap swap)
         {
             SendAsync(Schemes.SwapPayment.SerializeWithMessageId(swap));
         }

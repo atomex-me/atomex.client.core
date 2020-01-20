@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Serilog;
 
 namespace Atomex.Swaps.Tezos.Helpers
@@ -13,7 +12,7 @@ namespace Atomex.Swaps.Tezos.Helpers
     public static class TezosSwapRefundedHelper
     {
         public static async Task<Result<bool>> IsRefundedAsync(
-            ClientSwap swap,
+            Swap swap,
             Currency currency,
             CancellationToken cancellationToken = default)
         {
@@ -77,7 +76,7 @@ namespace Atomex.Swaps.Tezos.Helpers
         }
 
         public static async Task<Result<bool>> IsRefundedAsync(
-            ClientSwap swap,
+            Swap swap,
             Currency currency,
             int attempts,
             int attemptIntervalInSec,

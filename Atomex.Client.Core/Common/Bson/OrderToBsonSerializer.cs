@@ -1,4 +1,4 @@
-﻿using Atomex.Core.Entities;
+﻿using Atomex.Core;
 using LiteDB;
 
 namespace Atomex.Common.Bson

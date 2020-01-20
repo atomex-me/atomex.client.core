@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Xunit;
 
 namespace Atomex.Client.Core.Tests
@@ -43,7 +42,7 @@ namespace Atomex.Client.Core.Tests
 
             tx.Sign(Common.Alice, initTx.Outputs);
 
-            var swap = new ClientSwap
+            var swap = new Swap
             {
                 PartyRedeemScript = Convert.ToBase64String(redeemScript),
                 ToAddress = Common.Bob.PubKey.GetAddress(currency),

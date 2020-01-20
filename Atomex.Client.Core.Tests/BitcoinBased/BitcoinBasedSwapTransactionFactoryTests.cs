@@ -8,7 +8,6 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.Swaps.BitcoinBased;
 using Moq;
 using NBitcoin;
@@ -63,7 +62,7 @@ namespace Atomex.Client.Core.Tests
             const decimal lastPrice = 0.000001m;
             const decimal lastQty = 10m;
 
-            var swap = new ClientSwap
+            var swap = new Swap
             {
                 Symbol = new Symbol { Base = litecoin, Quote = bitcoin },
                 Side = Side.Buy,
@@ -83,7 +82,7 @@ namespace Atomex.Client.Core.Tests
                     lockTime: DateTimeOffset.UtcNow.AddHours(1),
                     secretHash: Common.SecretHash,
                     secretSize: Common.Secret.Length,
-                    outputsSource: new BlockchainTxOutputSource())
+                    outputsSource: new BlockchainTxOutputSource(bitcoin))
                 .ConfigureAwait(false);
 
             Assert.NotNull(tx);

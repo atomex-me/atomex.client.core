@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Atomex.Blockchain.Abstract;
-using Atomex.Core.Entities;
+using Atomex.Core;
 
 namespace Atomex.Common
 {

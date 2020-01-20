@@ -1,7 +1,6 @@
 ﻿using System;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Insight;
-using Atomex.Blockchain.SoChain;
 using Atomex.Wallet.Bip;
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
@@ -78,9 +77,6 @@ namespace Atomex
         {
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();
-
-            if (blockchainApi.Equals("sochain"))
-                return new SoChainApi(this);
 
             if (blockchainApi.Equals("insight"))
                 return new InsightApi(this, configuration);

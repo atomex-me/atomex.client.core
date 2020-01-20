@@ -1,5 +1,5 @@
 ﻿using Atomex.Common.Proto;
-using Atomex.Core.Entities;
+using Atomex.Core;
 
 namespace Atomex.Api.Proto
 {

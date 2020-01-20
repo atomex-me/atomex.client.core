@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Serilog;
 
 namespace Atomex.Blockchain.BitcoinBased.Helpers

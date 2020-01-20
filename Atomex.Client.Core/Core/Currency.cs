@@ -1,14 +1,15 @@
 ﻿using System;
 using Atomex.Blockchain.Abstract;
+using Atomex.Common;
 using Atomex.Cryptography;
 
-namespace Atomex.Core.Entities
+namespace Atomex.Core
 {
     public abstract class Currency
     {
         public const int MaxNameLength = 32;
         public const string CoinsDefaultFileName = "coins.default.json";
-            
+
         public int Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
@@ -32,9 +33,9 @@ namespace Atomex.Core.Entities
         public bool IsSwapAvailable { get; protected set; }
         public uint Bip44Code { get; protected set; }
 
-        public abstract IExtKey CreateExtKey(byte[] seed);
+        public abstract IExtKey CreateExtKey(SecureBytes seed);
 
-        public abstract IKey CreateKey(byte[] seed);
+        public abstract IKey CreateKey(SecureBytes seed);
 
         public abstract string AddressFromKey(byte[] publicKey);
 

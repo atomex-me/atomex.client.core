@@ -10,7 +10,6 @@ using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.LiteDb;
 using Atomex.Wallet.Abstract;
 using Microsoft.Extensions.Configuration;
@@ -56,7 +55,6 @@ namespace Atomex.Wallet
         public IHdWallet Wallet { get; }
         public ICurrencies Currencies { get; }
         public ISymbols Symbols { get; }
-        public IAssetWarrantyManager AssetWarrantyManager { get; }
         public UserSettings UserSettings { get; private set; }
 
         private IAccountDataRepository DataRepository { get; }
@@ -92,16 +90,13 @@ namespace Atomex.Wallet
                 symbols: Symbols,
                 network: wallet.Network);
 
-            AssetWarrantyManager = new AssetWarrantyManager();
-
             CurrencyAccounts = Currencies
                 .ToDictionary(
                     c => c.Name,
                     c => CurrencyAccountCreator.Create(
                         currency: c,
                         wallet: Wallet,
-                        dataRepository: DataRepository,
-                        assetWarrantyManager: AssetWarrantyManager));
+                        dataRepository: DataRepository));
 
             UserSettings = UserSettings.TryLoadFromFile(
                 pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
@@ -131,7 +126,7 @@ namespace Atomex.Wallet
         }
 
         public Task<Error> SendAsync(
-            Currency currency,
+            string currency,
             IEnumerable<WalletAddress> from,
             string to,
             decimal amount,
@@ -139,7 +134,7 @@ namespace Atomex.Wallet
             decimal feePrice,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .SendAsync(
                     from: from,
                     to: to,
@@ -150,14 +145,14 @@ namespace Atomex.Wallet
         }
 
         public Task<Error> SendAsync(
-            Currency currency,
+            string currency,
             string to,
             decimal amount,
             decimal fee,
             decimal feePrice,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .SendAsync(
                     to: to,
                     amount: amount,
@@ -167,23 +162,23 @@ namespace Atomex.Wallet
         }
 
         public Task<decimal?> EstimateFeeAsync(
-            Currency currency,
+            string currency,
             string to,
             decimal amount,
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .EstimateFeeAsync(to, amount, type, cancellationToken);
         }
 
         public Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
-            Currency currency,
+            string currency,
             string to,
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .EstimateMaxAmountToSendAsync(to, type, cancellationToken);
         }
 
@@ -195,14 +190,15 @@ namespace Atomex.Wallet
                 return null;
             }
 
-            var servicePublicKey = Wallet.GetServicePublicKey(keyIndex);
+            using var securePublicKey = Wallet.GetServicePublicKey(keyIndex);
+            using var publicKey = securePublicKey.ToUnsecuredBytes();
 
             var auth = new Auth
             {
                 TimeStamp = DateTime.UtcNow,
                 Nonce = nonce.Nonce,
                 ClientNonce = Guid.NewGuid().ToString(),
-                PublicKeyHex = servicePublicKey.ToHexString(),
+                PublicKeyHex = publicKey.Data.ToHexString(),
                 Version = ApiVersion
             };
 
@@ -263,35 +259,35 @@ namespace Atomex.Wallet
         #region Balances
 
         public Task<Balance> GetBalanceAsync(
-            Currency currency,
+            string currency,
             CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(GetCurrencyAccount(currency.Name).GetBalance());
+            return Task.FromResult(GetCurrencyAccount(currency).GetBalance());
         }
 
         public Task<Balance> GetAddressBalanceAsync(
-            Currency currency,
+            string currency,
             string address,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .GetAddressBalanceAsync(address, cancellationToken);
         }
 
         public Task UpdateBalanceAsync(
-            Currency currency,
+            string currency,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .UpdateBalanceAsync(cancellationToken);
         }
 
         public Task UpdateBalanceAsync(
-            Currency currency,
+            string currency,
             string address,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .UpdateBalanceAsync(address, cancellationToken);
         }
 
@@ -300,33 +296,33 @@ namespace Atomex.Wallet
         #region Addresses
 
         public Task<WalletAddress> DivideAddressAsync(
-            Currency currency,
+            string currency,
             int chain,
             uint index)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .DivideAddressAsync(chain, index);
         }
 
         public Task<WalletAddress> ResolveAddressAsync(
-            Currency currency,
+            string currency,
             string address,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .ResolveAddressAsync(address, cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
-            Currency currency,
+            string currency,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .GetUnspentAddressesAsync(cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
-            Currency currency,
+            string currency,
             string toAddress,
             decimal amount,
             decimal fee,
@@ -336,7 +332,7 @@ namespace Atomex.Wallet
             BlockchainTransactionType transactionType,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .GetUnspentAddressesAsync(
                     toAddress: toAddress,
                     amount: amount,
@@ -349,34 +345,34 @@ namespace Atomex.Wallet
         }
 
         public Task<WalletAddress> GetFreeInternalAddressAsync(
-            Currency currency,
+            string currency,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .GetFreeInternalAddressAsync(cancellationToken);
         }
 
         public Task<WalletAddress> GetFreeExternalAddressAsync(
-            Currency currency,
+            string currency,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .GetFreeExternalAddressAsync(cancellationToken);
         }
 
         public Task<WalletAddress> GetRefundAddressAsync(
-            Currency currency,
+            string currency,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .GetRefundAddressAsync(cancellationToken);
         }
 
         public Task<WalletAddress> GetRedeemAddressAsync(
-            Currency currency,
+            string currency,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency.Name)
+            return GetCurrencyAccount(currency)
                 .GetRedeemAddressAsync(cancellationToken);
         }
 
@@ -401,15 +397,20 @@ namespace Atomex.Wallet
         }
 
         public Task<IBlockchainTransaction> GetTransactionByIdAsync(
-            Currency currency,
+            string currency,
             string txId)
         {
-            return DataRepository.GetTransactionByIdAsync(currency, txId);
+            return DataRepository.GetTransactionByIdAsync(
+                currency: currency,
+                txId: txId,
+                transactionType: Currencies.GetByName(currency).TransactionType);
         }
 
-        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(Currency currency)
+        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(string currency)
         {
-            return DataRepository.GetTransactionsAsync(currency);
+            return DataRepository.GetTransactionsAsync(
+                currency: currency,
+                transactionType: Currencies.GetByName(currency).TransactionType);
         }
 
         public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync()
@@ -418,7 +419,7 @@ namespace Atomex.Wallet
 
             foreach (var currency in Currencies)
             {
-                var txs = await GetTransactionsAsync(currency)
+                var txs = await GetTransactionsAsync(currency.Name)
                     .ConfigureAwait(false);
 
                 result.AddRange(txs);
@@ -433,54 +434,6 @@ namespace Atomex.Wallet
         }
 
         #endregion Transactions
-
-        #region Outputs
-
-        public Task UpsertOutputsAsync(
-            IEnumerable<ITxOutput> outputs,
-            Currency currency,
-            string address,
-            bool notifyIfBalanceUpdated = true)
-        {
-            return GetCurrencyAccount(currency.Name)
-                .UpsertOutputsAsync(
-                    outputs: outputs,
-                    currency: currency,
-                    address: address,
-                    notifyIfBalanceUpdated: notifyIfBalanceUpdated);
-        }
-
-        public Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(Currency currency)
-        {
-            return DataRepository.GetAvailableOutputsAsync(
-                currency: currency);
-        }
-
-        public Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
-            Currency currency,
-            string address)
-        {
-            return DataRepository.GetAvailableOutputsAsync(
-                currency: currency,
-                address: address);
-        }
-
-        public Task<IEnumerable<ITxOutput>> GetOutputsAsync(Currency currency)
-        {
-            return DataRepository.GetOutputsAsync(currency);
-        }
-
-        public Task<IEnumerable<ITxOutput>> GetOutputsAsync(Currency currency, string address)
-        {
-            return DataRepository.GetOutputsAsync(currency, address);
-        }
-
-        public Task<ITxOutput> GetOutputAsync(Currency currency, string txId, uint index)
-        {
-            return DataRepository.GetOutputAsync(currency, txId, index);
-        }
-
-        #endregion Outputs
 
         #region Orders
 
@@ -503,22 +456,22 @@ namespace Atomex.Wallet
 
         #region Swaps
 
-        public Task<bool> AddSwapAsync(ClientSwap clientSwap)
+        public Task<bool> AddSwapAsync(Swap swap)
         {
-            return DataRepository.AddSwapAsync(clientSwap);
+            return DataRepository.AddSwapAsync(swap);
         }
 
-        public Task<bool> UpdateSwapAsync(ClientSwap clientSwap)
+        public Task<bool> UpdateSwapAsync(Swap swap)
         {
-            return DataRepository.UpdateSwapAsync(clientSwap);
+            return DataRepository.UpdateSwapAsync(swap);
         }
 
-        public Task<ClientSwap> GetSwapByIdAsync(long swapId)
+        public Task<Swap> GetSwapByIdAsync(long swapId)
         {
             return DataRepository.GetSwapByIdAsync(swapId);
         }
 
-        public Task<IEnumerable<ClientSwap>> GetSwapsAsync()
+        public Task<IEnumerable<Swap>> GetSwapsAsync()
         {
             return DataRepository.GetSwapsAsync();
         }

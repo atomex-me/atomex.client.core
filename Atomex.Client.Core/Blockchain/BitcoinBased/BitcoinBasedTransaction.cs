@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.Wallet.Abstract;
 using NBitcoin;
 using NBitcoin.Policy;
@@ -103,7 +102,7 @@ namespace Atomex.Blockchain.BitcoinBased
 
                 var walletAddress = await addressResolver
                     .ResolveAddressAsync(
-                        currency: Currency,
+                        currency: Currency.Name,
                         address: address,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
@@ -114,7 +113,9 @@ namespace Atomex.Blockchain.BitcoinBased
                     return false;
                 }
 
-                Sign(keyStorage.GetPrivateKey(Currency, walletAddress.KeyIndex), spentOutput);
+                using var securePrivateKey = keyStorage.GetPrivateKey(Currency, walletAddress.KeyIndex);
+
+                Sign(securePrivateKey, spentOutput);
             }
 
             return true;
@@ -123,13 +124,16 @@ namespace Atomex.Blockchain.BitcoinBased
         public void Sign(Key privateKey, ITxOutput spentOutput)
         {
             var output = (BitcoinBasedTxOutput)spentOutput;
+            var currency = (BitcoinBasedCurrency)Currency;
 
-            Tx.Sign(privateKey, output.Coin);
+            Tx.Sign(new BitcoinSecret(privateKey, currency.Network), output.Coin);
         }
 
-        public void Sign(byte[] privateKey, ITxOutput spentOutput)
+        public void Sign(SecureBytes privateKey, ITxOutput spentOutput)
         {
-            Sign(new Key(privateKey), spentOutput);
+            using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
+
+            Sign(new Key(scopedPrivateKey), spentOutput); // todo: do not use NBitcoin.Key
         }
 
         public void Sign(Key privateKey, ITxOutput[] spentOutputs)
@@ -138,9 +142,11 @@ namespace Atomex.Blockchain.BitcoinBased
                 Sign(privateKey, output);
         }
 
-        public void Sign(byte[] privateKey, ITxOutput[] spentOutputs)
+        public void Sign(SecureBytes privateKey, ITxOutput[] spentOutputs)
         {
-            Sign(new Key(privateKey), spentOutputs);
+            using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
+
+            Sign(new Key(scopedPrivateKey), spentOutputs); // todo: do not use NBitcoin.Key
         }
 
         public void NonStandardSign(byte[] sigScript, ITxOutput spentOutput)

@@ -7,7 +7,6 @@ using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Abstract
@@ -17,10 +16,9 @@ namespace Atomex.Wallet.Abstract
         public event EventHandler<CurrencyEventArgs> BalanceUpdated;
         public event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded;
 
-        protected Currency Currency { get; }
-        protected IHdWallet Wallet { get; }
+        public Currency Currency { get; }
+        public IHdWallet Wallet { get; }
         protected IAccountDataRepository DataRepository { get; }
-        protected IAssetWarrantyManager AssetWarrantyManager { get; }
         protected decimal Balance { get; set; }
         protected decimal UnconfirmedIncome { get; set; }
         protected decimal UnconfirmedOutcome { get; set; }
@@ -28,13 +26,11 @@ namespace Atomex.Wallet.Abstract
         protected CurrencyAccount(
             Currency currency,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository,
-            IAssetWarrantyManager assetWarrantyManager)
+            IAccountDataRepository dataRepository)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
             DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
-            AssetWarrantyManager = assetWarrantyManager ?? throw new ArgumentNullException(nameof(assetWarrantyManager));
 
             PreloadBalances();
         }
@@ -103,7 +99,7 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await DataRepository
-                .GetWalletAddressAsync(Currency, address)
+                .GetWalletAddressAsync(Currency.Name, address)
                 .ConfigureAwait(false);
 
             return walletAddress != null
@@ -132,7 +128,7 @@ namespace Atomex.Wallet.Abstract
         private void PreloadBalances()
         {
             var addresses = DataRepository
-                .GetUnspentAddressesAsync(Currency)
+                .GetUnspentAddressesAsync(Currency.Name)
                 .WaitForResult();
 
             foreach (var address in addresses)
@@ -168,7 +164,7 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await DataRepository
-                .GetWalletAddressAsync(Currency, address)
+                .GetWalletAddressAsync(Currency.Name, address)
                 .ConfigureAwait(false);
 
             if (walletAddress != null)
@@ -184,7 +180,7 @@ namespace Atomex.Wallet.Abstract
         public virtual Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            return DataRepository.GetUnspentAddressesAsync(Currency);
+            return DataRepository.GetUnspentAddressesAsync(Currency.Name);
         }
 
         public abstract Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
@@ -226,14 +222,14 @@ namespace Atomex.Wallet.Abstract
             switch (addressUsagePolicy)
             {
                 case AddressUsagePolicy.UseMinimalBalanceFirst:
-                    addresses = addresses.SortList(new AvailableBalanceAscending(AssetWarrantyManager));
+                    addresses = addresses.SortList(new AvailableBalanceAscending());
                     break;
                 case AddressUsagePolicy.UseMaximumBalanceFirst:
-                    addresses = addresses.SortList(new AvailableBalanceDescending(AssetWarrantyManager));
+                    addresses = addresses.SortList(new AvailableBalanceDescending());
                     break;
                 case AddressUsagePolicy.UseOnlyOneAddress:
                     var walletAddress = addresses
-                        .FirstOrDefault(w => w.AvailableBalance(AssetWarrantyManager) >= amount + Currency.GetFeeAmount(fee, feePrice));
+                        .FirstOrDefault(w => w.AvailableBalance() >= amount + Currency.GetFeeAmount(fee, feePrice));
 
                     return walletAddress != null
                         ? new List<WalletAddress> { walletAddress }
@@ -269,7 +265,7 @@ namespace Atomex.Wallet.Abstract
         {
             var lastActiveAddress = await DataRepository
                 .GetLastActiveWalletAddressAsync(
-                    currency: Currency,
+                    currency: Currency.Name,
                     chain: Bip44.Internal)
                 .ConfigureAwait(false);
 
@@ -285,7 +281,7 @@ namespace Atomex.Wallet.Abstract
         {
             var lastActiveAddress = await DataRepository
                 .GetLastActiveWalletAddressAsync(
-                    currency: Currency,
+                    currency: Currency.Name,
                     chain: Bip44.External)
                 .ConfigureAwait(false);
 
@@ -329,25 +325,14 @@ namespace Atomex.Wallet.Abstract
                 RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
         }
 
-        #endregion Transactions
-
-        #region Outputs
-
-        public virtual async Task UpsertOutputsAsync(
-            IEnumerable<ITxOutput> outputs,
-            Currency currency,
-            string address,
-            bool notifyIfBalanceUpdated = true,
-            CancellationToken cancellationToken = default)
+        public Task<IBlockchainTransaction> GetTransactionByIdAsync(string txId)
         {
-            await DataRepository
-                .UpsertOutputsAsync(outputs, currency, address)
-                .ConfigureAwait(false);
-
-            if (notifyIfBalanceUpdated)
-                RaiseBalanceUpdated(new CurrencyEventArgs(currency));
+            return DataRepository.GetTransactionByIdAsync(
+                currency: Currency.Name,
+                txId: txId,
+                transactionType: Currency.TransactionType);
         }
 
-        #endregion Outputs
+        #endregion Transactions
     }
 }

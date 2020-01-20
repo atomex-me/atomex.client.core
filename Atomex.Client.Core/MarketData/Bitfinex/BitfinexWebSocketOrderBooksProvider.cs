@@ -6,7 +6,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.MarketData.Abstract;
 using Atomex.Wallet.Abstract;
 using Newtonsoft.Json.Linq;

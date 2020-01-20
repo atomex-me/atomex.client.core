@@ -1,5 +1,5 @@
 ﻿using System;
-using Atomex.Core.Entities;
+using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
 using Atomex.Wallet.Ethereum;
@@ -12,8 +12,7 @@ namespace Atomex.Wallet
         public static ICurrencyAccount Create(
             Currency currency,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository,
-            IAssetWarrantyManager assetWarrantyManager)
+            IAccountDataRepository dataRepository)
         {
             switch (currency)
             {
@@ -21,20 +20,17 @@ namespace Atomex.Wallet
                     return new BitcoinBasedAccount(
                         currency,
                         wallet,
-                        dataRepository,
-                        assetWarrantyManager);
+                        dataRepository);
                 case Atomex.Ethereum _:
                     return new EthereumAccount(
                         currency,
                         wallet,
-                        dataRepository,
-                        assetWarrantyManager);
+                        dataRepository);
                 case Atomex.Tezos _:
                     return new TezosAccount(
                         currency,
                         wallet,
-                        dataRepository,
-                        assetWarrantyManager);
+                        dataRepository);
                 default:
                     throw new NotSupportedException($"Not supported currency {currency.Name}");
             }

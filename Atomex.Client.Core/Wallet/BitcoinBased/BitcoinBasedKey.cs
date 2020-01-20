@@ -1,4 +1,5 @@
 ﻿using System;
+using Atomex.Common;
 using Atomex.Cryptography;
 using NBitcoin;
 
@@ -8,19 +9,25 @@ namespace Atomex.Wallet.BitcoinBased
     {
         private Key Key { get; }
 
-        public BitcoinBasedKey(byte[] seed)
+        public BitcoinBasedKey(SecureBytes seed)
         {
-            Key = new Key(seed);
+            using var scopedSeed = seed.ToUnsecuredBytes();
+
+            Key = new Key(scopedSeed);
         }
 
-        public void GetPrivateKey(out byte[] privateKey)
+        public SecureBytes GetPrivateKey()
         {
-            privateKey = Key.ToBytes();
+            using var privateKey = new ScopedBytes(Key.ToBytes());
+
+            return new SecureBytes(privateKey);
         }
 
-        public void GetPublicKey(out byte[] publicKey)
+        public SecureBytes GetPublicKey()
         {
-            publicKey = Key.PubKey.ToBytes();
+            using var publicKey = new ScopedBytes(Key.PubKey.ToBytes());
+
+            return new SecureBytes(publicKey);
         }
 
         public virtual byte[] SignHash(byte[] hash)
@@ -60,6 +67,11 @@ namespace Atomex.Wallet.BitcoinBased
             return Key
                 .PubKey
                 .VerifyMessage(data, Convert.ToBase64String(signature));
+        }
+
+        public void Dispose()
+        {
+            //Key.Dispose(); // may be nbitcoin learn to dispose keys?
         }
     }
 }

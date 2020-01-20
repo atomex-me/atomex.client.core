@@ -2,37 +2,36 @@
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using LiteDB;
 
 namespace Atomex.Common.Bson
 {
-    public class SwapToBsonSerializer : BsonSerializer<ClientSwap>
+    public class SwapToBsonSerializer : BsonSerializer<Swap>
     {
-        private const string StatusKey = nameof(ClientSwap.Status);
-        private const string StateKey = nameof(ClientSwap.StateFlags);
-        private const string TimeStampKey = nameof(ClientSwap.TimeStamp);
-        private const string SymbolKey = nameof(ClientSwap.Symbol);
-        private const string SideKey = nameof(ClientSwap.Side);
-        private const string PriceKey = nameof(ClientSwap.Price);
-        private const string QtyKey = nameof(ClientSwap.Qty);
-        private const string IsInitiativeKey = nameof(ClientSwap.IsInitiative);
-        private const string ToAddressKey = nameof(ClientSwap.ToAddress);
-        private const string RewardForRedeemKey = nameof(ClientSwap.RewardForRedeem);
-        private const string PaymentTxIdKey = nameof(ClientSwap.PaymentTxId);
-        private const string RedeemScriptKey = nameof(ClientSwap.RedeemScript);
-        private const string PartyAddressKey = nameof(ClientSwap.PartyAddress);
-        private const string PartyRewardForRedeemKey = nameof(ClientSwap.PartyRewardForRedeem);
-        private const string PartyPaymentTxIdKey = nameof(ClientSwap.PartyPaymentTxId);
-        private const string PartyRedeemScriptKey = nameof(ClientSwap.PartyRedeemScript);
+        private const string StatusKey = nameof(Swap.Status);
+        private const string StateKey = nameof(Swap.StateFlags);
+        private const string TimeStampKey = nameof(Swap.TimeStamp);
+        private const string SymbolKey = nameof(Swap.Symbol);
+        private const string SideKey = nameof(Swap.Side);
+        private const string PriceKey = nameof(Swap.Price);
+        private const string QtyKey = nameof(Swap.Qty);
+        private const string IsInitiativeKey = nameof(Swap.IsInitiative);
+        private const string ToAddressKey = nameof(Swap.ToAddress);
+        private const string RewardForRedeemKey = nameof(Swap.RewardForRedeem);
+        private const string PaymentTxIdKey = nameof(Swap.PaymentTxId);
+        private const string RedeemScriptKey = nameof(Swap.RedeemScript);
+        private const string PartyAddressKey = nameof(Swap.PartyAddress);
+        private const string PartyRewardForRedeemKey = nameof(Swap.PartyRewardForRedeem);
+        private const string PartyPaymentTxIdKey = nameof(Swap.PartyPaymentTxId);
+        private const string PartyRedeemScriptKey = nameof(Swap.PartyRedeemScript);
 
-        private const string SecretKey = nameof(ClientSwap.Secret);
-        private const string SecretHashKey = nameof(ClientSwap.SecretHash);
+        private const string SecretKey = nameof(Swap.Secret);
+        private const string SecretHashKey = nameof(Swap.SecretHash);
 
-        private const string PaymentTxKey = nameof(ClientSwap.PaymentTx);
-        private const string RefundTxKey = nameof(ClientSwap.RefundTx);
-        private const string RedeemTxKey = nameof(ClientSwap.RedeemTx);
-        private const string PartyPaymentTxKey = nameof(ClientSwap.PartyPaymentTx);
+        private const string PaymentTxKey = nameof(Swap.PaymentTx);
+        private const string RefundTxKey = nameof(Swap.RefundTx);
+        private const string RedeemTxKey = nameof(Swap.RedeemTx);
+        private const string PartyPaymentTxKey = nameof(Swap.PartyPaymentTx);
 
         private readonly ISymbols _symbols;
 
@@ -41,7 +40,7 @@ namespace Atomex.Common.Bson
             _symbols = symbols ?? throw new ArgumentNullException(nameof(symbols));
         }
 
-        public override ClientSwap Deserialize(BsonValue bsonValue)
+        public override Swap Deserialize(BsonValue bsonValue)
         {
             var bson = bsonValue as BsonDocument;
             if (bson == null)
@@ -55,7 +54,7 @@ namespace Atomex.Common.Bson
             var soldCurrency = symbol.SoldCurrency(side);
             var purchasedCurrency = symbol.PurchasedCurrency(side);
 
-            return new ClientSwap
+            return new Swap
             {
                 Id = bson[IdKey].AsInt64,
                 Status = status,
@@ -104,7 +103,7 @@ namespace Atomex.Common.Bson
             };
         }
 
-        public override BsonValue Serialize(ClientSwap swap)
+        public override BsonValue Serialize(Swap swap)
         {
             return new BsonDocument
             {

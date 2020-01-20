@@ -2,7 +2,7 @@
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 
-namespace Atomex.Core.Entities
+namespace Atomex.Core
 {
     [Flags]
     public enum SwapStateFlags
@@ -34,7 +34,21 @@ namespace Atomex.Core.Entities
         IsUnsettled = 1 << 18
     }
 
-    public class ClientSwap
+    [Flags]
+    public enum SwapStatus
+    {
+        Empty = 0,
+        Initiated = 0x01,
+        Accepted = 0x02,
+        InitiatorPaymentReceived = 0x04,
+        AcceptorPaymentReceived = 0x08,
+        InitiatorRedeemReceived = 0x10,
+        AcceptorRedeemReceived = 0x20,
+        InitiatorRefundReceived = 0x40,
+        AcceptorRefundReceived = 0x80
+    }
+
+    public class Swap
     {
         public long Id { get; set; }
         public string UserId { get; set; }

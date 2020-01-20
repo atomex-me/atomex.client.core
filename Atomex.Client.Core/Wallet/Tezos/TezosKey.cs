@@ -1,6 +1,4 @@
-﻿using System;
-using Atomex.Blockchain.Tezos;
-using Atomex.Blockchain.Tezos.Internal;
+﻿using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Cryptography;
 using Atomex.Cryptography.BouncyCastle;
@@ -9,117 +7,86 @@ namespace Atomex.Wallet.Tezos
 {
     public class TezosKey : IKey
     {
-        private Keys Keys { get; }
+        private readonly SecureBytes _privateKey;
+        private readonly SecureBytes _publicKey;
 
-        public TezosKey(byte[] seed)
+        public TezosKey(SecureBytes seed)
         {
-            byte[] publicKey = null, privateKey = null;
-
-            try
-            {
-                Ed25519.GenerateKeyPair(
-                    seed: seed,
-                    privateKey: out privateKey,
-                    publicKey: out publicKey);
-
-                Keys = new Keys(sk: privateKey, pk: publicKey);
-            }
-            finally
-            {
-                if (privateKey != null)
-                    Array.Clear(privateKey, 0, privateKey.Length);
-
-                if (publicKey != null)
-                    Array.Clear(publicKey, 0, publicKey.Length);
-            }
+            Ed25519.GenerateKeyPair(
+                seed: seed,
+                privateKey: out _privateKey,
+                publicKey: out _publicKey);
         }
 
-        public void GetPrivateKey(out byte[] privateKey)
+        public SecureBytes GetPrivateKey()
         {
-            // todo: dot not store key in heap
-            privateKey = Base58Check.Decode(Keys.DecryptPrivateKey(), Prefix.Edsk);
+            return _privateKey.Clone();
         }
 
-        public void GetPublicKey(out byte[] publicKey)
+        public SecureBytes GetPublicKey()
         {
-            // todo: dot not store key in heap
-            publicKey = Base58Check.Decode(Keys.DecryptPublicKey(), Prefix.Edpk);
+            return _publicKey.Clone();
         }
 
         public byte[] SignHash(byte[] hash)
         {
-            GetPrivateKey(out var privateKey);
+            using var securePrivateKey = GetPrivateKey();
+            using var scopedPrivateKey = securePrivateKey.ToUnsecuredBytes();
 
-            try
-            {
-                if (privateKey.Length == 32)
-                    return TezosSigner.Sign(
-                        data: hash,
-                        privateKey: privateKey);
+            if (scopedPrivateKey.Length == 32)
+                return TezosSigner.Sign(
+                    data: hash,
+                    privateKey: scopedPrivateKey);
 
-                return TezosSigner.SignByExtendedKey(
-                        data: hash,
-                        extendedPrivateKey: privateKey);
-            }
-            finally
-            {
-                privateKey.Clear();
-            }
+            return TezosSigner.SignByExtendedKey(
+                data: hash,
+                extendedPrivateKey: scopedPrivateKey);
         }
 
         public byte[] SignMessage(byte[] data)
         {
-            GetPrivateKey(out var privateKey);
+            using var securePrivateKey = GetPrivateKey();
+            using var scopedPrivateKey = securePrivateKey.ToUnsecuredBytes();
 
-            try
-            {
-                if (privateKey.Length == 32)
-                    return TezosSigner.Sign(
-                        data: data,
-                        privateKey: privateKey);
-
-                return TezosSigner.SignByExtendedKey(
+            if (scopedPrivateKey.Length == 32)
+                return TezosSigner.Sign(
                     data: data,
-                    extendedPrivateKey: privateKey);
-            }
-            finally
-            {
-                privateKey.Clear();
-            }
+                    privateKey: scopedPrivateKey);
+
+            return TezosSigner.SignByExtendedKey(
+                data: data,
+                extendedPrivateKey: scopedPrivateKey);
         }
 
         public bool VerifyHash(byte[] hash, byte[] signature)
         {
-            GetPublicKey(out var publicKey);
+            using var securePublicKey = GetPublicKey();
+            using var scopedPublicKey = securePublicKey.ToUnsecuredBytes();
 
-            try
-            {
-                return TezosSigner.Verify(
-                    data: hash,
-                    signature: signature,
-                    publicKey: publicKey);
-            }
-            finally
-            {
-                publicKey.Clear();
-            }
+            return TezosSigner.Verify(
+                data: hash,
+                signature: signature,
+                publicKey: scopedPublicKey);
         }
 
         public bool VerifyMessage(byte[] data, byte[] signature)
         {
-            GetPublicKey(out var publicKey);
+            using var securePublicKey = GetPublicKey();
+            using var scopedPublicKey = securePublicKey.ToUnsecuredBytes();
 
-            try
-            {
-                return TezosSigner.Verify(
-                    data: data,
-                    signature: signature,
-                    publicKey: publicKey);
-            }
-            finally
-            {
-                publicKey.Clear();
-            }
+            return TezosSigner.Verify(
+                data: data,
+                signature: signature,
+                publicKey: scopedPublicKey);
+        }
+
+        public void Dispose()
+        {
+            if (_privateKey != null)
+                _privateKey.Dispose();
+
+            if (_publicKey != null)
+                _publicKey.Dispose();
         }
     }
 }

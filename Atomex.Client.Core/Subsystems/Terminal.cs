@@ -9,7 +9,6 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Helpers;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.MarketData;
 using Atomex.MarketData.Abstract;
 using Atomex.Subsystems.Abstract;
@@ -467,7 +466,7 @@ namespace Atomex.Subsystems
                     .ConfigureAwait(false);
 
                 await Account
-                    .UpdateBalanceAsync(tx.Currency, cancellationToken)
+                    .UpdateBalanceAsync(tx.Currency.Name, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException)

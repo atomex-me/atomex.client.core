@@ -15,7 +15,7 @@ using Newtonsoft.Json;
 
 namespace Atomex.Blockchain.Insight
 {
-    public class InsightApi : BlockchainApi, IInOutBlockchainApi
+    public class InsightApi : BitcoinBasedBlockchainApi
     {
         internal class RawTx
         {
@@ -270,7 +270,7 @@ namespace Atomex.Blockchain.Insight
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<ITxPoint>> GetInputAsync(
+        public async override Task<Result<ITxPoint>> GetInputAsync(
             string txId,
             uint inputNo,
             CancellationToken cancellationToken = default)
@@ -304,7 +304,7 @@ namespace Atomex.Blockchain.Insight
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
+        public async override Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default)
@@ -336,7 +336,7 @@ namespace Atomex.Blockchain.Insight
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<IEnumerable<ITxOutput>>> GetOutputsAsync(
+        public async override Task<Result<IEnumerable<ITxOutput>>> GetOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default)
@@ -393,7 +393,7 @@ namespace Atomex.Blockchain.Insight
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<ITxPoint>> IsTransactionOutputSpent(
+        public async override Task<Result<ITxPoint>> IsTransactionOutputSpent(
             string txId,
             uint outputNo,
             CancellationToken cancellationToken = default)

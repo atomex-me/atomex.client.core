@@ -3,7 +3,8 @@ using System.Globalization;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Internal;
-using Atomex.Core.Entities;
+using Atomex.Common;
+using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.Bip;
 using Atomex.Wallet.Tezos;
@@ -145,13 +146,13 @@ namespace Atomex
             throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported");
         }
 
-        public override IExtKey CreateExtKey(byte[] seed)
+        public override IExtKey CreateExtKey(SecureBytes seed)
         {
             //return new TrustWalletTezosExtKey(seed);
             return new TezosExtKey(seed);
         }
 
-        public override IKey CreateKey(byte[] seed)
+        public override IKey CreateKey(SecureBytes seed)
         {
             return new TezosKey(seed);
         }

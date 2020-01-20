@@ -7,7 +7,6 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
@@ -58,8 +57,7 @@ namespace Atomex.Client.Core.Tests
             var account = new BitcoinBasedAccount(
                 currency: currency,
                 wallet: wallet,
-                dataRepository: repositoryMock.Object,
-                assetWarrantyManager: new AssetWarrantyManager());
+                dataRepository: repositoryMock.Object);
 
             return account.SendAsync(
                     outputs: fromOutputs,
@@ -99,7 +97,7 @@ namespace Atomex.Client.Core.Tests
                 },
                 repositorySetup: (repositoryMock, fromAddress) =>
                 {
-                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<Currency>(), fromAddress.Address))
+                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address))
                         .Returns(Task.FromResult(fromAddress));
                 });
 
@@ -225,7 +223,7 @@ namespace Atomex.Client.Core.Tests
                 },
                 repositorySetup: (repositoryMock, fromAddress) =>
                 {
-                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<Currency>(), fromAddress.Address))
+                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address))
                         .Returns(Task.FromResult(fromAddress));
                 });
 
@@ -270,7 +268,7 @@ namespace Atomex.Client.Core.Tests
                 },
                 repositorySetup: (repositoryMock, fromAddress) =>
                 {
-                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<Currency>(), fromAddress.Address))
+                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address))
                         .Returns(Task.FromResult(fromAddress));
                 });
 

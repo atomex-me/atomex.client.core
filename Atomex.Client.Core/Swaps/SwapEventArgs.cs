@@ -1,19 +1,19 @@
 ﻿using System;
-using Atomex.Core.Entities;
+using Atomex.Core;
 
 namespace Atomex.Swaps
 {
     public class SwapEventArgs : EventArgs
     {
-        public ClientSwap Swap { get; }
+        public Swap Swap { get; }
         public SwapStateFlags ChangedFlag { get; }
 
-        public SwapEventArgs(ClientSwap swap)
+        public SwapEventArgs(Swap swap)
             : this(swap, SwapStateFlags.Empty)
         {
         }
 
-        public SwapEventArgs(ClientSwap swap, SwapStateFlags changedFlag)
+        public SwapEventArgs(Swap swap, SwapStateFlags changedFlag)
         {
             Swap = swap;
             ChangedFlag = changedFlag;

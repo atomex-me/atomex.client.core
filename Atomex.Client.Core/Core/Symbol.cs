@@ -3,7 +3,7 @@ using System.Linq;
 using Atomex.Abstract;
 using Microsoft.Extensions.Configuration;
 
-namespace Atomex.Core.Entities
+namespace Atomex.Core
 {
     public class Symbol
     {
@@ -18,7 +18,7 @@ namespace Atomex.Core.Entities
         public Currency Quote { get; set; }
 
         public Symbol()
-        {   
+        {
         }
 
         public Symbol(

@@ -1,6 +1,6 @@
 ﻿using System;
 using Atomex.Blockchain.BitcoinBased;
-using Atomex.Core.Entities;
+using Atomex.Core;
 
 namespace Atomex.Common.Bson
 {

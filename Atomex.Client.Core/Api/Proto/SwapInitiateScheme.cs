@@ -1,9 +1,9 @@
 ﻿using Atomex.Common.Proto;
-using Atomex.Core.Entities;
+using Atomex.Core;
 
 namespace Atomex.Api.Proto
 {
-    public class SwapInitiateScheme : ProtoScheme<ClientSwap>
+    public class SwapInitiateScheme : ProtoScheme<Swap>
     {
         public SwapInitiateScheme(byte messageId)
             : base(messageId)
@@ -11,12 +11,12 @@ namespace Atomex.Api.Proto
             Model.Add(typeof(Symbol), true)
                 .AddRequired(nameof(Symbol.Name));
 
-            Model.Add(typeof(ClientSwap), true)
-                .AddRequired(nameof(ClientSwap.Id))
-                .AddRequired(nameof(ClientSwap.SecretHash))
-                .AddRequired(nameof(ClientSwap.Symbol))
-                .AddRequired(nameof(ClientSwap.ToAddress))
-                .AddRequired(nameof(ClientSwap.RewardForRedeem));
+            Model.Add(typeof(Swap), true)
+                .AddRequired(nameof(Swap.Id))
+                .AddRequired(nameof(Swap.SecretHash))
+                .AddRequired(nameof(Swap.Symbol))
+                .AddRequired(nameof(Swap.ToAddress))
+                .AddRequired(nameof(Swap.RewardForRedeem));
         }
     }
 }

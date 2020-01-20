@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
-using Atomex.Core.Entities;
+using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using NBitcoin;
 using Serilog;
@@ -70,23 +70,25 @@ namespace Atomex.Wallet
 
         public WalletAddress GetAddress(Currency currency, int chain, uint index)
         {
-            var publicKeyBytes = KeyStorage.GetPublicKey(currency, chain, index);
+            using var securePublicKey = KeyStorage.GetPublicKey(currency, chain, index);
 
-            if (publicKeyBytes == null)
+            if (securePublicKey == null)
                 return null;
 
-            var address = currency.AddressFromKey(publicKeyBytes);
+            using var publicKey = securePublicKey.ToUnsecuredBytes();
+
+            var address = currency.AddressFromKey(publicKey);
 
             return new WalletAddress
             {
                 Currency = currency,
                 Address = address,
-                PublicKey = Convert.ToBase64String(publicKeyBytes),
+                PublicKey = Convert.ToBase64String(publicKey),
                 KeyIndex = new KeyIndex { Chain = chain, Index = index }
             };
         }
 
-        public byte[] GetServicePublicKey(uint index)
+        public SecureBytes GetServicePublicKey(uint index)
         {
             return KeyStorage.GetServicePublicKey(index);
         }

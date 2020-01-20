@@ -1,6 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Core.Entities;
+using Atomex.Core;
 
 namespace Atomex.Swaps.Abstract
 {
@@ -22,7 +22,7 @@ namespace Atomex.Swaps.Abstract
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Task</returns>
         Task PayAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -32,7 +32,7 @@ namespace Atomex.Swaps.Abstract
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Task</returns>
         Task StartPartyPaymentControlAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -42,7 +42,7 @@ namespace Atomex.Swaps.Abstract
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Task</returns>
         Task RedeemAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -50,7 +50,7 @@ namespace Atomex.Swaps.Abstract
         /// </summary>
         /// <returns>Task</returns>
         Task RedeemForPartyAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -60,7 +60,7 @@ namespace Atomex.Swaps.Abstract
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Task</returns>
         Task RefundAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -70,7 +70,7 @@ namespace Atomex.Swaps.Abstract
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Task</returns>
         Task StartWaitForRedeemAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -78,7 +78,7 @@ namespace Atomex.Swaps.Abstract
         /// </summary>
         /// <returns>Task</returns>
         Task StartWaitForRedeemBySomeoneAsync(
-            ClientSwap swap,
+            Swap swap,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -89,8 +89,8 @@ namespace Atomex.Swaps.Abstract
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Task</returns>
         Task HandlePartyPaymentAsync(
-            ClientSwap swap,
-            ClientSwap clientSwap,
+            Swap swap,
+            Swap clientSwap,
             CancellationToken cancellationToken = default);
     }
 }

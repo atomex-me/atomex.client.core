@@ -1,10 +1,11 @@
-﻿using Atomex.Core.Entities;
+﻿using Atomex.Common;
+using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract
 {
     public interface IKeyStorage
     {
-        byte[] GetPrivateKey(Currency currency, KeyIndex keyIndex);
-        byte[] GetPublicKey(Currency currency, KeyIndex keyIndex);
+        SecureBytes GetPrivateKey(Currency currency, KeyIndex keyIndex);
+        SecureBytes GetPublicKey(Currency currency, KeyIndex keyIndex);
     }
 }

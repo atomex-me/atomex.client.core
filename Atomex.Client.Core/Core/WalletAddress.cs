@@ -1,7 +1,7 @@
 ﻿using System;
 using Atomex.Wallet.Abstract;
 
-namespace Atomex.Core.Entities
+namespace Atomex.Core
 {
     public class WalletAddress
     {

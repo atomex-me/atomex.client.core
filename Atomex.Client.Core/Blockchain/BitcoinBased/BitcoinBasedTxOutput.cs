@@ -1,5 +1,5 @@
 ﻿using Atomex.Blockchain.Abstract;
-using Atomex.Core.Entities;
+using Atomex.Core;
 using NBitcoin;
 
 namespace Atomex.Blockchain.BitcoinBased

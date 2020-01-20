@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using Atomex.Abstract;
-using Atomex.Core.Entities;
+using Atomex.Core;
 using Microsoft.Extensions.Configuration;
 
 namespace Atomex

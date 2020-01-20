@@ -9,7 +9,6 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Common.Bson;
 using Atomex.Core;
-using Atomex.Core.Entities;
 using Atomex.Wallet.Abstract;
 using LiteDB;
 using Serilog;
@@ -38,8 +37,8 @@ namespace Atomex.LiteDb
         private readonly string _sessionPassword;
         private readonly BsonMapper _bsonMapper;
 
-        private readonly ConcurrentDictionary<long, ClientSwap> _swapById =
-            new ConcurrentDictionary<long, ClientSwap>();
+        private readonly ConcurrentDictionary<long, Swap> _swapById =
+            new ConcurrentDictionary<long, Swap>();
 
         private bool _swapsLoaded;
         private readonly object _syncRoot = new object();
@@ -101,18 +100,17 @@ namespace Atomex.LiteDb
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var document = _bsonMapper.ToDocument(walletAddress);
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
 
-                        var addresses = db.GetCollection(AddressesCollectionName);
-                        addresses.EnsureIndex(IndexKey);
-                        addresses.EnsureIndex(CurrencyKey);
-                        addresses.EnsureIndex(AddressKey);
-                        var result = addresses.Upsert(document);
+                    var document = _bsonMapper.ToDocument(walletAddress);
 
-                        return Task.FromResult(result);
-                    }
+                    var addresses = db.GetCollection(AddressesCollectionName);
+                    addresses.EnsureIndex(IndexKey);
+                    addresses.EnsureIndex(CurrencyKey);
+                    addresses.EnsureIndex(AddressKey);
+                    var result = addresses.Upsert(document);
+
+                    return Task.FromResult(result);
                 }
             }
             catch (Exception e)
@@ -129,19 +127,17 @@ namespace Atomex.LiteDb
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var documents = walletAddresses
-                            .Select(_bsonMapper.ToDocument);
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
 
-                        var addresses = db.GetCollection(AddressesCollectionName);
-                        addresses.EnsureIndex(IndexKey);
-                        addresses.EnsureIndex(CurrencyKey);
-                        addresses.EnsureIndex(AddressKey);
-                        var result = addresses.Upsert(documents);
+                    var documents = walletAddresses.Select(_bsonMapper.ToDocument);
 
-                        return Task.FromResult(result);
-                    }
+                    var addresses = db.GetCollection(AddressesCollectionName);
+                    addresses.EnsureIndex(IndexKey);
+                    addresses.EnsureIndex(CurrencyKey);
+                    addresses.EnsureIndex(AddressKey);
+                    var result = addresses.Upsert(documents);
+
+                    return Task.FromResult(result);
                 }
             }
             catch (Exception e)
@@ -158,24 +154,23 @@ namespace Atomex.LiteDb
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+
+                    var addresses = db.GetCollection(AddressesCollectionName);
+                    addresses.EnsureIndex(IndexKey);
+                    addresses.EnsureIndex(CurrencyKey);
+                    addresses.EnsureIndex(AddressKey);
+
+                    if (!addresses.Exists(Query.EQ(IdKey, walletAddress.Address)))
                     {
-                        var addresses = db.GetCollection(AddressesCollectionName);
-                        addresses.EnsureIndex(IndexKey);
-                        addresses.EnsureIndex(CurrencyKey);
-                        addresses.EnsureIndex(AddressKey);
+                        var document = _bsonMapper.ToDocument(walletAddress);
 
-                        if (!addresses.Exists(Query.EQ(IdKey, walletAddress.Address)))
-                        {
-                            var document = _bsonMapper.ToDocument(walletAddress);
+                        var id = addresses.Insert(document);
 
-                            var id = addresses.Insert(document);
-
-                            return Task.FromResult(id != null);
-                        }
-
-                        return Task.FromResult(false);
+                        return Task.FromResult(id != null);
                     }
+
+                    return Task.FromResult(false);
                 }
             }
             catch (Exception e)
@@ -186,24 +181,22 @@ namespace Atomex.LiteDb
             return Task.FromResult(false);
         }
 
-        public Task<WalletAddress> GetWalletAddressAsync(Currency currency, string address)
+        public Task<WalletAddress> GetWalletAddressAsync(string currency, string address)
         {
             try
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var addresses = db.GetCollection(AddressesCollectionName);
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    var addresses = db.GetCollection(AddressesCollectionName);
 
-                        var document = addresses.FindById(address);
+                    var document = addresses.FindById(address);
 
-                        var walletAddress = document != null
-                            ? _bsonMapper.ToObject<WalletAddress>(document)
-                            : null;
+                    var walletAddress = document != null
+                        ? _bsonMapper.ToObject<WalletAddress>(document)
+                        : null;
 
-                        return Task.FromResult(walletAddress);
-                    }
+                    return Task.FromResult(walletAddress);
                 }
             }
             catch (Exception e)
@@ -214,29 +207,27 @@ namespace Atomex.LiteDb
             return Task.FromResult<WalletAddress>(null);
         }
 
-        public Task<WalletAddress> GetLastActiveWalletAddressAsync(Currency currency, int chain)
+        public Task<WalletAddress> GetLastActiveWalletAddressAsync(string currency, int chain)
         {
             try
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var addresses = db.GetCollection(AddressesCollectionName);
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    var addresses = db.GetCollection(AddressesCollectionName);
 
-                        var document = addresses.FindOne(
-                            Query.And(
-                                Query.All(IndexKey, Query.Descending),
-                                Query.EQ(CurrencyKey, currency.Name),
-                                Query.EQ(ChainKey, chain),
-                                Query.EQ(HasActivityKey, true)));
+                    var document = addresses.FindOne(
+                        Query.And(
+                            Query.All(IndexKey, Query.Descending),
+                            Query.EQ(CurrencyKey, currency),
+                            Query.EQ(ChainKey, chain),
+                            Query.EQ(HasActivityKey, true)));
 
-                        var walletAddress = document != null
-                            ? _bsonMapper.ToObject<WalletAddress>(document)
-                            : null;
+                    var walletAddress = document != null
+                        ? _bsonMapper.ToObject<WalletAddress>(document)
+                        : null;
 
-                        return Task.FromResult(walletAddress);
-                    }
+                    return Task.FromResult(walletAddress);
                 }
             }
             catch (Exception e)
@@ -248,36 +239,34 @@ namespace Atomex.LiteDb
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
-            Currency currency,
+            string currency,
             bool includeUnconfirmed = true)
         {
             var query = includeUnconfirmed
                 ? Query.And(
-                    Query.EQ(CurrencyKey, currency.Name),
+                    Query.EQ(CurrencyKey, currency),
                     Query.Or(
                         Query.Not(BalanceKey, 0m),
                         Query.Not(UnconfirmedIncomeKey, 0m),
                         Query.Not(UnconfirmedOutcomeKey, 0m))
                     )
                 : Query.And(
-                    Query.EQ(CurrencyKey, currency.Name),
+                    Query.EQ(CurrencyKey, currency),
                     Query.GT(BalanceKey, 0m));
 
             try
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var addresses = db.GetCollection(AddressesCollectionName);
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    var addresses = db.GetCollection(AddressesCollectionName);
 
-                        var unspentAddresses = addresses
-                            .Find(query)
-                            .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
-                            .ToList();
+                    var unspentAddresses = addresses
+                        .Find(query)
+                        .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
+                        .ToList();
 
-                        return Task.FromResult<IEnumerable<WalletAddress>>(unspentAddresses);
-                    }
+                    return Task.FromResult<IEnumerable<WalletAddress>>(unspentAddresses);
                 }
             }
             catch (Exception e)
@@ -298,12 +287,11 @@ namespace Atomex.LiteDb
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var transactions = db.GetCollection(TransactionCollectionName);
-                        transactions.EnsureIndex(CurrencyKey);
-                        transactions.Upsert(_bsonMapper.ToDocument(tx));
-                    }
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    
+                    var transactions = db.GetCollection(TransactionCollectionName);
+                    transactions.EnsureIndex(CurrencyKey);
+                    transactions.Upsert(_bsonMapper.ToDocument(tx));
 
                     return Task.FromResult(true);
                 }
@@ -317,26 +305,25 @@ namespace Atomex.LiteDb
         }
 
         public Task<IBlockchainTransaction> GetTransactionByIdAsync(
-            Currency currency,
-            string txId)
+            string currency,
+            string txId,
+            Type transactionType)
         {
             try
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    var document = db.GetCollection(TransactionCollectionName)
+                        .FindById(txId);
+
+                    if (document != null)
                     {
-                        var document = db.GetCollection(TransactionCollectionName)
-                            .FindById(txId);
+                        var tx = (IBlockchainTransaction)_bsonMapper.ToObject(
+                            type: transactionType,
+                            doc: document);
 
-                        if (document != null)
-                        {
-                            var tx = (IBlockchainTransaction)_bsonMapper.ToObject(
-                                type: currency.TransactionType,
-                                doc: document);
-
-                            return Task.FromResult(tx);
-                        }
+                        return Task.FromResult(tx);
                     }
                 }
             }
@@ -348,23 +335,24 @@ namespace Atomex.LiteDb
             return Task.FromResult<IBlockchainTransaction>(null);
         }
 
-        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(Currency currency)
+        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+            string currency,
+            Type transactionType)
         {
             try
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var transactions = db.GetCollection(TransactionCollectionName)
-                            .Find(Query.EQ(CurrencyKey, currency.Name))
-                            .Select(d => (IBlockchainTransaction)_bsonMapper.ToObject(
-                                type: currency.TransactionType,
-                                doc: d))
-                            .ToList();
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    
+                    var transactions = db.GetCollection(TransactionCollectionName)
+                        .Find(Query.EQ(CurrencyKey, currency))
+                        .Select(d => (IBlockchainTransaction)_bsonMapper.ToObject(
+                            type: transactionType,
+                            doc: d))
+                        .ToList();
 
-                        return Task.FromResult<IEnumerable<IBlockchainTransaction>>(transactions);
-                    }
+                    return Task.FromResult<IEnumerable<IBlockchainTransaction>>(transactions);
                 }
             }
             catch (Exception e)
@@ -376,9 +364,10 @@ namespace Atomex.LiteDb
         }
 
         public async Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
-            Currency currency)
+            string currency,
+            Type transactionType)
         {
-            var transactions = await GetTransactionsAsync(currency)
+            var transactions = await GetTransactionsAsync(currency, transactionType)
                 .ConfigureAwait(false);
 
             return transactions.Where(t => !t.IsConfirmed);
@@ -390,11 +379,9 @@ namespace Atomex.LiteDb
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var transactions = db.GetCollection(TransactionCollectionName);
-                        return Task.FromResult(transactions.Delete(id));
-                    }
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    var transactions = db.GetCollection(TransactionCollectionName);
+                    return Task.FromResult(transactions.Delete(id));
                 }
             }
             catch (Exception e)
@@ -411,28 +398,27 @@ namespace Atomex.LiteDb
 
         public Task<bool> UpsertOutputsAsync(
             IEnumerable<ITxOutput> outputs,
-            Currency currency,
+            string currency,
             string address)
         {
             try
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var documents = outputs
-                            .Select(o =>
-                            {
-                                var document = _bsonMapper.ToDocument(o);
-                                document[CurrencyKey] = currency.Name;
-                                document[AddressKey] = address;
-                                return document;
-                            });
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    
+                    var documents = outputs
+                        .Select(o =>
+                        {
+                            var document = _bsonMapper.ToDocument(o);
+                            document[CurrencyKey] = currency;
+                            document[AddressKey] = address;
+                            return document;
+                        });
 
-                        var outputsCollection = db.GetCollection(OutputsCollectionName);
-                        outputsCollection.EnsureIndex(CurrencyKey);
-                        outputsCollection.Upsert(documents);
-                    }
+                    var outputsCollection = db.GetCollection(OutputsCollectionName);
+                    outputsCollection.EnsureIndex(CurrencyKey);
+                    outputsCollection.Upsert(documents);
 
                     return Task.FromResult(true);
                 }
@@ -445,39 +431,45 @@ namespace Atomex.LiteDb
             return Task.FromResult(false);
         }
 
-        public async Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(Currency currency)
+        public async Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
+            string currency,
+            Type outputType,
+            Type transactionType)
         {
-            var outputs = (await GetOutputsAsync(currency)
+            var outputs = (await GetOutputsAsync(currency, outputType)
                 .ConfigureAwait(false))
                 .Where(o => !o.IsSpent)
                 .ToList();
 
-            return await GetOnlyConfirmedOutputsAsync(currency, outputs)
+            return await GetOnlyConfirmedOutputsAsync(currency, outputs, transactionType)
                 .ConfigureAwait(false);
         }
 
         public async Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
-            Currency currency,
-            string address)
+            string currency,
+            string address,
+            Type outputType,
+            Type transactionType)
         {
-            var outputs = (await GetOutputsAsync(currency, address)
+            var outputs = (await GetOutputsAsync(currency, address, outputType)
                 .ConfigureAwait(false))
                 .Where(o => !o.IsSpent)
                 .ToList();
 
-            return await GetOnlyConfirmedOutputsAsync(currency, outputs)
+            return await GetOnlyConfirmedOutputsAsync(currency, outputs, transactionType)
                 .ConfigureAwait(false);
         }
 
         private async Task<IEnumerable<ITxOutput>> GetOnlyConfirmedOutputsAsync(
-            Currency currency,
-            IEnumerable<ITxOutput> outputs)
+            string currency,
+            IEnumerable<ITxOutput> outputs,
+            Type transactionType)
         {
             var confirmedOutputs = new List<ITxOutput>();
 
             foreach (var o in outputs)
             {
-                var tx = await GetTransactionByIdAsync(currency, o.TxId)
+                var tx = await GetTransactionByIdAsync(currency, o.TxId, transactionType)
                     .ConfigureAwait(false);
 
                 if (tx?.IsConfirmed ?? false)
@@ -487,23 +479,22 @@ namespace Atomex.LiteDb
             return confirmedOutputs;
         }
 
-        public Task<IEnumerable<ITxOutput>> GetOutputsAsync(Currency currency)
+        public Task<IEnumerable<ITxOutput>> GetOutputsAsync(string currency, Type outputType)
         {
             try
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var outputs = db.GetCollection(OutputsCollectionName)
-                            .Find(Query.EQ(CurrencyKey, currency.Name))
-                            .Select(d => (ITxOutput)_bsonMapper.ToObject(
-                                type: currency.OutputType(),
-                                doc: d))
-                            .ToList();
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    
+                    var outputs = db.GetCollection(OutputsCollectionName)
+                        .Find(Query.EQ(CurrencyKey, currency))
+                        .Select(d => (ITxOutput)_bsonMapper.ToObject(
+                            type: outputType,
+                            doc: d))
+                        .ToList();
 
-                        return Task.FromResult<IEnumerable<ITxOutput>>(outputs);
-                    }
+                    return Task.FromResult<IEnumerable<ITxOutput>>(outputs);
                 }
             }
             catch (Exception e)
@@ -514,26 +505,28 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<ITxOutput>());
         }
 
-        public Task<IEnumerable<ITxOutput>> GetOutputsAsync(Currency currency, string address)
+        public Task<IEnumerable<ITxOutput>> GetOutputsAsync(
+            string currency,
+            string address,
+            Type outputType)
         {
             try
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var outputs = db
-                            .GetCollection(OutputsCollectionName)
-                            .Find(Query.And(
-                                left: Query.EQ(CurrencyKey, currency.Name),
-                                right: Query.EQ(AddressKey, address)))
-                            .Select(d => (ITxOutput)_bsonMapper.ToObject(
-                                type: currency.OutputType(),
-                                doc: d))
-                            .ToList();
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    
+                    var outputs = db
+                        .GetCollection(OutputsCollectionName)
+                        .Find(Query.And(
+                            left: Query.EQ(CurrencyKey, currency),
+                            right: Query.EQ(AddressKey, address)))
+                        .Select(d => (ITxOutput)_bsonMapper.ToObject(
+                            type: outputType,
+                            doc: d))
+                        .ToList();
 
-                        return Task.FromResult<IEnumerable<ITxOutput>>(outputs);
-                    }
+                    return Task.FromResult<IEnumerable<ITxOutput>>(outputs);
                 }
             }
             catch (Exception e)
@@ -544,25 +537,27 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<ITxOutput>());
         }
 
-        public Task<ITxOutput> GetOutputAsync(Currency currency, string txId, uint index)
+        public Task<ITxOutput> GetOutputAsync(
+            string currency,
+            string txId,
+            uint index,
+            Type outputType)
         {
             try
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var id = $"{txId}:{index}";
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    var id = $"{txId}:{index}";
 
-                        var document = db.GetCollection(OutputsCollectionName)
-                            .FindById(id);
+                    var document = db.GetCollection(OutputsCollectionName)
+                        .FindById(id);
 
-                        var output = document != null
-                            ? (ITxOutput)_bsonMapper.ToObject(currency.OutputType(), document)
-                            : null;
+                    var output = document != null
+                        ? (ITxOutput)_bsonMapper.ToObject(outputType, document)
+                        : null;
 
-                        return Task.FromResult(output);
-                    }
+                    return Task.FromResult(output);
                 }
             }
             catch (Exception e)
@@ -586,14 +581,12 @@ namespace Atomex.LiteDb
                     if (!CheckOrder(order))
                         return Task.FromResult(false);
 
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var document = _bsonMapper.ToDocument(order);
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    
+                    var document = _bsonMapper.ToDocument(order);
 
-                        var orders = db.GetCollection(OrdersCollectionName);
-
-                        orders.Upsert(document);
-                    }
+                    var orders = db.GetCollection(OrdersCollectionName);
+                    orders.Upsert(document);
 
                     return Task.FromResult(true);
                 }
@@ -612,19 +605,18 @@ namespace Atomex.LiteDb
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var orders = db.GetCollection(OrdersCollectionName);
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
 
-                        var document = orders.FindOne(
-                            Query.And(
-                                Query.EQ("_id", clientOrderId),
-                                Query.EQ("OrderId", 0)));
+                    var orders = db.GetCollection(OrdersCollectionName);
 
-                        return document != null
-                            ? _bsonMapper.ToObject<Order>(document)
-                            : null;
-                    }
+                    var document = orders.FindOne(
+                        Query.And(
+                            Query.EQ("_id", clientOrderId),
+                            Query.EQ("OrderId", 0)));
+
+                    return document != null
+                        ? _bsonMapper.ToObject<Order>(document)
+                        : null;
                 }
             }
             catch (Exception e)
@@ -712,16 +704,15 @@ namespace Atomex.LiteDb
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var orders = db.GetCollection(OrdersCollectionName);
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
 
-                        var document = orders.FindById(clientOrderId);
+                    var orders = db.GetCollection(OrdersCollectionName);
 
-                        return document != null
-                            ? _bsonMapper.ToObject<Order>(document)
-                            : null;
-                    }
+                    var document = orders.FindById(clientOrderId);
+
+                    return document != null
+                        ? _bsonMapper.ToObject<Order>(document)
+                        : null;
                 }
             }
             catch (Exception e)
@@ -738,16 +729,15 @@ namespace Atomex.LiteDb
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var orders = db.GetCollection(OrdersCollectionName);
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
 
-                        var documents = orders.Find(Query.EQ("OrderId", id));
+                    var orders = db.GetCollection(OrdersCollectionName);
 
-                        return documents != null && documents.Any()
-                            ? _bsonMapper.ToObject<Order>(documents.First())
-                            : null;
-                    }
+                    var documents = orders.Find(Query.EQ("OrderId", id));
+
+                    return documents != null && documents.Any()
+                        ? _bsonMapper.ToObject<Order>(documents.First())
+                        : null;
                 }
             }
             catch (Exception e)
@@ -762,7 +752,7 @@ namespace Atomex.LiteDb
 
         #region Swaps
 
-        public Task<bool> AddSwapAsync(ClientSwap swap)
+        public Task<bool> AddSwapAsync(Swap swap)
         {
             if (!_swapById.TryAdd(swap.Id, swap))
                 return Task.FromResult(false);
@@ -771,11 +761,10 @@ namespace Atomex.LiteDb
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        db.GetCollection<ClientSwap>(SwapsCollectionName)
-                            .Insert(swap);
-                    }
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+
+                    db.GetCollection<Swap>(SwapsCollectionName)
+                        .Insert(swap);
 
                     return Task.FromResult(true);
                 }
@@ -788,19 +777,18 @@ namespace Atomex.LiteDb
             return Task.FromResult(false);
         }
 
-        public Task<bool> UpdateSwapAsync(ClientSwap swap)
+        public Task<bool> UpdateSwapAsync(Swap swap)
         {
             try
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var result = db.GetCollection<ClientSwap>(SwapsCollectionName)
-                            .Update(swap);
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
 
-                        return Task.FromResult(result);
-                    }
+                    var result = db.GetCollection<Swap>(SwapsCollectionName)
+                        .Update(swap);
+
+                    return Task.FromResult(result);
                 }
             }
             catch (Exception e)
@@ -811,7 +799,7 @@ namespace Atomex.LiteDb
             return Task.FromResult(false);
         }
 
-        public Task<ClientSwap> GetSwapByIdAsync(long id)
+        public Task<Swap> GetSwapByIdAsync(long id)
         {
             if (_swapById.TryGetValue(id, out var swap))
                 return Task.FromResult(swap);
@@ -820,16 +808,15 @@ namespace Atomex.LiteDb
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        swap = db.GetCollection<ClientSwap>(SwapsCollectionName)
-                            .FindById(id);
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+  
+                    swap = db.GetCollection<Swap>(SwapsCollectionName)
+                        .FindById(id);
 
-                        if (swap != null)
-                        {
-                            _swapById.TryAdd(swap.Id, swap);
-                            return Task.FromResult(swap);
-                        }
+                    if (swap != null)
+                    {
+                        _swapById.TryAdd(swap.Id, swap);
+                        return Task.FromResult(swap);
                     }
                 }
             }
@@ -838,32 +825,31 @@ namespace Atomex.LiteDb
                 Log.Error(e, "Error getting swap by id");
             }
 
-            return Task.FromResult<ClientSwap>(null);
+            return Task.FromResult<Swap>(null);
         }
 
-        public Task<IEnumerable<ClientSwap>> GetSwapsAsync()
+        public Task<IEnumerable<Swap>> GetSwapsAsync()
         {
             if (_swapsLoaded)
-                return Task.FromResult<IEnumerable<ClientSwap>>(_swapById.Values);
+                return Task.FromResult<IEnumerable<Swap>>(_swapById.Values);
 
             try
             {
                 lock (_syncRoot)
                 {
-                    using (var db = new LiteDatabase(ConnectionString, _bsonMapper))
-                    {
-                        var swaps = db.GetCollection<ClientSwap>(SwapsCollectionName)
-                            .Find(Query.All())
-                            .ToList();
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
 
-                        foreach (var swap in swaps)
-                            if (!_swapById.ContainsKey(swap.Id))
-                                _swapById.TryAdd(swap.Id, swap);
+                    var swaps = db.GetCollection<Swap>(SwapsCollectionName)
+                        .Find(Query.All())
+                        .ToList();
 
-                        _swapsLoaded = true;
+                    foreach (var swap in swaps)
+                        if (!_swapById.ContainsKey(swap.Id))
+                            _swapById.TryAdd(swap.Id, swap);
 
-                        return Task.FromResult<IEnumerable<ClientSwap>>(_swapById.Values);
-                    }
+                    _swapsLoaded = true;
+
+                    return Task.FromResult<IEnumerable<Swap>>(_swapById.Values);
                 }
             }
             catch (Exception e)
@@ -871,7 +857,7 @@ namespace Atomex.LiteDb
                 Log.Error(e, "Swaps getting error");
             }
 
-            return Task.FromResult(Enumerable.Empty<ClientSwap>());
+            return Task.FromResult(Enumerable.Empty<Swap>());
         }
 
         #endregion Swaps

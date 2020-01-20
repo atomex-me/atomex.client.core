@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
-using Atomex.Core.Entities;
+using Atomex.Core;
 using LiteDB;
 
 namespace Atomex.Common.Bson
