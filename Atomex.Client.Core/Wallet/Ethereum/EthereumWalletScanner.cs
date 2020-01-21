@@ -13,8 +13,8 @@ namespace Atomex.Wallet.Ethereum
 {
     public class EthereumWalletScanner : ICurrencyHdWalletScanner
     {
-        private const int DefaultInternalLookAhead = 3;
-        private const int DefaultExternalLookAhead = 3;
+        private const int DefaultInternalLookAhead = 1;
+        private const int DefaultExternalLookAhead = 1;
 
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
