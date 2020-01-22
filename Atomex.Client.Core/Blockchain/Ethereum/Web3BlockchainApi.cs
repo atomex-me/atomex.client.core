@@ -13,9 +13,9 @@ namespace Atomex.Blockchain.Ethereum
 {
     public class Web3BlockchainApi : BlockchainApi, IEthereumBlockchainApi
     {
-        private const string InfuraMainNet = "https://mainnet.infura.io";
-        private const string InfuraRinkeby = "https://rinkeby.infura.io";
-        private const string InfuraRopsten = "https://ropsten.infura.io";
+        private const string InfuraMainNet = "https://mainnet.infura.io/v3/df01d4ef450640a2a48d9af4c2078eaf";
+        private const string InfuraRinkeby = "https://rinkeby.infura.io/v3/df01d4ef450640a2a48d9af4c2078eaf";
+        private const string InfuraRopsten = "https://ropsten.infura.io/v3/df01d4ef450640a2a48d9af4c2078eaf";
 
         private readonly Currency _currency;
         private readonly string _uri;

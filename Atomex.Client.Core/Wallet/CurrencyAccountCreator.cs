@@ -14,26 +14,22 @@ namespace Atomex.Wallet
             IHdWallet wallet,
             IAccountDataRepository dataRepository)
         {
-            switch (currency)
+            return currency switch
             {
-                case BitcoinBasedCurrency _:
-                    return new BitcoinBasedAccount(
+                BitcoinBasedCurrency _ => (ICurrencyAccount)new BitcoinBasedAccount(
+                       currency,
+                       wallet,
+                       dataRepository),
+                Atomex.Ethereum _ => (ICurrencyAccount)new EthereumAccount(
                         currency,
                         wallet,
-                        dataRepository);
-                case Atomex.Ethereum _:
-                    return new EthereumAccount(
+                        dataRepository),
+                Atomex.Tezos _ => (ICurrencyAccount)new TezosAccount(
                         currency,
                         wallet,
-                        dataRepository);
-                case Atomex.Tezos _:
-                    return new TezosAccount(
-                        currency,
-                        wallet,
-                        dataRepository);
-                default:
-                    throw new NotSupportedException($"Not supported currency {currency.Name}");
-            }
+                        dataRepository),
+                _ => throw new NotSupportedException($"Not supported currency {currency.Name}"),
+            };
         }
     }
 }
