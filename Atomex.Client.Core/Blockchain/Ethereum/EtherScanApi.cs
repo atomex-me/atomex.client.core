@@ -242,7 +242,7 @@ namespace Atomex.Blockchain.Ethereum
             CancellationToken cancellationToken = default)
         {
             return await ResultHelper.TryDo((c) => GetTransactionsAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
-                ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
         }
 
         public Task<Result<IEnumerable<ContractEvent>>> GetContractEventsAsync(

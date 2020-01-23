@@ -19,7 +19,7 @@ namespace Atomex.Blockchain
             CancellationToken cancellationToken = default)
         {
             return await ResultHelper.TryDo((c) => GetBalanceAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
-                ?? new Error(Errors.RequestError, $"Connection error while getting balance after {attempts} attempts");
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting balance after {attempts} attempts");
         }
 
         public abstract Task<Result<IBlockchainTransaction>> GetTransactionAsync(
@@ -33,7 +33,7 @@ namespace Atomex.Blockchain
             CancellationToken cancellationToken = default)
         {
             return await ResultHelper.TryDo((c) => GetTransactionAsync(txId, c), attempts, attemptsIntervalMs, cancellationToken)
-                ?? new Error(Errors.RequestError, $"Connection error while getting transaciton after {attempts} attempts");
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transaciton after {attempts} attempts");
         }
 
         public abstract Task<Result<string>> BroadcastAsync(
@@ -47,7 +47,7 @@ namespace Atomex.Blockchain
             CancellationToken cancellationToken = default)
         {
             return await ResultHelper.TryDo((c) => BroadcastAsync(transaction, c), attempts, attemptsIntervalMs, cancellationToken)
-                ?? new Error(Errors.RequestError, $"Connection error while getting transaciton after {attempts} attempts");
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transaciton after {attempts} attempts");
         }
     }
 }

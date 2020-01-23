@@ -22,7 +22,7 @@ namespace Atomex.Blockchain.BitcoinBased
             CancellationToken cancellationToken = default)
         {
             return await ResultHelper.TryDo((c) => GetInputAsync(txId, inputNo, c), attempts, attemptsIntervalMs, cancellationToken)
-                ?? new Error(Errors.RequestError, $"Connection error while getting input after {attempts} attempts");
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting input after {attempts} attempts");
         }
 
         public abstract Task<Result<IEnumerable<ITxOutput>>> GetOutputsAsync(
@@ -38,7 +38,7 @@ namespace Atomex.Blockchain.BitcoinBased
             CancellationToken cancellationToken = default)
         {
             return await ResultHelper.TryDo((c) => GetOutputsAsync(address, afterTxId, c), attempts, attemptsIntervalMs, cancellationToken)
-                ?? new Error(Errors.RequestError, $"Connection error while getting outputs after {attempts} attempts");
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting outputs after {attempts} attempts");
         }
 
         public abstract Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
@@ -59,7 +59,7 @@ namespace Atomex.Blockchain.BitcoinBased
             CancellationToken cancellationToken = default)
         {
             return await ResultHelper.TryDo((c) => IsTransactionOutputSpent(txId, outputNo, c), attempts, attemptsIntervalMs, cancellationToken)
-                ?? new Error(Errors.RequestError, $"Connection error while getting transaction output after {attempts} attempts");
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transaction output after {attempts} attempts");
         }
     }
 }

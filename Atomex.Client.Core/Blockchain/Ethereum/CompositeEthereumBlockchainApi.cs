@@ -42,7 +42,7 @@ namespace Atomex.Blockchain.Ethereum
             CancellationToken cancellationToken = default)
         {
             return await ResultHelper.TryDo((c) => GetTransactionCountAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
-                ?? new Error(Errors.RequestError, $"Connection error while getting transaction count after {attempts} attempts");
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transaction count after {attempts} attempts");
         }
 
         public Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
@@ -60,7 +60,7 @@ namespace Atomex.Blockchain.Ethereum
             CancellationToken cancellationToken = default)
         {
             return await ResultHelper.TryDo((c) => GetTransactionsAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
-                ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
         }
 
         public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
