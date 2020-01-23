@@ -24,7 +24,7 @@ namespace Atomex.Swaps.BitcoinBased
             var tx = paymentTx.Clone();
 
             var outputs = await Account
-                .GetAvailableOutputsAsync(tx.Currency.Name)
+                .GetAvailableOutputsAsync()
                 .ConfigureAwait(false);
 
             var spentOutputs = outputs

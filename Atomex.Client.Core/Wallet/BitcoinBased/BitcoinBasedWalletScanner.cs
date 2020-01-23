@@ -202,7 +202,7 @@ namespace Atomex.Wallet.BitcoinBased
                 return;
 
             var outputs = await Account
-                .GetOutputsAsync(Currency.Name)
+                .GetOutputsAsync()
                 .ConfigureAwait(false);
 
             await ScanTransactionsAsync(outputs, cancellationToken)

@@ -861,17 +861,17 @@ namespace Atomex.Wallet.BitcoinBased
                 transactionType: Currency.TransactionType);
         }
 
-        public Task<IEnumerable<ITxOutput>> GetOutputsAsync(string currency)
+        public Task<IEnumerable<ITxOutput>> GetOutputsAsync()
         {
             return DataRepository.GetOutputsAsync(Currency.Name, Currency.OutputType());
         }
 
-        public Task<IEnumerable<ITxOutput>> GetOutputsAsync(string currency, string address)
+        public Task<IEnumerable<ITxOutput>> GetOutputsAsync(string address)
         {
             return DataRepository.GetOutputsAsync(Currency.Name, address, Currency.OutputType());
         }
 
-        public Task<ITxOutput> GetOutputAsync(string currency, string txId, uint index)
+        public Task<ITxOutput> GetOutputAsync(string txId, uint index)
         {
             return DataRepository.GetOutputAsync(Currency.Name, txId, index, Currency.OutputType());
         }
