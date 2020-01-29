@@ -164,6 +164,10 @@ namespace Atomex.Blockchain.Ethereum
 
                 return txId;
             }
+            catch (Nethereum.JsonRpc.Client.RpcResponseException e)
+            {
+                return new Error(Errors.RpcResponseError, e.RpcError?.Message);
+            }
             catch (Exception e)
             {
                 return new Error(Errors.RequestError, e.Message);

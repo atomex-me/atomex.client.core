@@ -104,7 +104,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                 if (isRedeemedResult.HasError && isRedeemedResult.Error.Code != Errors.RequestError) // has error
                     return isRedeemedResult;
   
-                if (!isRedeemedResult.HasError && isRedeemedResult.Value != null) // has secret
+                if (!isRedeemedResult.HasError)
                     return isRedeemedResult;
 
                 await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)

@@ -47,7 +47,7 @@ namespace Atomex.Blockchain
             CancellationToken cancellationToken = default)
         {
             return await ResultHelper.TryDo((c) => BroadcastAsync(transaction, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transaciton after {attempts} attempts");
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transaction after {attempts} attempts");
         }
     }
 }
