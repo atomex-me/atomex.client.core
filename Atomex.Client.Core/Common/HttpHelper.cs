@@ -9,6 +9,8 @@ namespace Atomex.Common
 {
     public static class HttpHelper
     {
+        public const int SslHandshakeFailed = 525;
+
         public static Task<T> GetAsync<T>(
             string baseUri,
             string requestUri,
