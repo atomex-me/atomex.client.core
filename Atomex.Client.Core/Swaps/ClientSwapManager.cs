@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Helpers;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
@@ -16,8 +18,8 @@ namespace Atomex.Swaps
     {
         protected static TimeSpan DefaultCredentialsExchangeTimeout = TimeSpan.FromMinutes(5);
         protected static TimeSpan DefaultMaxSwapTimeout = TimeSpan.FromMinutes(20);
-
-
+        protected static TimeSpan DefaultMaxPaymentTimeout = TimeSpan.FromMinutes(20*60);
+        
         public event EventHandler<SwapEventArgs> SwapUpdated;
 
         private readonly IAccount _account;
@@ -102,6 +104,7 @@ namespace Atomex.Swaps
             var swap = new Swap
             {
                 Id = receivedSwap.Id,
+                OrderId = receivedSwap.OrderId,
                 Status = receivedSwap.Status,
                 TimeStamp = receivedSwap.TimeStamp,
                 Symbol = receivedSwap.Symbol,
@@ -174,17 +177,20 @@ namespace Atomex.Swaps
                 RaiseSwapUpdated(swap, SwapStateFlags.HasSecretHash);
             }
 
+            var walletAddress = new WalletAddress();
+
             if (swap.ToAddress == null)
             {
-                swap.ToAddress = (await _account
+                walletAddress = (await _account
                     .GetRedeemAddressAsync(swap.PurchasedCurrency.Name)
-                    .ConfigureAwait(false))
-                    .Address;
+                    .ConfigureAwait(false));
+
+                swap.ToAddress = walletAddress.Address;
+
                 RaiseSwapUpdated(swap, SwapStateFlags.Empty);
             }
 
-            swap.RewardForRedeem = await RewardForRedeemAsync(swap)
-                .ConfigureAwait(false);
+            swap.RewardForRedeem = RewardForRedeemAsync(walletAddress);
 
             RaiseSwapUpdated(swap, SwapStateFlags.Empty);
 
@@ -295,13 +301,13 @@ namespace Atomex.Swaps
             swap.PartyRewardForRedeem = receivedSwap.PartyRewardForRedeem;
 
             // create self requisites
-            swap.ToAddress = (await _account
+            var walletToAddress = (await _account
                 .GetRedeemAddressAsync(swap.PurchasedCurrency.Name)
-                .ConfigureAwait(false))
-                .Address;
+                .ConfigureAwait(false));
 
-            swap.RewardForRedeem = await RewardForRedeemAsync(swap)
-                .ConfigureAwait(false);
+            swap.ToAddress = walletToAddress.Address;
+
+            swap.RewardForRedeem = RewardForRedeemAsync(walletToAddress);
 
             RaiseSwapUpdated(swap, SwapStateFlags.Empty);
 
@@ -387,17 +393,38 @@ namespace Atomex.Swaps
             CancellationToken cancellationToken = default)
         {
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-            {       
-                await GetCurrencySwap(swap.SoldCurrency)
-                    .StartWaitForRedeemAsync(swap, cancellationToken)
-                    .ConfigureAwait(false);
+            {
+                bool confirmed = true;
 
-                if (swap.IsInitiator)
+                if (!swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed)
+                    && DateTime.UtcNow > swap.TimeStamp.ToUniversalTime() + DefaultMaxPaymentTimeout)
                 {
-                    // check acceptor payment confirmation
-                    await GetCurrencySwap(swap.PurchasedCurrency)
-                        .StartPartyPaymentControlAsync(swap, cancellationToken)
+                    var result = await swap.PaymentTx
+                        .IsTransactionConfirmed(
+                            cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
+
+                    if (result.HasError || !result.Value.IsConfirmed)
+                    {
+                        confirmed = false;
+                        swap.Cancel();
+                        RaiseSwapUpdated(swap, SwapStateFlags.IsCanceled);
+                    }
+                }
+
+                if (confirmed)
+                {
+                    await GetCurrencySwap(swap.SoldCurrency)
+                        .StartWaitForRedeemAsync(swap, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (swap.IsInitiator)
+                    {
+                        // check acceptor payment confirmation
+                        await GetCurrencySwap(swap.PurchasedCurrency)
+                            .StartPartyPaymentControlAsync(swap, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
                 }
             }
             else
@@ -420,6 +447,7 @@ namespace Atomex.Swaps
                 }
             }
         }
+
 
         private void RaiseSwapUpdated(Swap swap, SwapStateFlags changedFlag)
         {
@@ -577,17 +605,15 @@ namespace Atomex.Swaps
                 semaphore.Release();
         }
 
-        private async Task<decimal> RewardForRedeemAsync(Swap swap)
+        private decimal RewardForRedeemAsync(WalletAddress walletAddress)
         {
-            if (swap.PurchasedCurrency is BitcoinBasedCurrency)
+            if(walletAddress.Currency is BitcoinBasedCurrency)
                 return 0;
 
-            var purchasedCurrencyBalance = await _account
-                .GetBalanceAsync(swap.PurchasedCurrency.Name)
-                .ConfigureAwait(false);
+            var defaultFee = walletAddress.Currency.GetDefaultRedeemFee(walletAddress);
 
-            return purchasedCurrencyBalance.Available < swap.PurchasedCurrency.GetDefaultRedeemFee()
-                ? swap.PurchasedCurrency.GetDefaultRedeemFee() * 2
+            return walletAddress.AvailableBalance() < defaultFee
+                ? defaultFee * 2
                 : 0;
         }
     }

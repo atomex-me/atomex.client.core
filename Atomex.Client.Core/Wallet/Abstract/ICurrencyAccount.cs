@@ -15,30 +15,49 @@ namespace Atomex.Wallet.Abstract
 
         #region Common
 
+        //Task<Error> SendAsync(
+        //    IEnumerable<WalletAddress> from,
+        //    string to,
+        //    decimal amount,
+        //    decimal fee,
+        //    decimal feePrice,
+        //    CancellationToken cancellationToken = default);
+
         Task<Error> SendAsync(
             IEnumerable<WalletAddress> from,
             string to,
             decimal amount,
             decimal fee,
             decimal feePrice,
+            bool useDefaultFee = false,
             CancellationToken cancellationToken = default);
+
+        //Task<Error> SendAsync(
+        //    string to,
+        //    decimal amount,
+        //    decimal fee,
+        //    decimal feePrice,
+        //    CancellationToken cancellationToken = default);
 
         Task<Error> SendAsync(
             string to,
             decimal amount,
             decimal fee,
             decimal feePrice,
+            bool useDefaultFee = false,
             CancellationToken cancellationToken = default);
 
         Task<decimal?> EstimateFeeAsync(
             string to,
             decimal amount,
             BlockchainTransactionType type,
+            decimal inputFee = 0,
             CancellationToken cancellationToken = default);
 
-        Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
+        Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
+            bool reserve = false,
             CancellationToken cancellationToken = default);
 
         #endregion Common

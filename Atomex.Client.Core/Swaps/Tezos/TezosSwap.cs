@@ -245,10 +245,11 @@ namespace Atomex.Swaps.Tezos
                 From = walletAddress.Address,
                 To = Xtz.SwapContractAddress,
                 Amount = 0,
-                Fee = Xtz.RedeemFee,
+                Fee = Xtz.RedeemFee + Xtz.RevealFee,
                 GasLimit = Xtz.RedeemGasLimit,
                 StorageLimit = Xtz.RedeemStorageLimit,
                 Params = RedeemParams(swap),
+                UseDefaultFee = true,
                 Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
             };
 
@@ -300,7 +301,7 @@ namespace Atomex.Swaps.Tezos
 
             var walletAddress = (await _account
                 .GetUnspentAddressesAsync(
-                    toAddress: null, // todo: get party address
+                    toAddress: swap.PartyAddress, // todo: check it
                     amount: 0,
                     fee: 0,
                     feePrice: 0,
@@ -324,10 +325,11 @@ namespace Atomex.Swaps.Tezos
                 From = walletAddress.Address,
                 To = Xtz.SwapContractAddress,
                 Amount = 0,
-                Fee = Xtz.RedeemFee,
+                Fee = Xtz.RedeemFee + Xtz.RevealFee,
                 GasLimit = Xtz.RedeemGasLimit,
                 StorageLimit = Xtz.RedeemStorageLimit,
                 Params = RedeemParams(swap),
+                UseDefaultFee = true,
                 Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
             };
 
@@ -385,16 +387,17 @@ namespace Atomex.Swaps.Tezos
                 return;
             }
 
-            var refundTx = new TezosTransaction
+            var refundTx = new TezosTransaction   //todo: use estimated fee and storage limit
             {
                 Currency = Xtz,
                 CreationTime = DateTime.UtcNow,
                 From = walletAddress.Address,
                 To = Xtz.SwapContractAddress,
-                Fee = Xtz.RefundFee,
+                Fee = Xtz.RefundFee + Xtz.RevealFee,
                 GasLimit = Xtz.RefundGasLimit,
                 StorageLimit = Xtz.RefundStorageLimit,
                 Params = RefundParams(swap),
+                UseDefaultFee = true,
                 Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
             };
 
@@ -716,13 +719,16 @@ namespace Atomex.Swaps.Tezos
 
                 var balanceInMtz = balanceInTz.ToMicroTez();
 
+                var isRevealed = await _account.IsRevealedSourceAsync(walletAddress.Address, cancellationToken)
+                    .ConfigureAwait(false);
+
                 var feeAmountInMtz = isInitTx
-                    ? Xtz.InitiateFee
-                    : Xtz.AddFee;
+                    ? Xtz.InitiateFee + (isRevealed ? 0 : Xtz.RevealFee)
+                    : Xtz.AddFee + (isRevealed ? 0 : Xtz.RevealFee);
 
                 var storageLimitInMtz = isInitTx
-                    ? Xtz.InitiateStorageLimit * 1000
-                    : Xtz.AddStorageLimit * 1000;
+                    ? Xtz.InitiateStorageLimit * Xtz.StorageFeeMultiplier
+                    : Xtz.AddStorageLimit * Xtz.StorageFeeMultiplier;
 
                 var amountInMtz = Math.Min(balanceInMtz - feeAmountInMtz - storageLimitInMtz, requiredAmountInMtz);
 
@@ -746,32 +752,34 @@ namespace Atomex.Swaps.Tezos
                 {
                     transactions.Add(new TezosTransaction
                     {
-                        Currency     = Xtz,
-                        CreationTime = DateTime.UtcNow,
-                        From         = walletAddress.Address,
-                        To           = Xtz.SwapContractAddress,
-                        Amount       = Math.Round(amountInMtz, 0),
-                        Fee          = feeAmountInMtz,
-                        GasLimit     = Xtz.InitiateGasLimit,
-                        StorageLimit = Xtz.InitiateStorageLimit,
-                        Params       = InitParams(swap, refundTimeStampUtcInSec, (long)rewardForRedeemInMtz),
-                        Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
+                        Currency      = Xtz,
+                        CreationTime  = DateTime.UtcNow,
+                        From          = walletAddress.Address,
+                        To            = Xtz.SwapContractAddress,
+                        Amount        = Math.Round(amountInMtz, 0),
+                        Fee           = feeAmountInMtz,
+                        GasLimit      = Xtz.InitiateGasLimit,
+                        StorageLimit  = Xtz.InitiateStorageLimit,
+                        Params        = InitParams(swap, refundTimeStampUtcInSec, (long)rewardForRedeemInMtz),
+                        UseDefaultFee = true,
+                        Type          = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
                     });
                 }
                 else
                 {
                     transactions.Add(new TezosTransaction
                     {
-                        Currency     = Xtz,
-                        CreationTime = DateTime.UtcNow,
-                        From         = walletAddress.Address,
-                        To           = Xtz.SwapContractAddress,
-                        Amount       = Math.Round(amountInMtz, 0),
-                        Fee          = feeAmountInMtz,
-                        GasLimit     = Xtz.AddGasLimit,
-                        StorageLimit = Xtz.AddStorageLimit,
-                        Params       = AddParams(swap),
-                        Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
+                        Currency      = Xtz,
+                        CreationTime  = DateTime.UtcNow,
+                        From          = walletAddress.Address,
+                        To            = Xtz.SwapContractAddress,
+                        Amount        = Math.Round(amountInMtz, 0),
+                        Fee           = feeAmountInMtz,
+                        GasLimit      = Xtz.AddGasLimit,
+                        StorageLimit  = Xtz.AddStorageLimit,
+                        UseDefaultFee = true,
+                        Params        = AddParams(swap),
+                        Type          = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
                     });
                 }
 

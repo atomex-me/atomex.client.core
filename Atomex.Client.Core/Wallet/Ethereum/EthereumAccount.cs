@@ -34,6 +34,7 @@ namespace Atomex.Wallet.Ethereum
             decimal amount,
             decimal fee,
             decimal feePrice,
+            bool useDefaultFee = false,
             CancellationToken cancellationToken = default)
         {
             var fromAddresses = from
@@ -144,6 +145,7 @@ namespace Atomex.Wallet.Ethereum
             decimal amount,
             decimal fee,
             decimal feePrice,
+            bool useDefaultFee = false,
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
@@ -157,6 +159,7 @@ namespace Atomex.Wallet.Ethereum
                     amount: amount,
                     fee: fee,
                     feePrice: feePrice,
+                    useDefaultFee: useDefaultFee,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -165,6 +168,7 @@ namespace Atomex.Wallet.Ethereum
             string to,
             decimal amount,
             BlockchainTransactionType type,
+            decimal inputFee = 0,
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
@@ -199,9 +203,10 @@ namespace Atomex.Wallet.Ethereum
             return selectedAddresses.Sum(s => s.UsedFee);
         }
 
-        public override async Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
+        public override async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
+            bool reserve = false,
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
@@ -218,7 +223,7 @@ namespace Atomex.Wallet.Ethereum
             }
 
             if (!unspentAddresses.Any())
-                return (0m, 0m);
+                return (0m, 0m, 0m);
 
             // minimum balance first
             unspentAddresses = unspentAddresses
@@ -244,7 +249,7 @@ namespace Atomex.Wallet.Ethereum
                     isFirstTx = false;
             }
 
-            return (amount, fee);
+            return (amount, fee, 0m);
         }
 
         private decimal GasLimitByType(BlockchainTransactionType type, bool isFirstTx)

@@ -43,6 +43,7 @@ namespace Atomex.Wallet.Abstract
             decimal amount,
             decimal fee,
             decimal feePrice,
+            bool useDefaultFee = false,
             CancellationToken cancellationToken = default);
 
         public abstract Task<Error> SendAsync(
@@ -50,17 +51,20 @@ namespace Atomex.Wallet.Abstract
             decimal amount,
             decimal fee,
             decimal feePrice,
+            bool useDefaultFee = false,
             CancellationToken cancellationToken = default);
 
         public abstract Task<decimal?> EstimateFeeAsync(
             string to,
             decimal amount,
             BlockchainTransactionType type,
+            decimal inputFee = 0,
             CancellationToken cancellationToken = default);
 
-        public abstract Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
+        public abstract Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
+            bool reserve = false,
             CancellationToken cancellationToken = default);
 
         protected void RaiseBalanceUpdated(CurrencyEventArgs eventArgs)

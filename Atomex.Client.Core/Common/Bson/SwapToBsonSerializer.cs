@@ -24,6 +24,7 @@ namespace Atomex.Common.Bson
         private const string PartyRewardForRedeemKey = nameof(Swap.PartyRewardForRedeem);
         private const string PartyPaymentTxIdKey = nameof(Swap.PartyPaymentTxId);
         private const string PartyRedeemScriptKey = nameof(Swap.PartyRedeemScript);
+        private const string OrderIdKey = nameof(Swap.OrderId);
 
         private const string SecretKey = nameof(Swap.Secret);
         private const string SecretHashKey = nameof(Swap.SecretHash);
@@ -57,6 +58,7 @@ namespace Atomex.Common.Bson
             return new Swap
             {
                 Id = bson[IdKey].AsInt64,
+                OrderId = !bson[OrderIdKey].IsNull ? bson[OrderIdKey].AsInt64 : 0,
                 Status = status,
                 StateFlags = state,
                 TimeStamp = bson[TimeStampKey].AsDateTime,
@@ -108,6 +110,7 @@ namespace Atomex.Common.Bson
             return new BsonDocument
             {
                 [IdKey] = swap.Id,
+                [OrderIdKey] = swap.OrderId,
                 [StatusKey] = swap.Status.ToString(),
                 [StateKey] = swap.StateFlags.ToString(),
                 [TimeStampKey] = swap.TimeStamp,

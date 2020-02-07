@@ -35,6 +35,7 @@ namespace Atomex.Blockchain.Tezos
         public decimal GasLimit { get; set; }
         public decimal StorageLimit { get; set; }
         public decimal Burn { get; set; }
+        public bool UseDefaultFee { get; set; }
         public JObject Params { get; set; }
         public bool IsInternal { get; set; }
         public int InternalIndex { get; set; }
@@ -102,8 +103,8 @@ namespace Atomex.Blockchain.Tezos
                     ["fee"] = "0",
                     ["public_key"] = Base58Check.Encode(publicKey, Prefix.Edpk),
                     ["source"] = From,
-                    ["storage_limit"] = storage,
-                    ["gas_limit"] = gas,
+                    ["storage_limit"] = "0",
+                    ["gas_limit"] = xtz.RevealGasLimit.ToString(),
                     ["counter"] = revealOpCounter.ToString()
                 };
 
@@ -131,8 +132,11 @@ namespace Atomex.Blockchain.Tezos
             if (Params != null)
                 transaction["parameters"] = Params;
 
+            if (Type != BlockchainTransactionType.Output)
+                UseDefaultFee = true;
+
             var fill = await rpc
-                .AutoFillOperations(xtz, Head, Operations)
+                .AutoFillOperations(xtz, Head, Operations, UseDefaultFee)
                 .ConfigureAwait(false);
 
             if (!fill)

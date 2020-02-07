@@ -109,7 +109,7 @@ namespace Atomex
             return 1m;
         }
 
-        public override decimal GetDefaultRedeemFee()
+        public override decimal GetDefaultRedeemFee(WalletAddress toAddress = null)
         {
             return FeeRate * DefaultRedeemTxSize / DigitsMultiplier;
         }

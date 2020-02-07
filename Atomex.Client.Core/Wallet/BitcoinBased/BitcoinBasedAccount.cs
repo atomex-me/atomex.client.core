@@ -34,6 +34,7 @@ namespace Atomex.Wallet.BitcoinBased
             decimal amount,
             decimal fee,
             decimal feePrice,
+            bool useDafaultFee = false,
             CancellationToken cancellationToken = default)
         {
             var unspentOutputs = (await DataRepository
@@ -57,6 +58,7 @@ namespace Atomex.Wallet.BitcoinBased
             decimal amount,
             decimal fee,
             decimal feePrice,
+            bool useDefaultFee = false,
             CancellationToken cancellationToken = default)
         {
             var unspentOutputs = (await DataRepository
@@ -186,6 +188,7 @@ namespace Atomex.Wallet.BitcoinBased
             string to,
             decimal amount,
             BlockchainTransactionType type,
+            decimal inputFee = 0,
             CancellationToken cancellationToken = default)
         {
             var amountInSatoshi = BtcBasedCurrency.CoinToSatoshi(amount);
@@ -256,9 +259,10 @@ namespace Atomex.Wallet.BitcoinBased
             return null; // insufficient funds
         }
 
-        public override async Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
+        public override async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
+            bool reserve = false,
             CancellationToken cancellationToken = default)
         {
             var unspentOutputs = (await DataRepository
@@ -267,7 +271,7 @@ namespace Atomex.Wallet.BitcoinBased
                 .ToList();
 
             if (!unspentOutputs.Any())
-                return (0m, 0m);
+                return (0m, 0m, 0m);
 
             var availableAmountInSatoshi = unspentOutputs.Sum(o => o.Value);
             var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(unspentOutputs);
@@ -287,7 +291,7 @@ namespace Atomex.Wallet.BitcoinBased
             var amount = BtcBasedCurrency.SatoshiToCoin(Math.Max(availableAmountInSatoshi - requiredFeeInSatoshi, 0));
             var fee = BtcBasedCurrency.SatoshiToCoin(requiredFeeInSatoshi);
 
-            return (amount, fee);
+            return (amount, fee, 0m);
         }
 
         public async Task<FundsUsageEstimation> EstimateFeeExAsync(
@@ -706,13 +710,14 @@ namespace Atomex.Wallet.BitcoinBased
                     break;
 
                 usedAddresses.Add(walletAddress);
+
                 usedAmount += walletAddress.AvailableBalance();
             }
 
             if (requiredAmount > 0 && usedAmount < requiredAmount)
                 return Enumerable.Empty<WalletAddress>();
 
-            return ResolvePublicKeys(usedAddresses);
+            return usedAddresses;
         }
 
         #endregion Addresses

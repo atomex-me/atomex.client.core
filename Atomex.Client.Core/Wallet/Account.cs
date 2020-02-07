@@ -132,6 +132,7 @@ namespace Atomex.Wallet
             decimal amount,
             decimal fee,
             decimal feePrice,
+            bool useDefaultFee = false,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency)
@@ -141,6 +142,7 @@ namespace Atomex.Wallet
                     amount: amount,
                     fee: fee,
                     feePrice: feePrice,
+                    useDefaultFee: useDefaultFee,
                     cancellationToken: cancellationToken);
         }
 
@@ -150,6 +152,7 @@ namespace Atomex.Wallet
             decimal amount,
             decimal fee,
             decimal feePrice,
+            bool useDefaultFee = false,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency)
@@ -158,6 +161,7 @@ namespace Atomex.Wallet
                     amount: amount,
                     fee: fee,
                     feePrice: feePrice,
+                    useDefaultFee: useDefaultFee,
                     cancellationToken: cancellationToken);
         }
 
@@ -166,20 +170,22 @@ namespace Atomex.Wallet
             string to,
             decimal amount,
             BlockchainTransactionType type,
+            decimal inputFee = 0,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency)
-                .EstimateFeeAsync(to, amount, type, cancellationToken);
+                .EstimateFeeAsync(to, amount, type, inputFee, cancellationToken);
         }
 
-        public Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
+        public Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string currency,
             string to,
             BlockchainTransactionType type,
+            bool reserve = false,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency)
-                .EstimateMaxAmountToSendAsync(to, type, cancellationToken);
+                .EstimateMaxAmountToSendAsync(to, type, reserve, cancellationToken);
         }
 
         public async Task<Auth> CreateAuthRequestAsync(AuthNonce nonce, uint keyIndex = 0)
@@ -368,12 +374,12 @@ namespace Atomex.Wallet
                 .GetRefundAddressAsync(cancellationToken);
         }
 
-        public Task<WalletAddress> GetRedeemAddressAsync(
+        public Task<WalletAddress> GetRedeemAddressAsync(   //todo: check if always returns the biggest address
             string currency,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency)
-                .GetRedeemAddressAsync(cancellationToken);
+                .GetRedeemAddressAsync(cancellationToken);   
         }
 
         #endregion Addresses

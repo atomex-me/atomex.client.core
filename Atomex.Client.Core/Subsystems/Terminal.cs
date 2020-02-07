@@ -25,6 +25,8 @@ namespace Atomex.Subsystems
 {
     public class Terminal : ITerminal
     {
+        protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(20 * 60);
+
         public event EventHandler<TerminalServiceEventArgs> ServiceConnected;
         public event EventHandler<TerminalServiceEventArgs> ServiceDisconnected;
         public event EventHandler<TerminalServiceEventArgs> ServiceAuthenticated;
@@ -420,7 +422,19 @@ namespace Atomex.Subsystems
 
                 foreach (var tx in txs)
                     if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
+                    {
+                        if (DateTime.UtcNow > tx.CreationTime?.ToUniversalTime() + DefaultMaxTransactionTimeout)
+                        {
+                            tx.State = BlockchainTransactionState.Failed;
+                            await Account
+                                .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
+                                .ConfigureAwait(false);
+                            continue;
+                        }
+
                         TrackTransactionAsync(tx, cancellationToken).FireAndForget();
+                    }
+                     
             }
             catch (Exception e)
             {
