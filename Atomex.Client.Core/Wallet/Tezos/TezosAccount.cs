@@ -62,7 +62,7 @@ namespace Atomex.Wallet.Tezos
                     code: Errors.InsufficientFunds,
                     description: "Insufficient funds");
 
-            var isActive = await IsActiveDestinationAsync(BlockchainTransactionType.Output, to, cancellationToken)
+            var isActive = await IsAllocatedDestinationAsync(BlockchainTransactionType.Output, to, cancellationToken)
                 .ConfigureAwait(false);
 
             // todo: min fee control
@@ -274,8 +274,8 @@ namespace Atomex.Wallet.Tezos
             var fee = 0m;
 
             var reserveFee = ReserveFeeByTypeAsync(
-                    type: type,
-                    cancellationToken: cancellationToken);
+                type: type,
+                cancellationToken: cancellationToken);
 
             foreach (var address in unspentAddresses)
             {
@@ -380,7 +380,7 @@ namespace Atomex.Wallet.Tezos
             bool isFirstTx,
             CancellationToken cancellationToken = default)
         {
-            var isActive = await IsActiveDestinationAsync(type, to, cancellationToken)
+            var isActive = await IsAllocatedDestinationAsync(type, to, cancellationToken)
                 .ConfigureAwait(false);
 
             if (type.HasFlag(BlockchainTransactionType.SwapPayment) && isFirstTx)
@@ -415,7 +415,7 @@ namespace Atomex.Wallet.Tezos
             return false;
         }
 
-        private async Task<bool> IsActiveDestinationAsync(
+        private async Task<bool> IsAllocatedDestinationAsync(
             BlockchainTransactionType type,
             string to,
             CancellationToken cancellationToken = default)
@@ -430,24 +430,10 @@ namespace Atomex.Wallet.Tezos
             if (type == BlockchainTransactionType.SwapRedeem) // || type == BlockchainTransactionType.SwapRefund)
             {
                 return false;
-
-                //var redeemAddress = await GetRedeemAddressAsync(cancellationToken)
-                //    .ConfigureAwait(false);
-
-                //return await _tezosAllocationChecker
-                //    .IsAllocatedAsync(redeemAddress.Address, cancellationToken)
-                //    .ConfigureAwait(false);
             }
             else if (type == BlockchainTransactionType.SwapRefund)
             {
                 return false;
-
-                //var refundAddress = await GetRefundAddressAsync(cancellationToken)
-                //    .ConfigureAwait(false);
-
-                //return await _tezosAllocationChecker
-                //    .IsAllocatedAsync(refundAddress.Address, cancellationToken)
-                //    .ConfigureAwait(false);
             }
 
             return false;
@@ -660,31 +646,6 @@ namespace Atomex.Wallet.Tezos
 
         #region Addresses
 
-        //public override async Task<WalletAddress> GetRefundAddressAsync(
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var unspentAddresses = await GetUnspentAddressesAsync(cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    if (unspentAddresses.Any())
-        //        return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance()));
-
-        //    foreach (var chain in new[] {Bip44.Internal, Bip44.External})
-        //    {
-        //        var lastActiveAddress = await DataRepository
-        //            .GetLastActiveWalletAddressAsync(
-        //                currency: Currency.Name,
-        //                chain: chain)
-        //            .ConfigureAwait(false);
-
-        //        if (lastActiveAddress != null)
-        //            return ResolvePublicKey(lastActiveAddress);
-        //    }
-
-        //    return await base.GetRefundAddressAsync(cancellationToken)
-        //        .ConfigureAwait(false);
-        //}
-
         public override async Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default)
         {
@@ -853,7 +814,7 @@ namespace Atomex.Wallet.Tezos
                         var estimatedFee = result.Sum(s => s.UsedFee);
                         var remainingFee = fee - estimatedFee;
 
-                        decimal extraFee = 0;
+                        var extraFee = 0m;
 
                         if (remainingFee > 0)
                         {

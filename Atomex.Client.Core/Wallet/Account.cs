@@ -366,13 +366,13 @@ namespace Atomex.Wallet
                 .GetFreeExternalAddressAsync(cancellationToken);
         }
 
-        public Task<WalletAddress> GetRefundAddressAsync(
-            string currency,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .GetRefundAddressAsync(cancellationToken);
-        }
+        //public Task<WalletAddress> GetRefundAddressAsync(
+        //    string currency,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return GetCurrencyAccount(currency)
+        //        .GetRefundAddressAsync(cancellationToken);
+        //}
 
         public Task<WalletAddress> GetRedeemAddressAsync(   //todo: check if always returns the biggest address
             string currency,

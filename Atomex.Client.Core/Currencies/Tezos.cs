@@ -148,9 +148,6 @@ namespace Atomex
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();
 
-            if (blockchainApi.Equals("tzscan"))
-                return new TzScanApi(tezos);
-
             if (blockchainApi.Equals("tzkt"))
                 return new BabyTzktApi(tezos);
 
@@ -212,7 +209,7 @@ namespace Atomex
             return 1m;
         }
 
-        public override decimal GetDefaultRedeemFee(WalletAddress toAddress)
+        public override decimal GetDefaultRedeemFee(WalletAddress toAddress = null)
         {
             return RedeemFee.ToTez() + RevealFee.ToTez() + MicroTezReserve.ToTez() +  //todo: define another value for revealed
                 (toAddress.AvailableBalance() > 0

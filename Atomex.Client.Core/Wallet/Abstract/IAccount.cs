@@ -287,9 +287,9 @@ namespace Atomex.Wallet.Abstract
         /// <param name="currency">Currency</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Wallet address</returns>
-        Task<WalletAddress> GetRefundAddressAsync(
-            string currency,
-            CancellationToken cancellationToken = default);
+        //Task<WalletAddress> GetRefundAddressAsync(
+        //    string currency,
+        //    CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Get redeem address for <paramref name="currency"/>

@@ -109,9 +109,6 @@ namespace Atomex.Wallet.Abstract
         Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default);
 
-        Task<WalletAddress> GetRefundAddressAsync(
-            CancellationToken cancellationToken = default);
-
         Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default);
 

@@ -5,7 +5,7 @@ using Atomex.Core;
 
 namespace Atomex.Swaps.Abstract
 {
-    public interface IClientSwapManager
+    public interface ISwapManager
     {
         event EventHandler<SwapEventArgs> SwapUpdated;
 

@@ -11,12 +11,6 @@ namespace Atomex.Wallet.Tezos
 {
     public class TezosAllocationChecker
     {
-        private class TezosAddressInfo
-        {
-            public bool IsAllocated { get; set; }
-            public DateTime LastCheckTimeUtc { get; set; }
-        }
-
         private readonly Network _network;
         private readonly IDictionary<string, TezosAddressInfo> _addresses;
 
@@ -41,7 +35,7 @@ namespace Atomex.Wallet.Tezos
                 }
             }
 
-            var isAllocatedResult = await new TzStatsApi(_network)
+            var isAllocatedResult = await new TzktApi(_network)
                 .IsAllocatedAsync(address, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -66,6 +60,7 @@ namespace Atomex.Wallet.Tezos
             {
                 if (_addresses.TryGetValue(address, out var info))
                 {
+                    info.Address = address;
                     info.IsAllocated = isAllocatedResult.Value;
                     info.LastCheckTimeUtc = DateTime.UtcNow;
                 }
@@ -73,6 +68,7 @@ namespace Atomex.Wallet.Tezos
                 {
                     _addresses.Add(address, new TezosAddressInfo()
                     {
+                        Address = address,
                         IsAllocated = isAllocatedResult.Value,
                         LastCheckTimeUtc = DateTime.UtcNow
                     });

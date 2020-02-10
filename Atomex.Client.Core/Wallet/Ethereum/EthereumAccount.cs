@@ -513,30 +513,30 @@ namespace Atomex.Wallet.Ethereum
 
         #region Addresses
 
-        public override async Task<WalletAddress> GetRefundAddressAsync(
-            CancellationToken cancellationToken = default)
-        {
-            var unspentAddresses = await GetUnspentAddressesAsync(cancellationToken)
-                .ConfigureAwait(false);
+        //public override async Task<WalletAddress> GetRefundAddressAsync(
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    var unspentAddresses = await GetUnspentAddressesAsync(cancellationToken)
+        //        .ConfigureAwait(false);
 
-            if (unspentAddresses.Any())
-                return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance()));
+        //    if (unspentAddresses.Any())
+        //        return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance()));
 
-            foreach (var chain in new[] { Bip44.Internal, Bip44.External })
-            {
-                var lastActiveAddress = await DataRepository
-                    .GetLastActiveWalletAddressAsync(
-                        currency: Currency.Name,
-                        chain: chain)
-                    .ConfigureAwait(false);
+        //    foreach (var chain in new[] { Bip44.Internal, Bip44.External })
+        //    {
+        //        var lastActiveAddress = await DataRepository
+        //            .GetLastActiveWalletAddressAsync(
+        //                currency: Currency.Name,
+        //                chain: chain)
+        //            .ConfigureAwait(false);
 
-                if (lastActiveAddress != null)
-                    return ResolvePublicKey(lastActiveAddress);
-            }
+        //        if (lastActiveAddress != null)
+        //            return ResolvePublicKey(lastActiveAddress);
+        //    }
 
-            return await base.GetRefundAddressAsync(cancellationToken)
-                .ConfigureAwait(false);
-        }
+        //    return await base.GetRefundAddressAsync(cancellationToken)
+        //        .ConfigureAwait(false);
+        //}
 
         public override async Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default)

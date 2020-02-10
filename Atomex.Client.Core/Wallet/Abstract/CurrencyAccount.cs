@@ -246,15 +246,6 @@ namespace Atomex.Wallet.Abstract
             return addresses;
         }
 
-        public virtual async Task<WalletAddress> GetRefundAddressAsync(
-            CancellationToken cancellationToken = default)
-        {
-            var refundAddress = await GetFreeInternalAddressAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            return ResolvePublicKey(refundAddress);
-        }
-
         public virtual async Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default)
         {

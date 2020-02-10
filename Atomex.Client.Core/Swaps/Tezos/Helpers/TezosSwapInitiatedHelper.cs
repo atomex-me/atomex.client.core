@@ -131,6 +131,11 @@ namespace Atomex.Swaps.Tezos.Helpers
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
+                    if (swap.IsCanceled) {
+                        canceledHandler?.Invoke(swap, cancellationToken);
+                        break;
+                    }
+
                     var isInitiatedResult = await IsInitiatedAsync(
                             swap: swap,
                             currency: currency,

@@ -717,7 +717,16 @@ namespace Atomex.Wallet.BitcoinBased
             if (requiredAmount > 0 && usedAmount < requiredAmount)
                 return Enumerable.Empty<WalletAddress>();
 
-            return usedAddresses;
+            return ResolvePublicKeys(usedAddresses);
+        }
+
+        public async Task<WalletAddress> GetRefundAddressAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var refundAddress = await GetFreeInternalAddressAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            return ResolvePublicKey(refundAddress);
         }
 
         #endregion Addresses

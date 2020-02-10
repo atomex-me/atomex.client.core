@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
@@ -15,8 +14,8 @@ namespace Atomex.Swaps.Abstract
         public const int DefaultSecretSize = 32;
         public const int DefaultSecretHashSize = 32; //20;
 
-        protected const int DefaultInitiatorLockTimeInSeconds = 10 * 60 * 60; // 10 hours
-        protected const int DefaultAcceptorLockTimeInSeconds = 5 * 60 * 60; // 5 hours
+        public const int DefaultInitiatorLockTimeInSeconds = 10 * 60 * 60; // 10 hours
+        public const int DefaultAcceptorLockTimeInSeconds = 5 * 60 * 60; // 5 hours
         protected const int DefaultGetTransactionAttempts = 10;
 
         protected static TimeSpan ConfirmationCheckInterval = TimeSpan.FromSeconds(60);
@@ -24,9 +23,9 @@ namespace Atomex.Swaps.Abstract
         protected static TimeSpan GetTransactionInterval = TimeSpan.FromSeconds(60);
         protected static TimeSpan RefundTimeCheckInterval = TimeSpan.FromSeconds(60);
         protected static TimeSpan ForceRefundInterval = TimeSpan.FromMinutes(5);
-        protected static TimeSpan RedeemTimeReserve = TimeSpan.FromMinutes(90);
+        public static TimeSpan RedeemTimeReserve = TimeSpan.FromMinutes(90);
         protected static TimeSpan PartyRedeemTimeReserve = TimeSpan.FromMinutes(95);
-        protected static TimeSpan PaymentTimeReserve = TimeSpan.FromMinutes(60);
+        public static TimeSpan PaymentTimeReserve = TimeSpan.FromMinutes(60);
 
         public OnSwapUpdatedDelegate InitiatorPaymentConfirmed { get; set; }
         public OnSwapUpdatedDelegate AcceptorPaymentConfirmed { get; set; }

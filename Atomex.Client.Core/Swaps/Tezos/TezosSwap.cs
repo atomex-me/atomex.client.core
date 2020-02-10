@@ -43,7 +43,11 @@ namespace Atomex.Swaps.Tezos
 
                 if (DateTime.UtcNow > paymentDeadline)
                 {
-                    Log.Error("Payment dedline reached for swap {@swap}", swap.Id);
+                    Log.Error("Payment deadline reached for swap {@swap}", swap.Id);
+
+                    swap.Cancel();
+                    RaiseSwapUpdated(swap, SwapStateFlags.IsCanceled);
+
                     return;
                 }
             }
@@ -521,7 +525,7 @@ namespace Atomex.Swaps.Tezos
             CancellationToken cancellationToken = default)
         {
             // todo: do smth here
-            Log.Debug("Swap canceled due to wrong counterParty params {@swapId}", swap.Id);
+            Log.Debug("Swap canceled due to wrong counterParty params {@swapId} or timeout", swap.Id);
         }
 
         private void RedeemConfirmedEventHandler(

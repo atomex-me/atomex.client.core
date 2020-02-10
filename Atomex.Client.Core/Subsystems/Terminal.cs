@@ -42,7 +42,7 @@ namespace Atomex.Subsystems
         public IAccount Account { get; set; }
         private IConfiguration Configuration { get; }
         private IMarketDataRepository MarketDataRepository { get; set; }
-        private IClientSwapManager SwapManager { get; set; }
+        private ISwapManager SwapManager { get; set; }
         private TimeSpan TransactionConfirmationCheckInterval { get; } = TimeSpan.FromSeconds(45);
 
         public Terminal(IConfiguration configuration, IAccount account)
@@ -119,7 +119,7 @@ namespace Atomex.Subsystems
             TrackUnconfirmedTransactionsAsync(_cts.Token).FireAndForget();
 
             // init swap manager
-            SwapManager = new ClientSwapManager(
+            SwapManager = new SwapManager(
                 account: Account,
                 swapClient: ExchangeClient);
             SwapManager.SwapUpdated += (sender, args) => SwapUpdated?.Invoke(sender, args);

@@ -55,7 +55,11 @@ namespace Atomex.Swaps.BitcoinBased
 
                 if (DateTime.UtcNow > paymentDeadline)
                 {
-                    Log.Error("Payment dedline reached for swap {@swap}", swap.Id);
+                    Log.Error("Payment deadline reached for swap {@swap}", swap.Id);
+
+                    swap.Cancel();
+                    RaiseSwapUpdated(swap, SwapStateFlags.IsCanceled);
+
                     return;
                 }
             }
