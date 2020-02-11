@@ -117,7 +117,7 @@ namespace Atomex.Swaps.Ethereum
             }
             catch (Exception e)
             {
-                Log.Error(e, "Swap payment error for swap {@swapId}", swap.Id);
+                Console.WriteLine("Swap payment error for swap {@swapId}", swap.Id);
                 return;
             }
 
@@ -547,7 +547,7 @@ namespace Atomex.Swaps.Ethereum
             }
             catch (Exception e)
             {
-                Log.Error(e, "Swap accepted error");
+                Console.WriteLine("Swap accepted error");
             }
         }
 
@@ -630,7 +630,7 @@ namespace Atomex.Swaps.Ethereum
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error in refund time reached handler");
+                Console.WriteLine("Error in refund time reached handler");
             }
         }
 
@@ -704,7 +704,7 @@ namespace Atomex.Swaps.Ethereum
             }
             catch (Exception e)
             {
-                Log.Error(e, "Redeem party control canceled event error");
+                Console.WriteLine("Redeem party control canceled event error");
             }
         }
 

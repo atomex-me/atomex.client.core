@@ -173,7 +173,7 @@ namespace Atomex.Subsystems
             }
             catch (Exception e)
             {
-                Log.Error(e, "Order send error");
+                Console.WriteLine("Order send error");
             }
         }
 
@@ -240,7 +240,7 @@ namespace Atomex.Subsystems
             }
             catch (Exception e)
             {
-                Log.Error(e, "Exchange auth error");
+                Console.WriteLine("Exchange auth error");
             }
         }
 
@@ -317,7 +317,7 @@ namespace Atomex.Subsystems
             }
             catch (Exception e)
             {
-                Log.Error(e, "MarketData auth error");
+                Console.WriteLine("MarketData auth error");
             }
         }
 
@@ -404,7 +404,7 @@ namespace Atomex.Subsystems
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Balance autoupdate task error");
+                    Console.WriteLine("Balance autoupdate task error");
                 }
             });
         }
@@ -423,7 +423,7 @@ namespace Atomex.Subsystems
             }
             catch (Exception e)
             {
-                Log.Error(e, "Unconfirmed transactions track error");
+                Console.WriteLine("Unconfirmed transactions track error");
             }
         }
 
@@ -475,7 +475,7 @@ namespace Atomex.Subsystems
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error in transaction confirmed handler");
+                Console.WriteLine("Error in transaction confirmed handler");
             }
         }
 

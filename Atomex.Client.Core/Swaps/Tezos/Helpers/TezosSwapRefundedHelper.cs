@@ -67,7 +67,7 @@ namespace Atomex.Swaps.Tezos.Helpers
             }
             catch (Exception e)
             {
-                Log.Error(e, "Tezos refund control task error");
+                Console.WriteLine("Tezos refund control task error");
 
                 return new Error(Errors.InternalError, e.Message);
             }

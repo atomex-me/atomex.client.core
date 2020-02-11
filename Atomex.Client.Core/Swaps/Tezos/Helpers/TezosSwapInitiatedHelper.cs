@@ -110,7 +110,7 @@ namespace Atomex.Swaps.Tezos.Helpers
             }
             catch (Exception e)
             {
-                Log.Error(e, "Tezos swap initiated control task error");
+                Console.WriteLine("Tezos swap initiated control task error");
 
                 return new Error(Errors.InternalError, e.Message);
             }

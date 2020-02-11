@@ -2,7 +2,6 @@
 using System.IO;
 using Atomex.Core;
 using LiteDB;
-using Serilog;
 
 namespace Atomex.LiteDb
 {
@@ -17,6 +16,7 @@ namespace Atomex.LiteDb
             {
                 if (!File.Exists(pathToDb))
                 {
+                    Console.WriteLine("Trying to create database");
                     CreateDataBase(
                         pathToDb: pathToDb,
                         sessionPassword: sessionPassword,
@@ -35,7 +35,8 @@ namespace Atomex.LiteDb
             }
             catch (Exception e)
             {
-                Log.Error(e, "LiteDb migration error");
+                Console.WriteLine("LiteDb migration error");
+                Console.WriteLine(Environment.OSVersion.Platform);
             }
         }
 

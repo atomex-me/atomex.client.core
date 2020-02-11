@@ -117,7 +117,7 @@ namespace Atomex.Common
             }
             catch (Exception e)
             {
-                Log.Error(e, "SendRequestAsync error");
+                Console.WriteLine("SendRequestAsync error");
             }
 
             return default;

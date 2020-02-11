@@ -27,7 +27,7 @@ namespace Atomex.Swaps.Helpers
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Address balance update task error");
+                    Console.WriteLine("Address balance update task error");
                 }
             }, cancellationToken);
         }

@@ -63,7 +63,7 @@ namespace Atomex.Wallet
                     }
                     catch (Exception e)
                     {
-                        Log.Error(e, "Free address scan error for currency: {@currency}", currency.Name);
+                        Console.WriteLine("Free address scan error for currency: {@currency}", currency.Name);
                     }
                 }
             }, cancellationToken);
@@ -82,7 +82,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "Address scan error for currency {@currency} and address {@address}", currency, address);
+                Console.WriteLine("Address scan error for currency {@currency} and address {@address}", currency, address);
             }
         }
 

@@ -90,6 +90,8 @@ namespace Atomex.Wallet
                 symbols: Symbols,
                 network: wallet.Network);
 
+            Console.WriteLine($"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultDataFileName}");
+
             CurrencyAccounts = Currencies
                 .ToDictionary(
                     c => c.Name,

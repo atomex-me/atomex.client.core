@@ -40,7 +40,7 @@ namespace Atomex.Blockchain.BitcoinBased.Helpers
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error while get spent point for {@currency} tx output {@hash}:{@index}.",
+                Console.WriteLine("Error while get spent point for {@currency} tx output {@hash}:{@index}.",
                     hash,
                     index);
 

@@ -69,7 +69,7 @@ namespace Atomex.Blockchain.Helpers
             }
             catch (Exception e)
             {
-                Log.Error(e, "Transaction confirmation check error");
+                Console.WriteLine("Transaction confirmation check error");
                 return new Error(Errors.InternalError, e.Message);
             }
         }
