@@ -27,6 +27,7 @@ namespace Atomex
         public decimal GasReserve { get; private set; }
 
         public decimal Fee { get; private set; }
+        public decimal AllInFee { get; private set; }
         public decimal GasLimit { get; private set; }
         public decimal StorageLimit { get; private set; }
         
@@ -89,6 +90,7 @@ namespace Atomex
             GasReserve = decimal.Parse(configuration[nameof(GasReserve)], CultureInfo.InvariantCulture);
 
             Fee          = decimal.Parse(configuration[nameof(Fee)], CultureInfo.InvariantCulture);
+            AllInFee     = decimal.Parse(configuration[nameof(AllInFee)], CultureInfo.InvariantCulture);
             GasLimit     = decimal.Parse(configuration[nameof(GasLimit)], CultureInfo.InvariantCulture);
             StorageLimit = decimal.Parse(configuration[nameof(StorageLimit)], CultureInfo.InvariantCulture);
 

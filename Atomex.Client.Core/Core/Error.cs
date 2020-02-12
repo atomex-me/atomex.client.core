@@ -86,5 +86,9 @@
 
         public const int WrongDelegationAddress = 5000;
         public const int AlreadyDelegated = 5001;
+        public const int EmptyPreApplyOperations = 5002;
+        public const int NullTxId = 5003;
+        public const int NullOperation = 5004;
+        public const int RpcResponseError = 5005;
     }
 }

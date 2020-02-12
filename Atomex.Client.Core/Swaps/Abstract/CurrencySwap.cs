@@ -1,11 +1,11 @@
 ﻿using System;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Helpers;
 using Atomex.Core;
 using Atomex.Cryptography;
-using Atomex.Wallet.Abstract;
 using Serilog;
 
 namespace Atomex.Swaps.Abstract

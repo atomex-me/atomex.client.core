@@ -806,6 +806,10 @@ namespace Atomex.Swaps.BitcoinBased
                 if (txResult != null &&
                     txResult.HasError &&
                     txResult.Error.Code != (int)HttpStatusCode.NotFound &&
+                    txResult.Error.Code != (int)HttpStatusCode.GatewayTimeout &&
+                    txResult.Error.Code != (int)HttpStatusCode.ServiceUnavailable &&
+                    txResult.Error.Code != (int)HttpStatusCode.InternalServerError &&
+                    txResult.Error.Code != HttpHelper.SslHandshakeFailed &&
                     txResult.Error.Code != Errors.RequestError)
                 {
                     Log.Error("Error while get transaction {@txId}. Code: {@code}. Description: {@desc}", 

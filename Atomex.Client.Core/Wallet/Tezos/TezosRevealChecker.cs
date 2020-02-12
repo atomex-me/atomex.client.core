@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Tezos;
@@ -51,7 +52,7 @@ namespace Atomex.Wallet.Tezos
                 return false;
             }
 
-            if (isRevealedResult.HasError)
+            if (isRevealedResult.HasError && isRevealedResult.Error.Code != (int)HttpStatusCode.NotFound)
             {
                 Log.Error("Error while checking reveal status for address {@address}. Code: {@code}. Description: {@desc}",
                     address,

@@ -36,8 +36,12 @@ namespace Atomex.Wallet.Ethereum
             decimal feePrice,
             CancellationToken cancellationToken = default)
         {
+            var fromAddresses = from
+                .Where(w => w.Address != to)
+                .ToList();
+
             var selectedAddresses = SelectUnspentAddresses(
-                    from: from.ToList(),
+                    from: fromAddresses,
                     amount: amount,
                     fee: fee,
                     feePrice: feePrice,
@@ -168,6 +172,14 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false))
                 .ToList();
 
+            if (!type.HasFlag(BlockchainTransactionType.SwapRedeem) &&
+                !type.HasFlag(BlockchainTransactionType.SwapRefund))
+            {
+                unspentAddresses = unspentAddresses
+                    .Where(w => w.Address != to)
+                    .ToList();
+            }
+
             if (!unspentAddresses.Any())
                 return null; // insufficient funds
 
@@ -196,6 +208,14 @@ namespace Atomex.Wallet.Ethereum
                 .GetUnspentAddressesAsync(Currency.Name)
                 .ConfigureAwait(false))
                 .ToList();
+
+            if (!type.HasFlag(BlockchainTransactionType.SwapRedeem) &&
+                !type.HasFlag(BlockchainTransactionType.SwapRefund))
+            {
+                unspentAddresses = unspentAddresses
+                    .Where(w => w.Address != to)
+                    .ToList();
+            }
 
             if (!unspentAddresses.Any())
                 return (0m, 0m);
@@ -552,6 +572,14 @@ namespace Atomex.Wallet.Ethereum
                 .GetUnspentAddressesAsync(Currency.Name)
                 .ConfigureAwait(false))
                 .ToList();
+
+            if (!transactionType.HasFlag(BlockchainTransactionType.SwapRedeem) &&
+                !transactionType.HasFlag(BlockchainTransactionType.SwapRefund))
+            {
+                unspentAddresses = unspentAddresses
+                    .Where(w => w.Address != toAddress)
+                    .ToList();
+            }
 
             var selectedAddresses = SelectUnspentAddresses(
                 from: unspentAddresses,

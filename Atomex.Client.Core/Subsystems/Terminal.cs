@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Atomex.Api.Proto;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Helpers;
 using Atomex.Common;
 using Atomex.Core;

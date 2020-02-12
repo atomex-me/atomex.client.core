@@ -13,9 +13,9 @@ namespace Atomex.Blockchain.Ethereum
 {
     public class Web3BlockchainApi : BlockchainApi, IEthereumBlockchainApi
     {
-        private const string InfuraMainNet = "https://mainnet.infura.io";
-        private const string InfuraRinkeby = "https://rinkeby.infura.io";
-        private const string InfuraRopsten = "https://ropsten.infura.io";
+        private const string InfuraMainNet = "https://mainnet.infura.io/v3/df01d4ef450640a2a48d9af4c2078eaf";
+        private const string InfuraRinkeby = "https://rinkeby.infura.io/v3/df01d4ef450640a2a48d9af4c2078eaf";
+        private const string InfuraRopsten = "https://ropsten.infura.io/v3/df01d4ef450640a2a48d9af4c2078eaf";
 
         private readonly Currency _currency;
         private readonly string _uri;
@@ -79,7 +79,7 @@ namespace Atomex.Blockchain.Ethereum
             CancellationToken cancellationToken = default)
         {
             return await ResultHelper.TryDo((c) => GetTransactionCountAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
-                ?? new Error(Errors.RequestError, $"Connection error while getting transaction count after {attempts} attempts");
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transaction count after {attempts} attempts");
         }
 
         public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
@@ -163,6 +163,10 @@ namespace Atomex.Blockchain.Ethereum
                 ethTx.Id = txId; // todo: wtf?
 
                 return txId;
+            }
+            catch (Nethereum.JsonRpc.Client.RpcResponseException e)
+            {
+                return new Error(Errors.RpcResponseError, e.RpcError?.Message);
             }
             catch (Exception e)
             {

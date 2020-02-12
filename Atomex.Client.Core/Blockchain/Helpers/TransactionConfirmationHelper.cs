@@ -46,9 +46,14 @@ namespace Atomex.Blockchain.Helpers
                     .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (txResult.HasError)
+                if (txResult != null && txResult.HasError)
                 {
-                    if (txResult.Error.Code == (int) HttpStatusCode.NotFound)
+                    if (txResult.Error.Code == (int) HttpStatusCode.NotFound ||
+                        txResult.Error.Code == (int) HttpStatusCode.GatewayTimeout ||
+                        txResult.Error.Code == (int) HttpStatusCode.ServiceUnavailable ||
+                        txResult.Error.Code == (int) HttpStatusCode.InternalServerError ||
+                        txResult.Error.Code == HttpHelper.SslHandshakeFailed ||
+                        txResult.Error.Code == Errors.RequestError)
                         return new ConfirmationCheckResult(false, null);
 
                     Log.Error("Error while get {@currency} transaction {@txId}. Code: {@code}. Description: {@desc}",

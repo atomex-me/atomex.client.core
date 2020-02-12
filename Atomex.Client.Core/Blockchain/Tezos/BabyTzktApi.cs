@@ -68,7 +68,7 @@ namespace Atomex.Blockchain.Tezos
                     .ConfigureAwait(false);
 
                 if (!opResults.Any())
-                    return new Error(Errors.RequestError, "Empty pre apply operations");
+                    return new Error(Errors.EmptyPreApplyOperations, "Empty pre apply operations");
 
                 string txId = null;
 
@@ -85,7 +85,7 @@ namespace Atomex.Blockchain.Tezos
                 }
 
                 if (txId == null)
-                    return new Error(Errors.RequestError, "Null tx id");
+                    return new Error(Errors.NullTxId, "Null tx id");
 
                 tx.Id = txId;
 
@@ -159,7 +159,7 @@ namespace Atomex.Blockchain.Tezos
             CancellationToken cancellationToken = default)
         {
             return await ResultHelper.TryDo((c) => GetTransactionsAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
-                ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
         }
 
         public async Task<Result<bool>> IsRevealedAsync(
@@ -181,7 +181,7 @@ namespace Atomex.Blockchain.Tezos
             foreach (var op in data)
             {
                 if (!(op is JObject operation))
-                    return new Error(Errors.RequestError, "Null operation in response");
+                    return new Error(Errors.NullOperation, "Null operation in response");
 
                 var content = operation["content"] as JObject;
 
