@@ -77,7 +77,7 @@ namespace Atomex.Blockchain.BitcoinBased
                         .OrderSideForBuyCurrency(currency)
                         .Opposite();
 
-                    var requiredAmount = AmountHelper.QtyToAmount(side, swap.Qty, swap.Price);
+                    var requiredAmount = AmountHelper.QtyToAmount(side, swap.Qty, swap.Price, currency.DigitsMultiplier);
                     var requiredAmountInSatoshi = currency.CoinToSatoshi(requiredAmount);
 
                     if (output.Value < requiredAmountInSatoshi)

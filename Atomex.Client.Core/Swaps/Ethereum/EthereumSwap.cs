@@ -723,7 +723,7 @@ namespace Atomex.Swaps.Ethereum
         {
             Log.Debug("Create payment transactions for swap {@swapId}", swap.Id);
 
-            var requiredAmountInEth = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price);
+            var requiredAmountInEth = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, Eth.DigitsMultiplier);
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
             var isInitTx = true;
             var rewardForRedeemInEth = swap.PartyRewardForRedeem;

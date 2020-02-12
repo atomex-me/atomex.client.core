@@ -688,10 +688,8 @@ namespace Atomex.Swaps.Tezos
         {
             Log.Debug("Create payment transactions for swap {@swapId}", swap.Id);
 
-            var requiredAmountInMtz = AmountHelper
-                .QtyToAmount(swap.Side, swap.Qty, swap.Price)
-                .ToMicroTez();
-
+            var requiredAmountInMtz = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, Xtz.DigitsMultiplier);
+    
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();
             var isInitTx = true;
             var rewardForRedeemInMtz = swap.IsInitiator

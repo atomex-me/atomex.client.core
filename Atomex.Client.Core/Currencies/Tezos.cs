@@ -14,7 +14,7 @@ namespace Atomex
 {
     public class Tezos : Currency
     {
-        private const long XtzDigitsMultiplier = 1_000_000;
+        public const long XtzDigitsMultiplier = 1_000_000;
         private const int PkHashSize = 20 * 8;
 
         public decimal MinimalFee { get; private set; }

@@ -441,12 +441,12 @@ namespace Atomex.Swaps.BitcoinBased
                 .SortList(new AvailableBalanceAscending())
                 .Select(a => a.Address);
 
-            var amount = (long)(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price) * currency.DigitsMultiplier);
+            var amountInSatoshi = currency.CoinToSatoshi(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, currency.DigitsMultiplier));
 
             var (tx, redeemScript) = await _transactionFactory
                 .CreateSwapPaymentTxAsync(
                     currency: currency,
-                    amount: amount,
+                    amount: amountInSatoshi,
                     fromWallets: unspentAddresses,
                     refundAddress: refundAddress,
                     toAddress: swap.PartyAddress,
@@ -477,12 +477,14 @@ namespace Atomex.Swaps.BitcoinBased
         {
             Log.Debug("Create refund tx for swap {@swapId}", swap.Id);
 
-            var amount = (long)(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price) * Currency.DigitsMultiplier);
+            var currency = (BitcoinBasedCurrency)Currency;
+
+            var amountInSatoshi = currency.CoinToSatoshi(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, currency.DigitsMultiplier));
 
             var tx = await _transactionFactory
                 .CreateSwapRefundTxAsync(
                     paymentTx: paymentTx,
-                    amount: amount,
+                    amount: amountInSatoshi,
                     refundAddress: refundAddress,
                     lockTime: lockTime,
                     redeemScript: redeemScript)
@@ -508,12 +510,14 @@ namespace Atomex.Swaps.BitcoinBased
         {
             Log.Debug("Create redeem tx for swap {@swapId}", swap.Id);
 
-            var amount = (long)(AmountHelper.QtyToAmount(swap.Side.Opposite(), swap.Qty, swap.Price) * Currency.DigitsMultiplier);
+            var currency = (BitcoinBasedCurrency)Currency;
+
+            var amountInSatoshi = currency.CoinToSatoshi(AmountHelper.QtyToAmount(swap.Side.Opposite(), swap.Qty, swap.Price, currency.DigitsMultiplier));
 
             var tx = await _transactionFactory
                 .CreateSwapRedeemTxAsync(
                     paymentTx: paymentTx,
-                    amount: amount,
+                    amount: amountInSatoshi,
                     redeemAddress: redeemAddress,
                     redeemScript: redeemScript)
                 .ConfigureAwait(false);

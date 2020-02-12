@@ -70,12 +70,12 @@ namespace Atomex.Client.Core.Tests
                 Qty = lastQty
             };
 
-            var amount = (long)(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price) * bitcoin.DigitsMultiplier);
+            var amountInSatoshi = bitcoin.CoinToSatoshi(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, bitcoin.DigitsMultiplier));
 
             var (tx, redeemScript) = await new BitcoinBasedSwapTransactionFactory()
                 .CreateSwapPaymentTxAsync(
                     currency: bitcoin,
-                    amount: amount,
+                    amount: amountInSatoshi,
                     fromWallets: new []{ aliceBtcAddress },
                     refundAddress: aliceBtcAddress,
                     toAddress: bobBtcAddress,

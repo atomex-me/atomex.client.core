@@ -27,7 +27,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
                     .Opposite();
 
-                var requiredAmountInTz = AmountHelper.QtyToAmount(side, swap.Qty, swap.Price);
+                var requiredAmountInTz = AmountHelper.QtyToAmount(side, swap.Qty, swap.Price, tezos.DigitsMultiplier);
                 var requiredAmountInMtz = requiredAmountInTz.ToMicroTez();
                 var requiredRewardForRedeemInMtz = swap.RewardForRedeem.ToMicroTez();
 

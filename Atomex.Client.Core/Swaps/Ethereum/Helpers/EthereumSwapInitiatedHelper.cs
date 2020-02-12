@@ -23,11 +23,11 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
                 var ethereum = (Atomex.Ethereum)currency;
 
-                var side = swap.Symbol
+                var sideOpposite = swap.Symbol
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
                     .Opposite();
 
-                var requiredAmountInEth = AmountHelper.QtyToAmount(side, swap.Qty, swap.Price);
+                var requiredAmountInEth = AmountHelper.QtyToAmount(sideOpposite, swap.Qty, swap.Price, ethereum.DigitsMultiplier);
                 var requiredAmountInWei = Atomex.Ethereum.EthToWei(requiredAmountInEth);
                 var requiredRewardForRedeemInWei = Atomex.Ethereum.EthToWei(swap.RewardForRedeem);
 

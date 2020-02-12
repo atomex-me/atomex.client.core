@@ -87,9 +87,13 @@ namespace Atomex.MarketData
             Sells.Clear();
         }
 
-        public decimal EstimatedDealPrice(Side side, decimal amount)
+        public (decimal, decimal) EstimateOrderPrices(
+            Side side,
+            decimal amount,
+            decimal amountDigitsMultiplier,
+            decimal qtyDigitsMultiplier)
         {
-            var amountToFill = amount;
+            var requiredAmount = amount;
 
             lock (SyncRoot)
             {
@@ -98,21 +102,34 @@ namespace Atomex.MarketData
                     : Buys;
 
                 if (amount == 0)
-                    return book.Any() ? book.First().Key : 0;
+                    return book.Any()
+                        ? (book.First().Key, book.First().Key)
+                        : (0m, 0m);
+
+                var totalUsedQuoteAmount = 0m;
+                var totalUsedQty = 0m;
 
                 foreach (var entryPair in book)
                 {
                     var qty = entryPair.Value.Qty();
-                    var availableAmount = AmountHelper.QtyToAmount(side, qty, entryPair.Key);
+                    var price = entryPair.Key;
 
-                    amountToFill -= availableAmount;
+                    var availableAmount = AmountHelper.QtyToAmount(side, qty, price, amountDigitsMultiplier);
 
-                    if (amountToFill <= 0)
-                        return entryPair.Key;
+                    var usedAmount = Math.Min(requiredAmount, availableAmount);
+                    var usedQty = AmountHelper.AmountToQty(side, usedAmount, price, qtyDigitsMultiplier);
+
+                    totalUsedQuoteAmount += usedQty * price;
+                    totalUsedQty += usedQty;
+
+                    requiredAmount -= usedAmount;
+
+                    if (requiredAmount <= 0)
+                        return (price, totalUsedQuoteAmount / totalUsedQty);
                 }
             }
 
-            return 0m;
+            return (0m, 0m);
         }
 
         public decimal AverageDealBasePrice(Side side, decimal qty)
@@ -177,7 +194,7 @@ namespace Atomex.MarketData
             return 0m;
         }
 
-        public decimal EstimateMaxAmount(Side side)
+        public decimal EstimateMaxAmount(Side side, long digitsMultiplier)
         {
             var amount = 0m;
 
@@ -189,10 +206,7 @@ namespace Atomex.MarketData
 
                 foreach (var entryPair in book)
                 {
-                    amount += AmountHelper.QtyToAmount(
-                        side: side,
-                        qty: entryPair.Value.Qty(),
-                        price: entryPair.Key);
+                    amount += AmountHelper.QtyToAmount(side, entryPair.Value.Qty(), entryPair.Key, digitsMultiplier);
                 }
             }
 
