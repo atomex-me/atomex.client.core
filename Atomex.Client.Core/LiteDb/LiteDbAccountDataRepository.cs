@@ -578,7 +578,7 @@ namespace Atomex.LiteDb
             {
                 lock (_syncRoot)
                 {
-                    if (!CheckOrder(order))
+                    if (!VerifyOrder(order))
                         return Task.FromResult(false);
 
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
@@ -627,7 +627,7 @@ namespace Atomex.LiteDb
             }
         }
 
-        private bool CheckOrder(Order order)
+        private bool VerifyOrder(Order order)
         {
             if (order.Status == OrderStatus.Pending)
             {
@@ -677,22 +677,22 @@ namespace Atomex.LiteDb
 
                 if (actualOrder == null)
                 {
-                    Log.Error(
-                        messageTemplate: "Order is not continuation of saved order! Order: {@order}",
-                        propertyValue: order.ToString());
+                    Log.Error("Order is not continuation of saved order! Order: {@order}",
+                        order.ToString());
 
                     return false;
                 }
 
                 if (!order.IsContinuationOf(actualOrder))
                 {
-                    Log.Error(
-                        messageTemplate: "Order is not continuation of saved order! Order: {@order}, saved order: {@actualOrder}",
-                        propertyValue0: order.ToString(),
-                        propertyValue1: actualOrder.ToString());
+                    Log.Error("Order is not continuation of saved order! Order: {@order}, saved order: {@actualOrder}",
+                        order.ToString(),
+                        actualOrder.ToString());
 
                     return false;
                 }
+
+                order.IsApproved = actualOrder.IsApproved; // save approve
             }
 
             return true;

@@ -96,7 +96,7 @@ namespace Atomex.Swaps
             var order = await GetOrderAsync(receivedSwap)
                 .ConfigureAwait(false);
 
-            if (order == null) // || !clientSwap.Order.IsContinuationOf(order))
+            if (order == null || !order.IsApproved) // || !clientSwap.Order.IsContinuationOf(order))
             {
                 Log.Warning("Probably swap {@swapId} created on another device", receivedSwap.Id);
                 return;

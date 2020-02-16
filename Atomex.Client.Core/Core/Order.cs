@@ -45,7 +45,7 @@ namespace Atomex.Core
         public OrderType Type { get; set; }
         public OrderStatus Status { get; set; }
         public bool EndOfTransaction { get; set; }
-        public bool IsApproved { get; set; }
+        public bool IsApproved { get; set; } = true;
         public bool IsAlreadyCanceled { get; set; }
         public IList<WalletAddress> FromWallets { get; set; }
 
