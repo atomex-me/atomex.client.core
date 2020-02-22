@@ -103,6 +103,32 @@ namespace Atomex.Wallet
                 password: password) ?? UserSettings.DefaultSettings;
         }
 
+        public Account(
+            IHdWallet wallet,
+            SecureString password,
+            IAccountDataRepository dataRepository,
+            ICurrenciesProvider currenciesProvider,
+            ISymbolsProvider symbolsProvider)
+        {
+            Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
+            DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
+
+            Currencies = currenciesProvider.GetCurrencies(Network);
+            Symbols = symbolsProvider.GetSymbols(Network);
+
+            CurrencyAccounts = Currencies
+                .ToDictionary(
+                    c => c.Name,
+                    c => CurrencyAccountCreator.Create(
+                        currency: c,
+                        wallet: Wallet,
+                        dataRepository: DataRepository));
+
+            UserSettings = UserSettings.TryLoadFromFile(
+                pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
+                password: password) ?? UserSettings.DefaultSettings;
+        }
+
         #region Common
 
         public void Lock()
