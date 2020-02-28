@@ -36,7 +36,7 @@ namespace Atomex.Wallet
             SecureString passPhrase = null,
             Network network = Network.MainNet)
         {
-            PathToWallet = PathEx.ToFullPath(string.Empty);
+            PathToWallet = PathEx.ToFullPath("/");
 
             KeyStorage = new HdKeyStorage(
                 mnemonic: mnemonic,
