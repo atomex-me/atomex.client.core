@@ -4,7 +4,7 @@ namespace Atomex.MarketData
 {
     public class Quote
     {
-        public int SymbolId { get; set; }
+        public string Symbol { get; set; }
         public DateTime TimeStamp { get; set; }
         public decimal Bid { get; set; }
         public decimal Ask { get; set; }

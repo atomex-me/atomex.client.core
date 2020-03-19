@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.Swaps.Abstract;
 using Serilog;
 
 namespace Atomex.Swaps.Tezos.Helpers
@@ -51,10 +52,10 @@ namespace Atomex.Swaps.Tezos.Helpers
                 {
                     foreach (var tx in txs)
                     {
-                        if (tx.To == contractAddress && tx.IsSwapRedeem(swap.SecretHash))
+                        if (tx.To == contractAddress && IsSwapRedeem(tx, swap.SecretHash))
                         {
                             // redeem!
-                            var secret = tx.GetSecret();
+                            var secret = GetSecret(tx);
 
                             Log.Debug("Redeem event received with secret {@secret}", Convert.ToBase64String(secret));
 
@@ -155,6 +156,26 @@ namespace Atomex.Swaps.Tezos.Helpers
                         .ConfigureAwait(false);
                 }
             }, cancellationToken);
+        }
+
+        public static bool IsSwapRedeem(TezosTransaction tx, byte[] secretHash)
+        {
+            try
+            {
+                var secretBytes = Hex.FromString(tx.Params["value"]["args"][0]["args"][0]["bytes"].ToString());
+                var secretHashBytes = CurrencySwap.CreateSwapSecretHash(secretBytes);
+
+                return secretHashBytes.SequenceEqual(secretHash);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        public static byte[] GetSecret(TezosTransaction tx)
+        {
+            return Hex.FromString(tx.Params["value"]["args"][0]["args"][0]["bytes"].ToString());
         }
     }
 }

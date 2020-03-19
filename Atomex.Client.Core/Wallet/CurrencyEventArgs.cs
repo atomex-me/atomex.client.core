@@ -5,9 +5,9 @@ namespace Atomex.Wallet
 {
     public class CurrencyEventArgs : EventArgs
     {
-        public Currency Currency { get; set; }
+        public string Currency { get; set; }
 
-        public CurrencyEventArgs(Currency currency)
+        public CurrencyEventArgs(string currency)
         {
             Currency = currency;
         }

@@ -27,7 +27,7 @@ namespace Atomex.Client.Core.Tests
             var signature = childKey.SignMessage(messageBytes);
             Assert.True(childKey.VerifyMessage(messageBytes, signature));
 
-            var address = Common.CurrenciesTestNet.Get<Tezos>().AddressFromKey(childPublicKey);
+            var address = Common.CurrenciesTestNet.Get<Tezos>("XTZ").AddressFromKey(childPublicKey);
             Assert.NotNull(address);
         }
 
@@ -45,7 +45,7 @@ namespace Atomex.Client.Core.Tests
             var signature = childKey.SignMessage(messageBytes);
             Assert.True(childKey.VerifyMessage(messageBytes, signature));
 
-            var address = Common.CurrenciesTestNet.Get<Tezos>().AddressFromKey(childPublicKey);
+            var address = Common.CurrenciesTestNet.Get<Tezos>("XTZ").AddressFromKey(childPublicKey);
             Assert.NotNull(address);
         }
 
@@ -66,7 +66,7 @@ namespace Atomex.Client.Core.Tests
                 var signature = childKey.SignMessage(messageBytes);
                 Assert.True(childKey.VerifyMessage(messageBytes, signature));
 
-                var address = Common.CurrenciesTestNet.Get<Tezos>().AddressFromKey(childPublicKey);
+                var address = Common.CurrenciesTestNet.Get<Tezos>("XTZ").AddressFromKey(childPublicKey);
                 Assert.NotNull(address);
             }
         }

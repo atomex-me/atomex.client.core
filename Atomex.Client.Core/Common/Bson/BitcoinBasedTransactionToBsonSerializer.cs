@@ -14,6 +14,7 @@ namespace Atomex.Common.Bson
     {
         private const string CurrencyKey = nameof(IBlockchainTransaction.Currency);
         private const string TxKey = "Tx";
+        private const string TxIdKey = "TxId";
         private const string BlockInfoKey = nameof(IBlockchainTransaction.BlockInfo);
         private const string StateKey = nameof(IBlockchainTransaction.State);
         private const string TypeKey = nameof(IBlockchainTransaction.Type);
@@ -76,7 +77,8 @@ namespace Atomex.Common.Bson
 
             return new BsonDocument
             {
-                [IdKey] = tx.Id,
+                [IdKey] = tx.UniqueId,
+                [TxIdKey] = tx.Id,
                 [CurrencyKey] = tx.Currency.Name,
                 [TxKey] = tx.ToBytes().ToHexString(),
                 [BlockInfoKey] = tx.BlockInfo != null

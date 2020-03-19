@@ -7,7 +7,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Core;
 using Atomex.MarketData.Abstract;
-using Atomex.Wallet.Abstract;
 using Newtonsoft.Json.Linq;
 using Serilog;
 
@@ -15,8 +14,22 @@ namespace Atomex.MarketData.Bitfinex
 {
     public class BitfinexWebSocketOrderBooksProvider : ICurrencyOrderBookProvider
     {
+        private readonly Dictionary<string, string> Symbols = new Dictionary<string, string>()
+        {
+            { "ETHBTC", "ETHBTC" },
+            { "LTCBTC", "LTCBTC" },
+            { "XTZBTC", "XTZBTC" },
+            { "XTZETH", "XTZETH" },
+            { "BTCUSDT", "BTCUST" },
+            { "ETHUSDT", "ETHUST" },
+            { "LTCUSDT", "LTCUST" },
+            { "XTZUSDT", "XTZUST" },
+            { "ETHFA12", "ETHBTC" },
+            { "XTZFA12", "XTZBTC" }
+        };
+
         private const int MaxReceiveBufferSize = 32768;
-        private const int DefaultReceiveBufferSize = 4096;
+        private const int DefaultReceiveBufferSize = 32768;
         private const string BaseUrl = "wss://api-pub.bitfinex.com/ws/2";
 
         private readonly Dictionary<int, string> _channels;
@@ -31,7 +44,7 @@ namespace Atomex.MarketData.Bitfinex
 
         public DateTime LastUpdateTime { get; private set; }
         public int ReceiveBufferSize { get; set; } = DefaultReceiveBufferSize;
-        public int BookDepth { get; set; } = 25;
+        public int BookDepth { get; set; } = 100;
         public bool IsRunning => _wsTask != null &&
                                  !_wsTask.IsCompleted &&
                                  !_wsTask.IsCanceled &&
@@ -49,20 +62,30 @@ namespace Atomex.MarketData.Bitfinex
             }
         }
 
-        public BitfinexWebSocketOrderBooksProvider(params Symbol[] symbols)
+        public BitfinexWebSocketOrderBooksProvider(params string[] symbols)
         {
             _channels = new Dictionary<int, string>();
-            _orderbooks = symbols.ToDictionary(s => s.Name.Replace("/", ""), s => new MarketDataOrderBook(s));
+
+            _orderbooks = symbols
+                .Select(s => Symbols[s.Replace("/", "")])
+                .Distinct()
+                .ToDictionary(s => s, s => new MarketDataOrderBook(s));
         }
 
-        public BitfinexWebSocketOrderBooksProvider(
-            IAccount account,
-            IEnumerable<Currency> currencies,
-            string baseCurrency)
-        {
-            _channels = new Dictionary<int, string>();
-            _orderbooks = currencies.ToDictionary(currency => $"{currency.Name}{baseCurrency}", currency => new MarketDataOrderBook(account.Symbols.GetByName($"{currency.Name}/{baseCurrency}")));
-        }
+        //public BitfinexWebSocketOrderBooksProvider(  //todo: check before use
+        //    IAccount account,
+        //    IEnumerable<Currency> currencies,
+        //    string baseCurrency)
+        //{
+        //    _channels = new Dictionary<int, string>();
+
+        //    _orderbooks = currencies
+        //        .Select(c => Symbols[$"{c.Name}{baseCurrency}"])
+        //        .Distinct()
+        //        .ToDictionary(s => s, s => new MarketDataOrderBook(s));
+
+        //    _orderbooks = currencies.ToDictionary(currency => Symbols[$"{currency.Name}{baseCurrency}"], currency => new MarketDataOrderBook(account.Symbols.GetByName($"{currency.Name}/{baseCurrency}").Name));
+        //}
 
         public void Start()
         {
@@ -157,9 +180,16 @@ namespace Atomex.MarketData.Bitfinex
             OnDisconnected();
         }
 
-        public MarketDataOrderBook GetOrderBook(string currency, string baseCurrency)
+        public MarketDataOrderBook GetOrderBook(string currency, string quoteCurrency)
         {
-            return _orderbooks.TryGetValue($"{currency}{baseCurrency}", out var orderbook) ? orderbook : null;
+            var symbol = Symbols.Keys.Contains($"{currency}{quoteCurrency}") ?
+                Symbols[$"{currency}{quoteCurrency}"] :
+                null;
+
+            if (symbol == null)
+                return null;
+
+            return _orderbooks.TryGetValue(symbol, out var orderbook) ? orderbook : null;
         }
 
         private async Task OnConnectedAsync()
@@ -224,17 +254,25 @@ namespace Atomex.MarketData.Bitfinex
                 {
                     var responseText = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
 
-                    var responseJson = JToken.Parse(responseText);
+                    try
+                    {
+                        var responseJson = JToken.Parse(responseText);
 
-                    if (responseJson is JObject responseEvent)
-                    {
-                        await HandleEventAsync(responseEvent)
-                            .ConfigureAwait(false);
+                        if (responseJson is JObject responseEvent)
+                        {
+                            await HandleEventAsync(responseEvent)
+                                .ConfigureAwait(false);
+                        }
+                        else if (responseJson is JArray responseData)
+                        {
+                            HandleData(responseData);
+                        }
                     }
-                    else if (responseJson is JArray responseData)
+                    catch (Exception e)
                     {
-                        HandleData(responseData);
+                        Log.Error(e, "Bitfinex response handle error");
                     }
+
                 }
             }
             catch (Exception e)
@@ -333,17 +371,24 @@ namespace Atomex.MarketData.Bitfinex
                     }
                     else
                     {
-                        var entry = new Entry
+                        try
                         {
-                            Side = items[2].Value<decimal>() > 0 ? Side.Buy : Side.Sell,
-                            Price = items[0].Value<decimal>()
-                        };
+                            var entry = new Entry
+                            {
+                                Side = items[2].Value<decimal>() > 0 ? Side.Buy : Side.Sell,
+                                Price = items[0].Value<decimal>()
+                            };
 
-                        entry.QtyProfile.Add(items[1].Value<int>() > 0
-                            ? Math.Abs(items[2].Value<decimal>())
-                            : 0);
+                            entry.QtyProfile.Add(items[1].Value<int>() > 0
+                                ? Math.Abs(items[2].Value<decimal>())
+                                : 0);
 
-                        orderBook.ApplyEntry(entry);
+                            orderBook.ApplyEntry(entry);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.Error(ex, "Orderbook update apply error");
+                        }
                     }
 
                     LastUpdateTime = timeStamp;

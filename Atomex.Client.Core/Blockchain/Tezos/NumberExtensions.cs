@@ -14,5 +14,16 @@ namespace Atomex.Blockchain.Tezos
         {
             return mtz / Atomex.Tezos.XtzDigitsMultiplier;
         }
+
+        public static decimal ToTokenDigits(this decimal tokens, long tokenDigitsMultiplier)
+        {
+            return Math.Floor(tokens * tokenDigitsMultiplier);
+        }
+
+        public static decimal FromTokenDigits(this decimal tokensInDigigts, long tokenDigitsMultiplier)
+        {
+            return tokensInDigigts / tokenDigitsMultiplier;
+        }
+
     }
 }

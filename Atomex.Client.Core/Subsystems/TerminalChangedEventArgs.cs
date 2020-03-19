@@ -5,9 +5,9 @@ namespace Atomex.Subsystems
 {
     public class TerminalChangedEventArgs : EventArgs
     {
-        public ITerminal Terminal { get; }
+        public IAtomexClient Terminal { get; }
 
-        public TerminalChangedEventArgs(ITerminal terminal)
+        public TerminalChangedEventArgs(IAtomexClient terminal)
         {
             Terminal = terminal;
         }

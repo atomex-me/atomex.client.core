@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using Atomex.Api;
 using Atomex.Api.Proto;
-using Atomex.Core;
 using Atomex.MarketData;
 using Microsoft.Extensions.Configuration;
 

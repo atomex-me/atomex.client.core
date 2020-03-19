@@ -31,6 +31,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
                 var requiredAmountInWei = Atomex.Ethereum.EthToWei(requiredAmountInEth);
                 var requiredRewardForRedeemInWei = Atomex.Ethereum.EthToWei(swap.RewardForRedeem);
 
+
                 var api = new EtherScanApi(ethereum);
 
                 var initiateEventsResult = await api

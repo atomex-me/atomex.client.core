@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Helpers;
 using Atomex.Common;
 using Atomex.Core;
@@ -17,10 +16,10 @@ namespace Atomex.Swaps
     public class SwapManager : ISwapManager
     {
         protected static TimeSpan DefaultCredentialsExchangeTimeout = TimeSpan.FromMinutes(5);
-        protected static TimeSpan DefaultMaxSwapTimeout = TimeSpan.FromMinutes(20);
+        protected static TimeSpan DefaultMaxSwapTimeout = TimeSpan.FromMinutes(20); // TimeSpan.FromMinutes(40);
         protected static TimeSpan DefaultMaxPaymentTimeout = TimeSpan.FromMinutes(48*60);
         protected static TimeSpan SwapTimeoutControlInterval = TimeSpan.FromMinutes(10);
-        
+
         public event EventHandler<SwapEventArgs> SwapUpdated;
 
         private readonly IAccount _account;
@@ -48,12 +47,12 @@ namespace Atomex.Swaps
 
                     return currencySwap;
                 })
-                .ToDictionary(cs => cs.Currency.Name);
+                .ToDictionary(cs => cs.Currency);
 
             _semaphores = new ConcurrentDictionary<long, SemaphoreSlim>();
         }
 
-        private ICurrencySwap GetCurrencySwap(Currency currency) => _currencySwaps[currency.Name];
+        private ICurrencySwap GetCurrencySwap(string currency) => _currencySwaps[currency];
 
         public async Task HandleSwapAsync(Swap receivedSwap)
         {
@@ -161,10 +160,12 @@ namespace Atomex.Swaps
         {
             Log.Debug("Initiate swap {@swapId}", swap.Id);
 
+            var soldCurrency = _account.Currencies.GetByName(swap.SoldCurrency);
+
             if (swap.Secret == null)
             {
                 var secret = _account.Wallet
-                    .GetDeterministicSecret(swap.SoldCurrency, swap.TimeStamp);
+                    .GetDeterministicSecret(soldCurrency, swap.TimeStamp);
 
                 swap.Secret = secret.SubArray(0, CurrencySwap.DefaultSecretSize);
                 RaiseSwapUpdated(swap, SwapStateFlags.HasSecret);
@@ -178,12 +179,12 @@ namespace Atomex.Swaps
                 RaiseSwapUpdated(swap, SwapStateFlags.HasSecretHash);
             }
 
-            WalletAddress walletAddress = null; // new WalletAddress();
+            WalletAddress walletAddress;
 
             if (swap.ToAddress == null)
             {
                 walletAddress = await _account
-                    .GetRedeemAddressAsync(swap.PurchasedCurrency.Name)
+                    .GetRedeemAddressAsync(swap.PurchasedCurrency)
                     .ConfigureAwait(false);
 
                 swap.ToAddress = walletAddress.Address;
@@ -193,7 +194,7 @@ namespace Atomex.Swaps
             else
             {
                 walletAddress = await _account
-                    .ResolveAddressAsync(swap.PurchasedCurrency.Name, swap.ToAddress)
+                    .ResolveAddressAsync(swap.PurchasedCurrency, swap.ToAddress)
                     .ConfigureAwait(false);
             }
 
@@ -309,7 +310,7 @@ namespace Atomex.Swaps
 
             // create self requisites
             var walletToAddress = (await _account
-                .GetRedeemAddressAsync(swap.PurchasedCurrency.Name)
+                .GetRedeemAddressAsync(swap.PurchasedCurrency)
                 .ConfigureAwait(false));
 
             swap.ToAddress = walletToAddress.Address;
@@ -667,14 +668,27 @@ namespace Atomex.Swaps
 
         private decimal GetRewardForRedeem(WalletAddress walletAddress)
         {
-            if(walletAddress.Currency is BitcoinBasedCurrency)
+            if (!MayNeedRewardForRedeem(walletAddress.Currency))
                 return 0;
 
-            var defaultFee = walletAddress.Currency.GetDefaultRedeemFee(walletAddress);
+            //todo:USDT
+
+            var defaultFee = _account
+                .Currencies
+                .GetByName(walletAddress.Currency)
+                .GetDefaultRedeemFee(walletAddress);
 
             return walletAddress.AvailableBalance() < defaultFee
                 ? defaultFee * 2
                 : 0;
         }
+
+        private bool MayNeedRewardForRedeem(string currency) =>
+            currency switch
+            {
+                "BTC" => false,
+                "LTC" => false,
+                _ => true
+            };
     }
 }

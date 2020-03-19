@@ -16,7 +16,7 @@ namespace Atomex.Common.Bson
 
         public override Currency Deserialize(BsonValue bsonValue)
         {
-            return _currencies.FirstOrDefault(s => s.Name.Equals(bsonValue.AsString));
+            return _currencies.FirstOrDefault(s => s.Name == bsonValue.AsString);
         }
 
         public override BsonValue Serialize(Currency currency)
@@ -24,4 +24,5 @@ namespace Atomex.Common.Bson
             return currency.Name;
         }
     }
+
 }

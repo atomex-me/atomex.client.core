@@ -32,6 +32,9 @@ namespace Atomex.LiteDb
 
                 if (currentVersion == LiteDbMigrations.Version1)
                     LiteDbMigrations.MigrateFrom_1_to_2(pathToDb, sessionPassword, network);
+
+                if (currentVersion == LiteDbMigrations.Version2)
+                    LiteDbMigrations.MigrateFrom_2_to_3(pathToDb, sessionPassword, network);
             }
             catch (Exception e)
             {
@@ -43,10 +46,9 @@ namespace Atomex.LiteDb
             string pathToDb,
             string sessionPassword)
         {
-            using (var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}"))
-            {
-                return db.Engine.UserVersion;
-            }
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+
+            return db.Engine.UserVersion;
         }
 
         private static void CreateDataBase(
@@ -54,10 +56,9 @@ namespace Atomex.LiteDb
             string sessionPassword,
             ushort targetVersion)
         {
-            using (var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}"))
-            {
-                db.Engine.UserVersion = targetVersion;
-            }
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+
+            db.Engine.UserVersion = targetVersion;
         }
     }
 }

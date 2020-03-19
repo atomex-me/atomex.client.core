@@ -1,41 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Atomex.Abstract;
-using Atomex.Core;
+﻿using Atomex.Core;
 
 namespace Atomex.Common
 {
-    public static class ClientSwapExtensions
+    public static class SwapExtensions
     {
-        public static Swap ResolveSymbol(this Swap swap, ISymbols symbols)
-        {
-            swap.Symbol = symbols.FirstOrDefault(s => s.Name == swap.Symbol?.Name);
-
-            if (swap.Symbol == null)
-                throw new Exception("Symbol resolving error");
-
-            return swap;
-        }
-
-        public static Swap ResolveRelationshipsByName(
-            this Swap swap,
-            IList<Symbol> symbols)
-        {
-            if (swap == null)
-                return null;
-
-            swap.Symbol = symbols.FirstOrDefault(s => s.Name == swap.Symbol?.Name);
-
-            return swap;
-        }
-
-        public static Swap SetUserId(this Swap swap, string userId)
-        {
-            swap.UserId = userId;
-            return swap;
-        }
-
         public static void Cancel(this Swap swap)
         {
             swap.StateFlags |= SwapStateFlags.IsCanceled;

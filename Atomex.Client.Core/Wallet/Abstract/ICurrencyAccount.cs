@@ -60,6 +60,12 @@ namespace Atomex.Wallet.Abstract
             bool reserve = false,
             CancellationToken cancellationToken = default);
 
+        Task<decimal> EstimateMaxFeeAsync(
+            string to,
+            decimal amount,
+            BlockchainTransactionType type,
+            CancellationToken cancellationToken = default);
+
         #endregion Common
 
         #region Balances

@@ -23,6 +23,6 @@ namespace Atomex.MarketData.Abstract
 
         void Start();
         void Stop();
-        MarketDataOrderBook GetOrderBook(string currency, string baseCurrency);
+        MarketDataOrderBook GetOrderBook(string currency, string quoteCurrency);
     }
 }

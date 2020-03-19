@@ -1,6 +1,5 @@
 ﻿using System;
 using Atomex.Blockchain.Abstract;
-using Atomex.Common;
 
 namespace Atomex.Core
 {
@@ -56,7 +55,7 @@ namespace Atomex.Core
         public SwapStateFlags StateFlags { get; set; }
         public DateTime TimeStamp { get; set; }
         public long OrderId { get; set; }
-        public Symbol Symbol { get; set; }
+        public string Symbol { get; set; }
         public Side Side { get; set; }
         public decimal Price { get; set; }
         public decimal Qty { get; set; }
@@ -70,8 +69,19 @@ namespace Atomex.Core
         public string PartyPaymentTxId { get; set; }
         public string PartyRedeemScript { get; set; }
 
-        public Currency SoldCurrency => Symbol.SoldCurrency(Side);
-        public Currency PurchasedCurrency => Symbol.PurchasedCurrency(Side);
+        public string SoldCurrency =>
+            Side == Side.Buy
+                ? Symbol.Substring(Symbol.IndexOf('/') + 1)
+                : Symbol.Substring(0, Symbol.IndexOf('/'));
+
+        public string PurchasedCurrency =>
+            Side == Side.Buy
+                ? Symbol.Substring(0, Symbol.IndexOf('/'))
+                : Symbol.Substring(Symbol.IndexOf('/') + 1);
+
+        public bool IsSoldCurrency(string currency) => SoldCurrency == currency;
+        public bool IsPurchasedCurrency(string currency) => PurchasedCurrency == currency;
+
         public bool IsComplete => StateFlags.HasFlag(SwapStateFlags.IsRedeemConfirmed);
         public bool IsRefunded => StateFlags.HasFlag(SwapStateFlags.IsRefundConfirmed);
         public bool IsCanceled => StateFlags.HasFlag(SwapStateFlags.IsCanceled);
@@ -124,10 +134,6 @@ namespace Atomex.Core
             get => _partyPaymentTx;
             set { _partyPaymentTx = value; StateFlags |= SwapStateFlags.HasPartyPayment; }
         }
-
-        public bool IsSoldCurrency(Currency currency) => SoldCurrency.Name == currency.Name;
-
-        public bool IsPurchasedCurrency(Currency currency) => PurchasedCurrency.Name == currency.Name;
 
         public bool IsStatusSet(SwapStatus status, Enum flag)
         {

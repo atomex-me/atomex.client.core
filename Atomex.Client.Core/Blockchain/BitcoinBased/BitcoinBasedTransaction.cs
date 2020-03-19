@@ -20,6 +20,8 @@ namespace Atomex.Blockchain.BitcoinBased
         private Transaction Tx { get; }
 
         public string Id => Tx.GetHash().ToString();
+        public string UniqueId => $"{Id}:{Currency.Name}";
+
         public Currency Currency { get; }
         public BlockInfo BlockInfo { get; }
         public BlockchainTransactionState State { get; set; }

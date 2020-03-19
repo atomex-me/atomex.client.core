@@ -10,7 +10,7 @@ namespace Atomex.MarketData
     {
         public const int DefaultSnapshotSize = 20;
 
-        private readonly Symbol _symbol;
+        private readonly string _symbol;
         private long _lastTransactionId;
         public readonly SortedDictionary<decimal, Entry> Buys;
         public readonly SortedDictionary<decimal, Entry> Sells;
@@ -18,7 +18,7 @@ namespace Atomex.MarketData
         public bool IsReady { get; set; }
         public object SyncRoot { get; } = new object();
 
-        public MarketDataOrderBook(Symbol symbol)
+        public MarketDataOrderBook(string symbol)
         {
             _symbol = symbol ?? throw new ArgumentNullException(nameof(symbol));
             _lastTransactionId = 0;
@@ -28,26 +28,27 @@ namespace Atomex.MarketData
 
             IsReady = false;
         }
-        
-        //public MarketDataOrderBook()
-        //{
-        //    _lastTransactionId = 0;
 
-        //    Buys = new SortedDictionary<decimal, Entry>(new DescendingComparer<decimal>());
-        //    Sells = new SortedDictionary<decimal, Entry>();
+        public MarketDataOrderBook()
+        {
+            _lastTransactionId = 0;
 
-        //    IsReady = false;
-        //}
+            Buys = new SortedDictionary<decimal, Entry>(new DescendingComparer<decimal>());
+            Sells = new SortedDictionary<decimal, Entry>();
+
+            IsReady = false;
+        }
 
         public Quote TopOfBook()
         {
-            return new Quote
+            var quote = new Quote
             {
-                SymbolId = _symbol.Id,
+                Symbol = _symbol,
                 TimeStamp = DateTime.UtcNow, // todo: change to last update time
                 Bid = Buys.Count != 0 ? Buys.First().Key : 0,
                 Ask = Sells.Count != 0 ? Sells.First().Key : decimal.MaxValue
             };
+            return quote;
         }
 
         public bool IsValid()
@@ -145,16 +146,16 @@ namespace Atomex.MarketData
                 if (qty == 0)
                     return book.Any() ? book.First().Key : 0;
 
-                decimal baseQty = 0;
+                decimal quoteQty = 0;
 
                 foreach (var entryPair in book)
                 {
                     var availiableQty = entryPair.Value.Qty();
 
                     if (availiableQty >= qtyToFill)
-                        return (baseQty + qtyToFill * entryPair.Key) / qty;
+                        return (quoteQty + qtyToFill * entryPair.Key) / qty;
 
-                    baseQty += availiableQty * entryPair.Key;
+                    quoteQty += availiableQty * entryPair.Key;
 
                     qtyToFill -= availiableQty;
                 }
@@ -180,14 +181,14 @@ namespace Atomex.MarketData
 
                 foreach (var entryPair in book)
                 {
-                    var availiableBaseQty = entryPair.Value.Qty() * entryPair.Key;
+                    var availiableQuoteQty = entryPair.Value.Qty() * entryPair.Key;
 
-                    if (availiableBaseQty >= baseQtyToFill)
+                    if (availiableQuoteQty >= baseQtyToFill)
                         return baseQty / (qty + baseQtyToFill / entryPair.Key);
 
-                    qty += availiableBaseQty / entryPair.Key;
+                    qty += availiableQuoteQty / entryPair.Key;
 
-                    baseQtyToFill -= availiableBaseQty;
+                    baseQtyToFill -= availiableQuoteQty;
                 }
             }
 

@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Atomex.Api.Proto;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Helpers;
 using Atomex.Common;
 using Atomex.Core;
@@ -23,7 +22,7 @@ using Serilog;
 
 namespace Atomex.Subsystems
 {
-    public class Terminal : ITerminal
+    public class WebSocketAtomexClient : IAtomexClient
     {
         protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(20 * 60);
 
@@ -45,7 +44,7 @@ namespace Atomex.Subsystems
         private ISwapManager SwapManager { get; set; }
         private TimeSpan TransactionConfirmationCheckInterval { get; } = TimeSpan.FromSeconds(45);
 
-        public Terminal(IConfiguration configuration, IAccount account)
+        public WebSocketAtomexClient(IConfiguration configuration, IAccount account)
         {
             Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
@@ -57,18 +56,13 @@ namespace Atomex.Subsystems
 
         public bool IsServiceConnected(TerminalService service)
         {
-            switch (service)
+            return service switch
             {
-                case TerminalService.Exchange:
-                    return ExchangeClient.IsConnected;
-                case TerminalService.MarketData:
-                    return MarketDataClient.IsConnected;
-                case TerminalService.All:
-                    return ExchangeClient.IsConnected &&
-                        MarketDataClient.IsConnected;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(service), service, null);
-            }
+                TerminalService.Exchange => ExchangeClient.IsConnected,
+                TerminalService.MarketData => MarketDataClient.IsConnected,
+                TerminalService.All => ExchangeClient.IsConnected && MarketDataClient.IsConnected,
+                _ => throw new ArgumentOutOfRangeException(nameof(service), service, null),
+            };
         }
 
         public async Task StartAsync()
@@ -78,9 +72,7 @@ namespace Atomex.Subsystems
             var configuration = Configuration.GetSection($"Services:{Account.Network}");
 
             // init schemes
-            var schemes = new ProtoSchemes(
-                currencies: Account.Currencies,
-                symbols: Account.Symbols);
+            var schemes = new ProtoSchemes();
 
             // init market data repository
             MarketDataRepository = new MarketDataRepository(Account.Symbols);
@@ -194,12 +186,12 @@ namespace Atomex.Subsystems
 
         public MarketDataOrderBook GetOrderBook(Symbol symbol)
         {
-            return MarketDataRepository?.OrderBookBySymbolId(symbol.Id);
+            return MarketDataRepository?.OrderBookBySymbol(symbol.Name);
         }
 
         public Quote GetQuote(Symbol symbol)
         {
-            return MarketDataRepository?.QuoteBySymbolId(symbol.Id);
+            return MarketDataRepository?.QuoteBySymbol(symbol.Name);
         }
 
         #region AccountEventHandlers
@@ -336,16 +328,16 @@ namespace Atomex.Subsystems
 
             MarketDataRepository.ApplyQuotes(args.Quotes);
 
-            var symbolsIds = new HashSet<int>();
+            var symbolsIds = new HashSet<string>();
             foreach (var quote in args.Quotes)
             {
-                if (!symbolsIds.Contains(quote.SymbolId))
-                    symbolsIds.Add(quote.SymbolId);
+                if (!symbolsIds.Contains(quote.Symbol))
+                    symbolsIds.Add(quote.Symbol);
             }
 
             foreach (var symbolId in symbolsIds)
             {
-                var symbol = Account.Symbols.FirstOrDefault(s => s.Id == symbolId);
+                var symbol = Account.Symbols.FirstOrDefault(s => s.Name == symbolId);
                 if (symbol != null)
                     QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));
             }

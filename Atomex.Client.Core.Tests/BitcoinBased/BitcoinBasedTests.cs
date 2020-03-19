@@ -14,10 +14,10 @@ namespace Atomex.Client.Core.Tests
         public static IEnumerable<object[]> Currencies =>
             new List<object[]>
             {
-                new object[] {Common.CurrenciesMainNet.Get<Bitcoin>()},
-                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>()},
-                new object[] {Common.CurrenciesMainNet.Get<Litecoin>()},
-                new object[] {Common.CurrenciesTestNet.Get<Litecoin>()}
+                new object[] {Common.CurrenciesMainNet.Get<Bitcoin>("BTC")},
+                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>("BTC")},
+                new object[] {Common.CurrenciesMainNet.Get<Litecoin>("LTC")},
+                new object[] {Common.CurrenciesTestNet.Get<Litecoin>("LTC")}
             };
 
         [Theory]

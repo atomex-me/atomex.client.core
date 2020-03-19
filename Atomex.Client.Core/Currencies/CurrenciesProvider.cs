@@ -34,8 +34,7 @@ namespace Atomex
                 var networkConfiguration = configuration.GetSection(network.ToString());
 
                 if (networkConfiguration != null && _currencies.TryGetValue(network, out var currencies))
-                    currencies.Update(networkConfiguration);
-                
+                    currencies.Update(networkConfiguration); 
             }
         }
 

@@ -1,4 +1,4 @@
-﻿namespace Atomex.Core
+﻿namespace Atomex.Api
 {
     public class AuthNonce
     {

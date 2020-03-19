@@ -7,7 +7,7 @@ namespace Atomex.MarketData.Abstract
         void ApplyQuotes(IList<Quote> quotes);
         void ApplyEntries(IList<Entry> entries);
         void ApplySnapshot(Snapshot snapshot);
-        MarketDataOrderBook OrderBookBySymbolId(int symbolId);
-        Quote QuoteBySymbolId(int symbolId);
+        MarketDataOrderBook OrderBookBySymbol(string symbol);
+        Quote QuoteBySymbol(string symbol);
     }
 }

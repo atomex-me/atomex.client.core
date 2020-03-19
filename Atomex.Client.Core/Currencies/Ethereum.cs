@@ -16,31 +16,31 @@ namespace Atomex
 {
     public class Ethereum : Currency
     {
-        private const long WeiInEth = 1000000000000000000;
-        private const long WeiInGwei = 1000000000;
-        private const long GweiInEth = 1000000000;
-        private const string DefaultGasPriceFormat = "F9";
-        private const string DefaultGasPriceCode = "GWEI";
-        private const string DefaultFeeCode = "GAS";
-        private const long EthDigitsMultiplier = GweiInEth; //1_000_000_000;
+        protected const long WeiInEth = 1000000000000000000;
+        protected const long WeiInGwei = 1000000000;
+        protected const long GweiInEth = 1000000000;
+        protected const string DefaultGasPriceFormat = "F9";
+        protected const string DefaultGasPriceCode = "GWEI";
+        protected const string DefaultFeeCode = "GAS";
+        protected const long EthDigitsMultiplier = GweiInEth; //1_000_000_000;
 
-        public decimal GasLimit { get; private set; }
-        public decimal InitiateGasLimit { get; private set; }
-        public decimal InitiateWithRewardGasLimit { get; private set; }
-        public decimal AddGasLimit { get; private set; }
-        public decimal RefundGasLimit { get; private set; }
-        public decimal RedeemGasLimit { get; private set; }
-        public decimal GasPriceInGwei { get; private set; }
+        public decimal GasLimit { get; protected set; }
+        public decimal InitiateGasLimit { get; protected set; }
+        public decimal InitiateWithRewardGasLimit { get; protected set; }
+        public decimal AddGasLimit { get; protected set; }
+        public decimal RefundGasLimit { get; protected set; }
+        public decimal RedeemGasLimit { get; protected set; }
+        public decimal GasPriceInGwei { get; protected set; }
         public decimal InitiateFeeAmount => InitiateGasLimit * GasPriceInGwei / GweiInEth;
         public decimal InitiateWithRewardFeeAmount => InitiateWithRewardGasLimit * GasPriceInGwei / GweiInEth;
         public decimal AddFeeAmount => AddGasLimit * GasPriceInGwei / GweiInEth;
         public decimal RefundFeeAmount => RefundGasLimit * GasPriceInGwei / GweiInEth;
         public decimal RedeemFeeAmount => RedeemGasLimit * GasPriceInGwei / GweiInEth;
 
-        public Chain Chain { get; private set; }
-        public string BlockchainApiBaseUri { get; private set; }
-        public string SwapContractAddress { get; private set; }
-        public ulong SwapContractBlockNumber { get; private set; }
+        public Chain Chain { get; protected set; }
+        public string BlockchainApiBaseUri { get; protected set; }
+        public string SwapContractAddress { get; protected set; }
+        public ulong SwapContractBlockNumber { get; protected set; }
 
         public Ethereum()
         {
@@ -51,7 +51,7 @@ namespace Atomex
             Update(configuration);
         }
 
-        public void Update(IConfiguration configuration)
+        public virtual void Update(IConfiguration configuration)
         {
             Name = configuration["Name"];
             Description = configuration["Description"];
@@ -59,9 +59,10 @@ namespace Atomex
             Digits = (int)Math.Log10(EthDigitsMultiplier);
             Format = $"F{Digits}";
 
-            FeeDigits = 0; // in gas
-            FeeCode = DefaultFeeCode;
+            FeeDigits = Digits; // in gas
+            FeeCode = Name;
             FeeFormat = $"F{FeeDigits}";
+            FeeCurrencyName = Name;
 
             HasFeePrice = true;
             FeePriceCode = DefaultGasPriceCode;
@@ -94,7 +95,7 @@ namespace Atomex
             Bip44Code = Bip44.Ethereum;
         }
 
-        private static Chain ResolveChain(IConfiguration configuration)
+        protected static Chain ResolveChain(IConfiguration configuration)
         {
             var chain = configuration["Chain"]
                 .ToLowerInvariant();
@@ -108,7 +109,7 @@ namespace Atomex
             throw new NotSupportedException($"Chain {chain} not supported");
         }
 
-        private static IBlockchainApi ResolveBlockchainApi(
+        protected static IBlockchainApi ResolveBlockchainApi(
             IConfiguration configuration,
             Ethereum currency,
             Chain chain)
@@ -118,6 +119,9 @@ namespace Atomex
 
             if (blockchainApi.Equals("etherscan+web3"))
                 return new CompositeEthereumBlockchainApi(currency, chain);
+
+            if (blockchainApi.Equals("etherscan"))
+                return new EtherScanApi(currency);
 
             throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported");
         }

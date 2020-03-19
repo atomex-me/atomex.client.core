@@ -7,7 +7,7 @@ using Atomex.Wallet.Abstract;
 
 namespace Atomex.Subsystems.Abstract
 {
-    public interface ITerminal
+    public interface IAtomexClient
     {
         event EventHandler<TerminalServiceEventArgs> ServiceConnected;
         event EventHandler<TerminalServiceEventArgs> ServiceDisconnected;

@@ -45,10 +45,10 @@ namespace Atomex.Client.Core.Tests
 
             var tempCurrencies = new Currencies(Common.CurrenciesConfiguration.GetSection(Atomex.Core.Network.TestNet.ToString()));
 
-            var bitcoin = tempCurrencies.Get<Bitcoin>();
+            var bitcoin = tempCurrencies.Get<Bitcoin>("BTC");
             bitcoin.BlockchainApi = bitcoinApi.Object;
 
-            var litecoin = tempCurrencies.Get<Litecoin>();
+            var litecoin = tempCurrencies.Get<Litecoin>("LTC");
             litecoin.BlockchainApi = litecoinApi.Object;
 
             var aliceBtcAddress = Common.Alice.PubKey
@@ -64,7 +64,7 @@ namespace Atomex.Client.Core.Tests
 
             var swap = new Swap
             {
-                Symbol = new Symbol { Base = litecoin, Quote = bitcoin },
+                Symbol = "LTC/BTC",
                 Side = Side.Buy,
                 Price = lastPrice,
                 Qty = lastQty

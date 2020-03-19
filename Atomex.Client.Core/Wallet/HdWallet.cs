@@ -81,7 +81,7 @@ namespace Atomex.Wallet
 
             return new WalletAddress
             {
-                Currency = currency,
+                Currency = currency.Name,
                 Address = address,
                 PublicKey = Convert.ToBase64String(publicKey),
                 KeyIndex = new KeyIndex { Chain = chain, Index = index }
@@ -96,6 +96,7 @@ namespace Atomex.Wallet
         public Task<byte[]> SignAsync(
             byte[] data,
             WalletAddress address,
+            Currency currency,
             CancellationToken cancellationToken = default)
         {
             if (data == null)
@@ -120,12 +121,12 @@ namespace Atomex.Wallet
                 return Task.FromResult<byte[]>(null);
             }
 
-            var signature = KeyStorage.SignMessage(address.Currency, data, address.KeyIndex);
+            var signature = KeyStorage.SignMessage(currency, data, address.KeyIndex);
 
             Log.Verbose("Data signature in base64: {@signature}",
                 Convert.ToBase64String(signature));
 
-            if (!KeyStorage.VerifyMessage(address.Currency, data, signature, address.KeyIndex))
+            if (!KeyStorage.VerifyMessage(currency, data, signature, address.KeyIndex))
             {
                 Log.Error("Signature verify error");
                 return Task.FromResult<byte[]>(null);
@@ -200,6 +201,7 @@ namespace Atomex.Wallet
         public Task<byte[]> SignHashAsync(
             byte[] hash,
             WalletAddress address,
+            Currency currency,
             CancellationToken cancellationToken = default)
         {
             if (hash == null)
@@ -222,11 +224,11 @@ namespace Atomex.Wallet
                 return Task.FromResult<byte[]>(null);
             }
 
-            var signature = KeyStorage.SignHash(address.Currency, hash, address.KeyIndex);
+            var signature = KeyStorage.SignHash(currency, hash, address.KeyIndex);
 
             Log.Verbose("Hash signature in base64: {@signature}", Convert.ToBase64String(signature));
 
-            if (!KeyStorage.VerifyHash(address.Currency, hash, signature, address.KeyIndex))
+            if (!KeyStorage.VerifyHash(currency, hash, signature, address.KeyIndex))
             {
                 Log.Error("Signature verify error");
                 return Task.FromResult<byte[]>(null);

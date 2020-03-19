@@ -22,7 +22,7 @@ namespace Atomex.Blockchain
 
             foreach (var a in addresses)
             {
-                var outputsResult = await ((IInOutBlockchainApi)a.Currency.BlockchainApi)
+                var outputsResult = await ((IInOutBlockchainApi)_currency.BlockchainApi)
                     .GetUnspentOutputsAsync(a.Address)
                     .ConfigureAwait(false);
 
@@ -37,7 +37,6 @@ namespace Atomex.Blockchain
         }
 
         public async Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
-            string currency,
             IEnumerable<string> addresses)
         {
             var outputs = new List<ITxOutput>();

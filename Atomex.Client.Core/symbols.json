@@ -19,28 +19,83 @@
       "Id": 4,
       "Name": "XTZ/ETH",
       "MinimumQty": 20
+    },
+    {
+      "Id": 5,
+      "Name": "BTC/USDT",
+      "MinimumQty": 0.001
+    },
+    {
+      "Id": 6,
+      "Name": "ETH/USDT",
+      "MinimumQty": 0.1
+    },
+    {
+      "Id": 7,
+      "Name": "LTC/USDT",
+      "MinimumQty": 0.3
+    },
+    {
+      "Id": 8,
+      "Name": "XTZ/USDT",
+      "MinimumQty": 10
     }
   ],
   "TestNet": [
     {
       "Id": 1,
       "Name": "ETH/BTC",
-      "MinimumQty": 0.1
+      "MinimumQty": 0.0001
     },
     {
       "Id": 2,
       "Name": "LTC/BTC",
-      "MinimumQty": 0.3
+      "MinimumQty": 0.0001
     },
     {
       "Id": 3,
       "Name": "XTZ/BTC",
-      "MinimumQty": 20
+      "MinimumQty": 0.0001
     },
     {
       "Id": 4,
       "Name": "XTZ/ETH",
-      "MinimumQty": 20
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 5,
+      "Name": "BTC/USDT",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 6,
+      "Name": "ETH/USDT",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 7,
+      "Name": "LTC/USDT",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 8,
+      "Name": "XTZ/USDT",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 9,
+      "Name": "FA12/BTC",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 10,
+      "Name": "ETH/FA12",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 11,
+      "Name": "XTZ/FA12",
+      "MinimumQty": 0.0001
     }
   ]
 }

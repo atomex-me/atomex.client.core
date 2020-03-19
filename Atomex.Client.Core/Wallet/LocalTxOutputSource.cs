@@ -34,7 +34,6 @@ namespace Atomex.Wallet
         }
 
         public async Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
-            string currency,
             IEnumerable<string> addresses)
         {
             var outputs = new List<ITxOutput>();

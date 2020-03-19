@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Helpers;
+using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography;
 using Serilog;
@@ -32,15 +34,18 @@ namespace Atomex.Swaps.Abstract
         public OnSwapUpdatedDelegate AcceptorPaymentSpent { get; set; }
         public OnSwapUpdatedDelegate SwapUpdated { get; set; }
 
-        public Currency Currency { get; }
+        public string Currency { get; }
         protected readonly ISwapClient SwapClient;
+        protected readonly ICurrencies Currencies;
 
         protected CurrencySwap(
-            Currency currency,
-            ISwapClient swapClient)
+            string currency,
+            ISwapClient swapClient,
+            ICurrencies currencies)
         {
             Currency = currency;
             SwapClient = swapClient ?? throw new ArgumentNullException(nameof(swapClient));
+            Currencies = currencies ?? throw new ArgumentNullException(nameof(currencies));
         }
 
         public abstract Task PayAsync(
@@ -170,6 +175,30 @@ namespace Atomex.Swaps.Abstract
                         .ConfigureAwait(false);
                 }
             }, cancellationToken);
+        }
+
+        protected bool CheckPayRelevance(Swap swap)
+        {
+            if (swap.IsAcceptor)
+            {
+                var acceptorRefundTimeUtc = swap.TimeStamp
+                    .ToUniversalTime()
+                    .AddSeconds(DefaultAcceptorLockTimeInSeconds);
+
+                var paymentDeadline = acceptorRefundTimeUtc - PaymentTimeReserve;
+
+                if (DateTime.UtcNow > paymentDeadline)
+                {
+                    Log.Error("Payment deadline reached for swap {@swap}", swap.Id);
+
+                    swap.Cancel();
+                    RaiseSwapUpdated(swap, SwapStateFlags.IsCanceled);
+
+                    return false;
+                }
+            }
+
+            return true;
         }
     }
 }

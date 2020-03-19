@@ -8,6 +8,6 @@ namespace Atomex.Abstract
     {
         void Update(IConfiguration configuration);
         Currency GetByName(string name);
-        T Get<T>() where T : Currency;
+        T Get<T>(string name) where T : Currency;
     }
 }

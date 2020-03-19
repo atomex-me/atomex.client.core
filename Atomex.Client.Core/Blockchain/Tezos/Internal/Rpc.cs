@@ -188,7 +188,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
             foreach (var result in runResults.SelectToken("contents"))
             {
-                decimal gas = 0, storage = 0, storage_diff = 0, size = 0, fee = 0;
+                decimal gas = 0, storage_diff = 0, size = 0, fee = 0;
 
                 var metaData = result["metadata"];
                 var operationResult = metaData?["operation_result"];
@@ -202,13 +202,16 @@ namespace Atomex.Blockchain.Tezos.Internal
                             ?.SelectToken("internal_operation_results")
                             ?.Sum(res => res["result"]?["consumed_gas"]?.Value<decimal>() ?? 0) ?? 0;
 
-                        storage = operationResult?["storage_size"]?.Value<decimal>() ?? 0;
+                        //storage = operationResult?["storage_size"]?.Value<decimal>() ?? 0;
 
                         storage_diff = operationResult?["paid_storage_size_diff"]?.Value<decimal>() ?? 0;
                         storage_diff += tezos.ActivationStorage * (operationResult?["allocated_destination_contract"]?.ToString() == "True" ? 1 : 0);
                         storage_diff += tezos.ActivationStorage * metaData?["internal_operation_results"]
                             ?.Where(res => res["result"]?["allocated_destination_contract"]?.ToString() == "True")
                             .Count() ?? 0;
+                        storage_diff += metaData
+                            ?.SelectToken("internal_operation_results")
+                            ?.Sum(res => res["result"]?["paid_storage_size_diff"]?.Value<decimal>() ?? 0) ?? 0;
 
                         var op = operations
                             .Children<JObject>()
@@ -247,7 +250,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             return true;
         }
 
-        private async Task<JObject> RunOperations(JObject blockHead, JArray operations)
+        public async Task<JObject> RunOperations(JObject blockHead, JArray operations)
         {
             var contents = new JObject
             {

@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
+using Nethereum.Hex.HexTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -17,6 +18,7 @@ namespace Atomex.Blockchain.Ethereum
     {
         private const string ApiKey = "2R1AIHZZE5NVSHRQUGAHU8EYNYYZ5B2Y37";
         private const int MinDelayBetweenRequestMs = 1000;
+        private static readonly int prefixOffset = 2;
 
         private static readonly RequestLimitControl RequestLimitControl 
             = new RequestLimitControl(MinDelayBetweenRequestMs);
@@ -114,6 +116,11 @@ namespace Atomex.Blockchain.Ethereum
             }
         }
 
+        public class TokenEvent
+        {
+
+        }
+
         private Currency Currency { get; }
 
         public EtherScanApi(Atomex.Ethereum currency)
@@ -147,27 +154,204 @@ namespace Atomex.Blockchain.Ethereum
                .ConfigureAwait(false);
         }
 
-        public Task<Result<BigInteger>> GetTransactionCountAsync(
+        public async Task<Result<long>> GetBlockNumber(
+            CancellationToken cancellationToken = default)
+        {
+            var requestUri = $"api?module=proxy&action=eth_blockNumber&apikey={ApiKey}";
+
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            return await HttpHelper.GetAsyncResult(
+                   baseUri: BaseUrl,
+                   requestUri: requestUri,
+                   responseHandler: (response, content) =>
+                   {
+                       var json = JsonConvert.DeserializeObject<JObject>(content);
+                       var blockNumber = json.ContainsKey("result")
+                           ? long.Parse(json["result"].ToString().Substring(prefixOffset), System.Globalization.NumberStyles.HexNumber)
+                           : 0;
+
+                       return new Result<long>(blockNumber);
+                   },
+                   cancellationToken: cancellationToken)
+               .ConfigureAwait(false);
+        }
+
+        public async Task<Result<BigInteger>> GetTransactionCountAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var requestUri = $"api?module=proxy&action=eth_getTransactionCount&address={address}&tag=latest&apikey={ApiKey}";
+
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            return await HttpHelper.GetAsyncResult<BigInteger>(
+                   baseUri: BaseUrl,
+                   requestUri: requestUri,
+                   responseHandler: (response, content) =>
+                   {
+                       var json = JsonConvert.DeserializeObject<JObject>(content);
+
+                       return json.ContainsKey("result")
+                           ? new HexBigInteger(json["result"].ToString()).Value
+                           : 0;
+                   },
+                   cancellationToken: cancellationToken)
+               .ConfigureAwait(false);
         }
 
-        public Task<Result<BigInteger>> TryGetTransactionCountAsync(
+        public async Task<Result<BigInteger>> TryGetTransactionCountAsync(
             string address,
             int attempts = 10,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            return await ResultHelper.TryDo((c) => GetTransactionCountAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transaction count after {attempts} attempts");
         }
-
-        public override Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public async override Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            if (txId == null)
+                return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
+
+            var requestUri = $"api?module=proxy&action=eth_getTransactionByHash&txhash={txId}&apikey={ApiKey}";
+
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            var tx = await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
+                   baseUri: BaseUrl,
+                   requestUri: requestUri,
+                   responseHandler: (response, content) =>
+                   {
+                       var tx = JsonConvert.DeserializeObject<JObject>(content)?["result"];
+
+                       if (tx == null)
+                           return null;
+
+                       return new EthereumTransaction
+                       {
+                           Id = tx["hash"].Value<string>(),
+                           Currency = Currency,
+                           Type = BlockchainTransactionType.Unknown,
+                           //State = state,
+                           //CreationTime = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
+
+                           From = tx["from"].Value<string>().ToLowerInvariant(),
+                           To = tx["to"].Value<string>().ToLowerInvariant(),
+                           Input = tx["input"].Value<string>(),
+                           Amount = new HexBigInteger(tx["value"].Value<string>()),
+                           Nonce = tx["nonce"] != null
+                                ? new HexBigInteger(tx["nonce"].Value<string>()).Value
+                                : 0,
+                           GasPrice = tx["gasPrice"] != null
+                                ? new HexBigInteger(tx["gasPrice"].Value<string>()).Value
+                                : 0,
+                           GasLimit = new HexBigInteger(tx["gas"].Value<string>()).Value,
+                           //GasUsed = 0,
+                           //ReceiptStatus = state == BlockchainTransactionState.Confirmed,
+                           IsInternal = false,
+                           InternalIndex = 0,
+
+                           BlockInfo = new BlockInfo
+                           {
+                               //Confirmations = tx.Confirmations != null
+                               //     ? int.Parse(tx.Confirmations)
+                               //     : 1,
+                               BlockHash = tx["blockHash"]?.Value<string>(),
+                               BlockHeight = (long)new HexBigInteger(tx["blockNumber"].Value<string>()).Value,
+                               //BlockTime = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
+                               //FirstSeen = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp))
+                           }
+                       };
+                   },
+                   cancellationToken: cancellationToken)
+               .ConfigureAwait(false);
+
+            if (tx.HasError)
+                return tx.Error;
+
+            var blockNumberHex = "0x" + tx.Value.BlockInfo.BlockHeight.ToString("X");
+
+            var blockTime = await HttpHelper.GetAsyncResult<DateTime>(
+                    baseUri: BaseUrl,
+                    requestUri: $"api?module=proxy&action=eth_getBlockByNumber&tag={blockNumberHex}&boolean=true&apikey={ApiKey}",
+                    responseHandler: (response, content) => {
+                        var result = JsonConvert.DeserializeObject<JObject>(content);
+
+                        var hexTimeStamp = result?["result"]?["timestamp"]?.Value<string>();
+
+                        if (hexTimeStamp == null)
+                            return DateTime.MinValue;
+
+                        var timeStamp = (long)new HexBigInteger(hexTimeStamp).ToUlong();
+
+                        return DateTimeExtensions.UnixStartTime.AddSeconds(timeStamp);
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (blockTime.HasError)
+                return blockTime.Error;
+
+            var txReceipt = await HttpHelper.GetAsyncResult<int>(
+                    baseUri: BaseUrl,
+                    requestUri: $"api?module=transaction&action=gettxreceiptstatus&txhash={txId}&apikey={ApiKey}",
+                    responseHandler: (response, content) => {
+                        var result = JsonConvert.DeserializeObject<JObject>(content);
+
+                        var status = result?["result"]?["status"]?.Value<string>();
+
+                        return status != null
+                            ? int.Parse(status)
+                            : 0;
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (txReceipt.HasError)
+                return txReceipt.Error;
+
+            tx.Value.State = txReceipt.Value == 0
+                ? BlockchainTransactionState.Failed
+                : BlockchainTransactionState.Confirmed;
+
+            tx.Value.BlockInfo.Confirmations = tx.Value.State == BlockchainTransactionState.Confirmed
+                ? 1
+                : 0;
+
+            tx.Value.CreationTime = blockTime.Value;
+            tx.Value.BlockInfo.FirstSeen = blockTime.Value;
+            tx.Value.BlockInfo.BlockTime = blockTime.Value;
+
+            var internalTxsResult = await GetInternalTransactionsAsync(txId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (internalTxsResult == null)
+                return new Error(Errors.RequestError, "Connection error while getting internal transactions");
+
+            if (internalTxsResult.HasError)
+                return internalTxsResult.Error;
+
+            if (internalTxsResult.Value.Any())
+            {
+                var ethTx = tx.Value as EthereumTransaction;
+
+                ethTx.InternalTxs = internalTxsResult.Value
+                    .Cast<EthereumTransaction>()
+                            .ToList()
+                            .ForEachDo(itx => itx.State = ethTx.State)
+                            .ToList();
+            }
+
+            return tx;
         }
 
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetInternalTransactionsAsync(
@@ -278,6 +462,19 @@ namespace Atomex.Blockchain.Ethereum
             return GetContractEventsAsync(address, fromBlock, toBlock, cancellationToken, topic0, topic1, topic2);
         }
 
+        public Task<Result<IEnumerable<ContractEvent>>> GetContractEventsAsync(
+            string address,
+            ulong fromBlock,
+            ulong toBlock,
+            string topic0,
+            string topic1,
+            string topic2,
+            string topic3,
+            CancellationToken cancellationToken = default)
+        {
+            return GetContractEventsAsync(address, fromBlock, toBlock, cancellationToken, topic0, topic1, topic2, topic3);
+        }
+
         public async Task<Result<IEnumerable<ContractEvent>>> GetContractEventsAsync(
             string address,
             ulong fromBlock = ulong.MinValue,
@@ -339,11 +536,37 @@ namespace Atomex.Blockchain.Ethereum
             return result;
         }
 
-        public override Task<Result<string>> BroadcastAsync(
+        public override async Task<Result<string>> BroadcastAsync(
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            if (!(transaction is EthereumTransaction ethTx))
+                return new Error(Errors.TransactionBroadcastError, "Invalid transaction type.");
+
+            var requestUri = $"api?module=proxy&action=eth_sendRawTransaction&hex=0x{ethTx.RlpEncodedTx}&apikey={ApiKey}";
+
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            var txId =  await HttpHelper.PostAsyncResult<string>(
+                   baseUri: BaseUrl,
+                   requestUri: requestUri,
+                   content: null,
+                   responseHandler: (response, content) =>
+                   {
+                       var json = JsonConvert.DeserializeObject<JObject>(content);
+
+                       return json.ContainsKey("result")
+                           ? json["result"].Value<string>()
+                           : null;
+                   },
+                   cancellationToken: cancellationToken)
+               .ConfigureAwait(false);
+
+            ethTx.Id = txId.Value;
+
+            return txId;
         }
 
         private IEnumerable<IBlockchainTransaction> ParseTransactions(

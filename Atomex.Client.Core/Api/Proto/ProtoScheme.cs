@@ -42,11 +42,9 @@ namespace Atomex.Api.Proto
 
         public byte[] Serialize(T obj)
         {
-            using (var stream = new MemoryStream())
-            {
-                Model.Serialize(stream, obj);
-                return stream.ToArray();
-            }
+            using var stream = new MemoryStream();
+            Model.Serialize(stream, obj);
+            return stream.ToArray();
         }
 
         private void SerializeWithLengthPrefix(
@@ -60,11 +58,9 @@ namespace Atomex.Api.Proto
 
         private byte[] SerializeWithLengthPrefix(T obj, PrefixStyle prefixStyle, int field)
         {
-            using (var stream = new MemoryStream())
-            {
-                Model.SerializeWithLengthPrefix(stream, obj, typeof(T), prefixStyle, field);
-                return stream.ToArray();
-            }
+            using var stream = new MemoryStream();
+            Model.SerializeWithLengthPrefix(stream, obj, typeof(T), prefixStyle, field);
+            return stream.ToArray();
         }
 
         public byte[] SerializeWithLengthPrefix(T obj)
@@ -80,11 +76,9 @@ namespace Atomex.Api.Proto
 
         private byte[] SerializeWithMessageId(T obj, byte messageId)
         {
-            using (var stream = new MemoryStream())
-            {
-                SerializeWithMessageId(stream, obj, messageId);
-                return stream.ToArray();
-            }
+            using var stream = new MemoryStream();
+            SerializeWithMessageId(stream, obj, messageId);
+            return stream.ToArray();
         }
 
         public byte[] SerializeWithMessageId(T obj)

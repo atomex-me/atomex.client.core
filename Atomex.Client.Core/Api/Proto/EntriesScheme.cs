@@ -11,7 +11,7 @@ namespace Atomex.Api.Proto
         {
             Model.Add(typeof(Entry), true)
                 .AddRequired(nameof(Entry.TransactionId))
-                .AddRequired(nameof(Entry.SymbolId))
+                .AddRequired(nameof(Entry.Symbol))
                 .AddRequired(nameof(Entry.Side))
                 .AddRequired(nameof(Entry.Price))
                 .AddRequired(nameof(Entry.QtyProfile));

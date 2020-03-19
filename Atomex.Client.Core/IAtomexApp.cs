@@ -11,7 +11,7 @@ namespace Atomex
     {
         event EventHandler<TerminalChangedEventArgs> TerminalChanged;
 
-        ITerminal Terminal { get; }
+        IAtomexClient Terminal { get; }
         IAccount Account { get; }
         ICurrencyQuotesProvider QuotesProvider { get; }
         ICurrencyOrderBookProvider OrderBooksProvider { get; }
@@ -21,7 +21,7 @@ namespace Atomex
 
         IAtomexApp Start();
         IAtomexApp Stop();
-        IAtomexApp UseTerminal(ITerminal terminal, bool restart = false);
+        IAtomexApp UseTerminal(IAtomexClient terminal, bool restart = false);
         IAtomexApp UseCurrenciesProvider(ICurrenciesProvider currenciesProvider);
         IAtomexApp UseSymbolsProvider(ISymbolsProvider symbolsProvider);
         IAtomexApp UseCurrenciesUpdater(ICurrenciesUpdater currenciesUpdater);

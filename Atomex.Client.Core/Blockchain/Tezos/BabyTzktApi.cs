@@ -1,241 +1,232 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Tezos.Internal;
-using Atomex.Common;
-using Atomex.Core;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Serilog;
+﻿//using System;
+//using System.Collections.Generic;
+//using System.Linq;
+//using System.Threading;
+//using System.Threading.Tasks;
+//using Atomex.Blockchain.Abstract;
+//using Atomex.Blockchain.Tezos.Internal;
+//using Atomex.Common;
+//using Atomex.Core;
+//using Newtonsoft.Json;
+//using Newtonsoft.Json.Linq;
+//using Serilog;
 
-namespace Atomex.Blockchain.Tezos
-{
-    public class BabyTzktApi : BlockchainApi, ITezosBlockchainApi
-    {
-        //private const string Mainnet = "https://api3.tzscan.io/";
-        //private const string Alphanet = "https://baby.tzkt.io/";
-        //private const string Alphanet = "https://api.babylonnet.tzscan.io/";
+//namespace Atomex.Blockchain.Tezos
+//{
+//    public class BabyTzktApi : BlockchainApi, ITezosBlockchainApi
+//    {
+//        private readonly Currency _currency;
+//        private readonly string _rpcNodeUri;
+//        private readonly string _apiBaseUrl;
 
-        //private const string MainnetRpc = "https://mainnet-node.tzscan.io";
-        //private const string AlphanetRpc = "http://alphanet-node.tzscan.io:80";
-        //private const string AlphanetRpc = "https://tezos-dev.cryptonomic-infra.tech";
-        //public const string ZeronetRpc = "https://zeronet-node.tzscan.io:80";
+//        public BabyTzktApi(Atomex.Tezos currency)
+//        {
+//            _currency = currency;
+//            _rpcNodeUri = currency.RpcNodeUri;
+//            _apiBaseUrl = currency.BaseUri;
+//        }
 
-        private readonly Currency _currency;
-        private readonly string _rpcNodeUri;
-        private readonly string _apiBaseUrl;
+//        public override async Task<Result<decimal>> GetBalanceAsync(
+//            string address,
+//            CancellationToken cancellationToken = default)
+//        {
+//            try
+//            {
+//                var rpc = new Rpc(_rpcNodeUri);
 
-        public BabyTzktApi(Atomex.Tezos currency)
-        {
-            _currency = currency;
-            _rpcNodeUri = currency.RpcNodeUri;
-            _apiBaseUrl = currency.BaseUri;
-        }
+//                return await rpc.GetBalance(address)
+//                    .ConfigureAwait(false);
+//            }
+//            catch (Exception e)
+//            {
+//                return new Error(Errors.RequestError, e.Message);
+//            }
+//        }
 
-        public override async Task<Result<decimal>> GetBalanceAsync(
-            string address,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var rpc = new Rpc(_rpcNodeUri);
+//        public override async Task<Result<string>> BroadcastAsync(
+//            IBlockchainTransaction transaction,
+//            CancellationToken cancellationToken = default)
+//        {
+//            try
+//            {
+//                var tx = (TezosTransaction)transaction;
+//                tx.State = BlockchainTransactionState.Pending;
 
-                return await rpc.GetBalance(address)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                return new Error(Errors.RequestError, e.Message);
-            }
-        }
+//                var rpc = new Rpc(_rpcNodeUri);
 
-        public override async Task<Result<string>> BroadcastAsync(
-            IBlockchainTransaction transaction,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var tx = (TezosTransaction)transaction;
-                tx.State = BlockchainTransactionState.Pending;
+//                var opResults = await rpc
+//                    .PreApplyOperations(tx.Head, tx.Operations, tx.SignedMessage.EncodedSignature)
+//                    .ConfigureAwait(false);
 
-                var rpc = new Rpc(_rpcNodeUri);
+//                if (!opResults.Any())
+//                    return new Error(Errors.EmptyPreApplyOperations, "Empty pre apply operations");
 
-                var opResults = await rpc
-                    .PreApplyOperations(tx.Head, tx.Operations, tx.SignedMessage.EncodedSignature)
-                    .ConfigureAwait(false);
+//                string txId = null;
 
-                if (!opResults.Any())
-                    return new Error(Errors.EmptyPreApplyOperations, "Empty pre apply operations");
+//                foreach (var opResult in opResults)
+//                    Log.Debug("OperationResult {@result}: {@opResult}", opResult.Succeeded, opResult.Data.ToString());
 
-                string txId = null;
+//                if (opResults.Any() && opResults.All(op => op.Succeeded))
+//                {
+//                    var injectedOperation = await rpc
+//                        .InjectOperations(tx.SignedMessage.SignedBytes)
+//                        .ConfigureAwait(false);
 
-                foreach (var opResult in opResults)
-                    Log.Debug("OperationResult {@result}: {@opResult}", opResult.Succeeded, opResult.Data.ToString());
+//                    txId = injectedOperation.ToString();
+//                }
 
-                if (opResults.Any() && opResults.All(op => op.Succeeded))
-                {
-                    var injectedOperation = await rpc
-                        .InjectOperations(tx.SignedMessage.SignedBytes)
-                        .ConfigureAwait(false);
+//                if (txId == null)
+//                    return new Error(Errors.NullTxId, "Null tx id");
 
-                    txId = injectedOperation.ToString();
-                }
+//                tx.Id = txId;
 
-                if (txId == null)
-                    return new Error(Errors.NullTxId, "Null tx id");
+//                return tx.Id;
+//            }
+//            catch (Exception e)
+//            {
+//                return new Error(Errors.RequestError, e.Message);
+//            }
+//        }
 
-                tx.Id = txId;
+//        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+//            string txId,
+//            CancellationToken cancellationToken = default)
+//        {
+//            var requestUri = $"transactions/{txId}";
 
-                return tx.Id;
-            }
-            catch (Exception e)
-            {
-                return new Error(Errors.RequestError, e.Message);
-            }
-        }
+//            return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
+//                    baseUri: _apiBaseUrl,
+//                    requestUri: requestUri,
+//                    responseHandler: (response, content) =>
+//                    {
+//                        var txResult = ParseTxs(JsonConvert.DeserializeObject<JArray>(content));
 
-        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
-            string txId,
-            CancellationToken cancellationToken = default)
-        {
-            var requestUri = $"transactions/{txId}";
+//                        if (txResult.HasError)
+//                            return txResult.Error;
 
-            return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
-                    baseUri: _apiBaseUrl,
-                    requestUri: requestUri,
-                    responseHandler: (response, content) =>
-                    {
-                        var txResult = ParseTxs(JsonConvert.DeserializeObject<JArray>(content));
+//                        return txResult.Value?.FirstOrDefault();
+//                    },
+//                    cancellationToken: cancellationToken)
+//                .ConfigureAwait(false);
+//        }
 
-                        if (txResult.HasError)
-                            return txResult.Error;
+//        public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
+//            string address,
+//            CancellationToken cancellationToken = default)
+//        {
+//            var inputTxsResult = await HttpHelper.GetAsyncResult(
+//                    baseUri: _apiBaseUrl,
+//                    requestUri: $"transactions?receiver={address}",
+//                    responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)),
+//                    cancellationToken: cancellationToken)
+//                .ConfigureAwait(false);
 
-                        return txResult.Value?.FirstOrDefault();
-                    },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
+//            if (inputTxsResult == null)
+//                return new Error(Errors.RequestError, $"Connection error while getting input transactions for address {address}");
 
-        public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
-            string address,
-            CancellationToken cancellationToken = default)
-        {
-            var inputTxsResult = await HttpHelper.GetAsyncResult(
-                    baseUri: _apiBaseUrl,
-                    requestUri: $"transactions?receiver={address}",
-                    responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)),
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+//            if (inputTxsResult.HasError)
+//                return inputTxsResult.Error;
 
-            if (inputTxsResult == null)
-                return new Error(Errors.RequestError, $"Connection error while getting input transactions for address {address}");
+//            var outputTxsResult = await HttpHelper.GetAsyncResult(
+//                    baseUri: _apiBaseUrl,
+//                    requestUri: $"transactions?sender={address}",
+//                    responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)),
+//                    cancellationToken: cancellationToken)
+//                .ConfigureAwait(false);
 
-            if (inputTxsResult.HasError)
-                return inputTxsResult.Error;
+//            if (outputTxsResult == null)
+//                return new Error(Errors.RequestError, $"Connection error while getting output transactions for address {address}");
 
-            var outputTxsResult = await HttpHelper.GetAsyncResult(
-                    baseUri: _apiBaseUrl,
-                    requestUri: $"transactions?sender={address}",
-                    responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)),
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+//            if (outputTxsResult.HasError)
+//                return outputTxsResult.Error;
 
-            if (outputTxsResult == null)
-                return new Error(Errors.RequestError, $"Connection error while getting output transactions for address {address}");
+//            return new Result<IEnumerable<IBlockchainTransaction>>(inputTxsResult.Value.Concat(outputTxsResult.Value));
+//        }
 
-            if (outputTxsResult.HasError)
-                return outputTxsResult.Error;
+//        public async Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
+//            string address,
+//            int attempts = 10,
+//            int attemptsIntervalMs = 1000,
+//            CancellationToken cancellationToken = default)
+//        {
+//            return await ResultHelper.TryDo((c) => GetTransactionsAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
+//                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
+//        }
 
-            return new Result<IEnumerable<IBlockchainTransaction>>(inputTxsResult.Value.Concat(outputTxsResult.Value));
-        }
+//        public async Task<Result<bool>> IsRevealedAsync(
+//            string address,
+//            CancellationToken cancellationToken = default)
+//        {
+//            return await HttpHelper.GetAsyncResult<bool>(
+//                    baseUri: _apiBaseUrl,
+//                    requestUri: $"accounts/{address}",
+//                    responseHandler: (response, content) => content == "true",
+//                    cancellationToken: cancellationToken)
+//                .ConfigureAwait(false);
+//        }
 
-        public async Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
-            string address,
-            int attempts = 10,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            return await ResultHelper.TryDo((c) => GetTransactionsAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
-        }
+//        private Result<IEnumerable<TezosTransaction>> ParseTxs(JArray data)
+//        {
+//            var result = new List<TezosTransaction>();
 
-        public async Task<Result<bool>> IsRevealedAsync(
-            string address,
-            CancellationToken cancellationToken = default)
-        {
-            return await HttpHelper.GetAsyncResult<bool>(
-                    baseUri: _apiBaseUrl,
-                    requestUri: $"accounts/{address}",
-                    responseHandler: (response, content) => content == "true",
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
+//            foreach (var op in data)
+//            {
+//                if (!(op is JObject operation))
+//                    return new Error(Errors.NullOperation, "Null operation in response");
 
-        private Result<IEnumerable<TezosTransaction>> ParseTxs(JArray data)
-        {
-            var result = new List<TezosTransaction>();
+//                var content = operation["content"] as JObject;
 
-            foreach (var op in data)
-            {
-                if (!(op is JObject operation))
-                    return new Error(Errors.NullOperation, "Null operation in response");
+//                var isInternal = operation["internal"].Value<bool>();
 
-                var content = operation["content"] as JObject;
+//                var status = content["metadata"]?["operation_result"]?["status"]?.ToString() ?? content["result"]?["status"]?.ToString();
 
-                var isInternal = operation["internal"].Value<bool>();
+//                var state = status != null && status == "applied"
+//                    ? BlockchainTransactionState.Confirmed
+//                    : BlockchainTransactionState.Failed;
 
-                var status = content["metadata"]?["operation_result"]?["status"]?.ToString() ?? content["result"]?["status"]?.ToString();
+//                var tx = new TezosTransaction()
+//                {
+//                    Id = operation["hash"].ToString(),
+//                    Currency = _currency,
+//                    State = state,
+//                    Type = BlockchainTransactionType.Unknown,
+//                    CreationTime = DateTime.SpecifyKind(DateTime.Parse(operation["timestamp"].ToString()), DateTimeKind.Utc),
 
-                var state = status != null && status == "applied"
-                    ? BlockchainTransactionState.Confirmed
-                    : BlockchainTransactionState.Failed;
+//                    From = content["source"].ToString(),
+//                    To = content["destination"].ToString(),
+//                    Amount = content["amount"].Value<decimal>(),
+//                    Burn = 0, // todo: fix
 
-                var tx = new TezosTransaction()
-                {
-                    Id = operation["hash"].ToString(),
-                    Currency = _currency,
-                    State = state,
-                    Type = BlockchainTransactionType.Unknown,
-                    CreationTime = DateTime.SpecifyKind(DateTime.Parse(operation["timestamp"].ToString()), DateTimeKind.Utc),
+//                    IsInternal = isInternal,
+//                    InternalIndex = 0,
 
-                    From = content["source"].ToString(),
-                    To = content["destination"].ToString(),
-                    Amount = content["amount"].Value<decimal>(),
-                    Burn = 0, // todo: fix
+//                    BlockInfo = new BlockInfo
+//                    {
+//                        Confirmations = state == BlockchainTransactionState.Failed ? 0 : 1,
+//                        BlockHash = null,
+//                        BlockHeight = operation["level"].Value<long>(),
+//                        BlockTime = DateTime.SpecifyKind(DateTime.Parse(operation["timestamp"].ToString()), DateTimeKind.Utc),
+//                        FirstSeen = DateTime.SpecifyKind(DateTime.Parse(operation["timestamp"].ToString()), DateTimeKind.Utc)
+//                    }
+//                };
 
-                    IsInternal = isInternal,
-                    InternalIndex = 0,
+//                if (isInternal)
+//                {
+//                    tx.InternalIndex = content["nonce"].Value<int>();
+//                }
+//                else
+//                {
+//                    tx.Params = content["parameters"]?["value"] as JObject;
+//                    tx.Fee = content["fee"].Value<decimal>();
+//                    tx.GasLimit = content["gas_limit"].Value<decimal>();
+//                    tx.StorageLimit = content["storage_limit"].Value<decimal>();
+//                    //tx.InternalTxs = new List<TezosTransaction>();
+//                }
 
-                    BlockInfo = new BlockInfo
-                    {
-                        Confirmations = state == BlockchainTransactionState.Failed ? 0 : 1,
-                        BlockHash = null,
-                        BlockHeight = operation["level"].Value<long>(),
-                        BlockTime = DateTime.SpecifyKind(DateTime.Parse(operation["timestamp"].ToString()), DateTimeKind.Utc),
-                        FirstSeen = DateTime.SpecifyKind(DateTime.Parse(operation["timestamp"].ToString()), DateTimeKind.Utc)
-                    }
-                };
+//                result.Add(tx);
+//            }
 
-                if (isInternal)
-                {
-                    tx.InternalIndex = content["nonce"].Value<int>();
-                }
-                else
-                {
-                    tx.Params = content["parameters"]?["value"] as JObject;
-                    tx.Fee = content["fee"].Value<decimal>();
-                    tx.GasLimit = content["gas_limit"].Value<decimal>();
-                    tx.StorageLimit = content["storage_limit"].Value<decimal>();
-                    //tx.InternalTxs = new List<TezosTransaction>();
-                }
-
-                result.Add(tx);
-            }
-
-            return result;
-        }
-    }
-}
+//            return result;
+//        }
+//    }
+//}

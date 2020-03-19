@@ -6,6 +6,7 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Abstract;
+using Atomex.Api;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
@@ -23,7 +24,7 @@ namespace Atomex.Wallet
 
         private const string DefaultDataFileName = "data.db";
         private const string DefaultAccountKey = "Account:Default";
-        private const string ApiVersion = "1.2";
+        private const string ApiVersion = "1.3";
 
         public event EventHandler<CurrencyEventArgs> BalanceUpdated
         {
@@ -87,16 +88,16 @@ namespace Atomex.Wallet
                 pathToDb: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultDataFileName}",
                 password: password,
                 currencies: Currencies,
-                symbols: Symbols,
                 network: wallet.Network);
 
             CurrencyAccounts = Currencies
                 .ToDictionary(
                     c => c.Name,
                     c => CurrencyAccountCreator.Create(
-                        currency: c,
+                        currency: c.Name,
                         wallet: Wallet,
-                        dataRepository: DataRepository));
+                        dataRepository: DataRepository,
+                        currencies: Currencies));
 
             UserSettings = UserSettings.TryLoadFromFile(
                 pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
@@ -120,9 +121,10 @@ namespace Atomex.Wallet
                 .ToDictionary(
                     c => c.Name,
                     c => CurrencyAccountCreator.Create(
-                        currency: c,
+                        currency: c.Name,
                         wallet: Wallet,
-                        dataRepository: DataRepository));
+                        dataRepository: DataRepository,
+                        currencies: Currencies));
 
             UserSettings = UserSettings.TryLoadFromFile(
                 pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
@@ -212,6 +214,17 @@ namespace Atomex.Wallet
         {
             return GetCurrencyAccount(currency)
                 .EstimateMaxAmountToSendAsync(to, type, reserve, cancellationToken);
+        }
+
+        public Task<decimal> EstimateMaxFeeAsync(
+            string currency,
+            string to,
+            decimal amount,
+            BlockchainTransactionType type,
+            CancellationToken cancellationToken = default)
+        {
+            return GetCurrencyAccount(currency)
+                .EstimateMaxFeeAsync(to, amount, type, cancellationToken);
         }
 
         public async Task<Auth> CreateAuthRequestAsync(AuthNonce nonce, uint keyIndex = 0)

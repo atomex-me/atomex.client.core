@@ -27,8 +27,10 @@ namespace Atomex.Swaps.Tezos.Helpers
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
                     .Opposite();
 
-                var requiredAmountInTz = AmountHelper.QtyToAmount(side, swap.Qty, swap.Price, tezos.DigitsMultiplier);
-                var requiredAmountInMtz = requiredAmountInTz.ToMicroTez();
+                var requiredAmountInMtz = AmountHelper
+                    .QtyToAmount(side, swap.Qty, swap.Price, tezos.DigitsMultiplier)
+                    .ToMicroTez();
+
                 var requiredRewardForRedeemInMtz = swap.RewardForRedeem.ToMicroTez();
 
                 var contractAddress = tezos.SwapContractAddress;
@@ -67,14 +69,14 @@ namespace Atomex.Swaps.Tezos.Helpers
                     {
                         var detectedPayment = false;
 
-                        if (tx.IsSwapInit(refundTimeStamp, swap.SecretHash, swap.ToAddress))
+                        if (IsSwapInit(tx, refundTimeStamp, swap.SecretHash, swap.ToAddress))
                         {
                             // init payment to secret hash!
                             detectedPayment = true;
                             detectedAmountInMtz += tx.Amount;
-                            detectedRedeemFeeAmountInMtz = tx.GetRedeemFee();
+                            detectedRedeemFeeAmountInMtz = GetRedeemFee(tx);
                         }
-                        else if (tx.IsSwapAdd(swap.SecretHash))
+                        else if (IsSwapAdd(tx, swap.SecretHash))
                         {
                             detectedPayment = true;
                             detectedAmountInMtz += tx.Amount;
@@ -158,6 +160,37 @@ namespace Atomex.Swaps.Tezos.Helpers
                         .ConfigureAwait(false);
                 }
             }, cancellationToken);
+        }
+
+        public static bool IsSwapInit(TezosTransaction tx, long refundTimestamp, byte[] secretHash, string participant)
+        {
+            try
+            {
+                return tx.Params["value"]["args"][0]["args"][0]["args"][1]["args"][0]["args"][0]["bytes"].ToString().Equals(secretHash.ToHexString()) &&
+                       tx.Params["value"]["args"][0]["args"][0]["args"][1]["args"][0]["args"][1]["int"].ToObject<long>() == refundTimestamp &&
+                       tx.Params["value"]["args"][0]["args"][0]["args"][0]["string"].ToString().Equals(participant);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        public static bool IsSwapAdd(TezosTransaction tx, byte[] secretHash)
+        {
+            try
+            {
+                return tx.Params["value"]["args"][0]["args"][0]["bytes"].ToString().Equals(secretHash.ToHexString());
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        public static decimal GetRedeemFee(TezosTransaction tx)
+        {
+            return decimal.Parse(tx.Params["value"]["args"][0]["args"][0]["args"][1]["args"][1]["int"].ToString());
         }
     }
 }

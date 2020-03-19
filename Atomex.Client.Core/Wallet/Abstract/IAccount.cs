@@ -4,6 +4,7 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Abstract;
+using Atomex.Api;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Core;
@@ -175,6 +176,21 @@ namespace Atomex.Wallet.Abstract
             string to,
             BlockchainTransactionType type,
             bool reserve = false,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Estimate max fee to send with given amount
+        /// </summary>
+        /// <param name="currency">Currency</param>
+        /// <param name="to">Destination address (can be null)</param>
+        /// <param name="type">Blockchain transaction type</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Max amount and fee to send</returns>
+        Task<decimal> EstimateMaxFeeAsync(
+            string currency,
+            string to,
+            decimal amount,
+            BlockchainTransactionType type,
             CancellationToken cancellationToken = default);
 
         /// <summary>

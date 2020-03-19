@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
+using Atomex.Api;
 using Atomex.Api.Proto;
-using Atomex.Core;
 using WebSocketSharp;
 
 namespace Atomex.Web

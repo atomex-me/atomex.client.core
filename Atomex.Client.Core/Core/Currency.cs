@@ -23,6 +23,7 @@ namespace Atomex.Core
         public bool HasFeePrice { get; set; }
         public string FeePriceCode { get; set; }
         public string FeePriceFormat { get; set; }
+        public string FeeCurrencyName { get; set; }
 
         public IBlockchainApi BlockchainApi { get; set; }
         public string TxExplorerUri { get; set; }

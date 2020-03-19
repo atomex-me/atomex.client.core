@@ -4,21 +4,20 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Tezos;
-using Atomex.Core;
 using Serilog;
 
 namespace Atomex.Wallet.Tezos
 {
     public class TezosAllocationChecker
     {
-        private readonly Network _network;
+        private readonly Atomex.Tezos _tezos;
         private readonly IDictionary<string, TezosAddressInfo> _addresses;
 
         public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromSeconds(60);
 
-        public TezosAllocationChecker(Network network)
+        public TezosAllocationChecker(Atomex.Tezos tezos)
         {
-            _network = network;
+            _tezos = tezos;
             _addresses = new Dictionary<string, TezosAddressInfo>();
         }
 
@@ -35,7 +34,7 @@ namespace Atomex.Wallet.Tezos
                 }
             }
 
-            var isAllocatedResult = await new TzktApi(_network)
+            var isAllocatedResult = await new TzktApi(_tezos)
                 .IsAllocatedAsync(address, cancellationToken)
                 .ConfigureAwait(false);
 

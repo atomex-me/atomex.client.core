@@ -43,7 +43,7 @@ namespace Atomex.Wallet
         {
             lock (_sync)
             {
-                var walletId = $"{walletAddress.Currency.Name}:{walletAddress.Address}";
+                var walletId = $"{walletAddress.Currency}:{walletAddress.Address}";
 
                 _addresses[walletId] = walletAddress; // todo: copy?
 
@@ -57,7 +57,7 @@ namespace Atomex.Wallet
             {
                 foreach (var walletAddress in walletAddresses)
                 {
-                    var walletId = $"{walletAddress.Currency.Name}:{walletAddress.Address}";
+                    var walletId = $"{walletAddress.Currency}:{walletAddress.Address}";
 
                     _addresses[walletId] = walletAddress; // todo: copy?
                 }
@@ -70,7 +70,7 @@ namespace Atomex.Wallet
         {
             lock (_sync)
             {
-                var walletId = $"{walletAddress.Currency.Name}:{walletAddress.Address}";
+                var walletId = $"{walletAddress.Currency}:{walletAddress.Address}";
 
                 if (_addresses.ContainsKey(walletId))
                     return Task.FromResult(false);
@@ -99,7 +99,7 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var address = _addresses.Values
-                    .Where(w => w.Currency.Name == currency && w.KeyIndex.Chain == chain && w.HasActivity)
+                    .Where(w => w.Currency == currency && w.KeyIndex.Chain == chain && w.HasActivity)
                     .OrderByDescending(w => w.KeyIndex.Index)
                     .FirstOrDefault();
 
@@ -117,9 +117,9 @@ namespace Atomex.Wallet
             {
                 var addresses = includeUnconfirmed
                     ? _addresses.Values
-                        .Where(w => w.Currency.Name == currency && w.Balance != 0 && w.UnconfirmedIncome != 0 && w.UnconfirmedOutcome != 0)
+                        .Where(w => w.Currency == currency && w.Balance != 0 && w.UnconfirmedIncome != 0 && w.UnconfirmedOutcome != 0)
                     : _addresses.Values
-                        .Where(w => w.Currency.Name == currency && w.Balance != 0);
+                        .Where(w => w.Currency == currency && w.Balance != 0);
 
                 return Task.FromResult(addresses);
             }

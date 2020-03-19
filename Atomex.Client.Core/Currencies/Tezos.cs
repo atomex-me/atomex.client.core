@@ -15,53 +15,53 @@ namespace Atomex
     public class Tezos : Currency
     {
         public const long XtzDigitsMultiplier = 1_000_000;
-        private const int PkHashSize = 20 * 8;
+        protected const int PkHashSize = 20 * 8;
 
-        public decimal MinimalFee { get; private set; }
-        public decimal MinimalNanotezPerGasUnit { get; private set; }
-        public decimal MinimalNanotezPerByte { get; private set; }
+        public decimal MinimalFee { get; protected set; }
+        public decimal MinimalNanotezPerGasUnit { get; protected set; }
+        public decimal MinimalNanotezPerByte { get; protected set; }
 
-        public decimal HeadSizeInBytes { get; private set; }
-        public decimal SigSizeInBytes { get; private set; }
+        public decimal HeadSizeInBytes { get; protected set; }
+        public decimal SigSizeInBytes { get; protected set; }
 
-        public decimal MicroTezReserve { get; private set; }
-        public decimal GasReserve { get; private set; }
+        public decimal MicroTezReserve { get; protected set; }
+        public decimal GasReserve { get; protected set; }
 
-        public decimal Fee { get; private set; }
-        public decimal MaxFee { get; private set; }
-        public decimal GasLimit { get; private set; }
-        public decimal StorageLimit { get; private set; }
+        public decimal Fee { get; protected set; }
+        public decimal MaxFee { get; protected set; }
+        public decimal GasLimit { get; protected set; }
+        public decimal StorageLimit { get; protected set; }
 
-        public decimal RevealFee { get; private set; }
-        public decimal RevealGasLimit { get; private set; }
+        public decimal RevealFee { get; protected set; }
+        public decimal RevealGasLimit { get; protected set; }
 
-        public decimal InitiateFee { get; private set; }
-        public decimal InitiateGasLimit { get; private set; }
-        public decimal InitiateStorageLimit { get; private set; }
-        public decimal InitiateSize { get; private set; }
+        public decimal InitiateFee { get; protected set; }
+        public decimal InitiateGasLimit { get; protected set; }
+        public decimal InitiateStorageLimit { get; protected set; }
+        public decimal InitiateSize { get; protected set; }
 
-        public decimal AddFee { get; private set; }
-        public decimal AddGasLimit { get; private set; }
-        public decimal AddStorageLimit { get; private set; }
-        public decimal AddSize { get; private set; }
+        public decimal AddFee { get; protected set; }
+        public decimal AddGasLimit { get; protected set; }
+        public decimal AddStorageLimit { get; protected set; }
+        public decimal AddSize { get; protected set; }
 
-        public decimal RedeemFee { get; private set; }
-        public decimal RedeemGasLimit { get; private set; }
-        public decimal RedeemStorageLimit { get; private set; }
-        public decimal RedeemSize { get; private set; }
+        public decimal RedeemFee { get; protected set; }
+        public decimal RedeemGasLimit { get; protected set; }
+        public decimal RedeemStorageLimit { get; protected set; }
+        public decimal RedeemSize { get; protected set; }
 
-        public decimal RefundFee { get; private set; }
-        public decimal RefundGasLimit { get; private set; }
-        public decimal RefundStorageLimit { get; private set; }
-        public decimal RefundSize { get; private set; }
+        public decimal RefundFee { get; protected set; }
+        public decimal RefundGasLimit { get; protected set; }
+        public decimal RefundStorageLimit { get; protected set; }
+        public decimal RefundSize { get; protected set; }
 
-        public decimal ActivationStorage { get; private set; }
-        public decimal StorageFeeMultiplier { get; private set; }
+        public decimal ActivationStorage { get; protected set; }
+        public decimal StorageFeeMultiplier { get; protected set; }
 
-        public string BaseUri { get; private set; }
-        public string RpcNodeUri { get; private set; }
-        public string BbApiUri { get; private set; }
-        public string SwapContractAddress { get; private set; }
+        public string BaseUri { get; protected set; }
+        public string RpcNodeUri { get; protected set; }
+        public string BbApiUri { get; protected set; }
+        public string SwapContractAddress { get; protected set; }
 
         public Tezos()
         {
@@ -72,17 +72,19 @@ namespace Atomex
             Update(configuration);
         }
 
-        public void Update(IConfiguration configuration)
+        public virtual void Update(IConfiguration configuration)
         {
             Name = configuration["Name"];
             Description = configuration["Description"];
             DigitsMultiplier = XtzDigitsMultiplier;
             Digits = (int)Math.Log10(XtzDigitsMultiplier);
             Format = $"F{Digits}";
+
             FeeDigits = Digits;
             FeeCode = Name;
             FeeFormat = $"F{FeeDigits}";
             HasFeePrice = false;
+            FeeCurrencyName = Name;
 
             MinimalFee               = decimal.Parse(configuration[nameof(MinimalFee)], CultureInfo.InvariantCulture);
             MinimalNanotezPerGasUnit = decimal.Parse(configuration[nameof(MinimalNanotezPerGasUnit)], CultureInfo.InvariantCulture);
@@ -128,7 +130,7 @@ namespace Atomex
 
             BaseUri    = configuration["BlockchainApiBaseUri"];
             RpcNodeUri = configuration["BlockchainRpcNodeUri"];
-            BbApiUri = configuration["BbApiUri"];
+            BbApiUri   = configuration["BbApiUri"];
 
             BlockchainApi       = ResolveBlockchainApi(configuration, this);
             TxExplorerUri       = configuration["TxExplorerUri"];
@@ -141,7 +143,7 @@ namespace Atomex
             Bip44Code = Bip44.Tezos;
         }
 
-        private static IBlockchainApi ResolveBlockchainApi(
+        protected static IBlockchainApi ResolveBlockchainApi(
             IConfiguration configuration,
             Tezos tezos)
         {
@@ -149,7 +151,7 @@ namespace Atomex
                 .ToLowerInvariant();
 
             if (blockchainApi.Equals("tzkt"))
-                return new BabyTzktApi(tezos);
+                return new TzktApi(tezos);
 
             throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported");
         }

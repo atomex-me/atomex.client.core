@@ -1,5 +1,5 @@
 ﻿using System;
-using Atomex.Core;
+using Atomex.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
 using Atomex.Wallet.Ethereum;
@@ -10,25 +10,54 @@ namespace Atomex.Wallet
     public static class CurrencyAccountCreator
     {
         public static ICurrencyAccount Create(
-            Currency currency,
+            string currency,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository)
+            IAccountDataRepository dataRepository,
+            ICurrencies currencies)
         {
             return currency switch
             {
-                BitcoinBasedCurrency _ => (ICurrencyAccount)new BitcoinBasedAccount(
-                       currency,
-                       wallet,
-                       dataRepository),
-                Atomex.Ethereum _ => (ICurrencyAccount)new EthereumAccount(
-                        currency,
-                        wallet,
-                        dataRepository),
-                Atomex.Tezos _ => (ICurrencyAccount)new TezosAccount(
-                        currency,
-                        wallet,
-                        dataRepository),
-                _ => throw new NotSupportedException($"Not supported currency {currency.Name}"),
+                "BTC" => (ICurrencyAccount)new BitcoinBasedAccount(
+                    currency,
+                    currencies,
+                    wallet,
+                    dataRepository),
+                "LTC" => (ICurrencyAccount)new BitcoinBasedAccount(
+                    currency,
+                    currencies,
+                    wallet,
+                    dataRepository),
+                "USDT" => (ICurrencyAccount)new ERC20Account(
+                    currency,
+                    currencies,
+                    wallet,
+                    dataRepository),
+                "USDC" => (ICurrencyAccount)new ERC20Account(
+                    currency,
+                    currencies,
+                    wallet,
+                    dataRepository),
+                "ETH" => (ICurrencyAccount)new EthereumAccount(
+                    currency,
+                    currencies,
+                    wallet,
+                    dataRepository),
+                "FA12" => (ICurrencyAccount)new FA12Account(
+                    currency,
+                    currencies,
+                    wallet,
+                    dataRepository),
+                "TZBTC" => (ICurrencyAccount)new FA12Account(
+                    currency,
+                    currencies,
+                    wallet,
+                    dataRepository),
+                "XTZ" => (ICurrencyAccount)new TezosAccount(
+                    currency,
+                    currencies,
+                    wallet,
+                    dataRepository),
+                _ => throw new NotSupportedException($"Not supported currency {currency}"),
             };
         }
     }

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Core;
 using Xunit;
+using Atomex.Abstract;
 
 namespace Atomex.Client.Core.Tests
 {
@@ -12,27 +13,33 @@ namespace Atomex.Client.Core.Tests
         public static IEnumerable<object[]> Currencies =>
             new List<object[]>
             {
-                new object[] {Common.CurrenciesMainNet.Get<Bitcoin>(), Common.SymbolsMainNet.GetByName("ETH/BTC"), Side.Sell},
-                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>(), Common.SymbolsTestNet.GetByName("ETH/BTC"), Side.Sell},
-                new object[] {Common.CurrenciesMainNet.Get<Litecoin>(), Common.SymbolsMainNet.GetByName("LTC/BTC"), Side.Buy},
-                new object[] {Common.CurrenciesTestNet.Get<Litecoin>(), Common.SymbolsTestNet.GetByName("LTC/BTC"), Side.Buy}
+                new object[] {Common.CurrenciesMainNet, "BTC", "ETH/BTC", Side.Sell},
+                new object[] {Common.CurrenciesTestNet, "BTC", "ETH/BTC", Side.Sell},
+                new object[] {Common.CurrenciesMainNet, "LTC", "LTC/BTC", Side.Buy},
+                new object[] {Common.CurrenciesTestNet, "LTC", "LTC/BTC", Side.Buy}
             };
 
         [Theory]
         [MemberData(nameof(Currencies))]
-        public void TryVerifyPartyPaymentTxTest(BitcoinBasedCurrency currency, Symbol symbol, Side side)
+        public void TryVerifyPartyPaymentTxTest(
+            ICurrencies currencies,
+            string currency,
+            string symbol,
+            Side side)
         {
+            var currencyConfig = currencies.Get<BitcoinBasedCurrency>(currency);
+
             const int initAmount = 1_0000_0000;
-            var initTx = BitcoinBasedCommon.CreateFakeTx(currency, Common.Alice.PubKey, initAmount);
+            var initTx = BitcoinBasedCommon.CreateFakeTx(currencyConfig, Common.Alice.PubKey, initAmount);
 
             var refundLockTimeInSec = 60 * 60;
             var utcNow = DateTimeOffset.UtcNow;
             var lockTime = utcNow.AddSeconds(refundLockTimeInSec);
            
-            var tx = currency.CreateHtlcP2PkhScriptSwapPaymentTx(
+            var tx = currencyConfig.CreateHtlcP2PkhScriptSwapPaymentTx(
                 unspentOutputs: initTx.Outputs,
-                aliceRefundAddress: Common.Alice.PubKey.GetAddress(currency),
-                bobAddress: Common.Bob.PubKey.GetAddress(currency),
+                aliceRefundAddress: Common.Alice.PubKey.GetAddress(currencyConfig),
+                bobAddress: Common.Bob.PubKey.GetAddress(currencyConfig),
                 lockTime: lockTime,
                 secretHash: Common.SecretHash,
                 secretSize: Common.Secret.Length,
@@ -45,7 +52,7 @@ namespace Atomex.Client.Core.Tests
             var swap = new Swap
             {
                 PartyRedeemScript = Convert.ToBase64String(redeemScript),
-                ToAddress = Common.Bob.PubKey.GetAddress(currency),
+                ToAddress = Common.Bob.PubKey.GetAddress(currencyConfig),
                 TimeStamp = utcNow.UtcDateTime,
                 Symbol = symbol,
                 Side = side,
@@ -56,6 +63,7 @@ namespace Atomex.Client.Core.Tests
             var result = BitcoinBasedTransactionVerifier.TryVerifyPartyPaymentTx(
                 tx: tx,
                 swap: swap,
+                currencies: currencies,
                 secretHash: Common.SecretHash,
                 refundLockTime: refundLockTimeInSec,
                 error: out var errors);

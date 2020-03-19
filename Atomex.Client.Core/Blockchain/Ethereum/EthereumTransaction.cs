@@ -20,6 +20,7 @@ namespace Atomex.Blockchain.Ethereum
         private const int DefaultConfirmations = 1;
 
         public string Id { get; set; }
+        public string UniqueId => $"{Id}:{Currency.Name}";
         public Currency Currency { get; set; }
         public BlockInfo BlockInfo { get; set; }
         public BlockchainTransactionState State { get; set; }

@@ -16,7 +16,10 @@ namespace Atomex.Common
             {
                 var key = selector(element);
                 if (key.CompareTo(maxKey) > 0)
+                {
                     maxElement = element;
+                    maxKey = key;
+                }
             }
 
             return maxElement;

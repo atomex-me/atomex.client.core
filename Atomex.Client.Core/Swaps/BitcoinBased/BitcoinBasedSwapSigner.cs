@@ -98,7 +98,8 @@ namespace Atomex.Swaps.BitcoinBased
             var signature = await Account.Wallet
                 .SignHashAsync(
                     hash: sigHash,
-                    address: refundAddress)
+                    address: refundAddress,
+                    currency: Account.Currencies.GetByName(Account.Currency))
                 .ConfigureAwait(false);
 
             if (signature == null)
@@ -157,7 +158,8 @@ namespace Atomex.Swaps.BitcoinBased
             var signature = await Account.Wallet
                 .SignHashAsync(
                     hash: sigHash,
-                    address: redeemAddress)
+                    address: redeemAddress,
+                    currency: Account.Currencies.GetByName(Account.Currency))
                 .ConfigureAwait(false);
 
             if (signature == null)

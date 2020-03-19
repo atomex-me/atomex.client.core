@@ -1,9 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Atomex.Abstract;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Serilog;
@@ -12,16 +11,6 @@ namespace Atomex.Common
 {
     public static class OrderExtensions
     {
-        public static Currency PurchasedCurrency(this Order order)
-        {
-            return order.Symbol.PurchasedCurrency(order.Side);
-        }
-
-        public static Currency SoldCurrency(this Order order)
-        {
-            return order.Symbol.SoldCurrency(order.Side);
-        }
-
         public static async Task CreateProofOfPossessionAsync(this Order order, IAccount account)
         {
             try
@@ -36,8 +25,10 @@ namespace Atomex.Common
                     var data = Encoding.Unicode
                         .GetBytes($"{address.Nonce}{order.TimeStamp.ToUniversalTime():yyyy.MM.dd HH:mm:ss.fff}");
 
+                    var currency = account.Currencies.GetByName(address.Currency);
+
                     var signature = await account.Wallet
-                        .SignAsync(data, address)
+                        .SignAsync(data, address, currency)
                         .ConfigureAwait(false);
 
                     if (signature == null)
@@ -54,7 +45,7 @@ namespace Atomex.Common
             }
         }
 
-        public static Error VerifyProofOfPossession(this Order order)
+        public static Error VerifyProofOfPossession(this Order order, ICurrencies currencies)
         {
             foreach (var address in order.FromWallets)
             {
@@ -64,10 +55,12 @@ namespace Atomex.Common
                 var data = Encoding.Unicode.GetBytes($"{address.Nonce}{order.TimeStamp.ToUniversalTime():yyyy.MM.dd HH:mm:ss.fff}");
                 var pubKeyBytes = address.PublicKeyBytes();
 
-                if (!address.Currency.IsAddressFromKey(address.Address, pubKeyBytes))
+                var currency = currencies.GetByName(address.Currency);
+
+                if (!currency.IsAddressFromKey(address.Address, pubKeyBytes))
                     return new Error(Errors.InvalidSigns, "Invalid public key for wallet", order);
 
-                if (!address.Currency.VerifyMessage(data, Convert.FromBase64String(address.ProofOfPossession), pubKeyBytes))
+                if (!currency.VerifyMessage(data, Convert.FromBase64String(address.ProofOfPossession), pubKeyBytes))
                    return new Error(Errors.InvalidSigns, "Invalid sign for wallet", order);
             }
 
@@ -81,7 +74,7 @@ namespace Atomex.Common
 
             // check basic fields
             if (order.ClientOrderId != previousOrder.ClientOrderId ||
-                order.SymbolId != previousOrder.SymbolId ||
+                order.Symbol != previousOrder.Symbol ||
                 order.Price != previousOrder.Price ||
                 order.Qty != previousOrder.Qty ||
                 order.Side != previousOrder.Side ||
@@ -135,68 +128,6 @@ namespace Atomex.Common
             return order;
         }
 
-        private static Order ResolveCurrenciesByName(this Order order, IList<Currency> currencies)
-        {
-            if (order.FromWallets == null)
-                return order;
-
-            foreach (var wallet in order.FromWallets)
-                wallet?.ResolveCurrencyByName(currencies);
-
-            return order;
-        }
-
-        private static Order ResolveCurrenciesById(this Order order, IList<Currency> currencies)
-        {
-            if (order.FromWallets == null)
-                return order;
-
-            foreach (var wallet in order.FromWallets)
-                wallet?.ResolveCurrencyById(currencies);
-
-            return order;
-        }
-
-        private static Order ResolveSymbolByName(this Order order, IList<Symbol> symbols)
-        {
-            order.Symbol = symbols.FirstOrDefault(s => s.Name == order.Symbol?.Name);
-
-            if (order.Symbol == null)
-                throw new Exception("Symbol resolving error");
-
-            return order;
-        }
-
-        private static Order ResolveSymbolById(this Order order, IList<Symbol> symbols)
-        {
-            order.Symbol = symbols.FirstOrDefault(s => s.Id == order.SymbolId);
-
-            if (order.Symbol == null)
-                throw new Exception("Symbol resolving error");
-
-            return order;
-        }
-
-        public static Order ResolveRelationshipsByName(
-            this Order order,
-            IList<Currency> currencies,
-            IList<Symbol> symbols)
-        {
-            return order?
-                .ResolveCurrenciesByName(currencies)
-                .ResolveSymbolByName(symbols);
-        }
-
-        public static Order ResolveRelationshipsById(
-            this Order order,
-            IList<Currency> currencies,
-            IList<Symbol> symbols)
-        {
-            return order?
-                .ResolveCurrenciesById(currencies)
-                .ResolveSymbolById(symbols);
-        }
-
         public static async Task<Order> ResolveWallets(
             this Order order,
             IAccount account,
@@ -211,7 +142,7 @@ namespace Atomex.Common
                     continue;
 
                 var resolvedAddress = await account
-                    .ResolveAddressAsync(wallet.Currency.Name, wallet.Address, cancellationToken)
+                    .ResolveAddressAsync(wallet.Currency, wallet.Address, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (resolvedAddress == null)
@@ -227,17 +158,11 @@ namespace Atomex.Common
             return order;
         }
 
-        public static Order SetUserId(this Order order, string userId)
-        {
-            order.UserId = userId;
-            return order;
-        }
-
         public static string ToCompactString(this Order order)
         {
             return $"{{\"OrderId\": \"{order.Id}\", " +
                    $"\"ClientOrderId\": \"{order.ClientOrderId}\", " +
-                   $"\"Symbol\": \"{order.Symbol?.Name}\", " +
+                   $"\"Symbol\": \"{order.Symbol}\", " +
                    $"\"Price\": \"{order.Price}\", " +
                    $"\"LastPrice\": \"{order.LastPrice}\", " +
                    $"\"Qty\": \"{order.Qty}\", " +

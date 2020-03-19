@@ -4,6 +4,7 @@
     {
         UseMinimalBalanceFirst,
         UseMaximumBalanceFirst,
-        UseOnlyOneAddress
+        UseOnlyOneAddress,
+        UseMaximumChainBalanceFirst
     }
 }

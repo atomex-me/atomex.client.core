@@ -70,6 +70,7 @@ namespace Atomex.Wallet.Abstract
         Task<byte[]> SignAsync(
             byte[] data,
             WalletAddress address,
+            Currency currency,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -108,6 +109,7 @@ namespace Atomex.Wallet.Abstract
         Task<byte[]> SignHashAsync(
             byte[] hash,
             WalletAddress address,
+            Currency currency,
             CancellationToken cancellationToken = default);
 
         /// <summary>

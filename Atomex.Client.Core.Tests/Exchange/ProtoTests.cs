@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.IO;
 using Atomex.Api.Proto;
-using Atomex.Common;
 using Atomex.Core;
 using Xunit;
 
@@ -9,23 +8,21 @@ namespace Atomex.Client.Core.Tests
 {
     public class ProtoTests
     {
-        private ProtoSchemes Schemes { get; } = new ProtoSchemes(
-            currencies: Common.CurrenciesTestNet,
-            symbols: Common.SymbolsTestNet);
+        private ProtoSchemes Schemes { get; } = new ProtoSchemes();
 
         private Order Order { get; } = new Order
         {
-            Symbol = Common.LtcBtcTestNet,
+            Symbol = Common.LtcBtcTestNet.Name,
             FromWallets = new List<WalletAddress>
             {
                 new WalletAddress
                 {
                     Address = "abcdefg",
-                    Currency = Common.BtcTestNet
+                    Currency = Common.BtcTestNet.Name
                 }, new WalletAddress
                 {
                     Address = "gfedcba",
-                    Currency = Common.BtcTestNet
+                    Currency = Common.BtcTestNet.Name
                 }
             }
         };
@@ -35,22 +32,19 @@ namespace Atomex.Client.Core.Tests
         {
             var serialized = Schemes.OrderSend.SerializeWithMessageId(Order);
 
-            using (var stream = new MemoryStream(serialized, 1, serialized.Length - 1))
+            using var stream = new MemoryStream(serialized, 1, serialized.Length - 1);
+
+            var deserializedOrder = Schemes.OrderSend
+                .DeserializeWithLengthPrefix(stream);
+
+            for (var i = 0; i < Order.FromWallets.Count; ++i)
             {
-                var deserializedOrder = Schemes.OrderSend
-                    .DeserializeWithLengthPrefix(stream);
-
-                deserializedOrder.ResolveRelationshipsByName(Common.CurrenciesTestNet, Common.SymbolsTestNet);
-
-                for (var i = 0; i < Order.FromWallets.Count; ++i)
-                {
-                    Assert.NotNull(deserializedOrder.FromWallets[i]);
-                    Assert.Equal(Order.FromWallets[i].Address, deserializedOrder.FromWallets[i].Address);
-                    Assert.Equal(Order.FromWallets[i].Currency.Name, deserializedOrder.FromWallets[i].Currency.Name);
-                }
-
-                Assert.Equal(Order.Symbol.Name, deserializedOrder.Symbol.Name);
+                Assert.NotNull(deserializedOrder.FromWallets[i]);
+                Assert.Equal(Order.FromWallets[i].Address, deserializedOrder.FromWallets[i].Address);
+                Assert.Equal(Order.FromWallets[i].Currency, deserializedOrder.FromWallets[i].Currency);
             }
+
+            Assert.Equal(Order.Symbol, deserializedOrder.Symbol);
         }
     }
 }

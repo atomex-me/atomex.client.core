@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Atomex.Abstract;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
@@ -16,7 +17,8 @@ namespace Atomex.Wallet.Abstract
         public event EventHandler<CurrencyEventArgs> BalanceUpdated;
         public event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded;
 
-        public Currency Currency { get; }
+        public string Currency { get; }
+        public ICurrencies Currencies { get; }
         public IHdWallet Wallet { get; }
         protected IAccountDataRepository DataRepository { get; }
         protected decimal Balance { get; set; }
@@ -24,11 +26,13 @@ namespace Atomex.Wallet.Abstract
         protected decimal UnconfirmedOutcome { get; set; }
 
         protected CurrencyAccount(
-            Currency currency,
+            string currency,
+            ICurrencies currencies,
             IHdWallet wallet,
             IAccountDataRepository dataRepository)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
+            Currencies = currencies ?? throw new ArgumentNullException(nameof(currencies));
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
             DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
 
@@ -67,6 +71,15 @@ namespace Atomex.Wallet.Abstract
             bool reserve = false,
             CancellationToken cancellationToken = default);
 
+        public virtual Task<decimal> EstimateMaxFeeAsync(
+            string to,
+            decimal amount,
+            BlockchainTransactionType type,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(0m);
+        }
+
         protected void RaiseBalanceUpdated(CurrencyEventArgs eventArgs)
         {
             BalanceUpdated?.Invoke(this, eventArgs);
@@ -103,7 +116,7 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await DataRepository
-                .GetWalletAddressAsync(Currency.Name, address)
+                .GetWalletAddressAsync(Currency, address)
                 .ConfigureAwait(false);
 
             return walletAddress != null
@@ -132,7 +145,7 @@ namespace Atomex.Wallet.Abstract
         private void PreloadBalances()
         {
             var addresses = DataRepository
-                .GetUnspentAddressesAsync(Currency.Name)
+                .GetUnspentAddressesAsync(Currency)
                 .WaitForResult();
 
             foreach (var address in addresses)
@@ -152,7 +165,9 @@ namespace Atomex.Wallet.Abstract
             uint index,
             CancellationToken cancellationToken = default)
         {
-            var walletAddress = Wallet.GetAddress(Currency, chain, index);
+            var currency = Currencies.GetByName(Currency);
+
+            var walletAddress = Wallet.GetAddress(currency, chain, index);
 
             if (walletAddress == null)
                 return null;
@@ -168,13 +183,15 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await DataRepository
-                .GetWalletAddressAsync(Currency.Name, address)
+                .GetWalletAddressAsync(Currency, address)
                 .ConfigureAwait(false);
 
             if (walletAddress != null)
             {
+                var currency = Currencies.GetByName(Currency);
+
                 walletAddress.PublicKey = Wallet
-                    .GetAddress(Currency, walletAddress.KeyIndex.Chain, walletAddress.KeyIndex.Index)
+                    .GetAddress(currency, walletAddress.KeyIndex.Chain, walletAddress.KeyIndex.Index)
                     .PublicKey;
             }
 
@@ -184,7 +201,7 @@ namespace Atomex.Wallet.Abstract
         public virtual Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            return DataRepository.GetUnspentAddressesAsync(Currency.Name);
+            return DataRepository.GetUnspentAddressesAsync(Currency);
         }
 
         public abstract Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
@@ -199,8 +216,10 @@ namespace Atomex.Wallet.Abstract
 
         protected WalletAddress ResolvePublicKey(WalletAddress address)
         {
+            var currency = Currencies.GetByName(Currency);
+
             address.PublicKey = Wallet.GetAddress(
-                    currency: Currency,
+                    currency: currency,
                     chain: address.KeyIndex.Chain,
                     index: address.KeyIndex.Index)
                 .PublicKey;
@@ -223,7 +242,9 @@ namespace Atomex.Wallet.Abstract
             decimal feePrice,
             AddressUsagePolicy addressUsagePolicy)
         {
-            switch (addressUsagePolicy)
+            var currency = Currencies.GetByName(Currency);
+
+            switch (addressUsagePolicy) 
             {
                 case AddressUsagePolicy.UseMinimalBalanceFirst:
                     addresses = addresses.SortList(new AvailableBalanceAscending());
@@ -233,7 +254,7 @@ namespace Atomex.Wallet.Abstract
                     break;
                 case AddressUsagePolicy.UseOnlyOneAddress:
                     var walletAddress = addresses
-                        .FirstOrDefault(w => w.AvailableBalance() >= amount + Currency.GetFeeAmount(fee, feePrice));
+                        .FirstOrDefault(w => w.AvailableBalance() >= amount + currency.GetFeeAmount(fee, feePrice));
 
                     return walletAddress != null
                         ? new List<WalletAddress> { walletAddress }
@@ -260,7 +281,7 @@ namespace Atomex.Wallet.Abstract
         {
             var lastActiveAddress = await DataRepository
                 .GetLastActiveWalletAddressAsync(
-                    currency: Currency.Name,
+                    currency: Currency,
                     chain: Bip44.Internal)
                 .ConfigureAwait(false);
 
@@ -276,7 +297,7 @@ namespace Atomex.Wallet.Abstract
         {
             var lastActiveAddress = await DataRepository
                 .GetLastActiveWalletAddressAsync(
-                    currency: Currency.Name,
+                    currency: Currency,
                     chain: Bip44.External)
                 .ConfigureAwait(false);
 
@@ -317,15 +338,17 @@ namespace Atomex.Wallet.Abstract
                 RaiseUnconfirmedTransactionAdded(new TransactionEventArgs(tx));
 
             if (updateBalance && notifyIfBalanceUpdated)
-                RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
+                RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency.Name));
         }
 
         public Task<IBlockchainTransaction> GetTransactionByIdAsync(string txId)
         {
+            var currency = Currencies.GetByName(Currency);
+
             return DataRepository.GetTransactionByIdAsync(
-                currency: Currency.Name,
+                currency: Currency,
                 txId: txId,
-                transactionType: Currency.TransactionType);
+                transactionType: currency.TransactionType);
         }
 
         #endregion Transactions

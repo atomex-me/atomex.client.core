@@ -49,7 +49,6 @@ namespace Atomex.LiteDb
             string pathToDb,
             SecureString password,
             ICurrencies currencies,
-            ISymbols symbols,
             Network network)
         {
             _pathToDb = pathToDb ??
@@ -61,11 +60,8 @@ namespace Atomex.LiteDb
             if (currencies == null)
                 throw new ArgumentNullException(nameof(currencies));
 
-            if (symbols == null)
-                throw new ArgumentNullException(nameof(symbols));
-
             _sessionPassword = SessionPasswordHelper.GetSessionPassword(password);
-            _bsonMapper = CreateBsonMapper(currencies, symbols);
+            _bsonMapper = CreateBsonMapper(currencies);
 
             LiteDbMigrationManager.Migrate(
                 pathToDb: _pathToDb,
@@ -73,23 +69,19 @@ namespace Atomex.LiteDb
                 network: network);
         }
 
-        private BsonMapper CreateBsonMapper(
-            ICurrencies currencies,
-            ISymbols symbols)
+        private BsonMapper CreateBsonMapper(ICurrencies currencies)
         {
             return new BsonMapper()
-                //.UseSerializer(new DateTimeToBsonSerializer())
+                .UseSerializer(new CurrencyToBsonSerializer(currencies))
                 .UseSerializer(new BigIntegerToBsonSerializer())
                 .UseSerializer(new JObjectToBsonSerializer())
-                .UseSerializer(new CurrencyToBsonSerializer(currencies))
-                .UseSerializer(new SymbolToBsonSerializer(symbols))
                 .UseSerializer(new WalletAddressToBsonSerializer())
                 .UseSerializer(new OrderToBsonSerializer())
                 .UseSerializer(new BitcoinBasedTransactionToBsonSerializer(currencies))
                 .UseSerializer(new BitcoinBasedTxOutputToBsonSerializer())
-                //.UseSerializer(new EthereumTransactionToBsonSerializer())
+                .UseSerializer(new EthereumTransactionToBsonSerializer())
                 .UseSerializer(new TezosTransactionToBsonSerializer())
-                .UseSerializer(new SwapToBsonSerializer(symbols));
+                .UseSerializer(new SwapToBsonSerializer(currencies));
         }
 
         #region Addresses
@@ -161,7 +153,7 @@ namespace Atomex.LiteDb
                     addresses.EnsureIndex(CurrencyKey);
                     addresses.EnsureIndex(AddressKey);
 
-                    if (!addresses.Exists(Query.EQ(IdKey, walletAddress.Address)))
+                    if (!addresses.Exists(Query.EQ(IdKey, walletAddress.UniqueId)))
                     {
                         var document = _bsonMapper.ToDocument(walletAddress);
 
@@ -190,7 +182,7 @@ namespace Atomex.LiteDb
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
                     var addresses = db.GetCollection(AddressesCollectionName);
 
-                    var document = addresses.FindById(address);
+                    var document = addresses.FindById($"{address}:{currency}");
 
                     var walletAddress = document != null
                         ? _bsonMapper.ToObject<WalletAddress>(document)
@@ -315,7 +307,7 @@ namespace Atomex.LiteDb
                 {
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
                     var document = db.GetCollection(TransactionCollectionName)
-                        .FindById(txId);
+                        .FindById($"{txId}:{currency}");
 
                     if (document != null)
                     {
