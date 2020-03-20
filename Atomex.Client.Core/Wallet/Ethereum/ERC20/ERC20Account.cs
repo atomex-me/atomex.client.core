@@ -693,7 +693,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
-                return unspentAddresses.MaxBy(a => a.Balance);
+                return unspentAddresses.MaxBy(a => a.AvailableBalance());
 
             var unspentEthereumAddresses = await DataRepository
                 .GetUnspentAddressesAsync("ETH")
@@ -701,7 +701,7 @@ namespace Atomex.Wallet.Ethereum
 
             if (unspentEthereumAddresses.Any())
             {
-                var ethereumAddress = unspentEthereumAddresses.MaxBy(a => a.Balance);
+                var ethereumAddress = unspentEthereumAddresses.MaxBy(a => a.AvailableBalance());
 
                 return await DivideAddressAsync(
                     chain: ethereumAddress.KeyIndex.Chain,
@@ -713,6 +713,46 @@ namespace Atomex.Wallet.Ethereum
                     chain: Bip44.External,
                     index: 0,
                     cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        public override async Task<WalletAddress> GetRedeemAddressAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var unspentAddresses = await DataRepository
+                .GetUnspentAddressesAsync(Currency)
+                .ConfigureAwait(false);
+
+            if (unspentAddresses.Any())
+                return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance()));
+
+            var unspentEthereumAddresses = await DataRepository
+                .GetUnspentAddressesAsync("ETH")
+                .ConfigureAwait(false);
+
+            if (unspentEthereumAddresses.Any())
+            {
+                var ethereumAddress = unspentEthereumAddresses.MaxBy(a => a.AvailableBalance());
+
+                return await DivideAddressAsync(
+                    chain: ethereumAddress.KeyIndex.Chain,
+                    index: ethereumAddress.KeyIndex.Index,
+                    cancellationToken: cancellationToken);
+            }
+
+            foreach (var chain in new[] { Bip44.Internal, Bip44.External })
+            {
+                var lastActiveAddress = await DataRepository
+                    .GetLastActiveWalletAddressAsync(
+                        currency: Currency,
+                        chain: chain)
+                    .ConfigureAwait(false);
+
+                if (lastActiveAddress != null)
+                    return ResolvePublicKey(lastActiveAddress);
+            }
+
+            return await base.GetRedeemAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
         }
 

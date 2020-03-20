@@ -686,11 +686,26 @@ namespace Atomex.Wallet.Tezos
         public override async Task<WalletAddress> GetRedeemAddressAsync(   //todo: match it with xtz balances
             CancellationToken cancellationToken = default)
         {
-            var unspentAddresses = await GetUnspentAddressesAsync(cancellationToken)
+            var unspentAddresses = await DataRepository
+                .GetUnspentAddressesAsync(Currency)
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
                 return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance()));
+
+            var unspentTezosAddresses = await DataRepository
+                .GetUnspentAddressesAsync("XTZ")
+                .ConfigureAwait(false);
+
+            if (unspentTezosAddresses.Any())
+            {
+                var tezosAddress = unspentTezosAddresses.MaxBy(a => a.AvailableBalance());
+
+                return await DivideAddressAsync(
+                    chain: tezosAddress.KeyIndex.Chain,
+                    index: tezosAddress.KeyIndex.Index,
+                    cancellationToken: cancellationToken);
+            }
 
             foreach (var chain in new[] { Bip44.Internal, Bip44.External })
             {
@@ -928,7 +943,7 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
-                return unspentAddresses.MaxBy(a => a.Balance);
+                return unspentAddresses.MaxBy(a => a.AvailableBalance());
 
             var unspentTezosAddresses = await DataRepository
                 .GetUnspentAddressesAsync("XTZ")
@@ -936,7 +951,7 @@ namespace Atomex.Wallet.Tezos
 
             if (unspentTezosAddresses.Any())
             {
-                var tezosAddress = unspentTezosAddresses.MaxBy(a => a.Balance);
+                var tezosAddress = unspentTezosAddresses.MaxBy(a => a.AvailableBalance());
 
                 return await DivideAddressAsync(
                     chain: tezosAddress.KeyIndex.Chain,

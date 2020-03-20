@@ -529,7 +529,8 @@ namespace Atomex.Wallet.Ethereum
         public override async Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default)
         {
-            var unspentAddresses = await GetUnspentAddressesAsync(cancellationToken)
+            var unspentAddresses = await DataRepository
+                .GetUnspentAddressesAsync(Currency)
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
