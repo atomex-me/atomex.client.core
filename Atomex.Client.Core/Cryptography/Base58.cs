@@ -152,7 +152,7 @@ namespace Atomex.Cryptography
 
         private static byte[] AddCheckSum(byte[] data)
         {
-            var checkSum = _GetCheckSum(data);
+            var checkSum = GetCheckSum(data);
             var dataWithCheckSum = data.ConcatArrays(checkSum);
 
             return dataWithCheckSum;
@@ -163,14 +163,14 @@ namespace Atomex.Cryptography
         {
             var result = ArrayHelpers.SubArray(data, 0, data.Length - CheckSumSize);
             var givenCheckSum = data.SubArray(data.Length - CheckSumSize);
-            var correctCheckSum = _GetCheckSum(result);
+            var correctCheckSum = GetCheckSum(result);
 
             return givenCheckSum.SequenceEqual(correctCheckSum) ? result : null;
         }
 
-        private static byte[] _GetCheckSum(byte[] data)
+        private static byte[] GetCheckSum(byte[] data)
         {
-            SHA256 sha256 = new SHA256Managed();
+            using var sha256 = new SHA256Managed();
             var hash1 = sha256.ComputeHash(data);
             var hash2 = sha256.ComputeHash(hash1);
 

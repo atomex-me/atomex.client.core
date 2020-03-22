@@ -444,7 +444,7 @@ namespace Atomex.Wallet.Tezos
             if (callingAddress == null)
                 return;
 
-            using var callingAddressPublicKey = new SecureBytes((await ResolveAddressAsync(callingAddress.Address)
+            using var callingAddressPublicKey = new SecureBytes((await GetAddressAsync(callingAddress.Address)
                 .ConfigureAwait(false))
                 .PublicKeyBytes());
 
@@ -587,7 +587,7 @@ namespace Atomex.Wallet.Tezos
             if (callingAddress == null)
                 return;
 
-            using var callingAddressPublicKey = new SecureBytes((await ResolveAddressAsync(callingAddress.Address)
+            using var callingAddressPublicKey = new SecureBytes((await GetAddressAsync(callingAddress.Address)
                 .ConfigureAwait(false))
                 .PublicKeyBytes());
 

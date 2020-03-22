@@ -920,12 +920,12 @@ namespace Atomex.Wallet.BitcoinBased
 
         #region AddressResolver
 
-        public Task<WalletAddress> ResolveAddressAsync(
+        public Task<WalletAddress> GetAddressAsync(
             string currency,
             string address,
             CancellationToken cancellationToken = default)
         {
-            return ResolveAddressAsync(address, cancellationToken);
+            return GetAddressAsync(address, cancellationToken);
         }
 
         #endregion AddressResolver

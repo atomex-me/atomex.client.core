@@ -103,7 +103,7 @@ namespace Atomex.Blockchain.BitcoinBased
                 var address = spentOutput.DestinationAddress(Currency);
 
                 var walletAddress = await addressResolver
-                    .ResolveAddressAsync(
+                    .GetAddressAsync(
                         currency: Currency.Name,
                         address: address,
                         cancellationToken: cancellationToken)

@@ -665,8 +665,9 @@ namespace Atomex.Swaps.Ethereum
                 RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemConfirmed);
 
                 // get transactions & update balance for address async
-                AddressHelper.UpdateAddressBalanceAsync<ERC20WalletScanner, ERC20Account>(
+                AddressHelper.UpdateAddressBalanceAsync<ERC20WalletScanner, ERC20Account, EthereumAccount>(
                         account: Erc20Account,
+                        baseAccount: EthereumAccount,
                         address: swap.ToAddress,
                         cancellationToken: cancellationToken)
                     .FireAndForget();
@@ -891,7 +892,7 @@ namespace Atomex.Swaps.Ethereum
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await Erc20Account
-                .ResolveAddressAsync(
+                .GetAddressAsync(
                     address: tx.From,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

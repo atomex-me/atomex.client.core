@@ -129,7 +129,7 @@ namespace Atomex.Wallet.BitcoinBased
                     if (skipUsed) // check, if the address marked as "used" and skip in this case
                     {
                         var resolvedAddress = await Account
-                            .ResolveAddressAsync(currency.Name, walletAddress.Address, cancellationToken)
+                            .GetAddressAsync(currency.Name, walletAddress.Address, cancellationToken)
                             .ConfigureAwait(false);
 
                         if (resolvedAddress != null &&

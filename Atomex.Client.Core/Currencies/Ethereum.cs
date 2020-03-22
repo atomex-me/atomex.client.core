@@ -180,7 +180,12 @@ namespace Atomex
                 : 0;
         }
 
-        public override decimal GetDefaultRedeemFee(WalletAddress toAddress = null)
+        public override decimal GetRedeemFee(WalletAddress toAddress = null)
+        {
+            return RedeemFeeAmount;
+        }
+
+        public override decimal GetRewardForRedeem()
         {
             return RedeemFeeAmount;
         }

@@ -14,6 +14,7 @@ namespace Atomex.EthereumTokens
 
         public decimal ApproveGasLimit { get; private set; }
         public decimal ApproveFeeAmount => ApproveGasLimit * GasPriceInGwei / GweiInEth;
+        public decimal RewardForRedeem { get; private set; }
 
         public string ERC20ContractAddress { get; private set; }
         public ulong ERC20ContractBlockNumber { get; private set; }
@@ -53,6 +54,8 @@ namespace Atomex.EthereumTokens
             RedeemGasLimit = decimal.Parse(configuration["RedeemGasLimit"], CultureInfo.InvariantCulture);
             GasPriceInGwei = decimal.Parse(configuration["GasPriceInGwei"], CultureInfo.InvariantCulture);
 
+            RewardForRedeem = decimal.Parse(configuration[nameof(RewardForRedeem)], CultureInfo.InvariantCulture);
+
             Chain = ResolveChain(configuration);
 
             ERC20ContractAddress = configuration["ERC20Contract"];
@@ -84,6 +87,11 @@ namespace Atomex.EthereumTokens
         public decimal TokenDigitsToTokens(BigInteger tokenDigits)
         {
             return (decimal)tokenDigits / DigitsMultiplier;
+        }
+
+        public override decimal GetRewardForRedeem()
+        {
+            return RewardForRedeem / DigitsMultiplier;
         }
     }
 

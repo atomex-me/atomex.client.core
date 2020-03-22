@@ -173,7 +173,7 @@ namespace Atomex.Swaps.BitcoinBased
                 .ConfigureAwait(false);
 
             var toAddress = await _account
-                .ResolveAddressAsync(currency, swap.ToAddress, cancellationToken)
+                .GetAddressAsync(currency, swap.ToAddress, cancellationToken)
                 .ConfigureAwait(false);
 
             // sign redeem tx

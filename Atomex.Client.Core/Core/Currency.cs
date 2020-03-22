@@ -52,7 +52,9 @@ namespace Atomex.Core
 
         public abstract decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee);
 
-        public abstract decimal GetDefaultRedeemFee(WalletAddress toAddress = null);
+        public abstract decimal GetRedeemFee(WalletAddress toAddress = null);
+
+        public abstract decimal GetRewardForRedeem();
 
         public virtual decimal GetDefaultFeePrice()
         {
@@ -60,7 +62,7 @@ namespace Atomex.Core
         }
         public virtual decimal GetMaximumFee()
         {
-            return Decimal.MaxValue;
+            return decimal.MaxValue;
         }
     }
 }

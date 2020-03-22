@@ -22,6 +22,7 @@ namespace Atomex.TezosTokens
         public decimal ApproveGasLimit { get; private set; }
         public decimal ApproveStorageLimit { get; private set; }
         public decimal ApproveSize { get; private set; }
+        public decimal RewardForRedeem { get; private set; }
 
         public string TokenContractAddress { get; private set; }
         public string ViewContractAddress { get; private set; }
@@ -110,6 +111,7 @@ namespace Atomex.TezosTokens
 
             ActivationStorage = decimal.Parse(configuration[nameof(ActivationStorage)], CultureInfo.InvariantCulture);
             StorageFeeMultiplier = decimal.Parse(configuration[nameof(StorageFeeMultiplier)], CultureInfo.InvariantCulture);
+            RewardForRedeem = decimal.Parse(configuration[nameof(RewardForRedeem)], CultureInfo.InvariantCulture);
 
             BaseUri = configuration["BlockchainApiBaseUri"];
             RpcNodeUri = configuration["BlockchainRpcNodeUri"];
@@ -126,6 +128,11 @@ namespace Atomex.TezosTokens
             IsTransactionsAvailable = true;
             IsSwapAvailable = true;
             Bip44Code = Bip44.Tezos;
+        }
+
+        public override decimal GetRewardForRedeem()
+        {
+            return RewardForRedeem / DigitsMultiplier;
         }
     }
 

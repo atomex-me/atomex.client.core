@@ -852,7 +852,7 @@ namespace Atomex.Swaps.Ethereum
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await _account
-                .ResolveAddressAsync(
+                .GetAddressAsync(
                     address: tx.From,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

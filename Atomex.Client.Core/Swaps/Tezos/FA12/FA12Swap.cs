@@ -883,7 +883,7 @@ namespace Atomex.Swaps.Tezos.FA12
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await Fa12Account
-                .ResolveAddressAsync(
+                .GetAddressAsync(
                     address: tx.From,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

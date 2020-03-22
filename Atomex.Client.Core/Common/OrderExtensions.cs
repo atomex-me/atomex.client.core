@@ -142,7 +142,7 @@ namespace Atomex.Common
                     continue;
 
                 var resolvedAddress = await account
-                    .ResolveAddressAsync(wallet.Currency, wallet.Address, cancellationToken)
+                    .GetAddressAsync(wallet.Currency, wallet.Address, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (resolvedAddress == null)

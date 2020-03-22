@@ -92,7 +92,7 @@ namespace Atomex.Wallet.Abstract
             uint index,
             CancellationToken cancellationToken = default);
 
-        Task<WalletAddress> ResolveAddressAsync(
+        Task<WalletAddress> GetAddressAsync(
             string address,
             CancellationToken cancellationToken = default);
 

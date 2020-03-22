@@ -170,7 +170,7 @@ namespace Atomex
         public override string AddressFromKey(byte[] publicKey)
         {
             return Base58Check.Encode(
-                payload: new HmacBlake2b(PkHashSize).ComputeHash(publicKey),
+                payload: HmacBlake2b.Compute(publicKey, PkHashSize),
                 prefix: Prefix.Tz1);
         }
 
@@ -211,12 +211,17 @@ namespace Atomex
             return 1m;
         }
 
-        public override decimal GetDefaultRedeemFee(WalletAddress toAddress = null)
+        public override decimal GetRedeemFee(WalletAddress toAddress = null)
         {
             return RedeemFee.ToTez() + RevealFee.ToTez() + MicroTezReserve.ToTez() +  //todo: define another value for revealed
                 (toAddress.AvailableBalance() > 0
                     ? 0
                     : ActivationStorage / StorageFeeMultiplier);
+        }
+
+        public override decimal GetRewardForRedeem()
+        {
+            return (RedeemFee + RevealFee + MicroTezReserve).ToTez();
         }
 
         public static decimal MtzToTz(decimal mtz)

@@ -6,10 +6,14 @@ namespace Atomex.Common
     public class EqualityComparer<T> : IEqualityComparer<T>
     {
         private Func<T, T, bool> Cmp { get; }
+        private Func<T, int> HashCode { get; }
 
-        public EqualityComparer(Func<T, T, bool> cmp)
+        public EqualityComparer(
+            Func<T, T, bool> cmp,
+            Func<T, int> hashCode)
         {
             Cmp = cmp;
+            HashCode = hashCode;
         }
         public bool Equals(T x, T y)
         {
@@ -18,7 +22,7 @@ namespace Atomex.Common
 
         public int GetHashCode(T obj)
         {
-            return obj.GetHashCode();
+            return HashCode(obj);
         }
     }
 }

@@ -194,11 +194,12 @@ namespace Atomex.Swaps
             else
             {
                 walletAddress = await _account
-                    .ResolveAddressAsync(swap.PurchasedCurrency, swap.ToAddress)
+                    .GetAddressAsync(swap.PurchasedCurrency, swap.ToAddress)
                     .ConfigureAwait(false);
             }
 
-            swap.RewardForRedeem = GetRewardForRedeem(walletAddress);
+            swap.RewardForRedeem = await GetRewardForRedeemAsync(walletAddress)
+                .ConfigureAwait(false);
 
             RaiseSwapUpdated(swap, SwapStateFlags.Empty);
 
@@ -315,7 +316,8 @@ namespace Atomex.Swaps
 
             swap.ToAddress = walletToAddress.Address;
 
-            swap.RewardForRedeem = GetRewardForRedeem(walletToAddress);
+            swap.RewardForRedeem = await GetRewardForRedeemAsync(walletToAddress)
+                .ConfigureAwait(false);
 
             RaiseSwapUpdated(swap, SwapStateFlags.Empty);
 
@@ -666,29 +668,38 @@ namespace Atomex.Swaps
                 semaphore.Release();
         }
 
-        private decimal GetRewardForRedeem(WalletAddress walletAddress)
+        private async Task<decimal> GetRewardForRedeemAsync(
+            WalletAddress walletAddress,
+            CancellationToken cancellationToken = default)
         {
-            if (!MayNeedRewardForRedeem(walletAddress.Currency))
-                return 0;
-
-            //todo:USDT
-
-            var defaultFee = _account
+            var currency = _account
                 .Currencies
-                .GetByName(walletAddress.Currency)
-                .GetDefaultRedeemFee(walletAddress);
+                .GetByName(walletAddress.Currency);
 
-            return walletAddress.AvailableBalance() < defaultFee
-                ? defaultFee * 2
+            var feeCurrency = currency.FeeCurrencyName;
+
+            var feeCurrencyAddress = await _account
+                .GetAddressAsync(feeCurrency, walletAddress.Address, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (feeCurrencyAddress == null)
+            {
+                feeCurrencyAddress = await _account
+                    .DivideAddressAsync(
+                        currency: feeCurrency,
+                        chain: walletAddress.KeyIndex.Chain,
+                        index: walletAddress.KeyIndex.Index)
+                    .ConfigureAwait(false);
+
+                if (feeCurrencyAddress == null)
+                    throw new Exception($"Can't get/devide {currency.Name} address {walletAddress.Address} for {feeCurrency}");
+            }
+
+            var redeemFee = currency.GetRedeemFee(walletAddress);
+
+            return feeCurrencyAddress.AvailableBalance() < redeemFee
+                ? currency.GetRewardForRedeem()
                 : 0;
         }
-
-        private bool MayNeedRewardForRedeem(string currency) =>
-            currency switch
-            {
-                "BTC" => false,
-                "LTC" => false,
-                _ => true
-            };
     }
 }

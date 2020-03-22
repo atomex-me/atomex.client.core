@@ -101,7 +101,7 @@ namespace Atomex.Wallet.Abstract
             string address,
             CancellationToken cancellationToken = default)
         {
-            var walletAddress = await ResolveAddressAsync(address, cancellationToken)
+            var walletAddress = await GetAddressAsync(address, cancellationToken)
                 .ConfigureAwait(false);
 
             return walletAddress != null;
@@ -178,7 +178,7 @@ namespace Atomex.Wallet.Abstract
             return walletAddress;
         }
 
-        public virtual async Task<WalletAddress> ResolveAddressAsync(
+        public virtual async Task<WalletAddress> GetAddressAsync(
             string address,
             CancellationToken cancellationToken = default)
         {

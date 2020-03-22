@@ -349,13 +349,13 @@ namespace Atomex.Wallet
                 .DivideAddressAsync(chain, index);
         }
 
-        public Task<WalletAddress> ResolveAddressAsync(
+        public Task<WalletAddress> GetAddressAsync(
             string currency,
             string address,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency)
-                .ResolveAddressAsync(address, cancellationToken);
+                .GetAddressAsync(address, cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(

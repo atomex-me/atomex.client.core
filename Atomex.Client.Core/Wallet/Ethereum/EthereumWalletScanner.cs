@@ -63,7 +63,7 @@ namespace Atomex.Wallet.Ethereum
                     if (skipUsed)
                     {
                         var resolvedAddress = await Account
-                            .ResolveAddressAsync(walletAddress.Address, cancellationToken)
+                            .GetAddressAsync(walletAddress.Address, cancellationToken)
                             .ConfigureAwait(false);
 
                         if (resolvedAddress != null &&

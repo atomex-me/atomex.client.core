@@ -20,7 +20,7 @@ namespace Atomex.LiteDb
                     CreateDataBase(
                         pathToDb: pathToDb,
                         sessionPassword: sessionPassword,
-                        targetVersion: LiteDbMigrations.Version2);
+                        targetVersion: LiteDbMigrations.LastVersion);
 
                     return;
                 }
@@ -35,6 +35,9 @@ namespace Atomex.LiteDb
 
                 if (currentVersion == LiteDbMigrations.Version2)
                     LiteDbMigrations.MigrateFrom_2_to_3(pathToDb, sessionPassword, network);
+
+                if (currentVersion == LiteDbMigrations.Version3)
+                    LiteDbMigrations.MigrateFrom_3_to_4(pathToDb, sessionPassword, network);
             }
             catch (Exception e)
             {
