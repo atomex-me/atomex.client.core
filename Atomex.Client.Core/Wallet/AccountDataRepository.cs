@@ -268,9 +268,10 @@ namespace Atomex.Wallet
         {
             lock (_sync)
             {
-                var outputs = _outputs.Values
+                IEnumerable<ITxOutput> = _outputs.Values
                     .Where(o => o.Currency == currency)
-                    .Select(o => o.Output);
+                    .Select(o => o.Output)
+                    .ToList();
 
                 return Task.FromResult(outputs);
             }
@@ -283,9 +284,10 @@ namespace Atomex.Wallet
         {
             lock (_sync)
             {
-                var outputs = _outputs.Values
+                IEnumerable<ITxOutput> = _outputs.Values
                     .Where(o => o.Currency == currency && o.Address == address)
-                    .Select(o => o.Output);
+                    .Select(o => o.Output)
+                    .ToList();
 
                 return Task.FromResult(outputs);
             }
@@ -304,7 +306,7 @@ namespace Atomex.Wallet
                 if (_outputs.TryGetValue(id, out var output))
                     return Task.FromResult(output.Output);
 
-                return null;
+                return Task.FromResult<ITxOutput>(null);
             }
         }
 
