@@ -18,7 +18,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
         public string HashBytes()
         {
-            return Base58Check.Encode(new HmacBlake2b(HashSizeBits).ComputeHash(Bytes));
+            return Base58Check.Encode(HmacBlake2b.Compute(Bytes, HashSizeBits));
         }
     }
 }

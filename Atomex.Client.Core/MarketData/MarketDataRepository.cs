@@ -7,37 +7,37 @@ namespace Atomex.MarketData
 {
     public class MarketDataRepository : IMarketDataRepository
     {
-        private readonly IDictionary<int, MarketDataOrderBook> _orderBooks;
-        private readonly IDictionary<int, Queue<Entry>> _entriesQueue;
-        private readonly IDictionary<int, Quote> _lastQuotes;
+        private readonly IDictionary<string, MarketDataOrderBook> _orderBooks;
+        private readonly IDictionary<string, Queue<Entry>> _entriesQueue;
+        private readonly IDictionary<string, Quote> _lastQuotes;
 
         public MarketDataRepository(IEnumerable<Symbol> symbols)
         {
-            _orderBooks = new Dictionary<int, MarketDataOrderBook>();
-            _entriesQueue = new Dictionary<int, Queue<Entry>>();
-            _lastQuotes = new Dictionary<int, Quote>();
+            _orderBooks = new Dictionary<string, MarketDataOrderBook>();
+            _entriesQueue = new Dictionary<string, Queue<Entry>>();
+            _lastQuotes = new Dictionary<string, Quote>();
 
             foreach (var symbol in symbols)
             {
-                _orderBooks.Add(symbol.Id, new MarketDataOrderBook(symbol));
-                _entriesQueue.Add(symbol.Id, new Queue<Entry>());
-                _lastQuotes.Add(symbol.Id, null);
+                _orderBooks.Add(symbol.Name, new MarketDataOrderBook(symbol.Name));
+                _entriesQueue.Add(symbol.Name, new Queue<Entry>());
+                _lastQuotes.Add(symbol.Name, null);
             }
         }
 
         public void ApplyQuotes(IList<Quote> quotes)
         {
             foreach (var quote in quotes)
-                if (_lastQuotes.ContainsKey(quote.SymbolId))
-                    _lastQuotes[quote.SymbolId] = quote;
+                if (_lastQuotes.ContainsKey(quote.Symbol))
+                    _lastQuotes[quote.Symbol] = quote;
         }
 
         public void ApplyEntries(IList<Entry> entries)
         {
             foreach (var entry in entries)
             {
-                var symbolId = entry.SymbolId;
-                var orderBook = OrderBookBySymbolId(symbolId);
+                var symbolId = entry.Symbol;
+                var orderBook = OrderBookBySymbol(symbolId);
 
                 if (orderBook == null) {
                     Log.Warning("Order book not found for symbols with id {@id}", symbolId);
@@ -57,8 +57,8 @@ namespace Atomex.MarketData
 
         public void ApplySnapshot(Snapshot snapshot)
         {
-            var symbolId = snapshot.SymbolId;
-            var orderBook = OrderBookBySymbolId(symbolId);
+            var symbolId = snapshot.Symbol;
+            var orderBook = OrderBookBySymbol(symbolId);
 
             if (orderBook == null) {
                 Log.Warning("Order book not found for symbols with id {@id}", symbolId);
@@ -80,16 +80,16 @@ namespace Atomex.MarketData
             }
         }
 
-        public MarketDataOrderBook OrderBookBySymbolId(int symbolId)
+        public MarketDataOrderBook OrderBookBySymbol(string symbol)
         {
-            return _orderBooks.TryGetValue(symbolId, out var orderBook)
+            return _orderBooks.TryGetValue(symbol, out var orderBook)
                 ? orderBook
                 : null;
         }
 
-        public Quote QuoteBySymbolId(int symbolId)
+        public Quote QuoteBySymbol(string symbol)
         {
-            return _lastQuotes.TryGetValue(symbolId, out var quote)
+            return _lastQuotes.TryGetValue(symbol, out var quote)
                 ? quote
                 : null;
         }

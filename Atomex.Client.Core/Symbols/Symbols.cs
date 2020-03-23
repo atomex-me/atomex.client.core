@@ -8,11 +8,11 @@ namespace Atomex
 {
     public class Symbols : List<Symbol>, ISymbols
     {
-        public Symbols(IConfiguration configuration, ICurrencies currencies)
+        public Symbols(IConfiguration configuration)
         {
             var symbols = configuration
                 .GetChildren()
-                .Select(s => new Symbol(s, currencies));
+                .Select(s => new Symbol(s));
 
             AddRange(symbols);
         }

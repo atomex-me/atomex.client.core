@@ -6,6 +6,7 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Abstract;
+using Atomex.Api;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
@@ -23,7 +24,7 @@ namespace Atomex.Wallet
 
         private const string DefaultDataFileName = "data.db";
         private const string DefaultAccountKey = "Account:Default";
-        private const string ApiVersion = "1.2";
+        private const string ApiVersion = "1.3";
 
         public event EventHandler<CurrencyEventArgs> BalanceUpdated
         {
@@ -87,7 +88,6 @@ namespace Atomex.Wallet
                 pathToDb: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultDataFileName}",
                 password: password,
                 currencies: Currencies,
-                symbols: Symbols,
                 network: wallet.Network);
 
             Console.WriteLine($"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultDataFileName}");
@@ -96,9 +96,37 @@ namespace Atomex.Wallet
                 .ToDictionary(
                     c => c.Name,
                     c => CurrencyAccountCreator.Create(
-                        currency: c,
+                        currency: c.Name,
                         wallet: Wallet,
-                        dataRepository: DataRepository));
+                        dataRepository: DataRepository,
+                        currencies: Currencies));
+
+            UserSettings = UserSettings.TryLoadFromFile(
+                pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
+                password: password) ?? UserSettings.DefaultSettings;
+        }
+
+        public Account(
+            IHdWallet wallet,
+            SecureString password,
+            IAccountDataRepository dataRepository,
+            ICurrenciesProvider currenciesProvider,
+            ISymbolsProvider symbolsProvider)
+        {
+            Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
+            DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
+
+            Currencies = currenciesProvider.GetCurrencies(Network);
+            Symbols = symbolsProvider.GetSymbols(Network);
+
+            CurrencyAccounts = Currencies
+                .ToDictionary(
+                    c => c.Name,
+                    c => CurrencyAccountCreator.Create(
+                        currency: c.Name,
+                        wallet: Wallet,
+                        dataRepository: DataRepository,
+                        currencies: Currencies));
 
             UserSettings = UserSettings.TryLoadFromFile(
                 pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
@@ -134,6 +162,7 @@ namespace Atomex.Wallet
             decimal amount,
             decimal fee,
             decimal feePrice,
+            bool useDefaultFee = false,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency)
@@ -143,6 +172,7 @@ namespace Atomex.Wallet
                     amount: amount,
                     fee: fee,
                     feePrice: feePrice,
+                    useDefaultFee: useDefaultFee,
                     cancellationToken: cancellationToken);
         }
 
@@ -152,6 +182,7 @@ namespace Atomex.Wallet
             decimal amount,
             decimal fee,
             decimal feePrice,
+            bool useDefaultFee = false,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency)
@@ -160,6 +191,7 @@ namespace Atomex.Wallet
                     amount: amount,
                     fee: fee,
                     feePrice: feePrice,
+                    useDefaultFee: useDefaultFee,
                     cancellationToken: cancellationToken);
         }
 
@@ -168,20 +200,33 @@ namespace Atomex.Wallet
             string to,
             decimal amount,
             BlockchainTransactionType type,
+            decimal inputFee = 0,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency)
-                .EstimateFeeAsync(to, amount, type, cancellationToken);
+                .EstimateFeeAsync(to, amount, type, inputFee, cancellationToken);
         }
 
-        public Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
+        public Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string currency,
             string to,
+            BlockchainTransactionType type,
+            bool reserve = false,
+            CancellationToken cancellationToken = default)
+        {
+            return GetCurrencyAccount(currency)
+                .EstimateMaxAmountToSendAsync(to, type, reserve, cancellationToken);
+        }
+
+        public Task<decimal> EstimateMaxFeeAsync(
+            string currency,
+            string to,
+            decimal amount,
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency)
-                .EstimateMaxAmountToSendAsync(to, type, cancellationToken);
+                .EstimateMaxFeeAsync(to, amount, type, cancellationToken);
         }
 
         public async Task<Auth> CreateAuthRequestAsync(AuthNonce nonce, uint keyIndex = 0)
@@ -306,13 +351,13 @@ namespace Atomex.Wallet
                 .DivideAddressAsync(chain, index);
         }
 
-        public Task<WalletAddress> ResolveAddressAsync(
+        public Task<WalletAddress> GetAddressAsync(
             string currency,
             string address,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency)
-                .ResolveAddressAsync(address, cancellationToken);
+                .GetAddressAsync(address, cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
@@ -362,20 +407,20 @@ namespace Atomex.Wallet
                 .GetFreeExternalAddressAsync(cancellationToken);
         }
 
-        public Task<WalletAddress> GetRefundAddressAsync(
-            string currency,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .GetRefundAddressAsync(cancellationToken);
-        }
+        //public Task<WalletAddress> GetRefundAddressAsync(
+        //    string currency,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return GetCurrencyAccount(currency)
+        //        .GetRefundAddressAsync(cancellationToken);
+        //}
 
-        public Task<WalletAddress> GetRedeemAddressAsync(
+        public Task<WalletAddress> GetRedeemAddressAsync(   //todo: check if always returns the biggest address
             string currency,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency)
-                .GetRedeemAddressAsync(cancellationToken);
+                .GetRedeemAddressAsync(cancellationToken);   
         }
 
         #endregion Addresses

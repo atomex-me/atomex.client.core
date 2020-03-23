@@ -1,21 +1,19 @@
 ﻿using Atomex.Abstract;
 using Atomex.Common.Proto;
 using Atomex.Core;
+using Atomex.EthereumTokens;
+using Atomex.TezosTokens;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Atomex.Api.Proto
 {
     public class SwapScheme : ProtoScheme<Response<Swap>>
     {
-        public SwapScheme(byte messageId, ICurrencies currencies)
+        public SwapScheme(byte messageId)
             : base(messageId)
         {
-            Model.Add(typeof(Currency), true)
-                .AddCurrencies(currencies)
-                .AddRequired(nameof(Currency.Name));
-
-            Model.Add(typeof(Symbol), true)
-                .AddRequired(nameof(Symbol.Name));
-
             Model.Add(typeof(Swap), true)
                 .AddRequired(nameof(Swap.Id))
                 .AddRequired(nameof(Swap.Status))

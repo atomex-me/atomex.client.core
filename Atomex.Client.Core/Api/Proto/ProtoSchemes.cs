@@ -1,7 +1,4 @@
-﻿using System;
-using Atomex.Abstract;
-
-namespace Atomex.Api.Proto
+﻿namespace Atomex.Api.Proto
 {
     public class ProtoSchemes
     {
@@ -27,14 +24,8 @@ namespace Atomex.Api.Proto
         public SnapshotScheme Snapshot { get; }
         public OrderLogScheme OrderLog { get; }
 
-        public ICurrencies Currencies { get; }
-        public ISymbols Symbols { get; }
-
-        public ProtoSchemes(ICurrencies currencies, ISymbols symbols)
+        public ProtoSchemes()
         {
-            Currencies = currencies ?? throw new ArgumentNullException(nameof(currencies));
-            Symbols = symbols ?? throw new ArgumentNullException(nameof(symbols));
-
             byte id = 0;
 
             AuthNonce    = new AuthNonceScheme(messageId: id++);
@@ -42,13 +33,13 @@ namespace Atomex.Api.Proto
             AuthOk       = new AuthOkScheme(messageId: id++);
             Error        = new ErrorScheme(messageId: id++);
 
-            Order        = new OrderScheme(messageId: id++, currencies: currencies);
-            OrderSend    = new OrderSendScheme(messageId: id++, currencies: currencies);
+            Order        = new OrderScheme(messageId: id++);
+            OrderSend    = new OrderSendScheme(messageId: id++);
             OrderCancel  = new OrderCancelScheme(messageId: id++);
             OrderStatus  = new OrderStatusScheme(messageId: id++);
             Orders       = new OrdersScheme(messageId: id++);
 
-            Swap         = new SwapScheme(messageId: id++, currencies: currencies);
+            Swap         = new SwapScheme(messageId: id++);
             SwapInitiate = new SwapInitiateScheme(messageId: id++);
             SwapAccept   = new SwapAcceptScheme(messageId: id++);
             SwapPayment  = new SwapPaymentScheme(messageId: id++);

@@ -18,7 +18,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
         public Keys(byte[] sk, byte[] pk)
         {
-            PublicHash = Base58Check.Encode(new HmacBlake2b(PublicKeyHashBitSize).ComputeHash(pk), Prefix.Tz1);
+            PublicHash = Base58Check.Encode(HmacBlake2b.Compute(pk, PublicKeyHashBitSize), Prefix.Tz1);
 
             PublicKey = new SecureString();
             PrivateKey = new SecureString();

@@ -34,22 +34,22 @@ namespace Atomex.Client.Core.Tests
             => new Currencies(CurrenciesConfiguration.GetSection(Atomex.Core.Network.TestNet.ToString()));
 
         public static ISymbols SymbolsTestNet
-            => new Symbols(SymbolsConfiguration.GetSection(Atomex.Core.Network.TestNet.ToString()), CurrenciesTestNet);
+            => new Symbols(SymbolsConfiguration.GetSection(Atomex.Core.Network.TestNet.ToString()));
 
         public static ICurrencies CurrenciesMainNet
             => new Currencies(CurrenciesConfiguration.GetSection(Atomex.Core.Network.MainNet.ToString()));
 
         public static ISymbols SymbolsMainNet
-            => new Symbols(SymbolsConfiguration.GetSection(Atomex.Core.Network.MainNet.ToString()), CurrenciesMainNet);
+            => new Symbols(SymbolsConfiguration.GetSection(Atomex.Core.Network.MainNet.ToString()));
 
-        public static Bitcoin BtcMainNet => CurrenciesMainNet.Get<Bitcoin>();
-        public static Litecoin LtcMainNet => CurrenciesMainNet.Get<Litecoin>();
-        public static Tezos XtzMainNet => CurrenciesMainNet.Get<Tezos>();
+        public static Bitcoin BtcMainNet => CurrenciesMainNet.Get<Bitcoin>("BTC");
+        public static Litecoin LtcMainNet => CurrenciesMainNet.Get<Litecoin>("LTC");
+        public static Tezos XtzMainNet => CurrenciesMainNet.Get<Tezos>("XTZ");
 
-        public static Bitcoin BtcTestNet => CurrenciesTestNet.Get<Bitcoin>();
-        public static Litecoin LtcTestNet => CurrenciesTestNet.Get<Litecoin>();
-        public static Tezos XtzTestNet => CurrenciesTestNet.Get<Tezos>();
-        public static Ethereum EthTestNet => CurrenciesTestNet.Get<Ethereum>();
+        public static Bitcoin BtcTestNet => CurrenciesTestNet.Get<Bitcoin>("BTC");
+        public static Litecoin LtcTestNet => CurrenciesTestNet.Get<Litecoin>("LTC");
+        public static Tezos XtzTestNet => CurrenciesTestNet.Get<Tezos>("XTZ");
+        public static Ethereum EthTestNet => CurrenciesTestNet.Get<Ethereum>("ETH");
 
         public static Symbol EthBtcTestNet => SymbolsTestNet.GetByName("ETH/BTC");
         public static Symbol LtcBtcTestNet => SymbolsTestNet.GetByName("LTC/BTC");

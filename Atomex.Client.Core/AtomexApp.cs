@@ -12,7 +12,7 @@ namespace Atomex
     {
         public event EventHandler<TerminalChangedEventArgs> TerminalChanged;
 
-        public ITerminal Terminal { get; private set; }
+        public IAtomexClient Terminal { get; private set; }
         public IAccount Account => Terminal?.Account;
         public ICurrencyQuotesProvider QuotesProvider { get; private set; }
         public ICurrencyOrderBookProvider OrderBooksProvider { get; private set; }
@@ -64,7 +64,7 @@ namespace Atomex
             Terminal.StopAsync().FireAndForget();
         }
 
-        public IAtomexApp UseTerminal(ITerminal terminal, bool restart = false)
+        public IAtomexApp UseTerminal(IAtomexClient terminal, bool restart = false)
         {
             if (HasTerminal)
                 StopTerminal();

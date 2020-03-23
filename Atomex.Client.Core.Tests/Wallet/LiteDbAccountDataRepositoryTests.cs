@@ -33,7 +33,7 @@ namespace Atomex.Client.Core.Tests
                 Secret = new byte[] { 0x01, 0x02, 0x03 },
                 StateFlags = SwapStateFlags.HasPayment | SwapStateFlags.HasPartyPayment,
                 TimeStamp = UtcNow,
-                Symbol = Common.EthBtcTestNet,
+                Symbol = "ETH/BTC",
                 Side = Side.Buy,
                 SecretHash = new byte[] { 0x04, 0x05, 0x06 },
 
@@ -59,7 +59,6 @@ namespace Atomex.Client.Core.Tests
                     pathToDb: PathToDb,
                     password: null,
                     currencies: Common.CurrenciesTestNet,
-                    symbols: Common.SymbolsTestNet,
                     network: Network.TestNet);
             });
         }
@@ -73,7 +72,6 @@ namespace Atomex.Client.Core.Tests
                 pathToDb: PathToDb,
                 password: Password,
                 currencies: Common.CurrenciesTestNet,
-                symbols: Common.SymbolsTestNet,
                 network: Network.TestNet);
 
             var swap = CreateSwap();
@@ -97,7 +95,6 @@ namespace Atomex.Client.Core.Tests
                 pathToDb: PathToDb,
                 password: Password,
                 currencies: Common.CurrenciesTestNet,
-                symbols: Common.SymbolsTestNet,
                 network: Network.TestNet);
 
             var swap = await repository
@@ -122,7 +119,6 @@ namespace Atomex.Client.Core.Tests
                 pathToDb: PathToDb,
                 password: Password,
                 currencies: Common.CurrenciesTestNet,
-                symbols: Common.SymbolsTestNet,
                 network: Network.TestNet);
 
             var id = "abcdefgh";

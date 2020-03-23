@@ -13,7 +13,7 @@ namespace Atomex.Swaps.Abstract
         OnSwapUpdatedDelegate AcceptorPaymentSpent { get; set; }
         OnSwapUpdatedDelegate SwapUpdated { get; set; }
 
-        Currency Currency { get; }
+        string Currency { get; }
 
         /// <summary>
         /// Broadcast payment transaction(s) for currency being sold

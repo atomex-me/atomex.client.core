@@ -15,7 +15,7 @@ namespace Atomex.Api.Proto
 
             Model.Add(typeof(Snapshot), true)
                 .AddRequired(nameof(Snapshot.LastTransactionId))
-                .AddRequired(nameof(Snapshot.SymbolId))
+                .AddRequired(nameof(Snapshot.Symbol))
                 .AddRequired(nameof(Snapshot.Entries));
         }
     }

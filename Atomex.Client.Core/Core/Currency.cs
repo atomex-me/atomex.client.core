@@ -23,6 +23,7 @@ namespace Atomex.Core
         public bool HasFeePrice { get; set; }
         public string FeePriceCode { get; set; }
         public string FeePriceFormat { get; set; }
+        public string FeeCurrencyName { get; set; }
 
         public IBlockchainApi BlockchainApi { get; set; }
         public string TxExplorerUri { get; set; }
@@ -51,11 +52,17 @@ namespace Atomex.Core
 
         public abstract decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee);
 
-        public abstract decimal GetDefaultRedeemFee();
+        public abstract decimal GetRedeemFee(WalletAddress toAddress = null);
+
+        public abstract decimal GetRewardForRedeem();
 
         public virtual decimal GetDefaultFeePrice()
         {
             return 1m;
+        }
+        public virtual decimal GetMaximumFee()
+        {
+            return decimal.MaxValue;
         }
     }
 }

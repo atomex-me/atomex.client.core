@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
+using Atomex.Api;
 using Atomex.Api.Proto;
-using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
@@ -31,7 +31,6 @@ namespace Atomex.Web
         private void OnOrderHandler(MemoryStream stream)
         {
             var response = Schemes.Order.DeserializeWithLengthPrefix(stream);
-            response.Data.ResolveRelationshipsByName(Schemes.Currencies, Schemes.Symbols);
 
             OrderReceived?.Invoke(this, new OrderEventArgs(response.Data));
         }
@@ -39,7 +38,6 @@ namespace Atomex.Web
         private void OnSwapHandler(MemoryStream stream)
         {
             var response = Schemes.Swap.DeserializeWithLengthPrefix(stream);
-            response.Data.ResolveRelationshipsByName(Schemes.Symbols);
 
             SwapReceived?.Invoke(this, new SwapEventArgs(response.Data));
         }

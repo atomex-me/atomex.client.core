@@ -1,9 +1,12 @@
 ﻿using System;
 using Atomex.Core;
+using Atomex.EthereumTokens;
 using Atomex.Swaps.Abstract;
 using Atomex.Swaps.BitcoinBased;
 using Atomex.Swaps.Ethereum;
 using Atomex.Swaps.Tezos;
+using Atomex.Swaps.Tezos.FA12;
+using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
 using Atomex.Wallet.Ethereum;
@@ -23,13 +26,25 @@ namespace Atomex.Swaps
                 BitcoinBasedCurrency _ => (ICurrencySwap)new BitcoinBasedSwap(
                        account: account.GetCurrencyAccount<BitcoinBasedAccount>(currency.Name),
                        swapClient: swapClient,
-                       transactionFactory: new BitcoinBasedSwapTransactionFactory()),
+                       currencies: account.Currencies),
+                ERC20 _ => (ICurrencySwap)new ERC20Swap(
+                        account: account.GetCurrencyAccount<ERC20Account>(currency.Name),
+                        ethereumAccount: account.GetCurrencyAccount<EthereumAccount>("ETH"),
+                        swapClient: swapClient,
+                        currencies: account.Currencies),
                 Atomex.Ethereum _ => (ICurrencySwap)new EthereumSwap(
                         account: account.GetCurrencyAccount<EthereumAccount>(currency.Name),
-                        swapClient: swapClient),
+                        swapClient: swapClient,
+                        currencies: account.Currencies),
+                FA12 _ => (ICurrencySwap)new FA12Swap(
+                        account: account.GetCurrencyAccount<FA12Account>(currency.Name),
+                        tezosAccount: account.GetCurrencyAccount<TezosAccount>("XTZ"),
+                        swapClient: swapClient,
+                        currencies: account.Currencies),
                 Atomex.Tezos _ => (ICurrencySwap)new TezosSwap(
                         account: account.GetCurrencyAccount<TezosAccount>(currency.Name),
-                        swapClient: swapClient),
+                        swapClient: swapClient,
+                        currencies: account.Currencies),
                 _ => throw new NotSupportedException($"Not supported currency {currency.Name}"),
             };
         }

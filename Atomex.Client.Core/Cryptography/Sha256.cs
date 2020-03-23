@@ -1,45 +1,33 @@
 ﻿using System;
 using System.Security.Cryptography;
-using System.Text;
 
 namespace Atomex.Cryptography
 {
-    public class Sha256 : Hash
+    public class Sha256
     {
-        public override byte[] ComputeHash(byte[] input, int offset, int count)
-        {
-            using (var sha256 = SHA256.Create())
-            {
-                return sha256.ComputeHash(input, offset, count);
-            }
-        }
-
         public static byte[] Compute(byte[] input, int offset, int count)
         {
-            return new Sha256().ComputeHash(input, offset, count);
+            using var sha256 = SHA256.Create();
+            return sha256.ComputeHash(input, offset, count);
         }
 
-        public static byte[] Compute(byte[] input)
-        {
-            return new Sha256().ComputeHash(input, 0, input.Length);
-        }
+        public static byte[] Compute(byte[] input) =>
+            Compute(input, 0, input.Length);
 
-        public static byte[] Compute(string input, Encoding encoding)
-        {
-            return new Sha256().ComputeHash(input, encoding);
-        }
-
-        public static byte[] Compute(byte[] input, int iterations)
+        public static byte[] Compute(byte[] input, int offset, int count, int iterations)
         {
             if (iterations <= 0)
                 throw new ArgumentException("Iterations count must be greater than zero", nameof(iterations));
 
-            var result = input;
+            var result = Compute(input, offset, count);
 
-            for (var i = 0; i < iterations; ++i)
+            for (var i = 0; i < iterations - 1; ++i)
                 result = Compute(result);
 
             return result;
         }
+
+        public static byte[] Compute(byte[] input, int iterations) =>
+            Compute(input, 0, input.Length, iterations);
     }
 }

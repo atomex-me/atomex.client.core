@@ -10,7 +10,6 @@ namespace Atomex.Blockchain.Abstract
             IEnumerable<WalletAddress> addresses);
 
         Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
-            string currency,
             IEnumerable<string> addresses);
     }
 }

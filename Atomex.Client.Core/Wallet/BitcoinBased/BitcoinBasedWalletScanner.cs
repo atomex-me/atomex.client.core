@@ -18,7 +18,7 @@ namespace Atomex.Wallet.BitcoinBased
         private const int DefaultExternalLookAhead = 3;
 
         private BitcoinBasedAccount Account { get; }
-        private Currency Currency => Account.Currency;
+        private Currency Currency => Account.Currencies.GetByName(Account.Currency);
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
 
@@ -48,11 +48,13 @@ namespace Atomex.Wallet.BitcoinBased
             string address,
             CancellationToken cancellationToken = default)
         {
+            var currency = Currency;
+
             Log.Debug("Scan {@currency} outputs for {@address}",
-                Currency.Name,
+                currency.Name,
                 address);
 
-            var outputsResult = await ((IInOutBlockchainApi) Currency.BlockchainApi)
+            var outputsResult = await ((IInOutBlockchainApi)currency.BlockchainApi)
                 .TryGetOutputsAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -97,7 +99,9 @@ namespace Atomex.Wallet.BitcoinBased
            bool skipUsed,
            CancellationToken cancellationToken = default)
         {
-            Log.Debug("Scan outputs for {@name}", Currency.Name);
+            var currency = Currency;
+
+            Log.Debug("Scan outputs for {@name}", currency.Name);
 
             var scanParams = new[]
             {
@@ -125,7 +129,7 @@ namespace Atomex.Wallet.BitcoinBased
                     if (skipUsed) // check, if the address marked as "used" and skip in this case
                     {
                         var resolvedAddress = await Account
-                            .ResolveAddressAsync(Currency.Name, walletAddress.Address, cancellationToken)
+                            .GetAddressAsync(currency.Name, walletAddress.Address, cancellationToken)
                             .ConfigureAwait(false);
 
                         if (resolvedAddress != null &&
@@ -141,12 +145,12 @@ namespace Atomex.Wallet.BitcoinBased
 
                     Log.Debug(
                         "Scan outputs for {@name} address {@chain}:{@index}:{@address}",
-                        Currency.Name,
+                        currency.Name,
                         param.Chain,
                         index,
                         walletAddress.Address);
 
-                    var result = await ((IInOutBlockchainApi)Currency.BlockchainApi)
+                    var result = await ((IInOutBlockchainApi)currency.BlockchainApi)
                         .TryGetOutputsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -213,6 +217,8 @@ namespace Atomex.Wallet.BitcoinBased
             IEnumerable<ITxOutput> outputs,
             CancellationToken cancellationToken = default)
         {
+            var currency = Currency;
+            
             foreach (var output in outputs)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -231,9 +237,9 @@ namespace Atomex.Wallet.BitcoinBased
                     if (localTx != null && localTx.IsConfirmed)
                         continue;
 
-                    Log.Debug("Scan {@currency} transaction {@txId}", Currency.Name, txId);
+                    Log.Debug("Scan {@currency} transaction {@txId}", currency.Name, txId);
 
-                    var txResult = await Currency.BlockchainApi
+                    var txResult = await currency.BlockchainApi
                         .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 

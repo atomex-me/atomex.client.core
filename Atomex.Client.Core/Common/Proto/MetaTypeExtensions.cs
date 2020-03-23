@@ -1,5 +1,4 @@
-﻿using Atomex.Abstract;
-using ProtoBuf.Meta;
+﻿using ProtoBuf.Meta;
 
 namespace Atomex.Common.Proto
 {
@@ -26,14 +25,6 @@ namespace Atomex.Common.Proto
             var fieldsCount = metaType.GetFields().Length + metaType.GetSubtypes().Length;
 
             return metaType.AddRequired(fieldsCount + 1, memberName);
-        }
-
-        public static MetaType AddCurrencies(this MetaType metaType, ICurrencies currencies)
-        {
-            for (var i = 0; i < currencies.Count; ++i)
-                metaType.AddSubType(i + 1, currencies[i].GetType());
-
-            return metaType;
         }
     }
 }

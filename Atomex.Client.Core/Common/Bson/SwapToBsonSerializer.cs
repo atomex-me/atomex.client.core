@@ -24,6 +24,7 @@ namespace Atomex.Common.Bson
         private const string PartyRewardForRedeemKey = nameof(Swap.PartyRewardForRedeem);
         private const string PartyPaymentTxIdKey = nameof(Swap.PartyPaymentTxId);
         private const string PartyRedeemScriptKey = nameof(Swap.PartyRedeemScript);
+        private const string OrderIdKey = nameof(Swap.OrderId);
 
         private const string SecretKey = nameof(Swap.Secret);
         private const string SecretHashKey = nameof(Swap.SecretHash);
@@ -33,11 +34,11 @@ namespace Atomex.Common.Bson
         private const string RedeemTxKey = nameof(Swap.RedeemTx);
         private const string PartyPaymentTxKey = nameof(Swap.PartyPaymentTx);
 
-        private readonly ISymbols _symbols;
+        private readonly ICurrencies _currencies;
 
-        public SwapToBsonSerializer(ISymbols symbols)
+        public SwapToBsonSerializer(ICurrencies currencies)
         {
-            _symbols = symbols ?? throw new ArgumentNullException(nameof(symbols));
+            _currencies = currencies ?? throw new ArgumentNullException(nameof(currencies));
         }
 
         public override Swap Deserialize(BsonValue bsonValue)
@@ -50,17 +51,18 @@ namespace Atomex.Common.Bson
             Enum.TryParse<SwapStateFlags>(bson[StateKey].AsString, out var state);
             Enum.TryParse<Side>(bson[SideKey].AsString, out var side);
 
-            var symbol = _symbols.GetByName(bson[SymbolKey].AsString);
-            var soldCurrency = symbol.SoldCurrency(side);
-            var purchasedCurrency = symbol.PurchasedCurrency(side);
+            var symbol = bson[SymbolKey].AsString;
+            var soldCurrency = _currencies.GetByName(symbol.SoldCurrency(side));
+            var purchasedCurrency = _currencies.GetByName(symbol.PurchasedCurrency(side));
 
             return new Swap
             {
                 Id = bson[IdKey].AsInt64,
+                OrderId = !bson[OrderIdKey].IsNull ? bson[OrderIdKey].AsInt64 : 0,
                 Status = status,
                 StateFlags = state,
                 TimeStamp = bson[TimeStampKey].AsDateTime,
-                Symbol = symbol,
+                Symbol = bson[SymbolKey].AsString,
                 Side = side,
                 Price = bson[PriceKey].AsDecimal,
                 Qty = bson[QtyKey].AsDecimal,
@@ -108,10 +110,11 @@ namespace Atomex.Common.Bson
             return new BsonDocument
             {
                 [IdKey] = swap.Id,
+                [OrderIdKey] = swap.OrderId,
                 [StatusKey] = swap.Status.ToString(),
                 [StateKey] = swap.StateFlags.ToString(),
                 [TimeStampKey] = swap.TimeStamp,
-                [SymbolKey] = swap.Symbol.Name,
+                [SymbolKey] = swap.Symbol,
                 [SideKey] = swap.Side.ToString(),
                 [PriceKey] = swap.Price,
                 [QtyKey] = swap.Qty,

@@ -11,7 +11,7 @@ namespace Atomex.Api.Proto
         {
             Model.Add(typeof(AnonymousOrder), true)
                 .AddRequired(nameof(AnonymousOrder.OrderId))
-                .AddRequired(nameof(AnonymousOrder.SymbolId))
+                .AddRequired(nameof(AnonymousOrder.Symbol))
                 .AddRequired(nameof(AnonymousOrder.TimeStamp))
                 .AddRequired(nameof(AnonymousOrder.Price))
                 .AddRequired(nameof(AnonymousOrder.LastPrice))

@@ -259,7 +259,7 @@ namespace Atomex.Blockchain.Insight
 
             const string requestUri = "api/tx/send";
             var parameters = new Dictionary<string, string> { { "rawtx", txHex } };
-            var requestContent = new FormUrlEncodedContent(parameters);
+            using var requestContent = new FormUrlEncodedContent(parameters);
 
             return await HttpHelper.PostAsyncResult<string>(
                     baseUri: BaseUri,

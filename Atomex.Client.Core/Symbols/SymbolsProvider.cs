@@ -16,18 +16,14 @@ namespace Atomex
             Network.TestNet
         };
 
-        public SymbolsProvider(
-            IConfiguration configuration,
-            ICurrenciesProvider currenciesProvider)
+        public SymbolsProvider(IConfiguration configuration)
         {
             foreach (var network in Networks)
             {
                 var networkConfiguration = configuration.GetSection(network.ToString());
 
                 if (networkConfiguration != null)
-                    _symbols.Add(network, new Symbols(
-                        configuration: networkConfiguration,
-                        currencies: currenciesProvider.GetCurrencies(network)));
+                    _symbols.Add(network, new Symbols(networkConfiguration));
             }
         }
 

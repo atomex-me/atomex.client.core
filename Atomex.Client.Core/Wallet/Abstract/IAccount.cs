@@ -4,6 +4,7 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Abstract;
+using Atomex.Api;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Core;
@@ -64,6 +65,26 @@ namespace Atomex.Wallet.Abstract
         /// <returns>this</returns>
         IAccount UseUserSettings(UserSettings userSettings);
 
+        ///// <summary>
+        ///// Send <paramref name="amount"/> from <paramref name="from"/> with <paramref name="fee"/> and <paramref name="feePrice"/> to address <paramref name="to"/>
+        ///// </summary>
+        ///// <param name="currency">Currency</param>
+        ///// <param name="from">From addresses</param>
+        ///// <param name="to">Destination address</param>
+        ///// <param name="amount">Amount to send</param>
+        ///// <param name="fee">Fee</param>
+        ///// <param name="feePrice">Fee price</param>
+        ///// <param name="cancellationToken">Cancellation token</param>
+        ///// <returns>Null if success, otherwise false</returns>
+        //Task<Error> SendAsync(
+        //    string currency,
+        //    IEnumerable<WalletAddress> from,
+        //    string to,
+        //    decimal amount,
+        //    decimal fee,
+        //    decimal feePrice,
+        //    CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Send <paramref name="amount"/> from <paramref name="from"/> with <paramref name="fee"/> and <paramref name="feePrice"/> to address <paramref name="to"/>
         /// </summary>
@@ -73,6 +94,7 @@ namespace Atomex.Wallet.Abstract
         /// <param name="amount">Amount to send</param>
         /// <param name="fee">Fee</param>
         /// <param name="feePrice">Fee price</param>
+        /// <param name="useDefaultFee">Dafault fee mode</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Null if success, otherwise false</returns>
         Task<Error> SendAsync(
@@ -82,7 +104,26 @@ namespace Atomex.Wallet.Abstract
             decimal amount,
             decimal fee,
             decimal feePrice,
+            bool useDefaultFee = false,
             CancellationToken cancellationToken = default);
+
+        ///// <summary>
+        ///// Send <paramref name="amount"/> with <paramref name="fee"/> and <paramref name="feePrice"/> to address <paramref name="to"/>
+        ///// </summary>
+        ///// <param name="currency">Currency</param>
+        ///// <param name="to">Destination address</param>
+        ///// <param name="amount">Amount to send</param>
+        ///// <param name="fee">Fee</param>
+        ///// <param name="feePrice">Fee price</param>
+        ///// <param name="cancellationToken">Cancellation token</param>
+        ///// <returns>Null if success, otherwise false</returns>
+        //Task<Error> SendAsync(
+        //    string currency,
+        //    string to,
+        //    decimal amount,
+        //    decimal fee,
+        //    decimal feePrice,
+        //    CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Send <paramref name="amount"/> with <paramref name="fee"/> and <paramref name="feePrice"/> to address <paramref name="to"/>
@@ -92,6 +133,7 @@ namespace Atomex.Wallet.Abstract
         /// <param name="amount">Amount to send</param>
         /// <param name="fee">Fee</param>
         /// <param name="feePrice">Fee price</param>
+        /// <param name="useDefaultFee">Dafault fee mode</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Null if success, otherwise false</returns>
         Task<Error> SendAsync(
@@ -100,6 +142,7 @@ namespace Atomex.Wallet.Abstract
             decimal amount,
             decimal fee,
             decimal feePrice,
+            bool useDefaultFee = false,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -109,6 +152,7 @@ namespace Atomex.Wallet.Abstract
         /// <param name="to">Destination address (can be null)</param>
         /// <param name="amount">Amount to send</param>
         /// <param name="type">Blockchain transaction type</param>
+        /// <param name="inputFee">fee input in send dialog</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Estimated fees or null if insufficient funds</returns>
         Task<decimal?> EstimateFeeAsync(
@@ -116,6 +160,7 @@ namespace Atomex.Wallet.Abstract
             string to,
             decimal amount,
             BlockchainTransactionType type,
+            decimal inputFee = 0,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -126,9 +171,25 @@ namespace Atomex.Wallet.Abstract
         /// <param name="type">Blockchain transaction type</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Max amount and fee to send</returns>
-        Task<(decimal, decimal)> EstimateMaxAmountToSendAsync(
+        Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string currency,
             string to,
+            BlockchainTransactionType type,
+            bool reserve = false,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Estimate max fee to send with given amount
+        /// </summary>
+        /// <param name="currency">Currency</param>
+        /// <param name="to">Destination address (can be null)</param>
+        /// <param name="type">Blockchain transaction type</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Max amount and fee to send</returns>
+        Task<decimal> EstimateMaxFeeAsync(
+            string currency,
+            string to,
+            decimal amount,
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default);
 
@@ -242,9 +303,9 @@ namespace Atomex.Wallet.Abstract
         /// <param name="currency">Currency</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Wallet address</returns>
-        Task<WalletAddress> GetRefundAddressAsync(
-            string currency,
-            CancellationToken cancellationToken = default);
+        //Task<WalletAddress> GetRefundAddressAsync(
+        //    string currency,
+        //    CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Get redeem address for <paramref name="currency"/>

@@ -1,54 +1,34 @@
 ﻿using Org.BouncyCastle.Asn1.Sec;
-using Org.BouncyCastle.Crypto;
-using Org.BouncyCastle.Crypto.Generators;
 using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.Math;
 using Org.BouncyCastle.Security;
 
 namespace Atomex.Cryptography
 {
-    public class Ecdsa : IAsymmetricCipher, IAsymmetricSigner
+    public class Ecdsa
     {
-        public string Curve { get; set; } = Curves.Secp256K1;
-        public string Algorithm { get; set; } = Identifiers.Sha256WithEcdsa;
-
-        public bool VerifySign(byte[] data, byte[] sign, byte[] publicKey)
+        public static byte[] Sign(byte[] data, byte[] privateKey, string curveName, string algorithm)
         {
-            var curve = SecNamedCurves.GetByName(Curve);
+            var curve = SecNamedCurves.GetByName(curveName);
             var parameters = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H, curve.GetSeed());
-            var key = new ECPublicKeyParameters(Identifiers.Ec, curve.Curve.DecodePoint(publicKey), parameters);    
-            
-            var signer = SignerUtilities.GetSigner(Algorithm);
-            signer.Init(false, key);
-            signer.BlockUpdate(data, 0, data.Length);
-            return signer.VerifySignature(sign);
-        }
+            var key = new ECPrivateKeyParameters(Algorithms.Ec, new BigInteger(privateKey), parameters);
 
-        public byte[] Sign(byte[] data, byte[] privateKey)
-        {
-            var curve = SecNamedCurves.GetByName(Curve);
-            var parameters = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H, curve.GetSeed());
-            var key = new ECPrivateKeyParameters(Identifiers.Ec, new BigInteger(privateKey), parameters);
-
-            var signer = SignerUtilities.GetSigner(Algorithm);
+            var signer = SignerUtilities.GetSigner(algorithm);
             signer.Init(true, key);
             signer.BlockUpdate(data, 0, data.Length);
             return signer.GenerateSignature();
         }
 
-        public byte[] Sign(AsymmetricKeyParameter privateKey, byte[] data)
+        public static bool Verify(byte[] data, byte[] sign, byte[] publicKey, string curveName, string algorithm)
         {
-            return Sign(((ECPrivateKeyParameters)privateKey).D.ToByteArray(), data);
-        }
-
-        public AsymmetricCipherKeyPair GenerateKeyPair()
-        {
-            var curve = SecNamedCurves.GetByName(Curve);
+            var curve = SecNamedCurves.GetByName(curveName);
             var parameters = new ECDomainParameters(curve.Curve, curve.G, curve.N, curve.H, curve.GetSeed());
+            var key = new ECPublicKeyParameters(Algorithms.Ec, curve.Curve.DecodePoint(publicKey), parameters);
 
-            var generator = new ECKeyPairGenerator(Identifiers.Ecdsa);
-            generator.Init(new ECKeyGenerationParameters(parameters, new SecureRandom()));
-            return generator.GenerateKeyPair();
+            var signer = SignerUtilities.GetSigner(algorithm);
+            signer.Init(false, key);
+            signer.BlockUpdate(data, 0, data.Length);
+            return signer.VerifySignature(sign);
         }
     }
 }

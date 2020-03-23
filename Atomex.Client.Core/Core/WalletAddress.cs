@@ -7,10 +7,9 @@ namespace Atomex.Core
     {
         public const int MaxNumberLength = 256;
 
+        public string UniqueId => $"{Address}:{Currency}";
         public long Id { get; set; }
-        public string UserId { get; set; }
-        public int CurrencyId { get; set; }
-        public Currency Currency { get; set; }
+        public string Currency { get; set; }
         public string Address { get; set; }
         public decimal Balance { get; set; }
         public decimal AllocatedBalance { get; set; }
@@ -18,7 +17,6 @@ namespace Atomex.Core
         public decimal UnconfirmedOutcome { get; set; }
         public KeyIndex KeyIndex { get; set; }
         public bool HasActivity { get; set; }
-        public bool IsCriminal { get; set; }
 
         /// <summary>
         /// Public key in base64

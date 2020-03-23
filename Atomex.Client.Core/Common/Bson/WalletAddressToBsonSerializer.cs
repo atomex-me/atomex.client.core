@@ -8,10 +8,8 @@ namespace Atomex.Common.Bson
         public override void Register(BsonMapper bsonMapper)
         {
             bsonMapper.Entity<WalletAddress>()
-                .Id(w => w.Address)
+                .Id(w => w.UniqueId)
                 .Ignore(w => w.Id)
-                .Ignore(w => w.UserId)
-                .Ignore(w => w.CurrencyId)
                 .Ignore(w => w.PublicKey)
                 .Ignore(w => w.ProofOfPossession)
                 .Ignore(w => w.Nonce);

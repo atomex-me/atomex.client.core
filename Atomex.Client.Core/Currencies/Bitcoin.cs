@@ -38,6 +38,7 @@ namespace Atomex
             FeeDigits = Digits;
             FeeCode = Name;
             FeeFormat = $"F{FeeDigits}";
+            FeeCurrencyName = Name;
 
             HasFeePrice = false;
 

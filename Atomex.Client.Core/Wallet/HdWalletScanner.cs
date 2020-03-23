@@ -92,8 +92,14 @@ namespace Atomex.Wallet
             {
                 "BTC" => (ICurrencyHdWalletScanner)new BitcoinBasedWalletScanner(Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
                 "LTC" => (ICurrencyHdWalletScanner)new BitcoinBasedWalletScanner(Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
+                "USDT" => (ICurrencyHdWalletScanner)new ERC20WalletScanner(
+                    Account.GetCurrencyAccount<ERC20Account>(currency),
+                    Account.GetCurrencyAccount<EthereumAccount>("ETH")),
+                //"USDC" => (ICurrencyHdWalletScanner)new ERC20WalletScanner(Account.GetCurrencyAccount<ERC20Account>(currency)),
                 "ETH" => (ICurrencyHdWalletScanner)new EthereumWalletScanner(Account.GetCurrencyAccount<EthereumAccount>(currency)),
                 "XTZ" => (ICurrencyHdWalletScanner)new TezosWalletScanner(Account.GetCurrencyAccount<TezosAccount>(currency)),
+                "TZBTC" => (ICurrencyHdWalletScanner)new TezosWalletScanner(Account.GetCurrencyAccount<FA12Account>(currency)),
+                "FA12" => (ICurrencyHdWalletScanner)new TezosWalletScanner(Account.GetCurrencyAccount<FA12Account>(currency)),
                 _ => throw new NotSupportedException($"Currency {currency} not supported")
             };
         }

@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,6 +9,8 @@ using Serilog;
 
 namespace Atomex.Common
 {
+    public class HttpRequestHeaders : List<KeyValuePair<string, IEnumerable<string>>> { };
+
     public static class HttpHelper
     {
         public const int SslHandshakeFailed = 525;
@@ -17,11 +21,27 @@ namespace Atomex.Common
             Func<HttpResponseMessage, T> responseHandler,
             CancellationToken cancellationToken = default)
         {
+            return GetAsync(
+                baseUri: baseUri,
+                requestUri: requestUri,
+                headers: null,
+                responseHandler: responseHandler,
+                cancellationToken: cancellationToken);
+        }
+
+        public static Task<T> GetAsync<T>(
+            string baseUri,
+            string requestUri,
+            HttpRequestHeaders headers,
+            Func<HttpResponseMessage, T> responseHandler,
+            CancellationToken cancellationToken = default)
+        {
             return SendRequestAsync(
                 baseUri: baseUri,
                 requestUri: requestUri,
                 method: HttpMethod.Get,
                 content: null,
+                headers: headers,
                 responseHandler: responseHandler,
                 cancellationToken: cancellationToken);
         }
@@ -32,9 +52,25 @@ namespace Atomex.Common
             Func<HttpResponseMessage, string, Result<T>> responseHandler,
             CancellationToken cancellationToken = default)
         {
+            return GetAsyncResult(
+                baseUri: baseUri,
+                requestUri: requestUri,
+                headers: null,
+                responseHandler: responseHandler,
+                cancellationToken: cancellationToken);
+        }
+
+        public static Task<Result<T>> GetAsyncResult<T>(
+            string baseUri,
+            string requestUri,
+            HttpRequestHeaders headers,
+            Func<HttpResponseMessage, string, Result<T>> responseHandler,
+            CancellationToken cancellationToken = default)
+        {
             return GetAsync(
                 baseUri: baseUri,
                 requestUri: requestUri,
+                headers: headers,
                 responseHandler: response =>
                 {
                     var responseContent = response.Content
@@ -60,6 +96,7 @@ namespace Atomex.Common
                 requestUri: requestUri,
                 method: HttpMethod.Post,
                 content: content,
+                headers: null,
                 responseHandler: responseHandler,
                 cancellationToken: cancellationToken);
         }
@@ -93,6 +130,7 @@ namespace Atomex.Common
             string requestUri,
             HttpMethod method,
             HttpContent content,
+            HttpRequestHeaders headers,
             Func<HttpResponseMessage, T> responseHandler,
             CancellationToken cancellationToken = default)
         {
@@ -103,15 +141,20 @@ namespace Atomex.Common
 
             try
             {
-                using (var response = await SendRequest(baseUri, requestUri, method, content, cancellationToken)
-                    .ConfigureAwait(false))
-                {
-                    Log.Debug(
-                        response.IsSuccessStatusCode ? "Success status code: {@code}" : "Http error code: {@code}",
-                        response.StatusCode);
+                using var response = await SendRequest(
+                        baseUri: baseUri, 
+                        requestUri: requestUri,
+                        method: method,
+                        content: content, 
+                        headers: headers,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
 
-                    return responseHandler(response);
-                }
+                Log.Debug(
+                    response.IsSuccessStatusCode ? "Success status code: {@code}" : "Http error code: {@code}",
+                    response.StatusCode);
+
+                return responseHandler(response);
             }
             catch (HttpRequestException e)
             {
@@ -130,25 +173,29 @@ namespace Atomex.Common
             string requestUri,
             HttpMethod method,
             HttpContent content,
+            HttpRequestHeaders headers,
             CancellationToken cancellationToken = default)
         {
-            using (var httpClient = new HttpClient {BaseAddress = new Uri(baseUri)})
+            using var httpClient = new HttpClient { BaseAddress = new Uri(baseUri) };
+            
+            if (headers != null)
+                foreach (var header in headers)
+                    httpClient.DefaultRequestHeaders.Add(header.Key, header.Value);
+  
+            if (method == HttpMethod.Get)
             {
-                if (method == HttpMethod.Get)
-                {
-                    return await httpClient
-                        .GetAsync(requestUri, cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                if (method == HttpMethod.Post)
-                {
-                    return await httpClient
-                        .PostAsync(requestUri, content, cancellationToken)
-                        .ConfigureAwait(false);
-                }
-
-                throw new ArgumentException("Http method not supported");
+                return await httpClient
+                    .GetAsync(requestUri, cancellationToken)
+                    .ConfigureAwait(false);
             }
+            if (method == HttpMethod.Post)
+            {
+                return await httpClient
+                    .PostAsync(requestUri, content, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            throw new ArgumentException("Http method not supported");
         }
     }
 }

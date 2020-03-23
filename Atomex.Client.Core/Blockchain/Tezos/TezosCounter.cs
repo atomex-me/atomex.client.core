@@ -63,26 +63,26 @@ namespace Atomex.Blockchain.Tezos
                     }
                     else
                     {
-                        ++counter;
+                        //++counter;
                         _counters[address] = new CounterEntry
                         {
-                            Value = counter,
+                            Value = ignoreCache ? counter : counter + 1,
                             LastUpdatedTimeUtc = DateTime.UtcNow
                         };
 
-                        return counter;
+                        return ++counter;
                     }
                 }
                 else
                 {
-                    ++counter;
+                    //++counter;
                     _counters.Add(address, new CounterEntry
                     {
-                        Value = counter,
+                        Value = ignoreCache ? counter : counter + 1,
                         LastUpdatedTimeUtc = DateTime.UtcNow
                     });
 
-                    return counter;
+                    return ++counter;
                 }
             }
         }

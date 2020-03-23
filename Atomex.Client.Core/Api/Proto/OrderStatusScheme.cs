@@ -8,9 +8,6 @@ namespace Atomex.Api.Proto
         public OrderStatusScheme(byte messageId)
             : base(messageId)
         {
-            Model.Add(typeof(Symbol), true)
-                .AddRequired(nameof(Symbol.Name));
-
             Model.Add(typeof(Order), true)
                 .AddRequired(nameof(Order.Id))
                 .AddRequired(nameof(Order.Symbol))

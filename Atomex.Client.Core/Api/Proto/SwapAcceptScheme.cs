@@ -8,9 +8,6 @@ namespace Atomex.Api.Proto
         public SwapAcceptScheme(byte messageId)
             : base(messageId)
         {
-            Model.Add(typeof(Symbol), true)
-                .AddRequired(nameof(Symbol.Name));
-
             Model.Add(typeof(Swap), true)
                 .AddRequired(nameof(Swap.Id))
                 .AddRequired(nameof(Swap.Symbol))

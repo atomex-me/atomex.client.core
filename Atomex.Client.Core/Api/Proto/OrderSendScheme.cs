@@ -1,21 +1,13 @@
-﻿using Atomex.Abstract;
-using Atomex.Common.Proto;
+﻿using Atomex.Common.Proto;
 using Atomex.Core;
 
 namespace Atomex.Api.Proto
 {
     public class OrderSendScheme : ProtoScheme<Order>
     {
-        public OrderSendScheme(byte messageId, ICurrencies currencies)
+        public OrderSendScheme(byte messageId)
             : base(messageId)
         {
-            Model.Add(typeof(Currency), true)
-                .AddCurrencies(currencies)
-                .AddRequired(nameof(Currency.Name));         
-
-            Model.Add(typeof(Symbol), true)
-                .AddRequired(nameof(Symbol.Name));
-
             Model.Add(typeof(WalletAddress), true)
                 .AddRequired(nameof(WalletAddress.Address))
                 .AddRequired(nameof(WalletAddress.Currency))

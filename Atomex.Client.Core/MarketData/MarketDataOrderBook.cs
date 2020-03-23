@@ -10,7 +10,7 @@ namespace Atomex.MarketData
     {
         public const int DefaultSnapshotSize = 20;
 
-        private readonly Symbol _symbol;
+        private readonly string _symbol;
         private long _lastTransactionId;
         public readonly SortedDictionary<decimal, Entry> Buys;
         public readonly SortedDictionary<decimal, Entry> Sells;
@@ -18,7 +18,7 @@ namespace Atomex.MarketData
         public bool IsReady { get; set; }
         public object SyncRoot { get; } = new object();
 
-        public MarketDataOrderBook(Symbol symbol)
+        public MarketDataOrderBook(string symbol)
         {
             _symbol = symbol ?? throw new ArgumentNullException(nameof(symbol));
             _lastTransactionId = 0;
@@ -28,26 +28,27 @@ namespace Atomex.MarketData
 
             IsReady = false;
         }
-        
-        //public MarketDataOrderBook()
-        //{
-        //    _lastTransactionId = 0;
 
-        //    Buys = new SortedDictionary<decimal, Entry>(new DescendingComparer<decimal>());
-        //    Sells = new SortedDictionary<decimal, Entry>();
+        public MarketDataOrderBook()
+        {
+            _lastTransactionId = 0;
 
-        //    IsReady = false;
-        //}
+            Buys = new SortedDictionary<decimal, Entry>(new DescendingComparer<decimal>());
+            Sells = new SortedDictionary<decimal, Entry>();
+
+            IsReady = false;
+        }
 
         public Quote TopOfBook()
         {
-            return new Quote
+            var quote = new Quote
             {
-                SymbolId = _symbol.Id,
+                Symbol = _symbol,
                 TimeStamp = DateTime.UtcNow, // todo: change to last update time
                 Bid = Buys.Count != 0 ? Buys.First().Key : 0,
                 Ask = Sells.Count != 0 ? Sells.First().Key : decimal.MaxValue
             };
+            return quote;
         }
 
         public bool IsValid()
@@ -87,9 +88,13 @@ namespace Atomex.MarketData
             Sells.Clear();
         }
 
-        public decimal EstimatedDealPrice(Side side, decimal amount)
+        public (decimal, decimal) EstimateOrderPrices(
+            Side side,
+            decimal amount,
+            decimal amountDigitsMultiplier,
+            decimal qtyDigitsMultiplier)
         {
-            var amountToFill = amount;
+            var requiredAmount = amount;
 
             lock (SyncRoot)
             {
@@ -98,21 +103,34 @@ namespace Atomex.MarketData
                     : Buys;
 
                 if (amount == 0)
-                    return book.Any() ? book.First().Key : 0;
+                    return book.Any()
+                        ? (book.First().Key, book.First().Key)
+                        : (0m, 0m);
+
+                var totalUsedQuoteAmount = 0m;
+                var totalUsedQty = 0m;
 
                 foreach (var entryPair in book)
                 {
                     var qty = entryPair.Value.Qty();
-                    var availableAmount = AmountHelper.QtyToAmount(side, qty, entryPair.Key);
+                    var price = entryPair.Key;
 
-                    amountToFill -= availableAmount;
+                    var availableAmount = AmountHelper.QtyToAmount(side, qty, price, amountDigitsMultiplier);
 
-                    if (amountToFill <= 0)
-                        return entryPair.Key;
+                    var usedAmount = Math.Min(requiredAmount, availableAmount);
+                    var usedQty = AmountHelper.AmountToQty(side, usedAmount, price, qtyDigitsMultiplier);
+
+                    totalUsedQuoteAmount += usedQty * price;
+                    totalUsedQty += usedQty;
+
+                    requiredAmount -= usedAmount;
+
+                    if (requiredAmount <= 0)
+                        return (price, totalUsedQuoteAmount / totalUsedQty);
                 }
             }
 
-            return 0m;
+            return (0m, 0m);
         }
 
         public decimal AverageDealBasePrice(Side side, decimal qty)
@@ -128,16 +146,16 @@ namespace Atomex.MarketData
                 if (qty == 0)
                     return book.Any() ? book.First().Key : 0;
 
-                decimal baseQty = 0;
+                decimal quoteQty = 0;
 
                 foreach (var entryPair in book)
                 {
                     var availiableQty = entryPair.Value.Qty();
 
                     if (availiableQty >= qtyToFill)
-                        return (baseQty + qtyToFill * entryPair.Key) / qty;
+                        return (quoteQty + qtyToFill * entryPair.Key) / qty;
 
-                    baseQty += availiableQty * entryPair.Key;
+                    quoteQty += availiableQty * entryPair.Key;
 
                     qtyToFill -= availiableQty;
                 }
@@ -163,21 +181,21 @@ namespace Atomex.MarketData
 
                 foreach (var entryPair in book)
                 {
-                    var availiableBaseQty = entryPair.Value.Qty() * entryPair.Key;
+                    var availiableQuoteQty = entryPair.Value.Qty() * entryPair.Key;
 
-                    if (availiableBaseQty >= baseQtyToFill)
+                    if (availiableQuoteQty >= baseQtyToFill)
                         return baseQty / (qty + baseQtyToFill / entryPair.Key);
 
-                    qty += availiableBaseQty / entryPair.Key;
+                    qty += availiableQuoteQty / entryPair.Key;
 
-                    baseQtyToFill -= availiableBaseQty;
+                    baseQtyToFill -= availiableQuoteQty;
                 }
             }
 
             return 0m;
         }
 
-        public decimal EstimateMaxAmount(Side side)
+        public decimal EstimateMaxAmount(Side side, long digitsMultiplier)
         {
             var amount = 0m;
 
@@ -189,10 +207,7 @@ namespace Atomex.MarketData
 
                 foreach (var entryPair in book)
                 {
-                    amount += AmountHelper.QtyToAmount(
-                        side: side,
-                        qty: entryPair.Value.Qty(),
-                        price: entryPair.Key);
+                    amount += AmountHelper.QtyToAmount(side, entryPair.Value.Qty(), entryPair.Key, digitsMultiplier);
                 }
             }
 

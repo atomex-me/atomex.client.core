@@ -45,10 +45,10 @@ namespace Atomex.Client.Core.Tests
 
             var tempCurrencies = new Currencies(Common.CurrenciesConfiguration.GetSection(Atomex.Core.Network.TestNet.ToString()));
 
-            var bitcoin = tempCurrencies.Get<Bitcoin>();
+            var bitcoin = tempCurrencies.Get<Bitcoin>("BTC");
             bitcoin.BlockchainApi = bitcoinApi.Object;
 
-            var litecoin = tempCurrencies.Get<Litecoin>();
+            var litecoin = tempCurrencies.Get<Litecoin>("LTC");
             litecoin.BlockchainApi = litecoinApi.Object;
 
             var aliceBtcAddress = Common.Alice.PubKey
@@ -64,18 +64,18 @@ namespace Atomex.Client.Core.Tests
 
             var swap = new Swap
             {
-                Symbol = new Symbol { Base = litecoin, Quote = bitcoin },
+                Symbol = "LTC/BTC",
                 Side = Side.Buy,
                 Price = lastPrice,
                 Qty = lastQty
             };
 
-            var amount = (long)(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price) * bitcoin.DigitsMultiplier);
+            var amountInSatoshi = bitcoin.CoinToSatoshi(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, bitcoin.DigitsMultiplier));
 
             var (tx, redeemScript) = await new BitcoinBasedSwapTransactionFactory()
                 .CreateSwapPaymentTxAsync(
                     currency: bitcoin,
-                    amount: amount,
+                    amount: amountInSatoshi,
                     fromWallets: new []{ aliceBtcAddress },
                     refundAddress: aliceBtcAddress,
                     toAddress: bobBtcAddress,

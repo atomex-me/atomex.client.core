@@ -39,5 +39,10 @@ namespace Atomex.Common
         {
             return new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, second: 0);
         }
+
+        public static DateTime FromHexString(this string hex)
+        {
+            return UnixStartTime.AddSeconds(Int32.Parse(hex, System.Globalization.NumberStyles.HexNumber));
+        }
     }
 }

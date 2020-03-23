@@ -1,11 +1,11 @@
-﻿using System.Text;
+﻿using System;
 using Org.BouncyCastle.Crypto.Digests;
 
 namespace Atomex.Cryptography
 {
-    public class Ripemd160 : Hash
+    public class Ripemd160
     {
-        public override byte[] ComputeHash(byte[] input, int offset, int count)
+        public static byte[] Compute(byte[] input, int offset, int count)
         {
             var ripemd160 = new RipeMD160Digest();
             var result = new byte[ripemd160.GetDigestSize()];
@@ -16,19 +16,23 @@ namespace Atomex.Cryptography
             return result;
         }
 
-        public static byte[] Compute(byte[] input, int offset, int count)
+        public static byte[] Compute(byte[] input) =>
+            Compute(input, 0, input.Length);
+
+        public static byte[] Compute(byte[] input, int offset, int count, int iterations)
         {
-            return new Ripemd160().ComputeHash(input, offset, count);
+            if (iterations <= 0)
+                throw new ArgumentException("Iterations count must be greater than zero", nameof(iterations));
+
+            var result = Compute(input, offset, count);
+
+            for (var i = 0; i < iterations - 1; ++i)
+                result = Compute(result);
+
+            return result;
         }
 
-        public static byte[] Compute(byte[] input)
-        {
-            return new Ripemd160().ComputeHash(input, 0, input.Length);
-        }
-
-        public static byte[] Compute(string input, Encoding encoding)
-        {
-            return new Ripemd160().ComputeHash(input, encoding);
-        }
+        public static byte[] Compute(byte[] input, int iterations) =>
+            Compute(input, 0, input.Length, iterations);
     }
 }

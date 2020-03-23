@@ -10,7 +10,7 @@ namespace Atomex.Api.Proto
             : base(messageId)
         {
             Model.Add(typeof(Quote), true)
-                .AddRequired(nameof(Quote.SymbolId))
+                .AddRequired(nameof(Quote.Symbol))
                 .AddRequired(nameof(Quote.TimeStamp))
                 .AddRequired(nameof(Quote.Bid))
                 .AddRequired(nameof(Quote.Ask));

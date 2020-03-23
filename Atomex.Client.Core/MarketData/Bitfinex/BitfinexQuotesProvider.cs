@@ -14,26 +14,44 @@ namespace Atomex.MarketData.Bitfinex
 {
     public class BitfinexQuotesProvider : QuotesProvider
     {
+        private readonly Dictionary<string, string> QuoteSymbols = new Dictionary<string, string>()
+        {
+            { "BTCUSD", "tBTCUSD" },
+            { "LTCUSD", "tLTCUSD" },
+            { "ETHUSD", "tETHUSD" },
+            { "XTZUSD", "tXTZUSD" },
+            { "USDTUSD", "tUSTUSD" },
+            { "FA12USD", "tBTCUSD" },
+            { "TZBTCUSD", "tBTCUSD" }
+        };
+
         public const string Usd = "USD";
-        public const string LtcBtc = "tLTCBTC";
-        public const string EthBtc = "tETHBTC";
-        public const string XtzBtc = "tXTZBTC";
+        //public const string LtcBtc = "tLTCBTC";
+        //public const string EthBtc = "tETHBTC";
+        //public const string XtzBtc = "tXTZBTC";
+        //public const string UsdtBtc = "tBTCUST";
+        //public const string UsdcBtc = "tBTCUDC";
 
         private string BaseUrl { get; } = "https://api.bitfinex.com/v2/";
 
-        public BitfinexQuotesProvider(params string[] symbols)
+        public BitfinexQuotesProvider(params string[] symbols) //todo: check before use
         {
+            //Quotes = symbols.ToDictionary(s => $"{Tickers[s.Split('/')[0]]}{Tickers[s.Split('/')[1]]}", s => new Quote());
             Quotes = symbols.ToDictionary(s => s, s => new Quote());
         }
 
         public BitfinexQuotesProvider(IEnumerable<Currency> currencies, string baseCurrency)
         {
-            Quotes = currencies.ToDictionary(currency => $"t{currency.Name}{baseCurrency}", currency => new Quote());
+            Quotes = currencies
+                .Select(c => QuoteSymbols[$"{c.Name}{baseCurrency}"])
+                .Distinct()
+                .ToDictionary(currency => currency, currency => new Quote());
         }
 
         public override Quote GetQuote(string currency, string baseCurrency)
         {
-            return Quotes.TryGetValue($"t{currency}{baseCurrency}", out var rate) ? rate : null;
+            //return Quotes.TryGetValue($"t{Tickers[currency]}{baseCurrency}", out var rate) ? rate : null;
+            return Quotes.TryGetValue(QuoteSymbols[$"{currency}{baseCurrency}"], out var rate) ? rate : null;
         }
 
         protected override async Task UpdateAsync(
@@ -45,7 +63,7 @@ namespace Atomex.MarketData.Bitfinex
 
             try
             {
-                var symbols = string.Join(",", Quotes.Keys);
+                var symbols = string.Join(",", Quotes.Select(q => q.Key));
 
                 var request = $"tickers?symbols={symbols}";
 

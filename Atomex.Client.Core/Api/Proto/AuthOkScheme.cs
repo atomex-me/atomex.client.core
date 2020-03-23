@@ -1,6 +1,4 @@
-﻿using Atomex.Core;
-
-namespace Atomex.Api.Proto
+﻿namespace Atomex.Api.Proto
 {
     public class AuthOkScheme : ProtoScheme<AuthOk>
     {

@@ -19,7 +19,8 @@ namespace Atomex.Wallet.Ethereum
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
         private EthereumAccount Account { get; }
-        private Currency Currency => Account.Currency;
+        private Currency Currency => Account.Currencies.GetByName(Account.Currency);
+
 
         public EthereumWalletScanner(EthereumAccount account)
         {
@@ -30,6 +31,8 @@ namespace Atomex.Wallet.Ethereum
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
+            var currency = Currency;
+
             var scanParams = new[]
             {
                 new {Chain = HdKeyStorage.NonHdKeysChain, LookAhead = 0},
@@ -60,7 +63,7 @@ namespace Atomex.Wallet.Ethereum
                     if (skipUsed)
                     {
                         var resolvedAddress = await Account
-                            .ResolveAddressAsync(walletAddress.Address, cancellationToken)
+                            .GetAddressAsync(walletAddress.Address, cancellationToken)
                             .ConfigureAwait(false);
 
                         if (resolvedAddress != null &&
@@ -78,12 +81,12 @@ namespace Atomex.Wallet.Ethereum
 
                     Log.Debug(
                         "Scan transactions for {@name} address {@chain}:{@index}:{@address}",
-                        Currency.Name,
+                        currency.Name,
                         param.Chain,
                         index,
                         walletAddress.Address);
 
-                    var txsResult = await ((IEthereumBlockchainApi)Currency.BlockchainApi)
+                    var txsResult = await ((IEthereumBlockchainApi)currency.BlockchainApi)
                         .TryGetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -160,11 +163,13 @@ namespace Atomex.Wallet.Ethereum
             string address,
             CancellationToken cancellationToken = default)
         {
+            var currency = Currency;
+
             Log.Debug("Scan transactions for {@currency} address {@address}",
-                Currency.Name,
+                currency.Name,
                 address);
 
-            var txsResult = await ((IEthereumBlockchainApi)Currency.BlockchainApi)
+            var txsResult = await ((IEthereumBlockchainApi)currency.BlockchainApi)
                 .TryGetTransactionsAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 

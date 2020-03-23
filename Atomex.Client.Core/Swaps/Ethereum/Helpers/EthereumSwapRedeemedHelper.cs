@@ -21,7 +21,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
                 Log.Debug("Ethereum: check redeem event");
 
                 var ethereum = (Atomex.Ethereum)currency;
-
+                  
                 var api = new EtherScanApi(ethereum);
 
                 var redeemEventsResult = await api

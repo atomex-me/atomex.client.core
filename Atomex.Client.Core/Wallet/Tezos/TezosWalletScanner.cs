@@ -19,7 +19,7 @@ namespace Atomex.Wallet.Tezos
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
         private TezosAccount Account { get; }
-        private Currency Currency => Account.Currency;
+        private Currency Currency => Account.Currencies.GetByName(Account.Currency);
 
         public TezosWalletScanner(TezosAccount account)
         {
@@ -30,6 +30,8 @@ namespace Atomex.Wallet.Tezos
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
+            var currency = Currency;
+
             var scanParams = new[]
             {
                 new {Chain = HdKeyStorage.NonHdKeysChain, LookAhead = 0},
@@ -59,12 +61,12 @@ namespace Atomex.Wallet.Tezos
 
                     Log.Debug(
                         "Scan transactions for {@name} address {@chain}:{@index}:{@address}",
-                        Currency.Name,
+                        currency.Name,
                         param.Chain,
                         index,
                         walletAddress.Address);
 
-                    var txsResult = await ((ITezosBlockchainApi) Currency.BlockchainApi)
+                    var txsResult = await ((ITezosBlockchainApi) currency.BlockchainApi)
                         .TryGetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
  

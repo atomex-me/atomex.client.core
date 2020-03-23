@@ -21,7 +21,7 @@ namespace Atomex.Swaps.BitcoinBased
             ITxOutputSource outputsSource)
         {
             var availableOutputs = (await outputsSource
-                .GetAvailableOutputsAsync(currency.Name, fromWallets)
+                .GetAvailableOutputsAsync(fromWallets)
                 .ConfigureAwait(false))
                 .ToList();
 

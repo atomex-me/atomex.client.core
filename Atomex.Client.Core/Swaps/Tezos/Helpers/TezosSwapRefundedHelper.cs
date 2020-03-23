@@ -51,7 +51,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                 {
                     foreach (var tx in txs)
                     {
-                        if (tx.To == contractAddress && tx.IsSwapRefund(swap.SecretHash))
+                        if (tx.To == contractAddress && IsSwapRefund(tx, swap.SecretHash))
                             return true;
 
                         if (tx.BlockInfo?.BlockTime == null)
@@ -105,6 +105,20 @@ namespace Atomex.Swaps.Tezos.Helpers
             }
 
             return new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for refund check");
+        }
+
+        public static bool IsSwapRefund(TezosTransaction tx, byte[] secretHash)
+        {
+            try
+            {
+                var secretHashBytes = Hex.FromString(tx.Params["value"]["args"][0]["args"][0]["bytes"].ToString());
+
+                return secretHashBytes.SequenceEqual(secretHash);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
     }
 }
