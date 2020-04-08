@@ -162,9 +162,9 @@
       "BlockchainApiBaseUri": "https://api.tzkt.io/v1/",
       "BlockchainRpcNodeUri": "https://rpc.tzkt.io/mainnet/",
       "BbApiUri": "https://api.baking-bad.org/",
-      "SwapContract": "",
+      "SwapContract": "KT1Ap287P1NzsnToSJdA4aqSNjPomRaHBZSr",
       "TokenContract": "KT1PWx2mnDueood7fEmfbBDKx1D9BAnnXitn",
-      "ViewContract": "",
+      "ViewContract": "KT1TgnUythoUoLKxCCEdR1VkjiiY5TmE7M7r",
       "TxExplorerUri": "https://tzkt.io/",
       "AddressExplorerUri": "https://tzkt.io/"
     }
