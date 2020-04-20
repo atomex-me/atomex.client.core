@@ -337,7 +337,8 @@ namespace Atomex.Blockchain.Tezos
                 return false;
             }
 
-            Fee = Operations[0]["fee"].Value<decimal>() / 1_000_000;
+            // Fee = Operations[0]["fee"].Value<decimal>() / 1_000_000;
+            Fee = Operations.Last["fee"].Value<decimal>() / 1_000_000;
             
             return true;
         }
