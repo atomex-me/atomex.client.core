@@ -161,13 +161,13 @@ namespace Atomex.Blockchain.Tezos
         {
             var token = _currency as TezosTokens.FA12;
 
-            var requestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transfer\"*{address}*";
+            var requestUri = $"tokens/{token.BcdNetwork}/{address}/transfers?size=10000"; // todo: use contract filter {token.TokenContractAddress}";
 
             var txsResult = await HttpHelper.GetAsyncResult(
-                    baseUri: _baseUri,
+                    baseUri: token.BcdApi,
                     requestUri: requestUri,
                     headers: _headers,
-                    responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)),
+                    responseHandler: (response, content) => ParseTokenTxs(JsonConvert.DeserializeObject<JObject>(content)),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -179,6 +179,31 @@ namespace Atomex.Blockchain.Tezos
 
             return new Result<IEnumerable<IBlockchainTransaction>>(txsResult.Value);
         }
+
+        //public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTokenTransactionsAsync(
+        //    string address,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    var token = _currency as TezosTokens.FA12;
+
+        //    var requestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transfer\"*{address}*";
+
+        //    var txsResult = await HttpHelper.GetAsyncResult(
+        //            baseUri: _baseUri,
+        //            requestUri: requestUri,
+        //            headers: _headers,
+        //            responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)),
+        //            cancellationToken: cancellationToken)
+        //        .ConfigureAwait(false);
+
+        //    if (txsResult == null)
+        //        return new Error(Errors.RequestError, $"Connection error while getting input transactions for address {address}");
+
+        //    if (txsResult.HasError)
+        //        return txsResult.Error;
+
+        //    return new Result<IEnumerable<IBlockchainTransaction>>(txsResult.Value);
+        //}
 
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
             string address,
@@ -284,16 +309,7 @@ namespace Atomex.Blockchain.Tezos
                 if (isToken && hasInternals)
                     continue;
 
-                var status = transaction["status"].Value<string>();
-
-                var state = status switch
-                {
-                    "applied" => BlockchainTransactionState.Confirmed,
-                    "backtracked" => BlockchainTransactionState.Failed,
-                    "skipped" => BlockchainTransactionState.Failed,
-                    "failed" => BlockchainTransactionState.Failed,
-                    _ => BlockchainTransactionState.Unknown
-                };
+                var state = StateFromStatus(transaction["status"].Value<string>());
 
                 var tx = new TezosTransaction()
                 {
@@ -345,10 +361,10 @@ namespace Atomex.Blockchain.Tezos
                     tx.From = transaction["sender"]?["address"]?.ToString();
                     tx.To = transaction["target"]?["address"]?.ToString();
                     tx.Amount = transaction["amount"].Value<decimal>();
-                }
+                //}
 
-                if (!isToken)
-                {
+                //if (!isToken)
+                //{
                     if (isInternal)
                     {
                         tx.InternalIndex = transaction["nonce"]?.Value<int>() ?? 0;
@@ -371,6 +387,64 @@ namespace Atomex.Blockchain.Tezos
 
             return result;
         }
+
+        private Result<IEnumerable<TezosTransaction>> ParseTokenTxs(JObject data)
+        {
+            var token = _currency as TezosTokens.FA12;
+
+            var result = new List<TezosTransaction>();
+
+            var transfers = data["transfers"] as JArray;
+
+            foreach (var transfer in transfers)
+            {
+                var tx = transfer as JObject;
+                var contract = tx["contract"].Value<string>();
+
+                if (!contract.Equals(token.TokenContractAddress, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var state = StateFromStatus(tx["status"].Value<string>());
+                var timeStamp = DateTime.SpecifyKind(DateTime.Parse(tx["timestamp"].ToString()), DateTimeKind.Utc);
+
+                result.Add(new TezosTransaction
+                {
+                    Id = tx["hash"].Value<string>(),
+                    Currency = _currency,
+                    State = state,
+                    Type = BlockchainTransactionType.Unknown,
+                    CreationTime = timeStamp,
+                    GasUsed = 0,
+                    Burn = 0,
+                    IsInternal = true,
+                    InternalIndex = 0,
+                    From = tx["from"].Value<string>(),
+                    To = tx["to"].Value<string>(),
+                    Amount = tx["amount"].Value<decimal>(),
+
+                    BlockInfo = new BlockInfo
+                    {
+                        Confirmations = state == BlockchainTransactionState.Failed ? 0 : 1,
+                        BlockHash = null,
+                        BlockHeight = tx["level"].Value<long>(),
+                        BlockTime = timeStamp,
+                        FirstSeen = timeStamp
+                    }
+                });
+            }
+
+            return result;
+        }
+
+        private BlockchainTransactionState StateFromStatus(string status) =>
+            status switch
+            {
+                "applied" => BlockchainTransactionState.Confirmed,
+                "backtracked" => BlockchainTransactionState.Failed,
+                "skipped" => BlockchainTransactionState.Failed,
+                "failed" => BlockchainTransactionState.Failed,
+                _ => BlockchainTransactionState.Unknown
+            };
 
         #region ITokenBlockchainApi
 

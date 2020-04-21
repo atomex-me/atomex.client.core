@@ -26,6 +26,8 @@ namespace Atomex.TezosTokens
 
         public string TokenContractAddress { get; private set; }
         public string ViewContractAddress { get; private set; }
+        public string BcdApi { get; private set; }
+        public string BcdNetwork { get; private set; }
 
         public FA12()
         {
@@ -116,6 +118,8 @@ namespace Atomex.TezosTokens
             BaseUri = configuration["BlockchainApiBaseUri"];
             RpcNodeUri = configuration["BlockchainRpcNodeUri"];
             BbApiUri = configuration["BbApiUri"];
+            BcdApi = configuration["BcdApi"];
+            BcdNetwork = configuration["BcdNetwork"];
 
             BlockchainApi = ResolveBlockchainApi(configuration, this);
             TxExplorerUri = configuration["TxExplorerUri"];
