@@ -54,6 +54,11 @@
       "Id": 11,
       "Name": "XTZ/TZBTC",
       "MinimumQty": 10
+    },
+    {
+      "Id": 12,
+      "Name": "TZBTC/USDT",
+      "MinimumQty": 0.001
     }
   ],
   "TestNet": [
