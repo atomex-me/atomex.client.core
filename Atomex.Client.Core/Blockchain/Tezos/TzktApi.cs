@@ -207,7 +207,7 @@ namespace Atomex.Blockchain.Tezos
 
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
             string address,
-            int attempts = 10,
+            int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
@@ -500,7 +500,7 @@ namespace Atomex.Blockchain.Tezos
             string address,
             string callingAddress,
             SecureBytes securePublicKey,
-            int attempts = 10,
+            int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {

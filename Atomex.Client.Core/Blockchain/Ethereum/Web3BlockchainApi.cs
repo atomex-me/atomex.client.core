@@ -74,7 +74,7 @@ namespace Atomex.Blockchain.Ethereum
 
         public async Task<Result<BigInteger>> TryGetTransactionCountAsync(
             string address,
-            int attempts = 10,
+            int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
@@ -135,7 +135,7 @@ namespace Atomex.Blockchain.Ethereum
 
         public Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
             string address,
-            int attempts = 10,
+            int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
