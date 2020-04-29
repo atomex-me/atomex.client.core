@@ -131,6 +131,7 @@
       "GetBalanceGasLimit": 240000,
       "GetBalanceStorageLimit": 0,
       "GetBalanceSize": 10000,
+      "GetAllowanceGasLimit": 240000,
       "TransferFee": 25000,
       "TransferGasLimit": 240000,
       "TransferStorageLimit": 350,
