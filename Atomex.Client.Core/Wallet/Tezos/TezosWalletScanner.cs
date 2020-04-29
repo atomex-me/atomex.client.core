@@ -19,11 +19,14 @@ namespace Atomex.Wallet.Tezos
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
         private TezosAccount Account { get; }
+        private TezosAccount TezosAccount { get; }
         private Currency Currency => Account.Currencies.GetByName(Account.Currency);
 
-        public TezosWalletScanner(TezosAccount account)
+        public TezosWalletScanner(TezosAccount account, TezosAccount tezosAccount = null)
         {
             Account = account ?? throw new ArgumentNullException(nameof(account));
+            if (tezosAccount != null)
+                TezosAccount = tezosAccount;
         }
 
         public async Task ScanAsync(
@@ -66,26 +69,25 @@ namespace Atomex.Wallet.Tezos
                         index,
                         walletAddress.Address);
 
-                    var txsResult = await ((ITezosBlockchainApi) currency.BlockchainApi)
-                        .TryGetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
+                    var addressTxs = await ScanAddressAsync(walletAddress.Address, cancellationToken)
                         .ConfigureAwait(false);
- 
-                    if (txsResult.HasError)
-                    {
-                        Log.Error(
-                            "Error while scan address transactions for {@address} with code {@code} and description {@description}", 
-                            walletAddress.Address,
-                            txsResult.Error.Code,
-                            txsResult.Error.Description);
-                        break;
-                    }
-
-                    var addressTxs = txsResult.Value
-                        ?.Cast<TezosTransaction>()
-                        .ToList();
 
                     if (addressTxs == null || !addressTxs.Any()) // address without activity
                     {
+                        if (TezosAccount != null) // check if address had XTZ activity to check tokens deeper
+                        {
+                            var tezosAddress = await TezosAccount
+                                .GetAddressAsync(walletAddress.Address, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            if (tezosAddress != null && tezosAddress.HasActivity)
+                            {
+                                freeKeysCount = 0;
+                                index++;
+                                continue;
+                            }
+                        }
+
                         freeKeysCount++;
 
                         if (freeKeysCount >= param.LookAhead)
@@ -141,24 +143,8 @@ namespace Atomex.Wallet.Tezos
         {
             Log.Debug("Scan transactions for address {@address}", address);
 
-            var txsResult = await ((ITezosBlockchainApi)Currency.BlockchainApi)
-                .TryGetTransactionsAsync(address, cancellationToken: cancellationToken)
+            var addressTxs = await ScanAddressAsync(address, cancellationToken)
                 .ConfigureAwait(false);
-
-            if (txsResult.HasError)
-            {
-                Log.Error(
-                    "Error while scan address transactions for {@address} with code {@code} and description {@description}",
-                    address,
-                    txsResult.Error.Code,
-                    txsResult.Error.Description);
-
-                return;
-            }
-
-            var addressTxs = txsResult.Value
-                ?.Cast<TezosTransaction>()
-                .ToList();
 
             if (addressTxs == null || !addressTxs.Any()) // address without activity
                 return;
@@ -197,6 +183,33 @@ namespace Atomex.Wallet.Tezos
             await Account
                 .UpdateBalanceAsync(address, cancellationToken)
                 .ConfigureAwait(false);
+        }
+
+        private async Task<IEnumerable<TezosTransaction>> ScanAddressAsync(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            var currency = Currency;
+
+            var txsResult = await ((ITezosBlockchainApi)currency.BlockchainApi)
+                .TryGetTransactionsAsync(address, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (txsResult.HasError)
+            {
+                Log.Error(
+                    "Error while scan address transactions for {@address} with code {@code} and description {@description}",
+                    address,
+                    txsResult.Error.Code,
+                    txsResult.Error.Description);
+                return null;
+            }
+
+            var addressTxs = txsResult.Value
+                ?.Cast<TezosTransaction>()
+                .ToList();
+
+            return await Task.FromResult<IEnumerable<TezosTransaction>>(addressTxs);
         }
 
         private async Task UpsertTransactionsAsync(IEnumerable<TezosTransaction> transactions)

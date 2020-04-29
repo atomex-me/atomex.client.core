@@ -49,7 +49,7 @@
       "BlockchainApiBaseUri": "http://api.etherscan.io/",
       "ERC20Contract": "0xdac17f958d2ee523a2206206994597c13d831ec7",
       "ERC20ContractBlockNumber": 4634748,
-      "SwapContract": "0xAc5881D77Db9340c94F53300736a9cf9e61fA25E",
+      "SwapContract": "0xac5881d77db9340c94f53300736a9cf9e61fa25e",
       "SwapContractBlockNumber": 9691059,
       "TxExplorerUri": "https://etherscan.io/tx/",
       "AddressExplorerUri": "https://etherscan.io/address/"
@@ -221,7 +221,7 @@
       "BlockchainApiBaseUri": "http://api-ropsten.etherscan.io/",
       "ERC20Contract": "0x6f2dfa047e202be4ec2c62cd9852d4640d1e70ba",
       "ERC20ContractBlockNumber": 6000466,
-      "SwapContract": "0x189737A901f57Fc52640F9B96E61019981C6c1eb",
+      "SwapContract": "0x189737a901f57fc52640f9b96e61019981c6c1eb",
       "SwapContractBlockNumber": 6000466,
       "TxExplorerUri": "https://ropsten.etherscan.io/tx/",
       "AddressExplorerUri": "https://ropsten.etherscan.io/address/"
@@ -303,6 +303,7 @@
       "GetBalanceGasLimit": 240000,
       "GetBalanceStorageLimit": 0,
       "GetBalanceSize": 10000,
+      "GetAllowanceGasLimit": 240000,
       "TransferFee": 25000,
       "TransferGasLimit": 240000,
       "TransferStorageLimit": 350,

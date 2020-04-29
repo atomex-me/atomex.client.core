@@ -21,7 +21,9 @@ namespace Atomex.Blockchain.Abstract
         SwapPayment = 0x04,
         SwapRefund = 0x08,
         SwapRedeem = 0x10,
-        TokenApprove = 0x20
+        TokenApprove = 0x20,
+        TokenCall = 0x40,
+        SwapCall = 0x80,
     }
 
     public interface IBlockchainTransaction

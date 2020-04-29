@@ -26,5 +26,21 @@ namespace Atomex.Blockchain.Abstract
             int attempts = 10,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);
+
+        Task<Result<decimal>> GetTokenAllowanceAsync(
+            string holderAddress,
+            string spenderAddress,
+            string callingAddress,
+            SecureBytes securePublicKey,
+            CancellationToken cancellationToken = default);
+
+        Task<Result<decimal>> TryGetTokenAllowanceAsync(
+            string holderAddress,
+            string spenderAddress,
+            string callingAddress,
+            SecureBytes securePublicKey,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default);
     }
 }

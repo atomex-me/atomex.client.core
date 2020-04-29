@@ -4,10 +4,13 @@ using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Ethereum.ERC20;
 using Atomex.Common;
 using Atomex.Core;
+using Nethereum.Contracts;
 using Nethereum.Signer;
 using Nethereum.Web3;
+//using Nethereum.StandardTokenEIP20;
 
 namespace Atomex.Blockchain.Ethereum
 {
@@ -51,6 +54,38 @@ namespace Atomex.Blockchain.Ethereum
             }
         }
 
+        public async Task<Result<decimal>> GetERC20AllowanceAsync(
+            EthereumTokens.ERC20 erc20,
+            string tokenAddress,
+            FunctionMessage allowanceMessage,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var web3 = new Web3(_uri);
+
+                if (!(allowanceMessage is ERC20AllowanceFunctionMessage allowMes))
+                    throw new NotSupportedException("Not supported message type");
+
+                //var tokenService = new StandardTokenService(web3, contractAddress);
+                //var allowance = await tokenService.AllowanceQueryAsync(allowMes.Owner, allowMes.Spender)
+                //    .ConfigureAwait(false);
+
+                var contractHandler = web3.Eth.GetContractHandler(tokenAddress);
+
+                var result = await contractHandler.QueryAsync<ERC20AllowanceFunctionMessage, BigInteger>(allowMes)
+                    .ConfigureAwait(false);
+
+                return result != null
+                    ? erc20.TokenDigitsToTokens(result)
+                    : 0;
+            }
+            catch (Exception e)
+            {
+                return new Error(Errors.RequestError, e.Message);
+            }
+        }
+        
         public async Task<Result<BigInteger>> GetTransactionCountAsync(
             string address,
             CancellationToken cancellationToken = default)

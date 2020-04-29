@@ -8,6 +8,7 @@ using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 using Atomex.Blockchain.Ethereum.ERC20;
 using Serilog;
+using static Atomex.Blockchain.Ethereum.EtherScanApi;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -91,7 +92,6 @@ namespace Atomex.Wallet.Ethereum
                         index++;
                         continue;
                     }
-                        
 
                     Log.Debug(
                         "Scan transactions for {@name} address {@chain}:{@index}:{@address}",
@@ -100,49 +100,7 @@ namespace Atomex.Wallet.Ethereum
                         index,
                         walletAddress.Address);
 
-                    var OutEventsResult = await api
-                        .GetContractEventsAsync(
-                            address: currency.ERC20ContractAddress,
-                            fromBlock: currency.SwapContractBlockNumber,
-                            toBlock: ulong.MaxValue,
-                            topic0: EventSignatureExtractor.GetSignatureHash<ERC20TransferEventDTO>(),
-                            topic1: "0x000000000000000000000000" + walletAddress.Address.Substring(2),
-                            topic2: null,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (OutEventsResult.HasError)
-                    {
-                        Log.Error(
-                            "Error while scan address transactions for {@address} with code {@code} and description {@description}",
-                            walletAddress.Address,
-                            OutEventsResult.Error.Code,
-                            OutEventsResult.Error.Description);
-                        break;
-                    }
-
-                    var InEventsResult = await api
-                        .GetContractEventsAsync(
-                            address: currency.ERC20ContractAddress,
-                            fromBlock: currency.SwapContractBlockNumber,
-                            toBlock: ulong.MaxValue,
-                            topic0: EventSignatureExtractor.GetSignatureHash<ERC20TransferEventDTO>(),
-                            topic1: null,
-                            topic2: "0x000000000000000000000000" + walletAddress.Address.Substring(2),
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (InEventsResult.HasError)
-                    {
-                        Log.Error(
-                            "Error while scan address transactions for {@address} with code {@code} and description {@description}",
-                            walletAddress.Address,
-                            InEventsResult.Error.Code,
-                            InEventsResult.Error.Description);
-                        break;
-                    }
-
-                    var events = OutEventsResult.Value?.ToList().Concat(InEventsResult.Value?.ToList());
+                    var events = await GetERC20EventsAsync(walletAddress.Address, cancellationToken);
 
                     if (events == null || !events.Any())
                     {
@@ -160,11 +118,15 @@ namespace Atomex.Wallet.Ethereum
 
                         foreach (var ev in events)
                         {
-                            var transferEvent = ev.ParseERC20TransferEvent();
+                            var tx = new EthereumTransaction();
 
-                            var tx = ev.TransformTransferEvent(currency, lastBlockNumber);
+                            if (ev.IsERC20ApprovalEvent())
+                                tx = ev.TransformApprovalEvent(currency, lastBlockNumber);
+                            else if (ev.IsERC20TransferEvent())
+                                tx = ev.TransformTransferEvent(walletAddress.Address, currency, lastBlockNumber);
 
-                            txs.Add(tx);
+                            if (tx != null)
+                                txs.Add(tx);
                         }
                     }
 
@@ -204,61 +166,21 @@ namespace Atomex.Wallet.Ethereum
                     currency.Name,
                     ethereumAddress.Address);
 
-                    var OutEventsResult = await api
-                    .GetContractEventsAsync(
-                        address: currency.ERC20ContractAddress,
-                        fromBlock: currency.SwapContractBlockNumber,
-                        toBlock: ulong.MaxValue,
-                        topic0: EventSignatureExtractor.GetSignatureHash<ERC20TransferEventDTO>(),
-                        topic1: "0x000000000000000000000000" + ethereumAddress.Address.Substring(2),
-                        topic2: null,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
+                var events = await GetERC20EventsAsync(ethereumAddress.Address, cancellationToken);
 
-                if (OutEventsResult.HasError)
-                {
-                    Log.Error(
-                        "Error while scan address transactions for {@address} with code {@code} and description {@description}",
-                        ethereumAddress.Address,
-                        OutEventsResult.Error.Code,
-                        OutEventsResult.Error.Description);
-                    break;
-                }
-
-                var InEventsResult = await api
-                    .GetContractEventsAsync(
-                        address: currency.ERC20ContractAddress,
-                        fromBlock: currency.SwapContractBlockNumber,
-                        toBlock: ulong.MaxValue,
-                        topic0: EventSignatureExtractor.GetSignatureHash<ERC20TransferEventDTO>(),
-                        topic1: null,
-                        topic2: "0x000000000000000000000000" + ethereumAddress.Address.Substring(2),
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (InEventsResult.HasError)
-                {
-                    Log.Error(
-                        "Error while scan address transactions for {@address} with code {@code} and description {@description}",
-                        ethereumAddress.Address,
-                        InEventsResult.Error.Code,
-                        InEventsResult.Error.Description);
-                    break;
-                }
-
-                var events = OutEventsResult.Value?
-                    .ToList()
-                    .Concat(InEventsResult.Value?.ToList());
-
-                if (events.Any())
+                if (events != null && events.Any())
                 {
                     foreach (var ev in events)
                     {
-                        var transferEvent = ev.ParseERC20TransferEvent();
+                        var tx = new EthereumTransaction();
 
-                        var tx = ev.TransformTransferEvent(currency, blockNumber);
+                        if (ev.IsERC20ApprovalEvent())
+                            tx = ev.TransformApprovalEvent(currency, blockNumber);
+                        else if (ev.IsERC20TransferEvent())
+                            tx = ev.TransformTransferEvent(ethereumAddress.Address, currency, blockNumber);
 
-                        txs.Add(tx);
+                        if (tx != null)
+                            txs.Add(tx);
                     }
                 }
             }
@@ -306,6 +228,61 @@ namespace Atomex.Wallet.Ethereum
                 return;
             }
 
+            var events = await GetERC20EventsAsync(address, cancellationToken);
+
+            if (events == null || !events.Any()) // address without activity
+                return;
+
+            foreach (var ev in events)
+            {
+                var tx = new EthereumTransaction();
+    
+                if (ev.IsERC20ApprovalEvent())
+                    tx = ev.TransformApprovalEvent(currency, lastBlockNumber);
+                else if (ev.IsERC20TransferEvent())
+                    tx = ev.TransformTransferEvent(address, currency, lastBlockNumber);
+
+                if (tx != null)
+                    txs.Add(tx);
+            }
+
+            if (txs.Any())
+                await UpsertTransactionsAsync(txs)
+                    .ConfigureAwait(false);
+
+            await Account
+                .UpdateBalanceAsync(address: address, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        private async Task<List<ContractEvent>> GetERC20EventsAsync(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            var currency = Currency;
+            var api = new EtherScanApi(currency);
+
+            var ApproveEventsResult = await api
+                .GetContractEventsAsync(
+                    address: currency.ERC20ContractAddress,
+                    fromBlock: currency.SwapContractBlockNumber,
+                    toBlock: ulong.MaxValue,
+                    topic0: EventSignatureExtractor.GetSignatureHash<ERC20ApprovalEventDTO>(),
+                    topic1: "0x000000000000000000000000" + address.Substring(2),
+                    topic2: "0x000000000000000000000000" + currency.SwapContractAddress.Substring(2),
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (ApproveEventsResult.HasError)
+            {
+                Log.Error(
+                    "Error while scan address transactions for {@address} with code {@code} and description {@description}",
+                    address,
+                    ApproveEventsResult.Error.Code,
+                    ApproveEventsResult.Error.Description);
+                return null;
+            }
+
             var OutEventsResult = await api
                 .GetContractEventsAsync(
                     address: currency.ERC20ContractAddress,
@@ -324,7 +301,7 @@ namespace Atomex.Wallet.Ethereum
                     address,
                     OutEventsResult.Error.Code,
                     OutEventsResult.Error.Description);
-                return;
+                return null;
             }
 
             var InEventsResult = await api
@@ -345,31 +322,15 @@ namespace Atomex.Wallet.Ethereum
                     address,
                     InEventsResult.Error.Code,
                     InEventsResult.Error.Description);
-                return;
+                return null;
             }
 
-            var events = OutEventsResult.Value?.ToList().Concat(InEventsResult.Value?.ToList());
+            var events = ApproveEventsResult.Value?.Concat(OutEventsResult.Value?.Concat(InEventsResult.Value)).ToList();
 
             if (events == null || !events.Any()) // address without activity
-                return;
+                return null;
 
-            foreach (var ev in events)
-            {
-                var transferEvent = ev.ParseERC20TransferEvent();
-
-                var tx = ev.TransformTransferEvent(currency, lastBlockNumber);
-
-                if (tx.From == address || tx.To == address)
-                    txs.Add(tx);
-            }
-
-            if (txs.Any())
-                await UpsertTransactionsAsync(txs)
-                    .ConfigureAwait(false);
-
-            await Account
-                .UpdateBalanceAsync(address: address, cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+            return events;
         }
 
         private async Task UpsertTransactionsAsync(IEnumerable<EthereumTransaction> transactions)

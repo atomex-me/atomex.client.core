@@ -24,7 +24,7 @@ namespace Atomex.Subsystems
 {
     public class WebSocketAtomexClient : IAtomexClient
     {
-        protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(20 * 60);
+        protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(24 * 60);
 
         public event EventHandler<TerminalServiceEventArgs> ServiceConnected;
         public event EventHandler<TerminalServiceEventArgs> ServiceDisconnected;
@@ -450,9 +450,9 @@ namespace Atomex.Subsystems
                     if (result.HasError) // todo: additional reaction
                         break;
 
-                    if (result.Value.IsConfirmed)
+                    if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed)
                     {
-                        TransactionConfirmedHandler(result.Value.Transaction, cancellationToken);
+                        TransactionProcessedHandler(result.Value.Transaction, cancellationToken);
                         break;
                     }
 
@@ -462,7 +462,7 @@ namespace Atomex.Subsystems
             }, _cts.Token);
         }
 
-        private async void TransactionConfirmedHandler(
+        private async void TransactionProcessedHandler(
             IBlockchainTransaction tx,
             CancellationToken cancellationToken)
         {
@@ -478,11 +478,11 @@ namespace Atomex.Subsystems
             }
             catch (OperationCanceledException)
             {
-                Log.Debug("Transaction confirmation handler task canceled.");
+                Log.Debug("Transaction processed handler task canceled.");
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error in transaction confirmed handler");
+                Log.Error(e, "Error in transaction processed handler");
             }
         }
 

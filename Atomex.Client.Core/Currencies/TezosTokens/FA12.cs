@@ -13,6 +13,12 @@ namespace Atomex.TezosTokens
         public decimal GetBalanceStorageLimit { get; private set; }
         public decimal GetBalanceSize { get; private set; }
 
+        public decimal GetAllowanceFee { get; private set; }
+        public decimal GetAllowanceGasLimit { get; private set; }
+        public decimal GetAllowanceStorageLimit { get; private set; }
+        public decimal GetAllowanceSize { get; private set; }
+
+
         public decimal TransferFee { get; private set; }
         public decimal TransferGasLimit { get; private set; }
         public decimal TransferStorageLimit { get; private set; }
@@ -75,6 +81,11 @@ namespace Atomex.TezosTokens
             GetBalanceStorageLimit = decimal.Parse(configuration[nameof(GetBalanceStorageLimit)], CultureInfo.InvariantCulture);
             GetBalanceSize = decimal.Parse(configuration[nameof(GetBalanceSize)], CultureInfo.InvariantCulture);
             GetBalanceFee = MinimalFee + (GetBalanceGasLimit + GasReserve) * MinimalNanotezPerGasUnit + GetBalanceSize * MinimalNanotezPerByte + 1;
+
+            GetAllowanceGasLimit = decimal.Parse(configuration[nameof(GetAllowanceGasLimit)], CultureInfo.InvariantCulture);
+            //GetAllowanceStorageLimit = decimal.Parse(configuration[nameof(GetAllowanceStorageLimit)], CultureInfo.InvariantCulture);
+            //GetAllowanceSize = decimal.Parse(configuration[nameof(GetAllowanceSize)], CultureInfo.InvariantCulture);
+            //GetAllowanceFee = MinimalFee + (GetAllowanceGasLimit + GasReserve) * MinimalNanotezPerGasUnit + GetAllowanceSize * MinimalNanotezPerByte + 1;
 
             TransferGasLimit = decimal.Parse(configuration[nameof(TransferGasLimit)], CultureInfo.InvariantCulture);
             TransferStorageLimit = decimal.Parse(configuration[nameof(TransferStorageLimit)], CultureInfo.InvariantCulture);

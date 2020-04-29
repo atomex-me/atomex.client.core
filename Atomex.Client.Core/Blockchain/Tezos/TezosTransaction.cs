@@ -46,6 +46,40 @@ namespace Atomex.Blockchain.Tezos
 
         public List<TezosTransaction> InternalTxs { get; set; }
 
+        public TezosTransaction Clone()
+        {
+            var resTx = new TezosTransaction()
+            {
+                Id = this.Id,
+                Currency = this.Currency,
+                State = this.State,
+                Type = this.Type,
+                CreationTime = this.CreationTime,
+
+                From = this.From,
+                To = this.To,
+                Amount = this.Amount,
+                Fee = this.Fee,
+                GasLimit = this.GasLimit,
+                GasUsed = this.GasUsed,
+                StorageLimit = this.StorageLimit,
+                Burn = this.Burn,
+
+                Params = this.Params,
+                IsInternal = this.IsInternal,
+                InternalIndex = this.InternalIndex,
+                InternalTxs = new List<TezosTransaction>(),
+
+                BlockInfo = (BlockInfo)(this.BlockInfo?.Clone() ?? null)
+            };
+
+            if (this.InternalTxs != null)
+                foreach (var intTx in this.InternalTxs)
+                    resTx.InternalTxs.Add(intTx.Clone());
+
+            return resTx;
+        }
+
         public async Task FillOperationsAsync(
             JObject head,
             SecureBytes securePublicKey,
@@ -158,6 +192,8 @@ namespace Atomex.Blockchain.Tezos
                 Log.Error("Transaction autofilling error");
                 return false;
             }
+
+            // todo: update Fee, GasLimit, StorageLimit
 
             var forgedOpGroup = await rpc
                 .ForgeOperations(Head, Operations)

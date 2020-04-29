@@ -48,10 +48,10 @@ namespace Atomex.Blockchain.Helpers
 
                 if (txResult != null && txResult.HasError)
                 {
-                    if (txResult.Error.Code == (int) HttpStatusCode.NotFound ||
-                        txResult.Error.Code == (int) HttpStatusCode.GatewayTimeout ||
-                        txResult.Error.Code == (int) HttpStatusCode.ServiceUnavailable ||
-                        txResult.Error.Code == (int) HttpStatusCode.InternalServerError ||
+                    if (txResult.Error.Code == (int)HttpStatusCode.NotFound ||
+                        txResult.Error.Code == (int)HttpStatusCode.GatewayTimeout ||
+                        txResult.Error.Code == (int)HttpStatusCode.ServiceUnavailable ||
+                        txResult.Error.Code == (int)HttpStatusCode.InternalServerError ||
                         txResult.Error.Code == HttpHelper.SslHandshakeFailed ||
                         txResult.Error.Code == Errors.RequestError)
                         return new ConfirmationCheckResult(false, null);
@@ -59,13 +59,16 @@ namespace Atomex.Blockchain.Helpers
                     Log.Error("Error while get {@currency} transaction {@txId}. Code: {@code}. Description: {@desc}",
                         currency.Name,
                         txId,
-                        txResult.Error.Code, 
+                        txResult.Error.Code,
                         txResult.Error.Description);
 
                     return txResult.Error;
                 }
 
                 var tx = txResult.Value;
+
+                if (tx != null && tx.State == BlockchainTransactionState.Failed)
+                    return new ConfirmationCheckResult(false, tx);
 
                 if (tx == null || tx.BlockInfo == null || tx.BlockInfo.Confirmations < NumberOfConfirmations)
                     return new ConfirmationCheckResult(false, null);
