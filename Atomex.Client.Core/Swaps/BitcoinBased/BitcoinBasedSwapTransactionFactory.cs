@@ -161,7 +161,8 @@ namespace Atomex.Swaps.BitcoinBased
             IBitcoinBasedTransaction paymentTx,
             long amount,
             string redeemAddress,
-            byte[] redeemScript)
+            byte[] redeemScript,
+            uint sequenceNumber = 0)
         {
             var currency = (BitcoinBasedCurrency)paymentTx.Currency;
 
@@ -195,6 +196,9 @@ namespace Atomex.Swaps.BitcoinBased
                 amount: amount - fee,
                 fee: fee,
                 lockTime: DateTimeOffset.MinValue);
+
+            if (sequenceNumber > 0)
+                tx.SetSequenceNumber(sequenceNumber);
 
             return Task.FromResult(tx);
         }

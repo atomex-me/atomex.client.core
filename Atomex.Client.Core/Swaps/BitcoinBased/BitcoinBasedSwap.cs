@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Helpers;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
@@ -13,6 +14,7 @@ using Atomex.Swaps.BitcoinBased.Helpers;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet;
 using Atomex.Wallet.BitcoinBased;
+using NBitcoin;
 using Serilog;
 
 namespace Atomex.Swaps.BitcoinBased
@@ -131,18 +133,58 @@ namespace Atomex.Swaps.BitcoinBased
             Swap swap,
             CancellationToken cancellationToken = default)
         {
+            var currency = Currencies.GetByName(swap.PurchasedCurrency);
+
+            var needReplaceTx= false;
+
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast))
             {
                 // redeem already broadcast
-                TrackTransactionConfirmationAsync(
-                        swap: swap,
-                        currency: Currencies.GetByName(swap.PurchasedCurrency),
+                var result = await currency
+                    .IsTransactionConfirmed(
                         txId: swap.RedeemTx.Id,
-                        confirmationHandler: RedeemConfirmedEventHandler,
                         cancellationToken: cancellationToken)
-                    .FireAndForget();
+                    .ConfigureAwait(false);
 
-                return;
+                if (result == null)
+                {
+                    Log.Error("Error while check bitcoin based redeem tx confirmation. Result is null.");
+                    return;
+                }
+                else if (result.HasError && result.Error.Code == (int)HttpStatusCode.NotFound)
+                {
+                    // probably the transaction was deleted by miners
+                    needReplaceTx = true;
+                }
+                else if (result.HasError)
+                {
+                    Log.Error("Error while check bitcoin based redeem tx confirmation. Code: {@code}. Description: {@description}.",
+                        result.Error.Code,
+                        result.Error.Description);
+                    return;
+                }
+                else if (result.Value.IsConfirmed) // tx already confirmed
+                {
+                    RedeemConfirmedEventHandler(swap, result.Value.Transaction, cancellationToken);
+                    return;
+                }
+
+                // check transaction creation time and try replacing it with a higher fee
+                if (DateTime.UtcNow - swap.RedeemTx.CreationTime >= TimeSpan.FromHours(6))
+                    needReplaceTx = true;
+
+                if (!needReplaceTx)
+                {
+                    TrackTransactionConfirmationAsync(
+                            swap: swap,
+                            currency: currency,
+                            txId: swap.RedeemTx.Id,
+                            confirmationHandler: RedeemConfirmedEventHandler,
+                            cancellationToken: cancellationToken)
+                        .FireAndForget();
+
+                    return;
+                }
             }
 
             if (swap.IsInitiator)
@@ -156,8 +198,6 @@ namespace Atomex.Swaps.BitcoinBased
                 }
             }
 
-            var currency = swap.PurchasedCurrency;
-
             var redeemAddress = await _account
                 .GetFreeInternalAddressAsync()
                 .ConfigureAwait(false);
@@ -169,11 +209,12 @@ namespace Atomex.Swaps.BitcoinBased
                     swap: swap,
                     paymentTx: (IBitcoinBasedTransaction)swap.PartyPaymentTx,
                     redeemAddress: redeemAddress.Address,
-                    redeemScript: partyRedeemScript)
+                    redeemScript: partyRedeemScript,
+                    increaseSequenceNumber: needReplaceTx)
                 .ConfigureAwait(false);
 
             var toAddress = await _account
-                .GetAddressAsync(currency, swap.ToAddress, cancellationToken)
+                .GetAddressAsync(currency.Name, swap.ToAddress, cancellationToken)
                 .ConfigureAwait(false);
 
             // sign redeem tx
@@ -208,7 +249,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             TrackTransactionConfirmationAsync(
                     swap: swap,
-                    currency: Currencies.GetByName(swap.PurchasedCurrency),
+                    currency: currency,
                     txId: swap.RedeemTx.Id,
                     confirmationHandler: RedeemConfirmedEventHandler,
                     cancellationToken: cancellationToken)
@@ -496,7 +537,8 @@ namespace Atomex.Swaps.BitcoinBased
             Swap swap,
             IBitcoinBasedTransaction paymentTx,
             string redeemAddress,
-            byte[] redeemScript)
+            byte[] redeemScript,
+            bool increaseSequenceNumber = false)
         {
             Log.Debug("Create redeem tx for swap {@swapId}", swap.Id);
 
@@ -504,12 +546,26 @@ namespace Atomex.Swaps.BitcoinBased
 
             var amountInSatoshi = currency.CoinToSatoshi(AmountHelper.QtyToAmount(swap.Side.Opposite(), swap.Qty, swap.Price, currency.DigitsMultiplier));
 
+            var sequenceNumber = 0u;
+
+            if (increaseSequenceNumber)
+            {
+                var previousSequenceNumber = (swap?.RedeemTx as IBitcoinBasedTransaction)?.GetSequenceNumber(0) ?? 0;
+
+                sequenceNumber = previousSequenceNumber == 0
+                    ? Sequence.SEQUENCE_FINAL - 1024
+                    : (previousSequenceNumber == Sequence.SEQUENCE_FINAL
+                        ? Sequence.SEQUENCE_FINAL
+                        : previousSequenceNumber + 1);
+            }
+
             var tx = await _transactionFactory
                 .CreateSwapRedeemTxAsync(
                     paymentTx: paymentTx,
                     amount: amountInSatoshi,
                     redeemAddress: redeemAddress,
-                    redeemScript: redeemScript)
+                    redeemScript: redeemScript,
+                    sequenceNumber: sequenceNumber)
                 .ConfigureAwait(false);
 
             if (tx == null)

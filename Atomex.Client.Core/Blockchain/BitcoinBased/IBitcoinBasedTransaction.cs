@@ -33,5 +33,7 @@ namespace Atomex.Blockchain.BitcoinBased
         IBitcoinBasedTransaction Clone();
         byte[] ToBytes();
         long GetDust();
+        void SetSequenceNumber(uint sequenceNumber);
+        uint GetSequenceNumber(int inputIndex);
     }
 }
