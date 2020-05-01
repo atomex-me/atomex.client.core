@@ -155,8 +155,8 @@ namespace Atomex.Blockchain.Insight
         public const string InsightBitPayMainNet = "https://insight.bitpay.com/";
         public const string InsightBitPayTestNet = "https://test-insight.bitpay.com/";
 
-        public const string InsightLiteCoreMainNet = "https://insight.litecore.io";
-        public const string InsightLiteCoreTestNet = "https://testnet.litecore.io";
+        public const string InsightLiteCoreMainNet = "https://insight.litecore.io/";
+        public const string InsightLiteCoreTestNet = "https://testnet.litecore.io/";
 
         private const int MinDelayBetweenRequestMs = 1000;
 
