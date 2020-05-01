@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading;
@@ -14,6 +13,7 @@ namespace Atomex.Common
     public static class HttpHelper
     {
         public const int SslHandshakeFailed = 525;
+        public static HttpClient HttpClient { get; } = new HttpClient();
 
         public static Task<T> GetAsync<T>(
             string baseUri,
@@ -176,26 +176,18 @@ namespace Atomex.Common
             HttpRequestHeaders headers,
             CancellationToken cancellationToken = default)
         {
-            using var httpClient = new HttpClient { BaseAddress = new Uri(baseUri) };
-            
+            using var request = new HttpRequestMessage(method, new Uri($"{baseUri}{requestUri}"));
+
             if (headers != null)
                 foreach (var header in headers)
-                    httpClient.DefaultRequestHeaders.Add(header.Key, header.Value);
-  
-            if (method == HttpMethod.Get)
-            {
-                return await httpClient
-                    .GetAsync(requestUri, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            if (method == HttpMethod.Post)
-            {
-                return await httpClient
-                    .PostAsync(requestUri, content, cancellationToken)
-                    .ConfigureAwait(false);
-            }
+                    HttpClient.DefaultRequestHeaders.Add(header.Key, header.Value);
 
-            throw new ArgumentException("Http method not supported");
+            if (method == HttpMethod.Post)
+                request.Content = content;
+
+            return await HttpClient
+                .SendAsync(request, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 }

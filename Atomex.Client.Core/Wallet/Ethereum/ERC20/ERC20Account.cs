@@ -154,8 +154,8 @@ namespace Atomex.Wallet.Ethereum
                     .ConfigureAwait(false);
             }
 
-            await UpdateBalanceAsync(cancellationToken)
-                .ConfigureAwait(false);
+            UpdateBalanceAsync(cancellationToken)
+                .FireAndForget();
 
             return null;
         }

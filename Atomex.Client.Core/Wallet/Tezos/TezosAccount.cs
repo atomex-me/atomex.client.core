@@ -154,8 +154,8 @@ namespace Atomex.Wallet.Tezos
                 }
             }
 
-            await UpdateBalanceAsync(cancellationToken)
-                .ConfigureAwait(false);
+            UpdateBalanceAsync(cancellationToken)
+                .FireAndForget();
 
             return null;
         }
