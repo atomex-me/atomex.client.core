@@ -180,7 +180,7 @@ namespace Atomex.Common
 
             if (headers != null)
                 foreach (var header in headers)
-                    HttpClient.DefaultRequestHeaders.Add(header.Key, header.Value);
+                    request.Headers.Add(header.Key, header.Value);
 
             if (method == HttpMethod.Post)
                 request.Content = content;
