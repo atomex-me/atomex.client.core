@@ -151,8 +151,8 @@ namespace Atomex.Wallet.Tezos
                 }
             }
 
-            await UpdateBalanceAsync(cancellationToken)
-                .ConfigureAwait(false);
+            UpdateBalanceAsync(cancellationToken)
+                .FireAndForget();
 
             return null;
         }
@@ -342,14 +342,22 @@ namespace Atomex.Wallet.Tezos
             if (isToSelf)
                 xtzTx.Type |= BlockchainTransactionType.Input;
 
-            var oldTx = !xtzTx.IsInternal
-                ? await DataRepository
-                    .GetTransactionByIdAsync(Currency, tx.Id, Fa12.TransactionType)
-                    .ConfigureAwait(false)
-                : null;
+            var oldTx = (TezosTransaction)await DataRepository
+                .GetTransactionByIdAsync(Currency, tx.Id, Fa12.TransactionType)
+                .ConfigureAwait(false);
 
             if (oldTx != null)
-                xtzTx.Type |= oldTx.Type;
+            {
+                xtzTx.Type = oldTx.Type;
+
+                if (xtzTx.IsInternal && oldTx.IsConfirmed)
+                {
+                    xtzTx.From = oldTx.From;
+                    xtzTx.To = oldTx.To;
+                    xtzTx.Fee = oldTx.Fee;
+                    xtzTx.GasLimit = oldTx.GasLimit;
+                }
+            }
 
             // todo: recognize swap payment/refund/redeem
 

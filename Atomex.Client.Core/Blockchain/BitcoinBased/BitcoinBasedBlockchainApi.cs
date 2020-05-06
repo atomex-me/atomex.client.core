@@ -17,7 +17,7 @@ namespace Atomex.Blockchain.BitcoinBased
         public async Task<Result<ITxPoint>> TryGetInputAsync(
             string txId,
             uint inputNo,
-            int attempts = 10,
+            int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
@@ -33,7 +33,7 @@ namespace Atomex.Blockchain.BitcoinBased
         public async Task<Result<IEnumerable<ITxOutput>>> TryGetOutputsAsync(
             string address,
             string afterTxId = null,
-            int attempts = 10,
+            int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
@@ -54,7 +54,7 @@ namespace Atomex.Blockchain.BitcoinBased
         public async Task<Result<ITxPoint>> TryIsTransactionOutputSpent(
             string txId,
             uint outputNo,
-            int attempts = 10,
+            int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {

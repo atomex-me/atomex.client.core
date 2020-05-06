@@ -95,7 +95,7 @@ namespace Atomex.Client.Core.Tests
                 dustUsagePolicy: dustUsagePolicy,
                 apiSetup: apiMock =>
                 {
-                    apiMock.Setup(a => a.TryBroadcastAsync(It.IsAny<IBlockchainTransaction>(), 10, 1000, CancellationToken.None))
+                    apiMock.Setup(a => a.TryBroadcastAsync(It.IsAny<IBlockchainTransaction>(), 3, 1000, CancellationToken.None))
                         .Returns(Task.FromResult(new Result<string>("<txid>")));
                 },
                 repositorySetup: (repositoryMock, fromAddress) =>
@@ -220,7 +220,7 @@ namespace Atomex.Client.Core.Tests
                 dustUsagePolicy: dustUsagePolicy,
                 apiSetup: apiMock =>
                 {
-                    apiMock.Setup(a => a.TryBroadcastAsync(It.IsAny<IBlockchainTransaction>(), 10, 1000, CancellationToken.None))
+                    apiMock.Setup(a => a.TryBroadcastAsync(It.IsAny<IBlockchainTransaction>(), 3, 1000, CancellationToken.None))
                         .Callback(broadcastCallback)
                         .Returns(Task.FromResult(new Result<string>("<txid>")));
                 },
@@ -265,7 +265,7 @@ namespace Atomex.Client.Core.Tests
                 dustUsagePolicy: dustUsagePolicy,
                 apiSetup: apiMock =>
                 {
-                    apiMock.Setup(a => a.TryBroadcastAsync(It.IsAny<IBlockchainTransaction>(), 10, 1000, CancellationToken.None))
+                    apiMock.Setup(a => a.TryBroadcastAsync(It.IsAny<IBlockchainTransaction>(), 3, 1000, CancellationToken.None))
                         .Callback(broadcastCallback)
                         .Returns(Task.FromResult(new Result<string>("<txid>")));
                 },

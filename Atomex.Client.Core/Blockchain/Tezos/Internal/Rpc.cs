@@ -375,8 +375,7 @@ namespace Atomex.Blockchain.Tezos.Internal
                 Log.Debug("Send request:\nUri: {requestUri}\nContent: {content}", requestUri, data.ToString());
             }
 
-            using var httpClient = new HttpClient();
-            using var response = await httpClient
+            using var response = await HttpHelper.HttpClient
                 .SendAsync(request)
                 .ConfigureAwait(false);
             var responseBody = await response.Content

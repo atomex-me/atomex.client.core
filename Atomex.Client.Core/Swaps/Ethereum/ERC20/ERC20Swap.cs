@@ -61,39 +61,20 @@ namespace Atomex.Swaps.Ethereum
 
             try
             {
-                var approvalTxs = txs
-                    .Where(tx => tx.Type.HasFlag(BlockchainTransactionType.TokenApprove))
-                    .ToList();
-
-                foreach (var approvalTx in approvalTxs)
+                foreach (int i in new int[] { 0, 1})
                 {
-                    var signResult = await SignTransactionAsync(approvalTx, cancellationToken)
+                    var approvalTxs = txs
+                        .Where((tx, j) => j % 3 == i)
+                        .ToList();
+                    
+                    var isApproved = await ApproveAsync(swap, approvalTxs, cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (!signResult)
+                    if (!isApproved)
                     {
-                        Log.Error("Approve transaction signing error");
+                        Log.Error("Approve txs are not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
                         return;
                     }
-
-                    await BroadcastTxAsync(swap, approvalTx, cancellationToken, false, true, false)
-                        .ConfigureAwait(false);
-                }
-
-                // wait confirmations for all approve txs
-                var approveResults = await Task.WhenAll(
-                    approvalTxs.Select(atx => WaitPaymentConfirmationAsync(
-                        txId: atx.Id,
-                        timeout: InitiationTimeout,
-                        cancellationToken: cancellationToken)))
-                    .ConfigureAwait(false);
-
-                var isApproved = !approveResults.Contains(false);
-
-                if (!isApproved)
-                {
-                    Log.Error("Approve payment txs not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
-                    return;
                 }
 
                 txs = txs
@@ -161,6 +142,46 @@ namespace Atomex.Swaps.Ethereum
                 await StartWaitForRedeemAsync(swap, cancellationToken)
                     .ConfigureAwait(false);
             }
+        }
+
+        private async Task<bool> ApproveAsync(
+            Swap swap,
+            IEnumerable<EthereumTransaction> approvalTxs,
+            CancellationToken cancellationToken = default,
+            bool waitForConfirm = true)
+        {
+            approvalTxs = approvalTxs.Where(tx => tx != null && tx.Type.HasFlag(BlockchainTransactionType.TokenApprove));
+
+            if (!approvalTxs.Any())
+                return true;
+
+            foreach (var approvalTx in approvalTxs)
+            {
+                var signResult = await SignTransactionAsync(approvalTx, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!signResult)
+                {
+                    Log.Error("Approve transaction signing error");
+                    return false;
+                }
+
+                await BroadcastTxAsync(swap, approvalTx, cancellationToken, false, true, false)
+                    .ConfigureAwait(false);
+            }
+
+            if (!waitForConfirm)
+                return true;
+
+            // wait confirmations for all approve txs
+            var approveResults = await Task.WhenAll(
+                approvalTxs.Select(atx => WaitPaymentConfirmationAsync(
+                    txId: atx.Id,
+                    timeout: InitiationTimeout,
+                    cancellationToken: cancellationToken)))
+                .ConfigureAwait(false);
+
+            return !approveResults.Contains(false);
         }
 
         public override Task StartPartyPaymentControlAsync(
@@ -800,27 +821,39 @@ namespace Atomex.Swaps.Ethereum
                     return null;
                 }
 
-                TransactionInput txInput;
+                var nonce = nonceResult.Value;
 
-                //aprove transaction
-                var message = new ERC20ApproveFunctionMessage
+                var allowanceMessage = new ERC20AllowanceFunctionMessage()
                 {
+                    Owner = walletAddress.Address,
                     Spender = erc20.SwapContractAddress,
-                    Value = erc20.TokensToTokenDigits(amountInERC20),
-                    FromAddress = walletAddress.Address,
-                    GasPrice = Atomex.Ethereum.GweiToWei(erc20.GasPriceInGwei),
-                    Nonce = nonceResult.Value,
+                    FromAddress = walletAddress.Address
                 };
 
-                message.Gas = await EstimateGasAsync(message, new BigInteger(erc20.ApproveGasLimit))
+                var allowance = await ((IEthereumBlockchainApi) erc20.BlockchainApi)
+                    .GetERC20AllowanceAsync(
+                        erc20: erc20,
+                        tokenAddress: erc20.ERC20ContractAddress,
+                        allowanceMessage: allowanceMessage,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                txInput = message.CreateTransactionInput(erc20.ERC20ContractAddress);
-
-                transactions.Add(new EthereumTransaction(erc20, txInput)
+                if (allowance.Value > 0)
                 {
-                    Type = BlockchainTransactionType.Output | BlockchainTransactionType.TokenApprove
-                });
+                    transactions.Add(await CreateApproveTx(walletAddress, nonceResult.Value, 0)
+                        .ConfigureAwait(false));
+                    nonce += 1;
+                }
+                else
+                {
+                    transactions.Add(new EthereumTransaction());
+                }
+
+                transactions.Add(await CreateApproveTx(walletAddress, nonce, erc20.TokensToTokenDigits(amountInERC20))
+                    .ConfigureAwait(false));
+                nonce += 1;
+
+                TransactionInput txInput;
 
                 //actual transfer              
                 if (isInitTx)
@@ -837,7 +870,7 @@ namespace Atomex.Swaps.Ethereum
                         Active = true,
                         FromAddress = walletAddress.Address,
                         GasPrice = Atomex.Ethereum.GweiToWei(erc20.GasPriceInGwei),
-                        Nonce = nonceResult.Value + 1
+                        Nonce = nonce
                     };
 
                     var initiateGasLimit = rewardForRedeemInERC20 == 0
@@ -857,7 +890,7 @@ namespace Atomex.Swaps.Ethereum
                         Value = erc20.TokensToTokenDigits(amountInERC20),
                         FromAddress = walletAddress.Address,
                         GasPrice = Atomex.Ethereum.GweiToWei(erc20.GasPriceInGwei),
-                        Nonce = nonceResult.Value,
+                        Nonce = nonce
                     };
 
                     addMessage.Gas = await EstimateGasAsync(addMessage, new BigInteger(erc20.AddGasLimit))
@@ -885,6 +918,33 @@ namespace Atomex.Swaps.Ethereum
             }
 
             return transactions;
+        }
+
+        private async Task<EthereumTransaction> CreateApproveTx(
+            WalletAddress walletAddress,
+            BigInteger nonce,
+            BigInteger value)
+        {
+            var erc20 = Erc20;
+
+            var message = new ERC20ApproveFunctionMessage
+            {
+                Spender = erc20.SwapContractAddress,
+                Value = value,
+                FromAddress = walletAddress.Address,
+                GasPrice = Atomex.Ethereum.GweiToWei(erc20.GasPriceInGwei),
+                Nonce = nonce,
+            };
+
+            message.Gas = await EstimateGasAsync(message, new BigInteger(erc20.ApproveGasLimit))
+                        .ConfigureAwait(false);
+
+            var txInput = message.CreateTransactionInput(erc20.ERC20ContractAddress);
+
+            return new EthereumTransaction(erc20, txInput)
+                {
+                    Type = BlockchainTransactionType.Output | BlockchainTransactionType.TokenApprove
+                };
         }
 
         private async Task<bool> SignTransactionAsync(
@@ -927,8 +987,27 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("TxId {@id} for swap {@swapId}", txId, swap.Id);
 
+            if (tx.Type.HasFlag(BlockchainTransactionType.SwapPayment))
+                tx = tx.ParseERC20Input();
+
             // account new unconfirmed transaction
             await Erc20Account
+                .UpsertTransactionAsync(
+                    tx: tx,
+                    updateBalance: updateBalance,
+                    notifyIfUnconfirmed: notifyIfUnconfirmed,
+                    notifyIfBalanceUpdated: notifyIfBalanceUpdated,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            var ethTx = tx.Clone();
+            ethTx.Currency = Eth;
+            ethTx.Amount = 0;
+            ethTx.Type = BlockchainTransactionType.Output | (ethTx.Type.HasFlag(BlockchainTransactionType.TokenApprove)
+                ? BlockchainTransactionType.TokenCall
+                : BlockchainTransactionType.SwapCall);
+
+            await EthereumAccount
                 .UpsertTransactionAsync(
                     tx: tx,
                     updateBalance: updateBalance,
@@ -981,8 +1060,13 @@ namespace Atomex.Swaps.Ethereum
                     .GetTransactionAsync(txId, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (tx != null && !tx.HasError && tx.Value != null && tx.Value.State == BlockchainTransactionState.Confirmed)
-                    return true;
+                if (tx != null && !tx.HasError && tx.Value != null)
+                {
+                    if (tx.Value.State == BlockchainTransactionState.Confirmed)
+                        return true;
+                    if (tx.Value.State == BlockchainTransactionState.Failed)
+                        return false;
+                }
             }
 
             return false;

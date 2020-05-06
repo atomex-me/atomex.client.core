@@ -107,7 +107,7 @@ namespace Atomex.Wallet.Ethereum
 
                 txInput = message.CreateTransactionInput(erc20.ERC20ContractAddress);
 
-                var tx = new EthereumTransaction(erc20, txInput) // todo: change to ETH
+                var tx = new EthereumTransaction(erc20, txInput)
                 {
                     Type = BlockchainTransactionType.Output
                 };
@@ -142,6 +142,9 @@ namespace Atomex.Wallet.Ethereum
 
                 Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
+                tx.Amount = erc20.TokensToTokenDigits(amount);
+                tx.To = to.ToLowerInvariant();
+
                 await UpsertTransactionAsync(
                         tx: tx,
                         updateBalance: false,
@@ -151,8 +154,8 @@ namespace Atomex.Wallet.Ethereum
                     .ConfigureAwait(false);
             }
 
-            await UpdateBalanceAsync(cancellationToken)
-                .ConfigureAwait(false);
+            UpdateBalanceAsync(cancellationToken)
+                .FireAndForget();
 
             return null;
         }
@@ -326,14 +329,23 @@ namespace Atomex.Wallet.Ethereum
 
             // todo: recognize swap payment/refund/redeem
 
-            var oldTx = !ethTx.IsInternal
-                ? await DataRepository
-                    .GetTransactionByIdAsync(Currency, tx.Id, erc20.TransactionType)
-                    .ConfigureAwait(false)
-                : null;
+            var oldTx = (EthereumTransaction) await DataRepository
+                .GetTransactionByIdAsync(Currency, tx.Id, erc20.TransactionType)
+                .ConfigureAwait(false);
 
             if (oldTx != null)
-                ethTx.Type |= oldTx.Type;
+            {
+                if (ethTx.IsInternal)
+                {
+                    ethTx.Type = oldTx.Type;
+                    ethTx.From = oldTx.From;
+                    ethTx.To = oldTx.To;
+                }
+                else
+                {
+                    ethTx.Type |= oldTx.Type;
+                }
+            }
 
             ethTx.InternalTxs?.ForEach(async t => await ResolveTransactionTypeAsync(t, cancellationToken)
                 .ConfigureAwait(false));
@@ -362,52 +374,60 @@ namespace Atomex.Wallet.Ethereum
 
             foreach (var tx in txs)
             {
-                var addresses = new HashSet<string>();
-
-                if (tx.Type.HasFlag(BlockchainTransactionType.Input))
-                    addresses.Add(tx.To);
-
-                if (tx.Type.HasFlag(BlockchainTransactionType.Output))
-                    addresses.Add(tx.From);
-
-                foreach (var address in addresses)
+                try
                 {
-                    var isIncome = address == tx.To;
-                    var isOutcome = address == tx.From;
-                    var isConfirmed = tx.IsConfirmed;
-                    var isFailed = tx.State == BlockchainTransactionState.Failed;
+                    var addresses = new HashSet<string>();
 
-                    var income = isIncome && !isFailed
-                        ? erc20.TokenDigitsToTokens(tx.Amount)
-                        : 0;
+                    if (tx.Type.HasFlag(BlockchainTransactionType.Input))
+                        addresses.Add(tx.To);
 
-                    var outcome = isOutcome && !isFailed
-                        ? -erc20.TokenDigitsToTokens(tx.Amount)
-                        : 0;
+                    if (tx.Type.HasFlag(BlockchainTransactionType.Output))
+                        addresses.Add(tx.From);
 
-                    if (addressBalances.TryGetValue(address, out var walletAddress))
+                    foreach (var address in addresses)
                     {
-                        walletAddress.Balance += isConfirmed ? income + outcome : 0;
-                        walletAddress.UnconfirmedIncome += !isConfirmed ? income : 0;
-                        walletAddress.UnconfirmedOutcome += !isConfirmed ? outcome : 0;
+                        var isIncome = address == tx.To;
+                        var isOutcome = address == tx.From;
+                        var isConfirmed = tx.IsConfirmed;
+                        var isFailed = tx.State == BlockchainTransactionState.Failed;
+
+                        var income = isIncome && !isFailed
+                            ? erc20.TokenDigitsToTokens(tx.Amount)
+                            : 0;
+
+                        var outcome = isOutcome && !isFailed
+                            ? -erc20.TokenDigitsToTokens(tx.Amount)
+                            : 0;
+
+                        if (addressBalances.TryGetValue(address, out var walletAddress))
+                        {
+                            walletAddress.Balance += isConfirmed ? income + outcome : 0;
+                            walletAddress.UnconfirmedIncome += !isConfirmed ? income : 0;
+                            walletAddress.UnconfirmedOutcome += !isConfirmed ? outcome : 0;
+                        }
+                        else
+                        {
+                            walletAddress = await DataRepository
+                                .GetWalletAddressAsync(Currency, address)
+                                .ConfigureAwait(false);
+
+                            walletAddress.Balance = isConfirmed ? income + outcome : 0;
+                            walletAddress.UnconfirmedIncome = !isConfirmed ? income : 0;
+                            walletAddress.UnconfirmedOutcome = !isConfirmed ? outcome : 0;
+                            walletAddress.HasActivity = true;
+
+                            addressBalances.Add(address, walletAddress);
+                        }
+
+                        totalBalance += isConfirmed ? income + outcome : 0;
+                        totalUnconfirmedIncome += !isConfirmed ? income : 0;
+                        totalUnconfirmedOutcome += !isConfirmed ? outcome : 0;
                     }
-                    else
-                    {
-                        walletAddress = await DataRepository
-                            .GetWalletAddressAsync(Currency, address)
-                            .ConfigureAwait(false);
 
-                        walletAddress.Balance = isConfirmed ? income + outcome : 0;
-                        walletAddress.UnconfirmedIncome = !isConfirmed ? income : 0;
-                        walletAddress.UnconfirmedOutcome = !isConfirmed ? outcome : 0;
-                        walletAddress.HasActivity = true;
-
-                        addressBalances.Add(address, walletAddress);
-                    }
-
-                    totalBalance += isConfirmed ? income + outcome : 0;
-                    totalUnconfirmedIncome += !isConfirmed ? income : 0;
-                    totalUnconfirmedOutcome += !isConfirmed ? outcome : 0;
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Error in update balance");
                 }
             }
 

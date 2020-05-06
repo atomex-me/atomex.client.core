@@ -102,6 +102,39 @@ namespace Atomex.Blockchain.Ethereum
             GasLimit = txInput.Gas;
         }
 
+        public EthereumTransaction Clone()
+        {
+            var resTx = new EthereumTransaction()
+            {
+                Currency = this.Currency,
+                Id = this.Id,
+                Type = this.Type,
+                State = this.State,
+                CreationTime = this.CreationTime,
+
+                From = this.From,
+                To = this.To,
+                Input = this.Input,
+                Amount = this.Amount,
+                Nonce = this.Nonce,
+                GasPrice = this.GasPrice,
+                GasLimit = this.GasLimit,
+                GasUsed = this.GasUsed,
+                ReceiptStatus = this.ReceiptStatus,
+                IsInternal = this.IsInternal,
+                InternalIndex = this.InternalIndex,
+                InternalTxs = new List<EthereumTransaction>(),
+
+                BlockInfo = (BlockInfo)(this.BlockInfo?.Clone() ?? null)
+            };
+
+            if (this.InternalTxs != null)
+                foreach (var intTx in this.InternalTxs)
+                    resTx.InternalTxs.Add(intTx.Clone());
+
+            return resTx;
+        }
+
         public bool Verify()
         {
             var currency = (Atomex.Ethereum)Currency;

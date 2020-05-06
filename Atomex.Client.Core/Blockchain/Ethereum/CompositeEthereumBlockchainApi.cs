@@ -7,6 +7,8 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Nethereum.Signer;
+using Atomex.Blockchain.Ethereum.ERC20;
+using Nethereum.Contracts;
 
 namespace Atomex.Blockchain.Ethereum
 {
@@ -28,6 +30,20 @@ namespace Atomex.Blockchain.Ethereum
             return _web3.GetBalanceAsync(address, cancellationToken);
         }
 
+        public async Task<Result<decimal>> GetERC20AllowanceAsync(
+            EthereumTokens.ERC20 erc20,
+            string tokenAddress,
+            FunctionMessage allowanceMessage,
+            CancellationToken cancellationToken = default)
+        {
+            return await _web3.GetERC20AllowanceAsync(
+                    erc20: erc20,
+                    tokenAddress: tokenAddress,
+                    allowanceMessage: allowanceMessage,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false); 
+        }
+        
         public Task<Result<BigInteger>> GetTransactionCountAsync(
             string address,
             CancellationToken cancellationToken = default)
@@ -79,6 +95,9 @@ namespace Atomex.Blockchain.Ethereum
 
             var tx = (EthereumTransaction)txResult.Value;
 
+            if (tx.Currency.Name != "ETH")
+                tx = tx.ParseERC20Input();
+            
             var internalTxsResult = await _etherScanApi
                 .GetInternalTransactionsAsync(txId, cancellationToken)
                 .ConfigureAwait(false);

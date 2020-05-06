@@ -204,6 +204,11 @@ namespace Atomex
         {
             return (long)(gwei * WeiInGwei);
         }
+        
+        public static long WeiToGwei(decimal wei)
+        {
+            return (long)(wei / WeiInGwei);
+        }
 
         public static decimal WeiToEth(BigInteger wei)
         {

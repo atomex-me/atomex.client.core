@@ -39,6 +39,26 @@
       "Id": 8,
       "Name": "XTZ/USDT",
       "MinimumQty": 10
+    },
+    {
+      "Id": 9,
+      "Name": "TZBTC/BTC",
+      "MinimumQty": 0.001
+    },
+    {
+      "Id": 10,
+      "Name": "ETH/TZBTC",
+      "MinimumQty": 0.1
+    },
+    {
+      "Id": 11,
+      "Name": "XTZ/TZBTC",
+      "MinimumQty": 10
+    },
+    {
+      "Id": 12,
+      "Name": "TZBTC/USDT",
+      "MinimumQty": 0.001
     }
   ],
   "TestNet": [

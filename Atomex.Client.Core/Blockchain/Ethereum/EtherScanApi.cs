@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
+using Nethereum.Contracts;
 using Nethereum.Hex.HexTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -213,6 +214,7 @@ namespace Atomex.Blockchain.Ethereum
             return await ResultHelper.TryDo((c) => GetTransactionCountAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transaction count after {attempts} attempts");
         }
+
         public async override Task<Result<IBlockchainTransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
@@ -372,7 +374,26 @@ namespace Atomex.Blockchain.Ethereum
                    cancellationToken: cancellationToken)
                .ConfigureAwait(false);
         }
+        /*
+        public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetInternalTransactionsAsync(
+            string txId,
+            CancellationToken cancellationToken = default)
+        {
+            var requestUri = $"api?module=account&action=txlistinternal&txhash={txId}&apikey={ApiKey}";
 
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            return await HttpHelper.GetAsyncResult(
+                   baseUri: BaseUrl,
+                   requestUri: requestUri,
+                   responseHandler: (response, content) => new Result<IEnumerable<IBlockchainTransaction>>(
+                       ParseTransactions(content, txId: txId, isInternal: true)),
+                   cancellationToken: cancellationToken)
+               .ConfigureAwait(false);
+        }
+        */
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
             CancellationToken cancellationToken = default)
@@ -651,6 +672,15 @@ namespace Atomex.Blockchain.Ethereum
             }
 
             return result;
+        }
+
+        public Task<Result<decimal>> GetERC20AllowanceAsync(
+            EthereumTokens.ERC20 erc20,
+            string tokenAddress,
+            FunctionMessage allowanceMessage,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
         }
     }
 }

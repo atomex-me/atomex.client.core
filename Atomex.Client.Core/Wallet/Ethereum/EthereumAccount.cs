@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Ethereum.ERC20;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
@@ -138,8 +139,8 @@ namespace Atomex.Wallet.Ethereum
                     .ConfigureAwait(false);
             }
 
-            await UpdateBalanceAsync(cancellationToken)
-                .ConfigureAwait(false);
+            UpdateBalanceAsync(cancellationToken)
+                .FireAndForget();
 
             return null;
         }
@@ -257,7 +258,7 @@ namespace Atomex.Wallet.Ethereum
 
             return (amount, fee, 0m);
         }
-        
+
         private decimal GasLimitByType(BlockchainTransactionType type, bool isFirstTx)
         {
             var eth = Eth;
@@ -278,6 +279,8 @@ namespace Atomex.Wallet.Ethereum
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default)
         {
+            var eth = Eth;
+
             if (!(tx is EthereumTransaction ethTx))
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
@@ -287,7 +290,20 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (isFromSelf)
+            {
                 ethTx.Type |= BlockchainTransactionType.Output;
+
+                var isToSwapContract = ethTx.To == eth.SwapContractAddress;
+
+                if (isToSwapContract)
+                {
+                    // todo: recognize swap payment/refund/redeem
+                }
+                else if (ethTx.Amount == 0)
+                {
+                    ethTx = ethTx.ParseERC20TransactionType();
+                }
+            }
 
             var isToSelf = await IsSelfAddressAsync(
                     address: ethTx.To,
@@ -296,8 +312,6 @@ namespace Atomex.Wallet.Ethereum
 
             if (isToSelf)
                 ethTx.Type |= BlockchainTransactionType.Input;
-
-            // todo: recognize swap payment/refund/redeem
 
             var oldTx = !ethTx.IsInternal
                 ? await DataRepository
@@ -679,6 +693,14 @@ namespace Atomex.Wallet.Ethereum
 
             return Enumerable.Empty<SelectedWalletAddress>();
         }
+
+        //private bool IsTokenContractAddress(string address)
+        //{
+        //    EthereumTokens.ERC20 usdt = (EthereumTokens.ERC20)Currencies.GetByName("USDT");
+        //    //EthereumTokens.ERC20 usdc = (EthereumTokens.ERC20)Currencies.GetByName("USDC");
+
+        //    return (address == usdt.ERC20ContractAddress);
+        //}
 
         #endregion Addresses
     }

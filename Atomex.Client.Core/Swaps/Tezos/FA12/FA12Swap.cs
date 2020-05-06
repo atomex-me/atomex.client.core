@@ -113,7 +113,7 @@ namespace Atomex.Swaps.Tezos.FA12
                     }
 
                     await BroadcastTxAsync(swap, tx, cancellationToken)
-                            .ConfigureAwait(false);
+                        .ConfigureAwait(false);
 
                     if (isInitiateTx)
                     {
@@ -407,7 +407,7 @@ namespace Atomex.Swaps.Tezos.FA12
 
             Log.Debug("Create refund for swap {@swap}", swap.Id);
 
-            var walletAddress = (await _account
+            var walletAddress = (await Fa12Account
                 .GetUnspentAddressesAsync(
                     toAddress: null, // todo: get refund address
                     amount: 0,
@@ -727,6 +727,7 @@ namespace Atomex.Swaps.Tezos.FA12
             Log.Debug("Create payment transactions for swap {@swapId}", swap.Id);
 
             var fa12 = Fa12;
+            var fa12Api = fa12.BlockchainApi as ITokenBlockchainApi;
 
             var requiredAmountInTokenDigits = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, fa12.DigitsMultiplier)
                 .ToTokenDigits(fa12.DigitsMultiplier);
@@ -797,23 +798,50 @@ namespace Atomex.Swaps.Tezos.FA12
 
                 var amountInTokenDigits = requiredAmountInTokenDigits > 0 ? Math.Min(balanceInTokenDigits, requiredAmountInTokenDigits) : 0;
 
+                if (amountInTokenDigits == 0)
+                    break;
+
                 requiredAmountInTokenDigits -= amountInTokenDigits;
 
-                // todo: check approve size
+                using var callingAddressPublicKey = new SecureBytes((await Fa12Account.GetAddressAsync(walletAddress.Address)
+                    .ConfigureAwait(false))
+                    .PublicKeyBytes());
 
-                transactions.Add(new TezosTransaction
+                var allowanceResult = await fa12Api
+                    .TryGetTokenAllowanceAsync(
+                        holderAddress: walletAddress.Address,
+                        spenderAddress: fa12.SwapContractAddress,
+                        callingAddress: walletAddress.Address,
+                        securePublicKey: callingAddressPublicKey,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (allowanceResult.HasError)
                 {
-                    Currency = fa12,
-                    CreationTime = DateTime.UtcNow,
-                    From = walletAddress.Address,
-                    To = fa12.TokenContractAddress,
-                    Fee = fa12.ApproveFee,
-                    GasLimit = fa12.ApproveGasLimit,
-                    StorageLimit = fa12.ApproveStorageLimit,
-                    Params = ApproveParams(fa12.SwapContractAddress, 0),
-                    UseDefaultFee = true,
-                    Type = BlockchainTransactionType.TokenApprove
-                });
+                    Log.Error("Error while getting token allowance for {@address} with code {@code} and description {@description}",
+                        walletAddress.Address,
+                        allowanceResult.Error.Code,
+                        allowanceResult.Error.Description);
+
+                    continue; // todo: maybe add approve 0
+                }
+
+                if (allowanceResult.Value > 0)
+                {
+                    transactions.Add(new TezosTransaction
+                    {
+                        Currency = fa12,
+                        CreationTime = DateTime.UtcNow,
+                        From = walletAddress.Address,
+                        To = fa12.TokenContractAddress,
+                        Fee = fa12.ApproveFee,
+                        GasLimit = fa12.ApproveGasLimit,
+                        StorageLimit = fa12.ApproveStorageLimit,
+                        Params = ApproveParams(fa12.SwapContractAddress, 0),
+                        UseDefaultFee = true,
+                        Type = BlockchainTransactionType.TokenApprove
+                    });
+                }
 
                 transactions.Add(new TezosTransaction
                 {
@@ -919,9 +947,25 @@ namespace Atomex.Swaps.Tezos.FA12
             Log.Debug("TxId {@id} for swap {@swapId}", txId, swap.Id);
 
             // account new unconfirmed transaction
-            await _account
+            await Fa12Account
                 .UpsertTransactionAsync(
                     tx: tx,
+                    updateBalance: updateBalance,
+                    notifyIfUnconfirmed: notifyIfUnconfirmed,
+                    notifyIfBalanceUpdated: notifyIfBalanceUpdated,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            var xtzTx = tx.Clone();
+            xtzTx.Currency = Xtz;
+            xtzTx.Amount = 0;
+            xtzTx.Type = BlockchainTransactionType.Output | (tx.Type.HasFlag(BlockchainTransactionType.TokenApprove)
+                ? BlockchainTransactionType.TokenCall
+                : BlockchainTransactionType.SwapCall);
+
+            await TezosAccount
+                .UpsertTransactionAsync(
+                    tx: xtzTx,
                     updateBalance: updateBalance,
                     notifyIfUnconfirmed: notifyIfUnconfirmed,
                     notifyIfBalanceUpdated: notifyIfBalanceUpdated,
@@ -943,11 +987,11 @@ namespace Atomex.Swaps.Tezos.FA12
                 await Task.Delay(InitiationCheckInterval, cancellationToken)
                     .ConfigureAwait(false);
 
-                var tx = await Xtz.BlockchainApi
-                    .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
+                var tx = await Fa12Account
+                    .GetTransactionByIdAsync(txId)
                     .ConfigureAwait(false);
 
-                if (tx != null && !tx.HasError && tx.Value != null && tx.Value.State == BlockchainTransactionState.Confirmed)
+                if (tx != null && tx.IsConfirmed)
                     return true;
             }
 
@@ -971,11 +1015,6 @@ namespace Atomex.Swaps.Tezos.FA12
             return JObject.Parse(@"{'entrypoint':'initiate','value':{'prim':'Pair','args':[{'prim':'Pair','args':[{'prim':'Pair','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'},{'string':'" + swap.PartyAddress + "'}]},{'prim':'Pair','args':[{'int':'" + redeemFeeAmount + "'},{'int':'" + refundTimestamp + "'}]}]},{'prim':'Pair','args':[{'string':'" + tokenContractAddress + "'},{'int':'" + tokenAmountInDigigts + "'}]}]}}");
         }
 
-        /// <summary>
-        ///  not implemented
-        /// </summary>
-        /// <param name="swap"></param>
-        /// <returns></returns>
         //private JObject AddParams(Swap swap)
         //{
         //    return JObject.Parse(@"{'entrypoint':'add','value':{'prim':'Pair','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'},{'int':'" + tokenAmountInDigigts + "'}]}}");
