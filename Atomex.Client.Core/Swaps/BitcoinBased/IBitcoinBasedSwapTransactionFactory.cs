@@ -30,6 +30,7 @@ namespace Atomex.Swaps.BitcoinBased
             IBitcoinBasedTransaction paymentTx,
             long amount,
             string redeemAddress,
-            byte[] redeemScript);
+            byte[] redeemScript,
+            uint sequenceNumber = 0);
     }
 }

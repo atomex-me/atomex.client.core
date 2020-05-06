@@ -17,7 +17,7 @@ namespace Atomex.Common
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Connect async error");
+                    Console.WriteLine("Connect async error");
                 }
             });
         }
@@ -32,7 +32,7 @@ namespace Atomex.Common
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Close async error");
+                    Console.WriteLine("Close async error");
                 }
             });
         }
@@ -47,7 +47,7 @@ namespace Atomex.Common
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Send async error");
+                    Console.WriteLine("Send async error");
                 }
             });
         }

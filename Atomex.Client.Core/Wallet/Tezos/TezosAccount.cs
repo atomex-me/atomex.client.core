@@ -154,8 +154,8 @@ namespace Atomex.Wallet.Tezos
                 }
             }
 
-            await UpdateBalanceAsync(cancellationToken)
-                .ConfigureAwait(false);
+            UpdateBalanceAsync(cancellationToken)
+                .FireAndForget();
 
             return null;
         }
@@ -318,6 +318,8 @@ namespace Atomex.Wallet.Tezos
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default)
         {
+            var xtz = Xtz;
+
             if (!(tx is TezosTransaction xtzTx))
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
@@ -326,13 +328,26 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
+            if (isFromSelf)
+            { 
+                xtzTx.Type |= BlockchainTransactionType.Output;
+
+                var isToSwapContract = xtzTx.To == xtz.SwapContractAddress;
+
+                if (isToSwapContract)
+                {
+                    // todo: recognize swap payment/refund/redeem
+                }
+                else if (xtzTx.Amount == 0)
+                {
+                    xtzTx = ResolveFA12TransactionType(xtzTx, cancellationToken);
+                }
+            }
+
             var isToSelf = await IsSelfAddressAsync(
                     address: xtzTx.To,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-
-            if (isFromSelf)
-                xtzTx.Type |= BlockchainTransactionType.Output;
 
             if (isToSelf)
                 xtzTx.Type |= BlockchainTransactionType.Input;
@@ -345,11 +360,27 @@ namespace Atomex.Wallet.Tezos
 
             if (oldTx != null)
                 xtzTx.Type |= oldTx.Type;
-            
+
             // todo: recognize swap payment/refund/redeem
 
-            xtzTx.InternalTxs?.ForEach(async t => await ResolveTransactionTypeAsync(t, cancellationToken)
+            xtzTx.InternalTxs?
+                .ForEach(async t => await ResolveTransactionTypeAsync(t, cancellationToken)
                 .ConfigureAwait(false));
+        }
+
+        private TezosTransaction ResolveFA12TransactionType(
+            TezosTransaction tx,
+            CancellationToken cancellationToken = default)
+        {
+            if (tx.Params["entrypoint"].ToString().Equals("initiate")
+                || tx.Params["entrypoint"].ToString().Equals("redeem")
+                || tx.Params["entrypoint"].ToString().Equals("refund"))
+                tx.Type |= BlockchainTransactionType.SwapCall;
+            else if (tx.Params["entrypoint"].ToString().Equals("transfer")
+                || tx.Params["entrypoint"].ToString().Equals("approve"))
+                tx.Type |= BlockchainTransactionType.TokenCall;
+
+            return tx;
         }
 
         private async Task<decimal> FeeByType(

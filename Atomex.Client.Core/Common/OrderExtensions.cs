@@ -41,7 +41,7 @@ namespace Atomex.Common
             }
             catch (Exception e)
             {
-                Log.Error(e, "Proof of possession creating error");
+                Console.WriteLine("Proof of possession creating error");
             }
         }
 

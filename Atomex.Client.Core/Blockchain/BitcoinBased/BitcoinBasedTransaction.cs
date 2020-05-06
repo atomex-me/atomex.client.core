@@ -322,6 +322,17 @@ namespace Atomex.Blockchain.BitcoinBased
                 .Sum(output => output.Value);
         }
 
+        public void SetSequenceNumber(uint sequenceNumber)
+        {
+            foreach (var input in Tx.Inputs)
+                input.Sequence = new Sequence(sequenceNumber);
+        }
+
+        public uint GetSequenceNumber(int inputIndex)
+        {
+            return Tx.Inputs[inputIndex].Sequence.Value;
+        }
+
         public static BitcoinBasedTransaction CreateTransaction(
             BitcoinBasedCurrency currency,
             IEnumerable<ICoin> coins,

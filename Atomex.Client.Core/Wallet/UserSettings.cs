@@ -64,7 +64,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "UserSettings loading error");
+                Console.WriteLine("UserSettings loading error");
             }
 
             return null;
@@ -91,7 +91,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "UserSettings save to file error");
+                Console.WriteLine("UserSettings save to file error");
             }
         }
     }

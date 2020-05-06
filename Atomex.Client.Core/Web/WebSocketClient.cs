@@ -145,7 +145,7 @@ namespace Atomex.Web
             }
             catch (Exception e)
             {
-                Log.Error(e, "Reconnect error");
+                Console.WriteLine("Reconnect error");
             }
         }
 

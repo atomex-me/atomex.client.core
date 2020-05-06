@@ -14,7 +14,7 @@ namespace Atomex.Blockchain
 
         public async Task<Result<decimal>> TryGetBalanceAsync(
             string address,
-            int attempts = 10,
+            int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
@@ -28,7 +28,7 @@ namespace Atomex.Blockchain
 
         public async Task<Result<IBlockchainTransaction>> TryGetTransactionAsync(
             string txId,
-            int attempts = 10,
+            int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
@@ -42,7 +42,7 @@ namespace Atomex.Blockchain
 
         public async Task<Result<string>> TryBroadcastAsync(
             IBlockchainTransaction transaction,
-            int attempts = 10,
+            int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {

@@ -51,7 +51,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "Unlock error");
+                Console.WriteLine("Unlock error");
             }
         }
 
@@ -71,7 +71,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "Encrypt error");
+                Console.WriteLine("Encrypt error");
             }
         }
     }
@@ -144,7 +144,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "Unlock error");
+                Console.WriteLine("Unlock error");
             }
 
             return this;
@@ -169,7 +169,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "Encrypt error");
+                Console.WriteLine("Encrypt error");
             }
         }
 
@@ -426,7 +426,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "HdKeyStorage data loading error");
+                Console.WriteLine("HdKeyStorage data loading error");
                 throw;
             }
 
@@ -453,7 +453,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "HdKeyStorage save to file error");
+                Console.WriteLine("HdKeyStorage save to file error");
             }
         }
     }

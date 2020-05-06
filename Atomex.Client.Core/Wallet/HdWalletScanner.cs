@@ -63,7 +63,7 @@ namespace Atomex.Wallet
                     }
                     catch (Exception e)
                     {
-                        Log.Error(e, "Free address scan error for currency: {@currency}", currency.Name);
+                        Console.WriteLine("Free address scan error for currency: {@currency}", currency.Name);
                     }
                 }
             }, cancellationToken);
@@ -82,7 +82,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "Address scan error for currency {@currency} and address {@address}", currency, address);
+                Console.WriteLine("Address scan error for currency {@currency} and address {@address}", currency, address);
             }
         }
 
@@ -98,8 +98,12 @@ namespace Atomex.Wallet
                 //"USDC" => (ICurrencyHdWalletScanner)new ERC20WalletScanner(Account.GetCurrencyAccount<ERC20Account>(currency)),
                 "ETH" => (ICurrencyHdWalletScanner)new EthereumWalletScanner(Account.GetCurrencyAccount<EthereumAccount>(currency)),
                 "XTZ" => (ICurrencyHdWalletScanner)new TezosWalletScanner(Account.GetCurrencyAccount<TezosAccount>(currency)),
-                "TZBTC" => (ICurrencyHdWalletScanner)new TezosWalletScanner(Account.GetCurrencyAccount<FA12Account>(currency)),
-                "FA12" => (ICurrencyHdWalletScanner)new TezosWalletScanner(Account.GetCurrencyAccount<FA12Account>(currency)),
+                "TZBTC" => (ICurrencyHdWalletScanner)new TezosWalletScanner(
+                    Account.GetCurrencyAccount<FA12Account>(currency), 
+                    Account.GetCurrencyAccount<TezosAccount>("XTZ")),
+                "FA12" => (ICurrencyHdWalletScanner)new TezosWalletScanner(
+                    Account.GetCurrencyAccount<FA12Account>(currency), 
+                    Account.GetCurrencyAccount<TezosAccount>("XTZ")),
                 _ => throw new NotSupportedException($"Currency {currency} not supported")
             };
         }

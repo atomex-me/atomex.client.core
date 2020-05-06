@@ -5,7 +5,7 @@ using Nethereum.Util;
 
 namespace Atomex.Blockchain.Ethereum
 {
-    public static class EventSignatureExtractor
+    public static class FunctionSignatureExtractor
     {
         public static string ExtractSignature<T>()
         {
@@ -17,9 +17,9 @@ namespace Atomex.Blockchain.Ethereum
 
             foreach (var attribute in classAttributes)
             {
-                if (attribute is EventAttribute eventAttribute)
+                if (attribute is FunctionAttribute functionAttribute)
                 {
-                    result += $"{eventAttribute.Name}(";
+                    result += $"{functionAttribute.Name}(";
                     break;
                 }
             }

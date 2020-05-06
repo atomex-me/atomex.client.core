@@ -85,7 +85,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             res += forge_nat(op["gas_limit"].Value<ulong>());
             res += forge_nat(op["storage_limit"].Value<ulong>());
             res += forge_nat(op["amount"].Value<ulong>());
-            res += forge_address(op["destination"].ToString());
+            res += ForgeAddress(op["destination"].ToString());
 
             if (op["parameters"] != null)
             {
@@ -149,7 +149,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             return buf.ToArray().ToHexString();
         }
 
-        private static string forge_address(string value)
+        public static string ForgeAddress(string value)
         {
             var prefix = value.Substring(0, 3);
 
