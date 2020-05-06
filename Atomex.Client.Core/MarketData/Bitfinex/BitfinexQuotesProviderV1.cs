@@ -19,7 +19,7 @@ namespace Atomex.MarketData.Bitfinex
         public const string EthBtc = "ETHBTC";
         public const string XtzBtc = "XTZBTC";
 
-        private string BaseUrl { get; } = "https://api.bitfinex.com/v1/";
+        private string BaseUrl { get; } = "https://test.atomex.me/v1/";
 
         public BitfinexQuotesProviderV1(params string[] symbols)
         {

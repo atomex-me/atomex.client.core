@@ -308,6 +308,9 @@ namespace Atomex.Blockchain.Ethereum
                         var result = JsonConvert.DeserializeObject<JObject>(content);
 
                         var status = result?["result"]?["status"]?.Value<string>();
+                        if (status == "") {
+                            status = result?["status"].Value<string>();
+                        }
 
                         return status != null
                             ? int.Parse(status)
