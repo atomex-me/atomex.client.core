@@ -311,6 +311,9 @@ namespace Atomex.Blockchain.Ethereum
 
                         var status = result?["result"]?["status"]?.Value<string>();
 
+                        if (status == "")
+                            status = result?["status"].Value<string>();
+
                         return status != null
                             ? int.Parse(status)
                             : 0;
