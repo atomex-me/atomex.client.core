@@ -312,7 +312,7 @@ namespace Atomex.Blockchain.Ethereum
                         var status = result?["result"]?["status"]?.Value<string>();
 
                         if (status == "")
-                            status = result?["status"].Value<string>();
+                            return null;
 
                         return status != null
                             ? int.Parse(status)
@@ -320,6 +320,9 @@ namespace Atomex.Blockchain.Ethereum
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            if (txReceipt == null)
+                return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
 
             if (txReceipt.HasError)
                 return txReceipt.Error;
