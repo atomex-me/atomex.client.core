@@ -193,7 +193,7 @@
       "InitiateGasLimit": 160000,
       "InitiateWithRewardGasLimit": 180000,
       "AddGasLimit": 50000,
-      "RefundGasLimit": 60000,
+      "RefundGasLimit": 75000,
       "RedeemGasLimit": 100000,
       "GasPriceInGwei": 100,
       "Chain": "Ropsten",

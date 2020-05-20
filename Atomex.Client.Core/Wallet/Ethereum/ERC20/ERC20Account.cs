@@ -338,8 +338,8 @@ namespace Atomex.Wallet.Ethereum
                 if (ethTx.IsInternal)
                 {
                     ethTx.Type = oldTx.Type;
-                    ethTx.From = oldTx.From;
-                    ethTx.To = oldTx.To;
+                    //ethTx.From = oldTx.From;
+                    //ethTx.To = oldTx.To;
                 }
                 else
                 {
