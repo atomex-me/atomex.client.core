@@ -337,9 +337,12 @@ namespace Atomex.Wallet.Ethereum
             {
                 if (ethTx.IsInternal)
                 {
-                    ethTx.Type = oldTx.Type;
-                    //ethTx.From = oldTx.From;
-                    //ethTx.To = oldTx.To;
+                    if (oldTx.Type.HasFlag(BlockchainTransactionType.SwapRedeem))
+                        ethTx.Type |= BlockchainTransactionType.SwapRedeem;
+                    else if (oldTx.Type.HasFlag(BlockchainTransactionType.SwapRefund))
+                        ethTx.Type |= BlockchainTransactionType.SwapRefund;
+                    else
+                        ethTx.Type = oldTx.Type;
                 }
                 else
                 {
