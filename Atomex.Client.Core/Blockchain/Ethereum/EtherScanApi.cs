@@ -311,12 +311,18 @@ namespace Atomex.Blockchain.Ethereum
 
                         var status = result?["result"]?["status"]?.Value<string>();
 
+                        if (status == "")
+                            return null;
+
                         return status != null
                             ? int.Parse(status)
                             : 0;
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            if (txReceipt == null)
+                return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
 
             if (txReceipt.HasError)
                 return txReceipt.Error;

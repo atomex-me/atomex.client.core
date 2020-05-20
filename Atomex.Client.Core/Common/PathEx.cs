@@ -7,6 +7,9 @@ namespace Atomex.Common
     {
         public static string ToFullPath(string path)
         {
+            if (AppDomain.CurrentDomain.BaseDirectory == null)
+                return "/"; // this is for blazor app
+
             return Path.IsPathRooted(path)
                 ? path
                 : Path.GetFullPath(AppDomain.CurrentDomain.BaseDirectory + path);
