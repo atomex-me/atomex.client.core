@@ -73,7 +73,8 @@ namespace Atomex.Blockchain.Ethereum
 
                 var contractHandler = web3.Eth.GetContractHandler(tokenAddress);
 
-                var result = await contractHandler.QueryAsync<ERC20AllowanceFunctionMessage, BigInteger>(allowMes)
+                var result = await contractHandler
+                    .QueryAsync<ERC20AllowanceFunctionMessage, BigInteger>(allowMes)
                     .ConfigureAwait(false);
 
                 return result != null
