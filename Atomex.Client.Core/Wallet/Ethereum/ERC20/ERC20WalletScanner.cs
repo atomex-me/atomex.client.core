@@ -50,6 +50,12 @@ namespace Atomex.Wallet.Ethereum
                 .GetBlockNumber()
                 .ConfigureAwait(false);
 
+            if (lastBlockNumberResult == null)
+            {
+                Log.Error("Connection error while get block number");
+                return;
+            }
+
             if (lastBlockNumberResult.HasError)
             {
                 Log.Error(
@@ -100,7 +106,8 @@ namespace Atomex.Wallet.Ethereum
                         index,
                         walletAddress.Address);
 
-                    var events = await GetERC20EventsAsync(walletAddress.Address, cancellationToken);
+                    var events = await GetERC20EventsAsync(walletAddress.Address, cancellationToken)
+                        .ConfigureAwait(false);
 
                     if (events == null || !events.Any())
                     {
@@ -166,7 +173,8 @@ namespace Atomex.Wallet.Ethereum
                     currency.Name,
                     ethereumAddress.Address);
 
-                var events = await GetERC20EventsAsync(ethereumAddress.Address, cancellationToken);
+                var events = await GetERC20EventsAsync(ethereumAddress.Address, cancellationToken)
+                    .ConfigureAwait(false);
 
                 if (events != null && events.Any())
                 {
@@ -209,6 +217,12 @@ namespace Atomex.Wallet.Ethereum
                 .GetBlockNumber()
                 .ConfigureAwait(false);
 
+            if (lastBlockNumberResult == null)
+            {
+                Log.Error("Connection error while get block number");
+                return;
+            }
+
             if (lastBlockNumberResult.HasError)
             {
                 Log.Error(
@@ -228,7 +242,8 @@ namespace Atomex.Wallet.Ethereum
                 return;
             }
 
-            var events = await GetERC20EventsAsync(address, cancellationToken);
+            var events = await GetERC20EventsAsync(address, cancellationToken)
+                .ConfigureAwait(false);
 
             if (events == null || !events.Any()) // address without activity
                 return;
@@ -262,7 +277,7 @@ namespace Atomex.Wallet.Ethereum
             var currency = Currency;
             var api = new EtherScanApi(currency);
 
-            var ApproveEventsResult = await api
+            var approveEventsResult = await api
                 .GetContractEventsAsync(
                     address: currency.ERC20ContractAddress,
                     fromBlock: currency.SwapContractBlockNumber,
@@ -273,17 +288,23 @@ namespace Atomex.Wallet.Ethereum
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (ApproveEventsResult.HasError)
+            if (approveEventsResult == null)
+            {
+                Log.Error("Connection error while get approve events");
+                return null;
+            }
+
+            if (approveEventsResult.HasError)
             {
                 Log.Error(
                     "Error while scan address transactions for {@address} with code {@code} and description {@description}",
                     address,
-                    ApproveEventsResult.Error.Code,
-                    ApproveEventsResult.Error.Description);
+                    approveEventsResult.Error.Code,
+                    approveEventsResult.Error.Description);
                 return null;
             }
 
-            var OutEventsResult = await api
+            var outEventsResult = await api
                 .GetContractEventsAsync(
                     address: currency.ERC20ContractAddress,
                     fromBlock: currency.SwapContractBlockNumber,
@@ -294,17 +315,23 @@ namespace Atomex.Wallet.Ethereum
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (OutEventsResult.HasError)
+            if (outEventsResult == null)
+            {
+                Log.Error("Connection error while get output events");
+                return null;
+            }
+
+            if (outEventsResult.HasError)
             {
                 Log.Error(
                     "Error while scan address transactions for {@address} with code {@code} and description {@description}",
                     address,
-                    OutEventsResult.Error.Code,
-                    OutEventsResult.Error.Description);
+                    outEventsResult.Error.Code,
+                    outEventsResult.Error.Description);
                 return null;
             }
 
-            var InEventsResult = await api
+            var inEventsResult = await api
                 .GetContractEventsAsync(
                     address: currency.ERC20ContractAddress,
                     fromBlock: currency.SwapContractBlockNumber,
@@ -315,17 +342,25 @@ namespace Atomex.Wallet.Ethereum
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (InEventsResult.HasError)
+            if (inEventsResult == null)
+            {
+                Log.Error("Connection error while get input events");
+                return null;
+            }
+
+            if (inEventsResult.HasError)
             {
                 Log.Error(
                     "Error while scan address transactions for {@address} with code {@code} and description {@description}",
                     address,
-                    InEventsResult.Error.Code,
-                    InEventsResult.Error.Description);
+                    inEventsResult.Error.Code,
+                    inEventsResult.Error.Description);
                 return null;
             }
 
-            var events = ApproveEventsResult.Value?.Concat(OutEventsResult.Value?.Concat(InEventsResult.Value)).ToList();
+            var events = approveEventsResult.Value?
+                .Concat(outEventsResult.Value?.Concat(inEventsResult.Value))
+                .ToList();
 
             if (events == null || !events.Any()) // address without activity
                 return null;
