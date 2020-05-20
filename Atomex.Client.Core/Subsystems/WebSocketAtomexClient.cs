@@ -399,7 +399,7 @@ namespace Atomex.Subsystems
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Balance autoupdate task error");
+                    Console.WriteLine($"Balance autoupdate task error {e.ToString()}");
                 }
             });
         }
@@ -482,11 +482,7 @@ namespace Atomex.Subsystems
             }
             catch (Exception e)
             {
-<<<<<<< HEAD
-                Console.WriteLine("Error in transaction confirmed handler");
-=======
-                Log.Error(e, "Error in transaction processed handler");
->>>>>>> b762d6f7d568485c1aec00e37e76eeb373811133
+                Console.WriteLine($"Error in transaction processed handler {e.ToString()}");
             }
         }
 

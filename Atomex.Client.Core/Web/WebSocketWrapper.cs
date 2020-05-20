@@ -183,8 +183,9 @@ namespace Atomex.Web
 
         private void CallOnMessage(byte[] data)
         {
-            if (_onMessage != null)
-                RunInTask(() => _onMessage(this, data));
+            if (_onMessage != null) {
+                _onMessage(this, data);
+            }
         }
 
         private void CallOnDisconnected()

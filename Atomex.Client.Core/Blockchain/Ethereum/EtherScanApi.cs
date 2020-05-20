@@ -311,7 +311,8 @@ namespace Atomex.Blockchain.Ethereum
 
                         var status = result?["result"]?["status"]?.Value<string>();
                         if (status == "") {
-                            status = result?["status"].Value<string>();
+                            //status = result?["status"].Value<string>();
+                            return null;
                         }
 
                         return status != null
@@ -320,6 +321,12 @@ namespace Atomex.Blockchain.Ethereum
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            if (txReceipt == null)
+            {
+                Console.WriteLine("RETURNING NULL TRANSACTION FROM ETHERSCAN API");
+                return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
+            }
 
             if (txReceipt.HasError)
                 return txReceipt.Error;
