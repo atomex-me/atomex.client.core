@@ -5,9 +5,11 @@ using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Ethereum.ERC20;
 using Atomex.Common;
 using Atomex.Core;
 using Nethereum.Contracts;
+using Nethereum.Hex.HexConvertors.Extensions;
 using Nethereum.Hex.HexTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -684,13 +686,38 @@ namespace Atomex.Blockchain.Ethereum
             return result;
         }
 
-        public Task<Result<decimal>> GetERC20AllowanceAsync(
+        public async Task<Result<decimal>> GetERC20AllowanceAsync(
             EthereumTokens.ERC20 erc20,
             string tokenAddress,
             FunctionMessage allowanceMessage,
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            try
+            {
+                var callData = (allowanceMessage as ERC20AllowanceFunctionMessage)
+                    .GetCallData()
+                    .ToHex(prefix: true);
+
+                return await HttpHelper.GetAsyncResult<decimal>(
+                    baseUri: BaseUrl,
+                    requestUri: $"api?module=proxy&action=eth_call&to={tokenAddress}&data={callData}&tag=latest&apikey={ApiKey}",
+                    responseHandler: (response, content) =>
+                    {
+                        var result = JsonConvert.DeserializeObject<JObject>(content);
+
+                        var allowanceHex = result?["result"]?.Value<string>();
+
+                        return !string.IsNullOrEmpty(allowanceHex)
+                            ? erc20.TokenDigitsToTokens(new HexBigInteger(allowanceHex).Value)
+                            : 0;
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                return new Error(Errors.RequestError, e.Message);
+            }
         }
     }
 }
