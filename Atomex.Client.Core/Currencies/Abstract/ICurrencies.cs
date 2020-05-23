@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace Atomex.Abstract
 {
-    public interface ICurrencies : IList<Currency>
+    public interface ICurrencies : IEnumerable<Currency>
     {
         void Update(IConfiguration configuration);
         Currency GetByName(string name);

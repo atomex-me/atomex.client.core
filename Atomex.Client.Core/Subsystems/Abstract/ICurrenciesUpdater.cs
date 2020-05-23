@@ -1,9 +1,12 @@
-﻿using System.Threading.Tasks;
+﻿using System.Threading;
+using System.Threading.Tasks;
 
 namespace Atomex.Subsystems.Abstract
 {
     public interface ICurrenciesUpdater
     {
-        Task UpdateAsync();
+        void Start();
+        void Stop();
+        Task UpdateAsync(CancellationToken cancellationToken);
     }
 }
