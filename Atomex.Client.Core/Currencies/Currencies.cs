@@ -47,13 +47,13 @@ namespace Atomex
         {
             return configurationSection.Key switch
             {
-                "BTC" => new Bitcoin(configurationSection),
-                "LTC" => new Litecoin(configurationSection),
-                "ETH" => new Ethereum(configurationSection),
-                "XTZ" => new Tezos(configurationSection),
-                "USDT" => new Tether(configurationSection),
-                "FA12" => new FA12(configurationSection),
-                "TZBTC" => new TZBTC(configurationSection),
+                "BTC" => (Currency)new Bitcoin(configurationSection),
+                "LTC" => (Currency)new Litecoin(configurationSection),
+                "ETH" => (Currency)new Ethereum(configurationSection),
+                "XTZ" => (Currency)new Tezos(configurationSection),
+                "USDT" => (Currency)new Tether(configurationSection),
+                "FA12" => (Currency)new FA12(configurationSection),
+                "TZBTC" => (Currency)new TZBTC(configurationSection),
                 _ => throw new NotSupportedException($"{configurationSection.Key} not supported.")
             };
         }
