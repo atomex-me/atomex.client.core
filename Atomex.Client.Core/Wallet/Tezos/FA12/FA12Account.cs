@@ -446,16 +446,6 @@ namespace Atomex.Wallet.Tezos
         {
             var fa12 = Fa12;
 
-            var callingAddress = await GetMainXtzAddressAsync()
-                .ConfigureAwait(false);
-
-            if (callingAddress == null)
-                return;
-
-            using var callingAddressPublicKey = new SecureBytes((await GetAddressAsync(callingAddress.Address)
-                .ConfigureAwait(false))
-                .PublicKeyBytes());
-
             var txs = (await DataRepository
                 .GetTransactionsAsync(Currency, fa12.TransactionType)
                 .ConfigureAwait(false))
@@ -470,7 +460,8 @@ namespace Atomex.Wallet.Tezos
                 return list;
             });
 
-            // calculate unconfirmed balances
+            // calculate balances
+            var totalBalanceSum = 0m;
             var totalUnconfirmedIncome = 0m;
             var totalUnconfirmedOutcome = 0m;
 
@@ -511,6 +502,7 @@ namespace Atomex.Wallet.Tezos
 
                     if (addresses.TryGetValue(address, out var walletAddress))
                     {
+                        walletAddress.Balance += isConfirmed ? income + outcome : 0;
                         walletAddress.UnconfirmedIncome += !isConfirmed ? income : 0;
                         walletAddress.UnconfirmedOutcome += !isConfirmed ? outcome : 0;
                     }
@@ -523,6 +515,7 @@ namespace Atomex.Wallet.Tezos
                         if (walletAddress == null)
                             continue;
 
+                        walletAddress.Balance = isConfirmed ? income + outcome : 0;
                         walletAddress.UnconfirmedIncome = !isConfirmed ? income : 0;
                         walletAddress.UnconfirmedOutcome = !isConfirmed ? outcome : 0;
                         walletAddress.HasActivity = true;
@@ -530,38 +523,64 @@ namespace Atomex.Wallet.Tezos
                         addresses.Add(address, walletAddress);
                     }
 
+                    totalBalanceSum += isConfirmed ? income + outcome : 0;
                     totalUnconfirmedIncome += !isConfirmed ? income : 0;
                     totalUnconfirmedOutcome += !isConfirmed ? outcome : 0;
                 }
             }
 
+            Balance = totalBalanceSum;
+
             var totalBalance = 0m;
 
-            foreach (var wa in addresses.Values)
+            var callingAddress = await GetMainXtzAddressAsync()
+                .ConfigureAwait(false);
+
+            if (callingAddress != null)
             {
-                var fa12Api = fa12.BlockchainApi as ITokenBlockchainApi;
+                using var callingAddressPublicKey = new SecureBytes((await GetAddressAsync(callingAddress.Address)
+                    .ConfigureAwait(false))
+                    .PublicKeyBytes());
 
-                var balanceResult = await fa12Api
-                    .TryGetTokenBalanceAsync(
-                        address: wa.Address,
-                        callingAddress: callingAddress.Address,
-                        securePublicKey: callingAddressPublicKey,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (balanceResult.HasError)
+                foreach (var wa in addresses.Values)
                 {
-                    Log.Error("Error while getting token balance for {@address} with code {@code} and description {@description}",
-                        wa.Address,
-                        balanceResult.Error.Code,
-                        balanceResult.Error.Description);
+                    var fa12Api = fa12.BlockchainApi as ITokenBlockchainApi;
 
-                    continue; // todo: may be return?
+                    var balanceResult = await fa12Api
+                        .TryGetTokenBalanceAsync(
+                            address: wa.Address,
+                            callingAddress: callingAddress.Address,
+                            securePublicKey: callingAddressPublicKey,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (balanceResult.HasError)
+                    {
+                        Log.Error("Error while getting token balance for {@address} with code {@code} and description {@description}",
+                            wa.Address,
+                            balanceResult.Error.Code,
+                            balanceResult.Error.Description);
+
+                        continue; // todo: may be return?
+                    }
+
+                    wa.Balance = balanceResult.Value.FromTokenDigits(fa12.DigitsMultiplier);
+
+                    totalBalance += wa.Balance;
                 }
 
-                wa.Balance = balanceResult.Value.FromTokenDigits(fa12.DigitsMultiplier);
+                if (totalBalanceSum != totalBalance)
+                {
+                    Log.Warning("Transaction balance sum is different from the actual {@name} token balance",
+                        fa12.Name);
 
-                totalBalance += wa.Balance;
+                    Balance = totalBalance;
+                }
+            }
+            else
+            {
+                Log.Warning("No XTZ address found to make a call for {@name} token balance",
+                    fa12.Name);
             }
 
             // upsert addresses
@@ -569,7 +588,6 @@ namespace Atomex.Wallet.Tezos
                 .UpsertAddressesAsync(addresses.Values)
                 .ConfigureAwait(false);
 
-            Balance = totalBalance;
             UnconfirmedIncome = totalUnconfirmedIncome;
             UnconfirmedOutcome = totalUnconfirmedOutcome;
 
@@ -589,45 +607,13 @@ namespace Atomex.Wallet.Tezos
             if (walletAddress == null)
                 return;
 
-            var callingAddress = await GetMainXtzAddressAsync()  //todo make special function
-                .ConfigureAwait(false);
-
-            if (callingAddress == null)
-                return;
-
-            using var callingAddressPublicKey = new SecureBytes((await GetAddressAsync(callingAddress.Address)
-                .ConfigureAwait(false))
-                .PublicKeyBytes());
-
-            var fa12Api = fa12.BlockchainApi as ITokenBlockchainApi;
-
-            var balanceResult = await fa12Api
-                .TryGetTokenBalanceAsync(
-                    address: address,
-                    callingAddress: callingAddress.Address,
-                    securePublicKey: callingAddressPublicKey,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            if (balanceResult.HasError)
-            {
-                Log.Error("Error while balance update token for {@address} with code {@code} and description {@description}",
-                    address,
-                    balanceResult.Error.Code,
-                    balanceResult.Error.Description);
-                return;
-            }
-
-            var balance = balanceResult.Value.FromTokenDigits(fa12.DigitsMultiplier);
-
-            // calculate unconfirmed balances
-            var unconfirmedTxs = (await DataRepository
-                .GetUnconfirmedTransactionsAsync(Currency, fa12.TransactionType)
+            var txs = (await DataRepository
+                .GetTransactionsAsync(Currency, fa12.TransactionType)
                 .ConfigureAwait(false))
                 .Cast<TezosTransaction>()
                 .ToList();
 
-            var unconfirmedInternalTxs = unconfirmedTxs.Aggregate(new List<TezosTransaction>(), (list, tx) =>
+            var internalTxs = txs.Aggregate(new List<TezosTransaction>(), (list, tx) =>
             {
                 if (tx.InternalTxs != null)
                     list.AddRange(tx.InternalTxs);
@@ -635,19 +621,74 @@ namespace Atomex.Wallet.Tezos
                 return list;
             });
 
+            var balance = 0m;
             var unconfirmedIncome = 0m;
             var unconfirmedOutcome = 0m;
 
-            foreach (var utx in unconfirmedTxs.Concat(unconfirmedInternalTxs))
+            foreach (var tx in txs.Concat(internalTxs))
             {
-                var isFailed = utx.State == BlockchainTransactionState.Failed;
+                var isIncome = address == tx.To;
+                var isOutcome = address == tx.From;
+                var isConfirmed = tx.IsConfirmed;
+                var isFailed = tx.State == BlockchainTransactionState.Failed;
 
-                unconfirmedIncome += address == utx.To && !isFailed
-                    ? utx.Amount.FromTokenDigits(fa12.DigitsMultiplier)
+                var income = isIncome && !isFailed
+                    ? tx.Amount.FromTokenDigits(fa12.DigitsMultiplier)
                     : 0;
-                unconfirmedOutcome += address == utx.From && !isFailed
-                    ? -utx.Amount.FromTokenDigits(fa12.DigitsMultiplier)
+
+                var outcome = isOutcome && !isFailed
+                    ? -tx.Amount.FromTokenDigits(fa12.DigitsMultiplier)
                     : 0;
+
+                balance += isConfirmed ? income + outcome : 0;
+                unconfirmedIncome += !isConfirmed ? income : 0;
+                unconfirmedOutcome += !isConfirmed ? outcome : 0;
+            }
+ 
+            var callingAddress = await GetMainXtzAddressAsync()  //todo: make special function
+                .ConfigureAwait(false);
+
+            if (callingAddress != null)
+            {
+                using var callingAddressPublicKey = new SecureBytes((await GetAddressAsync(callingAddress.Address)
+                    .ConfigureAwait(false))
+                    .PublicKeyBytes());
+
+                var fa12Api = fa12.BlockchainApi as ITokenBlockchainApi;
+
+                var balanceResult = await fa12Api
+                    .TryGetTokenBalanceAsync(
+                        address: address,
+                        callingAddress: callingAddress.Address,
+                        securePublicKey: callingAddressPublicKey,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (balanceResult.HasError)
+                {
+                    Log.Error("Error while balance update token for {@address} with code {@code} and description {@description}",
+                        address,
+                        balanceResult.Error.Code,
+                        balanceResult.Error.Description);
+                    return;
+                }
+
+                var balanceRes = balanceResult.Value.FromTokenDigits(fa12.DigitsMultiplier);
+
+                if (balance != balanceRes)
+                {
+                    Log.Warning("Transaction balance sum for address {@address} is {@balanceSum}, which is different from the actual address balance {@balance}",
+                        address,
+                        balance,
+                        balanceRes);
+
+                    balance = balanceRes;
+                }
+            }
+            else
+            {
+                Log.Warning("No XTZ address found to make a call for {@name} token balance",
+                    fa12.Name);
             }
 
             var balanceDifference = balance - walletAddress.Balance;
