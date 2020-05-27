@@ -12,6 +12,8 @@ namespace Atomex
 {
     public class Currencies : ICurrencies
     {
+        private string[] _currenciesOrder = new[] { "BTC", "ETH", "LTC", "XTZ", "USDT", "TZBTC", "FA12" };
+
         private readonly object _sync = new object();
         private IDictionary<string, Currency> _currencies;
 
@@ -62,7 +64,14 @@ namespace Atomex
         {
             lock (_sync)
             {
-                return _currencies.Values.GetEnumerator();
+                var result = new List<Currency>(_currencies.Values.Count);
+
+                foreach (var currencyByOrder in _currenciesOrder)
+                    if (_currencies.TryGetValue(currencyByOrder, out var currency))
+                        result.Add(currency);
+
+                return result.GetEnumerator();
+                //return _currencies.Values.GetEnumerator();
             }
         }
 
