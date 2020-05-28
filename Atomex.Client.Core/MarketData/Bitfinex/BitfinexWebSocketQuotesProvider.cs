@@ -109,7 +109,7 @@ namespace Atomex.MarketData.Bitfinex
             }
             catch (Exception e)
             {
-                Console.WriteLine("Bitfinex response handle error");
+                Log.Error("Bitfinex response handle error");
             }
         }
 

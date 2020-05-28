@@ -50,7 +50,7 @@ namespace Atomex.Subsystems
             }
             catch (Exception e)
             {
-                Console.WriteLine("Currencies update error");
+                Log.Error("Currencies update error");
             }
         }
     }

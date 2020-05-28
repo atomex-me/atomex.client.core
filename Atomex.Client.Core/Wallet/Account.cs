@@ -90,7 +90,7 @@ namespace Atomex.Wallet
                 currencies: Currencies,
                 network: wallet.Network);
 
-            Console.WriteLine($"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultDataFileName}");
+            Log.Error($"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultDataFileName}");
 
             CurrencyAccounts = Currencies
                 .ToDictionary(

@@ -48,7 +48,7 @@ namespace Atomex.Swaps.Helpers
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Error while broadcast {@currency} tx.", tx.Currency.Name);
+                    Log.Error("Error while broadcast {@currency} tx.", tx.Currency.Name);
                 }
 
                 return null;

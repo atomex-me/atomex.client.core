@@ -319,7 +319,7 @@ namespace Atomex.Blockchain.Tezos
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Operation parse error");
+                    Log.Error("Operation parse error");
                 }
             }
 

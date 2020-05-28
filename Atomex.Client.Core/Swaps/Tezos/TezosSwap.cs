@@ -108,7 +108,7 @@ namespace Atomex.Swaps.Tezos
             }
             catch (Exception e)
             {
-                Console.WriteLine("Swap payment error for swap {@swapId}", swap.Id);
+                Log.Error("Swap payment error for swap {@swapId}", swap.Id);
                 return;
             }
 
@@ -514,7 +514,7 @@ namespace Atomex.Swaps.Tezos
             }
             catch (Exception e)
             {
-                Console.WriteLine("Swap accepted error");
+                Log.Error("Swap accepted error");
             }
         }
 
@@ -597,7 +597,7 @@ namespace Atomex.Swaps.Tezos
             }
             catch (Exception e)
             {
-                Console.WriteLine("Error in refund time reached handler");
+                Log.Error("Error in refund time reached handler");
             }
         }
 
@@ -671,7 +671,7 @@ namespace Atomex.Swaps.Tezos
             }
             catch (Exception e)
             {
-                Console.WriteLine("Redeem party control canceled event error");
+                Log.Error("Redeem party control canceled event error");
             }
         }
 

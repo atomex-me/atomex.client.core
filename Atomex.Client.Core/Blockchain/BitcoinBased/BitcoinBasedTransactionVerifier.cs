@@ -94,7 +94,7 @@ namespace Atomex.Blockchain.BitcoinBased
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Transaction verification error");
+                    Log.Error("Transaction verification error");
 
                     error = new Error(
                         code: Errors.TransactionVerificationError,

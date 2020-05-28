@@ -130,7 +130,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
             }
             catch (Exception e)
             {
-                Console.WriteLine("Ethereum swap initiated control task error");
+                Log.Error("Ethereum swap initiated control task error");
 
                 return new Error(Errors.InternalError, e.Message);
             }

@@ -232,7 +232,7 @@ namespace Atomex.Swaps
             }
             catch (Exception e)
             {
-                Console.WriteLine("Existing swap handle error");
+                Log.Error("Existing swap handle error");
             }
 
             // update swap status
@@ -388,13 +388,13 @@ namespace Atomex.Swaps
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine("Swap {@id} restore error", swap.Id);
+                        Log.Error("Swap {@id} restore error", swap.Id);
                     }
                 }
             }
             catch (Exception e)
             {
-                Console.WriteLine("Swaps restore error");
+                Log.Error("Swaps restore error");
             }
 
             SwapTimeoutControlAsync(cancellationToken).FireAndForget();
@@ -538,7 +538,7 @@ namespace Atomex.Swaps
             }
             catch (Exception e)
             {
-                Console.WriteLine("Swap update error");
+                Log.Error("Swap update error");
             }
         }
 
@@ -569,7 +569,7 @@ namespace Atomex.Swaps
             }
             catch (Exception e)
             {
-                Console.WriteLine("Initiator payment confirmed handler error");
+                Log.Error($"Initiator payment confirmed handler error {e.ToString()}");
             }
         }
 
@@ -595,7 +595,7 @@ namespace Atomex.Swaps
             }
             catch (Exception e)
             {
-                Console.WriteLine("Acceptor payment confirmed handler error");
+                Log.Error("Acceptor payment confirmed handler error");
             }
         }
 
@@ -621,7 +621,7 @@ namespace Atomex.Swaps
             }
             catch (Exception e)
             {
-                Console.WriteLine("Acceptor payment spent handler error");
+                Log.Error("Acceptor payment spent handler error");
             }
         }
 

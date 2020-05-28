@@ -53,7 +53,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
             }
             catch (Exception e)
             {
-                Console.WriteLine("Ethereum redeem control task error");
+                Log.Error("Ethereum redeem control task error");
 
                 return new Error(Errors.InternalError, e.Message);
             }

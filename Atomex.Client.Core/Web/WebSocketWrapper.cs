@@ -4,6 +4,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
+using Serilog;
 
 namespace Atomex.Web
 {
@@ -107,7 +108,7 @@ namespace Atomex.Web
                 CallOnConnected();
                 StartListen();
             } catch (Exception) {
-                Console.WriteLine($"Unavailable to connect to {_uri.ToString()}");
+                Log.Error($"Unavailable to connect to {_uri.ToString()}");
             }
 
         }
@@ -118,7 +119,7 @@ namespace Atomex.Web
             try {
                 SendBytesAsync(bytes);
             } catch(Exception e) {
-                Console.WriteLine(e.ToString());
+                Log.Error($"Unable to send bytes with WS: {e.ToString()}");
             }
         }
 

@@ -177,7 +177,7 @@ namespace Atomex.MarketData.Bitfinex
             }
             catch (Exception e)
             {
-                Console.WriteLine("WebSocket connect async error");
+                Log.Error("WebSocket connect async error");
             }
 
             OnDisconnected();
@@ -226,7 +226,7 @@ namespace Atomex.MarketData.Bitfinex
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("Ping task error");
+                    Log.Error("Ping task error");
 
                     if (_ws.State == WebSocketState.Closed || _ws.State == WebSocketState.Aborted)
                         OnDisconnected();
@@ -280,7 +280,7 @@ namespace Atomex.MarketData.Bitfinex
             }
             catch (Exception e)
             {
-                Console.WriteLine("Bitfinex response handle error");
+                Log.Error("Bitfinex response handle error");
             }
         }
 
@@ -426,7 +426,7 @@ namespace Atomex.MarketData.Bitfinex
             }
             catch (Exception e)
             {
-                Console.WriteLine("Subscribe to tickers error");
+                Log.Error("Subscribe to tickers error");
             }
         }
     }

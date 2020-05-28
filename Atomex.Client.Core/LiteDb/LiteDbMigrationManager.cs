@@ -16,7 +16,6 @@ namespace Atomex.LiteDb
             {
                 if (!File.Exists(pathToDb))
                 {
-                    Console.WriteLine("Trying to create database");
                     CreateDataBase(
                         pathToDb: pathToDb,
                         sessionPassword: sessionPassword,
@@ -42,7 +41,6 @@ namespace Atomex.LiteDb
             catch (Exception e)
             {
                 Console.WriteLine("LiteDb migration error");
-                Console.WriteLine(Environment.OSVersion.Platform);
             }
         }
 

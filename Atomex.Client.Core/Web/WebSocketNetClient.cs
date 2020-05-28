@@ -101,17 +101,17 @@ namespace Atomex.Web
                         .ConfigureAwait(false);
 
 
-                        Console.WriteLine("Try to reconnect through {@interval}, attempt: {@attempt}", reconnectInterval,
-                        _reconnectAttempts);
+                        // Log.Error("Try to reconnect through {@interval}, attempt: {@attempt}", reconnectInterval,
+                        // _reconnectAttempts);
                         ConnectAsync().FireAndForget();
                     }
                 catch (OperationCanceledException)
                 {
-                    Console.WriteLine("WS Reconnection was canceled");
+                    //Log.Error("WS Reconnection was canceled");
                 }
                 catch (Exception e)
                 {
-                    Console.WriteLine("WS Reconnect error");
+                    Log.Error("WS Reconnect error");
                 }
             }
         }
