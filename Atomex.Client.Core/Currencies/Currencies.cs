@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using Atomex.Abstract;
 using Atomex.Core;
@@ -8,42 +10,71 @@ using Microsoft.Extensions.Configuration;
 
 namespace Atomex
 {
-    public class Currencies : List<Currency>, ICurrencies
+    public class Currencies : ICurrencies
     {
+        private string[] _currenciesOrder = new[] { "BTC", "ETH", "LTC", "XTZ", "USDT", "TZBTC", "FA12" };
+
+        private readonly object _sync = new object();
+        private IDictionary<string, Currency> _currencies;
+
         public Currencies(IConfiguration configuration)
         {
-            Add(new Bitcoin(configuration.GetSection("BTC")));
-            Add(new Ethereum(configuration.GetSection("ETH")));
-            Add(new Tether(configuration.GetSection("USDT")));
-            Add(new Litecoin(configuration.GetSection("LTC")));
-            Add(new Tezos(configuration.GetSection("XTZ")));
-
-            if (configuration.GetSection("FA12").Exists())
-                Add(new FA12(configuration.GetSection("FA12")));
-
-            if (configuration.GetSection("TZBTC").Exists())
-                Add(new TZBTC(configuration.GetSection("TZBTC")));
+            _currencies = configuration
+                .GetChildren()
+                .Select(GetFromSection).ToDictionary(c => c.Name, c => c);
         }
 
         public void Update(IConfiguration configuration)
         {
-            Get<Bitcoin>("BTC").Update(configuration.GetSection("BTC"));
-            Get<Ethereum>("ETH").Update(configuration.GetSection("ETH"));
-            Get<Tether>("USDT").Update(configuration.GetSection("USDT"));
-            Get<Litecoin>("LTC").Update(configuration.GetSection("LTC"));
-            Get<Tezos>("XTZ").Update(configuration.GetSection("XTZ"));
-
-            if (configuration.GetSection("FA12").Exists())
-                Get<FA12>("FA12").Update(configuration.GetSection("FA12"));
-
-            if (configuration.GetSection("TZBTC").Exists())
-                Get<TZBTC>("TZBTC").Update(configuration.GetSection("TZBTC"));
+            lock (_sync)
+            {
+                _currencies = configuration
+                    .GetChildren()
+                    .Select(GetFromSection).ToDictionary(c => c.Name, c => c);
+            }
         }
 
-        public Currency GetByName(string name) =>
-            this.FirstOrDefault(c => c.Name == name);
+        public Currency GetByName(string name)
+        {
+            lock (_sync)
+            {
+                return _currencies[name];
+            }
+        }
 
         public T Get<T>(string name) where T : Currency =>
             GetByName(name) as T;
+
+        public Currency GetFromSection(IConfigurationSection configurationSection)
+        {
+            return configurationSection.Key switch
+            {
+                "BTC" => (Currency)new Bitcoin(configurationSection),
+                "LTC" => (Currency)new Litecoin(configurationSection),
+                "ETH" => (Currency)new Ethereum(configurationSection),
+                "XTZ" => (Currency)new Tezos(configurationSection),
+                "USDT" => (Currency)new Tether(configurationSection),
+                "FA12" => (Currency)new FA12(configurationSection),
+                "TZBTC" => (Currency)new TZBTC(configurationSection),
+                _ => throw new NotSupportedException($"{configurationSection.Key} not supported.")
+            };
+        }
+
+        public IEnumerator<Currency> GetEnumerator()
+        {
+            lock (_sync)
+            {
+                var result = new List<Currency>(_currencies.Values.Count);
+
+                foreach (var currencyByOrder in _currenciesOrder)
+                    if (_currencies.TryGetValue(currencyByOrder, out var currency))
+                        result.Add(currency);
+
+                return result.GetEnumerator();
+                //return _currencies.Values.GetEnumerator();
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }
