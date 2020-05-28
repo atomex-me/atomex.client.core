@@ -34,7 +34,7 @@ namespace Atomex
             if (HasOrderBooksProvider)
                 OrderBooksProvider.Start();
 
-            CurrenciesUpdater?.UpdateAsync().FireAndForget();
+            CurrenciesUpdater?.Start();
 
             return this;
         }
@@ -49,6 +49,8 @@ namespace Atomex
 
             if (HasOrderBooksProvider)
                 OrderBooksProvider.Stop();
+
+            CurrenciesUpdater?.Stop();
 
             return this;
         }

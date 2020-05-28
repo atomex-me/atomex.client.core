@@ -150,7 +150,7 @@ namespace Atomex.Blockchain.Ethereum
                        var json = JsonConvert.DeserializeObject<JObject>(content);
 
                        return json.ContainsKey("result")
-                           ? Atomex.Ethereum.WeiToEth(new BigInteger(long.Parse(json["result"].ToString())))
+                           ? Atomex.Ethereum.WeiToEth(BigInteger.Parse(json["result"].ToString()))
                            : 0;
                    },
                    cancellationToken: cancellationToken)
