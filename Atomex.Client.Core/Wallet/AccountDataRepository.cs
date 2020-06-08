@@ -247,6 +247,12 @@ namespace Atomex.Wallet
     {
       lock (_sync)
       {
+        var txAge = DateTime.Now - tx.CreationTime;
+        if (_transactions.ContainsKey($"{tx.Id}:{tx.Currency.Name}") && tx.State == BlockchainTransactionState.Confirmed && txAge.Value.TotalDays >= 1)
+        {
+          // todo: remove this;
+          return Task.FromResult(true);
+        }
         _transactions[$"{tx.Id}:{tx.Currency.Name}"] = tx; // todo: copy?
 
         var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument<IBlockchainTransaction>(tx)));
@@ -265,7 +271,8 @@ namespace Atomex.Wallet
     {
       lock (_sync)
       {
-        if (_transactions.TryGetValue($"{txId}:{currency}", out var tx)) {
+        if (_transactions.TryGetValue($"{txId}:{currency}", out var tx))
+        {
           return Task.FromResult(tx);
         }
 
