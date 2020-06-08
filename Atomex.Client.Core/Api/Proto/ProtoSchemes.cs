@@ -24,6 +24,8 @@
         public SnapshotScheme Snapshot { get; }
         public OrderLogScheme OrderLog { get; }
 
+        public HeartBeatScheme HeartBeat { get; }
+
         public ProtoSchemes()
         {
             byte id = 0;
@@ -51,7 +53,9 @@
             Quotes       = new QuotesScheme(messageId: id++);
             Entries      = new EntriesScheme(messageId: id++);
             Snapshot     = new SnapshotScheme(messageId: id++);
-            OrderLog     = new OrderLogScheme(messageId: id);
+            OrderLog     = new OrderLogScheme(messageId: id++);
+
+            HeartBeat    = new HeartBeatScheme(messageId: id);
         }
     }
 }
