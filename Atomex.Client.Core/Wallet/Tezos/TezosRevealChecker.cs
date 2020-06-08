@@ -40,7 +40,7 @@ namespace Atomex.Wallet.Tezos
 
             if (isRevealedResult == null)
             {
-                Log.Error("Connection error while checking reveal status for address {@address}", address);
+                Log.Error("Error while checking reveal status for address {@address}", address);
 
                 return false;
             }

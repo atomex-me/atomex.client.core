@@ -284,10 +284,13 @@ namespace Atomex.Blockchain.Tezos
         {
             var addressInfo = await GetAddressInfoAsync(address, cancellationToken)
                 .ConfigureAwait(false);
+            
+            if (addressInfo == null)
+                return null;
 
             if (addressInfo.HasError)
                 return addressInfo.Error;
-
+            
             return addressInfo.Value.IsAllocated;
         }
 
@@ -299,7 +302,7 @@ namespace Atomex.Blockchain.Tezos
                 .ConfigureAwait(false);
 
             if (addressInfo == null)
-                return false;
+                return null;
 
             if (addressInfo.HasError)
                 return addressInfo.Error;
