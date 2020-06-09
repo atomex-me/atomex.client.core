@@ -40,7 +40,7 @@ namespace Atomex.Wallet.Tezos
 
             if (isAllocatedResult == null)
             {
-                Log.Error("Connection error while checking allocation status for address {@address}", address);
+                Log.Error("Error while checking allocation status for address {@address}", address);
 
                 return false;
             }

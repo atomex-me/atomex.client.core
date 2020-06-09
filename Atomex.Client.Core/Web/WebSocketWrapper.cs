@@ -103,7 +103,7 @@ namespace Atomex.Web
         {
             try {
                 _ws = new ClientWebSocket();
-                _ws.Options.KeepAliveInterval = TimeSpan.FromSeconds(20);
+                _ws.Options.KeepAliveInterval = TimeSpan.FromSeconds(5);
                 await _ws.ConnectAsync(_uri, _cancellationToken);
                 CallOnConnected();
                 StartListen();
@@ -123,11 +123,16 @@ namespace Atomex.Web
             }
         }
 
+        private bool disconnectFromSend = false;
         private async void SendBytesAsync(byte[] bytes)
         {
             if (_ws.State != WebSocketState.Open)
             {
-               CallOnDisconnected();
+                if (!disconnectFromSend)
+                {
+                    disconnectFromSend = true;
+                    CallOnDisconnected();
+                }
                return;
             }
             var messageBuffer = bytes;
@@ -148,14 +153,15 @@ namespace Atomex.Web
                     WebSocketReceiveResult result;
                     do
                     {
-                        result = await _ws.ReceiveAsync(rcvBuffer, _cancellationToken);
+                        var timeOut = new CancellationTokenSource(TimeSpan.FromSeconds(15)).Token;
+                        result = await _ws.ReceiveAsync(rcvBuffer, timeOut);
                         msgBytes = rcvBuffer.Skip(rcvBuffer.Offset).Take(result.Count).ToArray();
 
                         if (result.MessageType == WebSocketMessageType.Close && _ws.State == WebSocketState.Open)
                         {
+                            CallOnDisconnected();
                             await
                                 _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
-                            CallOnDisconnected();
                         }
                         else
                         {
@@ -172,9 +178,20 @@ namespace Atomex.Web
 
                 }
             }
-            catch (Exception e)
+            catch (OperationCanceledException) {
+                 if (_ws.State == WebSocketState.Open) {
+                    // Console.WriteLine("WS DISCONNECTED DUE TO INACTIVITY");
+                    CallOnDisconnected();
+                    await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+                }
+            }
+            catch (Exception)
             {
-                CallOnDisconnected();
+                if (_ws.State == WebSocketState.Open) {
+                    // Console.WriteLine("Call disconnect from exception");
+                    CallOnDisconnected();
+                    await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+                }
             }
         }
 
@@ -192,13 +209,16 @@ namespace Atomex.Web
         private void CallOnDisconnected()
         {
             if (_onDisconnected != null)
-                RunInTask(() => _onDisconnected(this));
+                _onDisconnected(this);
         }
 
         private void CallOnConnected()
         {
-            if (_onConnected != null)
-                RunInTask(() => _onConnected(this));
+            if (_onConnected != null) {
+                _onConnected(this);
+            }
+            Console.WriteLine("WS CONNECTED");
+            disconnectFromSend = false;
         }
 
         private static void RunInTask(Action action)

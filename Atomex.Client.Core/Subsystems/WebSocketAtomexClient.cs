@@ -25,6 +25,7 @@ namespace Atomex.Subsystems
     public class WebSocketAtomexClient : IAtomexClient
     {
         protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(24 * 60);
+        private static TimeSpan HeartBeatInterval = TimeSpan.FromSeconds(5);
 
         public event EventHandler<TerminalServiceEventArgs> ServiceConnected;
         public event EventHandler<TerminalServiceEventArgs> ServiceDisconnected;
@@ -35,6 +36,13 @@ namespace Atomex.Subsystems
         public event EventHandler<SwapEventArgs> SwapUpdated;
 
         private readonly CancellationTokenSource _cts;
+
+        private CancellationTokenSource _exchangeCts;
+        private Task _exchangeHeartBeatTask;
+
+        private CancellationTokenSource _marketDataCts;
+        private Task _marketDataHeartBeatTask;
+
         private ExchangeWebClient ExchangeClient { get; set; }
         private MarketDataWebClient MarketDataClient { get; set; }
 
@@ -208,11 +216,31 @@ namespace Atomex.Subsystems
 
         private void OnExchangeConnectedEventHandler(object sender, EventArgs args)
         {
+            _exchangeCts = new CancellationTokenSource();
+            _exchangeHeartBeatTask = RunHeartBeatLoopAsync(ExchangeClient, _exchangeCts.Token);
+            Console.WriteLine("LOGGING_OnExchangeConnectedEventHandler");
+
             ServiceConnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
         }
 
         private void OnExchangeDisconnectedEventHandler(object sender, EventArgs args)
         {
+            if (!_exchangeHeartBeatTask.IsCompleted &&
+                !_exchangeHeartBeatTask.IsCanceled &&
+                !_exchangeHeartBeatTask.IsFaulted)
+            {
+                try
+                {
+                    Console.WriteLine("LOGGING_OnExchangeDisconnectedEventHandler _exchangeCts.Cancel");
+                    _exchangeCts.Cancel();
+                }
+                catch (OperationCanceledException)
+                {
+                    Console.WriteLine("LOGGING_Exchange heart beat loop canceled");
+                    Log.Debug("Exchange heart beat loop canceled.");
+                }
+            }
+
             ServiceDisconnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
         }
 
@@ -285,11 +313,31 @@ namespace Atomex.Subsystems
 
         private void OnMarketDataConnectedEventHandler(object sender, EventArgs args)
         {
+            _marketDataCts = new CancellationTokenSource();
+            _marketDataHeartBeatTask = RunHeartBeatLoopAsync(MarketDataClient, _marketDataCts.Token);
+
             ServiceConnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
+            Console.WriteLine("LOGGING_OnMarketDataConnectedEventHandler");
         }
 
         private void OnMarketDataDisconnectedEventHandler(object sender, EventArgs args)
         {
+            if (!_marketDataHeartBeatTask.IsCompleted &&
+                !_marketDataHeartBeatTask.IsCanceled &&
+                !_marketDataHeartBeatTask.IsFaulted)
+            {
+                try
+                {
+                    Console.WriteLine("LOGGING_OnMarketDataDisconnectedEventHandler  _marketDataCts.Cancel");
+                    _marketDataCts.Cancel();
+                }
+                catch (OperationCanceledException)
+                {
+                    Console.WriteLine("LOGGING_Exchange heart beat loop canceled");
+                    Log.Debug("Exchange heart beat loop canceled.");
+                }
+            }
+
             ServiceDisconnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
         }
 
@@ -496,6 +544,31 @@ namespace Atomex.Subsystems
         {
             Log.Error(exception, exception.Message);
             Error?.Invoke(this, new TerminalErrorEventArgs(service, new Error(Errors.InternalError, exception.Message)));
+        }
+
+        private async Task RunHeartBeatLoopAsync(
+            BinaryWebSocketClient webSocketClient,
+            CancellationToken cancellationToken = default)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    webSocketClient.SendHeartBeatAsync();
+
+                    await Task.Delay(HeartBeatInterval, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    Console.WriteLine("LOGGING_HeartBeat loop canceled.");
+                    Log.Debug("HeartBeat loop canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Error while sending heartbeat.");
+                }
+            }
         }
     }
 }

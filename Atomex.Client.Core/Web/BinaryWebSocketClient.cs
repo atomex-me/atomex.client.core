@@ -2,6 +2,7 @@
 using System.IO;
 using Atomex.Api;
 using Atomex.Api.Proto;
+using Serilog;
 using WebSocketSharp;
 
 namespace Atomex.Web
@@ -17,6 +18,11 @@ namespace Atomex.Web
         public event EventHandler AuthNonce;
         public event EventHandler<Core.ErrorEventArgs> Error;
 
+        public void SendHeartBeatAsync()
+        {
+            SendAsync(Schemes.HeartBeat.SerializeWithMessageId("ping"));
+        }
+
         protected void AddHandler(byte messageId, Action<MemoryStream> handler)
         {
             Handlers[messageId] = handler;
@@ -30,20 +36,19 @@ namespace Atomex.Web
             AddHandler(Schemes.AuthNonce.MessageId, AuthNonceHandler);
             AddHandler(Schemes.AuthOk.MessageId, AuthOkHandler);
             AddHandler(Schemes.Error.MessageId, ErrorHandler);
+            AddHandler(Schemes.HeartBeat.MessageId, HeartBeatHandler);
         }
 
         protected override void OnBinaryMessage(object sender, byte[] RawData)
         {
-            using (var stream = new MemoryStream(RawData))
-            {
-                while (stream.Position < stream.Length)
-                {
-                    var messageId = (byte) stream.ReadByte();
+            using var stream = new MemoryStream(RawData);
 
-                    if (messageId < Handlers.Length && Handlers[messageId] != null) {
-                        Handlers[messageId]?.Invoke(stream);
-                    }
-                }
+            while (stream.Position < stream.Length)
+            {
+                var messageId = (byte)stream.ReadByte();
+
+                if (messageId < Handlers.Length && Handlers[messageId] != null)
+                    Handlers[messageId]?.Invoke(stream);
             }
         }
 
@@ -63,6 +68,16 @@ namespace Atomex.Web
         {
             var error = Schemes.Error.DeserializeWithLengthPrefix(stream);
             Error?.Invoke(this, new Core.ErrorEventArgs(error));
+        }
+
+        private void HeartBeatHandler(MemoryStream stream)
+        {
+            var pong = Schemes.HeartBeat.DeserializeWithLengthPrefix(stream);
+
+            if (pong.ToLowerInvariant() != "pong")
+            {
+                Log.Error("Invalid heart beat response");
+            }
         }
     }
 }
