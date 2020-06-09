@@ -216,9 +216,14 @@ namespace Atomex.Subsystems
 
         private void OnExchangeConnectedEventHandler(object sender, EventArgs args)
         {
-            _exchangeCts = new CancellationTokenSource();
-            _exchangeHeartBeatTask = RunHeartBeatLoopAsync(ExchangeClient, _exchangeCts.Token);
-            Console.WriteLine("LOGGING_OnExchangeConnectedEventHandler");
+            if (_exchangeHeartBeatTask == null ||
+                _exchangeHeartBeatTask.IsCompleted ||
+                _exchangeHeartBeatTask.IsCanceled ||
+                _exchangeHeartBeatTask.IsFaulted)
+            {
+                _exchangeCts = new CancellationTokenSource();
+                _exchangeHeartBeatTask = RunHeartBeatLoopAsync(ExchangeClient, _exchangeCts.Token);
+            }
 
             ServiceConnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
         }
@@ -313,8 +318,14 @@ namespace Atomex.Subsystems
 
         private void OnMarketDataConnectedEventHandler(object sender, EventArgs args)
         {
-            _marketDataCts = new CancellationTokenSource();
-            _marketDataHeartBeatTask = RunHeartBeatLoopAsync(MarketDataClient, _marketDataCts.Token);
+            if (_marketDataHeartBeatTask == null ||
+                _marketDataHeartBeatTask.IsCompleted ||
+                _marketDataHeartBeatTask.IsCanceled ||
+                _marketDataHeartBeatTask.IsFaulted)
+            {
+                _marketDataCts = new CancellationTokenSource();
+                _marketDataHeartBeatTask = RunHeartBeatLoopAsync(MarketDataClient, _marketDataCts.Token);
+            }
 
             ServiceConnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
             Console.WriteLine("LOGGING_OnMarketDataConnectedEventHandler");
