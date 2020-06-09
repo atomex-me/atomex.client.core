@@ -112,10 +112,14 @@ namespace Atomex.Swaps.BitcoinBased
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            if (swap.IsInitiator && 
-                swap.HasPartyPayment &&
-                !swap.StateFlags.HasFlag(SwapStateFlags.IsPartyPaymentConfirmed))
+            Log.Debug("Start party payment control for swap {@swap}.", swap.Id);
+
+            if (swap.IsInitiator &&
+                swap.HasPartyPayment) // &&
+                //!swap.StateFlags.HasFlag(SwapStateFlags.IsPartyPaymentConfirmed))
             {
+                Log.Debug("Start to track party payment transaction confirmation for swap {@swap}.", swap.Id);
+
                 // track party payment confirmation
                 TrackTransactionConfirmationAsync(
                         swap: swap,
@@ -133,12 +137,16 @@ namespace Atomex.Swaps.BitcoinBased
             Swap swap,
             CancellationToken cancellationToken = default)
         {
+            Log.Debug("Redeem for swap {@swap}.", swap.Id);
+
             var currency = Currencies.GetByName(swap.PurchasedCurrency);
 
             var needReplaceTx= false;
 
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast))
             {
+                Log.Debug("Check redeem confirmation for swap {@swap}.", swap.Id);
+
                 // redeem already broadcast
                 var result = await currency
                     .IsTransactionConfirmed(
