@@ -30,6 +30,7 @@ namespace Atomex.Wallet.Ethereum
         #region Common
 
         private Atomex.Ethereum Eth => Currencies.Get<Atomex.Ethereum>(Currency);
+        private EthereumTokens.ERC20 Erc20 => Currencies.Get<EthereumTokens.ERC20>("USDT");
 
         public override async Task<Error> SendAsync(
             IEnumerable<WalletAddress> from,
@@ -241,10 +242,13 @@ namespace Atomex.Wallet.Ethereum
             var amount = 0m;
             var fee = 0m;
 
+            var reserveFeeInEth = ReserveFee();
+
             foreach (var address in unspentAddresses)
             {
                 var feeInEth = eth.GetFeeAmount(GasLimitByType(type, isFirstTx), eth.GasPriceInGwei);
-                var usedAmountInEth = Math.Max(address.AvailableBalance() - feeInEth, 0);
+
+                var usedAmountInEth = Math.Max(address.AvailableBalance() - feeInEth - (reserve && address == unspentAddresses.Last() ? reserveFeeInEth : 0), 0);
 
                 if (usedAmountInEth <= 0)
                     continue;
@@ -273,6 +277,16 @@ namespace Atomex.Wallet.Ethereum
                 return eth.RedeemGasLimit;
 
             return eth.GasLimit;
+        }
+
+        private decimal ReserveFee()
+        {
+            var eth = Eth;
+            var erc20 = Erc20;
+
+            return Math.Max(
+                eth.GetFeeAmount(Math.Max(erc20.RefundGasLimit, erc20.RedeemGasLimit), erc20.GasPriceInGwei),
+                eth.GetFeeAmount(Math.Max(eth.RefundGasLimit, eth.RedeemGasLimit), eth.GasPriceInGwei));
         }
 
         protected override async Task ResolveTransactionTypeAsync(

@@ -217,6 +217,8 @@ namespace Atomex.Wallet.Ethereum
             var amount = 0m;
             var fee = 0m;
 
+            var reserveFeeInEth = ReserveFee();
+
             foreach (var address in unspentAddresses)
             {
                 var ethAddress = await DataRepository
@@ -227,7 +229,7 @@ namespace Atomex.Wallet.Ethereum
 
                 var feeInEth = eth.GetFeeAmount(GasLimitByType(type, isFirstTx), eth.GasPriceInGwei);
 
-                if (ethAddress.AvailableBalance() - feeInEth <= 0)
+                if (ethAddress.AvailableBalance() - feeInEth - (reserve && address == unspentAddresses.Last() ? reserveFeeInEth : 0) <= 0)
                     continue;
 
                 amount += address.AvailableBalance();
@@ -300,6 +302,16 @@ namespace Atomex.Wallet.Ethereum
                 return erc20.RedeemGasLimit;
 
             return erc20.TransferGasLimit;
+        }
+
+        private decimal ReserveFee()
+        {
+            var eth = Eth;
+            var erc20 = Erc20;
+
+            return Math.Max(
+                eth.GetFeeAmount(Math.Max(erc20.RefundGasLimit, erc20.RedeemGasLimit), erc20.GasPriceInGwei),
+                eth.GetFeeAmount(Math.Max(eth.RefundGasLimit, eth.RedeemGasLimit), eth.GasPriceInGwei));
         }
 
         protected override async Task ResolveTransactionTypeAsync(

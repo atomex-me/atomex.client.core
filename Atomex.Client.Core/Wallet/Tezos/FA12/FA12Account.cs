@@ -278,9 +278,7 @@ namespace Atomex.Wallet.Tezos
             var amount = 0m;
             var fee = 0m;
 
-            var reserveFee = ReserveFeeByTypeAsync(
-                type: type,
-                cancellationToken: cancellationToken);
+            var reserveFee = ReserveFee();
 
             foreach (var address in unspentAddresses)
             {
@@ -390,13 +388,17 @@ namespace Atomex.Wallet.Tezos
             return fa12.TransferFee.ToTez() + (isRevealed ? 0 : fa12.RevealFee.ToTez());
         }
 
-        private decimal ReserveFeeByTypeAsync(
-            BlockchainTransactionType type,
-            CancellationToken cancellationToken = default)
+        private decimal ReserveFee()
         {
+            var xtz = Xtz;
             var fa12 = Fa12;
 
-            return Math.Max(fa12.RedeemFee.ToTez(), fa12.RefundFee.ToTez()) + fa12.RevealFee.ToTez() + Xtz.MicroTezReserve.ToTez();
+            return new[] {
+                fa12.RedeemFee.ToTez() + Math.Max((fa12.RedeemStorageLimit - fa12.ActivationStorage) / fa12.StorageFeeMultiplier, 0),
+                fa12.RefundFee.ToTez() + Math.Max((fa12.RefundStorageLimit - fa12.ActivationStorage) / fa12.StorageFeeMultiplier, 0),
+                xtz.RedeemFee.ToTez() + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) / xtz.StorageFeeMultiplier, 0),
+                xtz.RefundFee.ToTez() + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) / xtz.StorageFeeMultiplier, 0)
+            }.Max() + fa12.RevealFee.ToTez() + Xtz.MicroTezReserve.ToTez();
         }
 
         private async Task<decimal> StorageFeeByTypeAsync(
