@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Linq;
 using Serilog;
+using Atomex.Common;
 
 namespace Atomex.Web
 {
@@ -28,11 +29,13 @@ namespace Atomex.Web
         }
 
         public bool IsConnected {
-          get => _ws.State == WebSocketState.Open;
+          get => _state == CustomStates.Open;
         }
 
-        public WebSocketState ReadyState {
-            get => _ws.State;
+        private CustomStates _state = CustomStates.Closed;
+        public CustomStates ReadyState {
+            get => _state;
+            set { _state = value; }
         }
 
         public static WebSocketWrapper Create(string uri)
@@ -47,7 +50,7 @@ namespace Atomex.Web
         }
 
         public async Task<WebSocketWrapper> Close() {
-            await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+            await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
             return this;
         }
 
@@ -104,11 +107,12 @@ namespace Atomex.Web
             try {
                 _ws = new ClientWebSocket();
                 _ws.Options.KeepAliveInterval = TimeSpan.FromSeconds(5);
+                // Console.WriteLine($"Trying to connect to {_uri.ToString()}");
                 await _ws.ConnectAsync(_uri, _cancellationToken);
                 CallOnConnected();
                 StartListen();
             } catch (Exception) {
-                Log.Error($"Unavailable to connect to {_uri.ToString()}");
+                Console.WriteLine($"Unavailable to connect to {_uri.ToString()}");
             }
 
         }
@@ -128,9 +132,9 @@ namespace Atomex.Web
         {
             if (_ws.State != WebSocketState.Open)
             {
-                if (!disconnectFromSend)
-                {
+                if (!disconnectFromSend) {
                     disconnectFromSend = true;
+                    Console.WriteLine("Socket is not Opened, BUT TRYING TO SEND");
                     CallOnDisconnected();
                 }
                return;
@@ -159,9 +163,9 @@ namespace Atomex.Web
 
                         if (result.MessageType == WebSocketMessageType.Close && _ws.State == WebSocketState.Open)
                         {
+                            // await Close();
                             CallOnDisconnected();
-                            await
-                                _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
+                            // Console.WriteLine("Close INSIDE StartListen");
                         }
                         else
                         {
@@ -179,18 +183,18 @@ namespace Atomex.Web
                 }
             }
             catch (OperationCanceledException) {
-                 if (_ws.State == WebSocketState.Open) {
-                    // Console.WriteLine("WS DISCONNECTED DUE TO INACTIVITY");
+                if (_ws.State == WebSocketState.Open) {
+                    //Console.WriteLine("WS DISCONNECTED DUE TO INACTIVITY");
+                    // await Close();
                     CallOnDisconnected();
-                    await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
                 }
             }
             catch (Exception)
             {
                 if (_ws.State == WebSocketState.Open) {
-                    // Console.WriteLine("Call disconnect from exception");
+                    //Console.WriteLine("Call disconnect from exception");
+                    // await Close();
                     CallOnDisconnected();
-                    await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, string.Empty, CancellationToken.None);
                 }
             }
         }
@@ -208,12 +212,15 @@ namespace Atomex.Web
 
         private void CallOnDisconnected()
         {
+            _state = CustomStates.Closed;
             if (_onDisconnected != null)
                 _onDisconnected(this);
+            Close().FireAndForget();
         }
 
         private void CallOnConnected()
         {
+            _state = CustomStates.Open;
             if (_onConnected != null) {
                 _onConnected(this);
             }
@@ -225,5 +232,10 @@ namespace Atomex.Web
         {
             Task.Factory.StartNew(action);
         }
+    }
+
+    public enum CustomStates {
+        Open,
+        Closed
     }
 }

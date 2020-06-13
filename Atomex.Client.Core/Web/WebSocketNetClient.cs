@@ -85,7 +85,7 @@ namespace Atomex.Web
                 return;
             }
 
-            while (_ws.ReadyState != System.Net.WebSockets.WebSocketState.Open)
+            while (_ws.ReadyState != CustomStates.Open)
             {
                 _reconnectAttempts++;
                 var reconnectInterval = GetReconnectInterval(_reconnectAttempts);

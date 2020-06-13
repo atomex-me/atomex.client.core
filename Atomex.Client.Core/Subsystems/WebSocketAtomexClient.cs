@@ -236,12 +236,10 @@ namespace Atomex.Subsystems
             {
                 try
                 {
-                    Console.WriteLine("LOGGING_OnExchangeDisconnectedEventHandler _exchangeCts.Cancel");
                     _exchangeCts.Cancel();
                 }
                 catch (OperationCanceledException)
                 {
-                    Console.WriteLine("LOGGING_Exchange heart beat loop canceled");
                     Log.Debug("Exchange heart beat loop canceled.");
                 }
             }
@@ -328,7 +326,6 @@ namespace Atomex.Subsystems
             }
 
             ServiceConnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
-            Console.WriteLine("LOGGING_OnMarketDataConnectedEventHandler");
         }
 
         private void OnMarketDataDisconnectedEventHandler(object sender, EventArgs args)
@@ -339,12 +336,10 @@ namespace Atomex.Subsystems
             {
                 try
                 {
-                    Console.WriteLine("LOGGING_OnMarketDataDisconnectedEventHandler  _marketDataCts.Cancel");
                     _marketDataCts.Cancel();
                 }
                 catch (OperationCanceledException)
                 {
-                    Console.WriteLine("LOGGING_Exchange heart beat loop canceled");
                     Log.Debug("Exchange heart beat loop canceled.");
                 }
             }
@@ -572,7 +567,6 @@ namespace Atomex.Subsystems
                 }
                 catch (OperationCanceledException)
                 {
-                    Console.WriteLine("LOGGING_HeartBeat loop canceled.");
                     Log.Debug("HeartBeat loop canceled.");
                 }
                 catch (Exception e)
