@@ -25,5 +25,14 @@ namespace Atomex.Common
 
         public static decimal RoundDown(decimal d, decimal digitsMultiplier) =>
             Math.Floor(d * digitsMultiplier) / digitsMultiplier;
+
+        public static decimal DustProofMin(
+            decimal amount,
+            decimal refAmount,
+            decimal digitsMultiplier,
+            decimal dustMultiplier)
+        {
+            return RoundDown(amount - refAmount, digitsMultiplier / dustMultiplier) == 0 ? amount : Math.Min(amount, refAmount);
+        }
     }
 }

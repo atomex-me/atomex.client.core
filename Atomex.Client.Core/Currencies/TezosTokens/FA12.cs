@@ -49,6 +49,7 @@ namespace Atomex.TezosTokens
             Name = configuration["Name"];
             Description = configuration["Description"];
             DigitsMultiplier = long.Parse(configuration["DigitsMultiplier"]);
+            DustDigitsMultiplier = long.Parse(configuration["DustDigitsMultiplier"]);
             Digits = (int)Math.Log10(DigitsMultiplier);
             Format = $"F{Digits}";
 

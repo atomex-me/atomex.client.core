@@ -729,8 +729,7 @@ namespace Atomex.Swaps.Tezos.FA12
             var fa12 = Fa12;
             var fa12Api = fa12.BlockchainApi as ITokenBlockchainApi;
 
-            var requiredAmountInTokenDigits = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, fa12.DigitsMultiplier)
-                .ToTokenDigits(fa12.DigitsMultiplier);
+            var requiredAmountInTokens = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, fa12.DigitsMultiplier);
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();
             var isInitTx = true;
@@ -796,12 +795,14 @@ namespace Atomex.Swaps.Tezos.FA12
                     continue;
                 }
 
-                var amountInTokenDigits = requiredAmountInTokenDigits > 0 ? Math.Min(balanceInTokenDigits, requiredAmountInTokenDigits) : 0;
+                var amountInTokens = requiredAmountInTokens > 0
+                    ? AmountHelper.DustProofMin(balanceInTokens, requiredAmountInTokens, fa12.DigitsMultiplier, fa12.DustDigitsMultiplier)
+                    : 0;
 
-                if (amountInTokenDigits == 0)
+                if (amountInTokens == 0)
                     break;
 
-                requiredAmountInTokenDigits -= amountInTokenDigits;
+                requiredAmountInTokens -= amountInTokens;
 
                 using var callingAddressPublicKey = new SecureBytes((await Fa12Account.GetAddressAsync(walletAddress.Address)
                     .ConfigureAwait(false))
@@ -852,7 +853,7 @@ namespace Atomex.Swaps.Tezos.FA12
                     Fee = fa12.ApproveFee,
                     GasLimit = fa12.ApproveGasLimit,
                     StorageLimit = fa12.ApproveStorageLimit,
-                    Params = ApproveParams(fa12.SwapContractAddress, amountInTokenDigits),
+                    Params = ApproveParams(fa12.SwapContractAddress, amountInTokens.ToTokenDigits(fa12.DigitsMultiplier)),
                     UseDefaultFee = true,
                     Type = BlockchainTransactionType.TokenApprove
                 });
@@ -868,7 +869,7 @@ namespace Atomex.Swaps.Tezos.FA12
                         Fee = feeAmountInMtz,
                         GasLimit = fa12.InitiateGasLimit,
                         StorageLimit = fa12.InitiateStorageLimit,
-                        Params = InitParams(swap, fa12.TokenContractAddress, amountInTokenDigits, refundTimeStampUtcInSec, (long)rewardForRedeemInTokenDigits),
+                        Params = InitParams(swap, fa12.TokenContractAddress, amountInTokens.ToTokenDigits(fa12.DigitsMultiplier), refundTimeStampUtcInSec, (long)rewardForRedeemInTokenDigits),
                         UseDefaultFee = true,
                         Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
                     });
@@ -893,13 +894,13 @@ namespace Atomex.Swaps.Tezos.FA12
                 if (isInitTx)
                     isInitTx = false;
 
-                if (requiredAmountInTokenDigits == 0)
+                if (requiredAmountInTokens == 0)
                     break;
             }
 
-            if (requiredAmountInTokenDigits > 0)
+            if (requiredAmountInTokens > 0)
             {
-                Log.Warning("Insufficient funds (left {@requredAmount}).", requiredAmountInTokenDigits);
+                Log.Warning("Insufficient funds (left {@requredAmount}).", requiredAmountInTokens);
                 return Enumerable.Empty<TezosTransaction>();
             }
 

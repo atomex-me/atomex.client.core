@@ -803,7 +803,7 @@ namespace Atomex.Swaps.Ethereum
                 }
 
                 var amountInERC20 = requiredAmountInERC20 > 0
-                    ? Math.Min(balanceInERC20, requiredAmountInERC20)
+                    ? AmountHelper.DustProofMin(balanceInERC20, requiredAmountInERC20, erc20.DigitsMultiplier, erc20.DustDigitsMultiplier)
                     : 0;
 
                 requiredAmountInERC20 -= amountInERC20;
@@ -1009,7 +1009,7 @@ namespace Atomex.Swaps.Ethereum
 
             await EthereumAccount
                 .UpsertTransactionAsync(
-                    tx: tx,
+                    tx: ethTx,
                     updateBalance: updateBalance,
                     notifyIfUnconfirmed: notifyIfUnconfirmed,
                     notifyIfBalanceUpdated: notifyIfBalanceUpdated,

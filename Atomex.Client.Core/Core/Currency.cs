@@ -14,6 +14,7 @@ namespace Atomex.Core
         public string Name { get; set; }
         public string Description { get; set; }
         public long DigitsMultiplier { get; protected set; }
+        public long DustDigitsMultiplier { get; protected set; }
         public int Digits { get; set; }
         public string Format { get; set; }
 
