@@ -460,11 +460,18 @@ namespace Atomex.Wallet.BitcoinBased
             };
         }
                
-        protected override async Task ResolveTransactionTypeAsync(
+        protected override async Task<bool> ResolveTransactionTypeAsync(
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default)
         {
             var currency = BtcBasedCurrency;
+
+            var oldTx = await DataRepository
+                .GetTransactionByIdAsync(Currency, tx.Id, currency.TransactionType)
+                .ConfigureAwait(false);
+
+            if (oldTx != null && oldTx.IsConfirmed)
+                return false;
 
             var outputs = await DataRepository
                 .GetOutputsAsync(Currency, currency.OutputType())
@@ -499,12 +506,10 @@ namespace Atomex.Wallet.BitcoinBased
 
             // todo: recognize swap payment
 
-            var oldTx = await DataRepository
-                .GetTransactionByIdAsync(Currency, tx.Id, currency.TransactionType)
-                .ConfigureAwait(false);
-
             if (oldTx != null)
                 btcBasedTx.Type |= oldTx.Type;
+
+            return true;
         }
 
         #endregion Common
@@ -772,10 +777,13 @@ namespace Atomex.Wallet.BitcoinBased
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            await ResolveTransactionTypeAsync(tx, cancellationToken)
+            var result = await ResolveTransactionTypeAsync(tx, cancellationToken)
                 .ConfigureAwait(false);
 
-            var result = await DataRepository
+            if (result == false)
+                return;
+
+            result = await DataRepository
                 .UpsertTransactionAsync(tx)
                 .ConfigureAwait(false);
 

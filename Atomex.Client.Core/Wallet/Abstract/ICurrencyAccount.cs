@@ -99,6 +99,9 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             CancellationToken cancellationToken = default);
 
+        Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+            CancellationToken cancellationToken = default);
+
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string toAddress,
             decimal amount,

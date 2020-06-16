@@ -366,6 +366,14 @@ namespace Atomex.Wallet
                 .GetUnspentAddressesAsync(cancellationToken);
         }
 
+        public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+            string currency,
+            CancellationToken cancellationToken = default)
+        {
+            return GetCurrencyAccount(currency)
+                .GetUnspentTokenAddressesAsync(cancellationToken);
+        }
+
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string currency,
             string toAddress,

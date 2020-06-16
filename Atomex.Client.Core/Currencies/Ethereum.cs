@@ -169,14 +169,14 @@ namespace Atomex
         public override decimal GetFeeFromFeeAmount(decimal feeAmount, decimal feePrice)
         {
             return feePrice != 0
-                ? feeAmount / feePrice * GweiInEth
+                ? Math.Floor(feeAmount / feePrice * GweiInEth)
                 : 0;
         }
 
         public override decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee)
         {
             return fee != 0
-                ? feeAmount / fee * GweiInEth
+                ? Math.Floor(feeAmount / fee * GweiInEth)
                 : 0;
         }
 

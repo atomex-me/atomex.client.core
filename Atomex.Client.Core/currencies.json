@@ -286,9 +286,9 @@
       "TxExplorerUri": "https://carthage.tzkt.io/",
       "AddressExplorerUri": "https://carthage.tzkt.io/"
     },
-    "TZBTC": {
-      "Name": "TZBTC",
-      "Description": "tzBTC",
+    "FA12": {
+      "Name": "FA12",
+      "Description": "fa12",
       "DigitsMultiplier": 1000000,
       "DustDigitsMultiplier": 100,
       "MinimalFee": 100,

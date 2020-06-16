@@ -58,7 +58,7 @@ namespace Atomex.Wallet.Tezos
                     to: to,
                     amount: amount,
                     fee: fee,
-                    feeUsagePolicy: FeeUsagePolicy.FeeForAllTransactions,
+                    feeUsagePolicy: useDefaultFee ? FeeUsagePolicy.EstimatedFee : FeeUsagePolicy.FeeForAllTransactions,
                     addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst,
                     transactionType: BlockchainTransactionType.Output,
                     cancellationToken: cancellationToken)
@@ -314,7 +314,7 @@ namespace Atomex.Wallet.Tezos
             return (amount, fee, reserveFee);
         }
 
-        protected override async Task ResolveTransactionTypeAsync(
+        protected override async Task<bool> ResolveTransactionTypeAsync(
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default)
         {
@@ -322,6 +322,15 @@ namespace Atomex.Wallet.Tezos
 
             if (!(tx is TezosTransaction xtzTx))
                 throw new ArgumentException("Invalid tx type", nameof(tx));
+
+            var oldTx = !xtzTx.IsInternal
+                ? await DataRepository
+                    .GetTransactionByIdAsync(Currency, tx.Id, Xtz.TransactionType)
+                    .ConfigureAwait(false)
+                : null;
+
+            if (oldTx != null && oldTx.IsConfirmed)
+                return false;
 
             var isFromSelf = await IsSelfAddressAsync(
                     address: xtzTx.From,
@@ -352,12 +361,6 @@ namespace Atomex.Wallet.Tezos
             if (isToSelf)
                 xtzTx.Type |= BlockchainTransactionType.Input;
 
-            var oldTx = !xtzTx.IsInternal
-                ? await DataRepository
-                    .GetTransactionByIdAsync(Currency, tx.Id, Xtz.TransactionType)
-                    .ConfigureAwait(false)
-                : null;
-
             if (oldTx != null)
                 xtzTx.Type |= oldTx.Type;
 
@@ -366,6 +369,8 @@ namespace Atomex.Wallet.Tezos
             xtzTx.InternalTxs?
                 .ForEach(async t => await ResolveTransactionTypeAsync(t, cancellationToken)
                 .ConfigureAwait(false));
+
+            return true;
         }
 
         private TezosTransaction ResolveFA12TransactionType(
@@ -427,8 +432,10 @@ namespace Atomex.Wallet.Tezos
         {
             var xtz = Xtz;
 
-            var isActive = await IsAllocatedDestinationAsync(type, to, cancellationToken)
-                .ConfigureAwait(false);
+            var isActive = to != null
+                ? await IsAllocatedDestinationAsync(type, to, cancellationToken)
+                    .ConfigureAwait(false)
+                : false;
 
             if (type.HasFlag(BlockchainTransactionType.SwapPayment) && isFirstTx)
                 return xtz.InitiateStorageLimit / xtz.StorageFeeMultiplier;
@@ -722,6 +729,14 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
         }
 
+        //public override Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    var fa12 = Fa12;
+
+        //    return DataRepository.GetUnspentAddressesAsync(fa12.Name);
+        //}
+
         public override async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string toAddress,
             decimal amount,
@@ -893,6 +908,9 @@ namespace Atomex.Wallet.Tezos
                                     s.UsedFee += Math.Min(s.WalletAddress.AvailableBalance() - s.UsedAmount - s.UsedFee - s.UsedStorageFee - xtz.MicroTezReserve.ToTez(), remainingFee);
                                     if (s.WalletAddress.AvailableBalance() - s.UsedAmount - s.UsedFee - s.UsedStorageFee - xtz.MicroTezReserve.ToTez() < 0) //check if possible
                                     {
+                                        Log.Error("Error in fee distribution for transactions, fee is {@fee} with used fee {@usedFee}",
+                                            fee,
+                                            s.UsedFee + s.UsedStorageFee);
                                     }
                                 }
                                 else

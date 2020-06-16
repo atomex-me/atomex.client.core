@@ -252,6 +252,16 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string currency,
             CancellationToken cancellationToken = default);
+        
+        /// <summary>
+        /// Gets unspent addresses for tokens for <paramref name="currency"/>
+        /// </summary>
+        /// <param name="currency">Currency</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Set of unspent addresses</returns>
+        Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+            string currency,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets unspent addresses for <paramref name="currency"/> and <paramref name="amount"/> with <paramref name="fee"/>
