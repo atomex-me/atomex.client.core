@@ -198,7 +198,8 @@ namespace Atomex.Wallet.BitcoinBased
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            decimal inputFee = 0,
+            decimal fee = 0,
+            decimal feePrice = 0,
             CancellationToken cancellationToken = default)
         {
             var currency = BtcBasedCurrency;
@@ -274,6 +275,8 @@ namespace Atomex.Wallet.BitcoinBased
         public override async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
+            decimal fee = 0,
+            decimal feePrice = 0,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -303,7 +306,7 @@ namespace Atomex.Wallet.BitcoinBased
             var requiredFeeInSatoshi = (long)((testTx.VirtualSize() + estimatedSigSize) * currency.FeeRate);
 
             var amount = currency.SatoshiToCoin(Math.Max(availableAmountInSatoshi - requiredFeeInSatoshi, 0));
-            var fee = currency.SatoshiToCoin(requiredFeeInSatoshi);
+            fee = currency.SatoshiToCoin(requiredFeeInSatoshi);
 
             return (amount, fee, 0m);
         }
@@ -936,6 +939,11 @@ namespace Atomex.Wallet.BitcoinBased
             CancellationToken cancellationToken = default)
         {
             return GetAddressAsync(address, cancellationToken);
+        }
+
+        public override Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(IList<WalletAddress> from, string to, decimal amount, decimal fee, decimal feePrice, FeeUsagePolicy feeUsagePolicy, AddressUsagePolicy addressUsagePolicy, BlockchainTransactionType transactionType, CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
         }
 
         #endregion AddressResolver

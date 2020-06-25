@@ -38,8 +38,8 @@ namespace Atomex.Wallet.Ethereum
             IEnumerable<WalletAddress> from,
             string to,
             decimal amount,
-            decimal fee,
-            decimal feePrice,
+            decimal feePerTx = 0,
+            decimal feePrice = 0,
             bool useDefaultFee = false,
             CancellationToken cancellationToken = default)
         {
@@ -52,9 +52,9 @@ namespace Atomex.Wallet.Ethereum
             var selectedAddresses = (await SelectUnspentAddresses(
                     from: fromAddresses,
                     amount: amount,
-                    fee: fee,
+                    fee: feePerTx,
                     feePrice: feePrice,
-                    feeUsagePolicy: useDefaultFee ? FeeUsagePolicy.EstimatedFee : FeeUsagePolicy.FeeForAllTransactions,
+                    feeUsagePolicy: useDefaultFee ? FeeUsagePolicy.EstimatedFee : FeeUsagePolicy.FeePerTransaction,
                     addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst,
                     transactionType: BlockchainTransactionType.Output)
                 .ConfigureAwait(false))
@@ -64,8 +64,6 @@ namespace Atomex.Wallet.Ethereum
                 return new Error(
                     code: Errors.InsufficientFunds,
                     description: "Insufficient funds");
-
-            var feePerTx = Math.Round(fee / selectedAddresses.Count);
 
             if (feePerTx < erc20.TransferGasLimit)
                 return new Error(
@@ -142,7 +140,7 @@ namespace Atomex.Wallet.Ethereum
 
                 Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
-                tx.Amount = erc20.TokensToTokenDigits(amount);
+                tx.Amount = erc20.TokensToTokenDigits(selectedAddress.UsedAmount);
                 tx.To = to.ToLowerInvariant();
 
                 await UpsertTransactionAsync(
@@ -177,7 +175,8 @@ namespace Atomex.Wallet.Ethereum
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            decimal inputFee = 0,
+            decimal fee = 0,
+            decimal feePrice = 0,
             CancellationToken cancellationToken = default)
         {
             var erc20 = Erc20;
@@ -193,9 +192,9 @@ namespace Atomex.Wallet.Ethereum
             var selectedAddresses = (await SelectUnspentAddresses(
                     from: unspentAddresses,
                     amount: amount,
-                    fee: 0,
-                    feePrice: erc20.GasPriceInGwei,
-                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
+                    fee: fee,
+                    feePrice: feePrice == 0 ? erc20.GasPriceInGwei : feePrice,
+                    feeUsagePolicy: fee == 0 ? FeeUsagePolicy.EstimatedFee : FeeUsagePolicy.FeePerTransaction,
                     addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst,
                     transactionType: type)
                 .ConfigureAwait(false))
@@ -210,6 +209,8 @@ namespace Atomex.Wallet.Ethereum
         public override async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
+            decimal feePerTx = 0,
+            decimal feePrice = 0,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -246,7 +247,7 @@ namespace Atomex.Wallet.Ethereum
 
                 var ethAvailableBalance = ethAddress.AvailableBalance();
 
-                var feeInEth = eth.GetFeeAmount(GasLimitByType(type, isFirstTx), erc20.GasPriceInGwei);
+                var feeInEth = eth.GetFeeAmount(feePerTx == 0 ? GasLimitByType(type, isFirstTx) : feePerTx, feePrice == 0 ? erc20.GasPriceInGwei : feePrice);
 
                 if (ethAddress.AvailableBalance() - feeInEth - (reserve && address == unspentAddresses.Last() ? reserveFeeInEth : 0) < 0)
                     continue;

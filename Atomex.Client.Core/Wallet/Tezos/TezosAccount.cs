@@ -58,6 +58,7 @@ namespace Atomex.Wallet.Tezos
                     to: to,
                     amount: amount,
                     fee: fee,
+                    feePrice: 0,
                     feeUsagePolicy: useDefaultFee ? FeeUsagePolicy.EstimatedFee : FeeUsagePolicy.FeeForAllTransactions,
                     addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst,
                     transactionType: BlockchainTransactionType.Output,
@@ -213,7 +214,8 @@ namespace Atomex.Wallet.Tezos
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            decimal inputFee = 0,
+            decimal fee = 0,
+            decimal feePrice = 0,
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
@@ -236,8 +238,9 @@ namespace Atomex.Wallet.Tezos
                     from: unspentAddresses,
                     to: to,
                     amount: amount,
-                    fee: inputFee,
-                    feeUsagePolicy: inputFee == 0 ? FeeUsagePolicy.EstimatedFee : FeeUsagePolicy.FeeForAllTransactions,
+                    fee: fee,
+                    feePrice: 0,
+                    feeUsagePolicy: fee == 0 ? FeeUsagePolicy.EstimatedFee : FeeUsagePolicy.FeeForAllTransactions,
                     addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst,
                     transactionType: type,
                     cancellationToken: cancellationToken)
@@ -253,6 +256,8 @@ namespace Atomex.Wallet.Tezos
         public override async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
+            decimal feeAmount = 0,
+            decimal feePrice = 0,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -765,6 +770,7 @@ namespace Atomex.Wallet.Tezos
                     to: toAddress,
                     amount: amount,
                     fee: fee,
+                    feePrice: 0,
                     feeUsagePolicy: feeUsagePolicy,
                     addressUsagePolicy: addressUsagePolicy,
                     transactionType: transactionType,
@@ -776,11 +782,12 @@ namespace Atomex.Wallet.Tezos
                 .ToList());
         }
 
-        private async Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
+        public override async Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
             IList<WalletAddress> from,
             string to,
             decimal amount,
             decimal fee,
+            decimal feePrice,
             FeeUsagePolicy feeUsagePolicy,
             AddressUsagePolicy addressUsagePolicy,
             BlockchainTransactionType transactionType,

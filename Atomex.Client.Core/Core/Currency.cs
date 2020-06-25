@@ -61,6 +61,10 @@ namespace Atomex.Core
         {
             return 1m;
         }
+        public virtual decimal GetDefaultFee()
+        {
+            return 1m;
+        }
         public virtual decimal GetMaximumFee()
         {
             return decimal.MaxValue;
