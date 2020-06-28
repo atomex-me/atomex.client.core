@@ -62,12 +62,15 @@ namespace Atomex.Wallet.Abstract
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            decimal inputFee = 0,
+            decimal fee = 0,
+            decimal feePrice = 0,
             CancellationToken cancellationToken = default);
 
         public abstract Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
+            decimal fee = 0,
+            decimal feePrice = 0,
             bool reserve = false,
             CancellationToken cancellationToken = default);
 
@@ -212,6 +215,17 @@ namespace Atomex.Wallet.Abstract
 
         public abstract Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string toAddress,
+            decimal amount,
+            decimal fee,
+            decimal feePrice,
+            FeeUsagePolicy feeUsagePolicy,
+            AddressUsagePolicy addressUsagePolicy,
+            BlockchainTransactionType transactionType,
+            CancellationToken cancellationToken = default);
+
+        public abstract Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
+            IList<WalletAddress> from,
+            string to,
             decimal amount,
             decimal fee,
             decimal feePrice,

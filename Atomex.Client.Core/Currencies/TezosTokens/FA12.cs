@@ -150,6 +150,11 @@ namespace Atomex.TezosTokens
         {
             return RewardForRedeem / DigitsMultiplier;
         }
+
+        public override decimal GetDefaultFee()
+        {
+            return TransferGasLimit;
+        }
     }
 
     public class TZBTC : FA12

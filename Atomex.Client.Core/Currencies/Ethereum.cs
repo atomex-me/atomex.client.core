@@ -195,6 +195,11 @@ namespace Atomex
             return GasPriceInGwei;
         }
 
+        public override decimal GetDefaultFee()
+        {
+            return GasLimit;
+        }
+
         public static BigInteger EthToWei(decimal eth)
         {
             return new BigInteger(eth * WeiInEth);

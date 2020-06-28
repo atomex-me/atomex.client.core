@@ -63,9 +63,6 @@ namespace Atomex.Wallet.Tezos
                     code: Errors.InsufficientFunds,
                     description: "Insufficient funds");
 
-            var isActive = await IsAllocatedDestinationAsync(BlockchainTransactionType.Output, to, cancellationToken)
-                .ConfigureAwait(false);
-
             // todo: min fee control
             var isFirstTx = true;
 
@@ -78,10 +75,8 @@ namespace Atomex.Wallet.Tezos
                     selectedAddress.WalletAddress.Address,
                     selectedAddress.WalletAddress.AvailableBalance());
 
-                var storageLimit = isActive || !isFirstTx
-                    ? Math.Max(fa12.TransferStorageLimit - fa12.ActivationStorage, 0) // without activation storage fee
-                    : fa12.TransferStorageLimit;
-
+                var storageLimit = Math.Max(fa12.TransferStorageLimit - fa12.ActivationStorage, 0); // without activation storage fee
+               
                 var tx = new TezosTransaction
                 {
                     Currency = fa12,
@@ -144,23 +139,9 @@ namespace Atomex.Wallet.Tezos
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (isFirstTx && selectedAddresses.Count > 1)
+                if (isFirstTx)
                 {
                     isFirstTx = false;
-
-                    if (!isActive)
-                    {
-                        // delay for waiting confirmation
-                        var isConfirmed = await WaitFirstTxConfirmationAsync(txId, TimeSpan.FromMinutes(3), cancellationToken)
-                            .ConfigureAwait(false);
-
-                        if (!isConfirmed)
-                        {
-                            return new Error(
-                                code: Errors.TransactionBroadcastError,
-                                description: $"Transaction {txId} has not be confirmed for a long time");
-                        }
-                    }
                 }
             }
 
@@ -221,7 +202,8 @@ namespace Atomex.Wallet.Tezos
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            decimal inputFee = 0,
+            decimal fee = 0,
+            decimal feePrice = 0,
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
@@ -244,8 +226,8 @@ namespace Atomex.Wallet.Tezos
                     from: unspentAddresses,
                     to: to,
                     amount: amount,
-                    fee: inputFee,
-                    feeUsagePolicy: inputFee == 0 ? FeeUsagePolicy.EstimatedFee : FeeUsagePolicy.FeeForAllTransactions,
+                    fee: fee,
+                    feeUsagePolicy: fee == 0 ? FeeUsagePolicy.EstimatedFee : FeeUsagePolicy.FeeForAllTransactions,
                     addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst,
                     transactionType: type,
                     cancellationToken: cancellationToken)
@@ -261,6 +243,8 @@ namespace Atomex.Wallet.Tezos
         public override async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
+            decimal fee = 0,
+            decimal feePrice = 0,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -289,7 +273,7 @@ namespace Atomex.Wallet.Tezos
 
             var isFirstTx = true;
             var amount = 0m;
-            var fee = 0m;
+            var feeAmount = 0m;
 
             var reserveFee = ReserveFee();
 
@@ -315,17 +299,19 @@ namespace Atomex.Wallet.Tezos
                     type: type,
                     isFirstTx: isFirstTx);
 
-                if (availableBalanceInTez - feeInTez - storageFeeInTez - ((reserve && address == unspentAddresses.Last()) ? reserveFee : 0) - xtz.MicroTezReserve.ToTez() < 0)
+                availableBalanceInTez = availableBalanceInTez - feeInTez - storageFeeInTez - ((reserve && address == unspentAddresses.Last()) ? reserveFee : 0) - xtz.MicroTezReserve.ToTez();
+
+                if (availableBalanceInTez < 0)
                     continue;
 
                 amount += address.AvailableBalance();
-                fee += feeInTez;
+                feeAmount += fee == 0 ? feeInTez : availableBalanceInTez + feeInTez;
 
                 if (isFirstTx)
                     isFirstTx = false;
             }
 
-            return (amount, fee, reserveFee);
+            return (amount, feeAmount, reserveFee);
         }
 
         protected override async Task<bool> ResolveTransactionTypeAsync(
@@ -965,9 +951,13 @@ namespace Atomex.Wallet.Tezos
                         {
                             foreach (var s in result)
                             {
+                                xtzAddress = await DataRepository
+                                    .GetWalletAddressAsync(xtz.Name, s.WalletAddress.Address)
+                                    .ConfigureAwait(false);
+
                                 extraFee = s == result.Last()
-                                    ? Math.Min(s.WalletAddress.AvailableBalance() - s.UsedFee - s.UsedStorageFee - xtz.MicroTezReserve.ToTez(), remainingFee)
-                                    : Math.Min(s.WalletAddress.AvailableBalance() - s.UsedFee - s.UsedStorageFee - xtz.MicroTezReserve.ToTez(), Math.Round(remainingFee * s.UsedFee / estimatedFee, xtz.Digits));
+                                    ? Math.Min(xtzAddress.AvailableBalance() - s.UsedFee - s.UsedStorageFee - xtz.MicroTezReserve.ToTez(), remainingFee)
+                                    : Math.Min(xtzAddress.AvailableBalance() - s.UsedFee - s.UsedStorageFee - xtz.MicroTezReserve.ToTez(), Math.Round(remainingFee * s.UsedFee / estimatedFee, xtz.Digits));
 
                                 remainingFee -= extraFee;
                                 estimatedFee -= s.UsedFee;
@@ -982,6 +972,7 @@ namespace Atomex.Wallet.Tezos
                             Log.Error("Error fee is too small for transaction, fee is {@fee} with estimated fee {@estimatedFee}",
                                 fee,
                                 estimatedFee);
+                            return Enumerable.Empty<SelectedWalletAddress>();
                         }
                     }
 
