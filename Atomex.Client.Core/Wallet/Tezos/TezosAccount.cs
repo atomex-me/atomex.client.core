@@ -36,7 +36,7 @@ namespace Atomex.Wallet.Tezos
 
         private Atomex.Tezos Xtz => Currencies.Get<Atomex.Tezos>(Currency);
 
-        //private TezosTokens.FA12 Fa12 => Currencies.Get<TezosTokens.FA12>("FA12");
+        private TezosTokens.FA12 Fa12 => Currencies.Get<TezosTokens.FA12>("TZBTC");
 
         public override async Task<Error> SendAsync(
             IEnumerable<WalletAddress> from,
@@ -734,13 +734,13 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
         }
 
-        //public override Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var fa12 = Fa12;
+        public override Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var fa12 = Fa12;
 
-        //    return DataRepository.GetUnspentAddressesAsync(fa12.Name);
-        //}
+            return DataRepository.GetUnspentAddressesAsync(fa12.Name);
+        }
 
         public override async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string toAddress,
