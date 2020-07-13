@@ -50,12 +50,6 @@ namespace Atomex.Wallet.Ethereum
                 .GetBlockNumber()
                 .ConfigureAwait(false);
 
-            if (lastBlockNumberResult == null)
-            {
-                Log.Error("Connection error while get block number");
-                return;
-            }
-
             if (lastBlockNumberResult.HasError)
             {
                 Log.Error(
@@ -74,9 +68,6 @@ namespace Atomex.Wallet.Ethereum
                 return;
             }
 
-            var ethereumAddresses = await ScanEthereumAddressesAsync(lastBlockNumber, cancellationToken)
-                .ConfigureAwait(false);
-
             foreach (var param in scanParams)
             {
                 var freeKeysCount = 0;
@@ -93,12 +84,6 @@ namespace Atomex.Wallet.Ethereum
                     if (walletAddress == null)
                         break;
 
-                    if (ethereumAddresses.Contains(walletAddress.Address))
-                    {
-                        index++;
-                        continue;
-                    }
-
                     Log.Debug(
                         "Scan transactions for {@name} address {@chain}:{@index}:{@address}",
                         currency.Name,
@@ -106,11 +91,21 @@ namespace Atomex.Wallet.Ethereum
                         index,
                         walletAddress.Address);
 
-                    var events = await GetERC20EventsAsync(walletAddress.Address, cancellationToken)
-                        .ConfigureAwait(false);
+                    var events = await GetERC20EventsAsync(walletAddress.Address, cancellationToken);
 
                     if (events == null || !events.Any())
                     {
+                        var ethereumAddress = await EthereumAccount
+                            .GetAddressAsync(walletAddress.Address, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (ethereumAddress != null && ethereumAddress.HasActivity)
+                        {
+                            freeKeysCount = 0;
+                            index++;
+                            continue;
+                        }
+
                         freeKeysCount++;
 
                         if (freeKeysCount >= param.LookAhead)
@@ -148,56 +143,6 @@ namespace Atomex.Wallet.Ethereum
             await Account
                 .UpdateBalanceAsync(cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-        }
-
-        public async Task<IEnumerable<string>> ScanEthereumAddressesAsync(
-             long blockNumber,
-             CancellationToken cancellationToken = default)
-        {
-            var ethereumAddresses = await EthereumAccount
-                .GetUnspentAddressesAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            var currency = Currency;
-
-            var txs = new List<EthereumTransaction>();
-
-            var api = new EtherScanApi(currency);
-
-            foreach (var ethereumAddress in ethereumAddresses)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                Log.Debug(
-                    "Scan transactions for {@name} address {@address}",
-                    currency.Name,
-                    ethereumAddress.Address);
-
-                var events = await GetERC20EventsAsync(ethereumAddress.Address, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (events != null && events.Any())
-                {
-                    foreach (var ev in events)
-                    {
-                        var tx = new EthereumTransaction();
-
-                        if (ev.IsERC20ApprovalEvent())
-                            tx = ev.TransformApprovalEvent(currency, blockNumber);
-                        else if (ev.IsERC20TransferEvent())
-                            tx = ev.TransformTransferEvent(ethereumAddress.Address, currency, blockNumber);
-
-                        if (tx != null)
-                            txs.Add(tx);
-                    }
-                }
-            }
-
-            if (txs.Any())
-                await UpsertTransactionsAsync(txs)
-                    .ConfigureAwait(false);
-
-            return ethereumAddresses.Select(a => a.Address);
         }
 
         public async Task ScanAsync(

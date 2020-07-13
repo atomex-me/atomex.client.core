@@ -104,17 +104,22 @@
     },
     {
       "Id": 9,
-      "Name": "FA12/BTC",
+      "Name": "TZBTC/BTC",
       "MinimumQty": 0.0001
     },
     {
       "Id": 10,
-      "Name": "ETH/FA12",
+      "Name": "ETH/TZBTC",
       "MinimumQty": 0.0001
     },
     {
       "Id": 11,
-      "Name": "XTZ/FA12",
+      "Name": "XTZ/TZBTC",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 12,
+      "Name": "TZBTC/USDT",
       "MinimumQty": 0.0001
     }
   ]

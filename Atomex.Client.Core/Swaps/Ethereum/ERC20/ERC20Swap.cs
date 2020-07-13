@@ -907,7 +907,7 @@ namespace Atomex.Swaps.Ethereum
                 if (isInitTx)
                     isInitTx = false;
 
-                if (requiredAmountInERC20 == 0)
+                if (requiredAmountInERC20 <= 0)
                     break;
             }
 

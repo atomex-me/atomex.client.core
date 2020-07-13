@@ -94,6 +94,11 @@ namespace Atomex.EthereumTokens
         {
             return RewardForRedeem / DigitsMultiplier;
         }
+
+        public override decimal GetDefaultFee()
+        {
+            return TransferGasLimit;
+        }
     }
 
     public class Tether : ERC20
@@ -119,4 +124,5 @@ namespace Atomex.EthereumTokens
             Update(configuration);
         }
     }
+
 }

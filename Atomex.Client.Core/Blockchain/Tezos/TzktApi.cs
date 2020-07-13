@@ -198,8 +198,6 @@ namespace Atomex.Blockchain.Tezos
 
             foreach (var txsSource in txsSources)
             {
-                var requestUri = $"operations/transactions?sender={address}&target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"approve\"*";
-
                 var txsRes = await HttpHelper.GetAsyncResult(
                         baseUri: txsSource.BaseUri,
                         requestUri: txsSource.RequestUri,
@@ -367,6 +365,7 @@ namespace Atomex.Blockchain.Tezos
 
                     if (parameters?["entrypoint"]?.ToString() == "approve")
                     {
+                        tx.Type = BlockchainTransactionType.TokenApprove;
                         tx.From = transaction["sender"]?["address"]?.ToString();
                         tx.To = transaction["target"]?["address"]?.ToString();
                         tx.Amount = 0;

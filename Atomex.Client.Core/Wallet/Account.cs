@@ -200,22 +200,25 @@ namespace Atomex.Wallet
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            decimal inputFee = 0,
+            decimal fee = 0,
+            decimal feePrice = 0,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency)
-                .EstimateFeeAsync(to, amount, type, inputFee, cancellationToken);
+                .EstimateFeeAsync(to, amount, type, fee, feePrice, cancellationToken);
         }
 
         public Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string currency,
             string to,
             BlockchainTransactionType type,
+            decimal fee = 0,
+            decimal feePrice = 0, 
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency)
-                .EstimateMaxAmountToSendAsync(to, type, reserve, cancellationToken);
+                .EstimateMaxAmountToSendAsync(to, type, fee, feePrice, reserve, cancellationToken);
         }
 
         public Task<decimal> EstimateMaxFeeAsync(
@@ -368,6 +371,14 @@ namespace Atomex.Wallet
                 .GetUnspentAddressesAsync(cancellationToken);
         }
 
+        public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+            string currency,
+            CancellationToken cancellationToken = default)
+        {
+            return GetCurrencyAccount(currency)
+                .GetUnspentTokenAddressesAsync(cancellationToken);
+        }
+
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string currency,
             string toAddress,
@@ -382,6 +393,31 @@ namespace Atomex.Wallet
             return GetCurrencyAccount(currency)
                 .GetUnspentAddressesAsync(
                     toAddress: toAddress,
+                    amount: amount,
+                    fee: fee,
+                    feePrice: feePrice,
+                    feeUsagePolicy: feeUsagePolicy,
+                    addressUsagePolicy: addressUsagePolicy,
+                    transactionType: transactionType,
+                    cancellationToken: cancellationToken);
+        }
+
+        public Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
+            string currency,
+            IList<WalletAddress> from,
+            string to,
+            decimal amount,
+            decimal fee,
+            decimal feePrice,
+            FeeUsagePolicy feeUsagePolicy,
+            AddressUsagePolicy addressUsagePolicy,
+            BlockchainTransactionType transactionType,
+            CancellationToken cancellationToken = default)
+        {
+            return GetCurrencyAccount(currency).
+                SelectUnspentAddressesAsync(
+                    from: from,
+                    to: to,
                     amount: amount,
                     fee: fee,
                     feePrice: feePrice,
