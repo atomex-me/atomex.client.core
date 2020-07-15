@@ -290,7 +290,7 @@ namespace Atomex.Wallet.Abstract
         public virtual async Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default)
         {
-            var redeemAddress = await GetFreeInternalAddressAsync(cancellationToken)
+            var redeemAddress = await GetFreeExternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return ResolvePublicKey(redeemAddress);
