@@ -44,5 +44,10 @@ namespace Atomex.Core
         {
             return $"{Address};{Balance};{UnconfirmedIncome};{UnconfirmedOutcome}";
         }
+
+        public WalletAddress Copy()
+        {
+          return (WalletAddress)MemberwiseClone();
+        }
     }
 }

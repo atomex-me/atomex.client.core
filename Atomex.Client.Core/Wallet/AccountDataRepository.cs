@@ -203,7 +203,7 @@ namespace Atomex.Wallet
         var walletId = $"{currency}:{address}";
 
         if (_addresses.TryGetValue(walletId, out var walletAddress))
-          return Task.FromResult(walletAddress);
+          return Task.FromResult(walletAddress.Copy());
 
         return Task.FromResult<WalletAddress>(null);
       }
@@ -219,7 +219,7 @@ namespace Atomex.Wallet
             .FirstOrDefault();
 
         return address != null
-            ? Task.FromResult(address)
+            ? Task.FromResult(address.Copy())
             : Task.FromResult<WalletAddress>(null);
       }
     }
@@ -235,7 +235,7 @@ namespace Atomex.Wallet
                 .Where(w => w.Currency == currency && (w.Balance != 0 || w.UnconfirmedIncome != 0 || w.UnconfirmedOutcome != 0))
             : _addresses.Values
                 .Where(w => w.Currency == currency && w.Balance != 0);
-        return Task.FromResult(addresses);
+        return Task.FromResult(addresses.Select(a => a.Copy()));
       }
     }
 
