@@ -354,12 +354,12 @@ namespace Atomex
                 fee: fee);
         }
 
-        public static long EstimateSigSize(ITxOutput output, bool forRefund = false, bool forRedeem = false)
+        public static int EstimateSigSize(ITxOutput output, bool forRefund = false, bool forRedeem = false)
         {
             if (!(output is BitcoinBasedTxOutput btcBasedOutput))
                 return 0;
 
-            var sigSize = 0L;
+            var sigSize = 0;
 
             if (btcBasedOutput.IsP2Pkh)
                 sigSize += P2PkhScriptSigSize; // use compressed?
@@ -381,7 +381,7 @@ namespace Atomex
             return sigSize;
         }
 
-        public static long EstimateSigSize(IEnumerable<ITxOutput> outputs, bool forRefund = false)
+        public static int EstimateSigSize(IEnumerable<ITxOutput> outputs, bool forRefund = false)
         {
             return outputs.ToList().Sum(output => EstimateSigSize(output, forRefund));
         }
