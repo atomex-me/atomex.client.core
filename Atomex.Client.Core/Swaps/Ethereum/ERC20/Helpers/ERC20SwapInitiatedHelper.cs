@@ -33,6 +33,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
                 var refundTimeStamp = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSec)).ToUnixTimeSeconds();
                 var requiredAmountInERC20 = AmountHelper.QtyToAmount(side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
                 var requiredAmountInDecimals = erc20.TokensToTokenDigits(requiredAmountInERC20);
+                var receivedAmountInDecimals = new BigInteger(0);
                 var requiredRewardForRedeemInDecimals = swap.IsAcceptor
                     ? erc20.TokensToTokenDigits(swap.RewardForRedeem)
                     : 0;
@@ -114,29 +115,30 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
                         description: $"Invalid active value in initiated event. Expected value is {true}, actual is {initiatedEvent.Active}");
                 }
 
-                if (initiatedEvent.Value >= requiredAmountInDecimals - requiredRewardForRedeemInDecimals)
+                var erc20TransferValue = await GetTransferValue(
+                        currency: currency,
+                        from: initiatedEvent.Initiator.Substring(2),
+                        to: erc20.SwapContractAddress.Substring(2),
+                        blockNumber: contractInitEvent.HexBlockNumber,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (erc20TransferValue != initiatedEvent.Value + initiatedEvent.RedeemFee)
                 {
-                    var erc20TransferValue = await GetTransferValue(
-                            currency: currency,
-                            from: initiatedEvent.Initiator.Substring(2),
-                            to: erc20.SwapContractAddress.Substring(2),
-                            blockNumber: contractInitEvent.HexBlockNumber,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
+                    Log.Debug(
+                        "Invalid transfer value in erc20 initiated event. Expected value is {@expected}, actual is {@actual}",
+                        initiatedEvent.Value,
+                        erc20TransferValue);
 
-                    if (erc20TransferValue != initiatedEvent.Value + initiatedEvent.RedeemFee)
-                    {
-                        Log.Debug(
-                            "Invalid transfer value in erc20 initiated event. Expected value is {@expected}, actual is {@actual}",
-                            initiatedEvent.Value,
-                            erc20TransferValue);
-
-                        return new Error(
-                            code: Errors.InvalidRewardForRedeem,
-                            description: $"Invalid transfer value in erc20 initiated event. Expected value is {initiatedEvent.Value}, actual is {initiatedEvent.Active}");
-                    }
-                    return true;
+                    return new Error(
+                        code: Errors.InvalidSwapPaymentTx,
+                        description: $"Invalid transfer value in erc20 initiated event. Expected value is {initiatedEvent.Value}, actual is {initiatedEvent.Active}");
                 }
+
+                receivedAmountInDecimals = initiatedEvent.Value;
+
+                if (receivedAmountInDecimals >= requiredAmountInDecimals - requiredRewardForRedeemInDecimals)
+                    return true;
 
                 Log.Debug(
                     "Ethereum ERC20 value is not enough. Expected value is {@expected}. Actual value is {@actual}",
@@ -163,10 +165,10 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 
                 if (events == null || !events.Any())
                     return false;
-             
+
                 foreach (var @event in events.Select(e => e.ParseERC20AddedEvent()))
                 {
-                    var erc20TransferValue = await GetTransferValue(
+                    erc20TransferValue = await GetTransferValue(
                             currency: currency,
                             from: @event.Initiator.Substring(2),
                             to: erc20.SwapContractAddress.Substring(2),
@@ -174,19 +176,21 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (erc20TransferValue != @event.Value)
+                    if (erc20TransferValue != @event.Value - receivedAmountInDecimals)
                     {
                         Log.Debug(
                             "Invalid transfer value in added event. Expected value is {@expected}, actual is {@actual}",
-                            @event.Value,
+                            @event.Value - receivedAmountInDecimals,
                             erc20TransferValue);
 
                         return new Error(
-                            code: Errors.InvalidRewardForRedeem,
-                            description: $"Invalid transfer value in initiated event. Expected value is {@event.Value}, actual is {erc20TransferValue}");
+                            code: Errors.InvalidSwapPaymentTx,
+                            description: $"Invalid transfer value in initiated event. Expected value is {@event.Value - receivedAmountInDecimals}, actual is {erc20TransferValue}");
                     }
 
-                    if (@event.Value >= requiredAmountInDecimals - requiredRewardForRedeemInDecimals)
+                    receivedAmountInDecimals = @event.Value;
+
+                    if (receivedAmountInDecimals >= requiredAmountInDecimals - requiredRewardForRedeemInDecimals)
                         return true;
 
                     Log.Debug(

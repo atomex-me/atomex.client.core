@@ -774,15 +774,15 @@ namespace Atomex.Swaps.Tezos.FA12
                     .IsRevealedSourceAsync(walletAddress.Address, cancellationToken)
                     .ConfigureAwait(false);
 
-                var feeAmountInMtz = isInitTx
-                    ? fa12.InitiateFee + (isRevealed ? 0 : fa12.RevealFee)
-                    : fa12.AddFee + (isRevealed ? 0 : fa12.RevealFee);
+                var feeAmountInMtz = fa12.ApproveFee * 2 +
+                    (isInitTx ? fa12.InitiateFee : fa12.AddFee) +
+                    (isRevealed ? 0 : fa12.RevealFee);
 
-                var storageLimitInMtz = isInitTx
-                    ? fa12.InitiateStorageLimit * fa12.StorageFeeMultiplier
-                    : fa12.AddStorageLimit * fa12.StorageFeeMultiplier;
+                var storageLimitInMtz = (fa12.ApproveStorageLimit * 2 +
+                    (isInitTx ? fa12.InitiateStorageLimit : fa12.AddStorageLimit)) *
+                    fa12.StorageFeeMultiplier;
 
-                if (balanceInMtz - feeAmountInMtz - storageLimitInMtz - fa12.ApproveFee - fa12.ApproveStorageLimit * fa12.StorageFeeMultiplier - Xtz.MicroTezReserve <= 0)
+                if (balanceInMtz - feeAmountInMtz - storageLimitInMtz - Xtz.MicroTezReserve <= 0)
                 {
                     Log.Warning(
                         "Insufficient funds at {@address}. Balance: {@balance}, " +
@@ -894,7 +894,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 if (isInitTx)
                     isInitTx = false;
 
-                if (requiredAmountInTokens == 0)
+                if (requiredAmountInTokens <= 0)
                     break;
             }
 

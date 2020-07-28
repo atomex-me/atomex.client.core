@@ -355,7 +355,8 @@ namespace Atomex.Blockchain.Ethereum.ERC20
                 ////GasLimit
                 GasLimit = new HexBigInteger(contractEvent.HexGasUsed).Value,
                 ReceiptStatus = true,
-                IsInternal = transferEvent.From == erc20.SwapContractAddress.ToLowerInvariant(),
+                IsInternal = transferEvent.From == erc20.SwapContractAddress.ToLowerInvariant()
+                    || transferEvent.To == erc20.SwapContractAddress.ToLowerInvariant(),
                 InternalIndex = 0,
                 BlockInfo = new BlockInfo
                 {
