@@ -272,6 +272,68 @@ namespace Atomex.Wallet.BitcoinBased
             return null; // insufficient funds
         }
 
+        public async Task<int?> EstimateTxSizeAsync(
+            decimal amount,
+            decimal fee,
+            CancellationToken cancellationToken = default)
+        {
+            var currency = BtcBasedCurrency;
+
+            var amountInSatoshi = currency.CoinToSatoshi(amount);
+            var feeInSatoshi = currency.CoinToSatoshi(fee);
+
+            var availableOutputs = (await DataRepository
+                .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
+                .ConfigureAwait(false))
+                .ToList();
+
+            if (!availableOutputs.Any())
+                return null; // insufficient funds
+
+            for (var i = 1; i <= availableOutputs.Count; ++i)
+            {
+                var selectedOutputs = availableOutputs
+                    .Take(i)
+                    .ToArray();
+
+                var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(selectedOutputs);
+
+                var selectedInSatoshi = selectedOutputs.Sum(o => o.Value);
+
+                if (selectedInSatoshi < amountInSatoshi) // insufficient funds
+                    continue;
+
+                var maxFeeInSatoshi = selectedInSatoshi - amountInSatoshi;
+
+                if (maxFeeInSatoshi < fee)
+                    continue; // insufficient funds
+
+                //var changeInSatoshi = selectedInSatoshi - amountInSatoshi - feeInSatoshi;
+
+                try
+                {
+                    var estimatedTx = currency
+                        .CreatePaymentTx(
+                            unspentOutputs: selectedOutputs,
+                            destinationAddress: currency.TestAddress(),
+                            changeAddress: currency.TestAddress(),
+                            amount: amountInSatoshi,
+                            fee: feeInSatoshi,
+                            lockTime: DateTimeOffset.MinValue);
+
+                    var estimatedTxVirtualSize = estimatedTx.VirtualSize();
+
+                    return estimatedTxVirtualSize + estimatedSigSize;
+                }
+                catch (Exception)
+                {
+                    continue;
+                }
+            }
+
+            return null; // insufficient funds
+        }
+
         public override async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
