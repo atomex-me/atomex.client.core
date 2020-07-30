@@ -12,6 +12,7 @@ namespace Atomex.Common.Bson
 {
     public class BitcoinBasedTransactionToBsonSerializer : BsonSerializer<BitcoinBasedTransaction>
     {
+        private const string CreationTimeKey = nameof(IBlockchainTransaction.CreationTime);
         private const string CurrencyKey = nameof(IBlockchainTransaction.Currency);
         private const string TxKey = "Tx";
         private const string TxIdKey = "TxId";
@@ -42,12 +43,14 @@ namespace Atomex.Common.Bson
 
             if (currency is BitcoinBasedCurrency btcBaseCurrency)
             {
+                var blockInfo = !bson[BlockInfoKey].IsNull
+                    ? BsonMapper.ToObject<BlockInfo>(bson[BlockInfoKey].AsDocument)
+                    : null;
+
                 return new BitcoinBasedTransaction(
                     currency: btcBaseCurrency,
                     tx: Transaction.Parse(bson[TxKey].AsString, btcBaseCurrency.Network),
-                    blockInfo: !bson[BlockInfoKey].IsNull
-                        ? BsonMapper.ToObject<BlockInfo>(bson[BlockInfoKey].AsDocument)
-                        : null,
+                    blockInfo: blockInfo,
                     fees: !bson[FeesKey].IsNull
                         ? (long?)bson[FeesKey].AsInt64
                         : null
@@ -63,7 +66,11 @@ namespace Atomex.Common.Bson
 
                     Amount = !bson[AmountKey].IsNull
                         ? bson[AmountKey].AsInt64
-                        : 0
+                        : 0,
+
+                    CreationTime = bson.ContainsKey(CreationTimeKey) && !bson[CreationTimeKey].IsNull
+                        ? bson[CreationTimeKey].AsDateTime
+                        : blockInfo?.FirstSeen ?? blockInfo?.BlockTime
                 };
             }
 
@@ -79,6 +86,7 @@ namespace Atomex.Common.Bson
             {
                 [IdKey] = tx.UniqueId,
                 [TxIdKey] = tx.Id,
+                [CreationTimeKey] = tx.CreationTime,
                 [CurrencyKey] = tx.Currency.Name,
                 [TxKey] = tx.ToBytes().ToHexString(),
                 [BlockInfoKey] = tx.BlockInfo != null

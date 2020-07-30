@@ -1,12 +1,16 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using Microsoft.Extensions.Configuration;
+
 using Atomex.Abstract;
 using Atomex.Core;
-using Microsoft.Extensions.Configuration;
 
 namespace Atomex
 {
     public class CurrenciesProvider : ICurrenciesProvider
     {
+        public event EventHandler Updated;
+
         private readonly IDictionary<Network, ICurrencies> _currencies
             = new Dictionary<Network, ICurrencies>();
 
@@ -36,6 +40,8 @@ namespace Atomex
                 if (networkConfiguration != null && _currencies.TryGetValue(network, out var currencies))
                     currencies.Update(networkConfiguration); 
             }
+
+            Updated?.Invoke(this, EventArgs.Empty);
         }
 
         public ICurrencies GetCurrencies(Network network)

@@ -79,8 +79,8 @@ namespace Atomex.Blockchain.BitcoinBased
             Fees = fees;
 
             CreationTime = blockInfo != null
-                ? blockInfo.FirstSeen ?? (blockInfo.BlockTime ?? DateTime.UtcNow)
-                : DateTime.UtcNow;
+                ? blockInfo.FirstSeen ?? blockInfo.BlockTime
+                : null;
 
             State = blockInfo != null
                 ? blockInfo.Confirmations >= DefaultConfirmations

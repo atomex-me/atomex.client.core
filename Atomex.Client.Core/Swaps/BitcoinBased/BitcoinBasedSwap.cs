@@ -162,6 +162,7 @@ namespace Atomex.Swaps.BitcoinBased
                 else if (result.HasError && result.Error.Code == (int)HttpStatusCode.NotFound)
                 {
                     // probably the transaction was deleted by miners
+                    Log.Debug("Probably the transaction {@tx} was deleted by miners.", swap.RedeemTx.Id);
                     needReplaceTx = true;
                 }
                 else if (result.HasError)
@@ -173,12 +174,26 @@ namespace Atomex.Swaps.BitcoinBased
                 }
                 else if (result.Value.IsConfirmed) // tx already confirmed
                 {
+                    Log.Debug("Transaction {@tx} is already confirmed.", swap.RedeemTx.Id);
                     RedeemConfirmedEventHandler(swap, result.Value.Transaction, cancellationToken);
                     return;
                 }
 
+                var currentTimeUtc = DateTime.UtcNow;
+
+                var creationTimeUtc = swap.RedeemTx.CreationTime != null
+                    ? swap.RedeemTx.CreationTime.Value.ToUniversalTime()
+                    : swap.TimeStamp.ToUniversalTime();
+
+                var difference = currentTimeUtc - creationTimeUtc;
+
+                Log.Debug("Currenct time: {@current}, creation time: {@now}, difference: {@diff}",
+                    currentTimeUtc,
+                    creationTimeUtc,
+                    difference);
+
                 // check transaction creation time and try replacing it with a higher fee
-                if (DateTime.UtcNow - swap.RedeemTx.CreationTime >= TimeSpan.FromHours(6))
+                if (difference >= TimeSpan.FromHours(4))
                     needReplaceTx = true;
 
                 if (!needReplaceTx)
