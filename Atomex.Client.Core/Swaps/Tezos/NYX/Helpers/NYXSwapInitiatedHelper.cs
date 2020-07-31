@@ -181,7 +181,7 @@ namespace Atomex.Swaps.Tezos.NYX.Helpers
 
         public static decimal GetAmount(TezosTransaction tx)
         {
-            return tx.Params?["value"]?["args"]?[1]?["args"]?[0]?["int"]?.ToObject<decimal>() ?? 0;
+            return tx.Params?["value"]?["args"]?[1]?["int"]?.ToObject<decimal>() ?? 0;
         }
 
         public static long GetRefundTimestamp(TezosTransaction tx)
