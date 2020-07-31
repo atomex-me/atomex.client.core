@@ -44,6 +44,6 @@
 
   </ItemGroup>
 
-  <ProjectExtensions><VisualStudio><UserProperties currencies_1json__JsonSchema="https://json.schemastore.org/behat" /></VisualStudio></ProjectExtensions>
+  <ProjectExtensions><VisualStudio><UserProperties /></VisualStudio></ProjectExtensions>
 
 </Project>

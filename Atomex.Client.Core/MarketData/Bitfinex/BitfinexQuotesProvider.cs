@@ -21,22 +21,17 @@ namespace Atomex.MarketData.Bitfinex
             { "ETHUSD", "tETHUSD" },
             { "XTZUSD", "tXTZUSD" },
             { "USDTUSD", "tUSTUSD" },
-            { "FA12USD", "tBTCUSD" },
-            { "TZBTCUSD", "tBTCUSD" }
+            { "TZBTCUSD", "tBTCUSD" },
+            { "NYXUSD", "tBTCUSD" },
+            { "FA2USD", "tUSTUSD" }
         };
 
         public const string Usd = "USD";
-        //public const string LtcBtc = "tLTCBTC";
-        //public const string EthBtc = "tETHBTC";
-        //public const string XtzBtc = "tXTZBTC";
-        //public const string UsdtBtc = "tBTCUST";
-        //public const string UsdcBtc = "tBTCUDC";
 
         private string BaseUrl { get; } = "https://api.bitfinex.com/v2/";
 
         public BitfinexQuotesProvider(params string[] symbols) //todo: check before use
         {
-            //Quotes = symbols.ToDictionary(s => $"{Tickers[s.Split('/')[0]]}{Tickers[s.Split('/')[1]]}", s => new Quote());
             Quotes = symbols.ToDictionary(s => s, s => new Quote());
         }
 
@@ -50,7 +45,6 @@ namespace Atomex.MarketData.Bitfinex
 
         public override Quote GetQuote(string currency, string baseCurrency)
         {
-            //return Quotes.TryGetValue($"t{Tickers[currency]}{baseCurrency}", out var rate) ? rate : null;
             return Quotes.TryGetValue(QuoteSymbols[$"{currency}{baseCurrency}"], out var rate) ? rate : null;
         }
 

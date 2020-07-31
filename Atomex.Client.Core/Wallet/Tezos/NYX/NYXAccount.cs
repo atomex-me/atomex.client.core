@@ -15,9 +15,9 @@ using Serilog;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class FA12Account : TezosAccount
+    public class NYXAccount : TezosAccount
     {
-        public FA12Account(
+        public NYXAccount(
             string currency,
             ICurrencies currencies,
             IHdWallet wallet,
@@ -28,7 +28,7 @@ namespace Atomex.Wallet.Tezos
 
         #region Common
 
-        private TezosTokens.FA12 Fa12 => Currencies.Get<TezosTokens.FA12>(Currency);
+        private TezosTokens.NYX NYX => Currencies.Get<TezosTokens.NYX>(Currency);
         private Atomex.Tezos Xtz => Currencies.Get<Atomex.Tezos>("XTZ");
 
         public override async Task<Error> SendAsync(
@@ -40,7 +40,7 @@ namespace Atomex.Wallet.Tezos
             bool useDefaultFee = true,
             CancellationToken cancellationToken = default)
         {
-            var fa12 = Fa12;
+            var nyx = NYX;
 
             var fromAddresses = from
                 .Where(w => w.Address != to) // filter self address usage
@@ -68,23 +68,23 @@ namespace Atomex.Wallet.Tezos
 
             foreach (var selectedAddress in selectedAddresses)
             {
-                var addressAmountInDigits = selectedAddress.UsedAmount.ToTokenDigits(fa12.DigitsMultiplier);
+                var addressAmountInDigits = selectedAddress.UsedAmount.ToTokenDigits(nyx.DigitsMultiplier);
 
                 Log.Debug("Send {@amount} tokens from address {@address} with available balance {@balance}",
                     addressAmountInDigits,
                     selectedAddress.WalletAddress.Address,
                     selectedAddress.WalletAddress.AvailableBalance());
 
-                var storageLimit = Math.Max(fa12.TransferStorageLimit - fa12.ActivationStorage, 0); // without activation storage fee
-               
+                var storageLimit = Math.Max(nyx.TransferStorageLimit - nyx.ActivationStorage, 0); // without activation storage fee
+
                 var tx = new TezosTransaction
                 {
-                    Currency = fa12,
+                    Currency = nyx,
                     CreationTime = DateTime.UtcNow,
                     From = selectedAddress.WalletAddress.Address,
-                    To = fa12.TokenContractAddress,
+                    To = nyx.TokenContractAddress,
                     Fee = selectedAddress.UsedFee.ToMicroTez(),
-                    GasLimit = fa12.TransferGasLimit,
+                    GasLimit = nyx.TransferGasLimit,
                     StorageLimit = storageLimit,
                     Params = TransferParams(selectedAddress.WalletAddress.Address, to, Math.Round(addressAmountInDigits, 0)),
                     UseDefaultFee = useDefaultFee,
@@ -100,7 +100,7 @@ namespace Atomex.Wallet.Tezos
                         code: Errors.TransactionSigningError,
                         description: "Transaction signing error");
 
-                var broadcastResult = await fa12.BlockchainApi
+                var broadcastResult = await nyx.BlockchainApi
                     .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -248,7 +248,10 @@ namespace Atomex.Wallet.Tezos
                 .ToList()
                 .SortList(new AvailableBalanceAscending());
 
-            var isFirstTx = true;
+            // use only max balance for swap payment
+            if (type.HasFlag(BlockchainTransactionType.SwapPayment))
+                unspentAddresses.RemoveRange(0, unspentAddresses.Count - 1);
+
             var amount = 0m;
             var feeAmount = 0m;
 
@@ -268,13 +271,11 @@ namespace Atomex.Wallet.Tezos
                 var feeInTez = await FeeByType(
                         type: type,
                         from: address.Address,
-                        isFirstTx: isFirstTx,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 var storageFeeInTez = StorageFeeByTypeAsync(
-                    type: type,
-                    isFirstTx: isFirstTx);
+                    type: type);
 
                 availableBalanceInTez = availableBalanceInTez - feeInTez - storageFeeInTez - ((reserve && address == unspentAddresses.Last()) ? reserveFee : 0) - xtz.MicroTezReserve.ToTez();
 
@@ -283,9 +284,6 @@ namespace Atomex.Wallet.Tezos
 
                 amount += address.AvailableBalance();
                 feeAmount += fee == 0 ? feeInTez : availableBalanceInTez + feeInTez;
-
-                if (isFirstTx)
-                    isFirstTx = false;
             }
 
             return (amount, feeAmount, reserveFee);
@@ -295,15 +293,17 @@ namespace Atomex.Wallet.Tezos
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default)
         {
+            var nyx = NYX;
+
             if (!(tx is TezosTransaction xtzTx))
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
             var oldTx = (TezosTransaction)await DataRepository
-                .GetTransactionByIdAsync(Currency, tx.Id, Fa12.TransactionType)
+                .GetTransactionByIdAsync(Currency, tx.Id, nyx.TransactionType)
                 .ConfigureAwait(false);
 
-//            if (oldTx != null && oldTx.IsConfirmed)
-//                return false;
+            //if (oldTx != null && oldTx.IsConfirmed)
+            //  return false;
 
             var isFromSelf = await IsSelfAddressAsync(
                     address: xtzTx.From,
@@ -354,59 +354,53 @@ namespace Atomex.Wallet.Tezos
         private async Task<decimal> FeeByType(
             BlockchainTransactionType type,
             string from,
-            bool isFirstTx,
             CancellationToken cancellationToken = default)
         {
-            var fa12 = Fa12;
+            var nyx = NYX;
 
             var isRevealed = await IsRevealedSourceAsync(from, cancellationToken)
                 .ConfigureAwait(false);
 
             if (type.HasFlag(BlockchainTransactionType.TokenApprove))
-                return fa12.ApproveFee.ToTez();
-            if (type.HasFlag(BlockchainTransactionType.SwapPayment) && isFirstTx)
-                return fa12.ApproveFee.ToTez() * 2 + fa12.InitiateFee.ToTez() + (isRevealed ? 0 : fa12.RevealFee.ToTez());
-            if (type.HasFlag(BlockchainTransactionType.SwapPayment) && !isFirstTx)
-                return fa12.ApproveFee.ToTez() * 2 + fa12.AddFee.ToTez() + (isRevealed ? 0 : fa12.RevealFee.ToTez());
+                return nyx.ApproveFee.ToTez();
+            if (type.HasFlag(BlockchainTransactionType.SwapPayment))
+                return nyx.ApproveFee.ToTez() + nyx.InitiateFee.ToTez() + (isRevealed ? 0 : nyx.RevealFee.ToTez());
             if (type.HasFlag(BlockchainTransactionType.SwapRefund))
-                return fa12.RefundFee.ToTez() + (isRevealed ? 0 : fa12.RevealFee.ToTez());
+                return nyx.RefundFee.ToTez() + (isRevealed ? 0 : nyx.RevealFee.ToTez());
             if (type.HasFlag(BlockchainTransactionType.SwapRedeem))
-                return fa12.RedeemFee.ToTez() + (isRevealed ? 0 : fa12.RevealFee.ToTez());
+                return nyx.RedeemFee.ToTez() + (isRevealed ? 0 : nyx.RevealFee.ToTez());
 
-            return fa12.TransferFee.ToTez() + (isRevealed ? 0 : fa12.RevealFee.ToTez());
+            return nyx.TransferFee.ToTez() + (isRevealed ? 0 : nyx.RevealFee.ToTez());
         }
 
         private decimal ReserveFee()
         {
             var xtz = Xtz;
-            var fa12 = Fa12;
+            var nyx = NYX;
 
             return new[] {
-                fa12.RedeemFee.ToTez() + Math.Max((fa12.RedeemStorageLimit - fa12.ActivationStorage) / fa12.StorageFeeMultiplier, 0),
-                fa12.RefundFee.ToTez() + Math.Max((fa12.RefundStorageLimit - fa12.ActivationStorage) / fa12.StorageFeeMultiplier, 0),
+                nyx.RedeemFee.ToTez() + Math.Max((nyx.RedeemStorageLimit - nyx.ActivationStorage) / nyx.StorageFeeMultiplier, 0),
+                nyx.RefundFee.ToTez() + Math.Max((nyx.RefundStorageLimit - nyx.ActivationStorage) / nyx.StorageFeeMultiplier, 0),
                 xtz.RedeemFee.ToTez() + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) / xtz.StorageFeeMultiplier, 0),
                 xtz.RefundFee.ToTez() + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) / xtz.StorageFeeMultiplier, 0)
-            }.Max() + fa12.RevealFee.ToTez() + Xtz.MicroTezReserve.ToTez();
+            }.Max() + nyx.RevealFee.ToTez() + Xtz.MicroTezReserve.ToTez();
         }
 
         private decimal StorageFeeByTypeAsync(
-            BlockchainTransactionType type,
-            bool isFirstTx)
+            BlockchainTransactionType type)
         {
-            var fa12 = Fa12;
+            var nyx = NYX;
 
             if (type.HasFlag(BlockchainTransactionType.TokenApprove))
-                return fa12.ApproveStorageLimit;
-            if (type.HasFlag(BlockchainTransactionType.SwapPayment) && isFirstTx)
-                return (fa12.ApproveStorageLimit * 2 + fa12.InitiateStorageLimit) / fa12.StorageFeeMultiplier;
-            if (type.HasFlag(BlockchainTransactionType.SwapPayment) && !isFirstTx)
-                return (fa12.ApproveStorageLimit * 2 + fa12.AddStorageLimit) / fa12.StorageFeeMultiplier;
+                return nyx.ApproveStorageLimit;
+            if (type.HasFlag(BlockchainTransactionType.SwapPayment))
+                return (nyx.ApproveStorageLimit + nyx.InitiateStorageLimit) / nyx.StorageFeeMultiplier;
             if (type.HasFlag(BlockchainTransactionType.SwapRefund))
-                return (fa12.RefundStorageLimit - fa12.ActivationStorage) / fa12.StorageFeeMultiplier;
+                return (nyx.RefundStorageLimit - nyx.ActivationStorage) / nyx.StorageFeeMultiplier;
             if (type.HasFlag(BlockchainTransactionType.SwapRedeem))
-                return (fa12.RedeemStorageLimit - fa12.ActivationStorage) / fa12.StorageFeeMultiplier;
+                return (nyx.RedeemStorageLimit - nyx.ActivationStorage) / nyx.StorageFeeMultiplier;
 
-            return (fa12.TransferStorageLimit - fa12.ActivationStorage) / fa12.StorageFeeMultiplier;
+            return (nyx.TransferStorageLimit - nyx.ActivationStorage) / nyx.StorageFeeMultiplier;
         }
 
         #endregion Common
@@ -416,10 +410,10 @@ namespace Atomex.Wallet.Tezos
         public override async Task UpdateBalanceAsync(
             CancellationToken cancellationToken = default)
         {
-            var fa12 = Fa12;
+            var nyx = NYX;
 
             var txs = (await DataRepository
-                .GetTransactionsAsync(Currency, fa12.TransactionType)
+                .GetTransactionsAsync(Currency, nyx.TransactionType)
                 .ConfigureAwait(false))
                 .Cast<TezosTransaction>()
                 .ToList();
@@ -465,11 +459,11 @@ namespace Atomex.Wallet.Tezos
                     var isFailed = tx.State == BlockchainTransactionState.Failed;
 
                     var income = isIncome && !isFailed
-                        ? tx.Amount.FromTokenDigits(fa12.DigitsMultiplier)
+                        ? tx.Amount.FromTokenDigits(nyx.DigitsMultiplier)
                         : 0;
 
                     var outcome = isOutcome && !isFailed
-                        ? -tx.Amount.FromTokenDigits(fa12.DigitsMultiplier)
+                        ? -tx.Amount.FromTokenDigits(nyx.DigitsMultiplier)
                         : 0;
 
                     if (addresses.TryGetValue(address, out var walletAddress))
@@ -505,54 +499,38 @@ namespace Atomex.Wallet.Tezos
 
             var totalBalance = 0m;
 
-            var callingAddress = await GetMainXtzAddressAsync()
-                .ConfigureAwait(false);
-
-            if (callingAddress != null)
+            foreach (var wa in addresses.Values)
             {
-                using var callingAddressPublicKey = new SecureBytes((await GetAddressAsync(callingAddress.Address)
-                    .ConfigureAwait(false))
-                    .PublicKeyBytes());
+                var nyxApi = nyx.BlockchainApi as ITokenBlockchainApi;
 
-                foreach (var wa in addresses.Values)
+                var balanceResult = await nyxApi
+                    .TryGetTokenBigMapBalanceAsync(
+                        address: wa.Address,
+                        pointer: nyx.TokenPointerBalance,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (balanceResult.HasError)
                 {
-                    var fa12Api = fa12.BlockchainApi as ITokenBlockchainApi;
+                    Log.Error("Error while getting token balance for {@address} with code {@code} and description {@description}",
+                        wa.Address,
+                        balanceResult.Error.Code,
+                        balanceResult.Error.Description);
 
-                    var balanceResult = await fa12Api
-                        .TryGetTokenBalanceAsync(
-                            address: wa.Address,
-                            callingAddress: callingAddress.Address,
-                            securePublicKey: callingAddressPublicKey,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (balanceResult.HasError)
-                    {
-                        Log.Error("Error while getting token balance for {@address} with code {@code} and description {@description}",
-                            wa.Address,
-                            balanceResult.Error.Code,
-                            balanceResult.Error.Description);
-
-                        continue; // todo: may be return?
-                    }
-
-                    wa.Balance = balanceResult.Value.FromTokenDigits(fa12.DigitsMultiplier);
-
-                    totalBalance += wa.Balance;
+                    continue; // todo: may be return?
                 }
 
-                if (totalBalanceSum != totalBalance)
-                {
-                    Log.Warning("Transaction balance sum is different from the actual {@name} token balance",
-                        fa12.Name);
+                wa.Balance = balanceResult.Value.FromTokenDigits(nyx.DigitsMultiplier);
 
-                    Balance = totalBalance;
-                }
+                totalBalance += wa.Balance;
             }
-            else
+
+            if (totalBalanceSum != totalBalance)
             {
-                Log.Warning("No XTZ address found to make a call for {@name} token balance",
-                    fa12.Name);
+                Log.Warning("Transaction balance sum is different from the actual {@name} token balance",
+                    nyx.Name);
+
+                Balance = totalBalance;
             }
 
             // upsert addresses
@@ -570,7 +548,7 @@ namespace Atomex.Wallet.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            var fa12 = Fa12;
+            var nyx = NYX;
 
             var walletAddress = await DataRepository
                 .GetWalletAddressAsync(Currency, address)
@@ -580,7 +558,7 @@ namespace Atomex.Wallet.Tezos
                 return;
 
             var txs = (await DataRepository
-                .GetTransactionsAsync(Currency, fa12.TransactionType)
+                .GetTransactionsAsync(Currency, nyx.TransactionType)
                 .ConfigureAwait(false))
                 .Cast<TezosTransaction>()
                 .ToList();
@@ -605,62 +583,46 @@ namespace Atomex.Wallet.Tezos
                 var isFailed = tx.State == BlockchainTransactionState.Failed;
 
                 var income = isIncome && !isFailed
-                    ? tx.Amount.FromTokenDigits(fa12.DigitsMultiplier)
+                    ? tx.Amount.FromTokenDigits(nyx.DigitsMultiplier)
                     : 0;
 
                 var outcome = isOutcome && !isFailed
-                    ? -tx.Amount.FromTokenDigits(fa12.DigitsMultiplier)
+                    ? -tx.Amount.FromTokenDigits(nyx.DigitsMultiplier)
                     : 0;
 
                 balance += isConfirmed ? income + outcome : 0;
                 unconfirmedIncome += !isConfirmed ? income : 0;
                 unconfirmedOutcome += !isConfirmed ? outcome : 0;
             }
- 
-            var callingAddress = await GetMainXtzAddressAsync()  //todo: make special function
+
+            var nyxApi = nyx.BlockchainApi as ITokenBlockchainApi;
+
+            var balanceResult = await nyxApi
+                .TryGetTokenBigMapBalanceAsync(
+                    address: address,
+                    pointer: nyx.TokenPointerBalance,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (callingAddress != null)
+            if (balanceResult.HasError)
             {
-                using var callingAddressPublicKey = new SecureBytes((await GetAddressAsync(callingAddress.Address)
-                    .ConfigureAwait(false))
-                    .PublicKeyBytes());
-
-                var fa12Api = fa12.BlockchainApi as ITokenBlockchainApi;
-
-                var balanceResult = await fa12Api
-                    .TryGetTokenBalanceAsync(
-                        address: address,
-                        callingAddress: callingAddress.Address,
-                        securePublicKey: callingAddressPublicKey,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (balanceResult.HasError)
-                {
-                    Log.Error("Error while balance update token for {@address} with code {@code} and description {@description}",
-                        address,
-                        balanceResult.Error.Code,
-                        balanceResult.Error.Description);
-                    return;
-                }
-
-                var balanceRes = balanceResult.Value.FromTokenDigits(fa12.DigitsMultiplier);
-
-                if (balance != balanceRes)
-                {
-                    Log.Warning("Transaction balance sum for address {@address} is {@balanceSum}, which is different from the actual address balance {@balance}",
-                        address,
-                        balance,
-                        balanceRes);
-
-                    balance = balanceRes;
-                }
+                Log.Error("Error while balance update token for {@address} with code {@code} and description {@description}",
+                    address,
+                    balanceResult.Error.Code,
+                    balanceResult.Error.Description);
+                return;
             }
-            else
+
+            var balanceRes = balanceResult.Value.FromTokenDigits(nyx.DigitsMultiplier);
+
+            if (balance != balanceRes)
             {
-                Log.Warning("No XTZ address found to make a call for {@name} token balance",
-                    fa12.Name);
+                Log.Warning("Transaction balance sum for address {@address} is {@balanceSum}, which is different from the actual address balance {@balance}",
+                    address,
+                    balance,
+                    balanceRes);
+
+                balance = balanceRes;
             }
 
             var balanceDifference = balance - walletAddress.Balance;
@@ -690,20 +652,6 @@ namespace Atomex.Wallet.Tezos
         #endregion Balances
 
         #region Addresses
-
-        private async Task<WalletAddress> GetMainXtzAddressAsync(
-            CancellationToken cancellationToken = default)
-        {
-            var xtzUnspentAddresses = (await DataRepository
-                .GetUnspentAddressesAsync(Xtz.Name)
-                .ConfigureAwait(false))
-                .ToList();
-
-            if(xtzUnspentAddresses.Any())
-                xtzUnspentAddresses = xtzUnspentAddresses.SortList((a, b) => b.AvailableBalance().CompareTo(a.AvailableBalance()));
-
-            return xtzUnspentAddresses.FirstOrDefault();
-        }
 
         public override async Task<WalletAddress> GetRedeemAddressAsync(   //todo: match it with xtz balances
             CancellationToken cancellationToken = default)
@@ -813,7 +761,7 @@ namespace Atomex.Wallet.Tezos
 
                 if (!xtzUnspentAddresses.Any())
                 {
-                    Log.Debug("Unsufficient XTZ ammount for FA12 token processing");
+                    Log.Debug("Unsufficient XTZ ammount for NYX token processing");
                     return Enumerable.Empty<SelectedWalletAddress>();
                 }
 
@@ -832,7 +780,7 @@ namespace Atomex.Wallet.Tezos
 
                 if (!xtzUnspentAddresses.Any())
                 {
-                    Log.Debug("Unsufficient XTZ ammount for FA12 token processing");
+                    Log.Debug("Unsufficient XTZ ammount for NYX token processing");
                     return Enumerable.Empty<SelectedWalletAddress>();
                 }
 
@@ -865,19 +813,17 @@ namespace Atomex.Wallet.Tezos
                     : await FeeByType(
                             type: transactionType,
                             from: address.Address,
-                            isFirstTx: isFirstTx,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
                 var storageFeeInTez = StorageFeeByTypeAsync(
-                    type: transactionType,
-                    isFirstTx: isFirstTx);
+                    type: transactionType);
 
                 var leftBalanceInTez = availableBalanceInTez - txFeeInTez - storageFeeInTez - xtz.MicroTezReserve.ToTez();
-        
+
                 if (leftBalanceInTez < 0) // ignore address with balance less than fee
                 {
-                    Log.Debug("Unsufficient XTZ ammount for FA12 token processing on address {@address} with available balance {@balance} and needed amount {@amount}",
+                    Log.Debug("Unsufficient XTZ ammount for NYX token processing on address {@address} with available balance {@balance} and needed amount {@amount}",
                         address.Address,
                         availableBalanceInTez,
                         txFeeInTez + storageFeeInTez + xtz.MicroTezReserve.ToTez());
@@ -986,7 +932,7 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (unspentTezosAddresses.Any())
-            {   
+            {
                 var tezosAddress = unspentTezosAddresses.MaxBy(a => a.AvailableBalance());
 
                 return await DivideAddressAsync(
@@ -1013,7 +959,7 @@ namespace Atomex.Wallet.Tezos
         #region Helpers
         private JObject TransferParams(string from, string to, decimal amount)
         {
-            return JObject.Parse(@"{'entrypoint':'transfer','value':{'prim':'Pair','args':[{'string':'" + from + "'},{'prim':'Pair','args':[{'string':'" + to + "'},{'int':'" + amount + "'}]}]}}");
+            return JObject.Parse(@"{'entrypoint':'transfer','value':[{'prim':'Pair','args':[{'int':'" + amount + "'},{'string':'" + to + "'}]}]}");
         }
 
         #endregion Helpers

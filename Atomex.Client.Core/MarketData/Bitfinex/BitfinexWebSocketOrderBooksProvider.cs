@@ -24,8 +24,10 @@ namespace Atomex.MarketData.Bitfinex
             { "ETHUSDT", "ETHUST" },
             { "LTCUSDT", "LTCUST" },
             { "XTZUSDT", "XTZUST" },
-            { "ETHFA12", "ETHBTC" },
-            { "XTZFA12", "XTZBTC" },
+            { "ETHNYX", "ETHBTC" },
+            { "XTZNYX", "XTZBTC" },
+            { "FA2ETH", "XTZETH" },
+            { "FA2BTC", "XTZBTC" },
             { "ETHTZBTC", "ETHBTC" },
             { "XTZTZBTC", "XTZBTC" },
             { "TZBTCUSDT", "BTCUST" },
@@ -74,21 +76,6 @@ namespace Atomex.MarketData.Bitfinex
                 .Distinct()
                 .ToDictionary(s => s, s => new MarketDataOrderBook(s));
         }
-
-        //public BitfinexWebSocketOrderBooksProvider(  //todo: check before use
-        //    IAccount account,
-        //    IEnumerable<Currency> currencies,
-        //    string baseCurrency)
-        //{
-        //    _channels = new Dictionary<int, string>();
-
-        //    _orderbooks = currencies
-        //        .Select(c => Symbols[$"{c.Name}{baseCurrency}"])
-        //        .Distinct()
-        //        .ToDictionary(s => s, s => new MarketDataOrderBook(s));
-
-        //    _orderbooks = currencies.ToDictionary(currency => Symbols[$"{currency.Name}{baseCurrency}"], currency => new MarketDataOrderBook(account.Symbols.GetByName($"{currency.Name}/{baseCurrency}").Name));
-        //}
 
         public void Start()
         {
