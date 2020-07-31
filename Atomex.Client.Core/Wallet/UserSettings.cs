@@ -28,7 +28,7 @@ namespace Atomex.Wallet
             PeriodOfInactivityInMin = 5,
             AuthenticationKeyIndex = 0,
             ShowActiveSwapWarning = true,
-            BalanceUpdateIntervalInSec = 120
+            BalanceUpdateIntervalInSec = 12000
         };
 
         public UserSettings Clone()

@@ -230,20 +230,23 @@ namespace Atomex.Subsystems
 
         private void OnExchangeDisconnectedEventHandler(object sender, EventArgs args)
         {
-            if (!_exchangeHeartBeatTask.IsCompleted &&
-                !_exchangeHeartBeatTask.IsCanceled &&
-                !_exchangeHeartBeatTask.IsFaulted)
-            {
-                try
+            if(_exchangeHeartBeatTask != null)
+            { 
+                if (!_exchangeHeartBeatTask.IsCompleted &&
+                    !_exchangeHeartBeatTask.IsCanceled &&
+                    !_exchangeHeartBeatTask.IsFaulted)
                 {
-                    _exchangeCts.Cancel();
-                }
-                catch (OperationCanceledException)
-                {
-                    Log.Debug("Exchange heart beat loop canceled.");
+                    try
+                    {
+                        _exchangeCts.Cancel();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Log.Debug("Exchange heart beat loop canceled.");
+                    }
                 }
             }
-
+ 
             ServiceDisconnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
         }
 
@@ -330,17 +333,20 @@ namespace Atomex.Subsystems
 
         private void OnMarketDataDisconnectedEventHandler(object sender, EventArgs args)
         {
-            if (!_marketDataHeartBeatTask.IsCompleted &&
-                !_marketDataHeartBeatTask.IsCanceled &&
-                !_marketDataHeartBeatTask.IsFaulted)
+            if (_marketDataHeartBeatTask != null)
             {
-                try
+                if (!_marketDataHeartBeatTask.IsCompleted &&
+                    !_marketDataHeartBeatTask.IsCanceled &&
+                    !_marketDataHeartBeatTask.IsFaulted)
                 {
-                    _marketDataCts.Cancel();
-                }
-                catch (OperationCanceledException)
-                {
-                    Log.Debug("Exchange heart beat loop canceled.");
+                    try
+                    {
+                        _marketDataCts.Cancel();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Log.Debug("Exchange heart beat loop canceled.");
+                    }
                 }
             }
 

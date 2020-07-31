@@ -7,9 +7,9 @@ using Atomex.Common;
 using Atomex.Core;
 using Serilog;
 
-namespace Atomex.Swaps.Tezos.FA12.Helpers
+namespace Atomex.Swaps.Tezos.FA2.Helpers
 {
-    public static class FA12SwapRefundedHelper
+    public static class FA2SwapRefundedHelper
     {
         public static async Task<Result<bool>> IsRefundedAsync(
             Swap swap,
@@ -19,11 +19,11 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
         {
             try
             {
-                Log.Debug("Tezos FA12: check refund event");
+                Log.Debug("Tezos FA2: check refund event");
 
-                var fa12 = (TezosTokens.FA12)currency;
+                var fa2 = (TezosTokens.FA2)currency;
 
-                var contractAddress = fa12.SwapContractAddress;
+                var contractAddress = fa2.SwapContractAddress;
 
                 var blockchainApi = (ITezosBlockchainApi)tezos.BlockchainApi;
 
@@ -68,7 +68,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
             }
             catch (Exception e)
             {
-                Log.Error(e, "Tezos FA12 refund control task error");
+                Log.Error(e, "Tezos FA2 refund control task error");
 
                 return new Error(Errors.InternalError, e.Message);
             }

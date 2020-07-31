@@ -121,6 +121,26 @@
       "Id": 12,
       "Name": "TZBTC/USDT",
       "MinimumQty": 0.0001
+    },
+    {
+      "Id": 13,
+      "Name": "NYX/BTC",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 14,
+      "Name": "ETH/NYX",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 15,
+      "Name": "FA2/BTC",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 16,
+      "Name": "FA2/ETH",
+      "MinimumQty": 0.0001
     }
   ]
 }
