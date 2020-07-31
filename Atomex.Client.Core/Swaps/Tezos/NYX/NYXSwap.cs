@@ -983,7 +983,7 @@ namespace Atomex.Swaps.Tezos.NYX
             string spender,
             decimal amount)
         {
-            return JObject.Parse(@"{'entrypoint':'setAllowTransferFrom','value':{'prim':'Pair','args':[{'prim':'Pair','args':[{'string':'" + spender + "'},{'int':'0'}]},{'prim':'Pair','args':[{'prim':'True'},{'prim':'Pair','args':[{'int':'" + amount + "'},{'string': '" + owner + "'}]}]}]}}");
+            return JObject.Parse(@"{'entrypoint':'setAllowTransferFrom','value':{'prim':'Pair','args':[{'prim':'Pair','args':[{'string':'" + spender + "'},{'int':'0'}]},{'prim':'Pair','args':[{'prim':'False'},{'prim':'Pair','args':[{'int':'" + amount + "'},{'string': '" + owner + "'}]}]}]}}");
         }
 
         private JObject InitParams(
