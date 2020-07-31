@@ -960,7 +960,7 @@ namespace Atomex.Swaps.Tezos.FA2
             string owner,
             string spender)
         {
-            return JObject.Parse(@"{'entrypoint':'update_operators','value':[{'prim': 'Right','args':[{'prim': 'Pair','args':[{'string': '" + owner + "'},{'string': '" + spender + "'}]}]}]}");
+            return JObject.Parse(@"{'entrypoint':'update_operators','value':[{'prim': 'Left','args':[{'prim': 'Pair','args':[{'string': '" + owner + "'},{'string': '" + spender + "'}]}]}]}");
         }
 
         private JObject InitParams(

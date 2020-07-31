@@ -57,6 +57,7 @@ namespace Atomex
                 "TZBTC" => (Currency)new TZBTC(configurationSection),
                 "NYX" => (Currency)new NYX(configurationSection),
                 "FA2" => (Currency)new FA2(configurationSection),
+                "FA12" => (Currency)new TZBTC(configurationSection),
                 _ => throw new NotSupportedException($"{configurationSection.Key} not supported.")
             };
         }
