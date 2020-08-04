@@ -247,6 +247,17 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
+            if (swap.IsInitiator)
+            {
+                var redeemDeadline = swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds) - RedeemTimeReserve;
+
+                if (DateTime.UtcNow > redeemDeadline)
+                {
+                    Log.Error("Redeem dedline reached for swap {@swap}", swap.Id);
+                    return;
+                }
+            }
+
             Log.Debug("Create redeem for swap {@swapId}", swap.Id);
 
             var walletAddress = (await Erc20Account
