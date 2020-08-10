@@ -328,6 +328,12 @@ namespace Atomex.Wallet.Abstract
                 .ConfigureAwait(false);
         }
 
+        public Task<IEnumerable<WalletAddress>> GetAddressesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return DataRepository.GetAddressesAsync(Currency);
+        }
+
         #endregion Addresses
 
         #region Transactions

@@ -135,6 +135,9 @@ namespace Atomex.Wallet.Abstract
         Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default);
 
+        Task<IEnumerable<WalletAddress>> GetAddressesAsync(
+            CancellationToken cancellationToken = default);
+
         #endregion Addresses
 
         #region Transactions
