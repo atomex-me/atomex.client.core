@@ -42,7 +42,12 @@ namespace Atomex.Wallet
                     currencies,
                     wallet,
                     dataRepository),
-                "FA12" => (ICurrencyAccount)new FA12Account(
+                "NYX" => (ICurrencyAccount)new NYXAccount(
+                    currency,
+                    currencies,
+                    wallet,
+                    dataRepository),
+                "FA2" => (ICurrencyAccount)new FA2Account(
                     currency,
                     currencies,
                     wallet,

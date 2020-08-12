@@ -115,7 +115,7 @@ namespace Atomex.Swaps.BitcoinBased
             Log.Debug("Start party payment control for swap {@swap}.", swap.Id);
 
             if (swap.IsInitiator &&
-                swap.HasPartyPayment) // &&
+                swap.StateFlags.HasFlag(SwapStateFlags.HasPartyPayment)) // &&
                 //!swap.StateFlags.HasFlag(SwapStateFlags.IsPartyPaymentConfirmed))
             {
                 Log.Debug("Start to track party payment transaction confirmation for swap {@swap}.", swap.Id);
@@ -706,6 +706,7 @@ namespace Atomex.Swaps.BitcoinBased
         {
             Log.Debug("Handle party's payment confirmed event for swap {@swapId}", swap.Id);
 
+            swap.PartyPaymentTx = tx;
             swap.StateFlags |= SwapStateFlags.IsPartyPaymentConfirmed;
             RaiseSwapUpdated(swap, SwapStateFlags.IsPartyPaymentConfirmed);
 

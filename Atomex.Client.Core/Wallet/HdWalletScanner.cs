@@ -101,8 +101,11 @@ namespace Atomex.Wallet
                 "TZBTC" => (ICurrencyHdWalletScanner)new TezosWalletScanner(
                     Account.GetCurrencyAccount<FA12Account>(currency), 
                     Account.GetCurrencyAccount<TezosAccount>("XTZ")),
-                "FA12" => (ICurrencyHdWalletScanner)new TezosWalletScanner(
-                    Account.GetCurrencyAccount<FA12Account>(currency), 
+                "NYX" => (ICurrencyHdWalletScanner)new TezosWalletScanner(
+                    Account.GetCurrencyAccount<NYXAccount>(currency), 
+                    Account.GetCurrencyAccount<TezosAccount>("XTZ")),
+                "FA2" => (ICurrencyHdWalletScanner)new TezosWalletScanner(
+                    Account.GetCurrencyAccount<FA2Account>(currency),
                     Account.GetCurrencyAccount<TezosAccount>("XTZ")),
                 _ => throw new NotSupportedException($"Currency {currency} not supported")
             };

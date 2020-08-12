@@ -238,6 +238,18 @@ namespace Atomex.Wallet
         return Task.FromResult(addresses.Select(a => a.Copy()));
       }
     }
+    
+    public virtual Task<IEnumerable<WalletAddress>> GetAddressesAsync(
+        string currency)
+    {
+        lock (_sync)
+        {
+            var addresses = _addresses.Values
+                .Where(w => w.Currency == currency);
+
+            return Task.FromResult(addresses);
+        }
+    }
 
     #endregion Addresses
 

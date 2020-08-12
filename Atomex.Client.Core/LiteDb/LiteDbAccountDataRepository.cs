@@ -269,6 +269,32 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<WalletAddress>());
         }
 
+        public Task<IEnumerable<WalletAddress>> GetAddressesAsync(
+            string currency)
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    var addresses = db.GetCollection(AddressesCollectionName);
+
+                    var unspentAddresses = addresses
+                        .Find(Query.EQ(CurrencyKey, currency))
+                        .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
+                        .ToList();
+
+                    return Task.FromResult<IEnumerable<WalletAddress>>(unspentAddresses);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error getting wallet addresses");
+            }
+
+            return Task.FromResult(Enumerable.Empty<WalletAddress>());
+        }
+
         #endregion Addresses
 
         #region Transactions

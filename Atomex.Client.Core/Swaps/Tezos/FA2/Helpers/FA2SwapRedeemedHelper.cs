@@ -8,9 +8,9 @@ using Atomex.Core;
 using Atomex.Swaps.Abstract;
 using Serilog;
 
-namespace Atomex.Swaps.Tezos.FA12.Helpers
+namespace Atomex.Swaps.Tezos.FA2.Helpers
 {
-    public static class FA12SwapRedeemedHelper
+    public static class FA2SwapRedeemedHelper
     {
         public static async Task<Result<byte[]>> IsRedeemedAsync(
             Swap swap,
@@ -20,11 +20,11 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
         {
             try
             {
-                Log.Debug("Tezos FA12: check redeem event");
+                Log.Debug("Tezos FA2: check redeem event");
 
-                var fa12 = (TezosTokens.FA12)currency;
+                var fa2 = (TezosTokens.FA2)currency;
 
-                var contractAddress = fa12.SwapContractAddress;
+                var contractAddress = fa2.SwapContractAddress;
 
                 var blockchainApi = (ITezosBlockchainApi)tezos.BlockchainApi;
 
@@ -76,7 +76,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
             }
             catch (Exception e)
             {
-                Log.Error(e, "Tezos FA12 redeem control task error");
+                Log.Error(e, "Tezos FA2 redeem control task error");
 
                 return new Error(Errors.InternalError, e.Message);
             }

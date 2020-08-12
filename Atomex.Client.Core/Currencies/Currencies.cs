@@ -12,7 +12,7 @@ namespace Atomex
 {
     public class Currencies : ICurrencies
     {
-        private readonly string[] _currenciesOrder = new[] { "BTC", "ETH", "LTC", "XTZ", "USDT", "TZBTC" };
+        private readonly string[] _currenciesOrder = new[] { "BTC", "ETH", "LTC", "XTZ", "USDT", "TZBTC", "NYX", "FA2" };
 
         private readonly object _sync = new object();
         private IDictionary<string, Currency> _currencies;
@@ -55,6 +55,8 @@ namespace Atomex
                 "XTZ" => (Currency)new Tezos(configurationSection),
                 "USDT" => (Currency)new Tether(configurationSection),
                 "TZBTC" => (Currency)new TZBTC(configurationSection),
+                "NYX" => (Currency)new NYX(configurationSection),
+                "FA2" => (Currency)new FA2(configurationSection),
                 "FA12" => (Currency)new TZBTC(configurationSection),
                 _ => throw new NotSupportedException($"{configurationSection.Key} not supported.")
             };

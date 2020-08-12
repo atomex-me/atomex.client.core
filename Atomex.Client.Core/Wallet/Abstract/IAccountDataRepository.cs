@@ -26,6 +26,9 @@ namespace Atomex.Wallet.Abstract
             string currency,
             bool includeUnconfirmed = true);
 
+        Task<IEnumerable<WalletAddress>> GetAddressesAsync(
+            string currency);
+
         #endregion Addresses
 
         #region Transactions
