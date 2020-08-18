@@ -28,6 +28,8 @@ namespace Atomex.Swaps.BitcoinBased
             if (!availableOutputs.Any())
                 throw new Exception($"Insufficient funds. Available 0.");
 
+            availableOutputs.Sort((o1, o2) => o2.Value.CompareTo(o1.Value));
+
             var feeInSatoshi = 0L;
             ITxOutput[] selectedOutputs = null;
 
