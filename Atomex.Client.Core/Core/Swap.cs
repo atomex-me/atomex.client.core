@@ -111,28 +111,28 @@ namespace Atomex.Core
         public IBlockchainTransaction PaymentTx
         {
             get => _paymentTx;
-            set { _paymentTx = value; StateFlags |= SwapStateFlags.HasPayment; }
+            set { _paymentTx = value; if (_paymentTx != null) StateFlags |= SwapStateFlags.HasPayment; }
         }
 
         private IBlockchainTransaction _refundTx;
         public IBlockchainTransaction RefundTx
         {
             get => _refundTx;
-            set { _refundTx = value; StateFlags |= SwapStateFlags.HasRefund; }
+            set { _refundTx = value; if (_refundTx != null) StateFlags |= SwapStateFlags.HasRefund; }
         }
 
         private IBlockchainTransaction _redeemTx;
         public IBlockchainTransaction RedeemTx
         {
             get => _redeemTx;
-            set { _redeemTx = value; StateFlags |= SwapStateFlags.HasRedeem; }
+            set { _redeemTx = value; if (_redeemTx != null) StateFlags |= SwapStateFlags.HasRedeem; }
         }
 
         private IBlockchainTransaction _partyPaymentTx;
         public IBlockchainTransaction PartyPaymentTx
         {
             get => _partyPaymentTx;
-            set { _partyPaymentTx = value; StateFlags |= SwapStateFlags.HasPartyPayment; }
+            set { _partyPaymentTx = value; if (_partyPaymentTx != null) StateFlags |= SwapStateFlags.HasPartyPayment; }
         }
 
         public bool IsStatusSet(SwapStatus status, Enum flag)

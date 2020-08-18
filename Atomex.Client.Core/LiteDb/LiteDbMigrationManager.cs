@@ -25,6 +25,8 @@ namespace Atomex.LiteDb
                     return;
                 }
 
+                RemoveCanceledOrders(pathToDb, sessionPassword);
+
                 var currentVersion = GetDataBaseVersion(pathToDb, sessionPassword);
 
                 if (currentVersion == LiteDbMigrations.Version0)
@@ -43,6 +45,19 @@ namespace Atomex.LiteDb
             {
                 Log.Error(e, "LiteDb migration error");
             }
+        }
+
+        private static void RemoveCanceledOrders(
+            string pathToDb,
+            string sessionPassword)
+        {
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+
+            var totalOrders = db.GetCollection("Orders").Count();
+
+            var removedOrders = db.DropCollection("Orders");
+
+            db.Shrink();
         }
 
         private static ushort GetDataBaseVersion(

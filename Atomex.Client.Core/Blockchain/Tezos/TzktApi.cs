@@ -388,7 +388,7 @@ namespace Atomex.Blockchain.Tezos
             return addressInfo.Value.IsRevealed;
         }
 
-        private Result<TezosTransaction> ParseFA12Params(TezosTransaction tx, JObject transaction)
+        private TezosTransaction ParseFA12Params(TezosTransaction tx, JObject transaction)
         {
             var tokenContractAddress = (_currency as TezosTokens.FA12).TokenContractAddress;
 
@@ -445,7 +445,7 @@ namespace Atomex.Blockchain.Tezos
             return tx;
         }
 
-        private Result<TezosTransaction> ParseNYXParams(TezosTransaction tx, JObject transaction)
+        private TezosTransaction ParseNYXParams(TezosTransaction tx, JObject transaction)
         {
             var tokenContractAddress = (_currency as TezosTokens.NYX).TokenContractAddress;
 
@@ -510,7 +510,7 @@ namespace Atomex.Blockchain.Tezos
             return tx;
         }
 
-        private Result<TezosTransaction> ParseFA2Params(TezosTransaction tx, JObject transaction)
+        private TezosTransaction ParseFA2Params(TezosTransaction tx, JObject transaction)
         {
             var tokenContractAddress = (_currency as TezosTokens.FA2).TokenContractAddress;
 
@@ -604,11 +604,11 @@ namespace Atomex.Blockchain.Tezos
                 if (_currency.Name != Tezos)
                 {
                     if (_currency.Name == NYX)
-                        tx = ParseNYXParams(tx, transaction).Value;
+                        tx = ParseNYXParams(tx, transaction);
                     else if (_currency.Name == FA2)
-                        tx = ParseFA2Params(tx, transaction).Value;
+                        tx = ParseFA2Params(tx, transaction);
                     else
-                        tx = ParseFA12Params(tx, transaction).Value;
+                        tx = ParseFA12Params(tx, transaction);
                 }
                 else
                 {
