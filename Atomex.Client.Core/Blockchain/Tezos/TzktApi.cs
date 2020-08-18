@@ -268,7 +268,7 @@ namespace Atomex.Blockchain.Tezos
                     new TxsSource
                     {
                         BaseUri = token.BcdApi,
-                        RequestUri = $"tokens/{token.BcdNetwork}/{address}/transfers?size=10000", // todo: use contract filter {token.TokenContractAddress}";
+                        RequestUri = $"tokens/{token.BcdNetwork}/transfers/{address}?size=10000", // todo: use contract filter {token.TokenContractAddress}";
                         Parser = new Func<string, Result<IEnumerable<TezosTransaction>>>(content => ParseTokenTxs(JsonConvert.DeserializeObject<JObject>(content)))
                     },
                 };
