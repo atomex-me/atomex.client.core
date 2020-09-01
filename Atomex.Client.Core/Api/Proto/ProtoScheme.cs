@@ -13,7 +13,7 @@ namespace Atomex.Api.Proto
         protected ProtoScheme(byte messageId)
         {
             MessageId = messageId;
-            Model = TypeModel.Create();
+            Model = RuntimeTypeModel.Create();
             Model.IncludeDateTimeKind = true;
         }
 
