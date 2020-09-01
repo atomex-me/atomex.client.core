@@ -695,10 +695,12 @@ namespace Atomex.Swaps
                     throw new Exception($"Can't get/devide {currency.Name} address {walletAddress.Address} for {feeCurrency}");
             }
 
-            var redeemFee = currency.GetRedeemFee(walletAddress);
+            var redeemFee = await currency
+                .GetRedeemFeeAsync(walletAddress, cancellationToken)
+                .ConfigureAwait(false);
 
             return feeCurrencyAddress.AvailableBalance() < redeemFee
-                ? currency.GetRewardForRedeem()
+                ? await currency.GetRewardForRedeemAsync(cancellationToken)
                 : 0;
         }
     }

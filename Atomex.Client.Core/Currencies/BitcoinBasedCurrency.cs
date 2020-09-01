@@ -1,14 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using NBitcoin;
+using Serilog;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.BitcoinBased;
-using NBitcoin;
-using Serilog;
 
 namespace Atomex
 {
@@ -38,26 +41,18 @@ namespace Atomex
             TransactionType = typeof(BitcoinBasedTransaction);
         }
 
-        public override IExtKey CreateExtKey(SecureBytes seed)
-        {
-            return CreateExtKeyFromSeed(seed);
-        }
+        public override IExtKey CreateExtKey(SecureBytes seed) => 
+            CreateExtKeyFromSeed(seed);
 
-        public static IExtKey CreateExtKeyFromSeed(SecureBytes seed)
-        {
-            return new BitcoinBasedExtKey(seed);
-        }
+        public static IExtKey CreateExtKeyFromSeed(SecureBytes seed) => 
+            new BitcoinBasedExtKey(seed);
 
-        public override IKey CreateKey(SecureBytes seed)
-        {
-            return new BitcoinBasedKey(seed);
-        }
+        public override IKey CreateKey(SecureBytes seed) => 
+            new BitcoinBasedKey(seed);
 
-        public override string AddressFromKey(byte[] publicKey)
-        {
-            return new PubKey(publicKey)
+        public override string AddressFromKey(byte[] publicKey) =>
+            new PubKey(publicKey)
                 .ToString(Network);
-        }
 
         public override bool IsValidAddress(string address)
         {
@@ -88,60 +83,44 @@ namespace Atomex
             } 
         }
 
-        public override bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey)
-        {
-            return new PubKey(publicKey)
+        public override bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey) => 
+            new PubKey(publicKey)
                 .VerifyMessage(data, Convert.ToBase64String(signature));
+
+        public override decimal GetFeeAmount(decimal fee, decimal feePrice) => fee;
+
+        public override decimal GetFeeFromFeeAmount(decimal feeAmount, decimal feePrice) => feeAmount;
+
+        public override decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee) => 1m;
+
+        public override async Task<decimal> GetRedeemFeeAsync(
+            WalletAddress toAddress = null,
+            CancellationToken cancellationToken = default)
+        {
+            var feeRate = await GetFeeRateAsync(cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            return feeRate * DefaultRedeemTxSize / DigitsMultiplier;
         }
 
-        public override decimal GetFeeAmount(decimal fee, decimal feePrice)
-        {
-            return fee;
-        }
+        public override Task<decimal> GetRewardForRedeemAsync(
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(0m);
 
-        public override decimal GetFeeFromFeeAmount(decimal feeAmount, decimal feePrice)
-        {
-            return feeAmount;
-        }
+        public long GetMinimumFee(int txSize) =>
+            (long) (MinTxFeeRate * txSize);
 
-        public override decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee)
-        {
-            return 1m;
-        }
+        public long GetMinimumRelayFee(int txSize) =>
+            (long) (MinRelayTxFeeRate * txSize);
 
-        public override decimal GetRedeemFee(WalletAddress toAddress = null)
-        {
-            return FeeRate * DefaultRedeemTxSize / DigitsMultiplier;
-        }
+        public virtual long GetDust() =>
+            (long) (DustFeeRate * P2PkhTxSize);
 
-        public override decimal GetRewardForRedeem()
-        {
-            return 0;
-        }
+        public long CoinToSatoshi(decimal coins) =>
+            (long) (coins * DigitsMultiplier);
 
-        public long GetMinimumFee(int txSize)
-        {
-            return (long)(MinTxFeeRate * txSize);
-        }
-        public long GetMinimumRelayFee(int txSize)
-        {
-            return (long)(MinRelayTxFeeRate * txSize);
-        }
-
-        public virtual long GetDust()
-        {
-            return (long) (DustFeeRate * P2PkhTxSize);
-        }
-
-        public long CoinToSatoshi(decimal coins)
-        {
-            return (long) (coins * DigitsMultiplier);
-        }
-
-        public decimal SatoshiToCoin(long satoshi)
-        {
-            return satoshi / (decimal)DigitsMultiplier;
-        }
+        public decimal SatoshiToCoin(long satoshi) =>
+            satoshi / (decimal)DigitsMultiplier;
 
         public string TestAddress()
         {
@@ -385,5 +364,10 @@ namespace Atomex
         {
             return outputs.ToList().Sum(output => EstimateSigSize(output, forRefund));
         }
+
+        public virtual Task<decimal> GetFeeRateAsync(
+            bool useCache = true,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(FeeRate);
     }
 }

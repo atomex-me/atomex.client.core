@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Globalization;
+using System.Threading;
+using System.Threading.Tasks;
 using Atomex.Blockchain.Tezos;
 using Atomex.Wallet.Bip;
 using Microsoft.Extensions.Configuration;
@@ -145,9 +147,10 @@ namespace Atomex.TezosTokens
             Bip44Code = Bip44.Tezos;
         }
 
-        public override decimal GetRewardForRedeem()
+        public override Task<decimal> GetRewardForRedeemAsync(
+            CancellationToken cancellationToken = default)
         {
-            return RewardForRedeem / DigitsMultiplier;
+            return Task.FromResult(RewardForRedeem / DigitsMultiplier);
         }
 
         public override decimal GetDefaultFee()

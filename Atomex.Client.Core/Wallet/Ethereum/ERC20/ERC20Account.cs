@@ -193,7 +193,11 @@ namespace Atomex.Wallet.Ethereum
                     from: unspentAddresses,
                     amount: amount,
                     fee: fee,
-                    feePrice: feePrice == 0 ? erc20.GasPriceInGwei : feePrice,
+                    feePrice: feePrice == 0
+                        ? await erc20
+                            .GetGasPriceAsync(cancellationToken)
+                            .ConfigureAwait(false)
+                        : feePrice,
                     feeUsagePolicy: fee == 0 ? FeeUsagePolicy.EstimatedFee : FeeUsagePolicy.FeePerTransaction,
                     addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst,
                     transactionType: type)
@@ -215,7 +219,6 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             var eth = Eth;
-            var erc20 = Erc20;
 
             var unspentAddresses = (await DataRepository
                 .GetUnspentAddressesAsync(Currency)
@@ -234,7 +237,10 @@ namespace Atomex.Wallet.Ethereum
             var amount = 0m;
             var fee = 0m;
 
-            var reserveFeeInEth = ReserveFee();
+            var gasPrice = await eth.GetGasPriceAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            var reserveFeeInEth = ReserveFee(gasPrice);
 
             foreach (var address in unspentAddresses)
             {
@@ -247,7 +253,13 @@ namespace Atomex.Wallet.Ethereum
 
                 var ethAvailableBalance = ethAddress.AvailableBalance();
 
-                var feeInEth = eth.GetFeeAmount(feePerTx == 0 ? GasLimitByType(type, isFirstTx) : feePerTx, feePrice == 0 ? erc20.GasPriceInGwei : feePrice);
+                var feeInEth = eth.GetFeeAmount(
+                    feePerTx == 0
+                        ? GasLimitByType(type, isFirstTx)
+                        : feePerTx,
+                    feePrice == 0
+                        ? gasPrice
+                        : feePrice);
 
                 if (ethAddress.AvailableBalance() - feeInEth - (reserve && address == unspentAddresses.Last() ? reserveFeeInEth : 0) < 0)
                     continue;
@@ -269,7 +281,6 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             var eth = Eth;
-            var erc20 = Erc20;
 
             var unspentAddresses = (await DataRepository
                 .GetUnspentAddressesAsync(Currency)
@@ -283,7 +294,9 @@ namespace Atomex.Wallet.Ethereum
                     from: unspentAddresses,
                     amount: amount,
                     fee: 0,
-                    feePrice: erc20.GasPriceInGwei,
+                    feePrice: await eth
+                        .GetGasPriceAsync(cancellationToken)
+                        .ConfigureAwait(false),
                     feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
                     addressUsagePolicy: AddressUsagePolicy.UseMaximumChainBalanceFirst,  //todo: calc efficiency for UseMaximumBalanceFirst
                     transactionType: type)
@@ -325,14 +338,14 @@ namespace Atomex.Wallet.Ethereum
             return erc20.TransferGasLimit;
         }
 
-        private decimal ReserveFee()
+        private decimal ReserveFee(decimal gasPrice)
         {
             var eth = Eth;
             var erc20 = Erc20;
 
             return Math.Max(
-                eth.GetFeeAmount(Math.Max(erc20.RefundGasLimit, erc20.RedeemGasLimit), erc20.GasPriceInGwei),
-                eth.GetFeeAmount(Math.Max(eth.RefundGasLimit, eth.RedeemGasLimit), eth.GasPriceInGwei));
+                eth.GetFeeAmount(Math.Max(erc20.RefundGasLimit, erc20.RedeemGasLimit), gasPrice),
+                eth.GetFeeAmount(Math.Max(eth.RefundGasLimit, eth.RedeemGasLimit), gasPrice));
         }
 
         protected override async Task<bool> ResolveTransactionTypeAsync(
@@ -634,7 +647,11 @@ namespace Atomex.Wallet.Ethereum
                 var result = new List<SelectedWalletAddress>();
 
                 var feeInEth = feeUsagePolicy == FeeUsagePolicy.EstimatedFee
-                    ? erc20.GetFeeAmount(GasLimitByType(transactionType, isFirstTx: true), erc20.GasPriceInGwei)
+                    ? erc20.GetFeeAmount(
+                        fee: GasLimitByType(transactionType, isFirstTx: true),
+                        feePrice: await eth
+                            .GetGasPriceAsync()
+                            .ConfigureAwait(false))
                     : erc20.GetFeeAmount(fee, feePrice);
 
                 //take erc20 non zero addresses first
@@ -714,7 +731,11 @@ namespace Atomex.Wallet.Ethereum
                     var ethAvailableBalance = ethAddress != null ? ethAddress.AvailableBalance() : 0;
 
                     var txFee = feeUsagePolicy == FeeUsagePolicy.EstimatedFee
-                        ? eth.GetFeeAmount(GasLimitByType(transactionType, isFirstTx), erc20.GasPriceInGwei)
+                        ? eth.GetFeeAmount(
+                            fee: GasLimitByType(transactionType, isFirstTx),
+                            feePrice: await eth
+                                .GetGasPriceAsync()
+                                .ConfigureAwait(false))
                         : feeUsagePolicy == FeeUsagePolicy.FeeForAllTransactions
                             ? Math.Round(eth.GetFeeAmount(fee, feePrice) / txCount, eth.Digits)
                             : eth.GetFeeAmount(fee, feePrice);

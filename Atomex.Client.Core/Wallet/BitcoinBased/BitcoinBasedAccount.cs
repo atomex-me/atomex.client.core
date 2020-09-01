@@ -244,7 +244,11 @@ namespace Atomex.Wallet.BitcoinBased
                 var estimatedTxSize = estimatedTxVirtualSize + estimatedSigSize;
                 var estimatedTxSizeWithChange = estimatedTxVirtualSize + estimatedSigSize + BitcoinBasedCurrency.OutputSize;
 
-                var estimatedFeeInSatoshi = (long)(estimatedTxSize * currency.FeeRate);
+                var feeRate = await currency
+                    .GetFeeRateAsync()
+                    .ConfigureAwait(false);
+
+                var estimatedFeeInSatoshi = (long)(estimatedTxSize * feeRate);
 
                 if (estimatedFeeInSatoshi > maxFeeInSatoshi) // insufficient funds
                     continue;
@@ -256,7 +260,7 @@ namespace Atomex.Wallet.BitcoinBased
                     return currency.SatoshiToCoin(estimatedFeeInSatoshi + estimatedChangeInSatoshi);
 
                 // if estimated change > dust
-                var estimatedFeeWithChangeInSatoshi = (long)(estimatedTxSizeWithChange * currency.FeeRate);
+                var estimatedFeeWithChangeInSatoshi = (long)(estimatedTxSizeWithChange * feeRate);
 
                 if (estimatedFeeWithChangeInSatoshi > maxFeeInSatoshi) // insufficient funds
                     continue;
@@ -368,8 +372,12 @@ namespace Atomex.Wallet.BitcoinBased
                     fee: 0,
                     lockTime: DateTimeOffset.MinValue);
 
+            var feeRate = await currency
+                .GetFeeRateAsync()
+                .ConfigureAwait(false);
+
             // requiredFee = txSize * feeRate without dust, because all coins must be send to one address
-            var requiredFeeInSatoshi = (long)((testTx.VirtualSize() + estimatedSigSize) * currency.FeeRate);
+            var requiredFeeInSatoshi = (long)((testTx.VirtualSize() + estimatedSigSize) * feeRate);
 
             var amount = currency.SatoshiToCoin(Math.Max(availableAmountInSatoshi - requiredFeeInSatoshi, 0));
             fee = currency.SatoshiToCoin(requiredFeeInSatoshi);

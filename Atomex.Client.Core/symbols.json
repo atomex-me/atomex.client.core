@@ -3,52 +3,52 @@
     {
       "Id": 1,
       "Name": "ETH/BTC",
-      "MinimumQty": 0.1
+      "MinimumQty": 2
     },
     {
       "Id": 2,
       "Name": "LTC/BTC",
-      "MinimumQty": 0.3
+      "MinimumQty": 0.5
     },
     {
       "Id": 3,
       "Name": "XTZ/BTC",
-      "MinimumQty": 20
+      "MinimumQty": 50
     },
     {
       "Id": 4,
       "Name": "XTZ/ETH",
-      "MinimumQty": 20
+      "MinimumQty": 200
     },
     {
       "Id": 5,
       "Name": "BTC/USDT",
-      "MinimumQty": 0.001
+      "MinimumQty": 0.1
     },
     {
       "Id": 6,
       "Name": "ETH/USDT",
-      "MinimumQty": 0.1
+      "MinimumQty": 2
     },
     {
       "Id": 7,
       "Name": "LTC/USDT",
-      "MinimumQty": 0.3
+      "MinimumQty": 20
     },
     {
       "Id": 8,
       "Name": "XTZ/USDT",
-      "MinimumQty": 10
+      "MinimumQty": 400
     },
     {
       "Id": 9,
       "Name": "TZBTC/BTC",
-      "MinimumQty": 0.001
+      "MinimumQty": 0.01
     },
     {
       "Id": 10,
       "Name": "ETH/TZBTC",
-      "MinimumQty": 0.1
+      "MinimumQty": 2
     },
     {
       "Id": 11,
@@ -58,7 +58,7 @@
     {
       "Id": 12,
       "Name": "TZBTC/USDT",
-      "MinimumQty": 0.001
+      "MinimumQty": 0.1
     }
   ],
   "TestNet": [
