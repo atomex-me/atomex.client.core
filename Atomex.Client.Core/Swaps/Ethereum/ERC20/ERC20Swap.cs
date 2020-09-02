@@ -260,12 +260,16 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create redeem for swap {@swapId}", swap.Id);
 
+            var gasPrice = await Eth
+                .GetGasPriceAsync(cancellationToken)
+                .ConfigureAwait(false);
+
             var walletAddress = (await Erc20Account
                 .GetUnspentAddressesAsync(
                     toAddress: swap.ToAddress,
                     amount: 0,
                     fee: 0,
-                    feePrice: 0,
+                    feePrice: gasPrice,
                     feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
                     addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
                     transactionType: BlockchainTransactionType.SwapRedeem,
@@ -298,7 +302,7 @@ namespace Atomex.Swaps.Ethereum
                 HashedSecret = swap.SecretHash,
                 Secret = swap.Secret,
                 Nonce = nonceResult.Value,
-                GasPrice = Atomex.Ethereum.GweiToWei(erc20.GasPriceInGwei),
+                GasPrice = Atomex.Ethereum.GweiToWei(gasPrice),
             };
 
             message.Gas = await EstimateGasAsync(message, new BigInteger(erc20.RedeemGasLimit))
@@ -348,12 +352,16 @@ namespace Atomex.Swaps.Ethereum
 
             var erc20 = Erc20;
 
+            var gasPrice = await Eth
+                .GetGasPriceAsync(cancellationToken)
+                .ConfigureAwait(false);
+
             var walletAddress = (await Erc20Account
                 .GetUnspentAddressesAsync(
                     toAddress: null, // todo: get participant address
                     amount: 0,
                     fee: 0,
-                    feePrice: 0,
+                    feePrice: gasPrice,
                     feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
                     addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
                     transactionType: BlockchainTransactionType.SwapRedeem,
@@ -386,7 +394,7 @@ namespace Atomex.Swaps.Ethereum
                 HashedSecret = swap.SecretHash,
                 Secret = swap.Secret,
                 Nonce = nonceResult.Value,
-                GasPrice = Atomex.Ethereum.GweiToWei(erc20.GasPriceInGwei),
+                GasPrice = Atomex.Ethereum.GweiToWei(gasPrice),
             };
 
             message.Gas = await EstimateGasAsync(message, new BigInteger(erc20.RedeemGasLimit))
@@ -433,12 +441,16 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create refund for swap {@swap}", swap.Id);
 
+            var gasPrice = await Eth
+                .GetGasPriceAsync(cancellationToken)
+                .ConfigureAwait(false);
+
             var walletAddress = (await Erc20Account
                 .GetUnspentAddressesAsync(
                     toAddress: null, // get refund address
                     amount: 0,
                     fee: 0,
-                    feePrice: 0,
+                    feePrice: gasPrice,
                     feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
                     addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
                     transactionType: BlockchainTransactionType.SwapRefund,
@@ -469,7 +481,7 @@ namespace Atomex.Swaps.Ethereum
             {
                 FromAddress = walletAddress.Address,
                 HashedSecret = swap.SecretHash,
-                GasPrice = Atomex.Ethereum.GweiToWei(erc20.GasPriceInGwei),
+                GasPrice = Atomex.Ethereum.GweiToWei(gasPrice),
                 Nonce = nonceResult.Value,
             };
 
@@ -722,7 +734,9 @@ namespace Atomex.Swaps.Ethereum
                             toAddress: swap.ToAddress,
                             amount: 0,
                             fee: 0,
-                            feePrice: 0,
+                            feePrice: await Eth
+                                .GetGasPriceAsync(cancellationToken)
+                                .ConfigureAwait(false),
                             feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
                             addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
                             transactionType: BlockchainTransactionType.SwapRedeem,
@@ -773,6 +787,10 @@ namespace Atomex.Swaps.Ethereum
                 .ToList()
                 .SortList((a, b) => a.AvailableBalance().CompareTo(b.AvailableBalance()));
 
+            var gasPrice = await Eth
+                .GetGasPriceAsync(cancellationToken)
+                .ConfigureAwait(false);
+
             var transactions = new List<EthereumTransaction>();
 
             foreach (var walletAddress in unspentAddresses)
@@ -795,11 +813,11 @@ namespace Atomex.Swaps.Ethereum
 
                 Log.Debug("Available balance: {@balance}", balanceInERC20);
 
-                var feeAmountInEth = (isInitTx
+                var feeAmountInEth = isInitTx
                     ? rewardForRedeemInERC20 == 0
-                        ? erc20.InitiateFeeAmount
-                        : erc20.InitiateWithRewardFeeAmount
-                    : erc20.AddFeeAmount) + erc20.ApproveFeeAmount;
+                        ? erc20.InitiateFeeAmount(gasPrice)
+                        : erc20.InitiateWithRewardFeeAmount(gasPrice)
+                    : erc20.AddFeeAmount(gasPrice) + erc20.ApproveFeeAmount(gasPrice);
 
                 if (balanceInEth - feeAmountInEth <= 0)
                 {
@@ -851,8 +869,11 @@ namespace Atomex.Swaps.Ethereum
 
                 if (allowance.Value > 0)
                 {
-                    transactions.Add(await CreateApproveTx(walletAddress, nonceResult.Value, 0)
-                        .ConfigureAwait(false));
+                    var tx = await CreateApproveTx(walletAddress, nonceResult.Value, 0, gasPrice)
+                        .ConfigureAwait(false);
+
+                    transactions.Add(tx);
+
                     nonce += 1;
                 }
                 else
@@ -860,8 +881,11 @@ namespace Atomex.Swaps.Ethereum
                     transactions.Add(new EthereumTransaction());
                 }
 
-                transactions.Add(await CreateApproveTx(walletAddress, nonce, erc20.TokensToTokenDigits(amountInERC20))
-                    .ConfigureAwait(false));
+                var approveTx = await CreateApproveTx(walletAddress, nonce, erc20.TokensToTokenDigits(amountInERC20), gasPrice)
+                    .ConfigureAwait(false);
+
+                transactions.Add(approveTx);
+
                 nonce += 1;
 
                 TransactionInput txInput;
@@ -880,7 +904,7 @@ namespace Atomex.Swaps.Ethereum
                         RedeemFee = erc20.TokensToTokenDigits(rewardForRedeemInERC20),
                         Active = true,
                         FromAddress = walletAddress.Address,
-                        GasPrice = Atomex.Ethereum.GweiToWei(erc20.GasPriceInGwei),
+                        GasPrice = Atomex.Ethereum.GweiToWei(gasPrice),
                         Nonce = nonce
                     };
 
@@ -900,7 +924,7 @@ namespace Atomex.Swaps.Ethereum
                         HashedSecret = swap.SecretHash,
                         Value = erc20.TokensToTokenDigits(amountInERC20),
                         FromAddress = walletAddress.Address,
-                        GasPrice = Atomex.Ethereum.GweiToWei(erc20.GasPriceInGwei),
+                        GasPrice = Atomex.Ethereum.GweiToWei(gasPrice),
                         Nonce = nonce
                     };
 
@@ -934,7 +958,8 @@ namespace Atomex.Swaps.Ethereum
         private async Task<EthereumTransaction> CreateApproveTx(
             WalletAddress walletAddress,
             BigInteger nonce,
-            BigInteger value)
+            BigInteger value,
+            decimal gasPrice)
         {
             var erc20 = Erc20;
 
@@ -943,7 +968,7 @@ namespace Atomex.Swaps.Ethereum
                 Spender = erc20.SwapContractAddress,
                 Value = value,
                 FromAddress = walletAddress.Address,
-                GasPrice = Atomex.Ethereum.GweiToWei(erc20.GasPriceInGwei),
+                GasPrice = Atomex.Ethereum.GweiToWei(gasPrice),
                 Nonce = nonce,
             };
 

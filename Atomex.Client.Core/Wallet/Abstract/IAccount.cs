@@ -291,30 +291,30 @@ namespace Atomex.Wallet.Abstract
             BlockchainTransactionType transactionType,
             CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Selected addresses list to send with given amount and fee
-        /// </summary>
-        /// <param name="currency">Currency</param>
-        /// <param name="from">Source address (can be null)</param>
-        /// <param name="to">Destination address (can be null)</param>
-        /// <param name="amount">Destination address (can be null)</param>
-        /// <param name="fee">Fee</param>
-        /// <param name="feeUsagePolicy">Fee usage policy</param>
-        /// <param name="addressUsagePolicy">Address usage policy</param>
-        /// <param name="transactionType">Blockchain transaction type</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Max amount and fee to send</returns>
-        Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
-            string currency,
-            IList<WalletAddress> from,
-            string to,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            FeeUsagePolicy feeUsagePolicy,
-            AddressUsagePolicy addressUsagePolicy,
-            BlockchainTransactionType transactionType,
-            CancellationToken cancellationToken = default);
+        ///// <summary>
+        ///// Selected addresses list to send with given amount and fee
+        ///// </summary>
+        ///// <param name="currency">Currency</param>
+        ///// <param name="from">Source address (can be null)</param>
+        ///// <param name="to">Destination address (can be null)</param>
+        ///// <param name="amount">Destination address (can be null)</param>
+        ///// <param name="fee">Fee</param>
+        ///// <param name="feeUsagePolicy">Fee usage policy</param>
+        ///// <param name="addressUsagePolicy">Address usage policy</param>
+        ///// <param name="transactionType">Blockchain transaction type</param>
+        ///// <param name="cancellationToken">Cancellation token</param>
+        ///// <returns>Max amount and fee to send</returns>
+        //Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
+        //    string currency,
+        //    IList<WalletAddress> from,
+        //    string to,
+        //    decimal amount,
+        //    decimal fee,
+        //    decimal feePrice,
+        //    FeeUsagePolicy feeUsagePolicy,
+        //    AddressUsagePolicy addressUsagePolicy,
+        //    BlockchainTransactionType transactionType,
+        //    CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets free internal address for <paramref name="currency"/>

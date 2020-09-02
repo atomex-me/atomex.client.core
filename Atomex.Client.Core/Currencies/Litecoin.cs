@@ -1,9 +1,10 @@
 ﻿using System;
+using Microsoft.Extensions.Configuration;
+using NBitcoin;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Insight;
 using Atomex.Wallet.Bip;
-using Microsoft.Extensions.Configuration;
-using NBitcoin;
 
 namespace Atomex
 {

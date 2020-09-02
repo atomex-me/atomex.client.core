@@ -4,6 +4,11 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using Nethereum.Contracts;
+using Nethereum.RPC.Eth.DTOs;
+using Nethereum.Web3;
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
@@ -13,11 +18,6 @@ using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Ethereum.Helpers;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Ethereum;
-using Nethereum.Contracts;
-using Nethereum.RPC.Eth.DTOs;
-using Nethereum.Web3;
-using Serilog;
-
 
 namespace Atomex.Swaps.Ethereum
 {
@@ -201,12 +201,16 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create redeem for swap {@swapId}", swap.Id);
 
+            var gasPrice = await eth
+                .GetGasPriceAsync(cancellationToken)
+                .ConfigureAwait(false);
+
             var walletAddress = (await _account
                 .GetUnspentAddressesAsync(
                     toAddress: swap.ToAddress,
                     amount: 0,
                     fee: 0,
-                    feePrice: 0,
+                    feePrice: gasPrice,
                     feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
                     addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
                     transactionType: BlockchainTransactionType.SwapRedeem,
@@ -239,7 +243,7 @@ namespace Atomex.Swaps.Ethereum
                 HashedSecret = swap.SecretHash,
                 Secret = swap.Secret,
                 Nonce = nonceResult.Value,
-                GasPrice = Atomex.Ethereum.GweiToWei(Eth.GasPriceInGwei),
+                GasPrice = Atomex.Ethereum.GweiToWei(gasPrice),
             };
 
             message.Gas = await EstimateGasAsync(message, new BigInteger(Eth.RedeemGasLimit))
@@ -300,12 +304,16 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create redeem for counterParty for swap {@swapId}", swap.Id);
 
+            var gasPrice = await eth
+                .GetGasPriceAsync(cancellationToken)
+                .ConfigureAwait(false);
+
             var walletAddress = (await _account
                 .GetUnspentAddressesAsync(
                     toAddress: null, // todo: get participant address
                     amount: 0,
                     fee: 0,
-                    feePrice: 0,
+                    feePrice: gasPrice,
                     feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
                     addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
                     transactionType: BlockchainTransactionType.SwapRedeem,
@@ -338,7 +346,7 @@ namespace Atomex.Swaps.Ethereum
                 HashedSecret = swap.SecretHash,
                 Secret = swap.Secret,
                 Nonce = nonceResult.Value,
-                GasPrice = Atomex.Ethereum.GweiToWei(eth.GasPriceInGwei),
+                GasPrice = Atomex.Ethereum.GweiToWei(gasPrice),
             };
 
             message.Gas = await EstimateGasAsync(message, new BigInteger(eth.RedeemGasLimit))
@@ -388,12 +396,16 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create refund for swap {@swap}", swap.Id);
 
+            var gasPrice = await eth
+                .GetGasPriceAsync(cancellationToken)
+                .ConfigureAwait(false);
+
             var walletAddress = (await _account
                 .GetUnspentAddressesAsync(
                     toAddress: null, // get refund address
                     amount: 0,
                     fee: 0,
-                    feePrice: 0,
+                    feePrice: gasPrice,
                     feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
                     addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
                     transactionType: BlockchainTransactionType.SwapRefund,
@@ -424,7 +436,7 @@ namespace Atomex.Swaps.Ethereum
             {
                 FromAddress = walletAddress.Address,
                 HashedSecret = swap.SecretHash,
-                GasPrice = Atomex.Ethereum.GweiToWei(eth.GasPriceInGwei),
+                GasPrice = Atomex.Ethereum.GweiToWei(gasPrice),
                 Nonce = nonceResult.Value,
             };
 
@@ -683,7 +695,9 @@ namespace Atomex.Swaps.Ethereum
                             toAddress: swap.ToAddress,
                             amount: 0,
                             fee: 0,
-                            feePrice: 0,
+                            feePrice: await Eth
+                                .GetGasPriceAsync(cancellationToken)
+                                .ConfigureAwait(false),
                             feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
                             addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
                             transactionType: BlockchainTransactionType.SwapRedeem,
@@ -734,6 +748,10 @@ namespace Atomex.Swaps.Ethereum
                 .ToList()
                 .SortList(new AvailableBalanceAscending());
 
+            var gasPrice = await eth
+                .GetGasPriceAsync(cancellationToken)
+                .ConfigureAwait(false);
+
             var transactions = new List<EthereumTransaction>();
 
             foreach (var walletAddress in unspentAddresses)
@@ -751,9 +769,9 @@ namespace Atomex.Swaps.Ethereum
 
                 var feeAmountInEth = isInitTx
                     ? rewardForRedeemInEth == 0
-                        ? eth.InitiateFeeAmount
-                        : eth.InitiateWithRewardFeeAmount
-                    : eth.AddFeeAmount;
+                        ? eth.InitiateFeeAmount(gasPrice)
+                        : eth.InitiateWithRewardFeeAmount(gasPrice)
+                    : eth.AddFeeAmount(gasPrice);
 
                 var amountInEth = Math.Min(balanceInEth - feeAmountInEth, requiredAmountInEth);
 
@@ -795,7 +813,7 @@ namespace Atomex.Swaps.Ethereum
                         RefundTimestamp = refundTimeStampUtcInSec,
                         AmountToSend = Atomex.Ethereum.EthToWei(amountInEth),
                         FromAddress = walletAddress.Address,
-                        GasPrice = Atomex.Ethereum.GweiToWei(eth.GasPriceInGwei),
+                        GasPrice = Atomex.Ethereum.GweiToWei(gasPrice),
                         Nonce = nonceResult.Value,
                         RedeemFee = Atomex.Ethereum.EthToWei(rewardForRedeemInEth)
                     };
@@ -816,7 +834,7 @@ namespace Atomex.Swaps.Ethereum
                         HashedSecret = swap.SecretHash,
                         AmountToSend = Atomex.Ethereum.EthToWei(amountInEth),
                         FromAddress = walletAddress.Address,
-                        GasPrice = Atomex.Ethereum.GweiToWei(Eth.GasPriceInGwei),
+                        GasPrice = Atomex.Ethereum.GweiToWei(gasPrice),
                         Nonce = nonceResult.Value,
                     };
 

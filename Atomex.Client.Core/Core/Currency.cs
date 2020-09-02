@@ -1,4 +1,7 @@
 ﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Cryptography;
@@ -53,18 +56,24 @@ namespace Atomex.Core
 
         public abstract decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee);
 
-        public abstract decimal GetRedeemFee(WalletAddress toAddress = null);
+        public abstract Task<decimal> GetRedeemFeeAsync(
+            WalletAddress toAddress = null,
+            CancellationToken cancellationToken = default);
 
-        public abstract decimal GetRewardForRedeem();
+        public abstract Task<decimal> GetRewardForRedeemAsync(
+            CancellationToken cancellationToken = default);
 
-        public virtual decimal GetDefaultFeePrice()
+        public virtual Task<decimal> GetDefaultFeePriceAsync(
+            CancellationToken cancellationToken = default)
         {
-            return 1m;
+            return Task.FromResult(1m);
         }
+
         public virtual decimal GetDefaultFee()
         {
             return 1m;
         }
+
         public virtual decimal GetMaximumFee()
         {
             return decimal.MaxValue;

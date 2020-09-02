@@ -28,8 +28,14 @@ namespace Atomex.Swaps.BitcoinBased
             if (!availableOutputs.Any())
                 throw new Exception($"Insufficient funds. Available 0.");
 
+            availableOutputs.Sort((o1, o2) => o2.Value.CompareTo(o1.Value));
+
             var feeInSatoshi = 0L;
             ITxOutput[] selectedOutputs = null;
+
+            var feeRate = await currency
+                .GetFeeRateAsync()
+                .ConfigureAwait(false);
 
             for (var i = 1; i <= availableOutputs.Count; ++i)
             {
@@ -62,7 +68,7 @@ namespace Atomex.Swaps.BitcoinBased
                 var estimatedTxSize = estimatedTxVirtualSize + estimatedSigSize;
                 var estimatedTxSizeWithChange = estimatedTxVirtualSize + estimatedSigSize + BitcoinBasedCurrency.OutputSize;
 
-                var estimatedFeeInSatoshi = (long)(estimatedTxSize * currency.FeeRate);
+                var estimatedFeeInSatoshi = (long)(estimatedTxSize * feeRate);
 
                 if (estimatedFeeInSatoshi > maxFeeInSatoshi) // insufficient funds
                     continue;
@@ -77,7 +83,7 @@ namespace Atomex.Swaps.BitcoinBased
                 }
 
                 // if estimated change > dust
-                var estimatedFeeWithChangeInSatoshi = (long)(estimatedTxSizeWithChange * currency.FeeRate);
+                var estimatedFeeWithChangeInSatoshi = (long)(estimatedTxSizeWithChange * feeRate);
 
                 if (estimatedFeeWithChangeInSatoshi > maxFeeInSatoshi) // insufficient funds
                     continue;
@@ -114,7 +120,7 @@ namespace Atomex.Swaps.BitcoinBased
             return (tx, redeemScript);
         }
 
-        public Task<IBitcoinBasedTransaction> CreateSwapRefundTxAsync(
+        public async Task<IBitcoinBasedTransaction> CreateSwapRefundTxAsync(
             IBitcoinBasedTransaction paymentTx,
             long amount,
             string refundAddress,
@@ -140,8 +146,12 @@ namespace Atomex.Swaps.BitcoinBased
                 fee: 0,
                 lockTime: lockTime);
 
+            var feeRate = await currency
+                .GetFeeRateAsync()
+                .ConfigureAwait(false);
+
             // fee = txSize * feeRate without dust, because all coins will be send to one address
-            var fee = (long) ((tx.VirtualSize() + estimatedSigSize) * currency.FeeRate);
+            var fee = (long) ((tx.VirtualSize() + estimatedSigSize) * feeRate);
 
             if (amount - fee < 0)
                 throw new Exception($"Insufficient funds for fee. Available {amount}, required {fee}");
@@ -154,10 +164,10 @@ namespace Atomex.Swaps.BitcoinBased
                 fee: fee,
                 lockTime: lockTime);
 
-            return Task.FromResult(tx);
+            return tx;
         }
 
-        public Task<IBitcoinBasedTransaction> CreateSwapRedeemTxAsync(
+        public async Task<IBitcoinBasedTransaction> CreateSwapRedeemTxAsync(
             IBitcoinBasedTransaction paymentTx,
             long amount,
             string redeemAddress,
@@ -183,8 +193,12 @@ namespace Atomex.Swaps.BitcoinBased
                 fee: 0,
                 lockTime: DateTimeOffset.MinValue);
 
+            var feeRate = await currency
+                .GetFeeRateAsync()
+                .ConfigureAwait(false);
+
             // fee = txSize * feeRate without dust, because all coins will be send to one address
-            var fee = (long) ((tx.VirtualSize() + estimatedSigSize) * currency.FeeRate);
+            var fee = (long) ((tx.VirtualSize() + estimatedSigSize) * feeRate);
 
             if (amount - fee < 0)
                 throw new Exception($"Insufficient funds for fee. Available {amount}, required {fee}");
@@ -200,7 +214,7 @@ namespace Atomex.Swaps.BitcoinBased
             if (sequenceNumber > 0)
                 tx.SetSequenceNumber(sequenceNumber);
 
-            return Task.FromResult(tx);
+            return tx;
         }
     }
 }

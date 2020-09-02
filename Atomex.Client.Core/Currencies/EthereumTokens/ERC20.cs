@@ -1,19 +1,23 @@
 ﻿using System;
 using System.Globalization;
 using System.Numerics;
+using Microsoft.Extensions.Configuration;
+
 using Atomex.Blockchain.Ethereum;
 using Atomex.Wallet.Bip;
-using Microsoft.Extensions.Configuration;
+using System.Threading.Tasks;
+using System.Threading;
 
 namespace Atomex.EthereumTokens
 {
     public class ERC20 : Ethereum
     {
         public decimal TransferGasLimit { get; private set; }
-        public decimal TransferFeeAmount => TransferGasLimit * GasPriceInGwei / GweiInEth;
-
         public decimal ApproveGasLimit { get; private set; }
-        public decimal ApproveFeeAmount => ApproveGasLimit * GasPriceInGwei / GweiInEth;
+
+        public decimal ApproveFeeAmount(decimal gasPrice) =>
+            ApproveGasLimit * gasPrice / GweiInEth;
+
         public decimal RewardForRedeem { get; private set; }
 
         public string ERC20ContractAddress { get; private set; }
@@ -90,9 +94,10 @@ namespace Atomex.EthereumTokens
             return (decimal)tokenDigits / DigitsMultiplier;
         }
 
-        public override decimal GetRewardForRedeem()
+        public override Task<decimal> GetRewardForRedeemAsync(
+            CancellationToken cancellationToken = default)
         {
-            return RewardForRedeem / DigitsMultiplier;
+            return Task.FromResult(RewardForRedeem / DigitsMultiplier);
         }
 
         public override decimal GetDefaultFee()

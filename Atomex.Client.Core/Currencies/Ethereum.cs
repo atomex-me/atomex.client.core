@@ -1,6 +1,12 @@
 ﻿using System;
 using System.Globalization;
 using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Nethereum.Signer;
+using Nethereum.Util;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
@@ -8,9 +14,7 @@ using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.Bip;
 using Atomex.Wallet.Ethereum;
-using Microsoft.Extensions.Configuration;
-using Nethereum.Signer;
-using Nethereum.Util;
+using Atomex.Blockchain.Ethereum.Abstract;
 
 namespace Atomex
 {
@@ -31,11 +35,18 @@ namespace Atomex
         public decimal RefundGasLimit { get; protected set; }
         public decimal RedeemGasLimit { get; protected set; }
         public decimal GasPriceInGwei { get; protected set; }
-        public decimal InitiateFeeAmount => InitiateGasLimit * GasPriceInGwei / GweiInEth;
-        public decimal InitiateWithRewardFeeAmount => InitiateWithRewardGasLimit * GasPriceInGwei / GweiInEth;
-        public decimal AddFeeAmount => AddGasLimit * GasPriceInGwei / GweiInEth;
-        public decimal RefundFeeAmount => RefundGasLimit * GasPriceInGwei / GweiInEth;
-        public decimal RedeemFeeAmount => RedeemGasLimit * GasPriceInGwei / GweiInEth;
+
+        public decimal InitiateFeeAmount(decimal gasPrice) =>
+            InitiateGasLimit * gasPrice / GweiInEth;
+
+        public decimal InitiateWithRewardFeeAmount(decimal gasPrice) =>
+            InitiateWithRewardGasLimit * gasPrice / GweiInEth;
+
+        public decimal AddFeeAmount(decimal gasPrice) =>
+            AddGasLimit * gasPrice / GweiInEth;
+
+        public decimal RedeemFeeAmount(decimal gasPrice) =>
+            RedeemGasLimit * gasPrice / GweiInEth;
 
         public Chain Chain { get; protected set; }
         public string BlockchainApiBaseUri { get; protected set; }
@@ -180,44 +191,63 @@ namespace Atomex
                 : 0;
         }
 
-        public override decimal GetRedeemFee(WalletAddress toAddress = null)
+        public override async Task<decimal> GetRedeemFeeAsync(
+            WalletAddress toAddress = null,
+            CancellationToken cancellationToken = default)
         {
-            return RedeemFeeAmount;
+            var gasPrice = await GetGasPriceAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            return RedeemFeeAmount(gasPrice);
         }
 
-        public override decimal GetRewardForRedeem()
+        public override async Task<decimal> GetRewardForRedeemAsync(
+            CancellationToken cancellationToken = default)
         {
-            return RedeemFeeAmount;
+            var gasPrice = await GetGasPriceAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            return RedeemFeeAmount(gasPrice);
         }
 
-        public override decimal GetDefaultFeePrice()
+        public override Task<decimal> GetDefaultFeePriceAsync(
+            CancellationToken cancellationToken = default)
         {
-            return GasPriceInGwei;
+            return GetGasPriceAsync(cancellationToken);
         }
 
-        public override decimal GetDefaultFee()
+        public override decimal GetDefaultFee() => GasLimit;
+
+        public async Task<decimal> GetGasPriceAsync(
+            CancellationToken cancellationToken = default)
         {
-            return GasLimit;
+            if (Chain != Chain.MainNet)
+                return GasPriceInGwei;
+
+            var gasPriceProvider = BlockchainApi as IGasPriceProvider;
+
+            try
+            {
+                var gasPrice = await gasPriceProvider
+                    .GetGasPriceAsync(cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                return gasPrice != null && !gasPrice.HasError && gasPrice.Value != null
+                    ? gasPrice.Value.Average
+                    : GasPriceInGwei;
+            }
+            catch
+            {
+                return GasPriceInGwei;
+            }
         }
 
-        public static BigInteger EthToWei(decimal eth)
-        {
-            return new BigInteger(eth * WeiInEth);
-        }
+        public static BigInteger EthToWei(decimal eth) => new BigInteger(eth * WeiInEth);
 
-        public static long GweiToWei(decimal gwei)
-        {
-            return (long)(gwei * WeiInGwei);
-        }
+        public static long GweiToWei(decimal gwei) => (long)(gwei * WeiInGwei);
         
-        public static long WeiToGwei(decimal wei)
-        {
-            return (long)(wei / WeiInGwei);
-        }
+        public static long WeiToGwei(decimal wei) => (long)(wei / WeiInGwei);
 
-        public static decimal WeiToEth(BigInteger wei)
-        {
-            return (decimal)wei / WeiInEth;
-        }
+        public static decimal WeiToEth(BigInteger wei) => (decimal)wei / WeiInEth;
     }
 }

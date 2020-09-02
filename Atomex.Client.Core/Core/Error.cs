@@ -45,6 +45,7 @@
         public const int InternalError = 6;
         public const int RequestError = 7;
         public const int MaxAttemptsCountReached = 8;
+        public const int InvalidResponse = 9;
         // from 1xx to 5xx the same with HTTP codes
 
         public const int IsCriminalWallet = 1000;

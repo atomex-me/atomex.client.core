@@ -1,10 +1,14 @@
 ﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.BitcoinBased;
 using Atomex.Blockchain.BitCore;
 using Atomex.Blockchain.Insight;
 using Atomex.Wallet.Bip;
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
+using FeeRate = Atomex.Blockchain.BitcoinBased.FeeRate;
 
 namespace Atomex
 {
@@ -78,6 +82,42 @@ namespace Atomex
                 return new BitCoreApi(this, configuration);
 
             throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported");
+        }
+
+        private FeeRate _feeRate;
+        private DateTime _feeRateTimeStampUtc;
+
+        public override async Task<decimal> GetFeeRateAsync(
+            bool useCache = true,
+            CancellationToken cancellationToken = default)
+        {
+            if (Network != Network.Main)
+                return FeeRate;
+
+            if (useCache &&
+                _feeRate != null &&
+                DateTime.UtcNow - _feeRateTimeStampUtc < TimeSpan.FromMinutes(10))
+            {
+                return _feeRate.HourFee;
+            }
+
+            try
+            {
+                var feeRateResult = await BitcoinFeesEarn
+                    .GetFeeRateAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                _feeRate = feeRateResult?.Value;
+                _feeRateTimeStampUtc = DateTime.UtcNow;
+
+                return feeRateResult != null && !feeRateResult.HasError && feeRateResult.Value != null
+                    ? feeRateResult.Value.HourFee
+                    : FeeRate;
+            }
+            catch
+            {
+                return FeeRate;
+            }
         }
     }
 }

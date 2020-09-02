@@ -1,5 +1,9 @@
 ﻿using System;
 using System.Globalization;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Internal;
@@ -8,7 +12,6 @@ using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.Bip;
 using Atomex.Wallet.Tezos;
-using Microsoft.Extensions.Configuration;
 
 namespace Atomex
 {
@@ -211,17 +214,24 @@ namespace Atomex
             return 1m;
         }
 
-        public override decimal GetRedeemFee(WalletAddress toAddress = null)
+        public override Task<decimal> GetRedeemFeeAsync(
+            WalletAddress toAddress = null,
+            CancellationToken cancellationToken = default)
         {
-            return RedeemFee.ToTez() + RevealFee.ToTez() + MicroTezReserve.ToTez() +  //todo: define another value for revealed
+            var result = RedeemFee.ToTez() + RevealFee.ToTez() + MicroTezReserve.ToTez() + //todo: define another value for revealed
                 (toAddress.AvailableBalance() > 0
                     ? 0
                     : ActivationStorage / StorageFeeMultiplier);
+
+            return Task.FromResult(result);
         }
 
-        public override decimal GetRewardForRedeem()
+        public override Task<decimal> GetRewardForRedeemAsync(
+            CancellationToken cancellationToken = default)
         {
-            return (RedeemFee + RevealFee + MicroTezReserve).ToTez();
+            var result = (RedeemFee + RevealFee + MicroTezReserve).ToTez();
+
+            return Task.FromResult(result);
         }
 
         public static decimal MtzToTz(decimal mtz)

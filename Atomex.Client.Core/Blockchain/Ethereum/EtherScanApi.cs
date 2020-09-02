@@ -4,10 +4,6 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Ethereum.ERC20;
-using Atomex.Common;
-using Atomex.Core;
 using Nethereum.Contracts;
 using Nethereum.Hex.HexConvertors.Extensions;
 using Nethereum.Hex.HexTypes;
@@ -15,9 +11,15 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
 
+using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Ethereum.Abstract;
+using Atomex.Blockchain.Ethereum.ERC20;
+using Atomex.Common;
+using Atomex.Core;
+
 namespace Atomex.Blockchain.Ethereum
 {
-    public class EtherScanApi : BlockchainApi, IEthereumBlockchainApi
+    public class EtherScanApi : BlockchainApi, IEthereumBlockchainApi, IGasPriceProvider
     {
         private const string ApiKey = "2R1AIHZZE5NVSHRQUGAHU8EYNYYZ5B2Y37";
         private const int MinDelayBetweenRequestMs = 1000;
@@ -117,11 +119,6 @@ namespace Atomex.Blockchain.Ethereum
 
                 throw new Exception("Contract event does not contain event signature hash");
             }
-        }
-
-        public class TokenEvent
-        {
-
         }
 
         private Currency Currency { get; }
@@ -387,26 +384,7 @@ namespace Atomex.Blockchain.Ethereum
                    cancellationToken: cancellationToken)
                .ConfigureAwait(false);
         }
-        /*
-        public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetInternalTransactionsAsync(
-            string txId,
-            CancellationToken cancellationToken = default)
-        {
-            var requestUri = $"api?module=account&action=txlistinternal&txhash={txId}&apikey={ApiKey}";
 
-            await RequestLimitControl
-                .Wait(cancellationToken)
-                .ConfigureAwait(false);
-
-            return await HttpHelper.GetAsyncResult(
-                   baseUri: BaseUrl,
-                   requestUri: requestUri,
-                   responseHandler: (response, content) => new Result<IEnumerable<IBlockchainTransaction>>(
-                       ParseTransactions(content, txId: txId, isInternal: true)),
-                   cancellationToken: cancellationToken)
-               .ConfigureAwait(false);
-        }
-        */
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
             CancellationToken cancellationToken = default)
@@ -719,6 +697,51 @@ namespace Atomex.Blockchain.Ethereum
             {
                 return new Error(Errors.RequestError, e.Message);
             }
+        }
+
+        private GasPrice _gasPrice;
+        private DateTime _gasPriceTimeStampUtc;
+
+        public async Task<Result<GasPrice>> GetGasPriceAsync(
+            bool useCache = true,
+            CancellationToken cancellationToken = default)
+        {
+            if (useCache &&
+                _gasPrice != null &&
+                DateTime.UtcNow - _gasPriceTimeStampUtc <= TimeSpan.FromMinutes(3))
+            {
+                return _gasPrice;
+            }
+
+            var baseUri = "https://api.etherscan.io/";
+            var requestUri = $"api?module=gastracker&action=gasoracle&apikey={ApiKey}";
+
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            return await HttpHelper.GetAsyncResult<GasPrice>(
+                   baseUri: baseUri,
+                   requestUri: requestUri,
+                   responseHandler: (response, content) =>
+                   {
+                       var json = JsonConvert.DeserializeObject<JObject>(content);
+
+                       _gasPrice = new GasPrice
+                       {
+                           Low     = json["result"].Value<long>("SafeGasPrice"),
+                           Average = json["result"].Value<long>("ProposeGasPrice"),
+                           High    = json["result"].Value<long>("FastGasPrice")
+                       };
+
+                       _gasPriceTimeStampUtc = DateTime.UtcNow;
+
+                       return json.ContainsKey("result")
+                           ? new Result<GasPrice>(_gasPrice)
+                           : new Result<GasPrice>(new Error(Errors.InvalidResponse, "Invalid response"));
+                   },
+                   cancellationToken: cancellationToken)
+               .ConfigureAwait(false);
         }
     }
 }

@@ -402,30 +402,30 @@ namespace Atomex.Wallet
                     cancellationToken: cancellationToken);
         }
 
-        public Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
-            string currency,
-            IList<WalletAddress> from,
-            string to,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            FeeUsagePolicy feeUsagePolicy,
-            AddressUsagePolicy addressUsagePolicy,
-            BlockchainTransactionType transactionType,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency).
-                SelectUnspentAddressesAsync(
-                    from: from,
-                    to: to,
-                    amount: amount,
-                    fee: fee,
-                    feePrice: feePrice,
-                    feeUsagePolicy: feeUsagePolicy,
-                    addressUsagePolicy: addressUsagePolicy,
-                    transactionType: transactionType,
-                    cancellationToken: cancellationToken);
-        }
+        //public Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
+        //    string currency,
+        //    IList<WalletAddress> from,
+        //    string to,
+        //    decimal amount,
+        //    decimal fee,
+        //    decimal feePrice,
+        //    FeeUsagePolicy feeUsagePolicy,
+        //    AddressUsagePolicy addressUsagePolicy,
+        //    BlockchainTransactionType transactionType,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return GetCurrencyAccount(currency).
+        //        SelectUnspentAddressesAsync(
+        //            from: from,
+        //            to: to,
+        //            amount: amount,
+        //            fee: fee,
+        //            feePrice: feePrice,
+        //            feeUsagePolicy: feeUsagePolicy,
+        //            addressUsagePolicy: addressUsagePolicy,
+        //            transactionType: transactionType,
+        //            cancellationToken: cancellationToken);
+        //}
 
         public Task<WalletAddress> GetFreeInternalAddressAsync(
             string currency,
