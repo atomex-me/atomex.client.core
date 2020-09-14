@@ -9,10 +9,11 @@ using Atomex.Core;
 using Nethereum.Signer;
 using Atomex.Blockchain.Ethereum.ERC20;
 using Nethereum.Contracts;
+using Atomex.Blockchain.Ethereum.Abstract;
 
 namespace Atomex.Blockchain.Ethereum
 {
-    public class CompositeEthereumBlockchainApi : BlockchainApi, IEthereumBlockchainApi
+    public class CompositeEthereumBlockchainApi : BlockchainApi, IEthereumBlockchainApi, IGasPriceProvider
     {
         private readonly Web3BlockchainApi _web3;
         private readonly EtherScanApi _etherScanApi;
@@ -127,6 +128,13 @@ namespace Atomex.Blockchain.Ethereum
             return await _web3
                 .BroadcastAsync(transaction, cancellationToken)
                 .ConfigureAwait(false);
+        }
+
+        public Task<Result<GasPrice>> GetGasPriceAsync(
+            bool useCache = true,
+            CancellationToken cancellationToken = default)
+        {
+            return _etherScanApi.GetGasPriceAsync(useCache, cancellationToken);
         }
     }
 }

@@ -15,6 +15,7 @@ using Atomex.Cryptography;
 using Atomex.Wallet.Bip;
 using Atomex.Wallet.Ethereum;
 using Atomex.Blockchain.Ethereum.Abstract;
+using Serilog;
 
 namespace Atomex
 {
@@ -232,12 +233,16 @@ namespace Atomex
                     .GetGasPriceAsync(cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
+                Log.Error("Invalid gas price!" + ((gasPrice?.HasError ?? false) ? " " + gasPrice.Error.Description : ""));
+
                 return gasPrice != null && !gasPrice.HasError && gasPrice.Value != null
                     ? gasPrice.Value.Average
                     : GasPriceInGwei;
             }
-            catch
+            catch (Exception e)
             {
+                Log.Error(e, "Get gas price error");
+
                 return GasPriceInGwei;
             }
         }
