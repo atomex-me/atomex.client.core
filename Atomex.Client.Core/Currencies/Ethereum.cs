@@ -233,7 +233,8 @@ namespace Atomex
                     .GetGasPriceAsync(cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                Log.Error("Invalid gas price!" + ((gasPrice?.HasError ?? false) ? " " + gasPrice.Error.Description : ""));
+                if (gasPrice == null || gasPrice.HasError || gasPrice.Value == null)
+                    Log.Error("Invalid gas price!" + ((gasPrice?.HasError ?? false) ? " " + gasPrice.Error.Description : ""));
 
                 return gasPrice != null && !gasPrice.HasError && gasPrice.Value != null
                     ? gasPrice.Value.Average
