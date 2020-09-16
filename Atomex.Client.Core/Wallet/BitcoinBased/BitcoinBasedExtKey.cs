@@ -1,93 +1,86 @@
 ﻿using System;
-using Atomex.Common;
-using Atomex.Cryptography;
+using System.Threading;
+using System.Threading.Tasks;
 using NBitcoin;
 
-namespace Atomex.Wallet.BitcoinBased
+using Atomex.Common;
+using Atomex.Common.Memory;
+using Atomex.Cryptography;
+
+namespace Atomex.Wallets.BitcoinBased
 {
-    public class BitcoinBasedExtKey : IExtKey
+    /// <summary>
+    /// Represents asymmetric Hierarchical Deterministic key for Bitcoin based 
+    /// </summary>
+    /// <inheritdoc/>
+    public class BitcoinBasedExtKey : BitcoinBasedKey, IExtKey
     {
-        protected ExtKey Key { get; }
-
         public BitcoinBasedExtKey(SecureBytes seed)
+            : base(seed)
         {
-            using var scopedSeed = seed.ToUnsecuredBytes();
-
-            Key = new ExtKey(scopedSeed);
         }
 
-        protected BitcoinBasedExtKey(ExtKey key) => Key = key;
-
-        public virtual IExtKey Derive(uint index)
+        public override SecureBytes GetPrivateKey()
         {
-            return new BitcoinBasedExtKey(Key.Derive(index));
+            using var key = GetKey();
+
+            return new SecureBytes(key.ToBytes());
         }
 
-        public virtual IExtKey Derive(KeyPath keyPath)
+        protected SecureBytes Derive(Func<ExtKey, ExtKey> derivationFunc)
         {
-            return new BitcoinBasedExtKey(Key.Derive(keyPath));
+            var extKey = GetExtKey();
+            var childExtKey = derivationFunc(extKey);
+            var childExtKeyBytes = childExtKey.PrivateKey.ToBytes();
+
+            try
+            {
+                return new SecureBytes(childExtKeyBytes);
+            }
+            finally
+            {
+                extKey.PrivateKey.Dispose();
+                childExtKey.PrivateKey.Dispose();
+                childExtKeyBytes.Clear();
+            }
         }
 
-        public virtual SecureBytes GetPrivateKey()
+        public IExtKey Derive(uint index)
         {
-            using var privateKey = new ScopedBytes(Key.PrivateKey.ToBytes());
-
-            return new SecureBytes(privateKey);
+            using var privateKey = Derive(extKey => extKey.Derive(index));
+            
+            return new BitcoinBasedExtKey(privateKey);
         }
 
-        public virtual SecureBytes GetPublicKey()
+        public IExtKey Derive(string keyPath)
         {
-            using var publicKey = new ScopedBytes(Key.PrivateKey.PubKey.ToBytes());
+            using var privateKey = Derive(extKey => extKey.Derive(new KeyPath(keyPath)));
 
-            return new SecureBytes(publicKey);
+            return new BitcoinBasedExtKey(privateKey);
         }
 
-        public virtual byte[] SignHash(byte[] hash)
+        public Task<IExtKey> DeriveAsync(
+            uint index,
+            CancellationToken cancellationToken = default)
         {
-            return Key
-                .PrivateKey
-                .Sign(new uint256(hash), SigHash.All)
-                .ToBytes();
+            return Task.Run(() => Derive(index), cancellationToken);
         }
 
-        public virtual byte[] SignMessage(byte[] data)
+        public Task<IExtKey> DeriveAsync(
+            string keyPath,
+            CancellationToken cancellationToken = default)
         {
-            return Convert.FromBase64String(Key
-                .PrivateKey
-                .SignMessage(data));
+            return Task.Run(() => Derive(keyPath), cancellationToken);
         }
 
-        public virtual bool VerifyHash(byte[] hash, byte[] signature)
+        private ExtKey GetExtKey()
         {
-            if (hash == null)
-                throw new ArgumentNullException(nameof(hash));
+            using var unmanagedBytes = _privateKey.ToUnmanagedBytes();
 
-            if (signature == null)
-                throw new ArgumentNullException(nameof(signature));
-
-            return Key
-                .PrivateKey
-                .PubKey
-                .Verify(new uint256(hash), new TransactionSignature(signature).Signature);
+            // todo: use other secured framework for secp256r1 keys instead NBitcoin
+            return new ExtKey(unmanagedBytes.ToBytes());
         }
 
-        public virtual bool VerifyMessage(byte[] data, byte[] signature)
-        {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
-            if (signature == null)
-                throw new ArgumentNullException(nameof(signature));
-
-            return Key
-                .PrivateKey
-                .PubKey
-                .VerifyMessage(data, Convert.ToBase64String(signature));
-        }
-
-        public void Dispose()
-        {
-            //Key.Dispose(); // may be nbitcoin learn to dispose keys?
-        }
+        protected override Key GetKey() => GetExtKey().PrivateKey;
     }
 }

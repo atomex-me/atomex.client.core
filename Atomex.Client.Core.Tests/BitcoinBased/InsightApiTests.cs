@@ -4,7 +4,7 @@ using Atomex.Blockchain.BitcoinBased;
 using Atomex.Blockchain.Insight;
 using Xunit;
 
-namespace Atomex.Client.Core.Tests
+namespace Atomex.Client.Core.Tests.BitcoinBased
 {
     public class InsightApiTests
     {
@@ -12,7 +12,7 @@ namespace Atomex.Client.Core.Tests
         {
             new object[]
             {
-                Common.BtcMainNet, // currency
+                Commons.BtcMainNet, // currency
                 InsightApi.InsightBitPayMainNet, // base uri
                 "17c5d61XW7714Abk7yNxKZkRybiCR9ft6m" // address
             },
@@ -24,13 +24,13 @@ namespace Atomex.Client.Core.Tests
             //},
             new object[]
             {
-                Common.LtcMainNet, // currency
+                Commons.LtcMainNet, // currency
                 InsightApi.InsightLiteCoreMainNet, // base uri
                 "MJBhQat8BdCZC4s5U7zVqTmNErQznD6jJg" // address
             },
             new object[]
             {
-                Common.LtcTestNet, // currency
+                Commons.LtcTestNet, // currency
                 InsightApi.InsightLiteCoreTestNet, // base uri
                 "QbrPfc6DbHqWcpBmo6XAXEp637pX7MowHk", // address
             }
@@ -53,7 +53,7 @@ namespace Atomex.Client.Core.Tests
         {
             new object[]
             {
-                Common.BtcMainNet, // currency
+                Commons.BtcMainNet, // currency
                 InsightApi.InsightBitPayMainNet, // base uri
                 "d4eb2a63e37391d889c0c8cb9d26bd556ba6721558626af6881049e5b1724b41", // txid
                 0, // input index
@@ -71,7 +71,7 @@ namespace Atomex.Client.Core.Tests
             //},
             new object[]
             {
-                Common.LtcMainNet, // currency
+                Commons.LtcMainNet, // currency
                 InsightApi.InsightLiteCoreMainNet, // base uri
                 "4764ef25642647206217002f18fecaece0fd5daba38620e5420200567f7ac9de", // txid
                 1, // input index
@@ -80,7 +80,7 @@ namespace Atomex.Client.Core.Tests
             },
             new object[]
             {
-                Common.LtcTestNet, // currency
+                Commons.LtcTestNet, // currency
                 InsightApi.InsightLiteCoreTestNet, // base uri
                 "5de6dc17e0d640d4365c29d73e1052979397a968cffa8e42d03736ffe06e6ef5", // txid
                 1, // input index
@@ -132,7 +132,7 @@ namespace Atomex.Client.Core.Tests
         {
             new object[]
             {
-                Common.BtcMainNet, // currency
+                Commons.BtcMainNet, // currency
                 InsightApi.InsightBitPayMainNet, // base uri
                 "17c5d61XW7714Abk7yNxKZkRybiCR9ft6m", // address
                 "40cb4c38bccc4cabc9d5cadad5f3d5aea41a277c7c10b839b67a6a54155e8911", // output txid
@@ -150,7 +150,7 @@ namespace Atomex.Client.Core.Tests
             //},
             new object[]
             {
-                Common.LtcMainNet, // currency
+                Commons.LtcMainNet, // currency
                 InsightApi.InsightLiteCoreMainNet, // base uri
                 "MJBhQat8BdCZC4s5U7zVqTmNErQznD6jJg", // address
                 "6f662717f2f00090d4771b903dc9774faf5b71ccd04fb81c1d3c9bc38dc55e00", // output txid
@@ -159,7 +159,7 @@ namespace Atomex.Client.Core.Tests
             },
             new object[]
             {
-                Common.LtcTestNet, // currency
+                Commons.LtcTestNet, // currency
                 InsightApi.InsightLiteCoreTestNet, // base uri
                 "QbrPfc6DbHqWcpBmo6XAXEp637pX7MowHk", // address
                 "5de6dc17e0d640d4365c29d73e1052979397a968cffa8e42d03736ffe06e6ef5", // output txid
@@ -196,7 +196,7 @@ namespace Atomex.Client.Core.Tests
         {
             new object[]
             {
-                Common.BtcMainNet, // currency
+                Commons.BtcMainNet, // currency
                 InsightApi.InsightBitPayMainNet, // base uri
                 "d4eb2a63e37391d889c0c8cb9d26bd556ba6721558626af6881049e5b1724b41", // txid
                 1, // inputs count
@@ -216,7 +216,7 @@ namespace Atomex.Client.Core.Tests
             //},
             new object[]
             {
-                Common.LtcMainNet, // currency
+                Commons.LtcMainNet, // currency
                 InsightApi.InsightLiteCoreMainNet, // base uri
                 "4764ef25642647206217002f18fecaece0fd5daba38620e5420200567f7ac9de", // txid
                 8, // inputs count
@@ -226,7 +226,7 @@ namespace Atomex.Client.Core.Tests
             },
             new object[]
             {
-                Common.LtcTestNet, // currency
+                Commons.LtcTestNet, // currency
                 InsightApi.InsightLiteCoreTestNet, // base uri
                 "5de6dc17e0d640d4365c29d73e1052979397a968cffa8e42d03736ffe06e6ef5", // txid
                 3, // inputs count
@@ -266,7 +266,7 @@ namespace Atomex.Client.Core.Tests
         {
             new object[]
             {
-                Common.BtcMainNet, // currency
+                Commons.BtcMainNet, // currency
                 InsightApi.InsightBitPayMainNet, // base uri
                 "d4eb2a63e37391d889c0c8cb9d26bd556ba6721558626af6881049e5b1724b41", // txid
                 1, // output no
@@ -284,7 +284,7 @@ namespace Atomex.Client.Core.Tests
             //},
             new object[]
             {
-                Common.LtcMainNet, // currency
+                Commons.LtcMainNet, // currency
                 InsightApi.InsightLiteCoreMainNet, // base uri
                 "4764ef25642647206217002f18fecaece0fd5daba38620e5420200567f7ac9de", // txid
                 0, // output no
@@ -293,7 +293,7 @@ namespace Atomex.Client.Core.Tests
             },
             new object[]
             {
-                Common.LtcTestNet, // currency
+                Commons.LtcTestNet, // currency
                 InsightApi.InsightLiteCoreTestNet, // base uri
                 "5de6dc17e0d640d4365c29d73e1052979397a968cffa8e42d03736ffe06e6ef5", // txid
                 1, // output no

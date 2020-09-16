@@ -1,33 +1,33 @@
 ﻿using System;
-using System.Security.Cryptography;
+
+using Atomex.Common.Libsodium;
+using Atomex.Cryptography.Abstract;
 
 namespace Atomex.Cryptography
 {
-    public class Sha256
+    public class Sha256 : HashAlgorithm
     {
-        public static byte[] Compute(byte[] input, int offset, int count)
+        private readonly HashAlgorithm _impl;
+
+        public Sha256()
         {
-            using var sha256 = SHA256.Create();
-            return sha256.ComputeHash(input, offset, count);
+            _impl = Sodium.IsInitialized
+                ? (HashAlgorithm)new Libsodium.Sha256()
+                : new DotNet.Sha256();
         }
 
-        public static byte[] Compute(byte[] input) =>
-            Compute(input, 0, input.Length);
+        public override int HashSize => _impl.HashSize;
 
-        public static byte[] Compute(byte[] input, int offset, int count, int iterations)
-        {
-            if (iterations <= 0)
-                throw new ArgumentException("Iterations count must be greater than zero", nameof(iterations));
+        public override byte[] Hash(ReadOnlySpan<byte> data) =>
+            _impl.Hash(data);
 
-            var result = Compute(input, offset, count);
+        public override void Hash(ReadOnlySpan<byte> data, Span<byte> hash) =>
+            _impl.Hash(data, hash);
 
-            for (var i = 0; i < iterations - 1; ++i)
-                result = Compute(result);
+        public override bool Verify(ReadOnlySpan<byte> data, ReadOnlySpan<byte> hash) =>
+            _impl.Verify(data, hash);
 
-            return result;
-        }
-
-        public static byte[] Compute(byte[] input, int iterations) =>
-            Compute(input, 0, input.Length, iterations);
+        public override IIncrementalHash CreateIncrementalHash() =>
+            _impl.CreateIncrementalHash();
     }
 }

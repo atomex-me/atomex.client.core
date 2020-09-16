@@ -4,9 +4,9 @@ using System.Numerics;
 using Microsoft.Extensions.Configuration;
 
 using Atomex.Blockchain.Ethereum;
-using Atomex.Wallet.Bip;
 using System.Threading.Tasks;
 using System.Threading;
+using Atomex.Wallet.Bips;
 
 namespace Atomex.EthereumTokens
 {

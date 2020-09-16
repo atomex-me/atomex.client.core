@@ -14,7 +14,7 @@ using NBitcoin;
 using NBitcoin.Altcoins;
 using Xunit;
 
-namespace Atomex.Client.Core.Tests
+namespace Atomex.Client.Core.Tests.BitcoinBased
 {
     public class BitcoinBasedSwapTransactionFactoryTests
     {
@@ -37,13 +37,13 @@ namespace Atomex.Client.Core.Tests
         {
             var bitcoinApi = new Mock<IInOutBlockchainApi>();
             bitcoinApi.Setup(a => a.GetUnspentOutputsAsync(It.IsAny<string>(), null, new CancellationToken()))
-                .Returns(Task.FromResult(GetTestOutputs(Common.Alice.PubKey, NBitcoin.Network.TestNet)));
+                .Returns(Task.FromResult(GetTestOutputs(Commons.Alice.PubKey, NBitcoin.Network.TestNet)));
 
             var litecoinApi = new Mock<IInOutBlockchainApi>();
             litecoinApi.Setup(a => a.GetUnspentOutputsAsync(It.IsAny<string>(), null, new CancellationToken()))
-                .Returns(Task.FromResult(GetTestOutputs(Common.Bob.PubKey, AltNetworkSets.Litecoin.Testnet)));
+                .Returns(Task.FromResult(GetTestOutputs(Commons.Bob.PubKey, AltNetworkSets.Litecoin.Testnet)));
 
-            var tempCurrencies = new Currencies(Common.CurrenciesConfiguration.GetSection(Atomex.Core.Network.TestNet.ToString()));
+            var tempCurrencies = new Currencies(Commons.CurrenciesConfiguration.GetSection(Atomex.Core.Network.TestNet.ToString()));
 
             var bitcoin = tempCurrencies.Get<Bitcoin>("BTC");
             bitcoin.BlockchainApi = bitcoinApi.Object;
@@ -51,11 +51,11 @@ namespace Atomex.Client.Core.Tests
             var litecoin = tempCurrencies.Get<Litecoin>("LTC");
             litecoin.BlockchainApi = litecoinApi.Object;
 
-            var aliceBtcAddress = Common.Alice.PubKey
+            var aliceBtcAddress = Commons.Alice.PubKey
                 .GetAddress(ScriptPubKeyType.Legacy, bitcoin.Network)
                 .ToString();
 
-            var bobBtcAddress = Common.Bob.PubKey
+            var bobBtcAddress = Commons.Bob.PubKey
                 .GetAddress(ScriptPubKeyType.Legacy, bitcoin.Network)
                 .ToString();
 
@@ -76,12 +76,12 @@ namespace Atomex.Client.Core.Tests
                 .CreateSwapPaymentTxAsync(
                     currency: bitcoin,
                     amount: amountInSatoshi,
-                    fromWallets: new []{ aliceBtcAddress },
+                    fromWallets: new[] { aliceBtcAddress },
                     refundAddress: aliceBtcAddress,
                     toAddress: bobBtcAddress,
                     lockTime: DateTimeOffset.UtcNow.AddHours(1),
-                    secretHash: Common.SecretHash,
-                    secretSize: Common.Secret.Length,
+                    secretHash: Commons.SecretHash,
+                    secretSize: Commons.Secret.Length,
                     outputsSource: new BlockchainTxOutputSource(bitcoin))
                 .ConfigureAwait(false);
 

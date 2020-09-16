@@ -7,11 +7,11 @@ using Microsoft.Extensions.Configuration;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Internal;
-using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography;
-using Atomex.Wallet.Bip;
-using Atomex.Wallet.Tezos;
+using Atomex.Common.Memory;
+using Atomex.Wallets.Tezos;
+using Atomex.Wallet.Bips;
 
 namespace Atomex
 {

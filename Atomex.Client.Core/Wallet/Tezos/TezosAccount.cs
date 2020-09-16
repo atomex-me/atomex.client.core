@@ -3,14 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
-using Serilog;
+using Atomex.Wallet.Bips;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -330,7 +332,7 @@ namespace Atomex.Wallet.Tezos
 
             var oldTx = !xtzTx.IsInternal
                 ? await DataRepository
-                    .GetTransactionByIdAsync(Currency, tx.Id, Xtz.TransactionType)
+                    .GetTransactionByIdAsync<TezosTransaction>(Currency, tx.Id)
                     .ConfigureAwait(false)
                 : null;
 
@@ -437,10 +439,8 @@ namespace Atomex.Wallet.Tezos
         {
             var xtz = Xtz;
 
-            var isActive = to != null
-                ? await IsAllocatedDestinationAsync(type, to, cancellationToken)
-                    .ConfigureAwait(false)
-                : false;
+            var isActive = to != null && await IsAllocatedDestinationAsync(type, to, cancellationToken)
+                .ConfigureAwait(false);
 
             if (type.HasFlag(BlockchainTransactionType.SwapPayment) && isFirstTx)
                 return xtz.InitiateStorageLimit / xtz.StorageFeeMultiplier;
@@ -508,9 +508,8 @@ namespace Atomex.Wallet.Tezos
             var xtz = Xtz;
 
             var txs = (await DataRepository
-                .GetTransactionsAsync(Currency, xtz.TransactionType)
+                .GetTransactionsAsync<TezosTransaction>(Currency)
                 .ConfigureAwait(false))
-                .Cast<TezosTransaction>()
                 .ToList();
 
             var internalTxs = txs.Aggregate(new List<TezosTransaction>(), (list, tx) =>
@@ -653,9 +652,8 @@ namespace Atomex.Wallet.Tezos
 
             // calculate unconfirmed balances
             var unconfirmedTxs = (await DataRepository
-                .GetUnconfirmedTransactionsAsync(Currency, xtz.TransactionType)
+                .GetUnconfirmedTransactionsAsync<TezosTransaction>(Currency)
                 .ConfigureAwait(false))
-                .Cast<TezosTransaction>()
                 .ToList();
 
             var unconfirmedInternalTxs = unconfirmedTxs.Aggregate(new List<TezosTransaction>(), (list, tx) =>
@@ -972,5 +970,16 @@ namespace Atomex.Wallet.Tezos
         }
 
         #endregion Addresses
+
+        #region Transactions
+
+        public override async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync()
+        {
+            return await DataRepository
+                .GetTransactionsAsync<TezosTransaction>(Currency)
+                .ConfigureAwait(false);
+        }
+
+        #endregion
     }
 }

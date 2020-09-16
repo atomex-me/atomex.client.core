@@ -1,101 +1,170 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Core;
 
-namespace Atomex.Wallet.Abstract
+namespace Atomex.Wallets.Abstract
 {
     public interface IAccountDataRepository
     {
         #region Addresses
 
         Task<bool> UpsertAddressAsync(
-            WalletAddress walletAddress);
+            WalletAddress walletAddress,
+            CancellationToken cancellationToken = default);
+
         Task<int> UpsertAddressesAsync(
-            IEnumerable<WalletAddress> walletAddresses);
+            IEnumerable<WalletAddress> walletAddresses,
+            CancellationToken cancellationToken = default);
+
         Task<bool> TryInsertAddressAsync(
-            WalletAddress walletAddress);
+            WalletAddress walletAddress,
+            CancellationToken cancellationToken = default);
+
         Task<WalletAddress> GetWalletAddressAsync(
             string currency,
-            string address);
+            string address,
+            CancellationToken cancellationToken = default);
+
         Task<WalletAddress> GetLastActiveWalletAddressAsync(
             string currency,
-            int chain);
-        Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
-            string currency,
-            bool includeUnconfirmed = true);
+            int chain,
+            CancellationToken cancellationToken = default);
 
         Task<IEnumerable<WalletAddress>> GetAddressesAsync(
-            string currency);
+            string currency,
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default);
+
+        Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+            string currency,
+            CancellationToken cancellationToken = default);
 
         #endregion Addresses
 
         #region Transactions
 
-        Task<bool> UpsertTransactionAsync(
-            IBlockchainTransaction tx);
-        Task<IBlockchainTransaction> GetTransactionByIdAsync(
+        Task<bool> UpsertTransactionAsync<T>(
+            T tx,
+            CancellationToken cancellationToken = default)
+            where T : IBlockchainTransaction;
+
+        Task<int> UpsertTransactionsAsync<T>(
+            IEnumerable<T> txs,
+            CancellationToken cancellationToken = default)
+            where T : IBlockchainTransaction;
+
+        Task<T> GetTransactionByIdAsync<T>(
             string currency,
             string txId,
-            Type transactionType);
-        Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+            CancellationToken cancellationToken = default)
+            where T : IBlockchainTransaction;
+
+        Task<IEnumerable<T>> GetTransactionsAsync<T>(
             string currency,
-            Type transactionType);
-        Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default)
+            where T : IBlockchainTransaction;
+
+        Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(
             string currency,
-            Type transactionType);
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default)
+            where T : IBlockchainTransaction;
+
         Task<bool> RemoveTransactionByIdAsync(
-            string id);
+            string currency,
+            string txId,
+            CancellationToken cancellationToken = default);
 
         #endregion Transactions
 
         #region Outputs
 
-        Task<bool> UpsertOutputsAsync(
+        Task<bool> UpsertOutputAsync(
+            ITxOutput output,
+            string currency,
+            string address,
+            CancellationToken cancellationToken = default);
+
+        Task<int> UpsertOutputsAsync(
             IEnumerable<ITxOutput> outputs,
             string currency,
-            string address);
-        Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
+            string address,
+            CancellationToken cancellationToken = default);
+
+        Task<IEnumerable<TOutput>> GetAvailableOutputsAsync<TOutput, TTransaction>(
             string currency,
-            Type outputType,
-            Type transactionType);
-        Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
+            CancellationToken cancellationToken = default)
+            where TOutput : ITxOutput
+            where TTransaction : IBlockchainTransaction;
+
+        Task<IEnumerable<TOutput>> GetAvailableOutputsAsync<TOutput, TTransaction>(
             string currency,
             string address,
-            Type outputType,
-            Type transactionType);
-        Task<IEnumerable<ITxOutput>> GetOutputsAsync(
+            CancellationToken cancellationToken = default)
+            where TOutput : ITxOutput
+            where TTransaction : IBlockchainTransaction;
+
+        Task<IEnumerable<T>> GetOutputsAsync<T>(
             string currency,
-            Type outputType);
-        Task<IEnumerable<ITxOutput>> GetOutputsAsync(
+            CancellationToken cancellationToken = default)
+            where T : ITxOutput;
+
+        Task<IEnumerable<T>> GetOutputsAsync<T>(
             string currency,
             string address,
-            Type outputType);
-        Task<ITxOutput> GetOutputAsync(
+            CancellationToken cancellationToken = default)
+            where T : ITxOutput;
+
+        Task<T> GetOutputAsync<T>(
             string currency,
             string txId,
             uint index,
-            Type outputType);
+            CancellationToken cancellationToken = default)
+            where T : ITxOutput;
 
-        #endregion Outputs
+        #endregion
 
         #region Orders
 
         Task<bool> UpsertOrderAsync(
-            Order order);
-        Order GetOrderById(
-            string clientOrderId);
-        Order GetOrderById(long id);
+            Order order,
+            CancellationToken cancellationToken = default);
+
+        Task<Order> GetOrderByIdAsync(
+            string clientOrderId,
+            CancellationToken cancellationToken = default);
+
+        Task<Order> GetOrderByIdAsync(
+            long id,
+            CancellationToken cancellationToken = default);
 
         #endregion Orders
 
         #region Swaps
 
-        Task<bool> AddSwapAsync(Swap swap);
-        Task<bool> UpdateSwapAsync(Swap swap);
-        Task<Swap> GetSwapByIdAsync(long id);
-        Task<IEnumerable<Swap>> GetSwapsAsync();
+        Task<bool> InsertSwapAsync(
+            Swap swap,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> UpdateSwapAsync(
+            Swap swap,
+            CancellationToken cancellationToken = default);
+
+        Task<Swap> GetSwapByIdAsync(
+            long id,
+            CancellationToken cancellationToken = default);
+
+        Task<IEnumerable<Swap>> GetSwapsAsync(
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default);
 
         #endregion Swaps
     }

@@ -13,6 +13,7 @@ using Atomex.Common;
 using Atomex.Common.Bson;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.BitcoinBased
 {
@@ -43,7 +44,7 @@ namespace Atomex.Wallet.BitcoinBased
             var currency = BtcBasedCurrency;
 
             var unspentOutputs = (await DataRepository
-                .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
+                .GetAvailableOutputsAsync<BitcoinBasedTxOutput, BitcoinBasedTransaction>(Currency)
                 .ConfigureAwait(false))
                 .Where(o => from.FirstOrDefault(w => w.Address == o.DestinationAddress(currency)) != null)
                 .ToList();
@@ -66,10 +67,8 @@ namespace Atomex.Wallet.BitcoinBased
             bool useDefaultFee = false,
             CancellationToken cancellationToken = default)
         {
-            var currency = BtcBasedCurrency;
-
             var unspentOutputs = (await DataRepository
-                .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
+                .GetAvailableOutputsAsync<BitcoinBasedTxOutput, BitcoinBasedTransaction>(Currency)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -84,7 +83,7 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         public async Task<Error> SendAsync(
-            List<ITxOutput> outputs,
+            List<BitcoinBasedTxOutput> outputs,
             string to,
             decimal amount,
             decimal fee,
@@ -208,7 +207,7 @@ namespace Atomex.Wallet.BitcoinBased
             var amountInSatoshi = currency.CoinToSatoshi(amount);
 
             var availableOutputs = (await DataRepository
-                .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
+                .GetAvailableOutputsAsync<BitcoinBasedTxOutput, BitcoinBasedTransaction>(Currency)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -284,7 +283,7 @@ namespace Atomex.Wallet.BitcoinBased
             var feeInSatoshi = currency.CoinToSatoshi(fee);
 
             var availableOutputs = (await DataRepository
-                .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
+                .GetAvailableOutputsAsync<BitcoinBasedTxOutput, BitcoinBasedTransaction>(Currency)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -342,7 +341,7 @@ namespace Atomex.Wallet.BitcoinBased
             var currency = BtcBasedCurrency;
 
             var unspentOutputs = (await DataRepository
-                .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
+                .GetAvailableOutputsAsync<BitcoinBasedTxOutput, BitcoinBasedTransaction>(Currency)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -381,14 +380,14 @@ namespace Atomex.Wallet.BitcoinBased
             var currency = BtcBasedCurrency;
 
             var oldTx = await DataRepository
-                .GetTransactionByIdAsync(Currency, tx.Id, currency.TransactionType)
+                .GetTransactionByIdAsync<BitcoinBasedTransaction>(Currency, tx.Id)
                 .ConfigureAwait(false);
 
             if (oldTx != null && oldTx.IsConfirmed)
                 return false;
 
             var outputs = await DataRepository
-                .GetOutputsAsync(Currency, currency.OutputType())
+                .GetOutputsAsync<BitcoinBasedTxOutput>(Currency)
                 .ConfigureAwait(false);
 
             var indexedOutputs = outputs.ToDictionary(o => $"{o.TxId}:{o.Index}");
@@ -436,7 +435,7 @@ namespace Atomex.Wallet.BitcoinBased
             var currency = BtcBasedCurrency;
 
             var outputs = (await DataRepository
-                .GetOutputsAsync(Currency, currency.OutputType())
+                .GetOutputsAsync<BitcoinBasedTxOutput>(Currency)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -464,7 +463,7 @@ namespace Atomex.Wallet.BitcoinBased
                 //        .FirstOrDefault(to => to.Index == o.Index && to.TxId == o.TxId) != null) == null;
 
                 var tx = await DataRepository
-                    .GetTransactionByIdAsync(Currency, o.TxId, currency.TransactionType)
+                    .GetTransactionByIdAsync<BitcoinBasedTransaction>(Currency, o.TxId)
                     .ConfigureAwait(false);
 
                 var isConfirmedOutput = tx?.IsConfirmed ?? false;
@@ -478,7 +477,7 @@ namespace Atomex.Wallet.BitcoinBased
                 if (isSpent)
                 {
                     var spentTx = await DataRepository
-                        .GetTransactionByIdAsync(Currency, o.SpentTxPoint.Hash, currency.TransactionType)
+                        .GetTransactionByIdAsync<BitcoinBasedTransaction>(Currency, o.SpentTxPoint.Hash)
                         .ConfigureAwait(false);
 
                     isConfirmedInput = spentTx?.IsConfirmed ?? false;
@@ -532,7 +531,7 @@ namespace Atomex.Wallet.BitcoinBased
             var currency = BtcBasedCurrency;
 
             var outputs = (await DataRepository
-                .GetOutputsAsync(Currency, address, currency.OutputType())
+                .GetOutputsAsync<BitcoinBasedTxOutput>(Currency, address)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -555,7 +554,7 @@ namespace Atomex.Wallet.BitcoinBased
                 //        .FirstOrDefault(to => to.Index == o.Index && to.TxId == o.TxId) != null) == null;
 
                 var isConfirmedOutput = (await DataRepository
-                    .GetTransactionByIdAsync(Currency, o.TxId, currency.TransactionType)
+                    .GetTransactionByIdAsync<BitcoinBasedTransaction>(Currency, o.TxId)
                     .ConfigureAwait(false))
                     .IsConfirmed;
 
@@ -564,7 +563,7 @@ namespace Atomex.Wallet.BitcoinBased
                 //        .FirstOrDefault(ti => ti.Index == o.Index && ti.Hash == o.TxId) != null) == null;
 
                 var isConfirmedInput = isSpent && (await DataRepository
-                    .GetTransactionByIdAsync(Currency, o.SpentTxPoint.Hash, currency.TransactionType)
+                    .GetTransactionByIdAsync<BitcoinBasedTransaction>(Currency, o.SpentTxPoint.Hash)
                     .ConfigureAwait(false))
                     .IsConfirmed;
 
@@ -715,6 +714,13 @@ namespace Atomex.Wallet.BitcoinBased
                 RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency.Name));
         }
 
+        public override async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync()
+        {
+            return await DataRepository
+                .GetTransactionsAsync<BitcoinBasedTransaction>(Currency)
+                .ConfigureAwait(false);
+        }
+
         #endregion Transactions
 
         #region Outputs
@@ -771,7 +777,7 @@ namespace Atomex.Wallet.BitcoinBased
                 var input = tx.Inputs[i];
                 
                 var selfInput = await DataRepository
-                    .GetOutputAsync(Currency, input.Hash, input.Index, tx.Currency.OutputType())
+                    .GetOutputAsync<BitcoinBasedTxOutput>(Currency, input.Hash, input.Index)
                     .ConfigureAwait(false);
 
                 if (selfInput == null)
@@ -786,11 +792,11 @@ namespace Atomex.Wallet.BitcoinBased
 
         private async Task UpsertOutputAsync(
             Currency currency,
-            ITxOutput output,
+            BitcoinBasedTxOutput output,
             string address)
         {
             var addressOutputs = (await DataRepository
-                .GetOutputsAsync(currency.Name, address, currency.OutputType())
+                .GetOutputsAsync<BitcoinBasedTxOutput>(currency.Name, address)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -804,40 +810,33 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync()
+        public Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync()
         {
-            var currency = BtcBasedCurrency;
-
-            return DataRepository.GetAvailableOutputsAsync(
-                currency: Currency,
-                outputType: currency.OutputType(),
-                transactionType: currency.TransactionType);
+            return DataRepository
+                .GetAvailableOutputsAsync<BitcoinBasedTxOutput, BitcoinBasedTransaction>(Currency);
         }
 
-        public Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(string address)
+        public Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(string address)
         {
-            var currency = BtcBasedCurrency;
-
-            return DataRepository.GetAvailableOutputsAsync(
-                currency: Currency,
-                address: address,
-                outputType: currency.OutputType(),
-                transactionType: currency.TransactionType);
+            return DataRepository
+                .GetAvailableOutputsAsync<BitcoinBasedTxOutput, BitcoinBasedTransaction>(
+                    currency: Currency,
+                    address: address);
         }
 
-        public Task<IEnumerable<ITxOutput>> GetOutputsAsync()
+        public Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync()
         {
-            return DataRepository.GetOutputsAsync(Currency, BtcBasedCurrency.OutputType());
+            return DataRepository.GetOutputsAsync<BitcoinBasedTxOutput>(Currency);
         }
 
-        public Task<IEnumerable<ITxOutput>> GetOutputsAsync(string address)
+        public Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(string address)
         {
-            return DataRepository.GetOutputsAsync(Currency, address, BtcBasedCurrency.OutputType());
+            return DataRepository.GetOutputsAsync<BitcoinBasedTxOutput>(Currency, address);
         }
 
-        public Task<ITxOutput> GetOutputAsync(string txId, uint index)
+        public Task<BitcoinBasedTxOutput> GetOutputAsync(string txId, uint index)
         {
-            return DataRepository.GetOutputAsync(Currency, txId, index, BtcBasedCurrency.OutputType());
+            return DataRepository.GetOutputAsync<BitcoinBasedTxOutput>(Currency, txId, index);
         }
 
         #endregion Outputs

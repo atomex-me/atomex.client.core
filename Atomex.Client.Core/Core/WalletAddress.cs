@@ -1,4 +1,5 @@
 ﻿using System;
+
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.Core
@@ -6,9 +7,7 @@ namespace Atomex.Core
     public class WalletAddress
     {
         public const int MaxNumberLength = 256;
-
-        public string UniqueId => $"{Address}:{Currency}";
-        public long Id { get; set; }
+        public string Id => UniqueId(Currency, Address);
         public string Currency { get; set; }
         public string Address { get; set; }
         public decimal Balance { get; set; }
@@ -40,9 +39,7 @@ namespace Atomex.Core
                 : Balance + UnconfirmedOutcome;
         }
 
-        public override string ToString()
-        {
-            return $"{Address};{Balance};{UnconfirmedIncome};{UnconfirmedOutcome}";
-        }
+        public static string UniqueId(string currency, string address) =>
+            $"{currency}:{address}";
     }
 }

@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Abstract;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Wallet.Bip;
+using Atomex.Wallet.Bips;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -145,17 +147,25 @@ namespace Atomex.Wallet.Abstract
             string address,
             CancellationToken cancellationToken = default);
 
-        private void PreloadBalances()
+        private async void PreloadBalances()
         {
-            var addresses = DataRepository
-                .GetUnspentAddressesAsync(Currency)
-                .WaitForResult();
-
-            foreach (var address in addresses)
+            try
             {
-                Balance += address.Balance;
-                UnconfirmedIncome += address.UnconfirmedIncome;
-                UnconfirmedOutcome += address.UnconfirmedOutcome;
+                var addresses = (await DataRepository
+                    .GetUnspentAddressesAsync(Currency)
+                    .ConfigureAwait(false))
+                    .ToList();
+
+                foreach (var address in addresses)
+                {
+                    Balance += address.Balance;
+                    UnconfirmedIncome += address.UnconfirmedIncome;
+                    UnconfirmedOutcome += address.UnconfirmedOutcome;
+                }
+            }
+            catch (Exception e)
+            {
+
             }
         }
 
@@ -369,15 +379,14 @@ namespace Atomex.Wallet.Abstract
                 RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency.Name));
         }
 
-        public Task<IBlockchainTransaction> GetTransactionByIdAsync(string txId)
+        public Task<T> GetTransactionByIdAsync<T>(string txId) where T : IBlockchainTransaction
         {
-            var currency = Currencies.GetByName(Currency);
-
-            return DataRepository.GetTransactionByIdAsync(
+            return DataRepository.GetTransactionByIdAsync<T>(
                 currency: Currency,
-                txId: txId,
-                transactionType: currency.TransactionType);
+                txId: txId);
         }
+
+        public abstract Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync();
 
         #endregion Transactions
     }

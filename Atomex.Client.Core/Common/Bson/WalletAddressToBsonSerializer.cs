@@ -1,5 +1,6 @@
-﻿using Atomex.Core;
-using LiteDB;
+﻿using LiteDB;
+
+using Atomex.Core;
 
 namespace Atomex.Common.Bson
 {
@@ -8,8 +9,6 @@ namespace Atomex.Common.Bson
         public override void Register(BsonMapper bsonMapper)
         {
             bsonMapper.Entity<WalletAddress>()
-                .Id(w => w.UniqueId)
-                .Ignore(w => w.Id)
                 .Ignore(w => w.PublicKey)
                 .Ignore(w => w.ProofOfPossession)
                 .Ignore(w => w.Nonce);

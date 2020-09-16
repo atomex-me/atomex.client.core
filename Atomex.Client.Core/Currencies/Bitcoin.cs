@@ -5,7 +5,7 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Blockchain.BitCore;
 using Atomex.Blockchain.Insight;
-using Atomex.Wallet.Bip;
+using Atomex.Wallet.Bips;
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
 using FeeRate = Atomex.Blockchain.BitcoinBased.FeeRate;

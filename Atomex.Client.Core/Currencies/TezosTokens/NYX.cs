@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Globalization;
 using Atomex.Blockchain.Tezos;
-using Atomex.Wallet.Bip;
+using Atomex.Wallet.Bips;
 using Microsoft.Extensions.Configuration;
 
 namespace Atomex.TezosTokens

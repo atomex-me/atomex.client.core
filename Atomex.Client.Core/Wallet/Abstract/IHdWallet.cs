@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Blockchain.Abstract;
-using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract
@@ -34,15 +34,21 @@ namespace Atomex.Wallet.Abstract
         /// <summary>
         /// Unlock wallet
         /// </summary>
-        /// <param name="password">Password</param>
-        void Unlock(SecureString password);
+        /// <param name="keyPassword">Password</param>
+        void Unlock(SecureBytes keyPassword);
+
+        /// <summary>
+        /// Encrypt wallet keys by <paramref name="keyPassword"/>
+        /// </summary>
+        /// <param name="keyPassword">Password</param>
+        void Encrypt(SecureBytes keyPassword);
 
         /// <summary>
         /// Encrypt wallet keys by <paramref name="password"/>
         /// </summary>
         /// <param name="password">Password</param>
         /// <returns>Encryption task</returns>
-        Task EncryptAsync(SecureString password);
+        Task EncryptAsync(SecureBytes keyPassword);
 
         /// <summary>
         /// Gets address for <paramref name="currency"/>, <paramref name="chain"/> and key <paramref name="index"/>

@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
+
 using Atomex.Blockchain.Tezos;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
-using Serilog;
+using Atomex.Wallet.Bips;
+using Atomex.Wallet.KeyStorage;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -37,7 +39,6 @@ namespace Atomex.Wallet.Tezos
 
             var scanParams = new[]
             {
-                new {Chain = HdKeyStorage.NonHdKeysChain, LookAhead = 0},
                 new {Chain = Bip44.Internal, LookAhead = InternalLookAhead},
                 new {Chain = Bip44.External, LookAhead = ExternalLookAhead},
             };

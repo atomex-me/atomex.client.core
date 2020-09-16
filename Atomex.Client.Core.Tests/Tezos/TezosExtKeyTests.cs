@@ -1,74 +1,24 @@
-﻿using System.Text;
-using Atomex.Common;
-using Atomex.Wallet.Tezos;
-using NBitcoin;
-using Xunit;
+﻿using Atomex.Common.Memory;
+using Atomex.Cryptography;
+using Atomex.Wallets.Tezos;
 
-namespace Atomex.Client.Core.Tests
+using Atomex.Client.Core.Tests.Wallets;
+
+namespace Atomex.Client.Core.Tests.Tezos
 {
-    public class TezosExtKeyTests
+    public class TezosExtKeyTests : KeyTests<TezosExtKey>
     {
-        private const string Message = "I LOVE TEZOS";
+        public override int KeySize => 32;
 
-        private const string Mnemonic =
-            "return auction present awesome blast excess receive obtain explain spider iron hip curtain recipe tent aim bonus hip cliff shrug lyrics pass right spend";
+        public override int SignatureSize => 64;
 
-        [Fact]
-        public void TrustWalletTezosExtKeyTest()
+        public override TezosExtKey CreateKey(int keySize, out byte[] seed)
         {
-            var messageBytes = Encoding.UTF8.GetBytes(Message);
+            seed = Rand.SecureRandomBytes(keySize);
 
-            using var seed = new SecureBytes(new Mnemonic(Mnemonic).DeriveSeed());
-            using var extKey = new TrustWalletTezosExtKey(seed);
-            using var childKey = extKey.Derive(new KeyPath("m/44'/1729'/0'/0'"));
-            using var secureChildPublicKey = childKey.GetPublicKey();
-            using var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
+            using var secureSeed = new SecureBytes(seed);
 
-            var signature = childKey.SignMessage(messageBytes);
-            Assert.True(childKey.VerifyMessage(messageBytes, signature));
-
-            var address = Common.CurrenciesTestNet.Get<Tezos>("XTZ").AddressFromKey(childPublicKey);
-            Assert.NotNull(address);
-        }
-
-        [Fact]
-        public void TezosExtKeyTest()
-        {
-            var messageBytes = Encoding.UTF8.GetBytes(Message);
-
-            using var seed = new SecureBytes(new Mnemonic(Mnemonic).DeriveSeed());
-            using var extKey = new TezosExtKey(seed);
-            using var childKey = extKey.Derive(new KeyPath("m/44'/1729'/0'/0'"));
-            using var secureChildPublicKey = childKey.GetPublicKey();
-            using var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
-
-            var signature = childKey.SignMessage(messageBytes);
-            Assert.True(childKey.VerifyMessage(messageBytes, signature));
-
-            var address = Common.CurrenciesTestNet.Get<Tezos>("XTZ").AddressFromKey(childPublicKey);
-            Assert.NotNull(address);
-        }
-
-        [Fact]
-        public void TezosExtKeyDerivationTest()
-        {
-            var messageBytes = Encoding.UTF8.GetBytes(Message);
-
-            using var seed = new SecureBytes(new Mnemonic(Mnemonic).DeriveSeed());
-            using var extKey = new TezosExtKey(seed);
-
-            for (var i = 0; i < 100; ++i)
-            {
-                using var childKey = extKey.Derive(new KeyPath($"m/44'/1729'/0'/0/{i}"));
-                using var secureChildPublicKey = childKey.GetPublicKey();
-                using var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
-
-                var signature = childKey.SignMessage(messageBytes);
-                Assert.True(childKey.VerifyMessage(messageBytes, signature));
-
-                var address = Common.CurrenciesTestNet.Get<Tezos>("XTZ").AddressFromKey(childPublicKey);
-                Assert.NotNull(address);
-            }
+            return new TezosExtKey(secureSeed);
         }
     }
 }

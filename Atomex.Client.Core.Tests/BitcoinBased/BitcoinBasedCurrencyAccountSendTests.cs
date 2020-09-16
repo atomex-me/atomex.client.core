@@ -10,16 +10,17 @@ using Atomex.Core;
 using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
+using Atomex.Wallets.Abstract;
 using Moq;
 using NBitcoin;
 using Xunit;
 using Network = Atomex.Core.Network;
 
-namespace Atomex.Client.Core.Tests
+namespace Atomex.Client.Core.Tests.BitcoinBased
 {
     public class BitcoinBasedCurrencyAccountSendTests
     {
-        private IEnumerable<ITxOutput> GetOutputs(string address, NBitcoin.Network network, params long[] values)
+        private IEnumerable<BitcoinBasedTxOutput> GetOutputs(string address, NBitcoin.Network network, params long[] values)
         {
             var bitcoinAddress = BitcoinAddress.Create(address, network);
 
@@ -47,12 +48,23 @@ namespace Atomex.Client.Core.Tests
 
             var wallet = new HdWallet(Network.TestNet);
             var fromAddress = wallet.GetAddress(currency, 0, 0);
+
+            //var privateKey = wallet.KeyStorage.GetPrivateKey(currency, new KeyIndex() { Chain = 0, Index = 0 });
+            //var publicKey = wallet.KeyStorage.GetPublicKey(currency, new KeyIndex() { Chain = 0, Index = 0 });
+
+            //var key = new Key(privateKey.ToUnsecuredBytes());
+            //var pubKey = key.PubKey;
+            //var address = pubKey.GetAddress(ScriptPubKeyType.Legacy, currency.Network);
+
+            //var extKey = new ExtKey(privateKey.ToUnsecuredBytes());
+            //var address2 = extKey.GetPublicKey().GetAddress(ScriptPubKeyType.Legacy, currency.Network);
+
             var fromOutputs = GetOutputs(fromAddress.Address, NBitcoin.Network.TestNet, currency.CoinToSatoshi(available)).ToList();
 
             var repositoryMock = new Mock<IAccountDataRepository>();
             repositorySetup?.Invoke(repositoryMock, fromAddress);
 
-            var currencies = Common.CurrenciesTestNet;
+            var currencies = Commons.CurrenciesTestNet;
             currencies.GetByName(currency.Name).BlockchainApi = apiMock.Object;
 
             var account = new BitcoinBasedAccount(
@@ -74,8 +86,8 @@ namespace Atomex.Client.Core.Tests
         public static IEnumerable<object[]> SendTestData =>
             new List<object[]>
             {
-                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>("BTC"), 0.001m, 0.0009m, 0.0001m, DustUsagePolicy.Warning},
-                new object[] {Common.CurrenciesTestNet.Get<Litecoin>("LTC"), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.Warning}
+                new object[] {Commons.CurrenciesTestNet.Get<Bitcoin>("BTC"), 0.001m, 0.0009m, 0.0001m, DustUsagePolicy.Warning},
+                new object[] {Commons.CurrenciesTestNet.Get<Litecoin>("LTC"), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.Warning}
             };
 
         [Theory]
@@ -100,7 +112,7 @@ namespace Atomex.Client.Core.Tests
                 },
                 repositorySetup: (repositoryMock, fromAddress) =>
                 {
-                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address))
+                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address, It.IsAny<CancellationToken>()))
                         .Returns(Task.FromResult(fromAddress));
                 });
 
@@ -110,8 +122,8 @@ namespace Atomex.Client.Core.Tests
         public static IEnumerable<object[]> SendDustAmountFailTestData =>
             new List<object[]>
             {
-                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>("BTC"), 0.001m, 0.0000009m, 0.0001m, DustUsagePolicy.Warning},
-                new object[] {Common.CurrenciesTestNet.Get<Litecoin>("LTC"), 0.001m, 0.0000009m, 0.0001m, DustUsagePolicy.Warning}
+                new object[] {Commons.CurrenciesTestNet.Get<Bitcoin>("BTC"), 0.001m, 0.0000009m, 0.0001m, DustUsagePolicy.Warning},
+                new object[] {Commons.CurrenciesTestNet.Get<Litecoin>("LTC"), 0.001m, 0.0000009m, 0.0001m, DustUsagePolicy.Warning}
             };
 
         [Theory]
@@ -137,8 +149,8 @@ namespace Atomex.Client.Core.Tests
         public static IEnumerable<object[]> SendInsufficientFundsFailTestData =>
             new List<object[]>
             {
-                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>("BTC"), 0.001m, 0.00090001m, 0.0001m, DustUsagePolicy.Warning},
-                new object[] {Common.CurrenciesTestNet.Get<Litecoin>("LTC"), 0.0011m, 0.0010001m, 0.0001m, DustUsagePolicy.Warning}
+                new object[] {Commons.CurrenciesTestNet.Get<Bitcoin>("BTC"), 0.001m, 0.00090001m, 0.0001m, DustUsagePolicy.Warning},
+                new object[] {Commons.CurrenciesTestNet.Get<Litecoin>("LTC"), 0.0011m, 0.0010001m, 0.0001m, DustUsagePolicy.Warning}
             };
 
         [Theory]
@@ -164,8 +176,8 @@ namespace Atomex.Client.Core.Tests
         public static IEnumerable<object[]> SendDustChangeFailTestData =>
             new List<object[]>
             {
-                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>("BTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.Warning},
-                new object[] {Common.CurrenciesTestNet.Get<Litecoin>("LTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.Warning}
+                new object[] {Commons.CurrenciesTestNet.Get<Bitcoin>("BTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.Warning},
+                new object[] {Commons.CurrenciesTestNet.Get<Litecoin>("LTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.Warning}
             };
 
         [Theory]
@@ -191,8 +203,8 @@ namespace Atomex.Client.Core.Tests
         public static IEnumerable<object[]> SendDustAsAmountTestData =>
             new List<object[]>
             {
-                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>("BTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.AddToDestination},
-                new object[] {Common.CurrenciesTestNet.Get<Litecoin>("LTC"), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.AddToDestination}
+                new object[] {Commons.CurrenciesTestNet.Get<Bitcoin>("BTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.AddToDestination},
+                new object[] {Commons.CurrenciesTestNet.Get<Litecoin>("LTC"), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.AddToDestination}
             };
 
         [Theory]
@@ -208,7 +220,7 @@ namespace Atomex.Client.Core.Tests
 
             var broadcastCallback = new Action<IBlockchainTransaction, int, int, CancellationToken>((tx, attempts, attemptsInterval, token) =>
             {
-                var btcBasedTx = (IBitcoinBasedTransaction) tx;
+                var btcBasedTx = (IBitcoinBasedTransaction)tx;
                 Assert.NotNull(btcBasedTx.Outputs.FirstOrDefault(o => o.Value == currency.CoinToSatoshi(amount + change)));
             });
 
@@ -226,7 +238,7 @@ namespace Atomex.Client.Core.Tests
                 },
                 repositorySetup: (repositoryMock, fromAddress) =>
                 {
-                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address))
+                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address, default))
                         .Returns(Task.FromResult(fromAddress));
                 });
 
@@ -236,8 +248,8 @@ namespace Atomex.Client.Core.Tests
         public static IEnumerable<object[]> SendDustAsFeeTestData =>
             new List<object[]>
             {
-                new object[] {Common.CurrenciesTestNet.Get<Bitcoin>("BTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.AddToFee},
-                new object[] {Common.CurrenciesTestNet.Get<Litecoin>("LTC"), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.AddToFee}
+                new object[] {Commons.CurrenciesTestNet.Get<Bitcoin>("BTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.AddToFee},
+                new object[] {Commons.CurrenciesTestNet.Get<Litecoin>("LTC"), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.AddToFee}
             };
 
         [Theory]
@@ -271,7 +283,7 @@ namespace Atomex.Client.Core.Tests
                 },
                 repositorySetup: (repositoryMock, fromAddress) =>
                 {
-                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address))
+                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address, default))
                         .Returns(Task.FromResult(fromAddress));
                 });
 

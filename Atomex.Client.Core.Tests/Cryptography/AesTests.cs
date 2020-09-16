@@ -3,7 +3,7 @@ using Atomex.Common;
 using Atomex.Cryptography;
 using Xunit;
 
-namespace Atomex.Client.Core.Tests
+namespace Atomex.Client.Core.Tests.Cryptography
 {
     public class AesTests
     {

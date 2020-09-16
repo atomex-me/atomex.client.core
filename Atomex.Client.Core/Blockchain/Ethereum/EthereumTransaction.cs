@@ -4,14 +4,15 @@ using System.Numerics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain.Abstract;
-using Atomex.Common;
-using Atomex.Core;
-using Atomex.Wallet.Abstract;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Web3;
 using Serilog;
 using Transaction = Nethereum.RPC.Eth.DTOs.Transaction;
+
+using Atomex.Blockchain.Abstract;
+using Atomex.Common.Memory;
+using Atomex.Core;
+using Atomex.Wallet.Abstract;
 
 namespace Atomex.Blockchain.Ethereum
 {
@@ -172,7 +173,7 @@ namespace Atomex.Blockchain.Ethereum
             if (privateKey == null)
                 throw new ArgumentNullException(nameof(privateKey));
 
-            using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
+            var scopedPrivateKey = privateKey.ToUnsecuredBytes();
 
             var chain = ((Atomex.Ethereum) Currency).Chain;
 

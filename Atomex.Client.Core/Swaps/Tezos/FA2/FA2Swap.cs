@@ -946,7 +946,7 @@ namespace Atomex.Swaps.Tezos.FA2
                     .ConfigureAwait(false);
 
                 var tx = await FA2Account
-                    .GetTransactionByIdAsync(txId)
+                    .GetTransactionByIdAsync<TezosTransaction>(txId)
                     .ConfigureAwait(false);
 
                 if (tx != null && tx.IsConfirmed)

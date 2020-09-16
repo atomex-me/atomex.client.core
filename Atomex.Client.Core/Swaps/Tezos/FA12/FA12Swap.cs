@@ -804,16 +804,16 @@ namespace Atomex.Swaps.Tezos.FA12
 
                 requiredAmountInTokens -= amountInTokens;
 
-                using var callingAddressPublicKey = new SecureBytes((await Fa12Account.GetAddressAsync(walletAddress.Address)
+                var callingAddressPublicKey = (await Fa12Account.GetAddressAsync(walletAddress.Address)
                     .ConfigureAwait(false))
-                    .PublicKeyBytes());
+                    .PublicKeyBytes();
 
                 var allowanceResult = await fa12Api
                     .TryGetTokenAllowanceAsync(
                         holderAddress: walletAddress.Address,
                         spenderAddress: fa12.SwapContractAddress,
                         callingAddress: walletAddress.Address,
-                        securePublicKey: callingAddressPublicKey,
+                        publicKey: callingAddressPublicKey,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -989,7 +989,7 @@ namespace Atomex.Swaps.Tezos.FA12
                     .ConfigureAwait(false);
 
                 var tx = await Fa12Account
-                    .GetTransactionByIdAsync(txId)
+                    .GetTransactionByIdAsync<TezosTransaction>(txId)
                     .ConfigureAwait(false);
 
                 if (tx != null && tx.IsConfirmed)

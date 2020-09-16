@@ -12,17 +12,17 @@ namespace Atomex.Client.Core.Tests
 
         private Order Order { get; } = new Order
         {
-            Symbol = Common.LtcBtcTestNet.Name,
+            Symbol = Commons.LtcBtcTestNet.Name,
             FromWallets = new List<WalletAddress>
             {
                 new WalletAddress
                 {
                     Address = "abcdefg",
-                    Currency = Common.BtcTestNet.Name
+                    Currency = Commons.BtcTestNet.Name
                 }, new WalletAddress
                 {
                     Address = "gfedcba",
-                    Currency = Common.BtcTestNet.Name
+                    Currency = Commons.BtcTestNet.Name
                 }
             }
         };

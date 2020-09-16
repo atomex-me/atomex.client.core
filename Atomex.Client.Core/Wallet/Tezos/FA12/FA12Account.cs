@@ -3,15 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
-using Newtonsoft.Json.Linq;
-using Serilog;
+using Atomex.Wallet.Bips;
+using Atomex.Wallets.Abstract;
+using Atomex.Common.Memory;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -298,8 +301,8 @@ namespace Atomex.Wallet.Tezos
             if (!(tx is TezosTransaction xtzTx))
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
-            var oldTx = (TezosTransaction)await DataRepository
-                .GetTransactionByIdAsync(Currency, tx.Id, Fa12.TransactionType)
+            var oldTx = await DataRepository
+                .GetTransactionByIdAsync<TezosTransaction>(Currency, tx.Id)
                 .ConfigureAwait(false);
 
 //            if (oldTx != null && oldTx.IsConfirmed)
@@ -419,9 +422,8 @@ namespace Atomex.Wallet.Tezos
             var fa12 = Fa12;
 
             var txs = (await DataRepository
-                .GetTransactionsAsync(Currency, fa12.TransactionType)
+                .GetTransactionsAsync<TezosTransaction>(Currency)
                 .ConfigureAwait(false))
-                .Cast<TezosTransaction>()
                 .ToList();
 
             var internalTxs = txs.Aggregate(new List<TezosTransaction>(), (list, tx) =>
@@ -510,9 +512,9 @@ namespace Atomex.Wallet.Tezos
 
             if (callingAddress != null)
             {
-                using var callingAddressPublicKey = new SecureBytes((await GetAddressAsync(callingAddress.Address)
+                var callingAddressPublicKey = (await GetAddressAsync(callingAddress.Address)
                     .ConfigureAwait(false))
-                    .PublicKeyBytes());
+                    .PublicKeyBytes();
 
                 foreach (var wa in addresses.Values)
                 {
@@ -522,7 +524,7 @@ namespace Atomex.Wallet.Tezos
                         .TryGetTokenBalanceAsync(
                             address: wa.Address,
                             callingAddress: callingAddress.Address,
-                            securePublicKey: callingAddressPublicKey,
+                            publicKey: callingAddressPublicKey,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -580,9 +582,8 @@ namespace Atomex.Wallet.Tezos
                 return;
 
             var txs = (await DataRepository
-                .GetTransactionsAsync(Currency, fa12.TransactionType)
+                .GetTransactionsAsync<TezosTransaction>(Currency)
                 .ConfigureAwait(false))
-                .Cast<TezosTransaction>()
                 .ToList();
 
             var internalTxs = txs.Aggregate(new List<TezosTransaction>(), (list, tx) =>
@@ -622,9 +623,9 @@ namespace Atomex.Wallet.Tezos
 
             if (callingAddress != null)
             {
-                using var callingAddressPublicKey = new SecureBytes((await GetAddressAsync(callingAddress.Address)
+                var callingAddressPublicKey = (await GetAddressAsync(callingAddress.Address)
                     .ConfigureAwait(false))
-                    .PublicKeyBytes());
+                    .PublicKeyBytes();
 
                 var fa12Api = fa12.BlockchainApi as ITokenBlockchainApi;
 
@@ -632,7 +633,7 @@ namespace Atomex.Wallet.Tezos
                     .TryGetTokenBalanceAsync(
                         address: address,
                         callingAddress: callingAddress.Address,
-                        securePublicKey: callingAddressPublicKey,
+                        publicKey: callingAddressPublicKey,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

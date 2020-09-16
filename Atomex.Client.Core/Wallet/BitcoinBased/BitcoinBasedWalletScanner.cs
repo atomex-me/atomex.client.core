@@ -3,12 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
+
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
-using Serilog;
+using Atomex.Wallet.Bips;
+using Atomex.Wallet.KeyStorage;
 
 namespace Atomex.Wallet.BitcoinBased
 {
@@ -105,7 +108,6 @@ namespace Atomex.Wallet.BitcoinBased
 
             var scanParams = new[]
             {
-                new {Chain = HdKeyStorage.NonHdKeysChain, LookAhead = 0},
                 new {Chain = Bip44.Internal, LookAhead = InternalLookAhead},
                 new {Chain = Bip44.External, LookAhead = ExternalLookAhead},
             };
@@ -230,7 +232,7 @@ namespace Atomex.Wallet.BitcoinBased
                 foreach (var txId in txIds)
                 {
                     var localTx = await Account
-                        .GetTransactionByIdAsync(txId)
+                        .GetTransactionByIdAsync<BitcoinBasedTransaction>(txId)
                         .ConfigureAwait(false);
 
                     // request only not confirmed transactions

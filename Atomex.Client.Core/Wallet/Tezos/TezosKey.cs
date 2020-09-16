@@ -1,92 +1,86 @@
-﻿using Atomex.Blockchain.Tezos;
-using Atomex.Common;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
+
+using Atomex.Common.Memory;
 using Atomex.Cryptography;
 using Atomex.Cryptography.BouncyCastle;
 
-namespace Atomex.Wallet.Tezos
+namespace Atomex.Wallets.Tezos
 {
+    /// <summary>
+    /// Represents asymmetric key for Tezos
+    /// </summary>
+    /// <inheritdoc/>
     public class TezosKey : IKey
     {
-        private readonly SecureBytes _privateKey;
-        private readonly SecureBytes _publicKey;
+        public const int PrivateKeySize = 32;
+
+        protected SecureBytes _privateKey;
+        protected SecureBytes _publicKey;
+        private bool _disposed;
+
+        public virtual SecureBytes GetPrivateKey() => _privateKey.Copy();
+        public SecureBytes GetPublicKey() => _publicKey.Copy();
+
+        protected TezosKey() { }
 
         public TezosKey(SecureBytes seed)
         {
-            Ed25519.GenerateKeyPair(
-                seed: seed,
-                privateKey: out _privateKey,
-                publicKey: out _publicKey);
+            _privateKey = seed.Copy();
+
+            BcEd25519.GeneratePublicKey(_privateKey, out _publicKey);
         }
 
-        public SecureBytes GetPrivateKey()
+        public byte[] SignHash(ReadOnlySpan<byte> hash)
         {
-            return _privateKey.Clone();
+            using var unmanagedPrivateKey = _privateKey.ToUnmanagedBytes();
+
+            return _privateKey.Length == PrivateKeySize
+                ? BcEd25519.Sign(unmanagedPrivateKey, hash)
+                : BcEd25519.SignWithExtendedKey(unmanagedPrivateKey, hash);
         }
 
-        public SecureBytes GetPublicKey()
+        public Task<byte[]> SignHashAsync(
+            ReadOnlyMemory<byte> hash,
+            CancellationToken cancellationToken = default)
         {
-            return _publicKey.Clone();
+            return Task.Run(() => SignHash(hash.Span), cancellationToken);
         }
 
-        public byte[] SignHash(byte[] hash)
+        public bool VerifyHash(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> signature)
         {
-            using var securePrivateKey = GetPrivateKey();
-            using var scopedPrivateKey = securePrivateKey.ToUnsecuredBytes();
+            using var unmanagedPublicKey = _publicKey.ToUnmanagedBytes();
 
-            if (scopedPrivateKey.Length == 32)
-                return TezosSigner.Sign(
-                    data: hash,
-                    privateKey: scopedPrivateKey);
-
-            return TezosSigner.SignByExtendedKey(
-                data: hash,
-                extendedPrivateKey: scopedPrivateKey);
+            return BcEd25519.Verify(unmanagedPublicKey, hash, signature);
         }
 
-        public byte[] SignMessage(byte[] data)
+        public Task<bool> VerifyHashAsync(
+            ReadOnlyMemory<byte> hash,
+            ReadOnlyMemory<byte> signature,
+            CancellationToken cancellationToken = default)
         {
-            using var securePrivateKey = GetPrivateKey();
-            using var scopedPrivateKey = securePrivateKey.ToUnsecuredBytes();
-
-            if (scopedPrivateKey.Length == 32)
-                return TezosSigner.Sign(
-                    data: data,
-                    privateKey: scopedPrivateKey);
-
-            return TezosSigner.SignByExtendedKey(
-                data: data,
-                extendedPrivateKey: scopedPrivateKey);
+            return Task.Run(() => VerifyHash(hash.Span, signature.Span), cancellationToken);
         }
 
-        public bool VerifyHash(byte[] hash, byte[] signature)
+        protected virtual void Dispose(bool disposing)
         {
-            using var securePublicKey = GetPublicKey();
-            using var scopedPublicKey = securePublicKey.ToUnsecuredBytes();
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _privateKey.Dispose();
+                    _publicKey.Dispose();
+                }
 
-            return TezosSigner.Verify(
-                data: hash,
-                signature: signature,
-                publicKey: scopedPublicKey);
-        }
-
-        public bool VerifyMessage(byte[] data, byte[] signature)
-        {
-            using var securePublicKey = GetPublicKey();
-            using var scopedPublicKey = securePublicKey.ToUnsecuredBytes();
-
-            return TezosSigner.Verify(
-                data: data,
-                signature: signature,
-                publicKey: scopedPublicKey);
+                _disposed = true;
+            }
         }
 
         public void Dispose()
         {
-            if (_privateKey != null)
-                _privateKey.Dispose();
-
-            if (_publicKey != null)
-                _publicKey.Dispose();
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

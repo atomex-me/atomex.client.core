@@ -1,15 +1,19 @@
-﻿using System;
+﻿
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain.Abstract;
-using Atomex.Common;
-using Atomex.Core;
-using Atomex.Wallet.Abstract;
 using NBitcoin;
 using Serilog;
+
+using Atomex.Blockchain.Abstract;
+using Atomex.Common;
+using Atomex.Common.Memory;
+using Atomex.Core;
+using Atomex.Wallet.Abstract;
+using Atomex.Wallet.KeyStorage;
 using Network = Atomex.Core.Network;
 
 namespace Atomex.Wallet
@@ -22,12 +26,17 @@ namespace Atomex.Wallet
         public Network Network => KeyStorage.Network;
         public bool IsLocked => KeyStorage.IsLocked;
 
-        private HdWallet(string pathToWallet, SecureString password)
+        private HdWallet(
+            string pathToWallet,
+            SecureBytes keyPassword)
         {
             PathToWallet = PathEx.ToFullPath(pathToWallet);
 
-            KeyStorage = HdKeyStorageLoader.LoadFromFile(pathToWallet, password)
-                .Unlock(password);
+            KeyStorage = HdKeyStorage
+                .LoadFromFile(
+                    pathToFile: pathToWallet,
+                    keyPassword: keyPassword)
+                .Unlock(keyPassword);
         }
 
         public HdWallet(
@@ -58,14 +67,19 @@ namespace Atomex.Wallet
             KeyStorage.Lock();
         }
 
-        public void Unlock(SecureString password)
+        public void Unlock(SecureBytes keyPassword)
         {
-            KeyStorage.Unlock(password);
+            KeyStorage.Unlock(keyPassword);
         }
 
-        public Task EncryptAsync(SecureString password)
+        public void Encrypt(SecureBytes keyPassword)
         {
-            return KeyStorage.EncryptAsync(password);
+            KeyStorage.Encrypt(keyPassword);
+        }
+
+        public Task EncryptAsync(SecureBytes keyPassword)
+        {
+            return KeyStorage.EncryptAsync(keyPassword);
         }
 
         public WalletAddress GetAddress(Currency currency, int chain, uint index)
@@ -75,7 +89,7 @@ namespace Atomex.Wallet
             if (securePublicKey == null)
                 return null;
 
-            using var publicKey = securePublicKey.ToUnsecuredBytes();
+            var publicKey = securePublicKey.ToUnsecuredBytes();
 
             var address = currency.AddressFromKey(publicKey);
 
@@ -280,33 +294,14 @@ namespace Atomex.Wallet
             return KeyStorage.GetDeterministicSecret(currency, timeStamp);
         }
 
-        //public bool Verify(
-        //    WalletAddress walletAddress,
-        //    byte[] data,
-        //    byte[] signature)
-        //{
-        //    if (walletAddress == null)
-        //        throw new ArgumentNullException(nameof(walletAddress));
-
-        //    if (data == null)
-        //        throw new ArgumentNullException(nameof(data));
-
-        //    if (signature == null)
-        //        throw new ArgumentNullException(nameof(signature));
-
-        //    return KeyStorage.VerifyMessage(
-        //        currency: walletAddress.Currency,
-        //        data: data,
-        //        signature: signature,
-        //        keyIndex: walletAddress.KeyIndex);
-        //}
-
-        public static HdWallet LoadFromFile(string pathToWallet, SecureString password)
+        public static HdWallet LoadFromFile(
+            string pathToWallet,
+            SecureBytes keyPassword)
         {
-            return new HdWallet(pathToWallet, password);
+            return new HdWallet(pathToWallet, keyPassword);
         }
 
-        public void SaveToFile(string pathToWallet, SecureString password)
+        public void SaveToFile(string pathToWallet, SecureBytes keyPassword, byte[] salt)
         {
             var walletDirectory = Path.GetDirectoryName(pathToWallet);
 
@@ -316,7 +311,7 @@ namespace Atomex.Wallet
             if (!Directory.Exists(walletDirectory))
                 Directory.CreateDirectory(walletDirectory);
 
-            KeyStorage.SaveToFile(pathToWallet, password);
+            KeyStorage.SaveToFile(pathToWallet, keyPassword, salt);
         }
     }
 }

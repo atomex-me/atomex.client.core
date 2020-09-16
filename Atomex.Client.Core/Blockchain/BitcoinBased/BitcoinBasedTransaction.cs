@@ -3,13 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain.Abstract;
-using Atomex.Common;
-using Atomex.Core;
-using Atomex.Wallet.Abstract;
 using NBitcoin;
 using NBitcoin.Policy;
 using Serilog;
+
+using Atomex.Blockchain.Abstract;
+using Atomex.Common;
+using Atomex.Common.Memory;
+using Atomex.Core;
+using Atomex.Wallet.Abstract;
 
 namespace Atomex.Blockchain.BitcoinBased
 {
@@ -128,12 +130,14 @@ namespace Atomex.Blockchain.BitcoinBased
             var output = (BitcoinBasedTxOutput)spentOutput;
             var currency = (BitcoinBasedCurrency)Currency;
 
+            var address = privateKey.PubKey.GetAddress(ScriptPubKeyType.Legacy, currency.Network);
+
             Tx.Sign(new BitcoinSecret(privateKey, currency.Network), output.Coin);
         }
 
         public void Sign(SecureBytes privateKey, ITxOutput spentOutput)
         {
-            using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
+            var scopedPrivateKey = privateKey.ToUnsecuredBytes();
 
             Sign(new Key(scopedPrivateKey), spentOutput); // todo: do not use NBitcoin.Key
         }
@@ -146,7 +150,7 @@ namespace Atomex.Blockchain.BitcoinBased
 
         public void Sign(SecureBytes privateKey, ITxOutput[] spentOutputs)
         {
-            using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
+            var scopedPrivateKey = privateKey.ToUnsecuredBytes();
 
             Sign(new Key(scopedPrivateKey), spentOutputs); // todo: do not use NBitcoin.Key
         }
@@ -358,11 +362,13 @@ namespace Atomex.Blockchain.BitcoinBased
             Script change,
             long amount,
             long fee,
-            DateTimeOffset lockTime)
+            DateTimeOffset lockTime,
+            params Script[] knownRedeems)
         {
             var tx = currency.Network.CreateTransactionBuilder()
                 .SetDustPrevention(false)
                 .AddCoins(coins)
+                .AddKnownRedeems(knownRedeems)
                 .Send(destination, new Money(amount))
                 .SendFees(new Money(fee))
                 .SetChange(change)

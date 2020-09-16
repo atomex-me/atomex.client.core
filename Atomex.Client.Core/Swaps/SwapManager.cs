@@ -143,7 +143,8 @@ namespace Atomex.Swaps
                 {
                     attempts++;
 
-                    var order = _account.GetOrderById(receivedSwap.OrderId);
+                    var order = await _account
+                        .GetOrderByIdAsync(receivedSwap.OrderId);
 
                     if (order != null)
                         return order;
@@ -444,18 +445,7 @@ namespace Atomex.Swaps
             }
             else
             {
-                if (DateTime.UtcNow < swap.TimeStamp.ToUniversalTime() + DefaultMaxSwapTimeout)
-                {
-                    if (swap.IsInitiator)
-                    {
-                        // todo: reinitiate swap
-                    }
-                    else
-                    {
-                        // todo: reaccept swap
-                    }
-                }
-                else
+                if (DateTime.UtcNow >= swap.TimeStamp.ToUniversalTime() + DefaultMaxSwapTimeout)
                 {
                     swap.Cancel();
                     RaiseSwapUpdated(swap, SwapStateFlags.IsCanceled);

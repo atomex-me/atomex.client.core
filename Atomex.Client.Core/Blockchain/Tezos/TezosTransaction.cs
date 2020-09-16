@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
+using Serilog;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.Abstract;
-using Newtonsoft.Json.Linq;
-using Serilog;
 
 namespace Atomex.Blockchain.Tezos
 {
@@ -82,12 +83,10 @@ namespace Atomex.Blockchain.Tezos
 
         public async Task FillOperationsAsync(
             JObject head,
-            SecureBytes securePublicKey,
+            byte[] publicKey,
             bool incrementCounter = true,
             CancellationToken cancellationToken = default)
         {
-            using var publicKey = securePublicKey.ToUnsecuredBytes();
-
             var xtz = (Atomex.Tezos)Currency;
 
             var rpc = new Rpc(xtz.RpcNodeUri);
@@ -166,10 +165,12 @@ namespace Atomex.Blockchain.Tezos
                 return false;
             }
 
-            using var privateKey = securePrivateKey.ToUnsecuredBytes();
+            using var privateKey = securePrivateKey.ToUnmanagedBytes();
 
             using var securePublicKey = keyStorage
                 .GetPublicKey(Currency, address.KeyIndex);
+
+            var publicKey = securePublicKey.ToUnsecuredBytes();
 
             var rpc = new Rpc(xtz.RpcNodeUri);
 
@@ -177,7 +178,7 @@ namespace Atomex.Blockchain.Tezos
                 .GetHeader()
                 .ConfigureAwait(false);
 
-            await FillOperationsAsync(Head, securePublicKey)
+            await FillOperationsAsync(Head, publicKey)
                 .ConfigureAwait(false);
 
             if (Type != BlockchainTransactionType.Output)
@@ -241,7 +242,7 @@ namespace Atomex.Blockchain.Tezos
                 return false;
             }
 
-            using var privateKey = securePrivateKey.ToUnsecuredBytes();
+            using var privateKey = securePrivateKey.ToUnmanagedBytes();
 
             var rpc = new Rpc(xtz.RpcNodeUri);
 
@@ -286,21 +287,10 @@ namespace Atomex.Blockchain.Tezos
                 return false;
             }
 
-            using var securePrivateKey = keyStorage
-                .GetPrivateKey(Currency, address.KeyIndex);
-
-            if (securePrivateKey == null)
-            {
-                Log.Error("Can't find private key for address {@address}", address);
-                return false;
-            }
-
-            using var privateKey = securePrivateKey.ToUnsecuredBytes();
-
             using var securePublicKey = keyStorage
                 .GetPublicKey(Currency, address.KeyIndex);
 
-            using var publicKey = securePublicKey.ToUnsecuredBytes();
+            var publicKey = securePublicKey.ToUnsecuredBytes();
 
             var rpc = new Rpc(xtz.RpcNodeUri);
 

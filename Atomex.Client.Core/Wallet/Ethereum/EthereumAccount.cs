@@ -13,7 +13,8 @@ using Atomex.Blockchain.Ethereum.ERC20;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
+using Atomex.Wallet.Bips;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -327,7 +328,7 @@ namespace Atomex.Wallet.Ethereum
 
             var oldTx = !ethTx.IsInternal
                 ? await DataRepository
-                    .GetTransactionByIdAsync(Currency, tx.Id, Eth.TransactionType)
+                    .GetTransactionByIdAsync<EthereumTransaction>(Currency, tx.Id)
                     .ConfigureAwait(false)
                 : null;
 
@@ -382,9 +383,8 @@ namespace Atomex.Wallet.Ethereum
             var eth = Eth;
 
             var txs = (await DataRepository
-                .GetTransactionsAsync(Currency, eth.TransactionType)
+                .GetTransactionsAsync<EthereumTransaction>(Currency)
                 .ConfigureAwait(false))
-                .Cast<EthereumTransaction>()
                 .ToList();
 
             var internalTxs = txs.Aggregate(new List<EthereumTransaction>(), (list, tx) =>
@@ -529,9 +529,8 @@ namespace Atomex.Wallet.Ethereum
 
             // calculate unconfirmed balances
             var unconfirmedTxs = (await DataRepository
-                .GetUnconfirmedTransactionsAsync(Currency, eth.TransactionType)
+                .GetUnconfirmedTransactionsAsync<EthereumTransaction>(Currency)
                 .ConfigureAwait(false))
-                .Cast<EthereumTransaction>()
                 .ToList();
 
             var unconfirmedInternalTxs = unconfirmedTxs.Aggregate(new List<EthereumTransaction>(), (list, tx) =>
@@ -761,5 +760,16 @@ namespace Atomex.Wallet.Ethereum
         }
 
         #endregion Addresses
+
+        #region Transactions
+
+        public override async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync()
+        {
+            return await DataRepository
+                .GetTransactionsAsync<EthereumTransaction>(Currency)
+                .ConfigureAwait(false);
+        }
+
+        #endregion
     }
 }

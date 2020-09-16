@@ -6,16 +6,16 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Nethereum.Signer;
 using Nethereum.Util;
+using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
-using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography;
-using Atomex.Wallet.Bip;
-using Atomex.Wallet.Ethereum;
 using Atomex.Blockchain.Ethereum.Abstract;
-using Serilog;
+using Atomex.Common.Memory;
+using Atomex.Wallets.Ethereum;
+using Atomex.Wallet.Bips;
 
 namespace Atomex
 {

@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Abstract;
 using Atomex.Api;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Core;
+using Atomex.Wallet.Settings;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -65,25 +67,7 @@ namespace Atomex.Wallet.Abstract
         /// <returns>this</returns>
         IAccount UseUserSettings(UserSettings userSettings);
 
-        ///// <summary>
-        ///// Send <paramref name="amount"/> from <paramref name="from"/> with <paramref name="fee"/> and <paramref name="feePrice"/> to address <paramref name="to"/>
-        ///// </summary>
-        ///// <param name="currency">Currency</param>
-        ///// <param name="from">From addresses</param>
-        ///// <param name="to">Destination address</param>
-        ///// <param name="amount">Amount to send</param>
-        ///// <param name="fee">Fee</param>
-        ///// <param name="feePrice">Fee price</param>
-        ///// <param name="cancellationToken">Cancellation token</param>
-        ///// <returns>Null if success, otherwise false</returns>
-        //Task<Error> SendAsync(
-        //    string currency,
-        //    IEnumerable<WalletAddress> from,
-        //    string to,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    CancellationToken cancellationToken = default);
+        void SaveUserSettingsToFile(string pathToFile, SecureString password);
 
         /// <summary>
         /// Send <paramref name="amount"/> from <paramref name="from"/> with <paramref name="fee"/> and <paramref name="feePrice"/> to address <paramref name="to"/>
@@ -106,24 +90,6 @@ namespace Atomex.Wallet.Abstract
             decimal feePrice,
             bool useDefaultFee = false,
             CancellationToken cancellationToken = default);
-
-        ///// <summary>
-        ///// Send <paramref name="amount"/> with <paramref name="fee"/> and <paramref name="feePrice"/> to address <paramref name="to"/>
-        ///// </summary>
-        ///// <param name="currency">Currency</param>
-        ///// <param name="to">Destination address</param>
-        ///// <param name="amount">Amount to send</param>
-        ///// <param name="fee">Fee</param>
-        ///// <param name="feePrice">Fee price</param>
-        ///// <param name="cancellationToken">Cancellation token</param>
-        ///// <returns>Null if success, otherwise false</returns>
-        //Task<Error> SendAsync(
-        //    string currency,
-        //    string to,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Send <paramref name="amount"/> with <paramref name="fee"/> and <paramref name="feePrice"/> to address <paramref name="to"/>
@@ -291,31 +257,6 @@ namespace Atomex.Wallet.Abstract
             BlockchainTransactionType transactionType,
             CancellationToken cancellationToken = default);
 
-        ///// <summary>
-        ///// Selected addresses list to send with given amount and fee
-        ///// </summary>
-        ///// <param name="currency">Currency</param>
-        ///// <param name="from">Source address (can be null)</param>
-        ///// <param name="to">Destination address (can be null)</param>
-        ///// <param name="amount">Destination address (can be null)</param>
-        ///// <param name="fee">Fee</param>
-        ///// <param name="feeUsagePolicy">Fee usage policy</param>
-        ///// <param name="addressUsagePolicy">Address usage policy</param>
-        ///// <param name="transactionType">Blockchain transaction type</param>
-        ///// <param name="cancellationToken">Cancellation token</param>
-        ///// <returns>Max amount and fee to send</returns>
-        //Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
-        //    string currency,
-        //    IList<WalletAddress> from,
-        //    string to,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    FeeUsagePolicy feeUsagePolicy,
-        //    AddressUsagePolicy addressUsagePolicy,
-        //    BlockchainTransactionType transactionType,
-        //    CancellationToken cancellationToken = default);
-
         /// <summary>
         /// Gets free internal address for <paramref name="currency"/>
         /// </summary>
@@ -335,16 +276,6 @@ namespace Atomex.Wallet.Abstract
         Task<WalletAddress> GetFreeExternalAddressAsync(
             string currency,
             CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Get refund address for <paramref name="currency"/>
-        /// </summary>
-        /// <param name="currency">Currency</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Wallet address</returns>
-        //Task<WalletAddress> GetRefundAddressAsync(
-        //    string currency,
-        //    CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Get redeem address for <paramref name="currency"/>
@@ -367,18 +298,20 @@ namespace Atomex.Wallet.Abstract
             bool notifyIfBalanceUpdated = true,
             CancellationToken cancellationToken = default);
 
-        Task<IBlockchainTransaction> GetTransactionByIdAsync(string currency, string txId);
+        Task<T> GetTransactionByIdAsync<T>(string currency, string txId)
+            where T : IBlockchainTransaction;
+
         Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(string currency);
         Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync();
-        Task<bool> RemoveTransactionAsync(string id);
+        Task<bool> RemoveTransactionAsync(string currecy, string txId);
 
         #endregion Transactions
 
         #region Orders
 
         Task<bool> UpsertOrderAsync(Order order);
-        Order GetOrderById(string clientOrderId);
-        Order GetOrderById(long id);
+        Task<Order> GetOrderByIdAsync(string clientOrderId);
+        Task<Order> GetOrderByIdAsync(long id);
 
         #endregion Orders
 

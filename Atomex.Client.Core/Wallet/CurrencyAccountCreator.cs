@@ -1,9 +1,11 @@
 ﻿using System;
+
 using Atomex.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
 using Atomex.Wallet.Ethereum;
 using Atomex.Wallet.Tezos;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet
 {

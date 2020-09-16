@@ -8,10 +8,10 @@ using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
-using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography;
-using Atomex.Wallet.BitcoinBased;
+using Atomex.Common.Memory;
+using Atomex.Wallets.BitcoinBased;
 
 namespace Atomex
 {
@@ -51,8 +51,7 @@ namespace Atomex
             new BitcoinBasedKey(seed);
 
         public override string AddressFromKey(byte[] publicKey) =>
-            new PubKey(publicKey)
-                .ToString(Network);
+            new PubKey(publicKey).GetAddress(ScriptPubKeyType.Legacy, Network).ToString();
 
         public override bool IsValidAddress(string address)
         {
@@ -136,7 +135,8 @@ namespace Atomex
             string changeAddress,
             long amount,
             long fee,
-            DateTimeOffset lockTime)
+            DateTimeOffset lockTime,
+            params Script[] knownRedeems)
         {
             return CreateP2PkhTx(
                 unspentOutputs: unspentOutputs,
@@ -144,7 +144,8 @@ namespace Atomex
                 changeAddress: changeAddress,
                 amount: amount,
                 fee: fee,
-                lockTime: lockTime);
+                lockTime: lockTime,
+                knownRedeems: knownRedeems);
         }
 
         public IBitcoinBasedTransaction CreateP2PkhTx(
@@ -153,7 +154,8 @@ namespace Atomex
             string changeAddress,
             long amount,
             long fee,
-            DateTimeOffset lockTime)
+            DateTimeOffset lockTime,
+            params Script[] knownRedeems)
         {
             var coins = unspentOutputs
                 .Cast<BitcoinBasedTxOutput>()
@@ -172,7 +174,8 @@ namespace Atomex
                 change: change,
                 amount: amount,
                 fee: fee,
-                lockTime: lockTime);
+                lockTime: lockTime,
+                knownRedeems: knownRedeems);
         }
 
         public IBitcoinBasedTransaction CreateP2WPkhTx(

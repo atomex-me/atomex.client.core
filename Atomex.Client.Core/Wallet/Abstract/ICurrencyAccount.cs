@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Core;
@@ -15,14 +16,6 @@ namespace Atomex.Wallet.Abstract
 
         #region Common
 
-        //Task<Error> SendAsync(
-        //    IEnumerable<WalletAddress> from,
-        //    string to,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    CancellationToken cancellationToken = default);
-
         Task<Error> SendAsync(
             IEnumerable<WalletAddress> from,
             string to,
@@ -31,13 +24,6 @@ namespace Atomex.Wallet.Abstract
             decimal feePrice,
             bool useDefaultFee = false,
             CancellationToken cancellationToken = default);
-
-        //Task<Error> SendAsync(
-        //    string to,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    CancellationToken cancellationToken = default);
 
         Task<Error> SendAsync(
             string to,
@@ -149,7 +135,10 @@ namespace Atomex.Wallet.Abstract
             bool notifyIfBalanceUpdated = true,
             CancellationToken cancellationToken = default);
 
-        Task<IBlockchainTransaction> GetTransactionByIdAsync(string txId);
+        Task<T> GetTransactionByIdAsync<T>(string txId)
+            where T : IBlockchainTransaction;
+
+        Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync();
 
         #endregion Transactions
     }

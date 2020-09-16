@@ -4,6 +4,10 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using Nethereum.RPC.Eth.DTOs;
+using Nethereum.Contracts;
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
@@ -11,10 +15,8 @@ using Atomex.Blockchain.Ethereum.ERC20;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Nethereum.RPC.Eth.DTOs;
-using Nethereum.Contracts;
-using Serilog;
-using Atomex.Wallet.Bip;
+using Atomex.Wallet.Bips;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -357,8 +359,8 @@ namespace Atomex.Wallet.Ethereum
             if (!(tx is EthereumTransaction ethTx))
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
-            var oldTx = (EthereumTransaction) await DataRepository
-                .GetTransactionByIdAsync(Currency, tx.Id, erc20.TransactionType)
+            var oldTx = await DataRepository
+                .GetTransactionByIdAsync<EthereumTransaction>(Currency, tx.Id)
                 .ConfigureAwait(false);
 
             //if (oldTx != null && oldTx.IsConfirmed)
@@ -415,9 +417,8 @@ namespace Atomex.Wallet.Ethereum
             var erc20 = Erc20;
 
             var txs = (await DataRepository
-                .GetTransactionsAsync(Currency, erc20.TransactionType)
+                .GetTransactionsAsync<EthereumTransaction>(Currency)
                 .ConfigureAwait(false))
-                .Cast<EthereumTransaction>()
                 .ToList();
 
             // calculate balances
@@ -504,9 +505,8 @@ namespace Atomex.Wallet.Ethereum
             var erc20 = Erc20;
 
             var txs = (await DataRepository
-                .GetTransactionsAsync(Currency, erc20.TransactionType)
+                .GetTransactionsAsync<EthereumTransaction>(Currency)
                 .ConfigureAwait(false))
-                .Cast<EthereumTransaction>()
                 .ToList();
 
             var walletAddress = await DataRepository

@@ -1,66 +1,92 @@
-﻿using Atomex.Common;
-using Atomex.Cryptography;
-using Atomex.Wallet.BitcoinBased;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 using NBitcoin;
 using Nethereum.Signer;
 
-namespace Atomex.Wallet.Ethereum
+using Atomex.Common;
+using Atomex.Common.Memory;
+using Atomex.Cryptography;
+
+namespace Atomex.Wallets.Ethereum
 {
-    public class EthereumExtKey : BitcoinBasedExtKey
+    /// <summary>
+    /// Represents asymmetric Hierarchical Deterministic key for Ethereum
+    /// </summary>
+    /// <inheritdoc/>
+    public class EthereumExtKey : EthereumKey, IExtKey
     {
         public EthereumExtKey(SecureBytes seed)
             : base(seed)
         {
         }
 
-        private EthereumExtKey(ExtKey key)
-            : base(key)
+        public override SecureBytes GetPrivateKey()
         {
+            var key = GetExtKey().PrivateKey;
+
+            return new SecureBytes(key.ToBytes());
         }
 
-        public override IExtKey Derive(uint index)
+        protected SecureBytes Derive(Func<ExtKey, ExtKey> derivationFunc)
         {
-            return new EthereumExtKey(Key.Derive(index));
+            var extKey = GetExtKey();
+            var childExtKey = derivationFunc(extKey);
+            var childExtKeyBytes = childExtKey.PrivateKey.ToBytes();
+
+            try
+            {
+                return new SecureBytes(childExtKeyBytes);
+            }
+            finally
+            {
+                extKey.PrivateKey.Dispose();
+                childExtKey.PrivateKey.Dispose();
+                childExtKeyBytes.Clear();
+            }
         }
 
-        public override IExtKey Derive(KeyPath keyPath)
+        public IExtKey Derive(uint index)
         {
-            return new EthereumExtKey(Key.Derive(keyPath));
+            using var privateKey = Derive(extKey => extKey.Derive(index));
+
+            return new EthereumExtKey(privateKey);
         }
 
-        public override byte[] SignHash(byte[] hash)
+        public IExtKey Derive(string keyPath)
         {
-            return GetEcKey()
-                .Sign(hash)
-                .ToDER();
+            using var privateKey = Derive(extKey => extKey.Derive(new KeyPath(keyPath)));
+
+            return new EthereumExtKey(privateKey);
         }
 
-        public override byte[] SignMessage(byte[] data)
+        public Task<IExtKey> DeriveAsync(
+            uint index,
+            CancellationToken cancellationToken = default)
         {
-            return GetEcKey()
-                .Sign(data)
-                .ToDER();
+            return Task.Run(() => Derive(index), cancellationToken);
         }
 
-        public override bool VerifyHash(byte[] hash, byte[] signature)
+        public Task<IExtKey> DeriveAsync(
+            string keyPath,
+            CancellationToken cancellationToken = default)
         {
-            return GetEcKey()
-                .Verify(hash, EthECDSASignature.FromDER(signature));
+            return Task.Run(() => Derive(keyPath), cancellationToken);
         }
 
-        public override bool VerifyMessage(byte[] data, byte[] signature)
+        private ExtKey GetExtKey()
         {
-            return GetEcKey()
-                .Verify(data, EthECDSASignature.FromDER(signature));
+            using var unmanagedBytes = _privateKey.ToUnmanagedBytes();
+
+            // todo: use other secured framework for secp256r1 keys instead NBitcoin
+            return new ExtKey(unmanagedBytes.ToBytes());
         }
 
-        private EthECKey GetEcKey()
+        protected override EthECKey GetKey()
         {
-            using var securePrivateKey = GetPrivateKey();
-            using var privateKey = securePrivateKey.ToUnsecuredBytes();
+            using var privateKey = GetExtKey().PrivateKey;
 
-            return new EthECKey(privateKey, true);
+            return new EthECKey(privateKey.ToBytes(), true);
         }
     }
-
 }

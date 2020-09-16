@@ -2,13 +2,14 @@
 using System.Linq;
 
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.BitcoinBased;
 
 namespace Atomex.Common
 {
     public static class TxOutputExtensions
     {
-        public static IEnumerable<ITxOutput> SelectOutputsForAmount(
-            this IEnumerable<ITxOutput> outputs,
+        public static IEnumerable<BitcoinBasedTxOutput> SelectOutputsForAmount(
+            this IEnumerable<BitcoinBasedTxOutput> outputs,
             long amountInSatoshi)
         {
             foreach (var selectedOutputs in outputs.SelectOutputs())
@@ -19,7 +20,7 @@ namespace Atomex.Common
                     return selectedOutputs;
             }
 
-            return Enumerable.Empty<ITxOutput>();
+            return Enumerable.Empty<BitcoinBasedTxOutput>();
         }
 
         public static IEnumerable<ITxOutput> RemoveDuplicates(
@@ -37,7 +38,7 @@ namespace Atomex.Common
             return txOutputs.FirstOrDefault(o => o.IsSpent) ?? txOutputs.First();
         }
 
-        public static IEnumerable<IEnumerable<ITxOutput>> SelectOutputs(this IEnumerable<ITxOutput> outputs)
+        public static IEnumerable<IEnumerable<BitcoinBasedTxOutput>> SelectOutputs(this IEnumerable<BitcoinBasedTxOutput> outputs)
         {
             var outputsList = outputs.ToList();
 
@@ -46,7 +47,7 @@ namespace Atomex.Common
 
             // single outputs
             foreach (var output in outputsList)
-                yield return new ITxOutput[] { output };
+                yield return new BitcoinBasedTxOutput[] { output };
 
             // sort descending balance
             outputsList.Reverse();

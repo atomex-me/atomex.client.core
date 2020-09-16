@@ -1,329 +1,154 @@
 ﻿using System;
-using System.Linq;
-using Atomex.Blockchain.Tezos;
-using Atomex.Common;
-using Atomex.Cryptography;
-using Atomex.Cryptography.BouncyCastle;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using NBitcoin;
-using NBitcoin.BouncyCastle.Math;
 using NBitcoin.Crypto;
 
-namespace Atomex.Wallet.Tezos
+using Atomex.Common.Memory;
+using Atomex.Cryptography;
+using Atomex.Cryptography.Abstract;
+using Atomex.Cryptography.BouncyCastle;
+using Utils = NBitcoin.Utils;
+
+namespace Atomex.Wallets.Tezos
 {
-    public class TezosExtKey : IExtKey
+    /// <summary>
+    /// Represents asymmetric Hierarchical Deterministic key for Tezos
+    /// </summary>
+    /// <inheritdoc/>
+    public class TezosExtKey : TezosKey, IExtKey
     {
-        private const int ExtendedPrivateKeyLength = 64;
+        private static readonly byte[] HashKey = Encoding.ASCII.GetBytes("ed25519 seed");
+
         private const int PrivateKeyLength = 32;
         private const int ChainCodeLength = 32;
-        private const int ScalarBytes = 32;
 
-        private readonly SecureBytes _privateKey;
-        private readonly SecureBytes _publicKey;
-        private byte[] ChainCode { get; }
-        private uint Child { get; }
-        private uint Depth { get; }
-        private uint Fingerprint { get; }
-
-        protected TezosExtKey()
-        {
-        }
-
-        public TezosExtKey(SecureBytes seed)
-        {
-            using var scopedSeed = seed.ToUnsecuredBytes();
-            //var masterSecret = Hashes.HMACSHA512(key: HashKey, data: seed);
-            using var masterSecret = new ScopedBytes(PrivateKeyLength);
-
-            Buffer.BlockCopy(
-                src: scopedSeed,
-                srcOffset: 0,
-                dst: masterSecret,
-                dstOffset: 0,
-                count: 32);
-
-            // check third highest bit of the last byte of kL, where
-            // k = H512(masterSecret) and kL is its left 32-bytes
-
-            while (true)
-            {
-                using var k = new ScopedBytes(Hashes.SHA512(masterSecret));
-
-                if ((k[31] & 0b00100000) > 0)
-                {
-                    // discard current k and try to get new
-                    Buffer.BlockCopy(
-                        src: k,
-                        srcOffset: 0,
-                        dst: masterSecret,
-                        dstOffset: 0,
-                        count: 32);
-                }
-                else
-                {
-                    _privateKey = new SecureBytes(k);
-                    break;
-                };
-            }
-
-            PruneScalar(_privateKey);
-
-            Ed25519.GeneratePublicKeyFromExtended(
-                extendedPrivateKey: _privateKey,
-                publicKey: out _publicKey);
-
-            var prefix = new byte[] { 0x01 };
-            using var data = new ScopedBytes(prefix.ConcatArrays(masterSecret));
-            ChainCode = Hashes.SHA256(data);
-        }
+        private readonly SecureBytes _chainCode;
+        private readonly uint _child;
+        private readonly uint _depth;
+        private readonly uint _fingerPrint;
+        private bool _disposed;
 
         protected TezosExtKey(
             SecureBytes privateKey,
             SecureBytes publicKey,
-            byte depth,
+            SecureBytes chainCode,
             uint child,
-            byte[] chainCode,
+            uint depth,
             uint fingerPrint)
         {
-            _privateKey = privateKey.Clone();
-            _publicKey = publicKey.Clone();
+            _privateKey = privateKey;
+            _publicKey = publicKey;
+            _chainCode = chainCode;
+            _child = child;
+            _depth = depth;
+            _fingerPrint = fingerPrint;
+        }
 
-            Depth = depth;
-            Child = child;
-            Fingerprint = fingerPrint;
-            ChainCode = new byte[ChainCodeLength];
+        public TezosExtKey(SecureBytes seed)
+        {
+            using var unmanagedSeed = seed.ToUnmanagedBytes();
+            using var unmanagedSeedHash = new UnmanagedBytes(MacAlgorithm.HmacSha512.HashSize);
 
-            Buffer.BlockCopy(
-                src: chainCode,
-                srcOffset: 0,
-                dst: ChainCode,
-                dstOffset: 0,
-                count: ChainCodeLength);
+            // calculate seed mac
+            MacAlgorithm.HmacSha512.Mac(HashKey, unmanagedSeed, unmanagedSeedHash);
+
+            // create keys
+            BcEd25519.GenerateKeyPair(
+                seed: unmanagedSeedHash,
+                privateKey: out _privateKey,
+                publicKey: out _publicKey);
+
+            // save chain code as half part ([32..63] bytes) of seed hash
+            var unmanagedChainCode = new UnmanagedBytes(ChainCodeLength);
+
+            unmanagedSeedHash
+                .GetReadOnlySpan()
+                .Slice(PrivateKeyLength, ChainCodeLength)
+                .CopyTo(unmanagedChainCode);
+
+            _chainCode = new SecureBytes(unmanagedChainCode);
         }
 
         public IExtKey Derive(uint index)
         {
-            var (childPrivateKey, childPublicKey) = Derive(
-                chainCode: ChainCode,
-                child: index,
-                childChainCode: out var childChainCode);
+            using var unmanagedPrivateKey = _privateKey.ToUnmanagedBytes();
+            using var unmanagedPublicKey = _publicKey.ToUnmanagedBytes();
 
-            using var securePublicKey = GetPublicKey();
-            using var scopedPublicKey = securePublicKey.ToUnsecuredBytes();
+            using var data = new UnmanagedBytes(1 + 32 + 4);
 
+            data[0] = 0;
+
+            if (index >> 31 == 0)
+            {
+                unmanagedPublicKey
+                    .CopyTo(data.GetSpan().Slice(1, 32));
+            }
+            else // hardened key (private derivation)
+            {
+                unmanagedPrivateKey
+                    .CopyTo(data.GetSpan().Slice(1, 32));
+            }
+
+            new ReadOnlySpan<byte>(IndexToBytes(index))
+                .CopyTo(data.GetSpan().Slice(33, 4));
+
+            using var unmanagedChainCode = _chainCode.ToUnmanagedBytes();
+
+            using var hash = new UnmanagedBytes(64);
+
+            MacAlgorithm.HmacSha512.Mac(unmanagedChainCode, data, hash);
+
+            var childPrivateKey = new SecureBytes(hash.GetReadOnlySpan().Slice(0, PrivateKeyLength));
+            var childChainCode = new SecureBytes(hash.GetReadOnlySpan().Slice(PrivateKeyLength, ChainCodeLength));
+
+            BcEd25519.GeneratePublicKey(childPrivateKey, out var childPublicKey);
+
+            // todo: use self hash160 and utils to uint32
             var fingerPrint = Utils.ToUInt32(
-                value: Hashes.Hash160(scopedPublicKey).ToBytes(),
+                value: Hashes.Hash160(childPublicKey.ToUnsecuredBytes()).ToBytes(),
                 littleEndian: true);
 
             return new TezosExtKey(
                 privateKey: childPrivateKey,
                 publicKey: childPublicKey,
-                depth: (byte)(Depth + 1),
-                child: index,
                 chainCode: childChainCode,
+                child: index,
+                depth: _depth + 1,
                 fingerPrint: fingerPrint);
         }
 
-        public IExtKey Derive(KeyPath keyPath)
+        public IExtKey Derive(string keyPath)
         {
-            if (keyPath == null)
-                throw new ArgumentNullException(nameof(keyPath));
+            IExtKey key = this;
+            IExtKey derivedKey = null;
 
-            IExtKey result = this;
-
-            return keyPath.Indexes.Aggregate(result, (current, index) => current.Derive(index));
-        }
-
-        public SecureBytes GetPrivateKey()
-        {
-            return _privateKey.Clone();
-        }
-
-        public SecureBytes GetPublicKey()
-        {
-            return _publicKey.Clone();
-        }
-
-        public byte[] SignHash(byte[] hash)
-        {
-            using var scopedExtendedPrivateKey = _privateKey.ToUnsecuredBytes();
-
-            return TezosSigner.SignByExtendedKey(
-                data: hash,
-                extendedPrivateKey: scopedExtendedPrivateKey);
-        }
-
-        public byte[] SignMessage(byte[] data)
-        {
-            using var scopedExtendedPrivateKey = _privateKey.ToUnsecuredBytes();
-
-            return TezosSigner.SignByExtendedKey(
-                data: data,
-                extendedPrivateKey: scopedExtendedPrivateKey);
-        }
-
-        public bool VerifyHash(byte[] hash, byte[] signature)
-        {
-            using var scopedPublicKey = _publicKey.ToUnsecuredBytes();
-
-            return TezosSigner.Verify(
-                data: hash,
-                signature: signature,
-                publicKey: scopedPublicKey);
-        }
-
-        public bool VerifyMessage(byte[] data, byte[] signature)
-        {
-            using var scopedPublicKey = _publicKey.ToUnsecuredBytes();
-
-            return TezosSigner.Verify(
-                data: data,
-                signature: signature,
-                publicKey: scopedPublicKey);
-        }
-
-        private (SecureBytes, SecureBytes) Derive(
-            byte[] chainCode,
-            uint child,
-            out byte[] childChainCode)
-        {
-            using var k = _privateKey.ToUnsecuredBytes();  // extended 64-bit private key k
-            using var publicKey = _publicKey.ToUnsecuredBytes();
-
-            byte[] keyData;
-            byte[] chainData;
-
-            if (child >> 31 == 0)
+            foreach (var index in new KeyPath(keyPath).Indexes)
             {
-                keyData = new byte[1 + 32 + 4];
-                keyData[0] = 0x02;
-                Buffer.BlockCopy(src: publicKey, srcOffset: 0, dst: keyData, dstOffset: 1, count: 32);
+                derivedKey = key.Derive(index);
 
-                chainData = new byte[1 + 32 + 4];
-                chainData[0] = 0x03;
-                Buffer.BlockCopy(src: publicKey, srcOffset: 0, dst: chainData, dstOffset: 1, count: 32);
-            }
-            else // hardened key (private derivation)
-            {
-                keyData = new byte[1 + 64 + 4];
-                keyData[0] = 0x00;
-                Buffer.BlockCopy(src: k, srcOffset: 0, dst: keyData, dstOffset: 1, count: 64);
+                if (key != this)
+                    key.Dispose();
 
-                chainData = new byte[1 + 64 + 4];
-                chainData[0] = 0x01;
-                Buffer.BlockCopy(src: k, srcOffset: 0, dst: chainData, dstOffset: 1, count: 64);
+                key = derivedKey;
             }
 
-            // derive private & public keys
-            Buffer.BlockCopy(
-                src: IndexToBytes(child),
-                srcOffset: 0,
-                dst: keyData,
-                dstOffset: keyData.Length - 4,
-                count: 4);
+            return derivedKey;
+        }
 
-            byte[] z;
-            BigInteger kl, kr;
+        public Task<IExtKey> DeriveAsync(
+            uint index,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => Derive(index), cancellationToken);
+        }
 
-            while (true)
-            {
-                z = Hashes.HMACSHA512(key: ChainCode, data: keyData);
-
-                var zl = new BigInteger(sign: 1, bytes: z, offset: 0, length: 28);
-                var zr = new BigInteger(sign: 1, bytes: z, offset: 32, length: 32);
-
-                var klp = new BigInteger(sign: 1, bytes: k, offset: 0, length: 32);
-                var krp = new BigInteger(sign: 1, bytes: k, offset: 32, length: 32);
-
-                var eight = BigInteger.ValueOf(8);
-                var module = BigInteger.One.ShiftLeft(256);
-
-                kl = zl.Multiply(eight).Add(klp); // 8 * zl + klp
-                kr = zr.Add(krp).Mod(module); // (zr + krp) mod 2^256
-
-                // 2^252 + 27742317777372353535851937790883648493
-                var n = BigInteger.One.ShiftLeft(252)
-                    .Add(new BigInteger(str: "14DEF9DEA2F79CD65812631A5CF5D3ED", radix: 16));
-
-                if (kl.CompareTo(n) >= 0 && kl.Remainder(n).Equals(BigInteger.Zero))
-                {
-                    // Kl is divisible by the base order n, discard kl
-                    keyData.Clear();
-                    keyData = new byte[64];
-
-                    Buffer.BlockCopy(z, 0, keyData, 0, 64);
-
-                    z.Clear();
-                }
-                else break;
-            }
-
-            // derive chain code
-            Buffer.BlockCopy(
-                src: IndexToBytes(child),
-                srcOffset: 0,
-                dst: chainData,
-                dstOffset: chainData.Length - 4,
-                count: 4);
-
-            var c = Hashes.HMACSHA512(key: ChainCode, data: chainData);
-
-            childChainCode = new byte[ChainCodeLength];
-
-            Buffer.BlockCopy(
-                src: c,
-                srcOffset: 32,
-                dst: childChainCode,
-                dstOffset: 0,
-                count: ChainCodeLength);
-
-            using var childK = new ScopedBytes(ExtendedPrivateKeyLength);
-
-            var klNumberBytes = kl.ToByteArrayUnsigned();
-
-            using var klBytes = new ScopedBytes(ScalarBytes);
-            Buffer.BlockCopy(
-                src: klNumberBytes,
-                srcOffset: 0,
-                dst: klBytes,
-                dstOffset: 0,
-                count: klNumberBytes.Length);
-
-            PruneScalar(klBytes);
-
-            var krBytes = kr.ToByteArrayUnsigned();
-
-            try
-            {
-                Buffer.BlockCopy(
-                    src: klBytes,
-                    srcOffset: 0,
-                    dst: childK,
-                    dstOffset: 0,
-                    count: 32);
-
-                Buffer.BlockCopy(
-                    src: krBytes,
-                    srcOffset: 0,
-                    dst: childK,
-                    dstOffset: 32,
-                    count: 32);
-
-                var childPrivateKey = new SecureBytes(childK);
-
-                Ed25519.GeneratePublicKeyFromExtended(
-                    extendedPrivateKey: childPrivateKey,
-                    publicKey: out var childPublicKey);
-
-                return (childPrivateKey, childPublicKey);
-            }
-            finally
-            {
-                keyData.Clear();
-                z.Clear();
-                c.Clear();
-                klNumberBytes.Clear();
-                krBytes.Clear();
-            }
+        public Task<IExtKey> DeriveAsync(
+            string keyPath,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() => Derive(keyPath), cancellationToken);
         }
 
         private static byte[] IndexToBytes(uint index)
@@ -337,29 +162,17 @@ namespace Atomex.Wallet.Tezos
             return num;
         }
 
-        private static void PruneScalar(ScopedBytes data)
+        protected override void Dispose(bool disposing)
         {
-            data[0] &= 0b11111000;  // the lowest 3 bits kL are cleared (&= 0xF8)
-            data[ScalarBytes - 1] &= 0b01111111; // the highest bit kL is cleared (&= 7F)
-            data[ScalarBytes - 1] |= 0b01000000; // the second highest bit kL is set (|= 0x40)
-        }
+            if (!_disposed)
+            {
+                if (disposing)
+                    _chainCode.Dispose();
 
-        private static void PruneScalar(SecureBytes data)
-        {
-            using var scopedData = data.ToUnsecuredBytes();
+                _disposed = true;
+            }
 
-            PruneScalar(scopedData);
-
-            data.Reset(scopedData);
-        }
-
-        public void Dispose()
-        {
-            if (_privateKey != null)
-                _privateKey.Dispose();
-
-            if (_publicKey != null)
-                _publicKey.Dispose();
+            base.Dispose(disposing);
         }
     }
 }

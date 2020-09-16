@@ -5,16 +5,24 @@ using System.Linq;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using NBitcoin;
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Api;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Core;
+using Atomex.Cryptography;
 using Atomex.LiteDb;
 using Atomex.Wallet.Abstract;
-using Microsoft.Extensions.Configuration;
-using Serilog;
+using Atomex.Wallet.KeyStorage;
+using Atomex.Wallet.Settings;
+using Atomex.Wallets.Abstract;
+using Network = Atomex.Core.Network;
 
 namespace Atomex.Wallet
 {
@@ -53,42 +61,98 @@ namespace Atomex.Wallet
 
         public bool IsLocked => Wallet.IsLocked;
         public Network Network => Wallet.Network;
-        public IHdWallet Wallet { get; }
-        public ICurrencies Currencies { get; }
-        public ISymbols Symbols { get; }
+        public IHdWallet Wallet { get; private set; }
+        public ICurrencies Currencies { get; private set; }
+        public ISymbols Symbols { get; private set; }
         public UserSettings UserSettings { get; private set; }
 
-        private IAccountDataRepository DataRepository { get; }
-        private IDictionary<string, ICurrencyAccount> CurrencyAccounts { get; }
+        private IAccountDataRepository DataRepository { get; set; }
+        private IDictionary<string, ICurrencyAccount> CurrencyAccounts { get; set; }
+
+        public Account(
+            string pathToWallet,
+            string mnemonic,
+            Wordlist language,
+            SecureString derivePassPhrase,
+            SecureString password,
+            ICurrencies currencies,
+            ISymbols symbols,
+            Network network,
+            IAccountDataRepository dataRepository = null)
+        {
+            const int saltSize = 16;
+            var salt = Rand.SecureRandomBytes(saltSize);
+
+            using var keyPassword = DerivePasswordKey(password, salt);
+
+            var wallet = new HdWallet(
+                mnemonic: mnemonic,
+                wordList: language,
+                passPhrase: derivePassPhrase,
+                network: network)
+            {
+                PathToWallet = pathToWallet
+            };
+
+            wallet.Encrypt(keyPassword);
+            wallet.SaveToFile(pathToWallet, keyPassword, salt);
+
+            Init(keyPassword: keyPassword,
+                wallet: wallet,
+                currencies: currencies,
+                symbols: symbols,
+                dataRepository: dataRepository);
+        }
 
         private Account(
-            string pathToAccount,
+            string pathToWallet,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ISymbolsProvider symbolsProvider)
-            : this(wallet: HdWallet.LoadFromFile(pathToAccount, password),
-                   password: password,
-                   currenciesProvider: currenciesProvider,
-                   symbolsProvider : symbolsProvider)
+            ISymbolsProvider symbolsProvider,
+            IAccountDataRepository dataRepository)
         {
+            byte[] salt;
+            SecureBytes keyPassword = null;
+            IHdWallet wallet;
+
+            try
+            {
+                salt = HdKeyStorage.ReadSalt(pathToWallet);
+                keyPassword = DerivePasswordKey(password, salt);
+                wallet = HdWallet.LoadFromFile(pathToWallet, keyPassword);
+
+                Init(keyPassword: keyPassword,
+                    wallet: wallet,
+                    currencies: currenciesProvider.GetCurrencies(wallet.Network),
+                    symbols: symbolsProvider.GetSymbols(wallet.Network),
+                    dataRepository: dataRepository);
+            }
+            finally
+            {
+                keyPassword?.Dispose();
+            }
         }
 
-        public Account(
+        private void Init(
+            SecureBytes keyPassword,
             IHdWallet wallet,
-            SecureString password,
-            ICurrenciesProvider currenciesProvider,
-            ISymbolsProvider symbolsProvider)
+            ICurrencies currencies,
+            ISymbols symbols,
+            IAccountDataRepository dataRepository)
         {
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
+            Currencies = currencies ?? throw new ArgumentNullException(nameof(currencies));
+            Symbols = symbols ?? throw new ArgumentNullException(nameof(symbols));
 
-            Currencies = currenciesProvider.GetCurrencies(Network);
-            Symbols = symbolsProvider.GetSymbols(Network);
+            DataRepository = dataRepository;
 
-            DataRepository = new LiteDbAccountDataRepository(
-                pathToDb: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultDataFileName}",
-                password: password,
-                currencies: Currencies,
-                network: wallet.Network);
+            if (DataRepository == null)
+            {
+                DataRepository = new LiteDbAccountDataRepository(
+                    $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultDataFileName}",
+                    keyPassword,
+                    currencies);
+            }
 
             CurrencyAccounts = Currencies
                 .ToDictionary(
@@ -99,37 +163,21 @@ namespace Atomex.Wallet
                         dataRepository: DataRepository,
                         currencies: Currencies));
 
-            UserSettings = UserSettings.TryLoadFromFile(
-                pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
-                password: password) ?? UserSettings.DefaultSettings;
+            InitUserSettings(keyPassword);
         }
 
-        public Account(
-            IHdWallet wallet,
-            SecureString password,
-            IAccountDataRepository dataRepository,
-            ICurrenciesProvider currenciesProvider,
-            ISymbolsProvider symbolsProvider)
+        private void InitUserSettings(
+            SecureBytes keyPassword)
         {
-            Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
-            DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
+            var pathToSettings = $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}";
 
-            Currencies = currenciesProvider.GetCurrencies(Network);
-            Symbols = symbolsProvider.GetSymbols(Network);
-
-            CurrencyAccounts = Currencies
-                .ToDictionary(
-                    c => c.Name,
-                    c => CurrencyAccountCreator.Create(
-                        currency: c.Name,
-                        wallet: Wallet,
-                        dataRepository: DataRepository,
-                        currencies: Currencies));
-
-            UserSettings = UserSettings.TryLoadFromFile(
-                pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
-                password: password) ?? UserSettings.DefaultSettings;
+            UserSettings = UserSettings.LoadFromFile(
+                pathToFile: pathToSettings,
+                keyPassword: keyPassword) ?? UserSettings.DefaultSettings;
         }
+
+        private SecureBytes DerivePasswordKey(SecureString password, byte[] salt) =>
+            new SecureBytes(Argon2id.Compute(password, salt, hashLength: 32));
 
         #region Common
 
@@ -142,7 +190,10 @@ namespace Atomex.Wallet
 
         public void Unlock(SecureString password)
         {
-            Wallet.Unlock(password);
+            var salt = HdKeyStorage.ReadSalt(Wallet.PathToWallet);
+            using var keyPassword = DerivePasswordKey(password, salt);
+
+            Wallet.Unlock(keyPassword);
 
             Unlocked?.Invoke(this, EventArgs.Empty);
         }
@@ -151,6 +202,24 @@ namespace Atomex.Wallet
         {
             UserSettings = userSettings;
             return this;
+        }
+
+        public void SaveUserSettingsToFile(string pathToFile, SecureString password)
+        {
+            byte[] salt;
+            SecureBytes keyPassword = null;
+
+            try
+            {
+                salt = HdKeyStorage.ReadSalt(Wallet.PathToWallet);
+                keyPassword = DerivePasswordKey(password, salt);
+
+                UserSettings.SaveToFile(pathToFile, keyPassword);
+            }
+            finally
+            {
+                keyPassword?.Dispose();
+            }
         }
 
         public Task<Error> SendAsync(
@@ -239,14 +308,14 @@ namespace Atomex.Wallet
             }
 
             using var securePublicKey = Wallet.GetServicePublicKey(keyIndex);
-            using var publicKey = securePublicKey.ToUnsecuredBytes();
+            var publicKey = securePublicKey.ToUnsecuredBytes();
 
             var auth = new Auth
             {
                 TimeStamp = DateTime.UtcNow,
                 Nonce = nonce.Nonce,
                 ClientNonce = Guid.NewGuid().ToString(),
-                PublicKeyHex = publicKey.Data.ToHexString(),
+                PublicKeyHex = publicKey.ToHexString(),
                 Version = ApiVersion
             };
 
@@ -286,9 +355,10 @@ namespace Atomex.Wallet
             string pathToAccount,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ISymbolsProvider symbolsProvider)
+            ISymbolsProvider symbolsProvider,
+            IAccountDataRepository dataRepository = null)
         {
-            return new Account(pathToAccount, password, currenciesProvider, symbolsProvider);
+            return new Account(pathToAccount, password, currenciesProvider, symbolsProvider, dataRepository);
         }
 
         public ICurrencyAccount GetCurrencyAccount(string currency)
@@ -400,31 +470,6 @@ namespace Atomex.Wallet
                     cancellationToken: cancellationToken);
         }
 
-        //public Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
-        //    string currency,
-        //    IList<WalletAddress> from,
-        //    string to,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    FeeUsagePolicy feeUsagePolicy,
-        //    AddressUsagePolicy addressUsagePolicy,
-        //    BlockchainTransactionType transactionType,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return GetCurrencyAccount(currency).
-        //        SelectUnspentAddressesAsync(
-        //            from: from,
-        //            to: to,
-        //            amount: amount,
-        //            fee: fee,
-        //            feePrice: feePrice,
-        //            feeUsagePolicy: feeUsagePolicy,
-        //            addressUsagePolicy: addressUsagePolicy,
-        //            transactionType: transactionType,
-        //            cancellationToken: cancellationToken);
-        //}
-
         public Task<WalletAddress> GetFreeInternalAddressAsync(
             string currency,
             CancellationToken cancellationToken = default)
@@ -440,14 +485,6 @@ namespace Atomex.Wallet
             return GetCurrencyAccount(currency)
                 .GetFreeExternalAddressAsync(cancellationToken);
         }
-
-        //public Task<WalletAddress> GetRefundAddressAsync(
-        //    string currency,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return GetCurrencyAccount(currency)
-        //        .GetRefundAddressAsync(cancellationToken);
-        //}
 
         public Task<WalletAddress> GetRedeemAddressAsync(   //todo: check if always returns the biggest address
             string currency,
@@ -477,21 +514,19 @@ namespace Atomex.Wallet
                     cancellationToken: cancellationToken);
         }
 
-        public Task<IBlockchainTransaction> GetTransactionByIdAsync(
+        public Task<T> GetTransactionByIdAsync<T>(
             string currency,
             string txId)
+            where T : IBlockchainTransaction
         {
-            return DataRepository.GetTransactionByIdAsync(
+            return DataRepository.GetTransactionByIdAsync<T>(
                 currency: currency,
-                txId: txId,
-                transactionType: Currencies.GetByName(currency).TransactionType);
+                txId: txId);
         }
 
         public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(string currency)
         {
-            return DataRepository.GetTransactionsAsync(
-                currency: currency,
-                transactionType: Currencies.GetByName(currency).TransactionType);
+            return GetCurrencyAccount(currency).GetTransactionsAsync();
         }
 
         public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync()
@@ -509,9 +544,9 @@ namespace Atomex.Wallet
             return result;
         }
 
-        public Task<bool> RemoveTransactionAsync(string id)
+        public Task<bool> RemoveTransactionAsync(string currency, string txId)
         {
-            return DataRepository.RemoveTransactionByIdAsync(id);
+            return DataRepository.RemoveTransactionByIdAsync(currency, txId);
         }
 
         #endregion Transactions
@@ -523,14 +558,14 @@ namespace Atomex.Wallet
             return DataRepository.UpsertOrderAsync(order);
         }
 
-        public Order GetOrderById(string clientOrderId)
+        public Task<Order> GetOrderByIdAsync(string clientOrderId)
         {
-            return DataRepository.GetOrderById(clientOrderId);
+            return DataRepository.GetOrderByIdAsync(clientOrderId);
         }
 
-        public Order GetOrderById(long id)
+        public Task<Order> GetOrderByIdAsync(long id)
         {
-            return DataRepository.GetOrderById(id);
+            return DataRepository.GetOrderByIdAsync(id);
         }
 
         #endregion Orders
@@ -539,7 +574,7 @@ namespace Atomex.Wallet
 
         public Task<bool> AddSwapAsync(Swap swap)
         {
-            return DataRepository.AddSwapAsync(swap);
+            return DataRepository.InsertSwapAsync(swap);
         }
 
         public Task<bool> UpdateSwapAsync(Swap swap)

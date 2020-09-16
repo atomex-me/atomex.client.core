@@ -1,5 +1,6 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Common;
 
 namespace Atomex.Blockchain.Abstract
@@ -16,13 +17,13 @@ namespace Atomex.Blockchain.Abstract
         Task<Result<decimal>> GetTokenBalanceAsync(
             string address,
             string callingAddress,
-            SecureBytes securePublicKey,
+            byte[] publicKey,
             CancellationToken cancellationToken = default);
 
         Task<Result<decimal>> TryGetTokenBalanceAsync(
             string address,
             string callingAddress,
-            SecureBytes securePublicKey,
+            byte[] publicKey,
             int attempts = 10,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);
@@ -38,14 +39,14 @@ namespace Atomex.Blockchain.Abstract
             string holderAddress,
             string spenderAddress,
             string callingAddress,
-            SecureBytes securePublicKey,
+            byte[] publicKey,
             CancellationToken cancellationToken = default);
 
         Task<Result<decimal>> TryGetTokenAllowanceAsync(
             string holderAddress,
             string spenderAddress,
             string callingAddress,
-            SecureBytes securePublicKey,
+            byte[] publicKey,
             int attempts = 10,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);

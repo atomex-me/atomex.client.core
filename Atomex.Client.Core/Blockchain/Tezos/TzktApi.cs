@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Serilog;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Tezos;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Serilog;
 
 namespace Atomex.Blockchain.Tezos
 {
@@ -703,7 +704,7 @@ namespace Atomex.Blockchain.Tezos
         public async Task<Result<decimal>> GetTokenBalanceAsync(
             string address,
             string callingAddress,
-            SecureBytes securePublicKey,
+            byte[] publicKey,
             CancellationToken cancellationToken = default)
         {
             var token = _currency as TezosTokens.FA12;
@@ -729,7 +730,7 @@ namespace Atomex.Blockchain.Tezos
 
                 await tx.FillOperationsAsync(
                         head: head,
-                        securePublicKey: securePublicKey,
+                        publicKey: publicKey,
                         incrementCounter: false,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
@@ -751,12 +752,12 @@ namespace Atomex.Blockchain.Tezos
         public async Task<Result<decimal>> TryGetTokenBalanceAsync(
             string address,
             string callingAddress,
-            SecureBytes securePublicKey,
+            byte[] publicKey,
             int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
-            return await ResultHelper.TryDo((c) => GetTokenBalanceAsync(address, callingAddress, securePublicKey, c), attempts, attemptsIntervalMs, cancellationToken)
+            return await ResultHelper.TryDo((c) => GetTokenBalanceAsync(address, callingAddress, publicKey, c), attempts, attemptsIntervalMs, cancellationToken)
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting balance after {attempts} attempts");
         }
 
@@ -837,7 +838,7 @@ namespace Atomex.Blockchain.Tezos
             string holderAddress,
             string spenderAddress,
             string callingAddress,
-            SecureBytes securePublicKey,
+            byte[] publicKey,
             CancellationToken cancellationToken = default)
         {
             var token = _currency as TezosTokens.FA12;
@@ -863,7 +864,7 @@ namespace Atomex.Blockchain.Tezos
 
                 await tx.FillOperationsAsync(
                         head: head,
-                        securePublicKey: securePublicKey,
+                        publicKey: publicKey,
                         incrementCounter: false,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
@@ -886,12 +887,12 @@ namespace Atomex.Blockchain.Tezos
             string holderAddress,
             string spenderAddress,
             string callingAddress,
-            SecureBytes securePublicKey,
+            byte[] publicKey,
             int attempts = 10,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
-            return await ResultHelper.TryDo((c) => GetTokenAllowanceAsync(holderAddress, spenderAddress, callingAddress, securePublicKey, c), attempts, attemptsIntervalMs, cancellationToken)
+            return await ResultHelper.TryDo((c) => GetTokenAllowanceAsync(holderAddress, spenderAddress, callingAddress, publicKey, c), attempts, attemptsIntervalMs, cancellationToken)
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting balance after {attempts} attempts");
         }
 

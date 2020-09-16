@@ -803,9 +803,9 @@ namespace Atomex.Swaps.Tezos.NYX
 
                 requiredAmountInTokens -= amountInTokens;
 
-                using var callingAddressPublicKey = new SecureBytes((await NYXAccount.GetAddressAsync(walletAddress.Address)
+                var callingAddressPublicKey = (await NYXAccount.GetAddressAsync(walletAddress.Address)
                     .ConfigureAwait(false))
-                    .PublicKeyBytes());
+                    .PublicKeyBytes();
 
                 //todo: get allowance
 
@@ -968,7 +968,7 @@ namespace Atomex.Swaps.Tezos.NYX
                     .ConfigureAwait(false);
 
                 var tx = await NYXAccount
-                    .GetTransactionByIdAsync(txId)
+                    .GetTransactionByIdAsync<TezosTransaction>(txId)
                     .ConfigureAwait(false);
 
                 if (tx != null && tx.IsConfirmed)

@@ -1,8 +1,9 @@
 ﻿using System.Collections.Generic;
-using Atomex.Blockchain.Abstract;
-using Atomex.Common;
-using Atomex.Core;
 using NBitcoin;
+
+using Atomex.Blockchain.Abstract;
+using Atomex.Common.Memory;
+using Atomex.Core;
 
 namespace Atomex.Blockchain.BitcoinBased
 {

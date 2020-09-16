@@ -1,48 +1,92 @@
-﻿using Atomex.Common;
-using Atomex.Wallet.BitcoinBased;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Nethereum.Signer;
 
-namespace Atomex.Wallet.Ethereum
+using Atomex.Common.Memory;
+using Atomex.Cryptography;
+
+namespace Atomex.Wallets.Ethereum
 {
-    public class EthereumKey : BitcoinBasedKey
+    /// <summary>
+    /// Represents asymmetric key for Ethereum
+    /// </summary>
+    /// <inheritdoc/>
+    public class EthereumKey : IKey
     {
+        protected readonly SecureBytes _privateKey;
+        private bool disposed;
+
         public EthereumKey(SecureBytes seed)
-            : base(seed)
         {
+            _privateKey = seed.Copy();
         }
 
-        public override byte[] SignHash(byte[] hash)
+        public virtual SecureBytes GetPrivateKey() => _privateKey.Copy();
+
+        public SecureBytes GetPublicKey()
         {
-            return GetEcKey()
-                .Sign(hash)
+            var key = GetKey();
+
+            return new SecureBytes(key.GetPubKey());
+        }
+
+        public virtual byte[] SignHash(ReadOnlySpan<byte> hash)
+        {
+            var key = GetKey();
+
+            return key
+                .Sign(hash.ToArray())
                 .ToDER();
         }
 
-        public override byte[] SignMessage(byte[] data)
+        public virtual Task<byte[]> SignHashAsync(
+            ReadOnlyMemory<byte> hash,
+            CancellationToken cancellationToken = default)
         {
-            return GetEcKey()
-                .Sign(data)
-                .ToDER();
+            return Task.Run(() => SignHash(hash.Span), cancellationToken);
         }
 
-        public override bool VerifyHash(byte[] hash, byte[] signature)
+        public virtual bool VerifyHash(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> signature)
         {
-            return GetEcKey()
-                .Verify(hash, EthECDSASignature.FromDER(signature));
+            var key = GetKey();
+
+            return key.Verify(
+                hash: hash.ToArray(),
+                sig: EthECDSASignature.FromDER(signature.ToArray()));
         }
 
-        public override bool VerifyMessage(byte[] data, byte[] signature)
+        public virtual Task<bool> VerifyHashAsync(
+            ReadOnlyMemory<byte> hash,
+            ReadOnlyMemory<byte> signature,
+            CancellationToken cancellationToken = default)
         {
-            return GetEcKey()
-                .Verify(data, EthECDSASignature.FromDER(signature));
+            return Task.Run(() => VerifyHash(hash.Span, signature.Span), cancellationToken);
         }
 
-        private EthECKey GetEcKey()
+        protected virtual EthECKey GetKey()
         {
-            using var securePrivateKey = GetPrivateKey();
-            using var privateKey = securePrivateKey.ToUnsecuredBytes();
+            using var unmanagedPrivateKey = _privateKey.ToUnmanagedBytes();
 
-            return new EthECKey(privateKey, true);
+            // todo: use other secured framework for secp256r1 keys instead NEthereum
+            return new EthECKey(unmanagedPrivateKey.ToBytes(), true);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                    _privateKey.Dispose();
+
+                disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

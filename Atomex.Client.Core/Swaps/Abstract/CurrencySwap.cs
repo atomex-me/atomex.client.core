@@ -7,6 +7,7 @@ using Atomex.Blockchain.Helpers;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography;
+using Atomex.Cryptography.Abstract;
 using Serilog;
 
 namespace Atomex.Swaps.Abstract
@@ -111,12 +112,12 @@ namespace Atomex.Swaps.Abstract
 
         public static byte[] CreateSwapSecretHash(byte[] secretBytes)
         {
-            return Sha256.Compute(secretBytes, 2);
+            return HashAlgorithm.Sha256.Hash(HashAlgorithm.Sha256.Hash(secretBytes));
         }
 
         public static byte[] CreateSwapSecretHash160(byte[] secretBytes)
         {
-            return Ripemd160.Compute(Sha256.Compute(secretBytes));
+            return Ripemd160.Compute(HashAlgorithm.Sha256.Hash(secretBytes));
         }
 
         protected Task TrackTransactionConfirmationAsync(

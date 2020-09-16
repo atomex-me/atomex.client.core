@@ -1,6 +1,8 @@
 ﻿using System;
+
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Cryptography;
 using Atomex.Cryptography.BouncyCastle;
 
@@ -12,74 +14,49 @@ namespace Atomex.Blockchain.Tezos
             byte[] data,
             byte[] privateKey)
         {
-            return Ed25519.Sign(data, privateKey);
+            return BcEd25519.Sign(data, privateKey);
         }
 
         public static byte[] SignByExtendedKey(
             byte[] data,
             byte[] extendedPrivateKey)
         {
-            return Ed25519.SignByExtendedKey(data, extendedPrivateKey);
-        }
-
-        private static SignedMessage SignHash(
-            byte[] data,
-            byte[] privateKey,
-            Func<byte[], byte[], byte[]> signer,
-            byte[] watermark = null)
-        {
-            var dataForSign = data.Copy(offset: 0, count: data.Length);
-
-            if (watermark?.Length > 0)
-            {
-                var bytesWithWatermark = new byte[dataForSign.Length + watermark.Length];
-
-                Array.Copy(
-                    sourceArray: watermark,
-                    sourceIndex: 0,
-                    destinationArray: bytesWithWatermark,
-                    destinationIndex: 0,
-                    length: watermark.Length);
-
-                Array.Copy(
-                    sourceArray: dataForSign,
-                    sourceIndex: 0,
-                    destinationArray: bytesWithWatermark,
-                    destinationIndex: watermark.Length,
-                    length: dataForSign.Length);
-
-                dataForSign = bytesWithWatermark;
-            }
-
-            var hash = HmacBlake2b.Compute(dataForSign, SignedMessage.HashSizeBits);
-
-            var signature = signer(hash, privateKey);
-
-            return new SignedMessage
-            {
-                Bytes = dataForSign,
-                SignedHash = signature,
-                EncodedSignature = Base58Check.Encode(signature, Prefix.Edsig),
-                SignedBytes = data.ToHexString() + signature.ToHexString()
-            };
+            return BcEd25519.SignWithExtendedKey(data, extendedPrivateKey);
         }
 
         public static SignedMessage SignHash(
-            byte[] data,
-            byte[] privateKey,
+            ReadOnlySpan<byte> data,
+            ReadOnlySpan<byte> privateKey,
             byte[] watermark = null,
             bool isExtendedKey = true)
         {
-            if (isExtendedKey)
-                return SignHash(data,
-                    privateKey,
-                    Ed25519.SignByExtendedKey,
-                    watermark);
- 
-            return SignHash(data,
-                privateKey,
-                Ed25519.Sign,
-                watermark);
+            using var dataForSign = new UnmanagedBytes(watermark?.Length > 0
+                ? data.Length + watermark.Length
+                : data.Length);
+
+            if (watermark?.Length > 0)
+            {
+                watermark.CopyTo(dataForSign.GetSpan().Slice(0, watermark.Length));
+                data.CopyTo(dataForSign.GetSpan().Slice(watermark.Length, data.Length));
+            }
+            else
+            {
+                data.CopyTo(dataForSign.GetSpan().Slice(0, data.Length));
+            }
+
+            var hash = HmacBlake2b.Compute(dataForSign.ToBytes(), SignedMessage.HashSizeBits);
+
+            var signature = isExtendedKey
+                ? BcEd25519.SignWithExtendedKey(privateKey, data)
+                : BcEd25519.Sign(privateKey, data);
+
+            return new SignedMessage
+            {
+                Bytes = dataForSign.ToBytes(),
+                SignedHash = signature,
+                EncodedSignature = Base58Check.Encode(signature, Prefix.Edsig),
+                SignedBytes = data.ToArray().ToHexString() + signature.ToHexString()
+            };
         }
 
         public static bool Verify(
@@ -87,7 +64,7 @@ namespace Atomex.Blockchain.Tezos
             byte[] signature,
             byte[] publicKey)
         {
-            return Ed25519.Verify(data, signature, publicKey);
+            return BcEd25519.Verify(data, signature, publicKey);
         }
 
         public static bool VerifyHash(
@@ -97,7 +74,7 @@ namespace Atomex.Blockchain.Tezos
         {
             var hash = HmacBlake2b.Compute(data, SignedMessage.HashSizeBits);
 
-            return Ed25519.Verify(
+            return BcEd25519.Verify(
                 data: hash,
                 signature: signature,
                 publicKey: publicKey);

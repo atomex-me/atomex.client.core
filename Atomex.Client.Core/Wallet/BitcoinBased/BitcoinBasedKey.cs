@@ -1,77 +1,97 @@
 ﻿using System;
-using Atomex.Common;
-using Atomex.Cryptography;
+using System.Threading;
+using System.Threading.Tasks;
 using NBitcoin;
 
-namespace Atomex.Wallet.BitcoinBased
+using Atomex.Common.Memory;
+using Atomex.Cryptography;
+
+namespace Atomex.Wallets.BitcoinBased
 {
+    /// <summary>
+    /// Represents asymmetric key for Bitcoin based coins
+    /// </summary>
+    /// <inheritdoc/>
     public class BitcoinBasedKey : IKey
     {
-        private Key Key { get; }
+        protected readonly SecureBytes _privateKey;
+        private bool disposed;
 
         public BitcoinBasedKey(SecureBytes seed)
         {
-            using var scopedSeed = seed.ToUnsecuredBytes();
-
-            Key = new Key(scopedSeed);
+            _privateKey = seed.Copy();
         }
 
-        public SecureBytes GetPrivateKey()
+        public virtual SecureBytes GetPrivateKey() => _privateKey.Copy();
+ 
+        public virtual SecureBytes GetPublicKey()
         {
-            using var privateKey = new ScopedBytes(Key.ToBytes());
+            using var key = GetKey();
 
-            return new SecureBytes(privateKey);
+            return new SecureBytes(key.PubKey.ToBytes());
         }
 
-        public SecureBytes GetPublicKey()
+        public virtual byte[] SignHash(ReadOnlySpan<byte> hash)
         {
-            using var publicKey = new ScopedBytes(Key.PubKey.ToBytes());
-
-            return new SecureBytes(publicKey);
+            return SignHash(hash, SigHash.All);
         }
 
-        public virtual byte[] SignHash(byte[] hash)
+        public virtual byte[] SignHash(ReadOnlySpan<byte> hash, SigHash sigHash, bool useLowR = true)
         {
-            return Key
-                .Sign(new uint256(hash), SigHash.All)
+            using var key = GetKey();
+
+            return key
+                .Sign(new uint256(hash.ToArray()), sigHash, useLowR)
                 .ToBytes();
         }
 
-        public virtual byte[] SignMessage(byte[] data)
+        public virtual Task<byte[]> SignHashAsync(
+            ReadOnlyMemory<byte> hash,
+            CancellationToken cancellationToken = default)
         {
-            return Convert.FromBase64String(Key
-                .SignMessage(data));
+            return Task.Run(() => SignHash(hash.Span), cancellationToken);
         }
 
-        public virtual bool VerifyHash(byte[] hash, byte[] signature)
+        public virtual bool VerifyHash(ReadOnlySpan<byte> hash, ReadOnlySpan<byte> signature)
         {
-            if (hash == null)
-                throw new ArgumentNullException(nameof(hash));
+            using var key = GetKey();
 
-            if (signature == null)
-                throw new ArgumentNullException(nameof(signature));
-
-            return Key
-                .PubKey
-                .Verify(new uint256(hash), new TransactionSignature(signature).Signature);
+            return key.PubKey.Verify(
+                hash: new uint256(hash.ToArray()),
+                sig: new TransactionSignature(signature.ToArray()).Signature);
         }
 
-        public virtual bool VerifyMessage(byte[] data, byte[] signature)
+        public virtual Task<bool> VerifyHashAsync(
+            ReadOnlyMemory<byte> hash,
+            ReadOnlyMemory<byte> signature,
+            CancellationToken cancellationToken = default)
         {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
+            return Task.Run(() => VerifyHash(hash.Span, signature.Span), cancellationToken);
+        }
 
-            if (signature == null)
-                throw new ArgumentNullException(nameof(signature));
+        protected virtual Key GetKey()
+        {
+            using var unmanagedBytes = _privateKey.ToUnmanagedBytes();
 
-            return Key
-                .PubKey
-                .VerifyMessage(data, Convert.ToBase64String(signature));
+            // todo: use other secured framework for secp256r1 keys instead NBitcoin
+            return new Key(unmanagedBytes.ToBytes());
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed)
+            {
+                if (disposing)
+                    _privateKey.Dispose();
+
+                disposed = true;
+            }
         }
 
         public void Dispose()
         {
-            //Key.Dispose(); // may be nbitcoin learn to dispose keys?
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
