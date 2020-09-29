@@ -12,7 +12,7 @@ namespace Atomex
 {
     public class Currencies : ICurrencies
     {
-        private readonly string[] _currenciesOrder = new[] { "BTC", "ETH", "LTC", "XTZ", "USDT", "TZBTC", "NYX", "FA2" };
+        private readonly string[] _currenciesOrder = new[] { "BTC", "ETH", "LTC", "XTZ", "USDT", "TZBTC", "NYX", "FA2", "TBTC" };
 
         private readonly object _sync = new object();
         private IDictionary<string, Currency> _currencies;
@@ -54,6 +54,7 @@ namespace Atomex
                 "ETH" => (Currency)new Ethereum(configurationSection),
                 "XTZ" => (Currency)new Tezos(configurationSection),
                 "USDT" => (Currency)new Tether(configurationSection),
+                "TBTC" => (Currency)new TBTC(configurationSection),
                 "TZBTC" => (Currency)new TZBTC(configurationSection),
                 "NYX" => (Currency)new NYX(configurationSection),
                 "FA2" => (Currency)new FA2(configurationSection),

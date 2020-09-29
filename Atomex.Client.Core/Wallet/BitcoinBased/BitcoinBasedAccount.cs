@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
@@ -11,7 +13,6 @@ using Atomex.Common;
 using Atomex.Common.Bson;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Serilog;
 
 namespace Atomex.Wallet.BitcoinBased
 {
@@ -214,14 +215,12 @@ namespace Atomex.Wallet.BitcoinBased
             if (!availableOutputs.Any())
                 return null; // insufficient funds
 
-            availableOutputs.Sort((o1, o2) => o2.Value.CompareTo(o1.Value));
+            var feeRate = await currency
+                .GetFeeRateAsync()
+                .ConfigureAwait(false);
 
-            for (var i = 1; i <= availableOutputs.Count; ++i)
+            foreach (var selectedOutputs in availableOutputs.SelectOutputs())
             {
-                var selectedOutputs = availableOutputs
-                    .Take(i)
-                    .ToArray();
-
                 var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(selectedOutputs);
 
                 var selectedInSatoshi = selectedOutputs.Sum(o => o.Value);
@@ -243,10 +242,6 @@ namespace Atomex.Wallet.BitcoinBased
                 var estimatedTxVirtualSize = estimatedTx.VirtualSize();
                 var estimatedTxSize = estimatedTxVirtualSize + estimatedSigSize;
                 var estimatedTxSizeWithChange = estimatedTxVirtualSize + estimatedSigSize + BitcoinBasedCurrency.OutputSize;
-
-                var feeRate = await currency
-                    .GetFeeRateAsync()
-                    .ConfigureAwait(false);
 
                 var estimatedFeeInSatoshi = (long)(estimatedTxSize * feeRate);
 
@@ -296,14 +291,8 @@ namespace Atomex.Wallet.BitcoinBased
             if (!availableOutputs.Any())
                 return null; // insufficient funds
 
-            availableOutputs.Sort((o1, o2) => o2.Value.CompareTo(o1.Value));
-
-            for (var i = 1; i <= availableOutputs.Count; ++i)
+            foreach (var selectedOutputs in availableOutputs.SelectOutputs())
             {
-                var selectedOutputs = availableOutputs
-                    .Take(i)
-                    .ToArray();
-
                 var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(selectedOutputs);
 
                 var selectedInSatoshi = selectedOutputs.Sum(o => o.Value);

@@ -95,6 +95,9 @@ namespace Atomex.Wallet
                 "USDT" => (ICurrencyHdWalletScanner)new ERC20WalletScanner(
                     Account.GetCurrencyAccount<ERC20Account>(currency),
                     Account.GetCurrencyAccount<EthereumAccount>("ETH")),
+                "TBTC" => (ICurrencyHdWalletScanner)new ERC20WalletScanner(
+                    Account.GetCurrencyAccount<ERC20Account>(currency),
+                    Account.GetCurrencyAccount<EthereumAccount>("ETH")),
                 //"USDC" => (ICurrencyHdWalletScanner)new ERC20WalletScanner(Account.GetCurrencyAccount<ERC20Account>(currency)),
                 "ETH" => (ICurrencyHdWalletScanner)new EthereumWalletScanner(Account.GetCurrencyAccount<EthereumAccount>(currency)),
                 "XTZ" => (ICurrencyHdWalletScanner)new TezosWalletScanner(Account.GetCurrencyAccount<TezosAccount>(currency)),
