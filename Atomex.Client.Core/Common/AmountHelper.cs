@@ -23,8 +23,13 @@ namespace Atomex.Common
             return RoundDown(side == Side.Buy ? qty * price : qty, digitsMultiplier);
         }
 
-        public static decimal RoundDown(decimal d, decimal digitsMultiplier) =>
-            Math.Floor(d * digitsMultiplier) / digitsMultiplier;
+        public static decimal RoundDown(decimal d, decimal digitsMultiplier)
+        {
+            if (digitsMultiplier > 1000000000)
+                digitsMultiplier = 1000000000; // server decimal precision
+
+            return Math.Floor(d * digitsMultiplier) / digitsMultiplier;
+        }
 
         public static decimal DustProofMin(
             decimal amount,
