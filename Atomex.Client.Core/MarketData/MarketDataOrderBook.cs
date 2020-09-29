@@ -195,7 +195,7 @@ namespace Atomex.MarketData
             return 0m;
         }
 
-        public decimal EstimateMaxAmount(Side side, long digitsMultiplier)
+        public decimal EstimateMaxAmount(Side side, decimal digitsMultiplier)
         {
             var amount = 0m;
 
