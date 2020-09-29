@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Globalization;
+using System.Numerics;
 using Atomex.Blockchain.Tezos;
 using Atomex.Wallet.Bip;
 using Microsoft.Extensions.Configuration;
@@ -43,9 +44,9 @@ namespace Atomex.TezosTokens
         {
             Name = configuration["Name"];
             Description = configuration["Description"];
-            DigitsMultiplier = long.Parse(configuration["DigitsMultiplier"]);
+            DigitsMultiplier = decimal.Parse(configuration["DigitsMultiplier"]);
             DustDigitsMultiplier = long.Parse(configuration["DustDigitsMultiplier"]);
-            Digits = (int)Math.Log10(DigitsMultiplier);
+            Digits = (int)BigInteger.Log10(new BigInteger(DigitsMultiplier));
             Format = $"F{Digits}";
 
             FeeDigits = Digits;

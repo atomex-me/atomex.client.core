@@ -24,7 +24,8 @@ namespace Atomex.MarketData.Bitfinex
             { "TZBTCUSD", "tBTCUSD" },
             { "NYXUSD", "tBTCUSD" },
             { "FA2USD", "tUSTUSD" },
-            { "TBTCUSD", "tBTCUSD" }
+            { "TBTCUSD", "tBTCUSD" },
+            { "WBTCUSD", "tBTCUSD" }
         };
 
         public const string Usd = "USD";

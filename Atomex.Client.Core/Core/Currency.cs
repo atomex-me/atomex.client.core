@@ -16,7 +16,7 @@ namespace Atomex.Core
         public int Id { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
-        public long DigitsMultiplier { get; protected set; }
+        public decimal DigitsMultiplier { get; protected set; }
         public long DustDigitsMultiplier { get; protected set; }
         public int Digits { get; set; }
         public string Format { get; set; }

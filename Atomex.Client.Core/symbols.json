@@ -79,6 +79,26 @@
       "Id": 16,
       "Name": "TBTC/USDT",
       "MinimumQty": 0.1
+    },
+    {
+      "Id": 17,
+      "Name": "WBTC/BTC",
+      "MinimumQty": 0.01
+    },
+    {
+      "Id": 18,
+      "Name": "ETH/WBTC",
+      "MinimumQty": 2
+    },
+    {
+      "Id": 19,
+      "Name": "XTZ/WBTC",
+      "MinimumQty": 10
+    },
+    {
+      "Id": 20,
+      "Name": "WBTC/USDT",
+      "MinimumQty": 0.1
     }
   ],
   "TestNet": [
@@ -160,6 +180,46 @@
     {
       "Id": 16,
       "Name": "FA2/ETH",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 17,
+      "Name": "TBTC/BTC",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 18,
+      "Name": "ETH/TBTC",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 19,
+      "Name": "XTZ/TBTC",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 20,
+      "Name": "TBTC/USDT",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 21,
+      "Name": "WBTC/BTC",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 22,
+      "Name": "ETH/WBTC",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 23,
+      "Name": "XTZ/WBTC",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 24,
+      "Name": "WBTC/USDT",
       "MinimumQty": 0.0001
     }
   ]
