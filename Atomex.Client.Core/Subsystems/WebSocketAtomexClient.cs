@@ -22,564 +22,564 @@ using Serilog;
 
 namespace Atomex.Subsystems
 {
-  public class WebSocketAtomexClient : IAtomexClient
-  {
-    protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(24 * 60);
-    private static TimeSpan HeartBeatInterval = TimeSpan.FromSeconds(5);
-
-    public event EventHandler<TerminalServiceEventArgs> ServiceConnected;
-    public event EventHandler<TerminalServiceEventArgs> ServiceDisconnected;
-    public event EventHandler<TerminalServiceEventArgs> ServiceAuthenticated;
-    public event EventHandler<TerminalErrorEventArgs> Error;
-    public event EventHandler<OrderEventArgs> OrderReceived;
-    public event EventHandler<MarketDataEventArgs> QuotesUpdated;
-    public event EventHandler<SwapEventArgs> SwapUpdated;
-
-    private readonly CancellationTokenSource _cts;
-
-    private CancellationTokenSource _exchangeCts;
-    private Task _exchangeHeartBeatTask;
-
-    private CancellationTokenSource _marketDataCts;
-    private Task _marketDataHeartBeatTask;
-
-    private ExchangeWebClient ExchangeClient { get; set; }
-    private MarketDataWebClient MarketDataClient { get; set; }
-
-    public IAccount Account { get; set; }
-    private IConfiguration Configuration { get; }
-    private IMarketDataRepository MarketDataRepository { get; set; }
-    private ISwapManager SwapManager { get; set; }
-    private TimeSpan TransactionConfirmationCheckInterval { get; } = TimeSpan.FromSeconds(45);
-
-    public WebSocketAtomexClient(IConfiguration configuration, IAccount account)
+    public class WebSocketAtomexClient : IAtomexClient
     {
-      Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(24 * 60);
+        private static TimeSpan HeartBeatInterval = TimeSpan.FromSeconds(10);
 
-      Account = account ?? throw new ArgumentNullException(nameof(account));
-      Account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
+        public event EventHandler<TerminalServiceEventArgs> ServiceConnected;
+        public event EventHandler<TerminalServiceEventArgs> ServiceDisconnected;
+        public event EventHandler<TerminalServiceEventArgs> ServiceAuthenticated;
+        public event EventHandler<TerminalErrorEventArgs> Error;
+        public event EventHandler<OrderEventArgs> OrderReceived;
+        public event EventHandler<MarketDataEventArgs> QuotesUpdated;
+        public event EventHandler<SwapEventArgs> SwapUpdated;
 
-      _cts = new CancellationTokenSource();
-    }
+        private readonly CancellationTokenSource _cts;
 
-    public bool IsServiceConnected(TerminalService service)
-    {
-      return service switch
-      {
-        TerminalService.Exchange => ExchangeClient.IsConnected,
-        TerminalService.MarketData => MarketDataClient.IsConnected,
-        TerminalService.All => ExchangeClient.IsConnected && MarketDataClient.IsConnected,
-        _ => throw new ArgumentOutOfRangeException(nameof(service), service, null),
-      };
-    }
+        private CancellationTokenSource _exchangeCts;
+        private Task _exchangeHeartBeatTask;
 
-    public async Task StartAsync()
-    {
-      Log.Information("Start terminal services");
+        private CancellationTokenSource _marketDataCts;
+        private Task _marketDataHeartBeatTask;
 
-      var configuration = Configuration.GetSection($"Services:{Account.Network}");
+        private ExchangeWebClient ExchangeClient { get; set; }
+        private MarketDataWebClient MarketDataClient { get; set; }
 
-      // init schemes
-      var schemes = new ProtoSchemes();
+        public IAccount Account { get; set; }
+        private IConfiguration Configuration { get; }
+        private IMarketDataRepository MarketDataRepository { get; set; }
+        private ISwapManager SwapManager { get; set; }
+        private TimeSpan TransactionConfirmationCheckInterval { get; } = TimeSpan.FromSeconds(45);
 
-      // init market data repository
-      MarketDataRepository = new MarketDataRepository(Account.Symbols);
+        public WebSocketAtomexClient(IConfiguration configuration, IAccount account)
+        {
+            Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
-      // init exchange client
-      ExchangeClient = new ExchangeWebClient(configuration, schemes);
-      ExchangeClient.Connected += OnExchangeConnectedEventHandler;
-      ExchangeClient.Disconnected += OnExchangeDisconnectedEventHandler;
-      ExchangeClient.AuthOk += OnExchangeAuthOkEventHandler;
-      ExchangeClient.AuthNonce += OnExchangeAuthNonceEventHandler;
-      ExchangeClient.Error += OnExchangeErrorEventHandler;
-      ExchangeClient.OrderReceived += OnExchangeOrderEventHandler;
-      ExchangeClient.SwapReceived += OnSwapReceivedEventHandler;
+            Account = account ?? throw new ArgumentNullException(nameof(account));
+            Account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
 
-      // init market data client
-      MarketDataClient = new MarketDataWebClient(configuration, schemes);
-      MarketDataClient.Connected += OnMarketDataConnectedEventHandler;
-      MarketDataClient.Disconnected += OnMarketDataDisconnectedEventHandler;
-      MarketDataClient.AuthOk += OnMarketDataAuthOkEventHandler;
-      MarketDataClient.AuthNonce += OnMarketDataAuthNonceEventHandler;
-      MarketDataClient.Error += OnMarketDataErrorEventHandler;
-      MarketDataClient.QuotesReceived += OnQuotesReceivedEventHandler;
-      MarketDataClient.EntriesReceived += OnEntriesReceivedEventHandler;
-      MarketDataClient.SnapshotReceived += OnSnapshotReceivedEventHandler;
+            _cts = new CancellationTokenSource();
+        }
 
-      // start services
-      var exchangeConnectTask = ExchangeClient.ConnectAsync();
-      var marketDataConnectTask = MarketDataClient.ConnectAsync();
-      await Task.WhenAll(exchangeConnectTask, marketDataConnectTask)
-          .ConfigureAwait(false);
+        public bool IsServiceConnected(TerminalService service)
+        {
+            return service switch
+            {
+                TerminalService.Exchange => ExchangeClient.IsConnected,
+                TerminalService.MarketData => MarketDataClient.IsConnected,
+                TerminalService.All => ExchangeClient.IsConnected && MarketDataClient.IsConnected,
+                _ => throw new ArgumentOutOfRangeException(nameof(service), service, null),
+            };
+        }
 
-      // start async balance update task
-      //BalanceUpdateLoopAsync(_cts.Token).FireAndForget();
+        public async Task StartAsync()
+        {
+            Log.Information("Start terminal services");
 
-      // start async unconfirmed transactions tracking
-      TrackUnconfirmedTransactionsAsync(_cts.Token).FireAndForget();
+            var configuration = Configuration.GetSection($"Services:{Account.Network}");
 
-      // init swap manager
-      SwapManager = new SwapManager(
-          account: Account,
-          swapClient: ExchangeClient);
-      SwapManager.SwapUpdated += (sender, args) => SwapUpdated?.Invoke(sender, args);
+            // init schemes
+            var schemes = new ProtoSchemes();
 
-      // start async swaps restore
-      SwapManager.RestoreSwapsAsync(_cts.Token).FireAndForget();
-    }
+            // init market data repository
+            MarketDataRepository = new MarketDataRepository(Account.Symbols);
 
-    public async Task StopAsync()
-    {
-      if (ExchangeClient == null || MarketDataClient == null)
-        return;
+            // init exchange client
+            ExchangeClient = new ExchangeWebClient(configuration, schemes);
+            ExchangeClient.Connected     += OnExchangeConnectedEventHandler;
+            ExchangeClient.Disconnected  += OnExchangeDisconnectedEventHandler;
+            ExchangeClient.AuthOk        += OnExchangeAuthOkEventHandler;
+            ExchangeClient.AuthNonce     += OnExchangeAuthNonceEventHandler;
+            ExchangeClient.Error         += OnExchangeErrorEventHandler;
+            ExchangeClient.OrderReceived += OnExchangeOrderEventHandler;
+            ExchangeClient.SwapReceived  += OnSwapReceivedEventHandler;
 
-      Log.Information("Stop terminal services");
+            // init market data client
+            MarketDataClient = new MarketDataWebClient(configuration, schemes);
+            MarketDataClient.Connected        += OnMarketDataConnectedEventHandler;
+            MarketDataClient.Disconnected     += OnMarketDataDisconnectedEventHandler;
+            MarketDataClient.AuthOk           += OnMarketDataAuthOkEventHandler;
+            MarketDataClient.AuthNonce        += OnMarketDataAuthNonceEventHandler;
+            MarketDataClient.Error            += OnMarketDataErrorEventHandler;
+            MarketDataClient.QuotesReceived   += OnQuotesReceivedEventHandler;
+            MarketDataClient.EntriesReceived  += OnEntriesReceivedEventHandler;
+            MarketDataClient.SnapshotReceived += OnSnapshotReceivedEventHandler;
 
-      // cancel all terminal background tasks
-      _cts.Cancel();
+            // start services
+            var exchangeConnectTask = ExchangeClient.ConnectAsync();
+            var marketDataConnectTask = MarketDataClient.ConnectAsync();
+            await Task.WhenAll(exchangeConnectTask, marketDataConnectTask)
+                .ConfigureAwait(false);
 
-      // close services
-      await Task.WhenAll(ExchangeClient.CloseAsync(), MarketDataClient.CloseAsync())
-          .ConfigureAwait(false);
+            // start async balance update task
+            //BalanceUpdateLoopAsync(_cts.Token).FireAndForget();
 
-      ExchangeClient.Connected -= OnExchangeConnectedEventHandler;
-      ExchangeClient.Disconnected -= OnExchangeDisconnectedEventHandler;
-      ExchangeClient.AuthOk -= OnExchangeAuthOkEventHandler;
-      ExchangeClient.AuthNonce -= OnExchangeAuthNonceEventHandler;
-      ExchangeClient.Error -= OnExchangeErrorEventHandler;
-      ExchangeClient.OrderReceived -= OnExchangeOrderEventHandler;
-      ExchangeClient.SwapReceived -= OnSwapReceivedEventHandler;
+            // start async unconfirmed transactions tracking
+            TrackUnconfirmedTransactionsAsync(_cts.Token).FireAndForget();
 
-      MarketDataClient.Connected -= OnMarketDataConnectedEventHandler;
-      MarketDataClient.Disconnected -= OnMarketDataDisconnectedEventHandler;
-      MarketDataClient.AuthOk -= OnMarketDataAuthOkEventHandler;
-      MarketDataClient.AuthNonce -= OnMarketDataAuthNonceEventHandler;
-      MarketDataClient.Error -= OnMarketDataErrorEventHandler;
-      MarketDataClient.QuotesReceived -= OnQuotesReceivedEventHandler;
-      MarketDataClient.EntriesReceived -= OnEntriesReceivedEventHandler;
-      MarketDataClient.SnapshotReceived -= OnSnapshotReceivedEventHandler;
-    }
+            // init swap manager
+            SwapManager = new SwapManager(
+                account: Account,
+                swapClient: ExchangeClient);
+            SwapManager.SwapUpdated += (sender, args) => SwapUpdated?.Invoke(sender, args);
 
-    public async void OrderSendAsync(Order order)
-    {
-      // todo: mark used outputs as warranty outputs
+            // start async swaps restore
+            SwapManager.RestoreSwapsAsync(_cts.Token).FireAndForget();
+        }
 
-      order.ClientOrderId = Guid.NewGuid().ToString();
+        public async Task StopAsync()
+        {
+            if (ExchangeClient == null || MarketDataClient == null)
+                return;
 
-      try
-      {
-        await Account
-            .UpsertOrderAsync(order)
-            .ConfigureAwait(false);
+            Log.Information("Stop terminal services");
 
-        ExchangeClient.OrderSendAsync(order);
-      }
-      catch (Exception e)
-      {
-        Log.Error("Order send error");
-      }
-    }
+            // cancel all terminal background tasks
+            _cts.Cancel();
 
-    public void OrderCancelAsync(Order order)
-    {
-      ExchangeClient.OrderCancelAsync(order);
-    }
+            // close services
+            await Task.WhenAll(ExchangeClient.CloseAsync(), MarketDataClient.CloseAsync())
+                .ConfigureAwait(false);
 
-    public void SubscribeToMarketData(SubscriptionType type)
-    {
-      MarketDataClient.SubscribeAsync(new List<Subscription> {
+            ExchangeClient.Connected     -= OnExchangeConnectedEventHandler;
+            ExchangeClient.Disconnected  -= OnExchangeDisconnectedEventHandler;
+            ExchangeClient.AuthOk        -= OnExchangeAuthOkEventHandler;
+            ExchangeClient.AuthNonce     -= OnExchangeAuthNonceEventHandler;
+            ExchangeClient.Error         -= OnExchangeErrorEventHandler;
+            ExchangeClient.OrderReceived -= OnExchangeOrderEventHandler;
+            ExchangeClient.SwapReceived  -= OnSwapReceivedEventHandler;
+
+            MarketDataClient.Connected        -= OnMarketDataConnectedEventHandler;
+            MarketDataClient.Disconnected     -= OnMarketDataDisconnectedEventHandler;
+            MarketDataClient.AuthOk           -= OnMarketDataAuthOkEventHandler;
+            MarketDataClient.AuthNonce        -= OnMarketDataAuthNonceEventHandler;
+            MarketDataClient.Error            -= OnMarketDataErrorEventHandler;
+            MarketDataClient.QuotesReceived   -= OnQuotesReceivedEventHandler;
+            MarketDataClient.EntriesReceived  -= OnEntriesReceivedEventHandler;
+            MarketDataClient.SnapshotReceived -= OnSnapshotReceivedEventHandler;
+        }
+
+        public async void OrderSendAsync(Order order)
+        {
+            // todo: mark used outputs as warranty outputs
+
+            order.ClientOrderId = Guid.NewGuid().ToString();
+
+            try
+            {
+                await Account
+                    .UpsertOrderAsync(order)
+                    .ConfigureAwait(false);
+
+                ExchangeClient.OrderSendAsync(order);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Order send error");
+            }
+        }
+
+        public void OrderCancelAsync(Order order)
+        {
+            ExchangeClient.OrderCancelAsync(order);
+        }
+
+        public void SubscribeToMarketData(SubscriptionType type)
+        {
+            MarketDataClient.SubscribeAsync(new List<Subscription> {
                 new Subscription {Type = type}
             });
-    }
-
-    public MarketDataOrderBook GetOrderBook(Symbol symbol)
-    {
-      return MarketDataRepository?.OrderBookBySymbol(symbol.Name);
-    }
-
-    public Quote GetQuote(Symbol symbol)
-    {
-      return MarketDataRepository?.QuoteBySymbol(symbol.Name);
-    }
-
-    #region AccountEventHandlers
-
-    private void OnUnconfirmedTransactionAddedEventHandler(object sender, TransactionEventArgs e)
-    {
-      if (!e.Transaction.IsConfirmed && e.Transaction.State != BlockchainTransactionState.Failed)
-        TrackTransactionAsync(e.Transaction, _cts.Token);
-    }
-
-    #endregion
-
-    #region ExchangeEventHandlers
-
-    private void OnExchangeConnectedEventHandler(object sender, EventArgs args)
-    {
-      if (_exchangeHeartBeatTask == null ||
-          _exchangeHeartBeatTask.IsCompleted ||
-          _exchangeHeartBeatTask.IsCanceled ||
-          _exchangeHeartBeatTask.IsFaulted)
-      {
-        _exchangeCts = new CancellationTokenSource();
-        _exchangeHeartBeatTask = RunHeartBeatLoopAsync(ExchangeClient, _exchangeCts.Token);
-      }
-
-      ServiceConnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
-    }
-
-    private void OnExchangeDisconnectedEventHandler(object sender, EventArgs args)
-    {
-      if (_exchangeHeartBeatTask != null)
-      {
-        if (!_exchangeHeartBeatTask.IsCompleted &&
-            !_exchangeHeartBeatTask.IsCanceled &&
-            !_exchangeHeartBeatTask.IsFaulted)
-        {
-          try
-          {
-            _exchangeCts.Cancel();
-          }
-          catch (OperationCanceledException)
-          {
-            Log.Debug("Exchange heart beat loop canceled.");
-          }
-        }
-      }
-
-      ServiceDisconnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
-    }
-
-    private void OnExchangeAuthOkEventHandler(object sender, EventArgs e)
-    {
-      ServiceAuthenticated?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
-    }
-
-    private async void OnExchangeAuthNonceEventHandler(object sender, EventArgs args)
-    {
-      try
-      {
-        var auth = await Account
-            .CreateAuthRequestAsync(
-                nonce: ExchangeClient.Nonce,
-                keyIndex: Account.UserSettings.AuthenticationKeyIndex)
-            .ConfigureAwait(false);
-
-        ExchangeClient.AuthAsync(auth);
-      }
-      catch (Exception e)
-      {
-        Log.Error("Exchange auth error");
-      }
-    }
-
-    private void OnExchangeErrorEventHandler(object sender, ErrorEventArgs args)
-    {
-      Log.Error("Exchange service error {@Error}", args.Error);
-      Error?.Invoke(this, new TerminalErrorEventArgs(TerminalService.Exchange, args.Error));
-    }
-
-    private async void OnExchangeOrderEventHandler(object sender, OrderEventArgs args)
-    {
-      // todo: remove warranty outputs if cancel/rejected/partially_filled/filled
-
-      var order = args.Order;
-
-      try
-      {
-        if (order.Status == OrderStatus.Pending)
-        {
-          OnError(TerminalService.Exchange, $"Invalid order status {order.Status}");
-          return;
         }
 
-        // resolve order wallets
-        await order
-            .ResolveWallets(Account)
-            .ConfigureAwait(false);
-
-        var result = await Account
-            .UpsertOrderAsync(order)
-            .ConfigureAwait(false);
-
-        if (!result)
-          OnError(TerminalService.Exchange, "Error adding order");
-
-        OrderReceived?.Invoke(this, args);
-      }
-      catch (Exception e)
-      {
-        OnError(TerminalService.Exchange, e);
-      }
-    }
-
-    #endregion
-
-    #region MarketDataEventHandlers
-
-    private void OnMarketDataConnectedEventHandler(object sender, EventArgs args)
-    {
-      if (_marketDataHeartBeatTask == null ||
-          _marketDataHeartBeatTask.IsCompleted ||
-          _marketDataHeartBeatTask.IsCanceled ||
-          _marketDataHeartBeatTask.IsFaulted)
-      {
-        _marketDataCts = new CancellationTokenSource();
-        _marketDataHeartBeatTask = RunHeartBeatLoopAsync(MarketDataClient, _marketDataCts.Token);
-      }
-
-      ServiceConnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
-    }
-
-    private void OnMarketDataDisconnectedEventHandler(object sender, EventArgs args)
-    {
-      if (_marketDataHeartBeatTask != null)
-      {
-        if (!_marketDataHeartBeatTask.IsCompleted &&
-            !_marketDataHeartBeatTask.IsCanceled &&
-            !_marketDataHeartBeatTask.IsFaulted)
+        public MarketDataOrderBook GetOrderBook(Symbol symbol)
         {
-          try
-          {
-            _marketDataCts.Cancel();
-          }
-          catch (OperationCanceledException)
-          {
-            Log.Debug("Exchange heart beat loop canceled.");
-          }
+            return MarketDataRepository?.OrderBookBySymbol(symbol.Name);
         }
-      }
 
-      ServiceDisconnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
-    }
+        public Quote GetQuote(Symbol symbol)
+        {
+            return MarketDataRepository?.QuoteBySymbol(symbol.Name);
+        }
 
-    private void OnMarketDataAuthOkEventHandler(object sender, EventArgs e)
-    {
-      ServiceAuthenticated?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
-    }
+        #region AccountEventHandlers
 
-    private async void OnMarketDataAuthNonceEventHandler(object sender, EventArgs args)
-    {
-      try
-      {
-        var auth = await Account
-            .CreateAuthRequestAsync(
-                nonce: MarketDataClient.Nonce,
-                keyIndex: Account.UserSettings.AuthenticationKeyIndex)
-            .ConfigureAwait(false);
+        private void OnUnconfirmedTransactionAddedEventHandler(object sender, TransactionEventArgs e)
+        {
+            if (!e.Transaction.IsConfirmed && e.Transaction.State != BlockchainTransactionState.Failed)
+                TrackTransactionAsync(e.Transaction, _cts.Token);
+        }
 
-        MarketDataClient.AuthAsync(auth);
-      }
-      catch (Exception e)
-      {
-        Log.Error("MarketData auth error");
-      }
-    }
+        #endregion
 
-    private void OnMarketDataErrorEventHandler(object sender, ErrorEventArgs args)
-    {
-      Log.Warning("Market data service error {@Error}", args.Error);
-      Error?.Invoke(this, new TerminalErrorEventArgs(TerminalService.Exchange, args.Error));
-    }
+        #region ExchangeEventHandlers
 
-    private void OnQuotesReceivedEventHandler(object sender, QuotesEventArgs args)
-    {
-      Log.Verbose("Quotes: {@quotes}", args.Quotes);
-
-      MarketDataRepository.ApplyQuotes(args.Quotes);
-
-      var symbolsIds = new HashSet<string>();
-      foreach (var quote in args.Quotes)
-      {
-        if (!symbolsIds.Contains(quote.Symbol))
-          symbolsIds.Add(quote.Symbol);
-      }
-
-      foreach (var symbolId in symbolsIds)
-      {
-        var symbol = Account.Symbols.FirstOrDefault(s => s.Name == symbolId);
-        if (symbol != null)
-          QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));
-      }
-    }
-
-    private void OnEntriesReceivedEventHandler(object sender, EntriesEventArgs args)
-    {
-      Log.Verbose("Entries: {@entries}", args.Entries);
-
-      MarketDataRepository.ApplyEntries(args.Entries);
-    }
-
-    private void OnSnapshotReceivedEventHandler(object sender, SnapshotEventArgs args)
-    {
-      Log.Verbose("Snapshot: {@snapshot}", args.Snapshot);
-
-      MarketDataRepository.ApplySnapshot(args.Snapshot);
-    }
-
-    #endregion
-
-    #region SwapEventHandlers
-
-    private async void OnSwapReceivedEventHandler(object sender, SwapEventArgs args)
-    {
-      try
-      {
-        await SwapManager
-            .HandleSwapAsync(args.Swap)
-            .ConfigureAwait(false);
-      }
-      catch (Exception e)
-      {
-        OnError(TerminalService.Exchange, e);
-      }
-    }
-
-    #endregion
-
-    //private Task BalanceUpdateLoopAsync(CancellationToken cancellationToken)
-    //{
-    //    return Task.Run(async () =>
-    //    {
-    //        try
-    //        {
-    //            while (!cancellationToken.IsCancellationRequested)
-    //            {
-    //                await new HdWalletScanner(Account)
-    //                    .ScanFreeAddressesAsync(cancellationToken)
-    //                    .ConfigureAwait(false);
-
-    //                await Task.Delay(TimeSpan.FromSeconds(Account.UserSettings.BalanceUpdateIntervalInSec), cancellationToken)
-    //                    .ConfigureAwait(false);
-    //            }
-    //        }
-    //        catch (OperationCanceledException)
-    //        {
-    //            Log.Debug("Balance autoupdate task canceled.");
-    //        }
-    //        catch (Exception e)
-    //        {
-    //            Log.Error(e, "Balance autoupdate task error");
-    //        }
-    //    });
-    //}
-
-    private async Task TrackUnconfirmedTransactionsAsync(CancellationToken cancellationToken)
-    {
-      try
-      {
-        var txs = await Account
-            .GetTransactionsAsync()
-            .ConfigureAwait(false);
-
-        foreach (var tx in txs)
-          if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
-          {
-            if (DateTime.UtcNow > tx.CreationTime?.ToUniversalTime() + DefaultMaxTransactionTimeout)
+        private void OnExchangeConnectedEventHandler(object sender, EventArgs args)
+        {
+            if (_exchangeHeartBeatTask == null ||
+                _exchangeHeartBeatTask.IsCompleted ||
+                _exchangeHeartBeatTask.IsCanceled ||
+                _exchangeHeartBeatTask.IsFaulted)
             {
-              tx.State = BlockchainTransactionState.Failed;
-              await Account
-                  .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
-                  .ConfigureAwait(false);
-              continue;
+                _exchangeCts = new CancellationTokenSource();
+                _exchangeHeartBeatTask = RunHeartBeatLoopAsync(ExchangeClient, _exchangeCts.Token);
             }
 
-            TrackTransactionAsync(tx, cancellationToken).FireAndForget();
-          }
+            ServiceConnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
+        }
 
-      }
-      catch (Exception e)
-      {
-        Log.Error("Unconfirmed transactions track error");
-      }
-    }
-
-    private Task TrackTransactionAsync(
-        IBlockchainTransaction transaction,
-        CancellationToken cancellationToken)
-    {
-      return Task.Run(async () =>
-      {
-        while (!cancellationToken.IsCancellationRequested)
+        private void OnExchangeDisconnectedEventHandler(object sender, EventArgs args)
         {
-          var result = await transaction
-                    .IsTransactionConfirmed(
-                        cancellationToken: cancellationToken)
+            if(_exchangeHeartBeatTask != null)
+            { 
+                if (!_exchangeHeartBeatTask.IsCompleted &&
+                    !_exchangeHeartBeatTask.IsCanceled &&
+                    !_exchangeHeartBeatTask.IsFaulted)
+                {
+                    try
+                    {
+                        _exchangeCts.Cancel();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Log.Debug("Exchange heart beat loop canceled.");
+                    }
+                }
+            }
+ 
+            ServiceDisconnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
+        }
+
+        private void OnExchangeAuthOkEventHandler(object sender, EventArgs e)
+        {
+            ServiceAuthenticated?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
+        }
+
+        private async void OnExchangeAuthNonceEventHandler(object sender, EventArgs args)
+        {
+            try
+            {
+                var auth = await Account
+                    .CreateAuthRequestAsync(
+                        nonce: ExchangeClient.Nonce,
+                        keyIndex: Account.UserSettings.AuthenticationKeyIndex)
                     .ConfigureAwait(false);
 
-          if (result.HasError) // todo: additional reaction
-                  break;
+                ExchangeClient.AuthAsync(auth);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Exchange auth error");
+            }
+        }
 
-          if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed)
-          {
-            TransactionProcessedHandler(result.Value.Transaction, cancellationToken);
-            break;
-          }
+        private void OnExchangeErrorEventHandler(object sender, ErrorEventArgs args)
+        {
+            Log.Error("Exchange service error {@Error}", args.Error);
+            Error?.Invoke(this, new TerminalErrorEventArgs(TerminalService.Exchange, args.Error));
+        }
 
-          await Task.Delay(TransactionConfirmationCheckInterval, cancellationToken)
+        private async void OnExchangeOrderEventHandler(object sender, OrderEventArgs args)
+        {
+            // todo: remove warranty outputs if cancel/rejected/partially_filled/filled
+
+            var order = args.Order;
+
+            try
+            {
+                if (order.Status == OrderStatus.Pending)
+                {
+                    OnError(TerminalService.Exchange, $"Invalid order status {order.Status}");
+                    return;
+                }
+
+                // resolve order wallets
+                await order
+                    .ResolveWallets(Account)
                     .ConfigureAwait(false);
+
+                var result = await Account
+                    .UpsertOrderAsync(order)
+                    .ConfigureAwait(false);
+
+                if (!result)
+                    OnError(TerminalService.Exchange, "Error adding order");
+
+                OrderReceived?.Invoke(this, args);
+            }
+            catch (Exception e)
+            {
+                OnError(TerminalService.Exchange, e);
+            }
         }
-      }, _cts.Token);
-    }
 
-    private async void TransactionProcessedHandler(
-        IBlockchainTransaction tx,
-        CancellationToken cancellationToken)
-    {
-      try
-      {
-        await Account
-            .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+        #endregion
 
-        await Account
-            .UpdateBalanceAsync(tx.Currency.Name, cancellationToken)
-            .ConfigureAwait(false);
-      }
-      catch (OperationCanceledException)
-      {
-        Log.Debug("Transaction processed handler task canceled.");
-      }
-      catch (Exception e)
-      {
-        Log.Error($"Error in transaction processed handler {e.ToString()}");
-      }
-    }
+        #region MarketDataEventHandlers
 
-    private void OnError(TerminalService service, string description)
-    {
-      Log.Error(description);
-      Error?.Invoke(this, new TerminalErrorEventArgs(service, new Error(Errors.InternalError, description)));
-    }
-
-    private void OnError(TerminalService service, Exception exception)
-    {
-      Log.Error(exception, exception.Message);
-      Error?.Invoke(this, new TerminalErrorEventArgs(service, new Error(Errors.InternalError, exception.Message)));
-    }
-
-    private async Task RunHeartBeatLoopAsync(
-        BinaryWebSocketClient webSocketClient,
-        CancellationToken cancellationToken = default)
-    {
-      while (!cancellationToken.IsCancellationRequested)
-      {
-        try
+        private void OnMarketDataConnectedEventHandler(object sender, EventArgs args)
         {
-          webSocketClient.SendHeartBeatAsync();
+            if (_marketDataHeartBeatTask == null ||
+                _marketDataHeartBeatTask.IsCompleted ||
+                _marketDataHeartBeatTask.IsCanceled ||
+                _marketDataHeartBeatTask.IsFaulted)
+            {
+                _marketDataCts = new CancellationTokenSource();
+                _marketDataHeartBeatTask = RunHeartBeatLoopAsync(MarketDataClient, _marketDataCts.Token);
+            }
 
-          await Task.Delay(HeartBeatInterval, cancellationToken)
-              .ConfigureAwait(false);
+            ServiceConnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
         }
-        catch (OperationCanceledException)
+
+        private void OnMarketDataDisconnectedEventHandler(object sender, EventArgs args)
         {
-          Log.Debug("HeartBeat loop canceled.");
+            if (_marketDataHeartBeatTask != null)
+            {
+                if (!_marketDataHeartBeatTask.IsCompleted &&
+                    !_marketDataHeartBeatTask.IsCanceled &&
+                    !_marketDataHeartBeatTask.IsFaulted)
+                {
+                    try
+                    {
+                        _marketDataCts.Cancel();
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Log.Debug("Exchange heart beat loop canceled.");
+                    }
+                }
+            }
+
+            ServiceDisconnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
         }
-        catch (Exception e)
+
+        private void OnMarketDataAuthOkEventHandler(object sender, EventArgs e)
         {
-          Log.Error(e, "Error while sending heartbeat.");
+            ServiceAuthenticated?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
         }
-      }
+
+        private async void OnMarketDataAuthNonceEventHandler(object sender, EventArgs args)
+        {
+            try
+            {
+                var auth = await Account
+                    .CreateAuthRequestAsync(
+                        nonce: MarketDataClient.Nonce,
+                        keyIndex: Account.UserSettings.AuthenticationKeyIndex)
+                    .ConfigureAwait(false);
+
+                MarketDataClient.AuthAsync(auth);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "MarketData auth error");
+            }
+        }
+
+        private void OnMarketDataErrorEventHandler(object sender, ErrorEventArgs args)
+        {
+            Log.Warning("Market data service error {@Error}", args.Error);
+            Error?.Invoke(this, new TerminalErrorEventArgs(TerminalService.Exchange, args.Error));
+        }
+
+        private void OnQuotesReceivedEventHandler(object sender, QuotesEventArgs args)
+        {
+            Log.Verbose("Quotes: {@quotes}", args.Quotes);
+
+            MarketDataRepository.ApplyQuotes(args.Quotes);
+
+            var symbolsIds = new HashSet<string>();
+            foreach (var quote in args.Quotes)
+            {
+                if (!symbolsIds.Contains(quote.Symbol))
+                    symbolsIds.Add(quote.Symbol);
+            }
+
+            foreach (var symbolId in symbolsIds)
+            {
+                var symbol = Account.Symbols.FirstOrDefault(s => s.Name == symbolId);
+                if (symbol != null)
+                    QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));
+            }
+        }
+
+        private void OnEntriesReceivedEventHandler(object sender, EntriesEventArgs args)
+        {
+            Log.Verbose("Entries: {@entries}", args.Entries);
+
+            MarketDataRepository.ApplyEntries(args.Entries);
+        }
+
+        private void OnSnapshotReceivedEventHandler(object sender, SnapshotEventArgs args)
+        {
+            Log.Verbose("Snapshot: {@snapshot}", args.Snapshot);
+
+            MarketDataRepository.ApplySnapshot(args.Snapshot);
+        }
+
+        #endregion
+
+        #region SwapEventHandlers
+
+        private async void OnSwapReceivedEventHandler(object sender, SwapEventArgs args)
+        {
+            try
+            {
+                await SwapManager
+                    .HandleSwapAsync(args.Swap)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                OnError(TerminalService.Exchange, e);
+            }
+        }
+
+        #endregion
+
+        //private Task BalanceUpdateLoopAsync(CancellationToken cancellationToken)
+        //{
+        //    return Task.Run(async () =>
+        //    {
+        //        try
+        //        {
+        //            while (!cancellationToken.IsCancellationRequested)
+        //            {
+        //                await new HdWalletScanner(Account)
+        //                    .ScanFreeAddressesAsync(cancellationToken)
+        //                    .ConfigureAwait(false);
+
+        //                await Task.Delay(TimeSpan.FromSeconds(Account.UserSettings.BalanceUpdateIntervalInSec), cancellationToken)
+        //                    .ConfigureAwait(false);
+        //            }
+        //        }
+        //        catch (OperationCanceledException)
+        //        {
+        //            Log.Debug("Balance autoupdate task canceled.");
+        //        }
+        //        catch (Exception e)
+        //        {
+        //            Log.Error(e, "Balance autoupdate task error");
+        //        }
+        //    });
+        //}
+
+        private async Task TrackUnconfirmedTransactionsAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                var txs = await Account
+                    .GetTransactionsAsync()
+                    .ConfigureAwait(false);
+
+                foreach (var tx in txs)
+                    if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
+                    {
+                        if (DateTime.UtcNow > tx.CreationTime?.ToUniversalTime() + DefaultMaxTransactionTimeout)
+                        {
+                            tx.State = BlockchainTransactionState.Failed;
+                            await Account
+                                .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
+                                .ConfigureAwait(false);
+                            continue;
+                        }
+
+                        TrackTransactionAsync(tx, cancellationToken).FireAndForget();
+                    }
+                     
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Unconfirmed transactions track error");
+            }
+        }
+
+        private Task TrackTransactionAsync(
+            IBlockchainTransaction transaction,
+            CancellationToken cancellationToken)
+        {
+            return Task.Run(async () =>
+            {
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    var result = await transaction
+                        .IsTransactionConfirmed(
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (result.HasError) // todo: additional reaction
+                        break;
+
+                    if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed)
+                    {
+                        TransactionProcessedHandler(result.Value.Transaction, cancellationToken);
+                        break;
+                    }
+
+                    await Task.Delay(TransactionConfirmationCheckInterval, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }, _cts.Token);
+        }
+
+        private async void TransactionProcessedHandler(
+            IBlockchainTransaction tx,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                await Account
+                    .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                await Account
+                    .UpdateBalanceAsync(tx.Currency.Name, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("Transaction processed handler task canceled.");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error in transaction processed handler");
+            }
+        }
+
+        private void OnError(TerminalService service, string description)
+        {
+            Log.Error(description);
+            Error?.Invoke(this, new TerminalErrorEventArgs(service, new Error(Errors.InternalError, description)));
+        }
+
+        private void OnError(TerminalService service, Exception exception)
+        {
+            Log.Error(exception, exception.Message);
+            Error?.Invoke(this, new TerminalErrorEventArgs(service, new Error(Errors.InternalError, exception.Message)));
+        }
+
+        private async Task RunHeartBeatLoopAsync(
+            BinaryWebSocketClient webSocketClient,
+            CancellationToken cancellationToken = default)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    webSocketClient.SendHeartBeatAsync();
+
+                    await Task.Delay(HeartBeatInterval, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("HeartBeat loop canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Error while sending heartbeat.");
+                }
+            }
+        }
     }
-  }
 }

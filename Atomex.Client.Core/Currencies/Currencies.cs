@@ -13,7 +13,7 @@ namespace Atomex
 {
     public class Currencies : ICurrencies
     {
-        private readonly string[] _currenciesOrder = new[] { "BTC", "ETH", "LTC", "XTZ", "USDT", "TZBTC", "NYX", "FA2",  "WBTC", "TBTC" };
+        private readonly string[] _currenciesOrder = new[] { "BTC", "ETH", "LTC", "XTZ", "USDT", "TZBTC", "NYX", "FA2", "WBTC", "TBTC" };
 
         private readonly object _sync = new object();
         private IDictionary<string, Currency> _currencies;
