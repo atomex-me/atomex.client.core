@@ -31,7 +31,13 @@ namespace Atomex.MarketData.Bitfinex
             { "ETHTZBTC", "ETHBTC" },
             { "XTZTZBTC", "XTZBTC" },
             { "TZBTCUSDT", "BTCUST" },
+
+            { "ETHTBTC", "ETHBTC" },
+            { "XTZTBTC", "XTZBTC" },
             { "TBTCUSDT", "BTCUST" },
+
+            { "ETHWBTC", "ETHBTC" },
+            { "XTZWBTC", "XTZBTC" },
             { "WBTCUSDT", "BTCUST" },
         };
 
