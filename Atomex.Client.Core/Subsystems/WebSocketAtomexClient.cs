@@ -113,7 +113,7 @@ namespace Atomex.Subsystems
                 .ConfigureAwait(false);
 
             // start async balance update task
-            BalanceUpdateLoopAsync(_cts.Token).FireAndForget();
+            //BalanceUpdateLoopAsync(_cts.Token).FireAndForget();
 
             // start async unconfirmed transactions tracking
             TrackUnconfirmedTransactionsAsync(_cts.Token).FireAndForget();
@@ -437,32 +437,32 @@ namespace Atomex.Subsystems
 
         #endregion
 
-        private Task BalanceUpdateLoopAsync(CancellationToken cancellationToken)
-        {
-            return Task.Run(async () =>
-            {
-                try
-                {
-                    while (!cancellationToken.IsCancellationRequested)
-                    {
-                        await new HdWalletScanner(Account)
-                            .ScanFreeAddressesAsync(cancellationToken)
-                            .ConfigureAwait(false);
+        //private Task BalanceUpdateLoopAsync(CancellationToken cancellationToken)
+        //{
+        //    return Task.Run(async () =>
+        //    {
+        //        try
+        //        {
+        //            while (!cancellationToken.IsCancellationRequested)
+        //            {
+        //                await new HdWalletScanner(Account)
+        //                    .ScanFreeAddressesAsync(cancellationToken)
+        //                    .ConfigureAwait(false);
 
-                        await Task.Delay(TimeSpan.FromSeconds(Account.UserSettings.BalanceUpdateIntervalInSec), cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    Log.Debug("Balance autoupdate task canceled.");
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "Balance autoupdate task error");
-                }
-            });
-        }
+        //                await Task.Delay(TimeSpan.FromSeconds(Account.UserSettings.BalanceUpdateIntervalInSec), cancellationToken)
+        //                    .ConfigureAwait(false);
+        //            }
+        //        }
+        //        catch (OperationCanceledException)
+        //        {
+        //            Log.Debug("Balance autoupdate task canceled.");
+        //        }
+        //        catch (Exception e)
+        //        {
+        //            Log.Error(e, "Balance autoupdate task error");
+        //        }
+        //    });
+        //}
 
         private async Task TrackUnconfirmedTransactionsAsync(CancellationToken cancellationToken)
         {

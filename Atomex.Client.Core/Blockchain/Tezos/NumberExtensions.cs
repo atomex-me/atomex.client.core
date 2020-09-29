@@ -15,12 +15,12 @@ namespace Atomex.Blockchain.Tezos
             return mtz / Atomex.Tezos.XtzDigitsMultiplier;
         }
 
-        public static decimal ToTokenDigits(this decimal tokens, long tokenDigitsMultiplier)
+        public static decimal ToTokenDigits(this decimal tokens, decimal tokenDigitsMultiplier)
         {
             return Math.Floor(tokens * tokenDigitsMultiplier);
         }
 
-        public static decimal FromTokenDigits(this decimal tokensInDigigts, long tokenDigitsMultiplier)
+        public static decimal FromTokenDigits(this decimal tokensInDigigts, decimal tokenDigitsMultiplier)
         {
             return tokensInDigigts / tokenDigitsMultiplier;
         }

@@ -31,6 +31,8 @@ namespace Atomex.MarketData.Bitfinex
             { "ETHTZBTC", "ETHBTC" },
             { "XTZTZBTC", "XTZBTC" },
             { "TZBTCUSDT", "BTCUST" },
+            { "TBTCUSDT", "BTCUST" },
+            { "WBTCUSDT", "BTCUST" },
         };
 
         private const int MaxReceiveBufferSize = 32768;

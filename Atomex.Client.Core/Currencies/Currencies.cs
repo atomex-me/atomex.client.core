@@ -2,17 +2,18 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.Configuration;
+
 using Atomex.Abstract;
 using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.TezosTokens;
-using Microsoft.Extensions.Configuration;
 
 namespace Atomex
 {
     public class Currencies : ICurrencies
     {
-        private readonly string[] _currenciesOrder = new[] { "BTC", "ETH", "LTC", "XTZ", "USDT", "TZBTC", "NYX", "FA2" };
+        private readonly string[] _currenciesOrder = new[] { "BTC", "ETH", "LTC", "XTZ", "USDT", "TZBTC", "NYX", "FA2", "TBTC",  "WBTC" };
 
         private readonly object _sync = new object();
         private IDictionary<string, Currency> _currencies;
@@ -54,6 +55,8 @@ namespace Atomex
                 "ETH" => (Currency)new Ethereum(configurationSection),
                 "XTZ" => (Currency)new Tezos(configurationSection),
                 "USDT" => (Currency)new Tether(configurationSection),
+                "TBTC" => (Currency)new TBTC(configurationSection),
+                "WBTC" => (Currency)new WBTC(configurationSection),
                 "TZBTC" => (Currency)new TZBTC(configurationSection),
                 "NYX" => (Currency)new NYX(configurationSection),
                 "FA2" => (Currency)new FA2(configurationSection),

@@ -1,12 +1,11 @@
-﻿using System;
-using System.Globalization;
+﻿using System.Globalization;
 using System.Numerics;
+using System.Threading.Tasks;
+using System.Threading;
 using Microsoft.Extensions.Configuration;
 
 using Atomex.Blockchain.Ethereum;
 using Atomex.Wallet.Bip;
-using System.Threading.Tasks;
-using System.Threading;
 
 namespace Atomex.EthereumTokens
 {
@@ -36,9 +35,9 @@ namespace Atomex.EthereumTokens
         {
             Name = configuration["Name"];
             Description = configuration["Description"];
-            DigitsMultiplier = long.Parse(configuration["DigitsMultiplier"]);
+            DigitsMultiplier = decimal.Parse(configuration["DigitsMultiplier"]);
             DustDigitsMultiplier = long.Parse(configuration["DustDigitsMultiplier"]);
-            Digits = (int)Math.Log10(DigitsMultiplier);
+            Digits = (int)BigInteger.Log10(new BigInteger(DigitsMultiplier));
             Format = $"F{Digits}";
 
             FeeDigits = Digits;
@@ -118,16 +117,39 @@ namespace Atomex.EthereumTokens
         }
     }
 
-    public class USDC : ERC20
+    //public class USDC : ERC20
+    //{
+    //    public USDC()
+    //    {
+    //    }
+
+    //    public USDC(IConfiguration configuration)
+    //    {
+    //        Update(configuration);
+    //    }
+    //}
+
+    public class TBTC : ERC20
     {
-        public USDC()
+        public TBTC()
         {
         }
 
-        public USDC(IConfiguration configuration)
+        public TBTC(IConfiguration configuration)
         {
             Update(configuration);
         }
     }
 
+    public class WBTC : ERC20
+    {
+        public WBTC()
+        {
+        }
+
+        public WBTC(IConfiguration configuration)
+        {
+            Update(configuration);
+        }
+    }
 }

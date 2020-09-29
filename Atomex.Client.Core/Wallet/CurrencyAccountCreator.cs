@@ -37,6 +37,16 @@ namespace Atomex.Wallet
                     currencies,
                     wallet,
                     dataRepository),
+                "TBTC" => (ICurrencyAccount)new ERC20Account(
+                    currency,
+                    currencies,
+                    wallet,
+                    dataRepository),
+                "WBTC" => (ICurrencyAccount)new ERC20Account(
+                    currency,
+                    currencies,
+                    wallet,
+                    dataRepository),
                 "ETH" => (ICurrencyAccount)new EthereumAccount(
                     currency,
                     currencies,
