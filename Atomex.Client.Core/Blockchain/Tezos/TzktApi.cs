@@ -114,6 +114,7 @@ namespace Atomex.Blockchain.Tezos
             CancellationToken cancellationToken = default)
         {
             var transaction = new TezosTransaction();
+            var isParentTxValid = false;
 
             var requestUri = $"operations/transactions/{txId}";
 
@@ -136,12 +137,19 @@ namespace Atomex.Blockchain.Tezos
                         foreach (var tx in txResult.Value)
                         {
                             if (!tx.IsInternal)
+                            {
                                 transaction = tx;
+                                isParentTxValid = true;
+                            }
                             else
                                 internalTxs.Add(tx);
                         }
 
                         transaction.InternalTxs = internalTxs;
+
+                        // replace non valid parent tx by internal tx
+                        if (isParentTxValid == false && internalTxs.Count == 1)
+                            transaction = internalTxs.First();
 
                         return transaction;
                     },
@@ -394,7 +402,7 @@ namespace Atomex.Blockchain.Tezos
 
             if (transaction["target"]?["address"]?.ToString() != tokenContractAddress)
             {
-                Log.Error(
+                Log.Debug(
                     "Error while parsing token transactions {@Id}",
                     transaction["hash"].ToString());
                 return null;
