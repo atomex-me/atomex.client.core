@@ -137,7 +137,7 @@ namespace Atomex.Blockchain.BlockCypher
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            var requestUri = $"/addrs/{address}/full";
+            var requestUri = $"/addrs/{address}/full?txlimit=1000";
 
             return await HttpHelper.GetAsyncResult(
                 baseUri: BaseUri,
@@ -210,7 +210,7 @@ namespace Atomex.Blockchain.BlockCypher
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            var requestUri = $"/txs/{txId}?includeHex=true";
+            var requestUri = $"/txs/{txId}?includeHex=true&instart=0&outstart=0&limit=1000";
 
             return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
                 baseUri: BaseUri,
