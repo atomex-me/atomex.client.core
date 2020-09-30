@@ -40,12 +40,5 @@ namespace Atomex.Blockchain.Abstract
             string txId,
             uint outputNo,
             CancellationToken cancellationToken = default);
-
-        Task<Result<ITxPoint>> TryIsTransactionOutputSpent(
-            string txId,
-            uint outputNo,
-            int attempts = 3,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default);
     }
 }

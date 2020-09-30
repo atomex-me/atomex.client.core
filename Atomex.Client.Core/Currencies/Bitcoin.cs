@@ -1,13 +1,15 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using NBitcoin;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Blockchain.BitCore;
+using Atomex.Blockchain.BlockCypher;
 using Atomex.Blockchain.Insight;
 using Atomex.Wallet.Bip;
-using Microsoft.Extensions.Configuration;
-using NBitcoin;
 using FeeRate = Atomex.Blockchain.BitcoinBased.FeeRate;
 
 namespace Atomex
@@ -74,6 +76,9 @@ namespace Atomex
         {
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();
+
+            if (blockchainApi.Equals("blockcypher"))
+                return new BlockCypherApi(this, configuration);
 
             if (blockchainApi.Equals("insight"))
                 return new InsightApi(this, configuration);

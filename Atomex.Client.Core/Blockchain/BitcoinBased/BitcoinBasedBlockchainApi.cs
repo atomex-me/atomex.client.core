@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
@@ -50,16 +51,5 @@ namespace Atomex.Blockchain.BitcoinBased
             string txId,
             uint outputNo,
             CancellationToken cancellationToken = default);
-
-        public async Task<Result<ITxPoint>> TryIsTransactionOutputSpent(
-            string txId,
-            uint outputNo,
-            int attempts = 3,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            return await ResultHelper.TryDo((c) => IsTransactionOutputSpent(txId, outputNo, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transaction output after {attempts} attempts");
-        }
     }
 }
