@@ -61,7 +61,7 @@ namespace Atomex.MarketData.Bitfinex
             {
                 var symbols = string.Join(",", Quotes.Select(q => q.Key));
 
-                var request = $"tickers?symbols={symbols}";
+                var request = $"tickers/?symbols={symbols}";
 
                 isAvailable = await HttpHelper.GetAsync(
                         baseUri: BaseUrl,
