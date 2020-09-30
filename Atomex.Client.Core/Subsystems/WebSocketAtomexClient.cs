@@ -14,7 +14,6 @@ using Atomex.MarketData.Abstract;
 using Atomex.Subsystems.Abstract;
 using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
-using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Atomex.Web;
 using Microsoft.Extensions.Configuration;

@@ -44,6 +44,10 @@
 
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Blockchain\BlockCypher\" />
+  </ItemGroup>
+
   <ProjectExtensions><VisualStudio><UserProperties /></VisualStudio></ProjectExtensions>
 
 </Project>
