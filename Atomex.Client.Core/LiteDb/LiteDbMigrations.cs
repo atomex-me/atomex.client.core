@@ -11,13 +11,14 @@ namespace Atomex.LiteDb
 {
     public static class LiteDbMigrations
     {
-        public const ushort LastVersion = Version4;
+        public const ushort LastVersion = Version5;
 
         public const ushort Version0 = 0;
         public const ushort Version1 = 1;
         public const ushort Version2 = 2;
         public const ushort Version3 = 3;
         public const ushort Version4 = 4;
+        public const ushort Version5 = 5;
 
         public static ushort MigrateFrom_0_to_1(string pathToDb, string sessionPassword)
         {
@@ -221,6 +222,36 @@ namespace Atomex.LiteDb
             UpdateVersion(db: db, fromVersion: Version3, toVersion: Version4);
 
             return Version4;
+        }
+
+        public static ushort MigrateFrom_4_to_5(
+            string pathToDb,
+            string sessionPassword,
+            Network network)
+        {
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+
+            if (db.Engine.UserVersion != Version4)
+                throw new Exception("Invalid db version");
+
+            Backup(pathToDb);
+
+            // fix outputs
+            var outputsCollection = db.GetCollection("Outputs");
+            var deletedOutputs = outputsCollection.Delete(Query.EQ("Currency", "BTC"));
+
+            // fix transactions
+            var transactionsCollection = db.GetCollection("Transactions");
+            var transactions = transactionsCollection.Delete(Query.EQ("Currency", "BTC"));
+
+            // fix addresses
+            var addressesCollection = db.GetCollection("Addresses");
+            var addresses = addressesCollection.Delete(Query.EQ("Currency", "BTC"));
+
+            Shrink(db, sessionPassword);
+            UpdateVersion(db: db, fromVersion: Version4, toVersion: Version5);
+
+            return Version5;
         }
 
         private static void Backup(string pathToDb)
