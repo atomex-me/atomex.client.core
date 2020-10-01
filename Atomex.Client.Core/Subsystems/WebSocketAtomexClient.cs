@@ -394,6 +394,7 @@ namespace Atomex.Subsystems
             MarketDataRepository.ApplyQuotes(args.Quotes);
 
             var symbolsIds = new HashSet<string>();
+
             foreach (var quote in args.Quotes)
             {
                 if (!symbolsIds.Contains(quote.Symbol))
@@ -402,7 +403,8 @@ namespace Atomex.Subsystems
 
             foreach (var symbolId in symbolsIds)
             {
-                var symbol = Account.Symbols.FirstOrDefault(s => s.Name == symbolId);
+                var symbol = Account.Symbols.GetByName(symbolId);
+
                 if (symbol != null)
                     QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));
             }
