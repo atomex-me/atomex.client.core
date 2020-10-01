@@ -172,10 +172,16 @@ namespace Atomex.Blockchain.BlockCypher
                                 : null;
 
                             if (addresses == null)
+                            {
+                                outputN++;
                                 continue;
+                            }
 
                             if (addresses.Count != 1 || !addresses.Values<string>().Contains(address))
+                            {
+                                outputN++;
                                 continue;
+                            }
 
                             var amount = new Money(output.Value<long>("value"), MoneyUnit.Satoshi);
                             var script = Script.FromHex(output.Value<string>("script"));
