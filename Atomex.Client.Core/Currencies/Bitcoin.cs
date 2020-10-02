@@ -103,7 +103,7 @@ namespace Atomex
                 _feeRate != null &&
                 DateTime.UtcNow - _feeRateTimeStampUtc < TimeSpan.FromMinutes(10))
             {
-                return _feeRate.HourFee;
+                return _feeRate.HalfHourFee;
             }
 
             try
@@ -116,7 +116,7 @@ namespace Atomex
                 _feeRateTimeStampUtc = DateTime.UtcNow;
 
                 return feeRateResult != null && !feeRateResult.HasError && feeRateResult.Value != null
-                    ? feeRateResult.Value.HourFee
+                    ? feeRateResult.Value.HalfHourFee
                     : FeeRate;
             }
             catch

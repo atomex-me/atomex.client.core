@@ -17,6 +17,8 @@ namespace Atomex
         ICurrencyOrderBookProvider OrderBooksProvider { get; }
         ICurrenciesProvider CurrenciesProvider { get; }
         ISymbolsProvider SymbolsProvider { get; }
+        ICurrenciesUpdater CurrenciesUpdater { get; }
+        ISymbolsUpdater SymbolsUpdater { get; }
         bool HasQuotesProvider { get; }
 
         IAtomexApp Start();
@@ -25,6 +27,7 @@ namespace Atomex
         IAtomexApp UseCurrenciesProvider(ICurrenciesProvider currenciesProvider);
         IAtomexApp UseSymbolsProvider(ISymbolsProvider symbolsProvider);
         IAtomexApp UseCurrenciesUpdater(ICurrenciesUpdater currenciesUpdater);
+        IAtomexApp UseSymbolsUpdater(ISymbolsUpdater symbolsUpdater);
         IAtomexApp UseQuotesProvider(ICurrencyQuotesProvider quotesProvider);
         IAtomexApp UseOrderBooksProvider(ICurrencyOrderBookProvider orderBooksProvider);
     }

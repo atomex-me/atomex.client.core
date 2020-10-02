@@ -49,7 +49,13 @@ namespace Atomex.Subsystems
         private IConfiguration Configuration { get; }
         private IMarketDataRepository MarketDataRepository { get; set; }
         private ISwapManager SwapManager { get; set; }
-        private TimeSpan TransactionConfirmationCheckInterval { get; } = TimeSpan.FromSeconds(45);
+
+        private TimeSpan TransactionConfirmationCheckInterval(string currency)
+        {
+            return currency == "BTC"
+                ? TimeSpan.FromSeconds(120)
+                : TimeSpan.FromSeconds(45);
+        }
 
         public WebSocketAtomexClient(IConfiguration configuration, IAccount account)
         {
@@ -388,6 +394,7 @@ namespace Atomex.Subsystems
             MarketDataRepository.ApplyQuotes(args.Quotes);
 
             var symbolsIds = new HashSet<string>();
+
             foreach (var quote in args.Quotes)
             {
                 if (!symbolsIds.Contains(quote.Symbol))
@@ -396,7 +403,8 @@ namespace Atomex.Subsystems
 
             foreach (var symbolId in symbolsIds)
             {
-                var symbol = Account.Symbols.FirstOrDefault(s => s.Name == symbolId);
+                var symbol = Account.Symbols.GetByName(symbolId);
+
                 if (symbol != null)
                     QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));
             }
@@ -515,7 +523,7 @@ namespace Atomex.Subsystems
                         break;
                     }
 
-                    await Task.Delay(TransactionConfirmationCheckInterval, cancellationToken)
+                    await Task.Delay(TransactionConfirmationCheckInterval(transaction?.Currency.Name), cancellationToken)
                         .ConfigureAwait(false);
                 }
             }, _cts.Token);

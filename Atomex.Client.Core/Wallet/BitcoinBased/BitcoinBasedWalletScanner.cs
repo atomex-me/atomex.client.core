@@ -105,7 +105,7 @@ namespace Atomex.Wallet.BitcoinBased
 
             var scanParams = new[]
             {
-                new {Chain = HdKeyStorage.NonHdKeysChain, LookAhead = 0},
+                //new {Chain = HdKeyStorage.NonHdKeysChain, LookAhead = 0},
                 new {Chain = Bip44.Internal, LookAhead = InternalLookAhead},
                 new {Chain = Bip44.External, LookAhead = ExternalLookAhead},
             };

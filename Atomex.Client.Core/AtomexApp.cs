@@ -19,6 +19,7 @@ namespace Atomex
         public ICurrenciesProvider CurrenciesProvider { get; private set; }
         public ISymbolsProvider SymbolsProvider { get; private set; }
         public ICurrenciesUpdater CurrenciesUpdater { get; private set; }
+        public ISymbolsUpdater SymbolsUpdater { get; private set; }
         public bool HasQuotesProvider => QuotesProvider != null;
         public bool HasOrderBooksProvider => OrderBooksProvider != null;
         public bool HasTerminal => Terminal != null;
@@ -35,6 +36,7 @@ namespace Atomex
                 OrderBooksProvider.Start();
 
             CurrenciesUpdater?.Start();
+            SymbolsUpdater?.Start();
 
             return this;
         }
@@ -51,6 +53,7 @@ namespace Atomex
                 OrderBooksProvider.Stop();
 
             CurrenciesUpdater?.Stop();
+            SymbolsUpdater?.Stop();
 
             return this;
         }
@@ -95,6 +98,12 @@ namespace Atomex
         public IAtomexApp UseCurrenciesUpdater(ICurrenciesUpdater currenciesUpdater)
         {
             CurrenciesUpdater = currenciesUpdater;
+            return this;
+        }
+
+        public IAtomexApp UseSymbolsUpdater(ISymbolsUpdater symbolsUpdater)
+        {
+            SymbolsUpdater = symbolsUpdater;
             return this;
         }
 

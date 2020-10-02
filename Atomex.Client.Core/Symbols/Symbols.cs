@@ -1,25 +1,57 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
+using Microsoft.Extensions.Configuration;
+
 using Atomex.Abstract;
 using Atomex.Core;
-using Microsoft.Extensions.Configuration;
 
 namespace Atomex
 {
-    public class Symbols : List<Symbol>, ISymbols
+    public class Symbols : ISymbols
     {
+        private readonly object _sync = new object();
+        private IDictionary<string, Symbol> _symbols;
+
         public Symbols(IConfiguration configuration)
         {
-            var symbols = configuration
+            _symbols = configuration
                 .GetChildren()
-                .Select(s => new Symbol(s));
+                .Select(s => new Symbol(s))
+                .ToDictionary(s => s.Name, s => s);
+        }
 
-            AddRange(symbols);
+        public void Update(IConfiguration configuration)
+        {
+            lock (_sync)
+            {
+                _symbols = configuration
+                    .GetChildren()
+                    .Select(s => new Symbol(s))
+                    .ToDictionary(s => s.Name, s => s);
+            }
         }
 
         public Symbol GetByName(string name)
         {
-            return this.FirstOrDefault(s => s.Name == name);
+            lock (_sync)
+            {
+                return _symbols.TryGetValue(name, out var symbol)
+                    ? symbol
+                    : null;
+            }
         }
+
+        public IEnumerator<Symbol> GetEnumerator()
+        {
+            lock (_sync)
+            {
+                var result = new List<Symbol>(_symbols.Values);
+
+                return result.GetEnumerator();
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

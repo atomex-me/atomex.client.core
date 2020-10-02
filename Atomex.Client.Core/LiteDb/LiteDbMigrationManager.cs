@@ -39,6 +39,9 @@ namespace Atomex.LiteDb
 
                 if (currentVersion == LiteDbMigrations.Version3)
                     LiteDbMigrations.MigrateFrom_3_to_4(pathToDb, sessionPassword, network);
+
+                if (currentVersion == LiteDbMigrations.Version4)
+                    LiteDbMigrations.MigrateFrom_4_to_5(pathToDb, sessionPassword, network);
             }
             catch (Exception e)
             {

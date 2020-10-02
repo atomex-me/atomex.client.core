@@ -137,7 +137,7 @@ namespace Atomex.Blockchain.BlockCypher
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            var requestUri = $"/addrs/{address}/full";
+            var requestUri = $"/addrs/{address}/full?txlimit=1000";
 
             return await HttpHelper.GetAsyncResult(
                 baseUri: BaseUri,
@@ -172,10 +172,16 @@ namespace Atomex.Blockchain.BlockCypher
                                 : null;
 
                             if (addresses == null)
+                            {
+                                outputN++;
                                 continue;
+                            }
 
                             if (addresses.Count != 1 || !addresses.Values<string>().Contains(address))
+                            {
+                                outputN++;
                                 continue;
+                            }
 
                             var amount = new Money(output.Value<long>("value"), MoneyUnit.Satoshi);
                             var script = Script.FromHex(output.Value<string>("script"));
@@ -210,7 +216,7 @@ namespace Atomex.Blockchain.BlockCypher
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            var requestUri = $"/txs/{txId}?includeHex=true";
+            var requestUri = $"/txs/{txId}?includeHex=true&instart=0&outstart=0&limit=1000";
 
             return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
                 baseUri: BaseUri,

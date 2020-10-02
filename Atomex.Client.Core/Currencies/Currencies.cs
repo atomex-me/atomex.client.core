@@ -39,14 +39,16 @@ namespace Atomex
         {
             lock (_sync)
             {
-                return _currencies[name];
+                return _currencies.TryGetValue(name, out var currency)
+                    ? currency
+                    : null;
             }
         }
 
         public T Get<T>(string name) where T : Currency =>
             GetByName(name) as T;
 
-        public Currency GetFromSection(IConfigurationSection configurationSection)
+        private Currency GetFromSection(IConfigurationSection configurationSection)
         {
             return configurationSection.Key switch
             {
