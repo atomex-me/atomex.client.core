@@ -307,7 +307,7 @@ namespace Atomex.Blockchain.BlockCypher
                 return spentResult.Error;
 
             if (spentResult == null || spentResult.Value == null)
-                return null;
+                return new Result<ITxPoint>((ITxPoint)null);
 
             var spentTxResult = await GetTransactionAsync(spentResult.Value, cancellationToken)
                 .ConfigureAwait(false);
@@ -321,7 +321,7 @@ namespace Atomex.Blockchain.BlockCypher
                 if (spentTx.Inputs[i].Index == outputNo && spentTx.Inputs[i].Hash == txId)
                     return new TxPoint((uint)i, spentResult.Value);
 
-            return null;
+            return new Result<ITxPoint>((ITxPoint)null);
         }
     }
 }

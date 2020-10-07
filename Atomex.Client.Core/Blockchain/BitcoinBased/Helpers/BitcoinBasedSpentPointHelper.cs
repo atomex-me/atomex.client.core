@@ -30,6 +30,7 @@ namespace Atomex.Blockchain.BitcoinBased.Helpers
 
                     Log.Error(
                         "Error while get spent point for {@currency} tx output {@hash}:{@index}. Code: {@code}. Description {@desc}.",
+                        currency.Name,
                         hash,
                         index,
                         result.Error.Code,
