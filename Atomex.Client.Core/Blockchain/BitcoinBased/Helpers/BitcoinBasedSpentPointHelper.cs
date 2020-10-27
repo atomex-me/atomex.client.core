@@ -19,7 +19,13 @@ namespace Atomex.Blockchain.BitcoinBased.Helpers
         {
             try
             {
-                var result = await((IInOutBlockchainApi)currency.BlockchainApi)
+                if (!(currency.BlockchainApi is BitcoinBasedBlockchainApi api))
+                {
+                    Log.Error("Api is null for currency {@currency}", currency.Name);
+                    return new Error(Errors.InternalError, $"Api is null for currency {currency.Name}");
+                }
+
+                var result = await api
                     .IsTransactionOutputSpent(hash, index, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -42,6 +48,7 @@ namespace Atomex.Blockchain.BitcoinBased.Helpers
             catch (Exception e)
             {
                 Log.Error(e, "Error while get spent point for {@currency} tx output {@hash}:{@index}.",
+                    currency.Name,
                     hash,
                     index);
 

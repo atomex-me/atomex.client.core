@@ -9,6 +9,7 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NBitcoin;
+using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
@@ -303,7 +304,7 @@ namespace Atomex.Blockchain.BlockCypher
                 cancellationToken: cancellationToken)
             .ConfigureAwait(false);
 
-            if (spentResult.HasError)
+            if (spentResult != null && spentResult.HasError)
                 return spentResult.Error;
 
             if (spentResult == null || spentResult.Value == null)
@@ -312,8 +313,11 @@ namespace Atomex.Blockchain.BlockCypher
             var spentTxResult = await GetTransactionAsync(spentResult.Value, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (spentTxResult.HasError)
+            if (spentTxResult != null && spentTxResult.HasError)
                 return spentTxResult.Error;
+
+            if (spentTxResult == null || spentTxResult.Value == null)
+                return new Result<ITxPoint>((ITxPoint)null);
 
             var spentTx = spentTxResult.Value as BitcoinBasedTransaction;
 
