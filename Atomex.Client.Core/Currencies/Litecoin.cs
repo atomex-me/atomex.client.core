@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using NBitcoin;
 
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.BlockCypher;
 using Atomex.Blockchain.Insight;
 using Atomex.Wallet.Bip;
 
@@ -79,6 +80,9 @@ namespace Atomex
         {
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();
+
+            if (blockchainApi.Equals("blockcypher"))
+                return new BlockCypherApi(this, configuration);
 
             if (blockchainApi.Equals("insight"))
                 return new InsightApi(this, configuration);
