@@ -8,8 +8,8 @@
       "MinTxFeeRate": 1,
       "MinRelayTxFeeRate": 1,
       "Chain": "MainNet",
-      "BlockchainApi": "BlockCypher",
-      "BlockchainApiBaseUri": "https://api.blockcypher.com/v1/btc/main",
+      "BlockchainApi": "SoChain",
+      "BlockchainApiBaseUri": "https://sochain.com/",
       "TxExplorerUri": "https://live.blockcypher.com/btc/tx/",
       "AddressExplorerUri": "https://live.blockcypher.com/btc/address/"
     },
