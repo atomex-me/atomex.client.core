@@ -6,6 +6,7 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BlockCypher;
 using Atomex.Blockchain.Insight;
 using Atomex.Wallet.Bip;
+using Atomex.Blockchain.SoChain;
 
 namespace Atomex
 {
@@ -81,13 +82,13 @@ namespace Atomex
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();
 
-            if (blockchainApi.Equals("blockcypher"))
-                return new BlockCypherApi(this, configuration);
-
-            if (blockchainApi.Equals("insight"))
-                return new InsightApi(this, configuration);
-
-            throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported");
+            return blockchainApi switch
+            {
+                "sochain" => (IBlockchainApi) new SoChainApi(this, configuration),
+                "blockcypher" => (IBlockchainApi) new BlockCypherApi(this, configuration),
+                "insight" => (IBlockchainApi) new InsightApi(this, configuration),
+                _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
+            };
         }
     }
 }
