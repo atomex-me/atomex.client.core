@@ -13,6 +13,9 @@ using Atomex.Common;
 using Atomex.Common.Bson;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
+using Atomex.Swaps.BitcoinBased;
+using NBitcoin;
+using Atomex.Swaps.Abstract;
 
 namespace Atomex.Wallet.BitcoinBased
 {
@@ -203,6 +206,10 @@ namespace Atomex.Wallet.BitcoinBased
             decimal feePrice = 0,
             CancellationToken cancellationToken = default)
         {
+            if (type == BlockchainTransactionType.SwapPayment)
+                return await EstimateSwapPaymentFeeAsync(amount)
+                    .ConfigureAwait(false);
+
             var currency = BtcBasedCurrency;
 
             var amountInSatoshi = currency.CoinToSatoshi(amount);
@@ -268,6 +275,49 @@ namespace Atomex.Wallet.BitcoinBased
 
                 // if new estimated change > dust
                 return currency.SatoshiToCoin(estimatedFeeWithChangeInSatoshi);
+            }
+
+            return null; // insufficient funds
+        }
+
+        public async Task<decimal?> EstimateSwapPaymentFeeAsync(decimal amount)
+        {
+            var currency = BtcBasedCurrency;
+
+            var amountInSatoshi = currency.CoinToSatoshi(amount);
+
+            var availableOutputs = (await DataRepository
+                .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
+                .ConfigureAwait(false))
+                .ToList();
+
+            if (!availableOutputs.Any())
+                return null; // insufficient funds
+
+            var feeRate = await currency
+                .GetFeeRateAsync()
+                .ConfigureAwait(false);
+
+            foreach (var outputs in availableOutputs.SelectOutputs())
+            {
+                if (BitcoinBasedSwapTransactionFactory.EstimateSelectedOutputs(
+                    currency: currency,
+                    outputs: outputs,
+                    amount: amountInSatoshi,
+                    feeRate: feeRate,
+                    refundAddress: new Key().PubKey
+                        .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
+                        .ToString(),
+                    toAddress: new Key().PubKey
+                        .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
+                        .ToString(),
+                    lockTime: DateTimeOffset.UtcNow.AddHours(5),
+                    secretHash: new byte[CurrencySwap.DefaultSecretHashSize],
+                    secretSize: CurrencySwap.DefaultSecretHashSize,
+                    out var feeInSatoshi))
+                {
+                    return currency.SatoshiToCoin(feeInSatoshi);
+                }
             }
 
             return null; // insufficient funds
@@ -339,6 +389,10 @@ namespace Atomex.Wallet.BitcoinBased
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
+            if (type == BlockchainTransactionType.SwapPayment)
+                return await EstimateMaxSwapPaymentAmountAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
             var currency = BtcBasedCurrency;
 
             var unspentOutputs = (await DataRepository
@@ -373,7 +427,47 @@ namespace Atomex.Wallet.BitcoinBased
 
             return (amount, fee, 0m);
         }
-               
+        
+        public async Task<(decimal, decimal, decimal)> EstimateMaxSwapPaymentAmountAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var currency = BtcBasedCurrency;
+
+            var unspentOutputs = (await DataRepository
+                .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
+                .ConfigureAwait(false))
+                .ToList();
+
+            var availableAmountInSatoshi = unspentOutputs.Sum(o => o.Value);
+            var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(unspentOutputs);
+
+            var estimatedTx = currency
+                .CreateHtlcP2PkhScriptSwapPaymentTx(
+                    unspentOutputs: unspentOutputs,
+                    aliceRefundAddress: new Key().PubKey
+                        .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
+                        .ToString(),
+                    bobAddress: new Key().PubKey
+                        .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
+                        .ToString(),
+                    lockTime: DateTimeOffset.UtcNow.AddHours(5),
+                    secretHash: new byte[CurrencySwap.DefaultSecretHashSize],
+                    secretSize: CurrencySwap.DefaultSecretHashSize,
+                    amount: availableAmountInSatoshi,
+                    fee: 0,
+                    redeemScript: out _);
+
+            var feeRate = await currency
+                .GetFeeRateAsync()
+                .ConfigureAwait(false);
+
+            var requiredFeeInSatoshi = (long)((estimatedTx.VirtualSize() + estimatedSigSize) * feeRate);
+            var amount = currency.SatoshiToCoin(Math.Max(availableAmountInSatoshi - requiredFeeInSatoshi, 0));
+            var fee = currency.SatoshiToCoin(requiredFeeInSatoshi);
+
+            return (amount, fee, 0m);
+        }
+
         protected override async Task<bool> ResolveTransactionTypeAsync(
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default)

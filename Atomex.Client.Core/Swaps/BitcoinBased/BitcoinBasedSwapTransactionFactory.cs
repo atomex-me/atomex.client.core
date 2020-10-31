@@ -30,6 +30,11 @@ namespace Atomex.Swaps.BitcoinBased
             if (!availableOutputs.Any())
                 throw new Exception($"Insufficient funds. Available 0.");
 
+            var availableAmountInSatoshi = availableOutputs.Sum(o => o.Value);
+
+            if (availableAmountInSatoshi <= amount)
+                throw new Exception($"Insufficient funds. Available {availableOutputs.Sum(o => o.Value)}, required: {amount}");
+
             var feeInSatoshi = 0L;
             IEnumerable<ITxOutput> selectedOutputs = null;
 
@@ -57,7 +62,34 @@ namespace Atomex.Swaps.BitcoinBased
             }
 
             if (selectedOutputs == null || feeInSatoshi == 0L)
-                throw new Exception($"Insufficient funds. Available {availableOutputs.Sum(o => o.Value)}");
+            {
+                // available outputs are not enough to send tx, let's try to change feeRate and try again
+                var maxFeeInSatoshi = availableAmountInSatoshi - amount;
+
+                var estimatedTx = currency
+                     .CreateHtlcP2PkhScriptSwapPaymentTx(
+                         unspentOutputs: availableOutputs,
+                         aliceRefundAddress: refundAddress,
+                         bobAddress: toAddress,
+                         lockTime: lockTime,
+                         secretHash: secretHash,
+                         secretSize: secretSize,
+                         amount: amount,
+                         fee: maxFeeInSatoshi,
+                         redeemScript: out var _);
+
+                var estimatedSigSize       = BitcoinBasedCurrency.EstimateSigSize(availableOutputs);
+                var estimatedTxVirtualSize = estimatedTx.VirtualSize();
+                var estimatedTxSize        = estimatedTxVirtualSize + estimatedSigSize;
+                var estimatedFeeRate       = maxFeeInSatoshi / estimatedTxSize;
+
+                if (Math.Abs(feeRate - estimatedFeeRate) / feeRate > 0.1m)
+                    throw new Exception($"Insufficient funds. Available {availableOutputs.Sum(o => o.Value)}, required: {amount}. Probably feeRate has changed a lot.");
+
+                // sent tx with estimatedFeeRate without change
+                selectedOutputs = availableOutputs;
+                feeInSatoshi = maxFeeInSatoshi;
+            }
 
             var tx = currency
                 .CreateHtlcP2PkhScriptSwapPaymentTx(
@@ -74,7 +106,7 @@ namespace Atomex.Swaps.BitcoinBased
             return (tx, redeemScript);
         }
 
-        private bool EstimateSelectedOutputs(
+        public static bool EstimateSelectedOutputs(
             BitcoinBasedCurrency currency,
             IEnumerable<ITxOutput> outputs,
             long amount,
