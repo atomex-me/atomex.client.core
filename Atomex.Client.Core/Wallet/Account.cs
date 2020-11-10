@@ -23,6 +23,7 @@ namespace Atomex.Wallet
         public const string DefaultUserSettingsFileName = "user.config";
 
         private const string DefaultDataFileName = "data.db";
+        private const string DefaultWalletsDirectory = "wallets";
         private const string DefaultAccountKey = "Account:Default";
         private const string ApiVersion = "1.3";
 
@@ -85,7 +86,7 @@ namespace Atomex.Wallet
             Symbols = symbolsProvider.GetSymbols(Network);
 
             DataRepository = new LiteDbAccountDataRepository(
-                pathToDb: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultDataFileName}",
+                pathToDb: Path.Combine(Wallet.PathToWallet, DefaultDataFileName),
                 password: password,
                 currencies: Currencies,
                 network: wallet.Network);
@@ -273,7 +274,7 @@ namespace Atomex.Wallet
                 return null;
             }
 
-            if (!File.Exists(PathEx.ToFullPath(pathToAccount)))
+            if (!File.Exists(FileSystem.Current.ToFullPath(pathToAccount)))
             {
                 Log.Error("Default account not found");
                 return null;

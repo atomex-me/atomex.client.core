@@ -35,6 +35,7 @@ namespace Atomex.Blockchain.Tezos
         public decimal GasUsed { get; set; }
         public decimal StorageLimit { get; set; }
         public decimal Burn { get; set; }
+        public string Alias { get; set; }
         public bool UseDefaultFee { get; set; }
         public JObject Params { get; set; }
         public bool IsInternal { get; set; }
@@ -64,6 +65,7 @@ namespace Atomex.Blockchain.Tezos
                 GasUsed = this.GasUsed,
                 StorageLimit = this.StorageLimit,
                 Burn = this.Burn,
+                Alias = this.Alias,
 
                 Params = this.Params,
                 IsInternal = this.IsInternal,

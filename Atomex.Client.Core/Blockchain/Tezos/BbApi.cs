@@ -63,7 +63,8 @@ namespace Atomex.Blockchain.Tezos
                     Name = x.name,
                     Fee = x.fee,
                     MinDelegation = x.minDelegation,
-                    StakingAvailable = Math.Round(x.freeSpace, 6)
+                    StakingAvailable = Math.Round(x.freeSpace, 6),
+                    EstimatedRoi = x.estimatedRoi
                 });
 
             return result;
@@ -78,7 +79,8 @@ namespace Atomex.Blockchain.Tezos
                 Name = baker.name,
                 Fee = baker.fee,
                 MinDelegation = baker.minDelegation,
-                StakingAvailable = Math.Round(baker.freeSpace, 6)
+                StakingAvailable = Math.Round(baker.freeSpace, 6),
+                EstimatedRoi = baker.estimatedRoi
             };
 
             return result;

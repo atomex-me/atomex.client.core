@@ -8,5 +8,6 @@
         public decimal Fee { get; set; }
         public decimal MinDelegation { get; set; }
         public decimal StakingAvailable { get; set; }
+        public decimal EstimatedRoi { get; set; }
     }
 }

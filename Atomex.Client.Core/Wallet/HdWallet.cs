@@ -24,7 +24,7 @@ namespace Atomex.Wallet
 
         private HdWallet(string pathToWallet, SecureString password)
         {
-            PathToWallet = PathEx.ToFullPath(pathToWallet);
+            PathToWallet = FileSystem.Current.ToFullPath(pathToWallet);
 
             KeyStorage = HdKeyStorageLoader.LoadFromFile(pathToWallet, password)
                 .Unlock(password);
@@ -36,7 +36,7 @@ namespace Atomex.Wallet
             SecureString passPhrase = null,
             Network network = Network.MainNet)
         {
-            PathToWallet = PathEx.ToFullPath(string.Empty);
+            PathToWallet = FileSystem.Current.ToFullPath(string.Empty);
 
             KeyStorage = new HdKeyStorage(
                 mnemonic: mnemonic,

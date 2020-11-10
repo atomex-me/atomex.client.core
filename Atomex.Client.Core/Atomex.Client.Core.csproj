@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
@@ -23,7 +23,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="currencies.json" />
+    <EmbeddedResource Include="currencies.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
     <EmbeddedResource Include="symbols.json" />
   </ItemGroup>
 
@@ -45,9 +47,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Common\FileSystem\" />
     <Folder Include="Blockchain\BlockCypher\" />
   </ItemGroup>
-
+  
   <ProjectExtensions><VisualStudio><UserProperties /></VisualStudio></ProjectExtensions>
+
 
 </Project>
