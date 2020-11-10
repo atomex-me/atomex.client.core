@@ -86,7 +86,7 @@ namespace Atomex.Wallet
             Symbols = symbolsProvider.GetSymbols(Network);
 
             DataRepository = new LiteDbAccountDataRepository(
-                pathToDb: Path.Combine(Wallet.PathToWallet, DefaultDataFileName),
+                pathToDb: Path.Combine(Path.GetDirectoryName(Wallet.PathToWallet), DefaultDataFileName),
                 password: password,
                 currencies: Currencies,
                 network: wallet.Network);
