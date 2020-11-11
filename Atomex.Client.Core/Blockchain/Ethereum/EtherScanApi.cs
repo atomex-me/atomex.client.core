@@ -670,7 +670,7 @@ namespace Atomex.Blockchain.Ethereum
                         ? BigInteger.Parse(tx.GasPrice)
                         : 0,
                     GasLimit      = BigInteger.Parse(tx.Gas),
-                    GasUsed       = BigInteger.Parse(tx.GasUsed), 
+                    GasUsed       = BigInteger.Parse(tx.GasUsed),
                     ReceiptStatus = state == BlockchainTransactionState.Confirmed,
                     IsInternal    = isInternal,
                     InternalIndex = internalIndex,

@@ -47,7 +47,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Common\FileSystem\" />
     <Folder Include="Blockchain\BlockCypher\" />
   </ItemGroup>
   

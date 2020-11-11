@@ -2,11 +2,13 @@
 {
     public static class FileSystem
     {
+        private static IFileSystem _fileSystem;
+
         public static void UseFileSystem(IFileSystem fileSystem)
         {
-            Current = fileSystem;
+            _fileSystem = fileSystem;
         }
 
-        public static IFileSystem Current { get; private set; }
+        public static IFileSystem Current => _fileSystem ?? new DefaultFileSystem();
     }
 }
