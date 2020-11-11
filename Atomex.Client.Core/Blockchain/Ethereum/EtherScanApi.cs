@@ -239,26 +239,26 @@ namespace Atomex.Blockchain.Ethereum
 
                        return new EthereumTransaction
                        {
-                           Id = tx["hash"].Value<string>(),
-                           Currency = Currency,
-                           Type = BlockchainTransactionType.Unknown,
+                           Id            = tx["hash"].Value<string>(),
+                           Currency      = Currency,
+                           Type          = BlockchainTransactionType.Unknown,
                            //State = state,
                            //CreationTime = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
 
-                           From = tx["from"].Value<string>().ToLowerInvariant(),
-                           To = tx["to"].Value<string>().ToLowerInvariant(),
-                           Input = tx["input"].Value<string>(),
-                           Amount = new HexBigInteger(tx["value"].Value<string>()),
-                           Nonce = tx["nonce"] != null
+                           From          = tx["from"].Value<string>().ToLowerInvariant(),
+                           To            = tx["to"].Value<string>().ToLowerInvariant(),
+                           Input         = tx["input"].Value<string>(),
+                           Amount        = new HexBigInteger(tx["value"].Value<string>()),
+                           Nonce         = tx["nonce"] != null
                                 ? new HexBigInteger(tx["nonce"].Value<string>()).Value
                                 : 0,
-                           GasPrice = tx["gasPrice"] != null
+                           GasPrice      = tx["gasPrice"] != null
                                 ? new HexBigInteger(tx["gasPrice"].Value<string>()).Value
                                 : 0,
-                           GasLimit = new HexBigInteger(tx["gas"].Value<string>()).Value,
+                           GasLimit      = new HexBigInteger(tx["gas"].Value<string>()).Value,
                            //GasUsed = 0,
                            //ReceiptStatus = state == BlockchainTransactionState.Confirmed,
-                           IsInternal = false,
+                           IsInternal    = false,
                            InternalIndex = 0,
 
                            BlockInfo = new BlockInfo
@@ -266,7 +266,7 @@ namespace Atomex.Blockchain.Ethereum
                                //Confirmations = tx.Confirmations != null
                                //     ? int.Parse(tx.Confirmations)
                                //     : 1,
-                               BlockHash = tx["blockHash"]?.Value<string>(),
+                               BlockHash   = tx["blockHash"]?.Value<string>(),
                                BlockHeight = (long)new HexBigInteger(tx["blockNumber"].Value<string>()).Value,
                                //BlockTime = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
                                //FirstSeen = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp))
@@ -552,26 +552,57 @@ namespace Atomex.Blockchain.Ethereum
 
             var requestUri = $"api?module=proxy&action=eth_sendRawTransaction&hex=0x{ethTx.RlpEncodedTx}&apikey={ApiKey}";
 
-            await RequestLimitControl
-                .Wait(cancellationToken)
-                .ConfigureAwait(false);
+            string txId = null;
+            var attempts = 20;
+            const int delayIntervalMs = 3000;
 
-            var txId =  await HttpHelper.PostAsyncResult<string>(
-                   baseUri: BaseUrl,
-                   requestUri: requestUri,
-                   content: null,
-                   responseHandler: (response, content) =>
-                   {
-                       var json = JsonConvert.DeserializeObject<JObject>(content);
+            // 11.11.2020
+            // Etherscan can return OK, but the transaction is not added to the blockchain's mempool.
+            // The decision to send the transaction until the response "already known" is received.
+            for (var i = 0; i < attempts; ++i)
+            {
+                await RequestLimitControl
+                    .Wait(cancellationToken)
+                    .ConfigureAwait(false);
 
-                       return json.ContainsKey("result")
-                           ? json["result"].Value<string>()
-                           : null;
-                   },
-                   cancellationToken: cancellationToken)
-               .ConfigureAwait(false);
+                var txIdResult = await HttpHelper.PostAsyncResult<string>(
+                       baseUri: BaseUrl,
+                       requestUri: requestUri,
+                       content: null,
+                       responseHandler: (response, content) =>
+                       {
+                           var json = JsonConvert.DeserializeObject<JObject>(content);
 
-            ethTx.Id = txId.Value;
+                           var error = json.SelectToken("error.message")?.Value<string>();
+
+                           if (error != null)
+                               return new Error(Errors.TransactionBroadcastError, error);
+
+                           return json.ContainsKey("result")
+                               ? json["result"].Value<string>()
+                               : null;
+                       },
+                       cancellationToken: cancellationToken)
+                   .ConfigureAwait(false);
+
+                if (!txIdResult.HasError)
+                {
+                    txId = txIdResult.Value; // remember tx id
+
+                    await Task.Delay(delayIntervalMs)
+                        .ConfigureAwait(false);
+                }
+                else if (txIdResult.HasError && txId != null)
+                {
+                    // received an error, but there is already a transaction id
+                    ethTx.Id = txId;
+                    return txId;
+                }
+                else if (txIdResult.HasError)
+                {
+                    return txIdResult;
+                }
+            }
 
             return txId;
         }
@@ -622,26 +653,26 @@ namespace Atomex.Blockchain.Ethereum
 
                 result.Add(new EthereumTransaction
                 {
-                    Id = id,
-                    Currency = Currency,
-                    Type = BlockchainTransactionType.Unknown,
-                    State = state,
-                    CreationTime = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
+                    Id            = id,
+                    Currency      = Currency,
+                    Type          = BlockchainTransactionType.Unknown,
+                    State         = state,
+                    CreationTime  = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
 
-                    From = tx.From.ToLowerInvariant(),
-                    To = tx.To.ToLowerInvariant(),
-                    Input = tx.Input,
-                    Amount = BigInteger.Parse(tx.Value),
-                    Nonce = tx.Nonce != null
+                    From          = tx.From.ToLowerInvariant(),
+                    To            = tx.To.ToLowerInvariant(),
+                    Input         = tx.Input,
+                    Amount        = BigInteger.Parse(tx.Value),
+                    Nonce         = tx.Nonce != null
                         ? BigInteger.Parse(tx.Nonce)
                         : 0,
-                    GasPrice = tx.GasPrice != null
+                    GasPrice      = tx.GasPrice != null
                         ? BigInteger.Parse(tx.GasPrice)
                         : 0,
-                    GasLimit = BigInteger.Parse(tx.Gas),
-                    GasUsed = BigInteger.Parse(tx.GasUsed), 
+                    GasLimit      = BigInteger.Parse(tx.Gas),
+                    GasUsed       = BigInteger.Parse(tx.GasUsed), 
                     ReceiptStatus = state == BlockchainTransactionState.Confirmed,
-                    IsInternal = isInternal,
+                    IsInternal    = isInternal,
                     InternalIndex = internalIndex,
 
                     BlockInfo = new BlockInfo
@@ -649,10 +680,10 @@ namespace Atomex.Blockchain.Ethereum
                         Confirmations = tx.Confirmations != null
                             ? int.Parse(tx.Confirmations)
                             : 1,
-                        BlockHash = tx.BlockHash,
+                        BlockHash   = tx.BlockHash,
                         BlockHeight = long.Parse(tx.BlockNumber),
-                        BlockTime = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
-                        FirstSeen = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp))
+                        BlockTime   = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
+                        FirstSeen   = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp))
                     }
                 });
             }
@@ -715,7 +746,7 @@ namespace Atomex.Blockchain.Ethereum
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult<GasPrice>(
+            return await HttpHelper.GetAsyncResult(
                    baseUri: baseUri,
                    requestUri: requestUri,
                    responseHandler: (response, content) =>
