@@ -232,8 +232,8 @@
       "MinTxFeeRate": 1,
       "MinRelayTxFeeRate": 1,
       "Chain": "TestNet",
-      "BlockchainApi": "BitCore+BlockCypher",
-      "BlockchainApiBaseUri": "https://api.bitcore.io/",
+      "BlockchainApi": "SoChain",
+      "BlockchainApiBaseUri": "https://sochain.com/",
       "TxExplorerUri": "https://live.blockcypher.com/btc-testnet/tx/",
       "AddressExplorerUri": "https://live.blockcypher.com/btc-testnet/address/"
     },

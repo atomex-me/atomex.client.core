@@ -309,6 +309,7 @@ namespace Atomex.Blockchain.SoChain
         public BitcoinBasedCurrency Currency { get; }
         public string NetworkAcronym { get; }
         public string BaseUrl { get; } = "https://sochain.com/";
+        public string ProxyUrl { get; } = "https://test.atomex.me/";
 
         public SoChainApi(BitcoinBasedCurrency currency, string baseUri)
         {
@@ -654,7 +655,7 @@ namespace Atomex.Blockchain.SoChain
                 mediaType: "application/json"))
             {
                 return await HttpHelper.PostAsyncResult<string>(
-                        baseUri: BaseUrl,
+                        baseUri: ProxyUrl,
                         requestUri: requestUri,
                         content: requestContent,
                         responseHandler: (response, content) => JsonConvert.DeserializeObject<Response<SendTxId>>(content).Data.TxId,
