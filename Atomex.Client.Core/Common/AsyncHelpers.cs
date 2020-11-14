@@ -20,7 +20,7 @@ namespace Atomex.Common
             }
             catch (Exception e)
             {
-                Log.Error("Task \"fire and forget\" error");
+                Log.Error(e, $"Task \"fire and forget\" error: {e.Message}");
 
                 exceptionHandler?.Invoke(e);
             }

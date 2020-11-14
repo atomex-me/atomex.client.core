@@ -364,6 +364,54 @@ namespace Atomex.Blockchain.Tezos
                 .ConfigureAwait(false);
         }
 
+        public async Task<Result<Account>> GetAccountByAddressAsync(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            return await HttpHelper.GetAsyncResult<Account>(
+                    baseUri: _baseUri,
+                    requestUri: $"accounts/{address}",
+                    headers: _headers,
+                    responseHandler: (response, content) =>
+                    {
+                        var accountInfo = JsonConvert.DeserializeObject<JObject>(content);
+
+                        var type = accountInfo["type"].Value<string>();
+
+                        if (type == "user")
+                        {
+                            return new Account
+                            {
+                                Address = address,
+                                DelegateAddress = accountInfo["delegate"]["address"].ToString(),
+                                DelegationTime = DateTimeOffset.Parse(accountInfo["delegationTime"].ToString()).DateTime,
+                                DelegationLevel = accountInfo["delegationLevel"].Value<decimal>()
+                            };
+                        }
+
+                        return null;
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        public async Task<Result<decimal>> GetHeadLevelAsync(
+             CancellationToken cancellationToken = default)
+        {
+            return await HttpHelper.GetAsyncResult<decimal>(
+                    baseUri: _baseUri,
+                    requestUri: $"head",
+                    headers: _headers,
+                    responseHandler: (response, content) =>
+                    {
+                        var head = JsonConvert.DeserializeObject<JObject>(content);
+
+                        return head["level"].Value<decimal>();
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         public async Task<Result<bool>> IsAllocatedAsync(
             string address,
             CancellationToken cancellationToken = default)
@@ -583,6 +631,7 @@ namespace Atomex.Blockchain.Tezos
 
                 var state = StateFromStatus(transaction["status"].Value<string>());
 
+
                 var tx = new TezosTransaction()
                 {
                     Id = transaction["hash"].ToString(),
@@ -594,6 +643,8 @@ namespace Atomex.Blockchain.Tezos
                     GasUsed = transaction["gasUsed"].Value<decimal>(),
                     Burn = transaction["storageFee"].Value<decimal>() +
                            transaction["allocationFee"].Value<decimal>(),
+
+                    Alias = transaction["sender"]["alias"]?.Value<string>(),
 
                     IsInternal = transaction.ContainsKey("nonce"),
                     //tx.IsInternal = tx.From == ((TezosTokens.FA12) _currency).SwapContractAddress;
@@ -623,6 +674,7 @@ namespace Atomex.Blockchain.Tezos
                     tx.From = transaction["sender"]?["address"]?.ToString();
                     tx.To = transaction["target"]?["address"]?.ToString();
                     tx.Amount = transaction["amount"].Value<decimal>();
+                    tx.Alias = transaction["sender"]["alias"]?.Value<string>();
 
                     if (tx.IsInternal)
                     {

@@ -63,6 +63,7 @@ namespace Atomex
 
         public string BaseUri { get; protected set; }
         public string RpcNodeUri { get; protected set; }
+        public string BbUri { get; protected set; }
         public string BbApiUri { get; protected set; }
         public string SwapContractAddress { get; protected set; }
 
@@ -133,6 +134,7 @@ namespace Atomex
 
             BaseUri    = configuration["BlockchainApiBaseUri"];
             RpcNodeUri = configuration["BlockchainRpcNodeUri"];
+            BbUri = configuration["BbUri"];
             BbApiUri   = configuration["BbApiUri"];
 
             BlockchainApi       = ResolveBlockchainApi(configuration, this);
