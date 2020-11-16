@@ -306,7 +306,7 @@ namespace Atomex.Wallet.Tezos
                     srcOffset: 0,
                     dst: childK,
                     dstOffset: 32,
-                    count: 32);
+                    count: krBytes.Length <= 32 ? krBytes.Length : 32);
 
                 var childPrivateKey = new SecureBytes(childK);
 
