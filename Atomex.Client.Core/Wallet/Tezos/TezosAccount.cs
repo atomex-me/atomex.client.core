@@ -375,7 +375,23 @@ namespace Atomex.Wallet.Tezos
                 .ForEach(async t => await ResolveTransactionTypeAsync(t, cancellationToken)
                 .ConfigureAwait(false));
 
+            ResolveTezosTxAlias(xtzTx);
+
             return true;
+        }
+
+        protected void ResolveTezosTxAlias(TezosTransaction tx) {
+            if (String.IsNullOrEmpty(tx.Alias)) {
+                return;
+            }
+
+            if (tx.Type.HasFlag(BlockchainTransactionType.Input)) {
+                tx.Alias = tx.Alias.Split(Convert.ToChar("/"))[0];
+            } else
+
+            if(tx.Type.HasFlag(BlockchainTransactionType.Output)) {
+                tx.Alias = tx.Alias.Split(Convert.ToChar("/"))[1];
+            }          
         }
 
         private TezosTransaction ResolveFA12TransactionType(
