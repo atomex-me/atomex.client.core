@@ -381,17 +381,19 @@ namespace Atomex.Wallet.Tezos
         }
 
         protected void ResolveTezosTxAlias(TezosTransaction tx) {
-            if (String.IsNullOrEmpty(tx.Alias)) {
+            string ALIAS_DELIMETER = "/";
+
+            if (String.IsNullOrEmpty(tx.Alias) || tx.Alias.IndexOf(ALIAS_DELIMETER) == -1) {
                 return;
             }
 
             if (tx.Type.HasFlag(BlockchainTransactionType.Input)) {
-                tx.Alias = tx.Alias.Split(Convert.ToChar("/"))[0];
+                tx.Alias = tx.Alias.Split(Convert.ToChar(ALIAS_DELIMETER))[0];
             } else
 
             if(tx.Type.HasFlag(BlockchainTransactionType.Output)) {
-                tx.Alias = tx.Alias.Split(Convert.ToChar("/"))[1];
-            }          
+                tx.Alias = tx.Alias.Split(Convert.ToChar(ALIAS_DELIMETER))[1];
+            }
         }
 
         private TezosTransaction ResolveFA12TransactionType(
