@@ -718,6 +718,12 @@ namespace Atomex.Blockchain.Tezos
                 var tx = transfer as JObject;
                 var contract = tx["contract"].Value<string>();
 
+                var alias = $"{tx["from_alias"]?.Value<string>()}/{tx["to_alias"]?.Value<string>()}";
+
+                if (alias.Length == 1) {
+                    alias = String.Empty;
+                }
+
                 if (!contract.Equals(token.TokenContractAddress, StringComparison.OrdinalIgnoreCase))
                     continue;
 
@@ -738,6 +744,7 @@ namespace Atomex.Blockchain.Tezos
                     From = tx["from"].Value<string>(),
                     To = tx["to"].Value<string>(),
                     Amount = tx["amount"].Value<decimal>(),
+                    Alias = alias,
 
                     BlockInfo = new BlockInfo
                     {
