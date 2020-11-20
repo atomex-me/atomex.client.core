@@ -348,6 +348,8 @@ namespace Atomex.Wallet.Tezos
             xtzTx.InternalTxs?.ForEach(async t => await ResolveTransactionTypeAsync(t, cancellationToken)
                 .ConfigureAwait(false));
 
+            ResolveTezosTxAlias(xtzTx);
+
             return true;
         }
 

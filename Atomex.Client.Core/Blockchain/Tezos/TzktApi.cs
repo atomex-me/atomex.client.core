@@ -631,6 +631,11 @@ namespace Atomex.Blockchain.Tezos
 
                 var state = StateFromStatus(transaction["status"].Value<string>());
 
+                var alias = $"{transaction["sender"]["alias"]?.Value<string>()}/{transaction["target"]["alias"]?.Value<string>()}";
+
+                if (alias.Length == 1) {
+                    alias = String.Empty;
+                }
 
                 var tx = new TezosTransaction()
                 {
@@ -644,7 +649,7 @@ namespace Atomex.Blockchain.Tezos
                     Burn = transaction["storageFee"].Value<decimal>() +
                            transaction["allocationFee"].Value<decimal>(),
 
-                    Alias = transaction["sender"]["alias"]?.Value<string>(),
+                    Alias = alias,
 
                     IsInternal = transaction.ContainsKey("nonce"),
                     //tx.IsInternal = tx.From == ((TezosTokens.FA12) _currency).SwapContractAddress;
@@ -674,7 +679,7 @@ namespace Atomex.Blockchain.Tezos
                     tx.From = transaction["sender"]?["address"]?.ToString();
                     tx.To = transaction["target"]?["address"]?.ToString();
                     tx.Amount = transaction["amount"].Value<decimal>();
-                    tx.Alias = transaction["sender"]["alias"]?.Value<string>();
+                    tx.Alias = alias;
 
                     if (tx.IsInternal)
                     {
