@@ -382,6 +382,8 @@ namespace Atomex.Blockchain.Ethereum
 
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
+            long fromBlock = 0,
+            long toBlock = long.MaxValue,
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
@@ -391,7 +393,7 @@ namespace Atomex.Blockchain.Ethereum
             // todo: add pagination support
             var result = await HttpHelper.GetAsyncResult(
                     baseUri: BaseUrl,
-                    requestUri: $"api?module=account&action=txlist&address={address}&sort=asc&apikey={ApiKey}",
+                    requestUri: $"api?module=account&action=txlist&address={address}&startblock={fromBlock}&endblock={toBlock}&sort=asc&apikey={ApiKey}",
                     responseHandler: (response, content) => new Result<IEnumerable<IBlockchainTransaction>>(
                         ParseTransactions(content, txId: null, isInternal: false)),
                     cancellationToken: cancellationToken)
@@ -409,7 +411,7 @@ namespace Atomex.Blockchain.Ethereum
 
             var internalResult = await HttpHelper.GetAsyncResult(
                     baseUri: BaseUrl,
-                    requestUri: $"api?module=account&action=txlistinternal&address={address}&sort=asc&apikey={ApiKey}",
+                    requestUri: $"api?module=account&action=txlistinternal&address={address}&startblock={fromBlock}&endblock={toBlock}&sort=asc&apikey={ApiKey}",
                     responseHandler: (response, content) => new Result<IEnumerable<IBlockchainTransaction>>(
                         ParseTransactions(content, txId: null, isInternal: true)),
                     cancellationToken: cancellationToken)
@@ -428,11 +430,13 @@ namespace Atomex.Blockchain.Ethereum
 
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
             string address,
+            long fromBlock = 0,
+            long toBlock = long.MaxValue,
             int attempts = 10,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
-            return await ResultHelper.TryDo((c) => GetTransactionsAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
+            return await ResultHelper.TryDo((c) => GetTransactionsAsync(address, fromBlock, toBlock, c), attempts, attemptsIntervalMs, cancellationToken)
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
         }
 
@@ -768,6 +772,41 @@ namespace Atomex.Blockchain.Ethereum
                    },
                    cancellationToken: cancellationToken)
                .ConfigureAwait(false);
+        }
+
+        public async Task<Result<long>> GetBlockByTimeStampAsync(
+            long unixTimeStamp,
+            CancellationToken cancellationToken = default)
+        {
+            var uri = $"api?module=block&action=getblocknobytime&timestamp={unixTimeStamp}&closest=before&apikey={ApiKey}";
+
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            return await HttpHelper.GetAsyncResult(
+                    baseUri: BaseUrl,
+                    requestUri: uri,
+                    responseHandler: (response, content) =>
+                    {
+                        var json = JsonConvert.DeserializeObject<JObject>(content);
+
+                        return json.ContainsKey("result")
+                            ? new Result<long>(json["result"].Value<long>())
+                            : new Result<long>(new Error(Errors.RequestError, "Can't get blockno by timestamp"));
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        public async Task<Result<long>> TryGetBlockByTimeStampAsync(
+            long unixTimeStamp,
+            int attempts = 3,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResultHelper.TryDo((c) => GetBlockByTimeStampAsync(unixTimeStamp, c), attempts, attemptsIntervalMs, cancellationToken)
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting blockno by timestamp after {attempts} attempts");
         }
     }
 }

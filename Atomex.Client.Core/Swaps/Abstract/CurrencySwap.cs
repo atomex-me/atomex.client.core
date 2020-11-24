@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Helpers;
-using Atomex.Common;
 using Atomex.Core;
+using Atomex.Common;
 using Atomex.Cryptography;
-using Serilog;
 
 namespace Atomex.Swaps.Abstract
 {
@@ -35,16 +36,13 @@ namespace Atomex.Swaps.Abstract
         public OnSwapUpdatedDelegate SwapUpdated { get; set; }
 
         public string Currency { get; }
-        protected readonly ISwapClient SwapClient;
         protected readonly ICurrencies Currencies;
 
         protected CurrencySwap(
             string currency,
-            ISwapClient swapClient,
             ICurrencies currencies)
         {
             Currency = currency;
-            SwapClient = swapClient ?? throw new ArgumentNullException(nameof(swapClient));
             Currencies = currencies ?? throw new ArgumentNullException(nameof(currencies));
         }
 
@@ -76,48 +74,27 @@ namespace Atomex.Swaps.Abstract
             Swap swap,
             CancellationToken cancellationToken = default);
 
-        public virtual Task HandlePartyPaymentAsync(
+        public abstract Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
             Swap swap,
-            Swap clientSwap,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.CompletedTask;
-        }
+            CancellationToken cancellationToken = default);
 
-        protected void RaiseInitiatorPaymentConfirmed(Swap swap)
-        {
+        protected void RaiseInitiatorPaymentConfirmed(Swap swap) =>
             InitiatorPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap));
-        }
 
-        protected void RaiseAcceptorPaymentConfirmed(Swap swap)
-        {
+        protected void RaiseAcceptorPaymentConfirmed(Swap swap) =>
             AcceptorPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap));
-        }
 
-        protected void RaiseAcceptorPaymentSpent(Swap swap)
-        {
+        protected void RaiseAcceptorPaymentSpent(Swap swap) =>
             AcceptorPaymentSpent?.Invoke(this, new SwapEventArgs(swap));
-        }
 
-        protected void RaiseSwapUpdated(Swap swap, SwapStateFlags changedFlag)
-        {
+        protected void RaiseSwapUpdated(Swap swap, SwapStateFlags changedFlag) =>
             SwapUpdated?.Invoke(this, new SwapEventArgs(swap, changedFlag));
-        }
 
-        public static byte[] CreateSwapSecret()
-        {
-            return Rand.SecureRandomBytes(DefaultSecretSize);
-        }
+        public static byte[] CreateSwapSecret() =>
+            Rand.SecureRandomBytes(DefaultSecretSize);
 
-        public static byte[] CreateSwapSecretHash(byte[] secretBytes)
-        {
-            return Sha256.Compute(secretBytes, 2);
-        }
-
-        public static byte[] CreateSwapSecretHash160(byte[] secretBytes)
-        {
-            return Ripemd160.Compute(Sha256.Compute(secretBytes));
-        }
+        public static byte[] CreateSwapSecretHash(byte[] secretBytes) =>
+            Sha256.Compute(secretBytes, 2);
 
         protected Task TrackTransactionConfirmationAsync(
             Swap swap,
@@ -191,7 +168,7 @@ namespace Atomex.Swaps.Abstract
                 {
                     Log.Error("Payment deadline reached for swap {@swap}", swap.Id);
 
-                    swap.Cancel();
+                    swap.StateFlags |= SwapStateFlags.IsCanceled;
                     RaiseSwapUpdated(swap, SwapStateFlags.IsCanceled);
 
                     return false;
@@ -200,5 +177,106 @@ namespace Atomex.Swaps.Abstract
 
             return true;
         }
+
+        protected void SwapInitiatedHandler(
+            Swap swap,
+            CancellationToken cancellationToken = default)
+        {
+            Log.Debug(
+                "Initiator payment transaction received. Now counter party can broadcast payment tx for swap {@swapId}",
+                swap.Id);
+
+            swap.StateFlags |= SwapStateFlags.HasPartyPayment;
+            swap.StateFlags |= SwapStateFlags.IsPartyPaymentConfirmed;
+            RaiseSwapUpdated(swap, SwapStateFlags.HasPartyPayment | SwapStateFlags.IsPartyPaymentConfirmed);
+
+            InitiatorPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap));
+        }
+
+        protected async void SwapAcceptedHandler(
+            Swap swap,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                Log.Debug(
+                    "Acceptors payment transaction received. Now initiator can do self redeem and do party redeem for acceptor (if needs and wants) for swap {@swapId}.",
+                    swap.Id);
+
+                swap.StateFlags |= SwapStateFlags.HasPartyPayment;
+                swap.StateFlags |= SwapStateFlags.IsPartyPaymentConfirmed;
+                RaiseSwapUpdated(swap, SwapStateFlags.HasPartyPayment | SwapStateFlags.IsPartyPaymentConfirmed);
+
+                RaiseAcceptorPaymentConfirmed(swap);
+
+                await RedeemAsync(swap, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Swap accepted error");
+            }
+        }
+
+        protected void SwapCanceledHandler(
+            Swap swap,
+            CancellationToken cancellationToken = default)
+        {
+            // todo: do smth here
+            Log.Debug("Swap canceled due to wrong counter party params {@swapId}", swap.Id);
+        }
+
+        protected void RedeemConfirmedEventHandler(
+            Swap swap,
+            IBlockchainTransaction tx,
+            CancellationToken cancellationToken = default)
+        {
+            swap.StateFlags |= SwapStateFlags.IsRedeemConfirmed;
+            RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemConfirmed);
+        }
+
+        protected void RedeemCompletedEventHandler(
+            Swap swap,
+            byte[] secret,
+            CancellationToken cancellationToken = default)
+        {
+            Log.Debug("Handle redeem control completed event for swap {@swapId}", swap.Id);
+
+            if (swap.IsAcceptor)
+            {
+                swap.Secret = secret;
+                RaiseSwapUpdated(swap, SwapStateFlags.HasSecret);
+
+                RaiseAcceptorPaymentSpent(swap);
+            }
+        }
+
+        protected void RedeemCanceledEventHandler(
+            Swap swap,
+            DateTime refundTimeUtc,
+            CancellationToken cancellationToken = default)
+        {
+            Log.Debug("Handle redeem control canceled event for swap {@swapId}", swap.Id);
+
+            ControlRefundTimeAsync(
+                    swap: swap,
+                    refundTimeUtc: refundTimeUtc,
+                    refundTimeReachedHandler: RefundTimeReachedHandler,
+                    cancellationToken: cancellationToken)
+                .FireAndForget();
+        }
+
+        protected void RefundConfirmedEventHandler(
+            Swap swap,
+            IBlockchainTransaction tx,
+            CancellationToken cancellationToken = default)
+        {
+            swap.StateFlags |= SwapStateFlags.IsRefundConfirmed;
+            RaiseSwapUpdated(swap, SwapStateFlags.IsRefundConfirmed);
+        }
+
+        protected abstract void RefundTimeReachedHandler(
+            Swap swap,
+            CancellationToken cancellationToken = default);
     }
 }

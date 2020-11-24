@@ -3,17 +3,74 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Nethereum.Hex.HexTypes;
+using Serilog;
+
+using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.ERC20;
 using Atomex.Common;
 using Atomex.Core;
-using Nethereum.Hex.HexTypes;
-using Serilog;
 
 namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 {
     public static class ERC20SwapInitiatedHelper
     {
+        private const int BlocksAhead = 10000; // >24h with block time 10-30 seconds
+
+        public static async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+            Swap swap,
+            Currency currency,
+            CancellationToken cancellationToken = default)
+        {
+            var erc20 = currency as EthereumTokens.ERC20;
+
+            var api = erc20.BlockchainApi as IEthereumBlockchainApi;
+
+            var blockNoResult = await api
+                .TryGetBlockByTimeStampAsync(swap.TimeStamp.ToUniversalTime().ToUnixTime(), cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (blockNoResult == null)
+                return new Error(Errors.RequestError, "Can't get Ethereum block number by timestamp");
+
+            if (blockNoResult.HasError)
+                return blockNoResult.Error;
+
+            var txsResult = await api
+                .TryGetTransactionsAsync(
+                    address: erc20.SwapContractAddress,
+                    fromBlock: blockNoResult.Value,
+                    toBlock: blockNoResult.Value + BlocksAhead,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (txsResult == null)
+                return new Error(Errors.RequestError, "Can't get Ethereum swap contract transactions");
+
+            if (txsResult.HasError)
+                return txsResult.Error;
+
+            var savedTx = swap.PaymentTx as EthereumTransaction;
+
+            foreach (var tx in txsResult.Value.Cast<EthereumTransaction>())
+            {
+                if (tx.Amount != 0 ||
+                   !tx.Input.Equals(savedTx.Input, StringComparison.OrdinalIgnoreCase) ||
+                   !tx.From.Equals(savedTx.From, StringComparison.OrdinalIgnoreCase) ||
+                   !tx.To.Equals(erc20.SwapContractAddress, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (tx.State == BlockchainTransactionState.Failed)
+                    continue; // skip failed transactions
+
+                return tx;
+            }
+
+            return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
+        }
+
         public static async Task<Result<bool>> IsInitiatedAsync(
             Swap swap,
             Currency currency,

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Core;
 
 namespace Atomex.Swaps.Abstract
@@ -9,7 +10,7 @@ namespace Atomex.Swaps.Abstract
     {
         event EventHandler<SwapEventArgs> SwapUpdated;
 
-        Task HandleSwapAsync(Swap receivedSwap);
+        Task<Error> HandleSwapAsync(Swap receivedSwap);
         Task RestoreSwapsAsync(CancellationToken cancellationToken = default);
     }
 }

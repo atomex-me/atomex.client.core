@@ -306,9 +306,12 @@ namespace Atomex.Blockchain.SoChain
         private static readonly RequestLimitControl RequestLimitControl
             = new RequestLimitControl(MinDelayBetweenRequestMs);
 
+        private readonly bool _useProxy = false;
+
         public BitcoinBasedCurrency Currency { get; }
         public string NetworkAcronym { get; }
         public string BaseUrl { get; } = "https://sochain.com/";
+        public string ProxyUrl { get; } = "https://test.atomex.me/";
 
         public SoChainApi(BitcoinBasedCurrency currency, string baseUri)
         {
@@ -334,6 +337,8 @@ namespace Atomex.Blockchain.SoChain
 
             NetworkAcronym = networkAcronym;
             BaseUrl = configuration["BlockchainApiBaseUri"];
+
+            bool.TryParse(configuration["UseProxy"], out _useProxy);
         }
 
         public override async Task<Result<decimal>> GetBalanceAsync(
@@ -375,15 +380,44 @@ namespace Atomex.Blockchain.SoChain
                         if (input.Witness != null)
                             witScript = input.Witness.Aggregate(witScript, (current, witness) => current + new WitScript(witness));
 
+                        var script = input.Script != null
+                            ? ParseScript(input.Script)
+                            : Script.Empty;
+
+                        var scriptHex = script.ToHex();
+
                         return new BitcoinBasedTxPoint(new IndexedTxIn
                         {
-                            TxIn = new TxIn(new OutPoint(new uint256(input.FromOutput.TxId), input.FromOutput.OutputNo), Script.FromHex(input.Script)),
+                            TxIn = new TxIn(new OutPoint(new uint256(input.FromOutput.TxId), input.FromOutput.OutputNo), script), // Script.FromHex(input.Script.Replace(" ", string.Empty))),
                             Index = input.InputNo,
                             WitScript = witScript,
                         });
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+        }
+
+        private Script ParseScript(string scriptOperands)
+        {
+            var ops = new List<Op>();
+
+            foreach (var operand in scriptOperands.Split(' '))
+            {
+                var opBytes = Hex.FromString(operand.Length % 2 == 0
+                    ? operand
+                    : $"0{operand}");
+
+                if (opBytes.Length == 1)
+                {
+                    ops.Add((OpcodeType)opBytes[0]);
+                }
+                else
+                {
+                    ops.Add(Op.GetPushOp(opBytes));
+                }
+            }
+
+            return new Script(ops);
         }
 
         public async Task<Result<IEnumerable<ITxPoint>>> GetInputsAsync(
@@ -411,9 +445,13 @@ namespace Atomex.Blockchain.SoChain
                                 if (i.Witness != null)
                                     witScript = i.Witness.Aggregate(witScript, (current, witness) => current + new WitScript(witness));
 
+                                var script = i.Script != null
+                                    ? ParseScript(i.Script)
+                                    : Script.Empty;
+
                                 return new BitcoinBasedTxPoint(new IndexedTxIn
                                 {
-                                    TxIn = new TxIn(new OutPoint(new uint256(i.FromOutput.TxId), i.FromOutput.OutputNo), Script.FromHex(i.Script)),
+                                    TxIn = new TxIn(new OutPoint(new uint256(i.FromOutput.TxId), i.FromOutput.OutputNo), script),
                                     Index = i.InputNo,
                                     WitScript = witScript,
                                 });
@@ -648,19 +686,20 @@ namespace Atomex.Blockchain.SoChain
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            using (var requestContent = new StringContent(
+            using var requestContent = new StringContent(
                 content: JsonConvert.SerializeObject(new SendTx(txHex)),
                 encoding: Encoding.UTF8,
-                mediaType: "application/json"))
-            {
-                return await HttpHelper.PostAsyncResult<string>(
-                        baseUri: BaseUrl,
-                        requestUri: requestUri,
-                        content: requestContent,
-                        responseHandler: (response, content) => JsonConvert.DeserializeObject<Response<SendTxId>>(content).Data.TxId,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-            }
+                mediaType: "application/json");
+
+            return await HttpHelper.PostAsyncResult<string>(
+                    baseUri: _useProxy
+                        ? ProxyUrl
+                        : BaseUrl,
+                    requestUri: requestUri,
+                    content: requestContent,
+                    responseHandler: (response, content) => JsonConvert.DeserializeObject<Response<SendTxId>>(content).Data.TxId,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
 
         private static string AcronymByNetwork(Network network)

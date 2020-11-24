@@ -6,6 +6,6 @@ namespace Atomex.Swaps.Abstract
     {
         void SwapInitiateAsync(Swap swap);
         void SwapAcceptAsync(Swap swap);
-        void SwapPaymentAsync(Swap swap);
+        void SwapStatusAsync(Request<Swap> swap);
     }
 }

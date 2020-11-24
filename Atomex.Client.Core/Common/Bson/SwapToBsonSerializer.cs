@@ -16,14 +16,19 @@ namespace Atomex.Common.Bson
         private const string PriceKey = nameof(Swap.Price);
         private const string QtyKey = nameof(Swap.Qty);
         private const string IsInitiativeKey = nameof(Swap.IsInitiative);
+
         private const string ToAddressKey = nameof(Swap.ToAddress);
         private const string RewardForRedeemKey = nameof(Swap.RewardForRedeem);
         private const string PaymentTxIdKey = nameof(Swap.PaymentTxId);
         private const string RedeemScriptKey = nameof(Swap.RedeemScript);
+        private const string RefundAddressKey = nameof(Swap.RefundAddress);
+
         private const string PartyAddressKey = nameof(Swap.PartyAddress);
         private const string PartyRewardForRedeemKey = nameof(Swap.PartyRewardForRedeem);
         private const string PartyPaymentTxIdKey = nameof(Swap.PartyPaymentTxId);
         private const string PartyRedeemScriptKey = nameof(Swap.PartyRedeemScript);
+        private const string PartyRefundAddressKey = nameof(Swap.PartyRefundAddress);
+
         private const string OrderIdKey = nameof(Swap.OrderId);
 
         private const string SecretKey = nameof(Swap.Secret);
@@ -57,26 +62,30 @@ namespace Atomex.Common.Bson
 
             return new Swap
             {
-                Id = bson[IdKey].AsInt64,
-                OrderId = !bson[OrderIdKey].IsNull ? bson[OrderIdKey].AsInt64 : 0,
-                Status = status,
-                StateFlags = state,
-                TimeStamp = bson[TimeStampKey].AsDateTime,
-                Symbol = bson[SymbolKey].AsString,
-                Side = side,
-                Price = bson[PriceKey].AsDecimal,
-                Qty = bson[QtyKey].AsDecimal,
-                IsInitiative = bson[IsInitiativeKey].AsBoolean,
-                ToAddress = bson[ToAddressKey].AsString,
-                RewardForRedeem = bson[RewardForRedeemKey].AsDecimal,
-                PaymentTxId = bson[PaymentTxIdKey].AsString,
-                RedeemScript = bson[RedeemScriptKey].AsString,
-                PartyAddress = bson[PartyAddressKey].AsString,
-                PartyRewardForRedeem = bson[PartyRewardForRedeemKey].AsDecimal,
-                PartyPaymentTxId = bson[PartyPaymentTxIdKey].AsString,
-                PartyRedeemScript = bson[PartyRedeemScriptKey].AsString,
+                Id                   = bson[IdKey].AsInt64,
+                OrderId              = !bson[OrderIdKey].IsNull ? bson[OrderIdKey].AsInt64 : 0,
+                Status               = status,
+                StateFlags           = state,
+                TimeStamp            = bson[TimeStampKey].AsDateTime,
+                Symbol               = bson[SymbolKey].AsString,
+                Side                 = side,
+                Price                = bson[PriceKey].AsDecimal,
+                Qty                  = bson[QtyKey].AsDecimal,
+                IsInitiative         = bson[IsInitiativeKey].AsBoolean,
 
-                Secret = bson[SecretKey].AsBinary,
+                ToAddress            = bson[ToAddressKey].AsString,
+                RewardForRedeem      = bson[RewardForRedeemKey].AsDecimal,
+                PaymentTxId          = bson[PaymentTxIdKey].AsString,
+                RedeemScript         = bson[RedeemScriptKey].AsString,
+                RefundAddress        = bson[RefundAddressKey].AsString,
+
+                PartyAddress         = bson[PartyAddressKey].AsString,
+                PartyRewardForRedeem = bson[PartyRewardForRedeemKey].AsDecimal,
+                PartyPaymentTxId     = bson[PartyPaymentTxIdKey].AsString,
+                PartyRedeemScript    = bson[PartyRedeemScriptKey].AsString,
+                PartyRefundAddress   = bson[PartyRefundAddressKey].AsString,
+
+                Secret     = bson[SecretKey].AsBinary,
                 SecretHash = bson[SecretHashKey].AsBinary,
 
                 PaymentTx = !bson[PaymentTxKey].IsNull
@@ -109,26 +118,30 @@ namespace Atomex.Common.Bson
         {
             return new BsonDocument
             {
-                [IdKey] = swap.Id,
-                [OrderIdKey] = swap.OrderId,
-                [StatusKey] = swap.Status.ToString(),
-                [StateKey] = swap.StateFlags.ToString(),
-                [TimeStampKey] = swap.TimeStamp,
-                [SymbolKey] = swap.Symbol,
-                [SideKey] = swap.Side.ToString(),
-                [PriceKey] = swap.Price,
-                [QtyKey] = swap.Qty,
-                [IsInitiativeKey] = swap.IsInitiative,
-                [ToAddressKey] = swap.ToAddress,
-                [RewardForRedeemKey] = swap.RewardForRedeem,
-                [PaymentTxIdKey] = swap.PaymentTxId,
-                [RedeemScriptKey] = swap.RedeemScript,
-                [PartyAddressKey] = swap.PartyAddress,
+                [IdKey]                   = swap.Id,
+                [OrderIdKey]              = swap.OrderId,
+                [StatusKey]               = swap.Status.ToString(),
+                [StateKey]                = swap.StateFlags.ToString(),
+                [TimeStampKey]            = swap.TimeStamp,
+                [SymbolKey]               = swap.Symbol,
+                [SideKey]                 = swap.Side.ToString(),
+                [PriceKey]                = swap.Price,
+                [QtyKey]                  = swap.Qty,
+                [IsInitiativeKey]         = swap.IsInitiative,
+
+                [ToAddressKey]            = swap.ToAddress,
+                [RewardForRedeemKey]      = swap.RewardForRedeem,
+                [PaymentTxIdKey]          = swap.PaymentTxId,
+                [RedeemScriptKey]         = swap.RedeemScript,
+                [RefundAddressKey]        = swap.RefundAddress,
+
+                [PartyAddressKey]         = swap.PartyAddress,
                 [PartyRewardForRedeemKey] = swap.PartyRewardForRedeem,
-                [PartyPaymentTxIdKey] = swap.PartyPaymentTxId,
-                [PartyRedeemScriptKey] = swap.PartyRedeemScript,
+                [PartyPaymentTxIdKey]     = swap.PartyPaymentTxId,
+                [PartyRedeemScriptKey]    = swap.PartyRedeemScript,
+                [PartyRefundAddressKey]   = swap.PartyRefundAddress,
                 
-                [SecretKey] = swap.Secret,
+                [SecretKey]     = swap.Secret,
                 [SecretHashKey] = swap.SecretHash,
 
                 [PaymentTxKey] = swap.PaymentTx != null

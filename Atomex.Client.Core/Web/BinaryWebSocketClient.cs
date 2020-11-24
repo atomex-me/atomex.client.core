@@ -1,9 +1,10 @@
 ﻿using System;
 using System.IO;
-using Atomex.Api;
-using Atomex.Api.Proto;
 using Serilog;
 using WebSocketSharp;
+
+using Atomex.Api;
+using Atomex.Api.Proto;
 
 namespace Atomex.Web
 {
@@ -18,10 +19,8 @@ namespace Atomex.Web
         public event EventHandler AuthNonce;
         public event EventHandler<Core.ErrorEventArgs> Error;
 
-        public void SendHeartBeatAsync()
-        {
+        public void SendHeartBeatAsync() =>
             SendAsync(Schemes.HeartBeat.SerializeWithMessageId("ping"));
-        }
 
         protected void AddHandler(byte messageId, Action<MemoryStream> handler)
         {
@@ -78,9 +77,7 @@ namespace Atomex.Web
             var pong = Schemes.HeartBeat.DeserializeWithLengthPrefix(stream);
 
             if (pong.ToLowerInvariant() != "pong")
-            {
                 Log.Error("Invalid heart beat response");
-            }
         }
     }
 }

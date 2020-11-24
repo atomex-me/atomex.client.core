@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using Serilog;
+
 using Atomex.Api.Proto;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
@@ -16,8 +18,6 @@ using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Web;
-using Microsoft.Extensions.Configuration;
-using Serilog;
 
 namespace Atomex.Subsystems
 {
@@ -50,12 +50,10 @@ namespace Atomex.Subsystems
         private IMarketDataRepository MarketDataRepository { get; set; }
         private ISwapManager SwapManager { get; set; }
 
-        private TimeSpan TransactionConfirmationCheckInterval(string currency)
-        {
-            return currency == "BTC"
+        private TimeSpan TransactionConfirmationCheckInterval(string currency) =>
+            currency == "BTC"
                 ? TimeSpan.FromSeconds(120)
                 : TimeSpan.FromSeconds(45);
-        }
 
         public WebSocketAtomexClient(IConfiguration configuration, IAccount account)
         {
@@ -116,9 +114,6 @@ namespace Atomex.Subsystems
             var marketDataConnectTask = MarketDataClient.ConnectAsync();
             await Task.WhenAll(exchangeConnectTask, marketDataConnectTask)
                 .ConfigureAwait(false);
-
-            // start async balance update task
-            //BalanceUpdateLoopAsync(_cts.Token).FireAndForget();
 
             // start async unconfirmed transactions tracking
             TrackUnconfirmedTransactionsAsync(_cts.Token).FireAndForget();
@@ -185,27 +180,17 @@ namespace Atomex.Subsystems
             }
         }
 
-        public void OrderCancelAsync(Order order)
-        {
+        public void OrderCancelAsync(Order order) =>
             ExchangeClient.OrderCancelAsync(order);
-        }
 
-        public void SubscribeToMarketData(SubscriptionType type)
-        {
-            MarketDataClient.SubscribeAsync(new List<Subscription> {
-                new Subscription {Type = type}
-            });
-        }
+        public void SubscribeToMarketData(SubscriptionType type) =>
+            MarketDataClient.SubscribeAsync(new List<Subscription> { new Subscription {Type = type} });
 
-        public MarketDataOrderBook GetOrderBook(Symbol symbol)
-        {
-            return MarketDataRepository?.OrderBookBySymbol(symbol.Name);
-        }
+        public MarketDataOrderBook GetOrderBook(Symbol symbol) =>
+            MarketDataRepository?.OrderBookBySymbol(symbol.Name);
 
-        public Quote GetQuote(Symbol symbol)
-        {
-            return MarketDataRepository?.QuoteBySymbol(symbol.Name);
-        }
+        public Quote GetQuote(Symbol symbol) =>
+            MarketDataRepository?.QuoteBySymbol(symbol.Name);
 
         #region AccountEventHandlers
 
@@ -255,10 +240,8 @@ namespace Atomex.Subsystems
             ServiceDisconnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
         }
 
-        private void OnExchangeAuthOkEventHandler(object sender, EventArgs e)
-        {
+        private void OnExchangeAuthOkEventHandler(object sender, EventArgs e) =>
             ServiceAuthenticated?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
-        }
 
         private async void OnExchangeAuthNonceEventHandler(object sender, EventArgs args)
         {
@@ -358,10 +341,8 @@ namespace Atomex.Subsystems
             ServiceDisconnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
         }
 
-        private void OnMarketDataAuthOkEventHandler(object sender, EventArgs e)
-        {
+        private void OnMarketDataAuthOkEventHandler(object sender, EventArgs e) =>
             ServiceAuthenticated?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
-        }
 
         private async void OnMarketDataAuthNonceEventHandler(object sender, EventArgs args)
         {
@@ -384,6 +365,7 @@ namespace Atomex.Subsystems
         private void OnMarketDataErrorEventHandler(object sender, ErrorEventArgs args)
         {
             Log.Warning("Market data service error {@Error}", args.Error);
+
             Error?.Invoke(this, new TerminalErrorEventArgs(TerminalService.Exchange, args.Error));
         }
 
@@ -432,9 +414,12 @@ namespace Atomex.Subsystems
         {
             try
             {
-                await SwapManager
+                var error = await SwapManager
                     .HandleSwapAsync(args.Swap)
                     .ConfigureAwait(false);
+
+                if (error != null)
+                     OnError(TerminalService.Exchange, error.Description);
             }
             catch (Exception e)
             {
@@ -443,33 +428,6 @@ namespace Atomex.Subsystems
         }
 
         #endregion
-
-        //private Task BalanceUpdateLoopAsync(CancellationToken cancellationToken)
-        //{
-        //    return Task.Run(async () =>
-        //    {
-        //        try
-        //        {
-        //            while (!cancellationToken.IsCancellationRequested)
-        //            {
-        //                await new HdWalletScanner(Account)
-        //                    .ScanFreeAddressesAsync(cancellationToken)
-        //                    .ConfigureAwait(false);
-
-        //                await Task.Delay(TimeSpan.FromSeconds(Account.UserSettings.BalanceUpdateIntervalInSec), cancellationToken)
-        //                    .ConfigureAwait(false);
-        //            }
-        //        }
-        //        catch (OperationCanceledException)
-        //        {
-        //            Log.Debug("Balance autoupdate task canceled.");
-        //        }
-        //        catch (Exception e)
-        //        {
-        //            Log.Error(e, "Balance autoupdate task error");
-        //        }
-        //    });
-        //}
 
         private async Task TrackUnconfirmedTransactionsAsync(CancellationToken cancellationToken)
         {

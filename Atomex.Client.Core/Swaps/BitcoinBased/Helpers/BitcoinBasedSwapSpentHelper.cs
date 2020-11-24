@@ -5,7 +5,10 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Blockchain.BitcoinBased.Helpers;
+using Atomex.Common;
 using Atomex.Core;
+using Atomex.Swaps.Abstract;
+using NBitcoin;
 using Serilog;
 
 namespace Atomex.Swaps.BitcoinBased.Helpers
@@ -21,10 +24,36 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
             Action<Swap, CancellationToken> refundTimeReachedHandler = null,
             CancellationToken cancellationToken = default)
         {
+            var bitcoinBased = (BitcoinBasedCurrency)currency;
+
+            var side = swap.Symbol
+                .OrderSideForBuyCurrency(swap.PurchasedCurrency);
+
+            var requiredAmount = AmountHelper.QtyToAmount(side, swap.Qty, swap.Price, bitcoinBased.DigitsMultiplier);
+            var requiredAmountInSatoshi = bitcoinBased.CoinToSatoshi(requiredAmount);
+
+            var lockTimeInSeconds = swap.IsInitiator
+                ? CurrencySwap.DefaultInitiatorLockTimeInSeconds
+                : CurrencySwap.DefaultAcceptorLockTimeInSeconds;
+
+            var refundTimeUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds))
+                .ToUnixTimeSeconds();
+
+            var redeemScript = swap.RefundAddress == null && swap.RedeemScript != null
+                ? new Script(Convert.FromBase64String(swap.RedeemScript))
+                : BitcoinBasedSwapTemplate
+                    .GenerateHtlcP2PkhSwapPayment(
+                        aliceRefundAddress: swap.RefundAddress,
+                        bobAddress: swap.PartyAddress,
+                        lockTimeStamp: refundTimeUtcInSec,
+                        secretHash: swap.SecretHash,
+                        secretSize: CurrencySwap.DefaultSecretSize,
+                        expectedNetwork: bitcoinBased.Network);
+
             var swapOutput = ((IBitcoinBasedTransaction)swap.PaymentTx)
                 .Outputs
                 .Cast<BitcoinBasedTxOutput>()
-                .FirstOrDefault(o => o.IsPayToScriptHash(Convert.FromBase64String(swap.RedeemScript)));
+                .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript) && o.Value >= requiredAmountInSatoshi);
 
             if (swapOutput == null)
                 throw new InternalException(

@@ -95,8 +95,7 @@ namespace Atomex
             BlockchainApiBaseUri = configuration["BlockchainApiBaseUri"];
             BlockchainApi = ResolveBlockchainApi(
                 configuration: configuration,
-                currency: this,
-                chain: Chain);
+                currency: this);
 
             TxExplorerUri = configuration["TxExplorerUri"];
             AddressExplorerUri = configuration["AddressExplorerUri"];
@@ -123,14 +122,10 @@ namespace Atomex
 
         protected static IBlockchainApi ResolveBlockchainApi(
             IConfiguration configuration,
-            Ethereum currency,
-            Chain chain)
+            Ethereum currency)
         {
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();
-
-            if (blockchainApi.Equals("etherscan+web3"))
-                return new CompositeEthereumBlockchainApi(currency, chain);
 
             if (blockchainApi.Equals("etherscan"))
                 return new EtherScanApi(currency);

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Nethereum.Contracts;
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Web3;
@@ -18,6 +19,7 @@ using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Ethereum.Helpers;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Ethereum;
+using Nethereum.Signer;
 
 namespace Atomex.Swaps.Ethereum
 {
@@ -34,9 +36,8 @@ namespace Atomex.Swaps.Ethereum
 
         public EthereumSwap(
             EthereumAccount account,
-            ISwapClient swapClient,
             ICurrencies currencies)
-            : base(account.Currency, swapClient, currencies)
+            : base(account.Currency, currencies)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
         }
@@ -116,19 +117,14 @@ namespace Atomex.Swaps.Ethereum
                 Log.Error(e, "Swap payment error for swap {@swapId}", swap.Id);
                 return;
             }
-
-            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-            {
-                // start redeem control async
-                await StartWaitForRedeemAsync(swap, cancellationToken)
-                    .ConfigureAwait(false);
-            }
         }
 
         public override Task StartPartyPaymentControlAsync(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
+            Log.Debug("Start party payment control for swap {@swap}.", swap.Id);
+
             // initiator waits "accepted" event, acceptor waits "initiated" event
             var initiatedHandler = swap.IsInitiator
                 ? new Action<Swap, CancellationToken>(SwapAcceptedHandler)
@@ -174,7 +170,10 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast))
+            if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast) &&
+                swap.RedeemTx != null &&
+                swap.RedeemTx.CreationTime != null &&
+                swap.RedeemTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(30) > DateTime.UtcNow)
             {
                 // redeem already broadcast
                 TrackTransactionConfirmationAsync(
@@ -381,7 +380,7 @@ namespace Atomex.Swaps.Ethereum
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast) &&
                 swap.RefundTx != null &&
                 swap.RefundTx.CreationTime != null &&
-                swap.RefundTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
+                swap.RefundTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(20) > DateTime.UtcNow)
             {
                 TrackTransactionConfirmationAsync(
                         swap: swap,
@@ -523,97 +522,24 @@ namespace Atomex.Swaps.Ethereum
             return Task.CompletedTask;
         }
 
+        public override async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+            Swap swap,
+            CancellationToken cancellationToken = default)
+        {
+            var currency = Currencies
+                .GetByName(swap.SoldCurrency);
+
+            return await EthereumSwapInitiatedHelper
+                .TryToFindPaymentAsync(
+                    swap: swap,
+                    currency: currency,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         #region Event Handlers
 
-        private void SwapInitiatedHandler(
-            Swap swap,
-            CancellationToken cancellationToken = default)
-        {
-            Log.Debug(
-                "Initiator payment transaction received. Now counter party can broadcast payment tx for swap {@swapId}", 
-                swap.Id);
-
-            swap.StateFlags |= SwapStateFlags.HasPartyPayment;
-            swap.StateFlags |= SwapStateFlags.IsPartyPaymentConfirmed;
-            RaiseSwapUpdated(swap, SwapStateFlags.HasPartyPayment | SwapStateFlags.IsPartyPaymentConfirmed);
-
-            InitiatorPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap));
-        }
-
-        private async void SwapAcceptedHandler(
-            Swap swap,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                Log.Debug(
-                    "Acceptors payment transaction received. Now initiator can do self redeem and do party redeem for acceptor (if needs and wants) for swap {@swapId}.",
-                    swap.Id);
-
-                swap.StateFlags |= SwapStateFlags.HasPartyPayment;
-                swap.StateFlags |= SwapStateFlags.IsPartyPaymentConfirmed;
-                RaiseSwapUpdated(swap, SwapStateFlags.HasPartyPayment | SwapStateFlags.IsPartyPaymentConfirmed);
-
-                RaiseAcceptorPaymentConfirmed(swap);
-
-                await RedeemAsync(swap, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Swap accepted error");
-            }
-        }
-
-        private void SwapCanceledHandler(
-            Swap swap,
-            CancellationToken cancellationToken = default)
-        {
-            // todo: do smth here
-            Log.Debug("Swap canceled due to wrong counter party params {@swapId}", swap.Id);
-        }
-
-        protected void RedeemConfirmedEventHandler(
-            Swap swap,
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default)
-        {
-            swap.StateFlags |= SwapStateFlags.IsRedeemConfirmed;
-            RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemConfirmed);
-        }
-
-        private void RedeemCompletedEventHandler(
-            Swap swap,
-            byte[] secret,
-            CancellationToken cancellationToken = default)
-        {
-            Log.Debug("Handle redeem control completed event for swap {@swapId}", swap.Id);
-
-            if (swap.IsAcceptor)
-            {
-                swap.Secret = secret;
-                RaiseSwapUpdated(swap, SwapStateFlags.HasSecret);
-
-                RaiseAcceptorPaymentSpent(swap);
-            }
-        }
-
-        private void RedeemCanceledEventHandler(
-            Swap swap,
-            DateTime refundTimeUtc,
-            CancellationToken cancellationToken = default)
-        {
-            Log.Debug("Handle redeem control canceled event for swap {@swapId}", swap.Id);
-
-            ControlRefundTimeAsync(
-                    swap: swap,
-                    refundTimeUtc: refundTimeUtc,
-                    refundTimeReachedHandler: RefundTimeReachedHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
-        }
-
-        private async void RefundTimeReachedHandler(
+        protected override async void RefundTimeReachedHandler(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
@@ -646,15 +572,6 @@ namespace Atomex.Swaps.Ethereum
             {
                 Log.Error(e, "Error in refund time reached handler");
             }
-        }
-
-        private void RefundConfirmedEventHandler(
-            Swap swap,
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default)
-        {
-            swap.StateFlags |= SwapStateFlags.IsRefundConfirmed;
-            RaiseSwapUpdated(swap, SwapStateFlags.IsRefundConfirmed);
         }
 
         private void RedeemBySomeoneCompletedEventHandler(
@@ -919,7 +836,7 @@ namespace Atomex.Swaps.Ethereum
         {
             try
             {
-                var web3 = new Web3(Web3BlockchainApi.UriByChain(Eth.Chain));
+                var web3 = new Web3(UriByChain(Eth.Chain));
                 var txHandler = web3.Eth.GetContractTransactionHandler<TMessage>();
 
                 var estimatedGas = await txHandler
@@ -928,7 +845,11 @@ namespace Atomex.Swaps.Ethereum
 
                 Log.Debug("Estimated gas {@gas}", estimatedGas?.Value.ToString());
 
-                return estimatedGas?.Value ?? defaultGas;
+                var estimatedValue = estimatedGas?.Value ?? defaultGas;
+
+                return defaultGas / estimatedValue > 2
+                    ? defaultGas
+                    : estimatedValue;
             }
             catch (Exception)
             {
@@ -936,6 +857,18 @@ namespace Atomex.Swaps.Ethereum
             }
 
             return defaultGas;
+        }
+
+        // todo: use etherscan instead
+        protected static string UriByChain(Chain chain)
+        {
+            return chain switch
+            {
+                Chain.MainNet => "https://mainnet.infura.io/v3/df01d4ef450640a2a48d9af4c2078eaf",
+                Chain.Ropsten => "https://rinkeby.infura.io/v3/df01d4ef450640a2a48d9af4c2078eaf",
+                Chain.Rinkeby => "https://ropsten.infura.io/v3/df01d4ef450640a2a48d9af4c2078eaf",
+                _ => null,
+            };
         }
 
         private async Task<bool> WaitPaymentConfirmationAsync(

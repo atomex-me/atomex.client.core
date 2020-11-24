@@ -2,15 +2,55 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Serilog;
+
+using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
-using Serilog;
 
 namespace Atomex.Swaps.Tezos.Helpers
 {
     public static class TezosSwapInitiatedHelper
     {
+        public static async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+            Swap swap,
+            Currency currency,
+            CancellationToken cancellationToken = default)
+        {
+            var tezos = currency as Atomex.Tezos;
+
+            if (!(swap.PaymentTx is TezosTransaction savedTx))
+                return new Error(Errors.SwapError, "Saved tx is null");
+
+            var savedParameters = savedTx.Params?.ToString(Newtonsoft.Json.Formatting.None);
+
+            if (savedParameters == null)
+                return new Error(Errors.SwapError, "Saved tx has null parameters");
+
+            var api = tezos.BlockchainApi as ITezosBlockchainApi;
+
+            var txsResult = await api
+                .TryGetTransactionsAsync(
+                    from: savedTx.From,
+                    to: tezos.SwapContractAddress,
+                    parameters: savedParameters,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (txsResult == null)
+                return new Error(Errors.RequestError, "Can't get Tezos swap contract transactions");
+
+            if (txsResult.HasError)
+                return txsResult.Error;
+
+            foreach (var tx in txsResult.Value)
+                if (tx.State != BlockchainTransactionState.Failed)
+                    return tx;
+
+            return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
+        }
+
         public static async Task<Result<bool>> IsInitiatedAsync(
             Swap swap,
             Currency currency,

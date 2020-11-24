@@ -1,11 +1,5 @@
-﻿using Atomex.Abstract;
-using Atomex.Common.Proto;
+﻿using Atomex.Common.Proto;
 using Atomex.Core;
-using Atomex.EthereumTokens;
-using Atomex.TezosTokens;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Atomex.Api.Proto
 {
@@ -29,10 +23,12 @@ namespace Atomex.Api.Proto
                 .AddRequired(nameof(Swap.RewardForRedeem))
                 .AddRequired(nameof(Swap.PaymentTxId))
                 .AddRequired(nameof(Swap.RedeemScript))
+                .AddRequired(nameof(Swap.RefundAddress))
                 .AddRequired(nameof(Swap.PartyAddress))
                 .AddRequired(nameof(Swap.PartyRewardForRedeem))
                 .AddRequired(nameof(Swap.PartyPaymentTxId))
-                .AddRequired(nameof(Swap.PartyRedeemScript));
+                .AddRequired(nameof(Swap.PartyRedeemScript))
+                .AddRequired(nameof(Swap.PartyRefundAddress));
 
             Model.Add(typeof(Response<Swap>), true)
                 .AddRequired(nameof(Response<Swap>.RequestId))
