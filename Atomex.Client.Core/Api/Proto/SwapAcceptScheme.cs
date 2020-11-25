@@ -12,7 +12,8 @@ namespace Atomex.Api.Proto
                 .AddRequired(nameof(Swap.Id))
                 .AddRequired(nameof(Swap.Symbol))
                 .AddRequired(nameof(Swap.ToAddress))
-                .AddRequired(nameof(Swap.RewardForRedeem));
+                .AddRequired(nameof(Swap.RewardForRedeem))
+                .AddRequired(nameof(Swap.RefundAddress));
         }
     }
 }

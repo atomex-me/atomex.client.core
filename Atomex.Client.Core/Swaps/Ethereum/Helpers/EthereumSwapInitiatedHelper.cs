@@ -2,15 +2,72 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
+using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Atomex.Core;
-using Serilog;
 
 namespace Atomex.Swaps.Ethereum.Helpers
 {
     public static class EthereumSwapInitiatedHelper
     {
+        private const int BlocksAhead = 10000; // >24h with block time 10-30 seconds
+
+        public static async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+            Swap swap,
+            Currency currency,
+            CancellationToken cancellationToken = default)
+        {
+            var ethereum = currency as Atomex.Ethereum;
+
+            var api = ethereum.BlockchainApi as IEthereumBlockchainApi;
+
+            var fromBlockNoResult = await api
+                .TryGetBlockByTimeStampAsync(swap.TimeStamp.ToUniversalTime().ToUnixTime(), cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (fromBlockNoResult == null)
+                return new Error(Errors.RequestError, "Can't get Ethereum block number by timestamp");
+
+            if (fromBlockNoResult.HasError)
+                return fromBlockNoResult.Error;
+
+            var txsResult = await api
+                .TryGetTransactionsAsync(
+                    address: ethereum.SwapContractAddress,
+                    fromBlock: fromBlockNoResult.Value,
+                    toBlock: fromBlockNoResult.Value + BlocksAhead,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (txsResult == null)
+                return new Error(Errors.RequestError, "Can't get Ethereum swap contract transactions");
+
+            if (txsResult.HasError)
+                return txsResult.Error;
+
+            var savedTx = swap.PaymentTx as EthereumTransaction;
+
+            foreach (var tx in txsResult.Value.Cast<EthereumTransaction>())
+            {
+                if (tx.Amount != savedTx.Amount ||
+                   !tx.Input.Equals(savedTx.Input, StringComparison.OrdinalIgnoreCase) ||
+                   !tx.From.Equals(savedTx.From, StringComparison.OrdinalIgnoreCase) ||
+                   !tx.To.Equals(savedTx.To, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (tx.State == BlockchainTransactionState.Failed)
+                    continue; // skip failed transactions
+
+                return tx;
+            }
+
+            return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
+        }
+
         public static async Task<Result<bool>> IsInitiatedAsync(
             Swap swap,
             Currency currency,

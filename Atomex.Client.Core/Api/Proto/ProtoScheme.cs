@@ -17,28 +17,20 @@ namespace Atomex.Api.Proto
             Model.IncludeDateTimeKind = true;
         }
 
-        public T Deserialize(MemoryStream stream)
-        {
-            return (T)Model.Deserialize(stream, null, typeof(T));
-        }
+        public T Deserialize(MemoryStream stream) =>
+            (T)Model.Deserialize(stream, null, typeof(T));
 
         private T DeserializeWithLengthPrefix(
             Stream stream,
             PrefixStyle prefixStyle,
-            int expectedField)
-        {
-            return (T)Model.DeserializeWithLengthPrefix(stream, null, typeof(T), prefixStyle, expectedField);
-        }
+            int expectedField) =>
+            (T)Model.DeserializeWithLengthPrefix(stream, null, typeof(T), prefixStyle, expectedField);
 
-        public T DeserializeWithLengthPrefix(MemoryStream stream)
-        {
-            return DeserializeWithLengthPrefix(stream, PrefixStyle.Fixed32, 0);
-        }
+        public T DeserializeWithLengthPrefix(MemoryStream stream) =>
+            DeserializeWithLengthPrefix(stream, PrefixStyle.Fixed32, 0);
 
-        public void Serialize(Stream outputStream, T obj)
-        {
+        public void Serialize(Stream outputStream, T obj) =>
             Model.Serialize(outputStream, obj);
-        }
 
         public byte[] Serialize(T obj)
         {
@@ -63,10 +55,8 @@ namespace Atomex.Api.Proto
             return stream.ToArray();
         }
 
-        public byte[] SerializeWithLengthPrefix(T obj)
-        {
-            return SerializeWithLengthPrefix(obj, PrefixStyle.Fixed32, 0);
-        }
+        public byte[] SerializeWithLengthPrefix(T obj) =>
+            SerializeWithLengthPrefix(obj, PrefixStyle.Fixed32, 0);
 
         private void SerializeWithMessageId(Stream outputStream, T obj, byte messageId)
         {
@@ -81,14 +71,10 @@ namespace Atomex.Api.Proto
             return stream.ToArray();
         }
 
-        public byte[] SerializeWithMessageId(T obj)
-        {
-            return SerializeWithMessageId(obj, MessageId);
-        }
+        public byte[] SerializeWithMessageId(T obj) =>
+            SerializeWithMessageId(obj, MessageId);
 
-        public string GetSchema()
-        {
-            return Model.GetSchema(typeof(T), ProtoSyntax.Proto2);
-        }
+        public string GetSchema() =>
+            Model.GetSchema(typeof(T), ProtoSyntax.Proto2);
     }
 }

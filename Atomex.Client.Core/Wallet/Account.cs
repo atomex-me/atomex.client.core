@@ -23,9 +23,8 @@ namespace Atomex.Wallet
         public const string DefaultUserSettingsFileName = "user.config";
 
         private const string DefaultDataFileName = "data.db";
-        private const string DefaultWalletsDirectory = "wallets";
         private const string DefaultAccountKey = "Account:Default";
-        private const string ApiVersion = "1.3";
+        private const string ApiVersion = "1.4";
 
         public event EventHandler<CurrencyEventArgs> BalanceUpdated
         {
