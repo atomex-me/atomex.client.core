@@ -680,7 +680,7 @@ namespace Atomex.Blockchain.Tezos
                     tx.From   = transaction["sender"]?["address"]?.ToString();
                     tx.To     = transaction["target"]?["address"]?.ToString();
                     tx.Amount = transaction["amount"].Value<decimal>();
-                    tx.Alias = alias;
+                    tx.Alias  = alias;
 
                     if (tx.IsInternal)
                     {
