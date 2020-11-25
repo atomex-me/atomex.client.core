@@ -3,17 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Newtonsoft.Json.Linq;
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Helpers;
 using Atomex.Swaps.Tezos.FA12.Helpers;
 using Atomex.Wallet.Tezos;
-using Newtonsoft.Json.Linq;
-using Serilog;
 
 namespace Atomex.Swaps.Tezos.FA12
 {
@@ -27,9 +28,8 @@ namespace Atomex.Swaps.Tezos.FA12
         public FA12Swap(
             FA12Account account,
             TezosAccount tezosAccount,
-            ISwapClient swapClient,
             ICurrencies currencies)
-            : base(account, swapClient, currencies)
+            : base(account, currencies)
         {
             TezosAccount = tezosAccount ?? throw new ArgumentNullException(nameof(account));
         }
@@ -146,23 +146,18 @@ namespace Atomex.Swaps.Tezos.FA12
                 Log.Error(e, "Swap payment error for swap {@swapId}", swap.Id);
                 return;
             }
-
-            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-            {
-                // start redeem control async
-                await StartWaitForRedeemAsync(swap, cancellationToken)
-                    .ConfigureAwait(false);
-            }
         }
 
         public override Task StartPartyPaymentControlAsync(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
+            Log.Debug("Start party payment control for swap {@swap}.", swap.Id);
+
             // initiator waits "accepted" event, acceptor waits "initiated" event
             var initiatedHandler = swap.IsInitiator
-                ? new Action<Swap, CancellationToken>(SwapAcceptedEventHandler)
-                : new Action<Swap, CancellationToken>(SwapInitiatedEventHandler);
+                ? new Action<Swap, CancellationToken>(SwapAcceptedHandler)
+                : new Action<Swap, CancellationToken>(SwapInitiatedHandler);
 
             var lockTimeSeconds = swap.IsInitiator
                 ? DefaultAcceptorLockTimeInSeconds
@@ -177,7 +172,7 @@ namespace Atomex.Swaps.Tezos.FA12
                     refundTimeStamp: refundTimeUtcInSec,
                     interval: ConfirmationCheckInterval,
                     initiatedHandler: initiatedHandler,
-                    canceledHandler: SwapCanceledEventHandler,
+                    canceledHandler: SwapCanceledHandler,
                     cancellationToken: cancellationToken)
                 .FireAndForget();
 
@@ -515,97 +510,24 @@ namespace Atomex.Swaps.Tezos.FA12
             return Task.CompletedTask;
         }
 
+        public override async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+            Swap swap,
+            CancellationToken cancellationToken = default)
+        {
+            var currency = Currencies
+                .GetByName(swap.SoldCurrency);
+
+            return await FA12SwapInitiatedHelper
+                .TryToFindPaymentAsync(
+                    swap: swap,
+                    currency: currency,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         #region Event Handlers
 
-        private void SwapInitiatedEventHandler(
-            Swap swap,
-            CancellationToken cancellationToken = default)
-        {
-            Log.Debug(
-                "Initiator's payment transaction received. Now acceptor can broadcast payment tx for swap {@swapId}",
-                swap.Id);
-
-            swap.StateFlags |= SwapStateFlags.HasPartyPayment;
-            swap.StateFlags |= SwapStateFlags.IsPartyPaymentConfirmed;
-            RaiseSwapUpdated(swap, SwapStateFlags.HasPartyPayment | SwapStateFlags.IsPartyPaymentConfirmed);
-
-            InitiatorPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap));
-        }
-
-        private async void SwapAcceptedEventHandler(
-            Swap swap,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                Log.Debug(
-                    "Acceptor's payment transaction received. Now initiator can do self redeem and do party redeem for acceptor (if needs and wants) for swap {@swapId}.",
-                    swap.Id);
-
-                swap.StateFlags |= SwapStateFlags.HasPartyPayment;
-                swap.StateFlags |= SwapStateFlags.IsPartyPaymentConfirmed;
-                RaiseSwapUpdated(swap, SwapStateFlags.HasPartyPayment | SwapStateFlags.IsPartyPaymentConfirmed);
-
-                RaiseAcceptorPaymentConfirmed(swap);
-
-                await RedeemAsync(swap, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Swap accepted error");
-            }
-        }
-
-        private void SwapCanceledEventHandler(
-            Swap swap,
-            CancellationToken cancellationToken = default)
-        {
-            // todo: do smth here
-            Log.Debug("Swap canceled due to wrong counterParty params {@swapId} or timeout", swap.Id);
-        }
-
-        private void RedeemConfirmedEventHandler(
-            Swap swap,
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default)
-        {
-            swap.StateFlags |= SwapStateFlags.IsRedeemConfirmed;
-            RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemConfirmed);
-        }
-
-        private void RedeemCompletedEventHandler(
-            Swap swap,
-            byte[] secret,
-            CancellationToken cancellationToken = default)
-        {
-            Log.Debug("Handle redeem control completed event for swap {@swapId}", swap.Id);
-
-            if (swap.IsAcceptor)
-            {
-                swap.Secret = secret;
-                RaiseSwapUpdated(swap, SwapStateFlags.HasSecret);
-
-                RaiseAcceptorPaymentSpent(swap);
-            }
-        }
-
-        private void RedeemCanceledEventHandler(
-            Swap swap,
-            DateTime refundTimeUtc,
-            CancellationToken cancellationToken = default)
-        {
-            Log.Debug("Handle redeem control canceled event for swap {@swapId}", swap.Id);
-
-            ControlRefundTimeAsync(
-                    swap: swap,
-                    refundTimeUtc: refundTimeUtc,
-                    refundTimeReachedHandler: RefundTimeReachedEventHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
-        }
-
-        private async void RefundTimeReachedEventHandler(
+        protected override async void RefundTimeReachedHandler(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
@@ -639,15 +561,6 @@ namespace Atomex.Swaps.Tezos.FA12
             {
                 Log.Error(e, "Error in refund time reached handler");
             }
-        }
-
-        private void RefundConfirmedEventHandler(
-            Swap swap,
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default)
-        {
-            swap.StateFlags |= SwapStateFlags.IsRefundConfirmed;
-            RaiseSwapUpdated(swap, SwapStateFlags.IsRefundConfirmed);
         }
 
         private void RedeemBySomeoneCompletedEventHandler(
@@ -1015,11 +928,6 @@ namespace Atomex.Swaps.Tezos.FA12
         {
             return JObject.Parse(@"{'entrypoint':'initiate','value':{'prim':'Pair','args':[{'prim':'Pair','args':[{'prim':'Pair','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'},{'string':'" + swap.PartyAddress + "'}]},{'prim':'Pair','args':[{'int':'" + redeemFeeAmount + "'},{'int':'" + refundTimestamp + "'}]}]},{'prim':'Pair','args':[{'string':'" + tokenContractAddress + "'},{'int':'" + tokenAmountInDigigts + "'}]}]}}");
         }
-
-        //private JObject AddParams(Swap swap)
-        //{
-        //    return JObject.Parse(@"{'entrypoint':'add','value':{'prim':'Pair','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'},{'int':'" + tokenAmountInDigigts + "'}]}}");
-        //}
 
         private JObject RedeemParams(Swap swap)
         {

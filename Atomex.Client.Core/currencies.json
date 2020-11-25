@@ -10,6 +10,7 @@
       "Chain": "MainNet",
       "BlockchainApi": "SoChain",
       "BlockchainApiBaseUri": "https://sochain.com/",
+      "UseProxy": false,
       "TxExplorerUri": "https://live.blockcypher.com/btc/tx/",
       "AddressExplorerUri": "https://live.blockcypher.com/btc/address/"
     },
@@ -235,6 +236,7 @@
       "Chain": "TestNet",
       "BlockchainApi": "SoChain",
       "BlockchainApiBaseUri": "https://sochain.com/",
+      "UseProxy": false,
       "TxExplorerUri": "https://live.blockcypher.com/btc-testnet/tx/",
       "AddressExplorerUri": "https://live.blockcypher.com/btc-testnet/address/"
     },

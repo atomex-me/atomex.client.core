@@ -14,7 +14,6 @@
         public SwapScheme Swap { get; }
         public SwapInitiateScheme SwapInitiate { get; }
         public SwapAcceptScheme SwapAccept { get; }
-        public SwapPaymentScheme SwapPayment { get; }
         public SwapStatusScheme SwapStatus { get; }
         public SwapsScheme Swaps { get; }
         public SubscribeScheme Subscribe { get; }
@@ -44,7 +43,6 @@
             Swap         = new SwapScheme(messageId: id++);
             SwapInitiate = new SwapInitiateScheme(messageId: id++);
             SwapAccept   = new SwapAcceptScheme(messageId: id++);
-            SwapPayment  = new SwapPaymentScheme(messageId: id++);
             SwapStatus   = new SwapStatusScheme(messageId: id++);
             Swaps        = new SwapsScheme(messageId: id++);
 

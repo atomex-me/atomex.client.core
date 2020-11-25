@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 
@@ -20,6 +21,20 @@ namespace Atomex.Blockchain.Tezos
 
         Task<Result<bool>> IsRevealedAsync(
             string address,
+            CancellationToken cancellationToken = default);
+
+        Task<Result<IEnumerable<TezosTransaction>>> GetTransactionsAsync(
+            string from,
+            string to,
+            string parameters,
+            CancellationToken cancellationToken = default);
+
+        Task<Result<IEnumerable<TezosTransaction>>> TryGetTransactionsAsync(
+            string from,
+            string to,
+            string parameters,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);
     }
 }

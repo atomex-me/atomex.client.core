@@ -1,4 +1,5 @@
 ﻿using System;
+
 using Atomex.Blockchain.Abstract;
 
 namespace Atomex.Core
@@ -64,10 +65,12 @@ namespace Atomex.Core
         public decimal RewardForRedeem { get; set; }
         public string PaymentTxId { get; set; }
         public string RedeemScript { get; set; }
+        public string RefundAddress { get; set; }
         public string PartyAddress { get; set; }
         public decimal PartyRewardForRedeem { get; set; }
         public string PartyPaymentTxId { get; set; }
         public string PartyRedeemScript { get; set; }
+        public string PartyRefundAddress { get; set; }
 
         public string SoldCurrency =>
             Side == Side.Buy
@@ -135,27 +138,25 @@ namespace Atomex.Core
             set { _partyPaymentTx = value; if (_partyPaymentTx != null) StateFlags |= SwapStateFlags.HasPartyPayment; }
         }
 
-        public bool IsStatusSet(SwapStatus status, Enum flag)
-        {
-            return !Status.HasFlag(flag) && status.HasFlag(flag);
-        }
+        public bool IsStatusSet(SwapStatus status, Enum flag) =>
+            !Status.HasFlag(flag) && status.HasFlag(flag);
 
-        public override string ToString()
-        {
-            return $"Id: {Id}, " +
-                $"Status: {Status}, " +
-                $"StateFlags: {StateFlags}, " +
-                $"Side: {Side}, " +
-                $"Price: {Price}, " +
-                $"Qty: {Qty}, " +
-                $"ToAddress: {ToAddress}, " +
-                $"RewardForRedeem: {RewardForRedeem}, " +
-                $"PaymentTxId: {PaymentTxId}, " +
-                $"RedeemScript: {RedeemScript}, " +
-                $"PartyAddress: {PartyAddress}, " +
-                $"PartyRewardForRedeem: {PartyRewardForRedeem}, " +
-                $"PartyPaymentTxId: {PartyPaymentTxId}, " +
-                $"PartyRedeemScript: {PartyRedeemScript}";
-        }
+        public override string ToString() =>
+            $"Id: {Id}, " +
+            $"Status: {Status}, " +
+            $"StateFlags: {StateFlags}, " +
+            $"Side: {Side}, " +
+            $"Price: {Price}, " +
+            $"Qty: {Qty}, " +
+            $"ToAddress: {ToAddress}, " +
+            $"RewardForRedeem: {RewardForRedeem}, " +
+            $"PaymentTxId: {PaymentTxId}, " +
+            $"RedeemScript: {RedeemScript}, " +
+            $"RefundAddress: {RefundAddress}, " +
+            $"PartyAddress: {PartyAddress}, " +
+            $"PartyRewardForRedeem: {PartyRewardForRedeem}, " +
+            $"PartyPaymentTxId: {PartyPaymentTxId}, " +
+            $"PartyRedeemScript: {PartyRedeemScript}, " +
+            $"PartyRefundAddress: {PartyRefundAddress}.";
     }
 }

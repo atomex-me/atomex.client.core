@@ -1,5 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
+
+using Atomex.Blockchain.Abstract;
+using Atomex.Common;
 using Atomex.Core;
 
 namespace Atomex.Swaps.Abstract
@@ -82,15 +85,13 @@ namespace Atomex.Swaps.Abstract
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Handle party payment tx
+        /// Try to finf payment transaction
         /// </summary>
-        /// <param name="swap">Local swap</param>
-        /// <param name="clientSwap">Received swap</param>
+        /// <param name="swap">Swap</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Task</returns>
-        Task HandlePartyPaymentAsync(
+        Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
             Swap swap,
-            Swap clientSwap,
             CancellationToken cancellationToken = default);
     }
 }

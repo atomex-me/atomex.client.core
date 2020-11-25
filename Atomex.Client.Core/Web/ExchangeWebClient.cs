@@ -1,11 +1,12 @@
 ﻿using System;
 using System.IO;
+using Microsoft.Extensions.Configuration;
+
 using Atomex.Api;
 using Atomex.Api.Proto;
 using Atomex.Core;
 using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
-using Microsoft.Extensions.Configuration;
 
 namespace Atomex.Web
 {
@@ -42,44 +43,28 @@ namespace Atomex.Web
             SwapReceived?.Invoke(this, new SwapEventArgs(response.Data));
         }
 
-        public void AuthAsync(Auth auth)
-        {
+        public void AuthAsync(Auth auth) =>
             SendAsync(Schemes.Auth.SerializeWithMessageId(auth));
-        }
-
-        public void OrderSendAsync(Order order)
-        {
+        
+        public void OrderSendAsync(Order order) =>
             SendAsync(Schemes.OrderSend.SerializeWithMessageId(order));
-        }
 
-        public void OrderCancelAsync(Order order)
-        {
+        public void OrderCancelAsync(Order order) =>
             SendAsync(Schemes.OrderCancel.SerializeWithMessageId(order));
-        }
 
-        public void OrderStatusAsync(Request<Order> request)
-        {
+        public void OrderStatusAsync(Request<Order> request) =>
             SendAsync(Schemes.OrderStatus.SerializeWithMessageId(request));
-        }
 
-        public void OrdersAsync(Request<Order> request)
-        {
+        public void OrdersAsync(Request<Order> request) =>
             SendAsync(Schemes.Orders.SerializeWithMessageId(request));
-        }
 
-        public void SwapInitiateAsync(Swap swap)
-        {
+        public void SwapInitiateAsync(Swap swap) =>
             SendAsync(Schemes.SwapInitiate.SerializeWithMessageId(swap));
-        }
-
-        public void SwapAcceptAsync(Swap swap)
-        {
+ 
+        public void SwapAcceptAsync(Swap swap) =>
             SendAsync(Schemes.SwapAccept.SerializeWithMessageId(swap));
-        }
 
-        public void SwapPaymentAsync(Swap swap)
-        {
-            SendAsync(Schemes.SwapPayment.SerializeWithMessageId(swap));
-        }
+        public void SwapStatusAsync(Request<Swap> swap) =>
+            SendAsync(Schemes.SwapStatus.SerializeWithMessageId(swap));
     }
 }

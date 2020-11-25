@@ -2,9 +2,11 @@
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Nethereum.Contracts;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
-using Nethereum.Contracts;
 
 namespace Atomex.Blockchain.Ethereum
 {
@@ -28,10 +30,24 @@ namespace Atomex.Blockchain.Ethereum
 
         Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
+            long fromBlock = 0,
+            long toBlock = long.MaxValue,
             CancellationToken cancellationToken = default);
 
         Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
             string address,
+            long fromBlock = 0,
+            long toBlock = long.MaxValue,
+            int attempts = 3,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default);
+
+        Task<Result<long>> GetBlockByTimeStampAsync(
+            long unixTimeStamp,
+            CancellationToken cancellationToken = default);
+
+        Task<Result<long>> TryGetBlockByTimeStampAsync(
+            long unixTimeStamp,
             int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);

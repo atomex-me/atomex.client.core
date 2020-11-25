@@ -71,8 +71,7 @@ namespace Atomex.EthereumTokens
             BlockchainApiBaseUri = configuration["BlockchainApiBaseUri"];
             BlockchainApi = ResolveBlockchainApi(
                 configuration: configuration,
-                currency: this,
-                chain: Chain);
+                currency: this);
 
             TxExplorerUri = configuration["TxExplorerUri"];
             AddressExplorerUri = configuration["AddressExplorerUri"];

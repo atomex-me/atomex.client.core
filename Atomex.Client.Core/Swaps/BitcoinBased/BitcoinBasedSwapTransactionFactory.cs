@@ -11,7 +11,7 @@ namespace Atomex.Swaps.BitcoinBased
 {
     public class BitcoinBasedSwapTransactionFactory : IBitcoinBasedSwapTransactionFactory
     {
-        public async Task<(IBitcoinBasedTransaction, byte[])> CreateSwapPaymentTxAsync(
+        public async Task<IBitcoinBasedTransaction> CreateSwapPaymentTxAsync(
             BitcoinBasedCurrency currency,
             long amount,
             IEnumerable<string> fromWallets,
@@ -76,7 +76,7 @@ namespace Atomex.Swaps.BitcoinBased
                          secretSize: secretSize,
                          amount: amount,
                          fee: maxFeeInSatoshi,
-                         redeemScript: out var _);
+                         redeemScript: out _);
 
                 var estimatedSigSize       = BitcoinBasedCurrency.EstimateSigSize(availableOutputs);
                 var estimatedTxVirtualSize = estimatedTx.VirtualSize();
@@ -101,9 +101,9 @@ namespace Atomex.Swaps.BitcoinBased
                     secretSize: secretSize,
                     amount: amount,
                     fee: feeInSatoshi,
-                    redeemScript: out var redeemScript);
+                    redeemScript: out _);
 
-            return (tx, redeemScript);
+            return tx;
         }
 
         public static bool EstimateSelectedOutputs(

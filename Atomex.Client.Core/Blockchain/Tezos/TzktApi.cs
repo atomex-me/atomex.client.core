@@ -3,14 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Serilog;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Tezos;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Serilog;
 
 namespace Atomex.Blockchain.Tezos
 {
@@ -620,7 +621,7 @@ namespace Atomex.Blockchain.Tezos
             return tx;
         }
 
-        private Result<IEnumerable<TezosTransaction>> ParseTxs(JArray data)
+        private Result<IEnumerable<TezosTransaction>> ParseTxs(JArray data, bool parseTokenParams = true)
         {
             var result = new List<TezosTransaction>();
 
@@ -639,10 +640,10 @@ namespace Atomex.Blockchain.Tezos
 
                 var tx = new TezosTransaction()
                 {
-                    Id = transaction["hash"].ToString(),
+                    Id       = transaction["hash"].ToString(),
                     Currency = _currency,
-                    State = state,
-                    Type = BlockchainTransactionType.Unknown,
+                    State    = state,
+                    Type     = BlockchainTransactionType.Unknown,
                     CreationTime = DateTime.SpecifyKind(DateTime.Parse(transaction["timestamp"].ToString()), DateTimeKind.Utc),
 
                     GasUsed = transaction["gasUsed"].Value<decimal>(),
@@ -658,14 +659,14 @@ namespace Atomex.Blockchain.Tezos
                     BlockInfo = new BlockInfo
                     {
                         Confirmations = state == BlockchainTransactionState.Failed ? 0 : 1,
-                        BlockHash = null,
-                        BlockHeight = transaction["level"].Value<long>(),
-                        BlockTime = DateTime.SpecifyKind(DateTime.Parse(transaction["timestamp"].ToString()), DateTimeKind.Utc),
-                        FirstSeen = DateTime.SpecifyKind(DateTime.Parse(transaction["timestamp"].ToString()), DateTimeKind.Utc)
+                        BlockHash     = null,
+                        BlockHeight   = transaction["level"].Value<long>(),
+                        BlockTime     = DateTime.SpecifyKind(DateTime.Parse(transaction["timestamp"].ToString()), DateTimeKind.Utc),
+                        FirstSeen     = DateTime.SpecifyKind(DateTime.Parse(transaction["timestamp"].ToString()), DateTimeKind.Utc)
                     }
                 };
 
-                if (_currency.Name != Tezos)
+                if (_currency.Name != Tezos && parseTokenParams)
                 {
                     if (_currency.Name == NYX)
                         tx = ParseNYXParams(tx, transaction);
@@ -676,8 +677,8 @@ namespace Atomex.Blockchain.Tezos
                 }
                 else
                 {
-                    tx.From = transaction["sender"]?["address"]?.ToString();
-                    tx.To = transaction["target"]?["address"]?.ToString();
+                    tx.From   = transaction["sender"]?["address"]?.ToString();
+                    tx.To     = transaction["target"]?["address"]?.ToString();
                     tx.Amount = transaction["amount"].Value<decimal>();
                     tx.Alias = alias;
 
@@ -691,9 +692,9 @@ namespace Atomex.Blockchain.Tezos
                             ? JObject.Parse(transaction["parameters"].Value<string>())
                             : null;
 
-                        tx.Params = txParameters;
-                        tx.Fee = transaction["bakerFee"].Value<decimal>();
-                        tx.GasLimit = transaction["gasLimit"].Value<decimal>();
+                        tx.Params       = txParameters;
+                        tx.Fee          = transaction["bakerFee"].Value<decimal>();
+                        tx.GasLimit     = transaction["gasLimit"].Value<decimal>();
                         tx.StorageLimit = transaction["storageLimit"].Value<decimal>();
                     }
                 }
@@ -732,27 +733,28 @@ namespace Atomex.Blockchain.Tezos
 
                 result.Add(new TezosTransaction
                 {
-                    Id = tx["hash"].Value<string>(),
-                    Currency = _currency,
-                    State = state,
-                    Type = BlockchainTransactionType.Unknown,
-                    CreationTime = timeStamp,
-                    GasUsed = 0,
-                    Burn = 0,
-                    IsInternal = true,
+                    Id            = tx["hash"].Value<string>(),
+                    Currency      = _currency,
+                    State         = state,
+                    Type          = BlockchainTransactionType.Unknown,
+                    CreationTime  = timeStamp,
+                    GasUsed       = 0,
+                    Burn          = 0,
+                    IsInternal    = true,
                     InternalIndex = 0,
-                    From = tx["from"].Value<string>(),
-                    To = tx["to"].Value<string>(),
-                    Amount = tx["amount"].Value<decimal>(),
-                    Alias = alias,
+
+                    From          = tx["from"].Value<string>(),
+                    To            = tx["to"].Value<string>(),
+                    Amount        = tx["amount"].Value<decimal>(),
+                    Alias         = alias,
 
                     BlockInfo = new BlockInfo
                     {
                         Confirmations = state == BlockchainTransactionState.Failed ? 0 : 1,
-                        BlockHash = null,
-                        BlockHeight = tx["level"].Value<long>(),
-                        BlockTime = timeStamp,
-                        FirstSeen = timeStamp
+                        BlockHash     = null,
+                        BlockHeight   = tx["level"].Value<long>(),
+                        BlockTime     = timeStamp,
+                        FirstSeen     = timeStamp
                     }
                 });
             }
@@ -1028,6 +1030,33 @@ namespace Atomex.Blockchain.Tezos
         private JObject GetAllowanceParams(string holderAddress, string spenderAddress, string viewContractAddress)
         {
             return JObject.Parse(@"{'entrypoint':'getAllowance','value':{'args':[{'args':[{'string':'" + holderAddress + "'},{'string':'" + spenderAddress + "'}],'prim':'Pair'},{'string':'" + viewContractAddress + "%viewNat'}],'prim': 'Pair'}}");
+        }
+
+        public async Task<Result<IEnumerable<TezosTransaction>>> GetTransactionsAsync(
+            string from,
+            string to,
+            string parameters,
+            CancellationToken cancellationToken = default)
+        {
+            return await HttpHelper.GetAsyncResult(
+                        baseUri: _baseUri,
+                        requestUri: $"operations/transactions?sender={from}&target={to}&parameters.eq={parameters}",
+                        headers: _headers,
+                        responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content), parseTokenParams: false),
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+        }
+
+        public async Task<Result<IEnumerable<TezosTransaction>>> TryGetTransactionsAsync(
+            string from,
+            string to,
+            string parameters,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResultHelper.TryDo((c) => GetTransactionsAsync(from, to, parameters, c), attempts, attemptsIntervalMs, cancellationToken)
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
         }
     }
 }
