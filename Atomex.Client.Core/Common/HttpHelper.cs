@@ -101,6 +101,24 @@ namespace Atomex.Common
                 cancellationToken: cancellationToken);
         }
 
+        public static Task<T> PostAsync<T>(
+            string baseUri,
+            string requestUri,
+            HttpContent content,
+            HttpRequestHeaders headers,
+            Func<HttpResponseMessage, T> responseHandler,
+            CancellationToken cancellationToken = default)
+        {
+            return SendRequestAsync(
+                baseUri: baseUri,
+                requestUri: requestUri,
+                method: HttpMethod.Post,
+                content: content,
+                headers: headers,
+                responseHandler: responseHandler,
+                cancellationToken: cancellationToken);
+        }
+
         public static Task<Result<T>> PostAsyncResult<T>(
             string baseUri,
             string requestUri,
