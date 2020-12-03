@@ -64,8 +64,8 @@ namespace Atomex.Blockchain.Ethereum
             public string Gas { get; set; }
             [JsonProperty(PropertyName = "gasPrice")]
             public string GasPrice { get; set; }
-            [JsonProperty(PropertyName = "inError")]
-            public string InError { get; set; }
+            [JsonProperty(PropertyName = "isError")]
+            public string IsError { get; set; }
             [JsonProperty(PropertyName = "txreceipt_status")]
             public string ReceiptStatus { get; set; }
             [JsonProperty(PropertyName = "input")]
@@ -652,7 +652,9 @@ namespace Atomex.Blockchain.Ethereum
                         ? BlockchainTransactionState.Confirmed
                         : BlockchainTransactionState.Failed
                     : isInternal
-                        ? BlockchainTransactionState.Confirmed
+                        ? tx.IsError.Equals("0")
+                            ? BlockchainTransactionState.Confirmed
+                            : BlockchainTransactionState.Failed
                         : BlockchainTransactionState.Unconfirmed;
 
                 result.Add(new EthereumTransaction
