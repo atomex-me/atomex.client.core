@@ -496,6 +496,13 @@ namespace Atomex.Swaps
                             .StartPartyPaymentControlAsync(swap, cancellationToken)
                             .ConfigureAwait(false);
                     }
+
+                    if (swap.IsAcceptor && swap.RewardForRedeem > 0)
+                    {
+                        await GetCurrencySwap(swap.PurchasedCurrency)
+                            .StartWaitForRedeemBySomeoneAsync(swap, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
                 }
             }
             else
