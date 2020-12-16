@@ -20,8 +20,8 @@ namespace Atomex.Blockchain.BitcoinBased
         public static async Task<Result<FeeRate>> GetFeeRateAsync(CancellationToken cancellationToken)
         {
             return await HttpHelper.GetAsyncResult(
-                    baseUri: "https://bitcoinfees.earn.com/api/v1/",
-                    requestUri: "fees/recommended",
+                    baseUri: "https://test.atomex.me/",
+                    requestUri: "getbitcoinfees",
                     responseHandler: (response, content) =>
                     {
                         var feeRates = JsonConvert.DeserializeObject<JObject>(content);
