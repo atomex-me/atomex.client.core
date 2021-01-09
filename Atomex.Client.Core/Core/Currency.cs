@@ -56,6 +56,9 @@ namespace Atomex.Core
 
         public abstract decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee);
 
+        public abstract Task<decimal> GetPaymentFeeAsync(
+            CancellationToken cancellationToken = default);
+
         public abstract Task<decimal> GetRedeemFeeAsync(
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default);
