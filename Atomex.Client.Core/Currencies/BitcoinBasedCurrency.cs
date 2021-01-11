@@ -250,7 +250,7 @@ namespace Atomex
 
         public static int EstimateSigSize(ITxOutput output, bool forRefund = false, bool forRedeem = false)
         {
-            if (output is not BitcoinBasedTxOutput btcBasedOutput)
+            if (!(output is BitcoinBasedTxOutput btcBasedOutput))
                 return 0;
 
             var sigSize = 0;

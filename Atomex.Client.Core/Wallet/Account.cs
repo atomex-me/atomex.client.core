@@ -5,6 +5,10 @@ using System.Linq;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Microsoft.Extensions.Configuration;
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Api;
 using Atomex.Blockchain;
@@ -13,8 +17,6 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.LiteDb;
 using Atomex.Wallet.Abstract;
-using Microsoft.Extensions.Configuration;
-using Serilog;
 
 namespace Atomex.Wallet
 {
@@ -400,31 +402,6 @@ namespace Atomex.Wallet
                     cancellationToken: cancellationToken);
         }
 
-        //public Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
-        //    string currency,
-        //    IList<WalletAddress> from,
-        //    string to,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    FeeUsagePolicy feeUsagePolicy,
-        //    AddressUsagePolicy addressUsagePolicy,
-        //    BlockchainTransactionType transactionType,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return GetCurrencyAccount(currency).
-        //        SelectUnspentAddressesAsync(
-        //            from: from,
-        //            to: to,
-        //            amount: amount,
-        //            fee: fee,
-        //            feePrice: feePrice,
-        //            feeUsagePolicy: feeUsagePolicy,
-        //            addressUsagePolicy: addressUsagePolicy,
-        //            transactionType: transactionType,
-        //            cancellationToken: cancellationToken);
-        //}
-
         public Task<WalletAddress> GetFreeInternalAddressAsync(
             string currency,
             CancellationToken cancellationToken = default)
@@ -440,14 +417,6 @@ namespace Atomex.Wallet
             return GetCurrencyAccount(currency)
                 .GetFreeExternalAddressAsync(cancellationToken);
         }
-
-        //public Task<WalletAddress> GetRefundAddressAsync(
-        //    string currency,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return GetCurrencyAccount(currency)
-        //        .GetRefundAddressAsync(cancellationToken);
-        //}
 
         public Task<WalletAddress> GetRedeemAddressAsync(   //todo: check if always returns the biggest address
             string currency,
@@ -509,53 +478,37 @@ namespace Atomex.Wallet
             return result;
         }
 
-        public Task<bool> RemoveTransactionAsync(string id)
-        {
-            return DataRepository.RemoveTransactionByIdAsync(id);
-        }
+        public Task<bool> RemoveTransactionAsync(string id) =>
+            DataRepository.RemoveTransactionByIdAsync(id);
 
         #endregion Transactions
 
         #region Orders
 
-        public Task<bool> UpsertOrderAsync(Order order)
-        {
-            return DataRepository.UpsertOrderAsync(order);
-        }
+        public Task<bool> UpsertOrderAsync(Order order) =>
+            DataRepository.UpsertOrderAsync(order);
 
-        public Order GetOrderById(string clientOrderId)
-        {
-            return DataRepository.GetOrderById(clientOrderId);
-        }
+        public Order GetOrderById(string clientOrderId) =>
+            DataRepository.GetOrderById(clientOrderId);
 
-        public Order GetOrderById(long id)
-        {
-            return DataRepository.GetOrderById(id);
-        }
+        public Order GetOrderById(long id) =>
+            DataRepository.GetOrderById(id);
 
         #endregion Orders
 
         #region Swaps
 
-        public Task<bool> AddSwapAsync(Swap swap)
-        {
-            return DataRepository.AddSwapAsync(swap);
-        }
+        public Task<bool> AddSwapAsync(Swap swap) =>
+            DataRepository.AddSwapAsync(swap);
 
-        public Task<bool> UpdateSwapAsync(Swap swap)
-        {
-            return DataRepository.UpdateSwapAsync(swap);
-        }
+        public Task<bool> UpdateSwapAsync(Swap swap) =>
+            DataRepository.UpdateSwapAsync(swap);
 
-        public Task<Swap> GetSwapByIdAsync(long swapId)
-        {
-            return DataRepository.GetSwapByIdAsync(swapId);
-        }
+        public Task<Swap> GetSwapByIdAsync(long swapId) =>
+            DataRepository.GetSwapByIdAsync(swapId);
 
-        public Task<IEnumerable<Swap>> GetSwapsAsync()
-        {
-            return DataRepository.GetSwapsAsync();
-        }
+        public Task<IEnumerable<Swap>> GetSwapsAsync() =>
+            DataRepository.GetSwapsAsync();
 
         #endregion Swaps
     }
