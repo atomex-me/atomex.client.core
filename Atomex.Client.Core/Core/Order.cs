@@ -44,6 +44,7 @@ namespace Atomex.Core
         public bool EndOfTransaction { get; set; }
         public bool IsApproved { get; set; } = true;
         public bool IsAlreadyCanceled { get; set; }
+        public decimal MakerMinerFee { get; set; }
         public IList<WalletAddress> FromWallets { get; set; }
 
         public override string ToString()
