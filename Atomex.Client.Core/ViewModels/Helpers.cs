@@ -14,15 +14,25 @@ namespace Atomex.ViewModels
 {
     public static class Helpers
     {
-        public class SwapParams
+        public class SwapPaymentParams
         {
             public decimal Amount { get; set; }
             public decimal PaymentFee { get; set; }
             public decimal MakerMinerFee { get; set; }
+            public decimal ReservedForSwaps { get; set; }
             public Error Error { get; set; }
         }
 
-        public static Task<SwapParams> EstimateSwapParamsAsync(
+        public class SwapPriceEstimation
+        {
+            public decimal TargetAmount { get; set; }
+            public decimal OrderPrice { get; set; }
+            public decimal Price { get; set; }
+            public decimal MaxAmount { get; set; }
+            public bool IsNoLiquidity { get; set; }
+        }
+
+        public static Task<SwapPaymentParams> EstimateSwapPaymentParamsAsync(
             decimal amount,
             Currency fromCurrency,
             Currency toCurrency,
@@ -34,11 +44,12 @@ namespace Atomex.ViewModels
             {
                 if (amount == 0)
                 {
-                    return new SwapParams
+                    return new SwapPaymentParams
                     {
                         Amount = 0,
                         PaymentFee = 0,
                         MakerMinerFee = 0,
+                        ReservedForSwaps = 0,
                         Error = null
                     };
                 }
@@ -71,30 +82,30 @@ namespace Atomex.ViewModels
 
                 var hasSameChainForFees = fromCurrency.FeeCurrencyName == fromCurrency.Name;
 
-                var maxNetAmount = Math.Max(maxAmount - reservedForSwapsAmount - (hasSameChainForFees ? maxFee : 0m) - estimatedMakerMinerFee, 0m);
+                var maxNetAmount = Math.Max(maxAmount - reservedForSwapsAmount - estimatedMakerMinerFee, 0m);
 
                 if (maxNetAmount == 0m)
                 {
-                    return new SwapParams
+                    return new SwapPaymentParams
                     {
                         Amount = 0m,
                         PaymentFee = 0m,
                         MakerMinerFee = 0m,
+                        ReservedForSwaps = 0m,
                         Error = hasSameChainForFees
                             ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
                             : new Error(Errors.InsufficientChainFunds, string.Format(CultureInfo.InvariantCulture, "Insufficient {0} to cover token transfer fee", fromCurrency.FeeCurrencyName))
                     };
                 }
 
-                var totalAmount = maxAmount + (hasSameChainForFees ? maxFee : 0);
-
-                if (amount > totalAmount) // amount greater than total available amount
+                if (amount > maxNetAmount) // amount greater than max net amount
                 {
-                    return new SwapParams
+                    return new SwapPaymentParams
                     {
-                        Amount = Math.Max(maxAmount - reservedForSwapsAmount - (hasSameChainForFees ? maxFee : 0m) - estimatedMakerMinerFee, 0m),
+                        Amount = Math.Max(maxNetAmount, 0m),
                         PaymentFee = maxFee,
                         MakerMinerFee = estimatedMakerMinerFee,
+                        ReservedForSwaps = reservedForSwapsAmount,
                         Error = null
                     };
                 }
@@ -110,12 +121,81 @@ namespace Atomex.ViewModels
 
                 if (estimatedPaymentFee == null) // wtf? max amount is not null, but estimated fee is null Oo
                 {
-                    
+                    return new SwapPaymentParams
+                    {
+                        Amount = 0m,
+                        PaymentFee = 0m,
+                        MakerMinerFee = 0m,
+                        ReservedForSwaps = 0m,
+                        Error = hasSameChainForFees
+                            ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
+                            : new Error(Errors.InsufficientChainFunds, string.Format(CultureInfo.InvariantCulture, "Insufficient {0} to cover token transfer fee", fromCurrency.FeeCurrencyName))
+                    };
                 }
 
-                return new SwapParams
+                return new SwapPaymentParams
                 {
-                    //Amount = 
+                    Amount = amount,
+                    PaymentFee = estimatedPaymentFee.Value,
+                    MakerMinerFee = estimatedMakerMinerFee,
+                    ReservedForSwaps = reservedForSwapsAmount,
+                    Error = null
+                };
+
+            }, cancellationToken);
+        }
+
+        public static Task<SwapPriceEstimation> EstimateSwapPriceAsync(
+            decimal amount,
+            Currency fromCurrency,
+            Currency toCurrency,
+            IAccount account,
+            IAtomexClient atomexClient,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.Run(async () =>
+            {
+                if (toCurrency == null)
+                    return null;
+
+                var symbol = account.Symbols.SymbolByCurrencies(fromCurrency, toCurrency);
+                if (symbol == null)
+                    return null;
+
+                var side = symbol.OrderSideForBuyCurrency(toCurrency);
+                var orderBook = atomexClient.GetOrderBook(symbol);
+
+                if (orderBook == null)
+                    return null;
+
+                var walletAddress = await account
+                    .GetRedeemAddressAsync(toCurrency.FeeCurrencyName);
+
+                var baseCurrency = account.Currencies.GetByName(symbol.Base);
+
+                var (estimatedOrderPrice, estimatedPrice) = orderBook.EstimateOrderPrices(
+                    side,
+                    amount,
+                    fromCurrency.DigitsMultiplier,
+                    baseCurrency.DigitsMultiplier);
+
+                var estimatedMaxAmount = orderBook.EstimateMaxAmount(side, fromCurrency.DigitsMultiplier);
+
+                var isNoLiquidity = amount != 0 && estimatedOrderPrice == 0;
+
+                var targetAmount = symbol.IsBaseCurrency(toCurrency.Name)
+                    ? estimatedPrice != 0
+                        ? AmountHelper.RoundDown(amount / estimatedPrice, toCurrency.DigitsMultiplier)
+                        : 0m
+                    : AmountHelper.RoundDown(amount * estimatedPrice, toCurrency.DigitsMultiplier);
+
+                return new SwapPriceEstimation
+                {
+                    TargetAmount = targetAmount,
+                    OrderPrice = estimatedOrderPrice,
+                    Price = estimatedPrice,
+                    MaxAmount = estimatedMaxAmount,
+                    IsNoLiquidity = isNoLiquidity
                 };
 
             }, cancellationToken);
