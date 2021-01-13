@@ -655,6 +655,11 @@ namespace Atomex.Swaps.Ethereum
             Log.Debug("Create payment transactions for swap {@swapId}", swap.Id);
 
             var requiredAmountInEth = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, eth.DigitsMultiplier);
+
+            // maker miner fee
+            if (swap.MakerMinerFee > 0 && swap.MakerMinerFee < requiredAmountInEth) // miner fee size check
+                requiredAmountInEth += AmountHelper.RoundDown(swap.MakerMinerFee, eth.DigitsMultiplier);
+
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
             var isInitTx = true;
             var rewardForRedeemInEth = swap.PartyRewardForRedeem;

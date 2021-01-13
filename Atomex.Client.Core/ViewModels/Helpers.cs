@@ -210,12 +210,8 @@ namespace Atomex.ViewModels
                 .ConfigureAwait(false);
 
             var reservedAmount = swaps.Sum(s => (s.IsActive && s.SoldCurrency == currency.Name && !s.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-                ? s.Symbol.IsBaseCurrency(currency.Name)
-                    ? s.Qty
-                    : s.Qty * s.Price
+                ? (s.Symbol.IsBaseCurrency(currency.Name) ? s.Qty : s.Qty * s.Price) + s.MakerMinerFee
                 : 0);
-
-            // todo: add maker fee
 
             return AmountHelper.RoundDown(reservedAmount, currency.DigitsMultiplier);
         }

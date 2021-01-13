@@ -687,6 +687,10 @@ namespace Atomex.LiteDb
 
                         return false;
                     }
+
+                    // forward local params
+                    order.IsApproved = pendingOrder.IsApproved;
+                    order.MakerMinerFee = pendingOrder.MakerMinerFee;
                 }
             }
             else
@@ -710,7 +714,9 @@ namespace Atomex.LiteDb
                     return false;
                 }
 
-                order.IsApproved = actualOrder.IsApproved; // save approve
+                // forward local params
+                order.IsApproved = actualOrder.IsApproved;
+                order.MakerMinerFee = actualOrder.MakerMinerFee;
             }
 
             return true;
