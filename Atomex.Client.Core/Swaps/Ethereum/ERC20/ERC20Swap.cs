@@ -1002,7 +1002,7 @@ namespace Atomex.Swaps.Ethereum
 
                 var estimatedValue = estimatedGas?.Value ?? defaultGas;
 
-                return defaultGas / estimatedValue > 2
+                return defaultGas / estimatedValue >= 2
                     ? defaultGas
                     : estimatedValue;
             }
