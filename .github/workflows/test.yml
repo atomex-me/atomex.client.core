@@ -1,0 +1,23 @@
+name: Build and run tests
+
+on: push
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    steps:
+    - uses: actions/checkout@v1
+    - name: Setup .NET core
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: 3.1.x
+    - name: Build library
+      run: dotnet build Atomex.Client.Core/Atomex.Client.Core.csproj
+    - name: Build and run tests
+      run: |
+        dotnet build Atomex.Client.Core.Tests/Atomex.Client.Core.Tests.csproj
+        dotnet test Atomex.Client.Core.Tests/Atomex.Client.Core.Tests.csproj

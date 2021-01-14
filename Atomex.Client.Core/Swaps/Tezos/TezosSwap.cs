@@ -616,7 +616,16 @@ namespace Atomex.Swaps.Tezos
             var requiredAmountInMtz = AmountHelper
                 .QtyToAmount(swap.Side, swap.Qty, swap.Price, xtz.DigitsMultiplier)
                 .ToMicroTez();
-    
+
+            // maker miner fee
+            if (swap.MakerMinerFee > 0)
+            {
+                var makerMinerFeeInMtz = swap.MakerMinerFee.ToMicroTez();
+
+                if (makerMinerFeeInMtz < requiredAmountInMtz) // miner fee size check
+                    requiredAmountInMtz += makerMinerFeeInMtz;
+            }
+
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();
             var isInitTx = true;
             var rewardForRedeemInMtz = swap.IsInitiator

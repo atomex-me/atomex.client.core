@@ -100,7 +100,7 @@ namespace Atomex
 
             if (useCache &&
                 _feeRate != null &&
-                DateTime.UtcNow - _feeRateTimeStampUtc < TimeSpan.FromMinutes(10))
+                DateTime.UtcNow - _feeRateTimeStampUtc < TimeSpan.FromMinutes(3))
             {
                 return _feeRate.FastestFee;
             }
