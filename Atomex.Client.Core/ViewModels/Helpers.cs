@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
@@ -38,6 +39,7 @@ namespace Atomex.ViewModels
             Currency toCurrency,
             IAccount account,
             IAtomexClient atomexClient,
+            ISymbolsProvider symbolsProvider,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -77,6 +79,7 @@ namespace Atomex.ViewModels
                         toCurrency: toCurrency,
                         account: account,
                         atomexClient: atomexClient,
+                        symbolsProvider: symbolsProvider,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -151,6 +154,7 @@ namespace Atomex.ViewModels
             Currency toCurrency,
             IAccount account,
             IAtomexClient atomexClient,
+            ISymbolsProvider symbolsProvider,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -158,7 +162,10 @@ namespace Atomex.ViewModels
                 if (toCurrency == null)
                     return null;
 
-                var symbol = account.Symbols.SymbolByCurrencies(fromCurrency, toCurrency);
+                var symbol = symbolsProvider
+                    .GetSymbols(account.Network)
+                    .SymbolByCurrencies(fromCurrency, toCurrency);
+
                 if (symbol == null)
                     return null;
 
@@ -221,6 +228,7 @@ namespace Atomex.ViewModels
             Currency toCurrency,
             IAccount account,
             IAtomexClient atomexClient,
+            ISymbolsProvider symbolsProvider,
             CancellationToken cancellationToken = default)
         {
             var makerPaymentFee = await toCurrency
@@ -234,7 +242,8 @@ namespace Atomex.ViewModels
                     from: toCurrency.FeeCurrencyName,
                     to: toCurrency.Name,
                     account: account,
-                    atomexClient: atomexClient) ?? 0;
+                    atomexClient: atomexClient,
+                    symbolsProvider: symbolsProvider) ?? 0;
 
             var makerRedeemFee = await fromCurrency
                 .GetRedeemFeeAsync(toAddress: null, cancellationToken: cancellationToken)
@@ -247,7 +256,8 @@ namespace Atomex.ViewModels
                     from: fromCurrency.FeeCurrencyName,
                     to: fromCurrency.Name,
                     account: account,
-                    atomexClient: atomexClient) ?? 0;
+                    atomexClient: atomexClient,
+                    symbolsProvider: symbolsProvider) ?? 0;
 
             // convert makerPaymentFee from toCurrency to fromCurrency
             makerPaymentFee = ConvertAmount(
@@ -255,7 +265,8 @@ namespace Atomex.ViewModels
                 from: toCurrency.Name,
                 to: fromCurrency.Name,
                 account: account,
-                atomexClient: atomexClient) ?? 0;
+                atomexClient: atomexClient,
+                symbolsProvider: symbolsProvider) ?? 0;
 
             return makerPaymentFee + makerRedeemFee;
         }
@@ -265,9 +276,12 @@ namespace Atomex.ViewModels
             string from,
             string to,
             IAccount account,
-            IAtomexClient atomexClient)
+            IAtomexClient atomexClient,
+            ISymbolsProvider symbolsProvider)
         {
-            var symbol = account.Symbols.SymbolByCurrencies(from, to);
+            var symbol = symbolsProvider
+                .GetSymbols(account.Network)
+                .SymbolByCurrencies(from, to);
 
             var toCurrency = account.Currencies.GetByName(to);
 

@@ -117,8 +117,10 @@ namespace Atomex
         }
 
         public override Task<decimal> GetRewardForRedeemAsync(
-            string symbol = null,
-            decimal price = 0,
+            string chainCurrencySymbol = null,
+            decimal chainCurrencyPrice = 0,
+            string baseCurrencySymbol = null,
+            decimal baseCurrencyPrice = 0,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(0m);
 

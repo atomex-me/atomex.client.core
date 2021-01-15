@@ -86,18 +86,25 @@ namespace Atomex.EthereumTokens
             (decimal)tokenDigits / DigitsMultiplier;
 
         public override async Task<decimal> GetRewardForRedeemAsync(
-            string symbol = null,
-            decimal price = 0,
+            string chainCurrencySymbol = null,
+            decimal chainCurrencyPrice = 0,
+            string baseCurrencySymbol = null,
+            decimal baseCurrencyPrice = 0,
             CancellationToken cancellationToken = default)
         {
             var rewardForRedeemInEth = await base.GetRewardForRedeemAsync(
-                symbol: symbol,
-                price: price,
+                chainCurrencySymbol: chainCurrencySymbol,
+                chainCurrencyPrice: chainCurrencyPrice,
+                baseCurrencySymbol: baseCurrencySymbol,
+                baseCurrencyPrice: baseCurrencyPrice,
                 cancellationToken: cancellationToken);
 
-            return AmountHelper.RoundDown(symbol.IsBaseCurrency(Name)
-                ? rewardForRedeemInEth / price
-                : rewardForRedeemInEth * price, DigitsMultiplier);
+            if (chainCurrencySymbol == null || chainCurrencyPrice == 0)
+                return 0m;
+
+            return AmountHelper.RoundDown(chainCurrencySymbol.IsBaseCurrency(Name)
+                ? rewardForRedeemInEth / chainCurrencyPrice
+                : rewardForRedeemInEth * chainCurrencyPrice, DigitsMultiplier);
         }
 
         public override decimal GetDefaultFee() =>

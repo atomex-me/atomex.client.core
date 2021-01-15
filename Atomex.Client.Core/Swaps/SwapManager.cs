@@ -12,6 +12,7 @@ using Atomex.Core;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
+using Atomex.MarketData.Abstract;
 
 namespace Atomex.Swaps
 {
@@ -26,13 +27,18 @@ namespace Atomex.Swaps
 
         private readonly IAccount _account;
         private readonly ISwapClient _swapClient;
+        private readonly ICurrencyQuotesProvider _quotesProvider;
         private readonly IDictionary<string, ICurrencySwap> _currencySwaps;
         private readonly ConcurrentDictionary<long, SemaphoreSlim> _semaphores;
 
-        public SwapManager(IAccount account, ISwapClient swapClient)
+        public SwapManager(
+            IAccount account,
+            ISwapClient swapClient,
+            ICurrencyQuotesProvider quotesProvider)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _swapClient = swapClient ?? throw new ArgumentNullException(nameof(swapClient));
+            _quotesProvider = quotesProvider ?? throw new ArgumentNullException(nameof(quotesProvider));
 
             _currencySwaps = _account.Currencies
                 .Select(c =>
