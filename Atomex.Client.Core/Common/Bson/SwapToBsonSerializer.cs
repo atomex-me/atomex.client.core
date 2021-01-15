@@ -39,6 +39,8 @@ namespace Atomex.Common.Bson
         private const string RedeemTxKey = nameof(Swap.RedeemTx);
         private const string PartyPaymentTxKey = nameof(Swap.PartyPaymentTx);
 
+        private const string MakerMinerFeeKey = nameof(Swap.MakerMinerFee);
+
         private readonly ICurrencies _currencies;
 
         public SwapToBsonSerializer(ICurrencies currencies)
@@ -84,6 +86,8 @@ namespace Atomex.Common.Bson
                 PartyPaymentTxId     = bson[PartyPaymentTxIdKey].AsString,
                 PartyRedeemScript    = bson[PartyRedeemScriptKey].AsString,
                 PartyRefundAddress   = bson[PartyRefundAddressKey].AsString,
+
+                MakerMinerFee = !bson[MakerMinerFeeKey].IsNull ? bson[MakerMinerFeeKey].AsDecimal : 0m,
 
                 Secret     = bson[SecretKey].AsBinary,
                 SecretHash = bson[SecretHashKey].AsBinary,
@@ -140,6 +144,8 @@ namespace Atomex.Common.Bson
                 [PartyPaymentTxIdKey]     = swap.PartyPaymentTxId,
                 [PartyRedeemScriptKey]    = swap.PartyRedeemScript,
                 [PartyRefundAddressKey]   = swap.PartyRefundAddress,
+
+                [MakerMinerFeeKey] = swap.MakerMinerFee,
                 
                 [SecretKey]     = swap.Secret,
                 [SecretHashKey] = swap.SecretHash,

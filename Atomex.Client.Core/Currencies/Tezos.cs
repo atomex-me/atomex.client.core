@@ -163,7 +163,6 @@ namespace Atomex
 
         public override IExtKey CreateExtKey(SecureBytes seed)
         {
-            //return new TrustWalletTezosExtKey(seed);
             return new TezosExtKey(seed);
         }
 
@@ -216,12 +215,18 @@ namespace Atomex
             return 1m;
         }
 
+        public override Task<decimal> GetPaymentFeeAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(InitiateFee.ToTez());
+        }
+
         public override Task<decimal> GetRedeemFeeAsync(
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default)
         {
             var result = RedeemFee.ToTez() + RevealFee.ToTez() + MicroTezReserve.ToTez() + //todo: define another value for revealed
-                (toAddress.AvailableBalance() > 0
+                (toAddress != null && toAddress.AvailableBalance() > 0
                     ? 0
                     : ActivationStorage / StorageFeeMultiplier);
 

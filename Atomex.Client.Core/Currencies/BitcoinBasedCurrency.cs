@@ -27,6 +27,7 @@ namespace Atomex
         public const int P2PShSwapRefundScriptSigSize = 208;
         public const int P2PShSwapRedeemScriptSigSize = 241;
 
+        public const int DefaultPaymentTxSize = 372; // 2 inputs and 2 outputs
         public const int DefaultRedeemTxSize = 300;
         public const int OutputSize = 34;
 
@@ -93,6 +94,15 @@ namespace Atomex
 
         public override decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee) => 1m;
 
+        public override async Task<decimal> GetPaymentFeeAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var feeRate = await GetFeeRateAsync(cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            return feeRate * DefaultPaymentTxSize / DigitsMultiplier;
+        }
+
         public override async Task<decimal> GetRedeemFeeAsync(
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default)
@@ -120,7 +130,7 @@ namespace Atomex
             (long) (coins * DigitsMultiplier);
 
         public decimal SatoshiToCoin(long satoshi) =>
-            satoshi / (decimal)DigitsMultiplier;
+            satoshi / DigitsMultiplier;
 
         public string TestAddress()
         {

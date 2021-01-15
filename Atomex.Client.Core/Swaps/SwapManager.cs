@@ -113,15 +113,16 @@ namespace Atomex.Swaps
 
             var swap = new Swap
             {
-                Id           = receivedSwap.Id,
-                OrderId      = receivedSwap.OrderId,
-                Status       = receivedSwap.Status,
-                TimeStamp    = receivedSwap.TimeStamp,
-                Symbol       = receivedSwap.Symbol,
-                Side         = receivedSwap.Side,
-                Price        = receivedSwap.Price,
-                Qty          = receivedSwap.Qty,
-                IsInitiative = receivedSwap.IsInitiative,
+                Id            = receivedSwap.Id,
+                OrderId       = receivedSwap.OrderId,
+                Status        = receivedSwap.Status,
+                TimeStamp     = receivedSwap.TimeStamp,
+                Symbol        = receivedSwap.Symbol,
+                Side          = receivedSwap.Side,
+                Price         = receivedSwap.Price,
+                Qty           = receivedSwap.Qty,
+                IsInitiative  = receivedSwap.IsInitiative,
+                MakerMinerFee = order.MakerMinerFee
             };
 
             var result = await _account
@@ -494,6 +495,13 @@ namespace Atomex.Swaps
                         // check acceptor payment confirmation
                         await GetCurrencySwap(swap.PurchasedCurrency)
                             .StartPartyPaymentControlAsync(swap, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+
+                    if (swap.IsAcceptor && swap.RewardForRedeem > 0)
+                    {
+                        await GetCurrencySwap(swap.PurchasedCurrency)
+                            .StartWaitForRedeemBySomeoneAsync(swap, cancellationToken)
                             .ConfigureAwait(false);
                     }
                 }

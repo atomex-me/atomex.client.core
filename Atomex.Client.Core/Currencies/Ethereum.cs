@@ -187,6 +187,15 @@ namespace Atomex
                 : 0;
         }
 
+        public override async Task<decimal> GetPaymentFeeAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var gasPrice = await GetGasPriceAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            return InitiateFeeAmount(gasPrice);
+        }
+
         public override async Task<decimal> GetRedeemFeeAsync(
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default)

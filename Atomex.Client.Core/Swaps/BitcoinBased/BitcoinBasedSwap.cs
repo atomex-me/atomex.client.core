@@ -529,6 +529,15 @@ namespace Atomex.Swaps.BitcoinBased
                     swap.Price,
                     currency.DigitsMultiplier));
 
+            // maker miner fee
+            if (swap.MakerMinerFee > 0)
+            {
+                var makerMinerFeeInSatoshi = currency.CoinToSatoshi(swap.MakerMinerFee);
+
+                if (makerMinerFeeInSatoshi < amountInSatoshi) // miner fee size check
+                    amountInSatoshi += makerMinerFeeInSatoshi;
+            }
+
             var tx = await _transactionFactory
                 .CreateSwapPaymentTxAsync(
                     currency: currency,

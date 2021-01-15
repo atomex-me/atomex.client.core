@@ -489,6 +489,82 @@ namespace Atomex.Wallet
         return null;
       }
     }
+    private bool VerifyOrder(Order order)
+    {
+        if (order.Status == OrderStatus.Pending)
+        {
+            var pendingOrder = GetPendingOrder(order.ClientOrderId);
+
+            if (pendingOrder != null)
+            {
+                Log.Error("Order already pending");
+
+                return false;
+            }
+        }
+        else if (order.Status == OrderStatus.Placed || order.Status == OrderStatus.Rejected)
+        {
+            var pendingOrder = GetPendingOrder(order.ClientOrderId);
+
+            if (pendingOrder == null)
+            {
+                order.IsApproved = false;
+
+                // probably a different device order
+                Log.Information("Probably order from another device: {@order}",
+                    order.ToString());
+            }
+            else
+            {
+                if (pendingOrder.Status == OrderStatus.Rejected)
+                {
+                    Log.Error("Order already rejected");
+
+                    return false;
+                }
+
+                if (!order.IsContinuationOf(pendingOrder))
+                {
+                    Log.Error("Order is not continuation of saved pending order! Order: {@order}, pending order: {@pendingOrder}",
+                        order.ToString(),
+                        pendingOrder.ToString());
+
+                    return false;
+                }
+
+                // forward local params
+                order.IsApproved = pendingOrder.IsApproved;
+                order.MakerMinerFee = pendingOrder.MakerMinerFee;
+            }
+        }
+        else
+        {
+            var actualOrder = GetOrderById(order.ClientOrderId);
+
+            if (actualOrder == null)
+            {
+                Log.Error("Order is not continuation of saved order! Order: {@order}",
+                    order.ToString());
+
+                return false;
+            }
+
+            if (!order.IsContinuationOf(actualOrder))
+            {
+                Log.Error("Order is not continuation of saved order! Order: {@order}, saved order: {@actualOrder}",
+                    order.ToString(),
+                    actualOrder.ToString());
+
+                return false;
+            }
+
+            // forward local params
+            order.IsApproved = actualOrder.IsApproved;
+            order.MakerMinerFee = actualOrder.MakerMinerFee;
+        }
+
+        return true;
+    }
 
     public virtual Order GetOrderById(long id)
     {
@@ -507,77 +583,6 @@ namespace Atomex.Wallet
 
         return null;
       }
-    }
-
-    private bool VerifyOrder(Order order)
-    {
-      if (order.Status == OrderStatus.Pending)
-      {
-        var pendingOrder = GetPendingOrder(order.ClientOrderId);
-
-        if (pendingOrder != null)
-        {
-          Log.Error("Order already pending");
-
-          return false;
-        }
-      }
-      else if (order.Status == OrderStatus.Placed || order.Status == OrderStatus.Rejected)
-      {
-        var pendingOrder = GetPendingOrder(order.ClientOrderId);
-
-        if (pendingOrder == null)
-        {
-          order.IsApproved = false;
-
-          // probably a different device order
-          Log.Information("Probably order from another device: {@order}",
-              order.ToString());
-        }
-        else
-        {
-          if (pendingOrder.Status == OrderStatus.Rejected)
-          {
-            Log.Error("Order already rejected");
-
-            return false;
-          }
-
-          if (!order.IsContinuationOf(pendingOrder))
-          {
-            Log.Error("Order is not continuation of saved pending order! Order: {@order}, pending order: {@pendingOrder}",
-                order.ToString(),
-                pendingOrder.ToString());
-
-            return false;
-          }
-        }
-      }
-      else
-      {
-        var actualOrder = GetOrderById(order.ClientOrderId);
-
-        if (actualOrder == null)
-        {
-          Log.Error("Order is not continuation of saved order! Order: {@order}",
-              order.ToString());
-
-          return false;
-        }
-
-        if (!order.IsContinuationOf(actualOrder))
-        {
-          Log.Error("Order is not continuation of saved order! Order: {@order}, saved order: {@actualOrder}",
-              order.ToString(),
-              actualOrder.ToString());
-
-          return false;
-        }
-
-        order.IsApproved = actualOrder.IsApproved; // save approve
-      }
-
-      return true;
     }
 
     #endregion Orders

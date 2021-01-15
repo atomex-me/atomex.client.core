@@ -702,6 +702,11 @@ namespace Atomex.Swaps.Ethereum
             Log.Debug("Create payment transactions for swap {@swapId}", swap.Id);
 
             var requiredAmountInERC20 = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
+
+            // maker miner fee
+            if (swap.MakerMinerFee > 0 && swap.MakerMinerFee < requiredAmountInERC20) // miner fee size check
+                requiredAmountInERC20 += AmountHelper.RoundDown(swap.MakerMinerFee, erc20.DigitsMultiplier);
+
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
             var isInitTx = true;
             var rewardForRedeemInERC20 = swap.PartyRewardForRedeem;
@@ -997,7 +1002,7 @@ namespace Atomex.Swaps.Ethereum
 
                 var estimatedValue = estimatedGas?.Value ?? defaultGas;
 
-                return defaultGas / estimatedValue > 2
+                return defaultGas / estimatedValue >= 2
                     ? defaultGas
                     : estimatedValue;
             }
