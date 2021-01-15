@@ -207,6 +207,8 @@ namespace Atomex
         }
 
         public override async Task<decimal> GetRewardForRedeemAsync(
+            string symbol = null,
+            decimal price = 0,
             CancellationToken cancellationToken = default)
         {
             var gasPrice = await GetGasPriceAsync(cancellationToken)

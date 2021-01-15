@@ -121,9 +121,7 @@ namespace Atomex.TezosTokens
             Bip44Code = Bip44.Tezos;
         }
 
-        public override decimal GetDefaultFee()
-        {
-            return TransferGasLimit;
-        }
+        public override decimal GetDefaultFee() =>
+            TransferGasLimit;
     }
 }

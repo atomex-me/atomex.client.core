@@ -234,6 +234,8 @@ namespace Atomex
         }
 
         public override Task<decimal> GetRewardForRedeemAsync(
+            string symbol = null,
+            decimal price = 0,
             CancellationToken cancellationToken = default)
         {
             var result = (RedeemFee + RevealFee + MicroTezReserve).ToTez();

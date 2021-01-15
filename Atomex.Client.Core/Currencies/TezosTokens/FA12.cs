@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 
 using Atomex.Blockchain.Tezos;
+using Atomex.Common;
 using Atomex.Wallet.Bip;
 
 namespace Atomex.TezosTokens
@@ -31,7 +32,6 @@ namespace Atomex.TezosTokens
         public decimal ApproveGasLimit { get; private set; }
         public decimal ApproveStorageLimit { get; private set; }
         public decimal ApproveSize { get; private set; }
-        public decimal RewardForRedeem { get; private set; }
 
         public string TokenContractAddress { get; private set; }
         public string ViewContractAddress { get; private set; }
@@ -127,7 +127,6 @@ namespace Atomex.TezosTokens
 
             ActivationStorage = decimal.Parse(configuration[nameof(ActivationStorage)], CultureInfo.InvariantCulture);
             StorageFeeMultiplier = decimal.Parse(configuration[nameof(StorageFeeMultiplier)], CultureInfo.InvariantCulture);
-            RewardForRedeem = decimal.Parse(configuration[nameof(RewardForRedeem)], CultureInfo.InvariantCulture);
 
             BaseUri = configuration["BlockchainApiBaseUri"];
             RpcNodeUri = configuration["BlockchainRpcNodeUri"];
@@ -148,16 +147,23 @@ namespace Atomex.TezosTokens
             Bip44Code = Bip44.Tezos;
         }
 
-        public override Task<decimal> GetRewardForRedeemAsync(
+        public override async Task<decimal> GetRewardForRedeemAsync(
+            string symbol = null,
+            decimal price = 0,
             CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(RewardForRedeem / DigitsMultiplier);
+            var rewardForRedeemInXtz = await base.GetRewardForRedeemAsync(
+                symbol: symbol,
+                price: price,
+                cancellationToken: cancellationToken);
+
+            return AmountHelper.RoundDown(symbol.IsBaseCurrency(Name)
+                ? rewardForRedeemInXtz / price
+                : rewardForRedeemInXtz * price, DigitsMultiplier);
         }
 
-        public override decimal GetDefaultFee()
-        {
-            return TransferGasLimit;
-        }
+        public override decimal GetDefaultFee() =>
+            TransferGasLimit;
     }
 
     public class TZBTC : FA12

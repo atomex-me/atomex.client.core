@@ -5,6 +5,7 @@ using System.Threading;
 using Microsoft.Extensions.Configuration;
 
 using Atomex.Blockchain.Ethereum;
+using Atomex.Common;
 using Atomex.Wallet.Bip;
 
 namespace Atomex.EthereumTokens
@@ -16,8 +17,6 @@ namespace Atomex.EthereumTokens
 
         public decimal ApproveFeeAmount(decimal gasPrice) =>
             ApproveGasLimit * gasPrice / GweiInEth;
-
-        public decimal RewardForRedeem { get; private set; }
 
         public string ERC20ContractAddress { get; private set; }
         public ulong ERC20ContractBlockNumber { get; private set; }
@@ -58,8 +57,6 @@ namespace Atomex.EthereumTokens
             RedeemGasLimit = decimal.Parse(configuration["RedeemGasLimit"], CultureInfo.InvariantCulture);
             GasPriceInGwei = decimal.Parse(configuration["GasPriceInGwei"], CultureInfo.InvariantCulture);
 
-            RewardForRedeem = decimal.Parse(configuration[nameof(RewardForRedeem)], CultureInfo.InvariantCulture);
-
             Chain = ResolveChain(configuration);
 
             ERC20ContractAddress = configuration["ERC20Contract"];
@@ -82,26 +79,29 @@ namespace Atomex.EthereumTokens
             Bip44Code = Bip44.Ethereum;  //TODO ?
         }
 
-        public BigInteger TokensToTokenDigits(decimal tokens)
-        {
-            return new BigInteger(tokens * DigitsMultiplier);
-        }
+        public BigInteger TokensToTokenDigits(decimal tokens) =>
+            new BigInteger(tokens * DigitsMultiplier);
 
-        public decimal TokenDigitsToTokens(BigInteger tokenDigits)
-        {
-            return (decimal)tokenDigits / DigitsMultiplier;
-        }
+        public decimal TokenDigitsToTokens(BigInteger tokenDigits) =>
+            (decimal)tokenDigits / DigitsMultiplier;
 
-        public override Task<decimal> GetRewardForRedeemAsync(
+        public override async Task<decimal> GetRewardForRedeemAsync(
+            string symbol = null,
+            decimal price = 0,
             CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(RewardForRedeem / DigitsMultiplier);
+            var rewardForRedeemInEth = await base.GetRewardForRedeemAsync(
+                symbol: symbol,
+                price: price,
+                cancellationToken: cancellationToken);
+
+            return AmountHelper.RoundDown(symbol.IsBaseCurrency(Name)
+                ? rewardForRedeemInEth / price
+                : rewardForRedeemInEth * price, DigitsMultiplier);
         }
 
-        public override decimal GetDefaultFee()
-        {
-            return TransferGasLimit;
-        }
+        public override decimal GetDefaultFee() =>
+            TransferGasLimit;
     }
 
     public class Tether : ERC20

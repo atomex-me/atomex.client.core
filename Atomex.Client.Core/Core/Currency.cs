@@ -64,6 +64,8 @@ namespace Atomex.Core
             CancellationToken cancellationToken = default);
 
         public abstract Task<decimal> GetRewardForRedeemAsync(
+            string symbol = null,
+            decimal price = 0,
             CancellationToken cancellationToken = default);
 
         public virtual Task<decimal> GetDefaultFeePriceAsync(
@@ -72,14 +74,10 @@ namespace Atomex.Core
             return Task.FromResult(1m);
         }
 
-        public virtual decimal GetDefaultFee()
-        {
-            return 1m;
-        }
+        public virtual decimal GetDefaultFee() =>
+            1m;
 
-        public virtual decimal GetMaximumFee()
-        {
-            return decimal.MaxValue;
-        }
+        public virtual decimal GetMaximumFee() =>
+            decimal.MaxValue;
     }
 }
