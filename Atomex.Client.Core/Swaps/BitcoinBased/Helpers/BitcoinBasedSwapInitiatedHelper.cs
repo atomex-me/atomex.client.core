@@ -149,8 +149,8 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
             Currency currency,
             long refundTimeStamp,
             TimeSpan interval,
-            Action<Swap, CancellationToken> initiatedHandler = null,
-            Action<Swap, CancellationToken> canceledHandler = null,
+            Func<Swap, CancellationToken, Task> initiatedHandler = null,
+            Func<Swap, CancellationToken, Task> canceledHandler = null,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -159,7 +159,9 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                 {
                     if (swap.IsCanceled)
                     {
-                        canceledHandler?.Invoke(swap, cancellationToken);
+                        await canceledHandler.Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
 
@@ -172,12 +174,16 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
 
                     if (isInitiatedResult.HasError && isInitiatedResult.Error.Code != Errors.RequestError)
                     {
-                        canceledHandler?.Invoke(swap, cancellationToken);
+                        await canceledHandler.Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
                     else if (!isInitiatedResult.HasError && isInitiatedResult.Value)
                     {
-                        initiatedHandler?.Invoke(swap, cancellationToken);
+                        await initiatedHandler.Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
 
