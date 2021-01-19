@@ -79,6 +79,7 @@ namespace Atomex.Swaps.Tezos
                     {
                         swap.PaymentTx = paymentTx;
                         swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
+
                         await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentSigned, cancellationToken)
                             .ConfigureAwait(false);
                     }
@@ -90,6 +91,7 @@ namespace Atomex.Swaps.Tezos
                     {
                         swap.PaymentTx = paymentTx;
                         swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
+
                         await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentBroadcast, cancellationToken)
                             .ConfigureAwait(false);
 
@@ -125,8 +127,8 @@ namespace Atomex.Swaps.Tezos
 
             // initiator waits "accepted" event, acceptor waits "initiated" event
             var initiatedHandler = swap.IsInitiator
-                ? new Action<Swap, CancellationToken>(SwapAcceptedHandler)
-                : new Action<Swap, CancellationToken>(SwapInitiatedHandler);
+                ? new Func<Swap, CancellationToken, Task>(SwapAcceptedHandler)
+                : new Func<Swap, CancellationToken, Task>(SwapInitiatedHandler);
 
             var lockTimeSeconds = swap.IsInitiator
                 ? DefaultAcceptorLockTimeInSeconds
@@ -164,7 +166,9 @@ namespace Atomex.Swaps.Tezos
 
             if (!secretResult.HasError && secretResult.Value != null)
             {
-                RedeemConfirmedEventHandler(swap, null, cancellationToken);
+                await RedeemConfirmedEventHandler(swap, null, cancellationToken)
+                    .ConfigureAwait(false);
+
                 return;
             }
 
@@ -198,8 +202,10 @@ namespace Atomex.Swaps.Tezos
                     isRefundedByParty.Value)
                 {
                     swap.StateFlags |= SwapStateFlags.IsUnsettled;
+
                     await UpdateSwapAsync(swap, SwapStateFlags.IsUnsettled, cancellationToken)
                         .ConfigureAwait(false);
+
                     return;
                 }
             }
@@ -262,6 +268,7 @@ namespace Atomex.Swaps.Tezos
 
             swap.RedeemTx = redeemTx;
             swap.StateFlags |= SwapStateFlags.IsRedeemSigned;
+
             await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemSigned, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -270,6 +277,7 @@ namespace Atomex.Swaps.Tezos
 
             swap.RedeemTx = redeemTx;
             swap.StateFlags |= SwapStateFlags.IsRedeemBroadcast;
+
             await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemBroadcast, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -416,6 +424,7 @@ namespace Atomex.Swaps.Tezos
 
             swap.RefundTx = refundTx;
             swap.StateFlags |= SwapStateFlags.IsRefundSigned;
+
             await UpdateSwapAsync(swap, SwapStateFlags.IsRefundSigned, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -424,6 +433,7 @@ namespace Atomex.Swaps.Tezos
 
             swap.RefundTx = refundTx;
             swap.StateFlags |= SwapStateFlags.IsRefundBroadcast;
+
             await UpdateSwapAsync(swap, SwapStateFlags.IsRefundBroadcast, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -497,7 +507,7 @@ namespace Atomex.Swaps.Tezos
 
         #region Event Handlers
 
-        protected override async void RefundTimeReachedHandler(
+        protected override async Task RefundTimeReachedHandler(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
@@ -517,7 +527,8 @@ namespace Atomex.Swaps.Tezos
                 {
                     if (isRefundedResult.Value)
                     {
-                        RefundConfirmedEventHandler(swap, swap.RefundTx, cancellationToken);
+                        await RefundConfirmedEventHandler(swap, swap.RefundTx, cancellationToken)
+                            .ConfigureAwait(false);
                     }
                     else
                     {
@@ -532,7 +543,7 @@ namespace Atomex.Swaps.Tezos
             }
         }
 
-        private async void RedeemBySomeoneCompletedEventHandler(
+        private async Task RedeemBySomeoneCompletedEventHandler(
             Swap swap,
             byte[] secret,
             CancellationToken cancellationToken = default)
@@ -543,6 +554,7 @@ namespace Atomex.Swaps.Tezos
             {
                 swap.Secret = secret;
                 swap.StateFlags |= SwapStateFlags.IsRedeemConfirmed;
+
                 await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemConfirmed, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -555,7 +567,7 @@ namespace Atomex.Swaps.Tezos
             }
         }
 
-        private async void RedeemBySomeoneCanceledEventHandler(
+        private async Task RedeemBySomeoneCanceledEventHandler(
             Swap swap,
             DateTime refundTimeUtc,
             CancellationToken cancellationToken = default)
