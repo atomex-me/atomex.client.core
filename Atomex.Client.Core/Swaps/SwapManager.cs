@@ -27,7 +27,24 @@ namespace Atomex.Swaps
         private readonly IAccount _account;
         private readonly ISwapClient _swapClient;
         private readonly IDictionary<string, ICurrencySwap> _currencySwaps;
-        private readonly ConcurrentDictionary<long, SemaphoreSlim> _semaphores;
+
+        private static ConcurrentDictionary<long, SemaphoreSlim> _swapsSync;
+        private static ConcurrentDictionary<long, SemaphoreSlim> SwapsSync
+        {
+            get
+            {
+                var instance = _swapsSync;
+
+                if (instance == null)
+                {
+                    Interlocked.CompareExchange(ref _swapsSync, new ConcurrentDictionary<long, SemaphoreSlim>(), null);
+                    instance = _swapsSync;
+                }
+
+                return instance;
+            }
+        }
+
 
         public SwapManager(IAccount account, ISwapClient swapClient)
         {
@@ -49,8 +66,11 @@ namespace Atomex.Swaps
                     return currencySwap;
                 })
                 .ToDictionary(cs => cs.Currency);
+        }
 
-            _semaphores = new ConcurrentDictionary<long, SemaphoreSlim>();
+        public void Clear()
+        {
+            SwapsSync.Clear();
         }
 
         private ICurrencySwap GetCurrencySwap(string currency) => _currencySwaps[currency];
@@ -179,6 +199,7 @@ namespace Atomex.Swaps
                     .GetDeterministicSecret(soldCurrency, swap.TimeStamp);
 
                 swap.Secret = secret.SubArray(0, CurrencySwap.DefaultSecretSize);
+
                 await UpdateSwapAsync(swap, SwapStateFlags.HasSecret, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -188,6 +209,7 @@ namespace Atomex.Swaps
             if (swap.SecretHash == null)
             {
                 swap.SecretHash = CurrencySwap.CreateSwapSecretHash(swap.Secret);
+
                 await UpdateSwapAsync(swap, SwapStateFlags.HasSecretHash, cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -261,6 +283,7 @@ namespace Atomex.Swaps
 
             // update swap status
             swap.Status = receivedSwap.Status;
+
             await UpdateSwapAsync(swap, SwapStateFlags.Empty, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -283,6 +306,7 @@ namespace Atomex.Swaps
                 Log.Error("Handle initiate after swap {@swap} timeout", swap.Id);
 
                 swap.StateFlags |= SwapStateFlags.IsCanceled;
+
                 await UpdateSwapAsync(swap, SwapStateFlags.IsCanceled, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -301,6 +325,7 @@ namespace Atomex.Swaps
             Log.Debug("Secret hash {@hash} successfully received", receivedSwap.SecretHash.ToHexString());
 
             swap.SecretHash = receivedSwap.SecretHash;
+
             await UpdateSwapAsync(swap, SwapStateFlags.HasSecretHash, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -368,6 +393,7 @@ namespace Atomex.Swaps
                 Log.Error("Handle accept after swap {@swap} timeout", swap.Id);
 
                 swap.StateFlags |= SwapStateFlags.IsCanceled;
+
                 await UpdateSwapAsync(swap, SwapStateFlags.IsCanceled, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -508,6 +534,7 @@ namespace Atomex.Swaps
                         Log.Debug("Swap {@id} canceled in RestoreSwapAsync. Timeout reached.", swap.Id);
 
                         swap.StateFlags |= SwapStateFlags.IsCanceled;
+
                         await UpdateSwapAsync(swap, SwapStateFlags.IsCanceled, cancellationToken)
                             .ConfigureAwait(false);
                     }
@@ -794,7 +821,7 @@ namespace Atomex.Swaps
             long swapId,
             CancellationToken cancellationToken = default)
         {
-            if (_semaphores.TryGetValue(swapId, out SemaphoreSlim semaphore))
+            if (SwapsSync.TryGetValue(swapId, out SemaphoreSlim semaphore))
             {
                 await semaphore
                     .WaitAsync()
@@ -808,12 +835,12 @@ namespace Atomex.Swaps
                     .WaitAsync(cancellationToken)
                     .ConfigureAwait(false);
 
-                if (!_semaphores.TryAdd(swapId, semaphore))
+                if (!SwapsSync.TryAdd(swapId, semaphore))
                 {
                     semaphore.Release();
                     semaphore.Dispose();
 
-                    if (_semaphores.TryGetValue(swapId, out semaphore))
+                    if (SwapsSync.TryGetValue(swapId, out semaphore))
                     {
                         await semaphore
                             .WaitAsync(cancellationToken)
@@ -831,7 +858,7 @@ namespace Atomex.Swaps
 
         private void UnlockSwap(long id)
         {
-            if (_semaphores.TryGetValue(id, out var semaphore))
+            if (SwapsSync.TryGetValue(id, out var semaphore))
                 semaphore.Release();
         }
 

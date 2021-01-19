@@ -165,16 +165,20 @@ namespace Atomex.Swaps.Tezos.Helpers
             Currency currency,
             long refundTimeStamp,
             TimeSpan interval,
-            Action<Swap, CancellationToken> initiatedHandler = null,
-            Action<Swap, CancellationToken> canceledHandler = null,
+            Func<Swap, CancellationToken, Task> initiatedHandler,
+            Func<Swap, CancellationToken, Task> canceledHandler,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    if (swap.IsCanceled) {
-                        canceledHandler?.Invoke(swap, cancellationToken);
+                    if (swap.IsCanceled)
+                    {
+                        await canceledHandler
+                            .Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
 
@@ -187,12 +191,18 @@ namespace Atomex.Swaps.Tezos.Helpers
 
                     if (isInitiatedResult.HasError && isInitiatedResult.Error.Code != Errors.RequestError)
                     {
-                        canceledHandler?.Invoke(swap, cancellationToken);
+                        await canceledHandler
+                            .Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
                     else if (!isInitiatedResult.HasError && isInitiatedResult.Value)
                     {
-                        initiatedHandler?.Invoke(swap, cancellationToken);
+                        await initiatedHandler
+                            .Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
 

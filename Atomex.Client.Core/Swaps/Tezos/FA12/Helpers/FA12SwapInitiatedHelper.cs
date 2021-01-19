@@ -184,8 +184,8 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
             Atomex.Tezos tezos,
             long refundTimeStamp,
             TimeSpan interval,
-            Action<Swap, CancellationToken> initiatedHandler = null,
-            Action<Swap, CancellationToken> canceledHandler = null,
+            Func<Swap, CancellationToken, Task> initiatedHandler,
+            Func<Swap, CancellationToken, Task> canceledHandler,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>

@@ -122,7 +122,7 @@ namespace Atomex.Subsystems
             SwapManager = new SwapManager(
                 account: Account,
                 swapClient: ExchangeClient);
-            SwapManager.SwapUpdated += (sender, args) => SwapUpdated?.Invoke(sender, args);
+            SwapManager.SwapUpdated += SwapUpdated;
 
             // start async swaps restore
             SwapManager.RestoreSwapsAsync(_cts.Token).FireAndForget();
@@ -158,6 +158,14 @@ namespace Atomex.Subsystems
             MarketDataClient.QuotesReceived   -= OnQuotesReceivedEventHandler;
             MarketDataClient.EntriesReceived  -= OnEntriesReceivedEventHandler;
             MarketDataClient.SnapshotReceived -= OnSnapshotReceivedEventHandler;
+
+            SwapManager.SwapUpdated -= SwapUpdated;
+            SwapManager.Clear();
+        }
+
+        private void SwapUpdatedHandler(object sender, SwapEventArgs swapEventArgs)
+        {
+            SwapUpdated?.Invoke(sender, swapEventArgs);
         }
 
         public async void OrderSendAsync(Order order)
@@ -220,20 +228,18 @@ namespace Atomex.Subsystems
 
         private void OnExchangeDisconnectedEventHandler(object sender, EventArgs args)
         {
-            if(_exchangeHeartBeatTask != null)
-            { 
-                if (!_exchangeHeartBeatTask.IsCompleted &&
-                    !_exchangeHeartBeatTask.IsCanceled &&
-                    !_exchangeHeartBeatTask.IsFaulted)
+            if (_exchangeHeartBeatTask != null &&
+                !_exchangeHeartBeatTask.IsCompleted &&
+                !_exchangeHeartBeatTask.IsCanceled &&
+                !_exchangeHeartBeatTask.IsFaulted)
+            {
+                try
                 {
-                    try
-                    {
-                        _exchangeCts.Cancel();
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        Log.Debug("Exchange heart beat loop canceled.");
-                    }
+                    _exchangeCts.Cancel();
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("Exchange heart beat loop canceled.");
                 }
             }
  
@@ -321,20 +327,18 @@ namespace Atomex.Subsystems
 
         private void OnMarketDataDisconnectedEventHandler(object sender, EventArgs args)
         {
-            if (_marketDataHeartBeatTask != null)
+            if (_marketDataHeartBeatTask != null &&
+                !_marketDataHeartBeatTask.IsCompleted &&
+                !_marketDataHeartBeatTask.IsCanceled &&
+                !_marketDataHeartBeatTask.IsFaulted)
             {
-                if (!_marketDataHeartBeatTask.IsCompleted &&
-                    !_marketDataHeartBeatTask.IsCanceled &&
-                    !_marketDataHeartBeatTask.IsFaulted)
+                try
                 {
-                    try
-                    {
-                        _marketDataCts.Cancel();
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        Log.Debug("Exchange heart beat loop canceled.");
-                    }
+                    _marketDataCts.Cancel();
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("Exchange heart beat loop canceled.");
                 }
             }
 
@@ -443,9 +447,11 @@ namespace Atomex.Subsystems
                         if (DateTime.UtcNow > tx.CreationTime?.ToUniversalTime() + DefaultMaxTransactionTimeout)
                         {
                             tx.State = BlockchainTransactionState.Failed;
+
                             await Account
                                 .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
+
                             continue;
                         }
 
