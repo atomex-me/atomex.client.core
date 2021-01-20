@@ -70,6 +70,37 @@ namespace Atomex.Swaps
 
         public void Clear()
         {
+            foreach (var swapSync in SwapsSync)
+            {
+                var swapId = swapSync.Key;
+                var semaphore = swapSync.Value;
+
+                if (semaphore.CurrentCount == 0)
+                {
+                    try
+                    {
+                        semaphore.Release();
+                    }
+                    catch (SemaphoreFullException)
+                    {
+                        Log.Warning($"Semaphore for swap {swapId} is already released");
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        Log.Warning($"Semaphore for swap {swapId} is already disposed");
+                    }
+
+                    try
+                    {
+                        semaphore.Dispose();
+                    }
+                    catch (Exception)
+                    {
+                        Log.Warning($"Semaphore for swap {swapId} is already disposed");
+                    }
+                }
+            }
+
             SwapsSync.Clear();
         }
 
@@ -859,7 +890,20 @@ namespace Atomex.Swaps
         private void UnlockSwap(long id)
         {
             if (SwapsSync.TryGetValue(id, out var semaphore))
-                semaphore.Release();
+            {
+                try
+                {
+                    semaphore.Release();
+                }
+                catch (SemaphoreFullException)
+                {
+                    Log.Warning($"Semaphore for swap {id} is already released");
+                }
+                catch (ObjectDisposedException)
+                {
+                    Log.Warning($"Semaphore for swap {id} is already disposed");
+                }
+            }
         }
 
         private async Task<decimal> GetRewardForRedeemAsync(

@@ -23,7 +23,7 @@ namespace Atomex.Subsystems
 {
     public class WebSocketAtomexClient : IAtomexClient
     {
-        protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(24 * 60);
+        protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(48 * 60);
         private static TimeSpan HeartBeatInterval = TimeSpan.FromSeconds(10);
 
         public event EventHandler<TerminalServiceEventArgs> ServiceConnected;
@@ -419,7 +419,7 @@ namespace Atomex.Subsystems
             try
             {
                 var error = await SwapManager
-                    .HandleSwapAsync(args.Swap)
+                    .HandleSwapAsync(args.Swap, _cts.Token)
                     .ConfigureAwait(false);
 
                 if (error != null)
@@ -433,7 +433,8 @@ namespace Atomex.Subsystems
 
         #endregion
 
-        private async Task TrackUnconfirmedTransactionsAsync(CancellationToken cancellationToken)
+        private async Task TrackUnconfirmedTransactionsAsync(
+            CancellationToken cancellationToken)
         {
             try
             {
@@ -443,21 +444,7 @@ namespace Atomex.Subsystems
 
                 foreach (var tx in txs)
                     if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
-                    {
-                        if (DateTime.UtcNow > tx.CreationTime?.ToUniversalTime() + DefaultMaxTransactionTimeout)
-                        {
-                            tx.State = BlockchainTransactionState.Failed;
-
-                            await Account
-                                .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
-                                .ConfigureAwait(false);
-
-                            continue;
-                        }
-
-                        TrackTransactionAsync(tx, cancellationToken).FireAndForget();
-                    }
-                     
+                        TrackTransactionAsync(tx, cancellationToken).FireAndForget();      
             }
             catch (Exception e)
             {
@@ -481,9 +468,20 @@ namespace Atomex.Subsystems
                     if (result.HasError) // todo: additional reaction
                         break;
 
-                    if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed)
+                    if (result.Value.IsConfirmed || (result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed))
                     {
                         TransactionProcessedHandler(result.Value.Transaction, cancellationToken);
+                        break;
+                    }
+
+                    // mark old unconfirmed txs as failed
+                    if (transaction.CreationTime != null &&
+                        DateTime.UtcNow > transaction.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
+                        !Currencies.IsBitcoinBased(transaction.Currency.Name))
+                    {
+                        transaction.State = BlockchainTransactionState.Failed;
+
+                        TransactionProcessedHandler(transaction, cancellationToken);
                         break;
                     }
 
