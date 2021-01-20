@@ -71,7 +71,7 @@ namespace Atomex.Core
         public string PartyPaymentTxId { get; set; }
         public string PartyRedeemScript { get; set; }
         public string PartyRefundAddress { get; set; }
-        public decimal MakerMinerFee { get; set; }
+        public decimal MakerNetworkFee { get; set; }
 
         public string SoldCurrency =>
             Side == Side.Buy

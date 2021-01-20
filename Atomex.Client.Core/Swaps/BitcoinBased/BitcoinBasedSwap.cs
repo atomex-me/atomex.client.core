@@ -543,13 +543,13 @@ namespace Atomex.Swaps.BitcoinBased
                     swap.Price,
                     currency.DigitsMultiplier));
 
-            // maker miner fee
-            if (swap.MakerMinerFee > 0)
+            // maker network fee
+            if (swap.MakerNetworkFee > 0)
             {
-                var makerMinerFeeInSatoshi = currency.CoinToSatoshi(swap.MakerMinerFee);
+                var makerNetworkFeeInSatoshi = currency.CoinToSatoshi(swap.MakerNetworkFee);
 
-                if (makerMinerFeeInSatoshi < amountInSatoshi) // miner fee size check
-                    amountInSatoshi += makerMinerFeeInSatoshi;
+                if (makerNetworkFeeInSatoshi < amountInSatoshi) // network fee size check
+                    amountInSatoshi += makerNetworkFeeInSatoshi;
             }
 
             var tx = await _transactionFactory

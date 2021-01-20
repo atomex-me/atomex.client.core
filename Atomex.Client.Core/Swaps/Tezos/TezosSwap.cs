@@ -627,13 +627,13 @@ namespace Atomex.Swaps.Tezos
                 .QtyToAmount(swap.Side, swap.Qty, swap.Price, xtz.DigitsMultiplier)
                 .ToMicroTez();
 
-            // maker miner fee
-            if (swap.MakerMinerFee > 0)
+            // maker network fee
+            if (swap.MakerNetworkFee > 0)
             {
-                var makerMinerFeeInMtz = swap.MakerMinerFee.ToMicroTez();
+                var makerNetworkFeeInMtz = swap.MakerNetworkFee.ToMicroTez();
 
-                if (makerMinerFeeInMtz < requiredAmountInMtz) // miner fee size check
-                    requiredAmountInMtz += makerMinerFeeInMtz;
+                if (makerNetworkFeeInMtz < requiredAmountInMtz) // network fee size check
+                    requiredAmountInMtz += makerNetworkFeeInMtz;
             }
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();

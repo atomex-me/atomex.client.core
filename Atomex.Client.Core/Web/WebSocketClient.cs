@@ -33,7 +33,9 @@ namespace Atomex.Web
         }
 
         private void OnOpenEventHandler(object sender, EventArgs args)
-        {  
+        {
+            Log.Debug("WebSocket opened.");
+
             Connected?.Invoke(this, args);
 
             _reconnectAttempts = 0;
@@ -46,6 +48,8 @@ namespace Atomex.Web
 
         private void OnCloseEventHandler(object sender, CloseEventArgs args)
         {
+            Log.Debug("WebSocket closed.");
+
             Disconnected?.Invoke(this, args);
 
             if (args.Code != (ushort) CloseStatusCode.Normal)

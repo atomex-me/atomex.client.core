@@ -241,7 +241,7 @@ namespace Atomex
                     Log.Error("Invalid gas price!" + ((gasPrice?.HasError ?? false) ? " " + gasPrice.Error.Description : ""));
 
                 return gasPrice != null && !gasPrice.HasError && gasPrice.Value != null
-                    ? gasPrice.Value.Average
+                    ? Math.Min(gasPrice.Value.Average * 1.3m, gasPrice.Value.High)
                     : GasPriceInGwei;
             }
             catch (Exception e)

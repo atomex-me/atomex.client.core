@@ -663,9 +663,9 @@ namespace Atomex.Swaps.Tezos.NYX
 
             var requiredAmountInTokens = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, nyx.DigitsMultiplier);
 
-            // maker miner fee
-            if (swap.MakerMinerFee > 0 && swap.MakerMinerFee < requiredAmountInTokens) // miner fee size check
-                requiredAmountInTokens += AmountHelper.RoundDown(swap.MakerMinerFee, nyx.DigitsMultiplier);
+            // maker network fee
+            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInTokens) // network fee size check
+                requiredAmountInTokens += AmountHelper.RoundDown(swap.MakerNetworkFee, nyx.DigitsMultiplier);
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();
             var rewardForRedeemInTokenDigits = swap.IsInitiator

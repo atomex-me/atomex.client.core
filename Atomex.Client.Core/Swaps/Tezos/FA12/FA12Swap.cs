@@ -658,9 +658,9 @@ namespace Atomex.Swaps.Tezos.FA12
 
             var requiredAmountInTokens = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, fa12.DigitsMultiplier);
 
-            // maker miner fee
-            if (swap.MakerMinerFee > 0 && swap.MakerMinerFee < requiredAmountInTokens) // miner fee size check
-                requiredAmountInTokens += AmountHelper.RoundDown(swap.MakerMinerFee, fa12.DigitsMultiplier);
+            // maker network fee
+            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInTokens) // network fee size check
+                requiredAmountInTokens += AmountHelper.RoundDown(swap.MakerNetworkFee, fa12.DigitsMultiplier);
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();
             var isInitTx = true;

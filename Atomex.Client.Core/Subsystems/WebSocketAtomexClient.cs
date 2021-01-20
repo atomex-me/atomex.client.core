@@ -214,11 +214,15 @@ namespace Atomex.Subsystems
 
         private void OnExchangeConnectedEventHandler(object sender, EventArgs args)
         {
+            Log.Debug("Exchange client connected.");
+
             if (_exchangeHeartBeatTask == null ||
                 _exchangeHeartBeatTask.IsCompleted ||
                 _exchangeHeartBeatTask.IsCanceled ||
                 _exchangeHeartBeatTask.IsFaulted)
             {
+                Log.Debug("Run heartbeat for Exchange client.");
+
                 _exchangeCts = new CancellationTokenSource();
                 _exchangeHeartBeatTask = RunHeartBeatLoopAsync(ExchangeClient, _exchangeCts.Token);
             }
@@ -228,6 +232,8 @@ namespace Atomex.Subsystems
 
         private void OnExchangeDisconnectedEventHandler(object sender, EventArgs args)
         {
+            Log.Debug("Exchange client disconnected.");
+
             if (_exchangeHeartBeatTask != null &&
                 !_exchangeHeartBeatTask.IsCompleted &&
                 !_exchangeHeartBeatTask.IsCanceled &&
@@ -235,6 +241,7 @@ namespace Atomex.Subsystems
             {
                 try
                 {
+                    Log.Debug("Cancel Exchange client heartbeat.");
                     _exchangeCts.Cancel();
                 }
                 catch (OperationCanceledException)
@@ -313,11 +320,15 @@ namespace Atomex.Subsystems
 
         private void OnMarketDataConnectedEventHandler(object sender, EventArgs args)
         {
+            Log.Debug("MarketData client connected.");
+
             if (_marketDataHeartBeatTask == null ||
                 _marketDataHeartBeatTask.IsCompleted ||
                 _marketDataHeartBeatTask.IsCanceled ||
                 _marketDataHeartBeatTask.IsFaulted)
             {
+                Log.Debug("Run heartbeat for MarketData client.");
+
                 _marketDataCts = new CancellationTokenSource();
                 _marketDataHeartBeatTask = RunHeartBeatLoopAsync(MarketDataClient, _marketDataCts.Token);
             }
@@ -327,6 +338,8 @@ namespace Atomex.Subsystems
 
         private void OnMarketDataDisconnectedEventHandler(object sender, EventArgs args)
         {
+            Log.Debug("MarketData client disconnected.");
+
             if (_marketDataHeartBeatTask != null &&
                 !_marketDataHeartBeatTask.IsCompleted &&
                 !_marketDataHeartBeatTask.IsCanceled &&
@@ -334,6 +347,7 @@ namespace Atomex.Subsystems
             {
                 try
                 {
+                    Log.Debug("Cancel MarketData client heartbeat.");
                     _marketDataCts.Cancel();
                 }
                 catch (OperationCanceledException)
@@ -448,7 +462,7 @@ namespace Atomex.Subsystems
             }
             catch (Exception e)
             {
-                Log.Error(e, "Unconfirmed transactions track error");
+                Log.Error(e, "Unconfirmed transactions track error.");
             }
         }
 
@@ -511,7 +525,7 @@ namespace Atomex.Subsystems
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error in transaction processed handler");
+                Log.Error(e, "Error in transaction processed handler.");
             }
         }
 
@@ -549,6 +563,8 @@ namespace Atomex.Subsystems
                     Log.Error(e, "Error while sending heartbeat.");
                 }
             }
+
+            Log.Debug("Heartbeat stopped.");
         }
     }
 }
