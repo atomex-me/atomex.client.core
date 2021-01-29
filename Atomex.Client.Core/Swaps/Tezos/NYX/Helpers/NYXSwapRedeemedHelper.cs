@@ -2,11 +2,13 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
-using Serilog;
 
 namespace Atomex.Swaps.Tezos.NYX.Helpers
 {
@@ -125,8 +127,8 @@ namespace Atomex.Swaps.Tezos.NYX.Helpers
             DateTime refundTimeUtc,
             TimeSpan interval,
             bool cancelOnlyIfRefundTimeReached = true,
-            Action<Swap, byte[], CancellationToken> redeemedHandler = null,
-            Action<Swap, DateTime, CancellationToken> canceledHandler = null,
+            Func<Swap, byte[], CancellationToken, Task> redeemedHandler = null,
+            Func<Swap, DateTime, CancellationToken, Task> canceledHandler = null,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -142,18 +144,27 @@ namespace Atomex.Swaps.Tezos.NYX.Helpers
 
                     if (isRedeemedResult.HasError && isRedeemedResult.Error.Code != Errors.RequestError) // has error
                     {
-                        canceledHandler?.Invoke(swap, refundTimeUtc, cancellationToken);
+                        await canceledHandler
+                            .Invoke(swap, refundTimeUtc, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
                     else if (!isRedeemedResult.HasError && isRedeemedResult.Value != null) // has secret
                     {
-                        redeemedHandler?.Invoke(swap, isRedeemedResult.Value, cancellationToken);
+                        await redeemedHandler
+                            .Invoke(swap, isRedeemedResult.Value, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
 
                     if (!cancelOnlyIfRefundTimeReached || DateTime.UtcNow >= refundTimeUtc)
                     {
-                        canceledHandler?.Invoke(swap, refundTimeUtc, cancellationToken);
+                        await canceledHandler
+                            .Invoke(swap, refundTimeUtc, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
 

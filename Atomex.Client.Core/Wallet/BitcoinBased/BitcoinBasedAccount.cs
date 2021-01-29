@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Serilog;
+using NBitcoin;
 
 using Atomex.Abstract;
 using Atomex.Blockchain;
@@ -13,9 +15,8 @@ using Atomex.Common;
 using Atomex.Common.Bson;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Atomex.Swaps.BitcoinBased;
-using NBitcoin;
 using Atomex.Swaps.Abstract;
+using Atomex.Swaps.BitcoinBased;
 
 namespace Atomex.Wallet.BitcoinBased
 {

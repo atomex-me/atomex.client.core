@@ -83,5 +83,8 @@ namespace Atomex
         }
 
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public static bool IsBitcoinBased(string name) =>
+            name == "BTC" || name == "LTC";
     }
 }
