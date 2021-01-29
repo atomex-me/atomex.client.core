@@ -1,4 +1,4 @@
-﻿namespace Atomex.Common
+namespace Atomex.Common
 {
     public enum ClientType
     {
