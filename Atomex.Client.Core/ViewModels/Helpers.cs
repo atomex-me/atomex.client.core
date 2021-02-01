@@ -19,7 +19,7 @@ namespace Atomex.ViewModels
         {
             public decimal Amount { get; set; }
             public decimal PaymentFee { get; set; }
-            public decimal MakerMinerFee { get; set; }
+            public decimal MakerNetworkFee { get; set; }
             public decimal ReservedForSwaps { get; set; }
             public Error Error { get; set; }
         }
@@ -50,7 +50,7 @@ namespace Atomex.ViewModels
                     {
                         Amount = 0,
                         PaymentFee = 0,
-                        MakerMinerFee = 0,
+                        MakerNetworkFee = 0,
                         ReservedForSwaps = 0,
                         Error = null
                     };
@@ -73,8 +73,8 @@ namespace Atomex.ViewModels
                         currency: fromCurrency)
                     .ConfigureAwait(false);
 
-                // estimate maker miner fee
-                var estimatedMakerMinerFee = await EstimateMakerMinerFeeAsync(
+                // estimate maker network fee
+                var estimatedMakerNetworkFee = await EstimateMakerNetworkFeeAsync(
                         fromCurrency: fromCurrency,
                         toCurrency: toCurrency,
                         account: account,
@@ -85,7 +85,7 @@ namespace Atomex.ViewModels
 
                 var hasSameChainForFees = fromCurrency.FeeCurrencyName == fromCurrency.Name;
 
-                var maxNetAmount = Math.Max(maxAmount - reservedForSwapsAmount - estimatedMakerMinerFee, 0m);
+                var maxNetAmount = Math.Max(maxAmount - reservedForSwapsAmount - estimatedMakerNetworkFee, 0m);
 
                 if (maxNetAmount == 0m)
                 {
@@ -93,7 +93,7 @@ namespace Atomex.ViewModels
                     {
                         Amount = 0m,
                         PaymentFee = 0m,
-                        MakerMinerFee = 0m,
+                        MakerNetworkFee = 0m,
                         ReservedForSwaps = 0m,
                         Error = hasSameChainForFees
                             ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
@@ -107,7 +107,7 @@ namespace Atomex.ViewModels
                     {
                         Amount = Math.Max(maxNetAmount, 0m),
                         PaymentFee = maxFee,
-                        MakerMinerFee = estimatedMakerMinerFee,
+                        MakerNetworkFee = estimatedMakerNetworkFee,
                         ReservedForSwaps = reservedForSwapsAmount,
                         Error = null
                     };
@@ -128,7 +128,7 @@ namespace Atomex.ViewModels
                     {
                         Amount = 0m,
                         PaymentFee = 0m,
-                        MakerMinerFee = 0m,
+                        MakerNetworkFee = 0m,
                         ReservedForSwaps = 0m,
                         Error = hasSameChainForFees
                             ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
@@ -140,7 +140,7 @@ namespace Atomex.ViewModels
                 {
                     Amount = amount,
                     PaymentFee = estimatedPaymentFee.Value,
-                    MakerMinerFee = estimatedMakerMinerFee,
+                    MakerNetworkFee = estimatedMakerNetworkFee,
                     ReservedForSwaps = reservedForSwapsAmount,
                     Error = null
                 };
@@ -217,13 +217,13 @@ namespace Atomex.ViewModels
                 .ConfigureAwait(false);
 
             var reservedAmount = swaps.Sum(s => (s.IsActive && s.SoldCurrency == currency.Name && !s.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-                ? (s.Symbol.IsBaseCurrency(currency.Name) ? s.Qty : s.Qty * s.Price) + s.MakerMinerFee
+                ? (s.Symbol.IsBaseCurrency(currency.Name) ? s.Qty : s.Qty * s.Price) + s.MakerNetworkFee
                 : 0);
 
             return AmountHelper.RoundDown(reservedAmount, currency.DigitsMultiplier);
         }
 
-        public static async Task<decimal> EstimateMakerMinerFeeAsync(
+        public static async Task<decimal> EstimateMakerNetworkFeeAsync(
             Currency fromCurrency,
             Currency toCurrency,
             IAccount account,

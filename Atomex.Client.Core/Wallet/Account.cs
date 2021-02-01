@@ -26,7 +26,7 @@ namespace Atomex.Wallet
 
         private const string DefaultDataFileName = "data.db";
         private const string DefaultAccountKey = "Account:Default";
-        private const string ApiVersion = "1.4";
+        private const string ApiVersion = "1.5";
 
         public event EventHandler<CurrencyEventArgs> BalanceUpdated
         {
@@ -59,23 +59,31 @@ namespace Atomex.Wallet
         public ICurrencies Currencies { get; }
         public UserSettings UserSettings { get; private set; }
 
+        private ClientType _clientType;
         private IAccountDataRepository DataRepository { get; }
         private IDictionary<string, ICurrencyAccount> CurrencyAccounts { get; }
+
 
         private Account(
             string pathToAccount,
             SecureString password,
-            ICurrenciesProvider currenciesProvider)
+            ICurrenciesProvider currenciesProvider,
+            ISymbolsProvider symbolsProvider,
+            ClientType clientType)
             : this(wallet: HdWallet.LoadFromFile(pathToAccount, password),
                    password: password,
-                   currenciesProvider: currenciesProvider)
+                   currenciesProvider: currenciesProvider,
+                   symbolsProvider : symbolsProvider,
+                   clientType: clientType)
         {
         }
 
         public Account(
             IHdWallet wallet,
             SecureString password,
-            ICurrenciesProvider currenciesProvider)
+            ICurrenciesProvider currenciesProvider,
+            ISymbolsProvider symbolsProvider,
+            ClientType clientType)
         {
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
 
@@ -99,13 +107,17 @@ namespace Atomex.Wallet
             UserSettings = UserSettings.TryLoadFromFile(
                 pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
                 password: password) ?? UserSettings.DefaultSettings;
+
+            _clientType = clientType;
         }
 
         public Account(
             IHdWallet wallet,
             SecureString password,
             IAccountDataRepository dataRepository,
-            ICurrenciesProvider currenciesProvider)
+            ICurrenciesProvider currenciesProvider,
+            ISymbolsProvider symbolsProvider,
+            ClientType clientType)
         {
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
             DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
@@ -124,6 +136,8 @@ namespace Atomex.Wallet
             UserSettings = UserSettings.TryLoadFromFile(
                 pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
                 password: password) ?? UserSettings.DefaultSettings;
+
+            _clientType = clientType;
         }
 
         #region Common
@@ -238,11 +252,11 @@ namespace Atomex.Wallet
 
             var auth = new Auth
             {
-                TimeStamp = DateTime.UtcNow,
-                Nonce = nonce.Nonce,
-                ClientNonce = Guid.NewGuid().ToString(),
+                TimeStamp    = DateTime.UtcNow,
+                Nonce        = nonce.Nonce,
+                ClientNonce  = Guid.NewGuid().ToString(),
                 PublicKeyHex = publicKey.Data.ToHexString(),
-                Version = ApiVersion
+                Version      = $"{ApiVersion} {_clientType}"
             };
 
             var signature = await Wallet
@@ -257,7 +271,9 @@ namespace Atomex.Wallet
         public static IAccount LoadFromConfiguration(
             IConfiguration configuration,
             SecureString password,
-            ICurrenciesProvider currenciesProvider)
+            ICurrenciesProvider currenciesProvider,
+            ISymbolsProvider symbolsProvider,
+            ClientType clientType)
         {
             var pathToAccount = configuration[DefaultAccountKey];
 
@@ -273,15 +289,17 @@ namespace Atomex.Wallet
                 return null;
             }
 
-            return LoadFromFile(pathToAccount, password, currenciesProvider);
+            return LoadFromFile(pathToAccount, password, currenciesProvider, symbolsProvider, clientType);
         }
 
         public static Account LoadFromFile(
             string pathToAccount,
             SecureString password,
-            ICurrenciesProvider currenciesProvider)
+            ICurrenciesProvider currenciesProvider,
+            ISymbolsProvider symbolsProvider,
+            ClientType clientType)
         {
-            return new Account(pathToAccount, password, currenciesProvider);
+            return new Account(pathToAccount, password, currenciesProvider, symbolsProvider, clientType);
         }
 
         public ICurrencyAccount GetCurrencyAccount(string currency)

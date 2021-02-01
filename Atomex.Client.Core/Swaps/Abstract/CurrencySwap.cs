@@ -30,10 +30,10 @@ namespace Atomex.Swaps.Abstract
         protected static TimeSpan PartyRedeemTimeReserve = TimeSpan.FromMinutes(95);
         public static TimeSpan PaymentTimeReserve = TimeSpan.FromMinutes(60);
 
-        public OnSwapUpdatedDelegate InitiatorPaymentConfirmed { get; set; }
-        public OnSwapUpdatedDelegate AcceptorPaymentConfirmed { get; set; }
-        public OnSwapUpdatedDelegate AcceptorPaymentSpent { get; set; }
-        public OnSwapUpdatedDelegate SwapUpdated { get; set; }
+        public OnSwapUpdatedAsyncDelegate InitiatorPaymentConfirmed { get; set; }
+        public OnSwapUpdatedAsyncDelegate AcceptorPaymentConfirmed { get; set; }
+        public OnSwapUpdatedAsyncDelegate AcceptorPaymentSpent { get; set; }
+        public OnSwapUpdatedAsyncDelegate SwapUpdated { get; set; }
 
         public string Currency { get; }
         protected readonly ICurrencies Currencies;
@@ -78,17 +78,26 @@ namespace Atomex.Swaps.Abstract
             Swap swap,
             CancellationToken cancellationToken = default);
 
-        protected void RaiseInitiatorPaymentConfirmed(Swap swap) =>
-            InitiatorPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap));
+        protected Task RaiseInitiatorPaymentConfirmed(
+            Swap swap,
+            CancellationToken cancellationToken = default) =>
+            InitiatorPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap), cancellationToken);
 
-        protected void RaiseAcceptorPaymentConfirmed(Swap swap) =>
-            AcceptorPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap));
+        protected Task RaiseAcceptorPaymentConfirmed(
+            Swap swap,
+            CancellationToken cancellationToken = default) =>
+            AcceptorPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap), cancellationToken);
 
-        protected void RaiseAcceptorPaymentSpent(Swap swap) =>
-            AcceptorPaymentSpent?.Invoke(this, new SwapEventArgs(swap));
+        protected Task RaiseAcceptorPaymentSpent(
+            Swap swap,
+            CancellationToken cancellationToken = default) =>
+            AcceptorPaymentSpent?.Invoke(this, new SwapEventArgs(swap), cancellationToken);
 
-        protected void RaiseSwapUpdated(Swap swap, SwapStateFlags changedFlag) =>
-            SwapUpdated?.Invoke(this, new SwapEventArgs(swap, changedFlag));
+        protected Task UpdateSwapAsync(
+            Swap swap,
+            SwapStateFlags changedFlag,
+            CancellationToken cancellationToken = default) =>
+            SwapUpdated?.Invoke(this, new SwapEventArgs(swap, changedFlag), cancellationToken);
 
         public static byte[] CreateSwapSecret() =>
             Rand.SecureRandomBytes(DefaultSecretSize);
@@ -100,7 +109,7 @@ namespace Atomex.Swaps.Abstract
             Swap swap,
             Currency currency,
             string txId,
-            Action<Swap, IBlockchainTransaction, CancellationToken> confirmationHandler = null,
+            Func<Swap, IBlockchainTransaction, CancellationToken, Task> confirmationHandler,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -108,9 +117,7 @@ namespace Atomex.Swaps.Abstract
                 while (!cancellationToken.IsCancellationRequested)
                 {
                     var result = await currency
-                        .IsTransactionConfirmed(
-                            txId: txId,
-                            cancellationToken: cancellationToken)
+                        .IsTransactionConfirmed(txId, cancellationToken)
                         .ConfigureAwait(false);
 
                     if (result.HasError)
@@ -118,7 +125,9 @@ namespace Atomex.Swaps.Abstract
 
                     if (result.Value.IsConfirmed)
                     {
-                        confirmationHandler?.Invoke(swap, result.Value.Transaction, cancellationToken);
+                        await confirmationHandler.Invoke(swap, result.Value.Transaction, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
 
@@ -131,7 +140,7 @@ namespace Atomex.Swaps.Abstract
         protected Task ControlRefundTimeAsync(
             Swap swap,
             DateTime refundTimeUtc,
-            Action<Swap, CancellationToken> refundTimeReachedHandler = null,
+            Func<Swap, CancellationToken, Task> refundTimeReachedHandler,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -144,7 +153,9 @@ namespace Atomex.Swaps.Abstract
 
                     if (refundTimeReached)
                     {
-                        refundTimeReachedHandler?.Invoke(swap, cancellationToken);
+                        await refundTimeReachedHandler.Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
 
@@ -154,7 +165,9 @@ namespace Atomex.Swaps.Abstract
             }, cancellationToken);
         }
 
-        protected bool CheckPayRelevance(Swap swap)
+        protected async Task<bool> CheckPayRelevanceAsync(
+            Swap swap,
+            CancellationToken cancellationToken = default)
         {
             if (swap.IsAcceptor)
             {
@@ -169,7 +182,9 @@ namespace Atomex.Swaps.Abstract
                     Log.Error("Payment deadline reached for swap {@swap}", swap.Id);
 
                     swap.StateFlags |= SwapStateFlags.IsCanceled;
-                    RaiseSwapUpdated(swap, SwapStateFlags.IsCanceled);
+
+                    await UpdateSwapAsync(swap, SwapStateFlags.IsCanceled, cancellationToken)
+                        .ConfigureAwait(false);
 
                     return false;
                 }
@@ -178,7 +193,7 @@ namespace Atomex.Swaps.Abstract
             return true;
         }
 
-        protected void SwapInitiatedHandler(
+        protected async Task SwapInitiatedHandler(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
@@ -188,12 +203,15 @@ namespace Atomex.Swaps.Abstract
 
             swap.StateFlags |= SwapStateFlags.HasPartyPayment;
             swap.StateFlags |= SwapStateFlags.IsPartyPaymentConfirmed;
-            RaiseSwapUpdated(swap, SwapStateFlags.HasPartyPayment | SwapStateFlags.IsPartyPaymentConfirmed);
 
-            InitiatorPaymentConfirmed?.Invoke(this, new SwapEventArgs(swap));
+            await UpdateSwapAsync(swap, SwapStateFlags.HasPartyPayment | SwapStateFlags.IsPartyPaymentConfirmed, cancellationToken)
+                .ConfigureAwait(false);
+
+            await InitiatorPaymentConfirmed.Invoke(this, new SwapEventArgs(swap), cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        protected async void SwapAcceptedHandler(
+        protected async Task SwapAcceptedHandler(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
@@ -205,9 +223,12 @@ namespace Atomex.Swaps.Abstract
 
                 swap.StateFlags |= SwapStateFlags.HasPartyPayment;
                 swap.StateFlags |= SwapStateFlags.IsPartyPaymentConfirmed;
-                RaiseSwapUpdated(swap, SwapStateFlags.HasPartyPayment | SwapStateFlags.IsPartyPaymentConfirmed);
 
-                RaiseAcceptorPaymentConfirmed(swap);
+                await UpdateSwapAsync(swap, SwapStateFlags.HasPartyPayment | SwapStateFlags.IsPartyPaymentConfirmed, cancellationToken)
+                    .ConfigureAwait(false);
+
+                await RaiseAcceptorPaymentConfirmed(swap, cancellationToken)
+                    .ConfigureAwait(false);
 
                 await RedeemAsync(swap, cancellationToken)
                     .ConfigureAwait(false);
@@ -218,24 +239,28 @@ namespace Atomex.Swaps.Abstract
             }
         }
 
-        protected void SwapCanceledHandler(
+        protected Task SwapCanceledHandler(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
             // todo: do smth here
             Log.Debug("Swap canceled due to wrong counter party params {@swapId}", swap.Id);
+
+            return Task.CompletedTask;
         }
 
-        protected void RedeemConfirmedEventHandler(
+        protected async Task RedeemConfirmedEventHandler(
             Swap swap,
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default)
         {
             swap.StateFlags |= SwapStateFlags.IsRedeemConfirmed;
-            RaiseSwapUpdated(swap, SwapStateFlags.IsRedeemConfirmed);
+
+            await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemConfirmed, cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        protected void RedeemCompletedEventHandler(
+        protected async Task RedeemCompletedEventHandler(
             Swap swap,
             byte[] secret,
             CancellationToken cancellationToken = default)
@@ -245,13 +270,16 @@ namespace Atomex.Swaps.Abstract
             if (swap.IsAcceptor)
             {
                 swap.Secret = secret;
-                RaiseSwapUpdated(swap, SwapStateFlags.HasSecret);
 
-                RaiseAcceptorPaymentSpent(swap);
+                await UpdateSwapAsync(swap, SwapStateFlags.HasSecret, cancellationToken)
+                    .ConfigureAwait(false);
+
+                await RaiseAcceptorPaymentSpent(swap, cancellationToken)
+                    .ConfigureAwait(false);
             }
         }
 
-        protected void RedeemCanceledEventHandler(
+        protected Task RedeemCanceledEventHandler(
             Swap swap,
             DateTime refundTimeUtc,
             CancellationToken cancellationToken = default)
@@ -264,18 +292,22 @@ namespace Atomex.Swaps.Abstract
                     refundTimeReachedHandler: RefundTimeReachedHandler,
                     cancellationToken: cancellationToken)
                 .FireAndForget();
+
+            return Task.CompletedTask;
         }
 
-        protected void RefundConfirmedEventHandler(
+        protected async Task RefundConfirmedEventHandler(
             Swap swap,
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default)
         {
             swap.StateFlags |= SwapStateFlags.IsRefundConfirmed;
-            RaiseSwapUpdated(swap, SwapStateFlags.IsRefundConfirmed);
+
+            await UpdateSwapAsync(swap, SwapStateFlags.IsRefundConfirmed, cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        protected abstract void RefundTimeReachedHandler(
+        protected abstract Task RefundTimeReachedHandler(
             Swap swap,
             CancellationToken cancellationToken = default);
     }

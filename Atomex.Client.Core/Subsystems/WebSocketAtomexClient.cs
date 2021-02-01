@@ -24,7 +24,7 @@ namespace Atomex.Subsystems
 {
     public class WebSocketAtomexClient : IAtomexClient
     {
-        protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(24 * 60);
+        protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(48 * 60);
         private static TimeSpan HeartBeatInterval = TimeSpan.FromSeconds(10);
 
         public event EventHandler<TerminalServiceEventArgs> ServiceConnected;
@@ -171,6 +171,14 @@ namespace Atomex.Subsystems
             MarketDataClient.QuotesReceived   -= OnQuotesReceivedEventHandler;
             MarketDataClient.EntriesReceived  -= OnEntriesReceivedEventHandler;
             MarketDataClient.SnapshotReceived -= OnSnapshotReceivedEventHandler;
+
+            SwapManager.SwapUpdated -= SwapUpdated;
+            SwapManager.Clear();
+        }
+
+        private void SwapUpdatedHandler(object sender, SwapEventArgs swapEventArgs)
+        {
+            SwapUpdated?.Invoke(sender, swapEventArgs);
         }
 
         public async void OrderSendAsync(Order order)
@@ -219,11 +227,15 @@ namespace Atomex.Subsystems
 
         private void OnExchangeConnectedEventHandler(object sender, EventArgs args)
         {
+            Log.Debug("Exchange client connected.");
+
             if (_exchangeHeartBeatTask == null ||
                 _exchangeHeartBeatTask.IsCompleted ||
                 _exchangeHeartBeatTask.IsCanceled ||
                 _exchangeHeartBeatTask.IsFaulted)
             {
+                Log.Debug("Run heartbeat for Exchange client.");
+
                 _exchangeCts = new CancellationTokenSource();
                 _exchangeHeartBeatTask = RunHeartBeatLoopAsync(ExchangeClient, _exchangeCts.Token);
             }
@@ -233,20 +245,21 @@ namespace Atomex.Subsystems
 
         private void OnExchangeDisconnectedEventHandler(object sender, EventArgs args)
         {
-            if(_exchangeHeartBeatTask != null)
-            { 
-                if (!_exchangeHeartBeatTask.IsCompleted &&
-                    !_exchangeHeartBeatTask.IsCanceled &&
-                    !_exchangeHeartBeatTask.IsFaulted)
+            Log.Debug("Exchange client disconnected.");
+
+            if (_exchangeHeartBeatTask != null &&
+                !_exchangeHeartBeatTask.IsCompleted &&
+                !_exchangeHeartBeatTask.IsCanceled &&
+                !_exchangeHeartBeatTask.IsFaulted)
+            {
+                try
                 {
-                    try
-                    {
-                        _exchangeCts.Cancel();
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        Log.Debug("Exchange heart beat loop canceled.");
-                    }
+                    Log.Debug("Cancel Exchange client heartbeat.");
+                    _exchangeCts.Cancel();
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("Exchange heart beat loop canceled.");
                 }
             }
  
@@ -320,11 +333,15 @@ namespace Atomex.Subsystems
 
         private void OnMarketDataConnectedEventHandler(object sender, EventArgs args)
         {
+            Log.Debug("MarketData client connected.");
+
             if (_marketDataHeartBeatTask == null ||
                 _marketDataHeartBeatTask.IsCompleted ||
                 _marketDataHeartBeatTask.IsCanceled ||
                 _marketDataHeartBeatTask.IsFaulted)
             {
+                Log.Debug("Run heartbeat for MarketData client.");
+
                 _marketDataCts = new CancellationTokenSource();
                 _marketDataHeartBeatTask = RunHeartBeatLoopAsync(MarketDataClient, _marketDataCts.Token);
             }
@@ -334,20 +351,21 @@ namespace Atomex.Subsystems
 
         private void OnMarketDataDisconnectedEventHandler(object sender, EventArgs args)
         {
-            if (_marketDataHeartBeatTask != null)
+            Log.Debug("MarketData client disconnected.");
+
+            if (_marketDataHeartBeatTask != null &&
+                !_marketDataHeartBeatTask.IsCompleted &&
+                !_marketDataHeartBeatTask.IsCanceled &&
+                !_marketDataHeartBeatTask.IsFaulted)
             {
-                if (!_marketDataHeartBeatTask.IsCompleted &&
-                    !_marketDataHeartBeatTask.IsCanceled &&
-                    !_marketDataHeartBeatTask.IsFaulted)
+                try
                 {
-                    try
-                    {
-                        _marketDataCts.Cancel();
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        Log.Debug("Exchange heart beat loop canceled.");
-                    }
+                    Log.Debug("Cancel MarketData client heartbeat.");
+                    _marketDataCts.Cancel();
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("Exchange heart beat loop canceled.");
                 }
             }
 
@@ -430,7 +448,7 @@ namespace Atomex.Subsystems
             try
             {
                 var error = await SwapManager
-                    .HandleSwapAsync(args.Swap)
+                    .HandleSwapAsync(args.Swap, _cts.Token)
                     .ConfigureAwait(false);
 
                 if (error != null)
@@ -444,7 +462,8 @@ namespace Atomex.Subsystems
 
         #endregion
 
-        private async Task TrackUnconfirmedTransactionsAsync(CancellationToken cancellationToken)
+        private async Task TrackUnconfirmedTransactionsAsync(
+            CancellationToken cancellationToken)
         {
             try
             {
@@ -454,23 +473,11 @@ namespace Atomex.Subsystems
 
                 foreach (var tx in txs)
                     if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
-                    {
-                        if (DateTime.UtcNow > tx.CreationTime?.ToUniversalTime() + DefaultMaxTransactionTimeout)
-                        {
-                            tx.State = BlockchainTransactionState.Failed;
-                            await Account
-                                .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
-                                .ConfigureAwait(false);
-                            continue;
-                        }
-
-                        TrackTransactionAsync(tx, cancellationToken).FireAndForget();
-                    }
-                     
+                        TrackTransactionAsync(tx, cancellationToken).FireAndForget();      
             }
             catch (Exception e)
             {
-                Log.Error(e, "Unconfirmed transactions track error");
+                Log.Error(e, "Unconfirmed transactions track error.");
             }
         }
 
@@ -490,9 +497,20 @@ namespace Atomex.Subsystems
                     if (result.HasError) // todo: additional reaction
                         break;
 
-                    if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed)
+                    if (result.Value.IsConfirmed || (result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed))
                     {
                         TransactionProcessedHandler(result.Value.Transaction, cancellationToken);
+                        break;
+                    }
+
+                    // mark old unconfirmed txs as failed
+                    if (transaction.CreationTime != null &&
+                        DateTime.UtcNow > transaction.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
+                        !Currencies.IsBitcoinBased(transaction.Currency.Name))
+                    {
+                        transaction.State = BlockchainTransactionState.Failed;
+
+                        TransactionProcessedHandler(transaction, cancellationToken);
                         break;
                     }
 
@@ -522,7 +540,7 @@ namespace Atomex.Subsystems
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error in transaction processed handler");
+                Log.Error(e, "Error in transaction processed handler.");
             }
         }
 
@@ -560,6 +578,8 @@ namespace Atomex.Subsystems
                     Log.Error(e, "Error while sending heartbeat.");
                 }
             }
+
+            Log.Debug("Heartbeat stopped.");
         }
     }
 }

@@ -412,7 +412,7 @@ namespace Atomex.Wallet
 
                     // forward local params
                     order.IsApproved = pendingOrder.IsApproved;
-                    order.MakerMinerFee = pendingOrder.MakerMinerFee;
+                    order.MakerNetworkFee = pendingOrder.MakerNetworkFee;
                 }
             }
             else
@@ -438,7 +438,7 @@ namespace Atomex.Wallet
 
                 // forward local params
                 order.IsApproved = actualOrder.IsApproved;
-                order.MakerMinerFee = actualOrder.MakerMinerFee;
+                order.MakerNetworkFee = actualOrder.MakerNetworkFee;
             }
 
             return true;

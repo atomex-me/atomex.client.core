@@ -2,14 +2,16 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using NBitcoin;
+using Serilog;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Blockchain.BitcoinBased.Helpers;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
-using NBitcoin;
-using Serilog;
 
 namespace Atomex.Swaps.BitcoinBased.Helpers
 {
@@ -20,8 +22,8 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
             Currency currency,
             DateTime refundTimeUtc,
             TimeSpan interval,
-            Action<Swap, ITxPoint, CancellationToken> completionHandler = null,
-            Action<Swap, CancellationToken> refundTimeReachedHandler = null,
+            Func<Swap, ITxPoint, CancellationToken, Task> completionHandler = null,
+            Func<Swap, CancellationToken, Task> refundTimeReachedHandler = null,
             CancellationToken cancellationToken = default)
         {
             var bitcoinBased = (BitcoinBasedCurrency)currency;
@@ -77,14 +79,18 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                     {
                         if (result.Value != null)
                         {
-                            completionHandler?.Invoke(swap, result.Value, cancellationToken);
+                            await completionHandler.Invoke(swap, result.Value, cancellationToken)
+                                .ConfigureAwait(false);
+
                             break;
                         }
                     }
 
                     if (DateTime.UtcNow >= refundTimeUtc)
                     {
-                        refundTimeReachedHandler?.Invoke(swap, cancellationToken);
+                        await refundTimeReachedHandler.Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
 

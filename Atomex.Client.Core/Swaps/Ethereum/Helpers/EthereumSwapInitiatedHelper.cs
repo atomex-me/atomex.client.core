@@ -88,7 +88,6 @@ namespace Atomex.Swaps.Ethereum.Helpers
                 var requiredAmountInWei = Atomex.Ethereum.EthToWei(requiredAmountInEth);
                 var requiredRewardForRedeemInWei = Atomex.Ethereum.EthToWei(swap.RewardForRedeem);
 
-
                 var api = new EtherScanApi(ethereum);
 
                 var initiateEventsResult = await api
@@ -200,16 +199,20 @@ namespace Atomex.Swaps.Ethereum.Helpers
             Currency currency,
             long refundTimeStamp,
             TimeSpan interval,
-            Action<Swap, CancellationToken> initiatedHandler = null,
-            Action<Swap, CancellationToken> canceledHandler = null,
+            Func<Swap, CancellationToken, Task> initiatedHandler = null,
+            Func<Swap, CancellationToken, Task> canceledHandler = null,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
             {
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    if (swap.IsCanceled) {
-                        canceledHandler?.Invoke(swap, cancellationToken);
+                    if (swap.IsCanceled)
+                    {
+                        await canceledHandler
+                            .Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
 
@@ -222,12 +225,18 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
                     if (isInitiatedResult.HasError && isInitiatedResult.Error.Code != Errors.RequestError)
                     {
-                        canceledHandler?.Invoke(swap, cancellationToken);
+                        await canceledHandler
+                            .Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
                     else if (!isInitiatedResult.HasError && isInitiatedResult.Value)
                     {
-                        initiatedHandler?.Invoke(swap, cancellationToken);
+                        await initiatedHandler
+                            .Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
 

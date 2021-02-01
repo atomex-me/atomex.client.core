@@ -45,7 +45,7 @@ namespace Atomex.Core
         public bool IsApproved { get; set; } = true;
         public bool IsAlreadyCanceled { get; set; }
         public IList<WalletAddress> FromWallets { get; set; }
-        public decimal MakerMinerFee { get; set; }
+        public decimal MakerNetworkFee { get; set; }
 
         public override string ToString()
         {
