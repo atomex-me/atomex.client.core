@@ -59,21 +59,18 @@ namespace Atomex.Wallet
         public ICurrencies Currencies { get; }
         public UserSettings UserSettings { get; private set; }
 
-        private ClientType _clientType;
+        private readonly ClientType _clientType;
         private IAccountDataRepository DataRepository { get; }
         private IDictionary<string, ICurrencyAccount> CurrencyAccounts { get; }
-
 
         private Account(
             string pathToAccount,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ISymbolsProvider symbolsProvider,
             ClientType clientType)
             : this(wallet: HdWallet.LoadFromFile(pathToAccount, password),
                    password: password,
                    currenciesProvider: currenciesProvider,
-                   symbolsProvider : symbolsProvider,
                    clientType: clientType)
         {
         }
@@ -82,7 +79,6 @@ namespace Atomex.Wallet
             IHdWallet wallet,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ISymbolsProvider symbolsProvider,
             ClientType clientType)
         {
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
@@ -116,7 +112,6 @@ namespace Atomex.Wallet
             SecureString password,
             IAccountDataRepository dataRepository,
             ICurrenciesProvider currenciesProvider,
-            ISymbolsProvider symbolsProvider,
             ClientType clientType)
         {
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
@@ -272,7 +267,6 @@ namespace Atomex.Wallet
             IConfiguration configuration,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ISymbolsProvider symbolsProvider,
             ClientType clientType)
         {
             var pathToAccount = configuration[DefaultAccountKey];
@@ -289,17 +283,16 @@ namespace Atomex.Wallet
                 return null;
             }
 
-            return LoadFromFile(pathToAccount, password, currenciesProvider, symbolsProvider, clientType);
+            return LoadFromFile(pathToAccount, password, currenciesProvider, clientType);
         }
 
         public static Account LoadFromFile(
             string pathToAccount,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ISymbolsProvider symbolsProvider,
             ClientType clientType)
         {
-            return new Account(pathToAccount, password, currenciesProvider, symbolsProvider, clientType);
+            return new Account(pathToAccount, password, currenciesProvider, clientType);
         }
 
         public ICurrencyAccount GetCurrencyAccount(string currency)
