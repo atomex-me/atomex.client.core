@@ -117,12 +117,13 @@ namespace Atomex
         }
 
         public override Task<decimal> GetRewardForRedeemAsync(
+            decimal maxRewardPercent,
+            decimal maxRewardPercentValue,
+            string baseCurrencySymbol,
+            decimal baseCurrencyPrice,
             string chainCurrencySymbol = null,
             decimal chainCurrencyPrice = 0,
-            string baseCurrencySymbol = null,
-            decimal baseCurrencyPrice = 0,
-            CancellationToken cancellationToken = default) =>
-            Task.FromResult(0m);
+            CancellationToken cancellationToken = default) => Task.FromResult(0m);
 
         public long GetMinimumFee(int txSize) =>
             (long) (MinTxFeeRate * txSize);

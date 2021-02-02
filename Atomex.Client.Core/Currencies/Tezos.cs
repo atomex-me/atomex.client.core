@@ -161,15 +161,9 @@ namespace Atomex
             throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported");
         }
 
-        public override IExtKey CreateExtKey(SecureBytes seed)
-        {
-            return new TezosExtKey(seed);
-        }
+        public override IExtKey CreateExtKey(SecureBytes seed) => new TezosExtKey(seed);
 
-        public override IKey CreateKey(SecureBytes seed)
-        {
-            return new TezosKey(seed);
-        }
+        public override IKey CreateKey(SecureBytes seed) => new TezosKey(seed);
 
         public override string AddressFromKey(byte[] publicKey)
         {
@@ -200,20 +194,14 @@ namespace Atomex
                 publicKey: publicKey);
         }
 
-        public override decimal GetFeeAmount(decimal fee, decimal feePrice)
-        {
-            return fee;
-        }
+        public override decimal GetFeeAmount(decimal fee, decimal feePrice) =>
+            fee;
 
-        public override decimal GetFeeFromFeeAmount(decimal feeAmount, decimal feePrice)
-        {
-            return feeAmount;
-        }
+        public override decimal GetFeeFromFeeAmount(decimal feeAmount, decimal feePrice) =>
+            feeAmount;
 
-        public override decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee)
-        {
-            return 1m;
-        }
+        public override decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee) =>
+            1m;
 
         public override Task<decimal> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default)
@@ -234,25 +222,30 @@ namespace Atomex
         }
 
         public override Task<decimal> GetRewardForRedeemAsync(
+            decimal maxRewardPercent,
+            decimal maxRewardPercentValue,
+            string baseCurrencySymbol,
+            decimal baseCurrencyPrice,
             string chainCurrencySymbol = null,
             decimal chainCurrencyPrice = 0,
-            string baseCurrencySymbol = null,
-            decimal baseCurrencyPrice = 0,
             CancellationToken cancellationToken = default)
         {
-            var result = (RedeemFee + RevealFee + MicroTezReserve).ToTez();
+            var redeemFeeInXtz = (RedeemFee + RevealFee + MicroTezReserve).ToTez();
 
-            return Task.FromResult(result);
+            return Task.FromResult(CalculateRewardForRedeem(
+                redeemFee: redeemFeeInXtz,
+                redeemFeeCurrency: "XTZ",
+                redeemFeeDigitsMultiplier: XtzDigitsMultiplier,
+                maxRewardPercent: maxRewardPercent,
+                maxRewardPercentValue: maxRewardPercentValue,
+                baseCurrencySymbol: baseCurrencySymbol,
+                baseCurrencyPrice: baseCurrencyPrice));
         }
 
-        public static decimal MtzToTz(decimal mtz)
-        {
-            return mtz / XtzDigitsMultiplier;
-        }
+        public static decimal MtzToTz(decimal mtz) =>
+            mtz / XtzDigitsMultiplier;
 
-        public override decimal GetMaximumFee()
-        {
-            return MaxFee.ToTez();
-        }
+        public override decimal GetMaximumFee() =>
+            MaxFee.ToTez();
     }
 }

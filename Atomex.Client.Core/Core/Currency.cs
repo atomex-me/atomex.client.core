@@ -10,6 +10,8 @@ namespace Atomex.Core
 {
     public abstract class Currency
     {
+        public const decimal MaxRewardForRedeemDeviation = 0.05m;
+
         public const int MaxNameLength = 32;
         public const string CoinsDefaultFileName = "coins.default.json";
 
@@ -66,22 +68,41 @@ namespace Atomex.Core
             CancellationToken cancellationToken = default);
 
         public abstract Task<decimal> GetRewardForRedeemAsync(
+            decimal maxRewardPercent,
+            decimal maxRewardPercentValue,
+            string baseCurrencySymbol,
+            decimal baseCurrencyPrice,
             string chainCurrencySymbol = null,
             decimal chainCurrencyPrice = 0,
-            string baseCurrencySymbol = null,
-            decimal baseCurrencyPrice = 0,
             CancellationToken cancellationToken = default);
 
         public virtual Task<decimal> GetDefaultFeePriceAsync(
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(1m);
-        }
+            CancellationToken cancellationToken = default) => Task.FromResult(1m);
 
         public virtual decimal GetDefaultFee() =>
             1m;
 
         public virtual decimal GetMaximumFee() =>
             decimal.MaxValue;
+
+        public static decimal CalculateRewardForRedeem(
+            decimal redeemFee,
+            string redeemFeeCurrency,
+            decimal redeemFeeDigitsMultiplier,
+            decimal maxRewardPercent,
+            decimal maxRewardPercentValue,
+            string baseCurrencySymbol,
+            decimal baseCurrencyPrice,
+            decimal baseDigitsMultiplier = 2)
+        {
+            var redeemFeeInBase = AmountHelper.RoundDown(baseCurrencySymbol.IsBaseCurrency(redeemFeeCurrency)
+                ? redeemFee / baseCurrencyPrice
+                : redeemFee * baseCurrencyPrice, baseDigitsMultiplier);
+
+            var k = maxRewardPercentValue / (decimal)Math.Log((double)((1 - maxRewardPercent) / MaxRewardForRedeemDeviation));
+            var p = (1 - maxRewardPercent) / (decimal)Math.Exp((double)(redeemFeeInBase / k)) + maxRewardPercent;
+
+            return AmountHelper.RoundDown(redeemFee * (1 + p), redeemFeeDigitsMultiplier);
+        }
     }
 }

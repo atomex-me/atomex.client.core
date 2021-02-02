@@ -28,6 +28,7 @@ namespace Atomex.Swaps
         private readonly IAccount _account;
         private readonly ISwapClient _swapClient;
         private readonly ICurrencyQuotesProvider _quotesProvider;
+        private readonly IMarketDataRepository _marketDataRepository;
         private readonly IDictionary<string, ICurrencySwap> _currencySwaps;
 
         private static ConcurrentDictionary<long, SemaphoreSlim> _swapsSync;
@@ -51,11 +52,13 @@ namespace Atomex.Swaps
         public SwapManager(
             IAccount account,
             ISwapClient swapClient,
-            ICurrencyQuotesProvider quotesProvider)
+            ICurrencyQuotesProvider quotesProvider,
+            IMarketDataRepository marketDataRepository)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _swapClient = swapClient ?? throw new ArgumentNullException(nameof(swapClient));
             _quotesProvider = quotesProvider ?? throw new ArgumentNullException(nameof(quotesProvider));
+            _marketDataRepository = marketDataRepository ?? throw new ArgumentNullException(nameof(marketDataRepository));
 
             _currencySwaps = _account.Currencies
                 .Select(c =>
@@ -944,7 +947,15 @@ namespace Atomex.Swaps
                 .ConfigureAwait(false);
 
             return feeCurrencyAddress.AvailableBalance() < redeemFee
-                ? await currency.GetRewardForRedeemAsync(cancellationToken)
+                ? await currency
+                    .GetRewardForRedeemAsync(
+                        maxRewardPercent: 0,
+                        maxRewardPercentValue: 0,
+                        baseCurrencySymbol: null, //$"{currency.FeeCurrencyName}/USD",
+                        baseCurrencyPrice: 0,
+                        chainCurrencySymbol: $"{currency.Name}/{currency.FeeCurrencyName}",
+                        chainCurrencyPrice: 0,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false)
                 : 0;
         }

@@ -86,17 +86,21 @@ namespace Atomex.EthereumTokens
             (decimal)tokenDigits / DigitsMultiplier;
 
         public override async Task<decimal> GetRewardForRedeemAsync(
+            decimal maxRewardPercent,
+            decimal maxRewardPercentValue,
+            string baseCurrencySymbol,
+            decimal baseCurrencyPrice,
             string chainCurrencySymbol = null,
             decimal chainCurrencyPrice = 0,
-            string baseCurrencySymbol = null,
-            decimal baseCurrencyPrice = 0,
             CancellationToken cancellationToken = default)
         {
             var rewardForRedeemInEth = await base.GetRewardForRedeemAsync(
-                chainCurrencySymbol: chainCurrencySymbol,
-                chainCurrencyPrice: chainCurrencyPrice,
+                maxRewardPercent: maxRewardPercent,
+                maxRewardPercentValue: maxRewardPercentValue,
                 baseCurrencySymbol: baseCurrencySymbol,
                 baseCurrencyPrice: baseCurrencyPrice,
+                chainCurrencySymbol: chainCurrencySymbol,
+                chainCurrencyPrice: chainCurrencyPrice,
                 cancellationToken: cancellationToken);
 
             if (chainCurrencySymbol == null || chainCurrencyPrice == 0)

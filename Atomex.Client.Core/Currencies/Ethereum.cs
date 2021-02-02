@@ -3,9 +3,11 @@ using System.Globalization;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Configuration;
 using Nethereum.Signer;
 using Nethereum.Util;
+using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
@@ -15,7 +17,7 @@ using Atomex.Cryptography;
 using Atomex.Wallet.Bip;
 using Atomex.Wallet.Ethereum;
 using Atomex.Blockchain.Ethereum.Abstract;
-using Serilog;
+
 
 namespace Atomex
 {
@@ -207,16 +209,27 @@ namespace Atomex
         }
 
         public override async Task<decimal> GetRewardForRedeemAsync(
+            decimal maxRewardPercent,
+            decimal maxRewardPercentValue,
+            string baseCurrencySymbol,
+            decimal baseCurrencyPrice,
             string chainCurrencySymbol = null,
             decimal chainCurrencyPrice = 0,
-            string baseCurrencySymbol = null,
-            decimal baseCurrencyPrice = 0,
             CancellationToken cancellationToken = default)
         {
             var gasPrice = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return RedeemFeeAmount(gasPrice);
+            var redeemFeeInEth = RedeemFeeAmount(gasPrice);
+
+            return CalculateRewardForRedeem(
+                redeemFee: redeemFeeInEth,
+                redeemFeeCurrency: "ETH",
+                redeemFeeDigitsMultiplier: EthDigitsMultiplier,
+                maxRewardPercent: maxRewardPercent,
+                maxRewardPercentValue: maxRewardPercentValue,
+                baseCurrencySymbol: baseCurrencySymbol,
+                baseCurrencyPrice: baseCurrencyPrice);
         }
 
         public override Task<decimal> GetDefaultFeePriceAsync(
@@ -256,12 +269,16 @@ namespace Atomex
             }
         }
 
-        public static BigInteger EthToWei(decimal eth) => new BigInteger(eth * WeiInEth);
+        public static BigInteger EthToWei(decimal eth) =>
+            new BigInteger(eth * WeiInEth);
 
-        public static long GweiToWei(decimal gwei) => (long)(gwei * WeiInGwei);
+        public static long GweiToWei(decimal gwei) =>
+            (long)(gwei * WeiInGwei);
         
-        public static long WeiToGwei(decimal wei) => (long)(wei / WeiInGwei);
+        public static long WeiToGwei(decimal wei) =>
+            (long)(wei / WeiInGwei);
 
-        public static decimal WeiToEth(BigInteger wei) => (decimal)wei / WeiInEth;
+        public static decimal WeiToEth(BigInteger wei) =>
+            (decimal)wei / WeiInEth;
     }
 }
