@@ -32,51 +32,60 @@ namespace Atomex.EthereumTokens
 
         public override void Update(IConfiguration configuration)
         {
-            Name = configuration["Name"];
-            Description = configuration["Description"];
-            DigitsMultiplier = decimal.Parse(configuration["DigitsMultiplier"]);
-            DustDigitsMultiplier = long.Parse(configuration["DustDigitsMultiplier"]);
-            Digits = (int)BigInteger.Log10(new BigInteger(DigitsMultiplier));
-            Format = $"F{Digits}";
+            Name                       = configuration["Name"];
+            Description                = configuration["Description"];
+            DigitsMultiplier           = decimal.Parse(configuration["DigitsMultiplier"]);
+            DustDigitsMultiplier       = long.Parse(configuration["DustDigitsMultiplier"]);
+            Digits                     = (int)BigInteger.Log10(new BigInteger(DigitsMultiplier));
+            Format                     = $"F{Digits}";
 
-            FeeDigits = Digits;
-            FeeCode = "ETH";
-            FeeFormat = $"F{FeeDigits}";
-            FeeCurrencyName = "ETH";
+            FeeDigits                  = Digits;
+            FeeCode                    = "ETH";
+            FeeFormat                  = $"F{FeeDigits}";
+            FeeCurrencyName            = "ETH";
 
-            HasFeePrice = true;
-            FeePriceCode = DefaultGasPriceCode;
-            FeePriceFormat = DefaultGasPriceFormat;
+            HasFeePrice                = true;
+            FeePriceCode               = DefaultGasPriceCode;
+            FeePriceFormat             = DefaultGasPriceFormat;
 
-            TransferGasLimit = decimal.Parse(configuration["TransferGasLimit"], CultureInfo.InvariantCulture);
-            ApproveGasLimit = decimal.Parse(configuration["ApproveGasLimit"], CultureInfo.InvariantCulture);
-            InitiateGasLimit = decimal.Parse(configuration["InitiateGasLimit"], CultureInfo.InvariantCulture);
+            MaxRewardPercent           = configuration[nameof(MaxRewardPercent)] != null
+                ? decimal.Parse(configuration[nameof(MaxRewardPercent)], CultureInfo.InvariantCulture)
+                : 0m;
+            MaxRewardPercentInBase     = configuration[nameof(MaxRewardPercentInBase)] != null
+                ? decimal.Parse(configuration[nameof(MaxRewardPercentInBase)], CultureInfo.InvariantCulture)
+                : 0m;
+            FeeCurrencyToBaseSymbol    = configuration[nameof(FeeCurrencyToBaseSymbol)];
+            FeeCurrencySymbol          = configuration[nameof(FeeCurrencySymbol)];
+
+            TransferGasLimit           = decimal.Parse(configuration["TransferGasLimit"], CultureInfo.InvariantCulture);
+            ApproveGasLimit            = decimal.Parse(configuration["ApproveGasLimit"], CultureInfo.InvariantCulture);
+            InitiateGasLimit           = decimal.Parse(configuration["InitiateGasLimit"], CultureInfo.InvariantCulture);
             InitiateWithRewardGasLimit = decimal.Parse(configuration["InitiateWithRewardGasLimit"], CultureInfo.InvariantCulture);
-            AddGasLimit = decimal.Parse(configuration["AddGasLimit"], CultureInfo.InvariantCulture);
-            RefundGasLimit = decimal.Parse(configuration["RefundGasLimit"], CultureInfo.InvariantCulture);
-            RedeemGasLimit = decimal.Parse(configuration["RedeemGasLimit"], CultureInfo.InvariantCulture);
-            GasPriceInGwei = decimal.Parse(configuration["GasPriceInGwei"], CultureInfo.InvariantCulture);
+            AddGasLimit                = decimal.Parse(configuration["AddGasLimit"], CultureInfo.InvariantCulture);
+            RefundGasLimit             = decimal.Parse(configuration["RefundGasLimit"], CultureInfo.InvariantCulture);
+            RedeemGasLimit             = decimal.Parse(configuration["RedeemGasLimit"], CultureInfo.InvariantCulture);
+            GasPriceInGwei             = decimal.Parse(configuration["GasPriceInGwei"], CultureInfo.InvariantCulture);
 
-            Chain = ResolveChain(configuration);
+            Chain                      = ResolveChain(configuration);
 
-            ERC20ContractAddress = configuration["ERC20Contract"];
-            ERC20ContractBlockNumber = ulong.Parse(configuration["ERC20ContractBlockNumber"], CultureInfo.InvariantCulture);
+            ERC20ContractAddress       = configuration["ERC20Contract"];
+            ERC20ContractBlockNumber   = ulong.Parse(configuration["ERC20ContractBlockNumber"], CultureInfo.InvariantCulture);
 
-            SwapContractAddress = configuration["SwapContract"];
-            SwapContractBlockNumber = ulong.Parse(configuration["SwapContractBlockNumber"], CultureInfo.InvariantCulture);
+            SwapContractAddress        = configuration["SwapContract"];
+            SwapContractBlockNumber    = ulong.Parse(configuration["SwapContractBlockNumber"], CultureInfo.InvariantCulture);
 
-            BlockchainApiBaseUri = configuration["BlockchainApiBaseUri"];
-            BlockchainApi = ResolveBlockchainApi(
+            BlockchainApiBaseUri       = configuration["BlockchainApiBaseUri"];
+            BlockchainApi              = ResolveBlockchainApi(
                 configuration: configuration,
                 currency: this);
 
-            TxExplorerUri = configuration["TxExplorerUri"];
-            AddressExplorerUri = configuration["AddressExplorerUri"];
-            TransactionType = typeof(EthereumTransaction);
+            TxExplorerUri              = configuration["TxExplorerUri"];
+            AddressExplorerUri         = configuration["AddressExplorerUri"];
+            TransactionType            = typeof(EthereumTransaction);
 
-            IsTransactionsAvailable = true;
-            IsSwapAvailable = true;
-            Bip44Code = Bip44.Ethereum;  //TODO ?
+            IsTransactionsAvailable    = true;
+            IsSwapAvailable            = true;
+            Bip44Code                  = Bip44.Ethereum;  //TODO ?
         }
 
         public BigInteger TokensToTokenDigits(decimal tokens) =>
@@ -87,28 +96,28 @@ namespace Atomex.EthereumTokens
 
         public override async Task<decimal> GetRewardForRedeemAsync(
             decimal maxRewardPercent,
-            decimal maxRewardPercentValue,
-            string baseCurrencySymbol,
-            decimal baseCurrencyPrice,
-            string chainCurrencySymbol = null,
-            decimal chainCurrencyPrice = 0,
+            decimal maxRewardPercentInBase,
+            string feeCurrencyToBaseSymbol,
+            decimal feeCurrencyToBasePrice,
+            string feeCurrencySymbol = null,
+            decimal feeCurrencyPrice = 0,
             CancellationToken cancellationToken = default)
         {
             var rewardForRedeemInEth = await base.GetRewardForRedeemAsync(
                 maxRewardPercent: maxRewardPercent,
-                maxRewardPercentValue: maxRewardPercentValue,
-                baseCurrencySymbol: baseCurrencySymbol,
-                baseCurrencyPrice: baseCurrencyPrice,
-                chainCurrencySymbol: chainCurrencySymbol,
-                chainCurrencyPrice: chainCurrencyPrice,
+                maxRewardPercentInBase: maxRewardPercentInBase,
+                feeCurrencyToBaseSymbol: feeCurrencyToBaseSymbol,
+                feeCurrencyToBasePrice: feeCurrencyToBasePrice,
+                feeCurrencySymbol: feeCurrencySymbol,
+                feeCurrencyPrice: feeCurrencyPrice,
                 cancellationToken: cancellationToken);
 
-            if (chainCurrencySymbol == null || chainCurrencyPrice == 0)
+            if (feeCurrencySymbol == null || feeCurrencyPrice == 0)
                 return 0m;
 
-            return AmountHelper.RoundDown(chainCurrencySymbol.IsBaseCurrency(Name)
-                ? rewardForRedeemInEth / chainCurrencyPrice
-                : rewardForRedeemInEth * chainCurrencyPrice, DigitsMultiplier);
+            return AmountHelper.RoundDown(feeCurrencySymbol.IsBaseCurrency(Name)
+                ? rewardForRedeemInEth / feeCurrencyPrice
+                : rewardForRedeemInEth * feeCurrencyPrice, DigitsMultiplier);
         }
 
         public override decimal GetDefaultFee() =>

@@ -13,6 +13,7 @@ using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
 using Atomex.MarketData.Abstract;
+using Atomex.Swaps.Helpers;
 
 namespace Atomex.Swaps
 {
@@ -275,7 +276,15 @@ namespace Atomex.Swaps
                     .ConfigureAwait(false);
             }
 
-            swap.RewardForRedeem = await GetRewardForRedeemAsync(toAddress, cancellationToken)
+            swap.RewardForRedeem = await RewardForRedeemHelper
+                .EstimateAsync(
+                    account: _account,
+                    quotesProvider: _quotesProvider,
+                    feeCurrencyQuotesProvider: symbol => _marketDataRepository
+                        ?.OrderBookBySymbol(symbol)
+                        ?.TopOfBook(),
+                    walletAddress: toAddress,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             // select refund address for bitcoin based currency
@@ -394,7 +403,15 @@ namespace Atomex.Swaps
                     .ConfigureAwait(false);
 
                 swap.ToAddress = walletAddress.Address;
-                swap.RewardForRedeem = await GetRewardForRedeemAsync(walletAddress, cancellationToken)
+                swap.RewardForRedeem = await RewardForRedeemHelper
+                    .EstimateAsync(
+                        account: _account,
+                        quotesProvider: _quotesProvider,
+                        feeCurrencyQuotesProvider: symbol => _marketDataRepository
+                            ?.OrderBookBySymbol(symbol)
+                            ?.TopOfBook(),
+                        walletAddress: walletAddress,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -913,51 +930,6 @@ namespace Atomex.Swaps
                     Log.Warning($"Semaphore for swap {id} is already disposed");
                 }
             }
-        }
-
-        private async Task<decimal> GetRewardForRedeemAsync(
-            WalletAddress walletAddress,
-            CancellationToken cancellationToken = default)
-        {
-            var currency = _account
-                .Currencies
-                .GetByName(walletAddress.Currency);
-
-            var feeCurrency = currency.FeeCurrencyName;
-
-            var feeCurrencyAddress = await _account
-                .GetAddressAsync(feeCurrency, walletAddress.Address, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (feeCurrencyAddress == null)
-            {
-                feeCurrencyAddress = await _account
-                    .DivideAddressAsync(
-                        currency: feeCurrency,
-                        chain: walletAddress.KeyIndex.Chain,
-                        index: walletAddress.KeyIndex.Index)
-                    .ConfigureAwait(false);
-
-                if (feeCurrencyAddress == null)
-                    throw new Exception($"Can't get/devide {currency.Name} address {walletAddress.Address} for {feeCurrency}");
-            }
-
-            var redeemFee = await currency
-                .GetRedeemFeeAsync(walletAddress, cancellationToken)
-                .ConfigureAwait(false);
-
-            return feeCurrencyAddress.AvailableBalance() < redeemFee
-                ? await currency
-                    .GetRewardForRedeemAsync(
-                        maxRewardPercent: 0,
-                        maxRewardPercentValue: 0,
-                        baseCurrencySymbol: null, //$"{currency.FeeCurrencyName}/USD",
-                        baseCurrencyPrice: 0,
-                        chainCurrencySymbol: $"{currency.Name}/{currency.FeeCurrencyName}",
-                        chainCurrencyPrice: 0,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false)
-                : 0;
         }
     }
 }

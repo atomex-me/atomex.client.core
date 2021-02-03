@@ -133,7 +133,8 @@ namespace Atomex.Subsystems
             SwapManager = new SwapManager(
                 account: Account,
                 swapClient: ExchangeClient,
-                quotesProvider: QuotesProvider);
+                quotesProvider: QuotesProvider,
+                marketDataRepository: MarketDataRepository);
 
             SwapManager.SwapUpdated += (sender, args) => SwapUpdated?.Invoke(sender, args);
 
@@ -206,6 +207,9 @@ namespace Atomex.Subsystems
 
         public void SubscribeToMarketData(SubscriptionType type) =>
             MarketDataClient.SubscribeAsync(new List<Subscription> { new Subscription {Type = type} });
+
+        public MarketDataOrderBook GetOrderBook(string symbol) =>
+            MarketDataRepository?.OrderBookBySymbol(symbol);
 
         public MarketDataOrderBook GetOrderBook(Symbol symbol) =>
             MarketDataRepository?.OrderBookBySymbol(symbol.Name);

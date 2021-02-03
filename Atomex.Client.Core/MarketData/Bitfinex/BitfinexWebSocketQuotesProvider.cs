@@ -71,6 +71,11 @@ namespace Atomex.MarketData.Bitfinex
             return _quotes.TryGetValue($"t{currency}{baseCurrency}", out var rate) ? rate : null;
         }
 
+        public Quote GetQuote(string symbol)
+        {
+            return _quotes.TryGetValue($"t{symbol.Replace("/", "")}", out var rate) ? rate : null;
+        }
+
         private void OnOpenEventHandler(object sender, EventArgs args)
         {
             IsAvailable = true;

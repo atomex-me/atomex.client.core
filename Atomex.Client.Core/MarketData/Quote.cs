@@ -9,14 +9,21 @@ namespace Atomex.MarketData
         public decimal Bid { get; set; }
         public decimal Ask { get; set; }
 
-        public override string ToString()
-        {
-            return $"{{Bid: {Bid}, Ask: {Ask}}}";
-        }
+        public override string ToString() =>
+            $"{{Bid: {Bid}, Ask: {Ask}}}";
 
-        public bool IsValid()
-        {
-            return Bid != 0 && Ask != 0 && Ask != decimal.MaxValue;
-        }
+        public bool IsValidBid() =>
+            Bid != 0;
+
+        public bool IsValidAsk() =>
+            Ask != 0 && Ask != decimal.MaxValue;
+
+        public decimal GetMiddlePrice() => IsValidBid() && IsValidAsk()
+            ? (Ask + Bid) / 2
+            : IsValidBid()
+                ? Bid
+                : IsValidAsk()
+                    ? Ask
+                    : 0m;
     }
 }

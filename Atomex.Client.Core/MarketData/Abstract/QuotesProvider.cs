@@ -73,6 +73,7 @@ namespace Atomex.MarketData.Abstract
         }
 
         public abstract Quote GetQuote(string currency, string baseCurrency);
+        public abstract Quote GetQuote(string symbol);
 
         protected abstract Task UpdateAsync(CancellationToken cancellation = default);
 

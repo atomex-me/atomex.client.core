@@ -292,10 +292,10 @@ namespace Atomex.ViewModels
                 .GetOrderBook(symbol)
                 ?.TopOfBook();
 
-            if (quote == null || !quote.IsValid())
+            if (quote == null)
                 return null;
 
-            var middlePrice = (quote.Ask + quote.Bid) / 2;
+            var middlePrice = quote.GetMiddlePrice();
 
             return symbol.IsBaseCurrency(from)
                 ? AmountHelper.RoundDown(amount * middlePrice, toCurrency.DigitsMultiplier)
