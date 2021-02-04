@@ -71,6 +71,11 @@ namespace Atomex.Core
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default);
 
+        public abstract Task<decimal> GetEstimatedRedeemFeeAsync(
+            WalletAddress toAddress = null,
+            bool withRewardForRedeem = false,
+            CancellationToken cancellationToken = default);
+
         public abstract Task<decimal> GetRewardForRedeemAsync(
             decimal maxRewardPercent,
             decimal maxRewardPercentInBase,

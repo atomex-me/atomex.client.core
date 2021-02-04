@@ -48,11 +48,11 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount = 0,
-                        PaymentFee = 0,
-                        MakerNetworkFee = 0,
+                        Amount           = 0,
+                        PaymentFee       = 0,
+                        MakerNetworkFee  = 0,
                         ReservedForSwaps = 0,
-                        Error = null
+                        Error            = null
                     };
                 }
 
@@ -91,9 +91,9 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount = 0m,
-                        PaymentFee = 0m,
-                        MakerNetworkFee = 0m,
+                        Amount           = 0m,
+                        PaymentFee       = 0m,
+                        MakerNetworkFee  = 0m,
                         ReservedForSwaps = 0m,
                         Error = hasSameChainForFees
                             ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
@@ -105,11 +105,11 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount = Math.Max(maxNetAmount, 0m),
-                        PaymentFee = maxFee,
-                        MakerNetworkFee = estimatedMakerNetworkFee,
+                        Amount           = Math.Max(maxNetAmount, 0m),
+                        PaymentFee       = maxFee,
+                        MakerNetworkFee  = estimatedMakerNetworkFee,
                         ReservedForSwaps = reservedForSwapsAmount,
-                        Error = null
+                        Error            = null
                     };
                 }
 
@@ -126,9 +126,9 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount = 0m,
-                        PaymentFee = 0m,
-                        MakerNetworkFee = 0m,
+                        Amount           = 0m,
+                        PaymentFee       = 0m,
+                        MakerNetworkFee  = 0m,
                         ReservedForSwaps = 0m,
                         Error = hasSameChainForFees
                             ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
@@ -138,11 +138,11 @@ namespace Atomex.ViewModels
 
                 return new SwapPaymentParams
                 {
-                    Amount = amount,
-                    PaymentFee = estimatedPaymentFee.Value,
-                    MakerNetworkFee = estimatedMakerNetworkFee,
+                    Amount           = amount,
+                    PaymentFee       = estimatedPaymentFee.Value,
+                    MakerNetworkFee  = estimatedMakerNetworkFee,
                     ReservedForSwaps = reservedForSwapsAmount,
-                    Error = null
+                    Error            = null
                 };
 
             }, cancellationToken);
@@ -198,10 +198,10 @@ namespace Atomex.ViewModels
 
                 return new SwapPriceEstimation
                 {
-                    TargetAmount = targetAmount,
-                    OrderPrice = estimatedOrderPrice,
-                    Price = estimatedPrice,
-                    MaxAmount = estimatedMaxAmount,
+                    TargetAmount  = targetAmount,
+                    OrderPrice    = estimatedOrderPrice,
+                    Price         = estimatedPrice,
+                    MaxAmount     = estimatedMaxAmount,
                     IsNoLiquidity = isNoLiquidity
                 };
 
@@ -246,7 +246,10 @@ namespace Atomex.ViewModels
                     symbolsProvider: symbolsProvider) ?? 0;
 
             var makerRedeemFee = await fromCurrency
-                .GetRedeemFeeAsync(toAddress: null, cancellationToken: cancellationToken)
+                .GetEstimatedRedeemFeeAsync(
+                    toAddress: null,
+                    withRewardForRedeem: false,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             // if fromCurrency.Name is not equal fromCurrency.FeeCurrencyName convert makerRedeemFee from fromCurrency.FeeCurrencyName to fromCurrency.Name

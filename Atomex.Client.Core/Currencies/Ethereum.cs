@@ -36,6 +36,8 @@ namespace Atomex
         public decimal AddGasLimit { get; protected set; }
         public decimal RefundGasLimit { get; protected set; }
         public decimal RedeemGasLimit { get; protected set; }
+        public decimal EstimatedRedeemGasLimit { get; protected set; }
+        public decimal EstimatedRedeemWithRewardGasLimit { get; protected set; }
         public decimal GasPriceInGwei { get; protected set; }
 
         public decimal InitiateFeeAmount(decimal gasPrice) =>
@@ -49,6 +51,12 @@ namespace Atomex
 
         public decimal RedeemFeeAmount(decimal gasPrice) =>
             RedeemGasLimit * gasPrice / GweiInEth;
+
+        public decimal EstimatedRedeemFeeAmount(decimal gasPrice) =>
+            EstimatedRedeemGasLimit * gasPrice / GweiInEth;
+
+        public decimal EstimatedRedeemWithRewardFeeAmount(decimal gasPrice) =>
+            EstimatedRedeemWithRewardGasLimit * gasPrice / GweiInEth;
 
         public Chain Chain { get; protected set; }
         public string BlockchainApiBaseUri { get; protected set; }
@@ -96,6 +104,8 @@ namespace Atomex
             AddGasLimit                = decimal.Parse(configuration["AddGasLimit"], CultureInfo.InvariantCulture);
             RefundGasLimit             = decimal.Parse(configuration["RefundGasLimit"], CultureInfo.InvariantCulture);
             RedeemGasLimit             = decimal.Parse(configuration["RedeemGasLimit"], CultureInfo.InvariantCulture);
+            EstimatedRedeemGasLimit    = decimal.Parse(configuration["EstimatedRedeemGasLimit"], CultureInfo.InvariantCulture);
+            EstimatedRedeemWithRewardGasLimit = decimal.Parse(configuration["EstimatedRedeemWithRewardGasLimit"], CultureInfo.InvariantCulture);
             GasPriceInGwei             = decimal.Parse(configuration["GasPriceInGwei"], CultureInfo.InvariantCulture);
 
             Chain                      = ResolveChain(configuration);
@@ -198,6 +208,19 @@ namespace Atomex
             return RedeemFeeAmount(gasPrice);
         }
 
+        public override async Task<decimal> GetEstimatedRedeemFeeAsync(
+            WalletAddress toAddress = null,
+            bool withRewardForRedeem = false,
+            CancellationToken cancellationToken = default)
+        {
+            var gasPrice = await GetGasPriceAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            return withRewardForRedeem
+                ? EstimatedRedeemWithRewardFeeAmount(gasPrice)
+                : EstimatedRedeemFeeAmount(gasPrice);
+        }
+
         public override async Task<decimal> GetRewardForRedeemAsync(
             decimal maxRewardPercent,
             decimal maxRewardPercentInBase,
@@ -213,7 +236,7 @@ namespace Atomex
             var gasPrice = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var redeemFeeInEth = RedeemFeeAmount(gasPrice);
+            var redeemFeeInEth = EstimatedRedeemWithRewardFeeAmount(gasPrice);
 
             return CalculateRewardForRedeem(
                 redeemFee: redeemFeeInEth,

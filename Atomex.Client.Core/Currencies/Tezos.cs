@@ -223,6 +223,12 @@ namespace Atomex
             return Task.FromResult(result);
         }
 
+        public override Task<decimal> GetEstimatedRedeemFeeAsync(
+            WalletAddress toAddress = null,
+            bool withRewardForRedeem = false,
+            CancellationToken cancellationToken = default) =>
+            GetRedeemFeeAsync(toAddress, cancellationToken);
+
         public override Task<decimal> GetRewardForRedeemAsync(
             decimal maxRewardPercent,
             decimal maxRewardPercentInBase,
