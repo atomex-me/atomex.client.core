@@ -12,7 +12,11 @@
       "BlockchainApiBaseUri": "https://sochain.com/",
       "UseProxy": true,
       "TxExplorerUri": "https://live.blockcypher.com/btc/tx/",
-      "AddressExplorerUri": "https://live.blockcypher.com/btc/address/"
+      "AddressExplorerUri": "https://live.blockcypher.com/btc/address/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "BTC/USD",
+      "FeeCurrencySymbol": ""
     },
     "ETH": {
       "Name": "ETH",
@@ -30,7 +34,11 @@
       "SwapContract": "0xe9c251cbb4881f9e056e40135e7d3ea9a7d037df",
       "SwapContractBlockNumber": 8168569,
       "TxExplorerUri": "https://etherscan.io/tx/",
-      "AddressExplorerUri": "https://etherscan.io/address/"
+      "AddressExplorerUri": "https://etherscan.io/address/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "ETH/USD",
+      "FeeCurrencySymbol": ""
     },
     "USDT": {
       "Name": "USDT",
@@ -54,7 +62,11 @@
       "SwapContract": "0xac5881d77db9340c94f53300736a9cf9e61fa25e",
       "SwapContractBlockNumber": 9691059,
       "TxExplorerUri": "https://etherscan.io/tx/",
-      "AddressExplorerUri": "https://etherscan.io/address/"
+      "AddressExplorerUri": "https://etherscan.io/address/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "ETH/USD",
+      "FeeCurrencySymbol": "ETH/USDT"
     },
     "TBTC": {
       "Name": "TBTC",
@@ -78,7 +90,11 @@
       "SwapContract": "0xac5881d77db9340c94f53300736a9cf9e61fa25e",
       "SwapContractBlockNumber": 9691059,
       "TxExplorerUri": "https://etherscan.io/tx/",
-      "AddressExplorerUri": "https://etherscan.io/address/"
+      "AddressExplorerUri": "https://etherscan.io/address/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "TBTC/USD",
+      "FeeCurrencySymbol": "ETH/TBTC"
     },
     "WBTC": {
       "Name": "WBTC",
@@ -102,7 +118,11 @@
       "SwapContract": "0xac5881d77db9340c94f53300736a9cf9e61fa25e",
       "SwapContractBlockNumber": 9691059,
       "TxExplorerUri": "https://etherscan.io/tx/",
-      "AddressExplorerUri": "https://etherscan.io/address/"
+      "AddressExplorerUri": "https://etherscan.io/address/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "WBTC/USD",
+      "FeeCurrencySymbol": "ETH/WBTC"
     },
     "LTC": {
       "Name": "LTC",
@@ -117,7 +137,11 @@
       "BlockchainApiBaseUri": "https://sochain.com/",
       "UseProxy": true,
       "TxExplorerUri": "https://live.blockcypher.com/ltc/tx/",
-      "AddressExplorerUri": "https://live.blockcypher.com/ltc/address/"
+      "AddressExplorerUri": "https://live.blockcypher.com/ltc/address/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "LTC/USD",
+      "FeeCurrencySymbol": ""
     },
     "XTZ": {
       "Name": "XTZ",
@@ -160,7 +184,11 @@
       "BbUri": "https://baking-bad.org/",
       "SwapContract": "KT1VG2WtYdSWz5E7chTeAdDPZNy2MpP8pTfL",
       "TxExplorerUri": "https://tzkt.io/",
-      "AddressExplorerUri": "https://tzkt.io/"
+      "AddressExplorerUri": "https://tzkt.io/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "XTZ/USD",
+      "FeeCurrencySymbol": ""
     },
     "TZBTC": {
       "Name": "TZBTC",
@@ -223,7 +251,11 @@
       "TokenContract": "KT1PWx2mnDueood7fEmfbBDKx1D9BAnnXitn",
       "ViewContract": "KT1TgnUythoUoLKxCCEdR1VkjiiY5TmE7M7r",
       "TxExplorerUri": "https://tzkt.io/",
-      "AddressExplorerUri": "https://tzkt.io/"
+      "AddressExplorerUri": "https://tzkt.io/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "TZBTC/USD",
+      "FeeCurrencySymbol": "XTZ/TZBTC"
     }
   },
   "TestNet": {
@@ -239,7 +271,11 @@
       "BlockchainApiBaseUri": "https://sochain.com/",
       "UseProxy": true,
       "TxExplorerUri": "https://live.blockcypher.com/btc-testnet/tx/",
-      "AddressExplorerUri": "https://live.blockcypher.com/btc-testnet/address/"
+      "AddressExplorerUri": "https://live.blockcypher.com/btc-testnet/address/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "BTC/USD",
+      "FeeCurrencySymbol": ""
     },
     "ETH": {
       "Name": "ETH",
@@ -257,7 +293,11 @@
       "SwapContract": "0x527d1049837edf5f99c287a41a87702686082bf8",
       "SwapContractBlockNumber": 6000466,
       "TxExplorerUri": "https://ropsten.etherscan.io/tx/",
-      "AddressExplorerUri": "https://ropsten.etherscan.io/address/"
+      "AddressExplorerUri": "https://ropsten.etherscan.io/address/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "ETH/USD",
+      "FeeCurrencySymbol": ""
     },
     "USDT": {
       "Name": "USDT",
@@ -281,7 +321,11 @@
       "SwapContract": "0x189737a901f57fc52640f9b96e61019981c6c1eb",
       "SwapContractBlockNumber": 6000466,
       "TxExplorerUri": "https://ropsten.etherscan.io/tx/",
-      "AddressExplorerUri": "https://ropsten.etherscan.io/address/"
+      "AddressExplorerUri": "https://ropsten.etherscan.io/address/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "ETH/USD",
+      "FeeCurrencySymbol": "ETH/USDT"
     },
     "TBTC": {
       "Name": "TBTC",
@@ -305,7 +349,11 @@
       "SwapContract": "0x189737a901f57fc52640f9b96e61019981c6c1eb",
       "SwapContractBlockNumber": 6000466,
       "TxExplorerUri": "https://ropsten.etherscan.io/tx/",
-      "AddressExplorerUri": "https://ropsten.etherscan.io/address/"
+      "AddressExplorerUri": "https://ropsten.etherscan.io/address/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "TBTC/USD",
+      "FeeCurrencySymbol": "ETH/TBTC"
     },
     "WBTC": {
       "Name": "WBTC",
@@ -329,7 +377,11 @@
       "SwapContract": "0x189737a901f57fc52640f9b96e61019981c6c1eb",
       "SwapContractBlockNumber": 6000466,
       "TxExplorerUri": "https://ropsten.etherscan.io/tx/",
-      "AddressExplorerUri": "https://ropsten.etherscan.io/address/"
+      "AddressExplorerUri": "https://ropsten.etherscan.io/address/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "WBTC/USD",
+      "FeeCurrencySymbol": "ETH/WBTC"
     },
     "LTC": {
       "Name": "LTC",
@@ -343,7 +395,11 @@
       "BlockchainApi": "Insight",
       "BlockchainApiBaseUri": "https://testnet.litecore.io/",
       "TxExplorerUri": "https://chain.so/tx/LTCTEST/",
-      "AddressExplorerUri": "https://chain.so/address/LTCTEST/"
+      "AddressExplorerUri": "https://chain.so/address/LTCTEST/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "LTC/USD",
+      "FeeCurrencySymbol": ""
     },
     "XTZ": {
       "Name": "XTZ",
@@ -385,7 +441,11 @@
       "BbApiUri": "https://api.baking-bad.org/",
       "SwapContract": "KT1GXH82yUCykmLhNfDVKrhQUipDiKzLCL5D",
       "TxExplorerUri": "https://delphinet.tzkt.io/",
-      "AddressExplorerUri": "https://delphinet.tzkt.io/"
+      "AddressExplorerUri": "https://delphinet.tzkt.io/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "XTZ/USD",
+      "FeeCurrencySymbol": ""
     },
     "TZBTC": {
       "Name": "TZBTC",
@@ -447,7 +507,11 @@
       "TokenContract": "KT1XKAcp3Sho5LXRJjQpH57TstE8MZ8mz5dT",
       "ViewContract": "KT1Ka8cJ9E4CdWCaH2S5n8WMLpjwwxb4B1uw",
       "TxExplorerUri": "https://carthage.tzkt.io/",
-      "AddressExplorerUri": "https://carthage.tzkt.io/"
+      "AddressExplorerUri": "https://carthage.tzkt.io/",
+      "MaxRewardPercent": 0.15,
+      "MaxRewardPercentInBase": 30,
+      "FeeCurrencyToBaseSymbol": "TZBTC/USD",
+      "FeeCurrencySymbol": "XTZ/TZBTC"
     },
     "NYX": {
       "Name": "NYX",
@@ -496,7 +560,11 @@
       "TokenContract": "KT1FCYvEKgFxHx5JBNwaVQBif8wxdRxX8gZ8",
       "TokenPointerBalance": 8133,
       "TxExplorerUri": "https://carthage.tzkt.io/",
-      "AddressExplorerUri": "https://carthage.tzkt.io/"
+      "AddressExplorerUri": "https://carthage.tzkt.io/",
+      "MaxRewardPercent": 0,
+      "MaxRewardPercentInBase": 0,
+      "FeeCurrencyToBaseSymbol": "",
+      "FeeCurrencySymbol": ""
     },
     "FA2": {
       "Name": "FA2",
@@ -547,7 +615,11 @@
       "TokenPointerBalance": 10963,
       "TokenPointerAllowance": 10961,
       "TxExplorerUri": "https://carthage.tzkt.io/",
-      "AddressExplorerUri": "https://carthage.tzkt.io/"
+      "AddressExplorerUri": "https://carthage.tzkt.io/",
+      "MaxRewardPercent": 0,
+      "MaxRewardPercentInBase": 0,
+      "FeeCurrencyToBaseSymbol": "",
+      "FeeCurrencySymbol": ""
     },
     "FA12": {
       "Name": "FA12",
@@ -609,7 +681,11 @@
       "TokenContract": "KT1XKAcp3Sho5LXRJjQpH57TstE8MZ8mz5dT",
       "ViewContract": "KT1Ka8cJ9E4CdWCaH2S5n8WMLpjwwxb4B1uw",
       "TxExplorerUri": "https://carthage.tzkt.io/",
-      "AddressExplorerUri": "https://carthage.tzkt.io/"
+      "AddressExplorerUri": "https://carthage.tzkt.io/",
+      "MaxRewardPercent": 0,
+      "MaxRewardPercentInBase": 0,
+      "FeeCurrencyToBaseSymbol": "",
+      "FeeCurrencySymbol": ""
     }
   }
 }

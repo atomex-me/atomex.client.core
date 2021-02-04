@@ -1,12 +1,13 @@
 ﻿using System;
+using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BlockCypher;
 using Atomex.Blockchain.Insight;
-using Atomex.Wallet.Bip;
 using Atomex.Blockchain.SoChain;
+using Atomex.Wallet.Bip;
 
 namespace Atomex
 {
@@ -27,35 +28,44 @@ namespace Atomex
 
         public void Update(IConfiguration configuration)
         {
-            Name = configuration["Name"];
-            Description = configuration["Description"];
+            Name                    = configuration["Name"];
+            Description             = configuration["Description"];
 
-            DigitsMultiplier = LtcDigitsMultiplier;
-            Digits = (int)Math.Log10(LtcDigitsMultiplier);
-            Format = $"F{Digits}";
+            DigitsMultiplier        = LtcDigitsMultiplier;
+            Digits                  = (int)Math.Log10(LtcDigitsMultiplier);
+            Format                  = $"F{Digits}";
 
-            FeeRate = decimal.Parse(configuration["FeeRate"]);
-            DustFeeRate = decimal.Parse(configuration["DustFeeRate"]);
-            DustThreshold = long.Parse(configuration["DustThreshold"]);
+            FeeRate                 = decimal.Parse(configuration["FeeRate"]);
+            DustFeeRate             = decimal.Parse(configuration["DustFeeRate"]);
+            DustThreshold           = long.Parse(configuration["DustThreshold"]);
 
-            MinTxFeeRate = decimal.Parse(configuration["MinTxFeeRate"]);
-            MinRelayTxFeeRate = decimal.Parse(configuration["MinRelayTxFeeRate"]);
+            MinTxFeeRate            = decimal.Parse(configuration["MinTxFeeRate"]);
+            MinRelayTxFeeRate       = decimal.Parse(configuration["MinRelayTxFeeRate"]);
 
-            FeeDigits = Digits;
-            FeeCode = Name;
-            FeeFormat = $"F{FeeDigits}";
-            FeeCurrencyName = Name;
+            FeeDigits               = Digits;
+            FeeCode                 = Name;
+            FeeFormat               = $"F{FeeDigits}";
+            FeeCurrencyName         = Name;
 
-            HasFeePrice = false;
+            MaxRewardPercent        = configuration[nameof(MaxRewardPercent)] != null
+                ? decimal.Parse(configuration[nameof(MaxRewardPercent)], CultureInfo.InvariantCulture)
+                : 0m;
+            MaxRewardPercentInBase  = configuration[nameof(MaxRewardPercentInBase)] != null
+                ? decimal.Parse(configuration[nameof(MaxRewardPercentInBase)], CultureInfo.InvariantCulture)
+                : 0m;
+            FeeCurrencyToBaseSymbol = configuration[nameof(FeeCurrencyToBaseSymbol)];
+            FeeCurrencySymbol       = configuration[nameof(FeeCurrencySymbol)];
 
-            Network = ResolveNetwork(configuration);
-            BlockchainApi = ResolveBlockchainApi(configuration);
-            TxExplorerUri = configuration["TxExplorerUri"];
-            AddressExplorerUri = configuration["AddressExplorerUri"];
+            HasFeePrice             = false;
+
+            Network                 = ResolveNetwork(configuration);
+            BlockchainApi           = ResolveBlockchainApi(configuration);
+            TxExplorerUri           = configuration["TxExplorerUri"];
+            AddressExplorerUri      = configuration["AddressExplorerUri"];
 
             IsTransactionsAvailable = true;
-            IsSwapAvailable = true;
-            Bip44Code = Bip44.Litecoin;
+            IsSwapAvailable         = true;
+            Bip44Code               = Bip44.Litecoin;
         }
 
         public override long GetDust()
@@ -68,13 +78,12 @@ namespace Atomex
             var chain = configuration["Chain"]
                 .ToLowerInvariant();
 
-            if (chain.Equals("mainnet"))
-                return NBitcoin.Altcoins.Litecoin.Instance.Mainnet; 
-
-            if (chain.Equals("testnet"))
-                return NBitcoin.Altcoins.Litecoin.Instance.Testnet;
-
-            throw new NotSupportedException($"Chain {chain} not supported");
+            return chain switch
+            {
+                "mainnet" => NBitcoin.Altcoins.Litecoin.Instance.Mainnet,
+                "testnet" => NBitcoin.Altcoins.Litecoin.Instance.Testnet,
+                _ => throw new NotSupportedException($"Chain {chain} not supported")
+            };
         }
 
         private IBlockchainApi ResolveBlockchainApi(IConfiguration configuration)
@@ -84,9 +93,9 @@ namespace Atomex
 
             return blockchainApi switch
             {
-                "sochain" => (IBlockchainApi) new SoChainApi(this, configuration),
+                "sochain"     => (IBlockchainApi) new SoChainApi(this, configuration),
                 "blockcypher" => (IBlockchainApi) new BlockCypherApi(this, configuration),
-                "insight" => (IBlockchainApi) new InsightApi(this, configuration),
+                "insight"     => (IBlockchainApi) new InsightApi(this, configuration),
                 _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
             };
         }

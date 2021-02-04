@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Abstract;
 using Atomex.Api;
 using Atomex.Blockchain;
@@ -34,11 +35,6 @@ namespace Atomex.Wallet.Abstract
         /// Get all currencies supported by wallet
         /// </summary>
         ICurrencies Currencies { get; }
-
-        /// <summary>
-        /// Get all symbols supported by wallet
-        /// </summary>
-        ISymbols Symbols { get; }
 
         /// <summary>
         /// Get user settings

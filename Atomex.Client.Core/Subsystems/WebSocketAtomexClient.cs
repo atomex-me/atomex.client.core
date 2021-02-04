@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 
+using Atomex.Abstract;
 using Atomex.Api.Proto;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
@@ -46,6 +47,8 @@ namespace Atomex.Subsystems
         private MarketDataWebClient MarketDataClient { get; set; }
 
         public IAccount Account { get; set; }
+        private ISymbolsProvider SymbolsProvider { get; set; }
+        private ICurrencyQuotesProvider QuotesProvider { get; set; }
         private IConfiguration Configuration { get; }
         private IMarketDataRepository MarketDataRepository { get; set; }
         private ISwapManager SwapManager { get; set; }
@@ -55,12 +58,19 @@ namespace Atomex.Subsystems
                 ? TimeSpan.FromSeconds(120)
                 : TimeSpan.FromSeconds(45);
 
-        public WebSocketAtomexClient(IConfiguration configuration, IAccount account)
+        public WebSocketAtomexClient(
+            IConfiguration configuration,
+            IAccount account,
+            ISymbolsProvider symbolsProvider,
+            ICurrencyQuotesProvider quotesProvider)
         {
             Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
             Account = account ?? throw new ArgumentNullException(nameof(account));
             Account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
+
+            SymbolsProvider = symbolsProvider ?? throw new ArgumentNullException(nameof(symbolsProvider));
+            QuotesProvider = quotesProvider ?? throw new ArgumentNullException(nameof(quotesProvider));
 
             _cts = new CancellationTokenSource();
         }
@@ -86,7 +96,8 @@ namespace Atomex.Subsystems
             var schemes = new ProtoSchemes();
 
             // init market data repository
-            MarketDataRepository = new MarketDataRepository(Account.Symbols);
+            MarketDataRepository = new MarketDataRepository(
+                symbols: SymbolsProvider.GetSymbols(Account.Network));
 
             // init exchange client
             ExchangeClient = new ExchangeWebClient(configuration, schemes);
@@ -121,8 +132,11 @@ namespace Atomex.Subsystems
             // init swap manager
             SwapManager = new SwapManager(
                 account: Account,
-                swapClient: ExchangeClient);
-            SwapManager.SwapUpdated += SwapUpdated;
+                swapClient: ExchangeClient,
+                quotesProvider: QuotesProvider,
+                marketDataRepository: MarketDataRepository);
+
+            SwapManager.SwapUpdated += (sender, args) => SwapUpdated?.Invoke(sender, args);
 
             // start async swaps restore
             SwapManager.RestoreSwapsAsync(_cts.Token).FireAndForget();
@@ -193,6 +207,9 @@ namespace Atomex.Subsystems
 
         public void SubscribeToMarketData(SubscriptionType type) =>
             MarketDataClient.SubscribeAsync(new List<Subscription> { new Subscription {Type = type} });
+
+        public MarketDataOrderBook GetOrderBook(string symbol) =>
+            MarketDataRepository?.OrderBookBySymbol(symbol);
 
         public MarketDataOrderBook GetOrderBook(Symbol symbol) =>
             MarketDataRepository?.OrderBookBySymbol(symbol.Name);
@@ -403,7 +420,9 @@ namespace Atomex.Subsystems
 
             foreach (var symbolId in symbolsIds)
             {
-                var symbol = Account.Symbols.GetByName(symbolId);
+                var symbol = SymbolsProvider
+                    .GetSymbols(Account.Network)
+                    .GetByName(symbolId);
 
                 if (symbol != null)
                     QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));

@@ -57,24 +57,20 @@ namespace Atomex.Wallet
         public Network Network => Wallet.Network;
         public IHdWallet Wallet { get; }
         public ICurrencies Currencies { get; }
-        public ISymbols Symbols { get; }
         public UserSettings UserSettings { get; private set; }
 
-        private ClientType _clientType;
+        private readonly ClientType _clientType;
         private IAccountDataRepository DataRepository { get; }
         private IDictionary<string, ICurrencyAccount> CurrencyAccounts { get; }
-
 
         private Account(
             string pathToAccount,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ISymbolsProvider symbolsProvider,
             ClientType clientType)
             : this(wallet: HdWallet.LoadFromFile(pathToAccount, password),
                    password: password,
                    currenciesProvider: currenciesProvider,
-                   symbolsProvider : symbolsProvider,
                    clientType: clientType)
         {
         }
@@ -83,13 +79,11 @@ namespace Atomex.Wallet
             IHdWallet wallet,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ISymbolsProvider symbolsProvider,
             ClientType clientType)
         {
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
 
             Currencies = currenciesProvider.GetCurrencies(Network);
-            Symbols = symbolsProvider.GetSymbols(Network);
 
             DataRepository = new LiteDbAccountDataRepository(
                 pathToDb: Path.Combine(Path.GetDirectoryName(Wallet.PathToWallet), DefaultDataFileName),
@@ -118,14 +112,12 @@ namespace Atomex.Wallet
             SecureString password,
             IAccountDataRepository dataRepository,
             ICurrenciesProvider currenciesProvider,
-            ISymbolsProvider symbolsProvider,
             ClientType clientType)
         {
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
             DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
 
             Currencies = currenciesProvider.GetCurrencies(Network);
-            Symbols = symbolsProvider.GetSymbols(Network);
 
             CurrencyAccounts = Currencies
                 .ToDictionary(
@@ -275,7 +267,6 @@ namespace Atomex.Wallet
             IConfiguration configuration,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ISymbolsProvider symbolsProvider,
             ClientType clientType)
         {
             var pathToAccount = configuration[DefaultAccountKey];
@@ -292,17 +283,16 @@ namespace Atomex.Wallet
                 return null;
             }
 
-            return LoadFromFile(pathToAccount, password, currenciesProvider, symbolsProvider, clientType);
+            return LoadFromFile(pathToAccount, password, currenciesProvider, clientType);
         }
 
         public static Account LoadFromFile(
             string pathToAccount,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ISymbolsProvider symbolsProvider,
             ClientType clientType)
         {
-            return new Account(pathToAccount, password, currenciesProvider, symbolsProvider, clientType);
+            return new Account(pathToAccount, password, currenciesProvider, clientType);
         }
 
         public ICurrencyAccount GetCurrencyAccount(string currency)
