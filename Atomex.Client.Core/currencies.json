@@ -13,7 +13,7 @@
       "UseProxy": true,
       "TxExplorerUri": "https://live.blockcypher.com/btc/tx/",
       "AddressExplorerUri": "https://live.blockcypher.com/btc/address/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "BTC/USD",
       "FeeCurrencySymbol": ""
@@ -35,7 +35,7 @@
       "SwapContractBlockNumber": 8168569,
       "TxExplorerUri": "https://etherscan.io/tx/",
       "AddressExplorerUri": "https://etherscan.io/address/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "ETH/USD",
       "FeeCurrencySymbol": ""
@@ -63,7 +63,7 @@
       "SwapContractBlockNumber": 9691059,
       "TxExplorerUri": "https://etherscan.io/tx/",
       "AddressExplorerUri": "https://etherscan.io/address/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "ETH/USD",
       "FeeCurrencySymbol": "ETH/USDT"
@@ -91,7 +91,7 @@
       "SwapContractBlockNumber": 9691059,
       "TxExplorerUri": "https://etherscan.io/tx/",
       "AddressExplorerUri": "https://etherscan.io/address/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "TBTC/USD",
       "FeeCurrencySymbol": "ETH/TBTC"
@@ -119,7 +119,7 @@
       "SwapContractBlockNumber": 9691059,
       "TxExplorerUri": "https://etherscan.io/tx/",
       "AddressExplorerUri": "https://etherscan.io/address/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "WBTC/USD",
       "FeeCurrencySymbol": "ETH/WBTC"
@@ -138,7 +138,7 @@
       "UseProxy": true,
       "TxExplorerUri": "https://live.blockcypher.com/ltc/tx/",
       "AddressExplorerUri": "https://live.blockcypher.com/ltc/address/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "LTC/USD",
       "FeeCurrencySymbol": ""
@@ -185,7 +185,7 @@
       "SwapContract": "KT1VG2WtYdSWz5E7chTeAdDPZNy2MpP8pTfL",
       "TxExplorerUri": "https://tzkt.io/",
       "AddressExplorerUri": "https://tzkt.io/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "XTZ/USD",
       "FeeCurrencySymbol": ""
@@ -252,7 +252,7 @@
       "ViewContract": "KT1TgnUythoUoLKxCCEdR1VkjiiY5TmE7M7r",
       "TxExplorerUri": "https://tzkt.io/",
       "AddressExplorerUri": "https://tzkt.io/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "TZBTC/USD",
       "FeeCurrencySymbol": "XTZ/TZBTC"
@@ -272,7 +272,7 @@
       "UseProxy": true,
       "TxExplorerUri": "https://live.blockcypher.com/btc-testnet/tx/",
       "AddressExplorerUri": "https://live.blockcypher.com/btc-testnet/address/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "BTC/USD",
       "FeeCurrencySymbol": ""
@@ -294,7 +294,7 @@
       "SwapContractBlockNumber": 6000466,
       "TxExplorerUri": "https://ropsten.etherscan.io/tx/",
       "AddressExplorerUri": "https://ropsten.etherscan.io/address/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "ETH/USD",
       "FeeCurrencySymbol": ""
@@ -322,7 +322,7 @@
       "SwapContractBlockNumber": 6000466,
       "TxExplorerUri": "https://ropsten.etherscan.io/tx/",
       "AddressExplorerUri": "https://ropsten.etherscan.io/address/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "ETH/USD",
       "FeeCurrencySymbol": "ETH/USDT"
@@ -350,7 +350,7 @@
       "SwapContractBlockNumber": 6000466,
       "TxExplorerUri": "https://ropsten.etherscan.io/tx/",
       "AddressExplorerUri": "https://ropsten.etherscan.io/address/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "TBTC/USD",
       "FeeCurrencySymbol": "ETH/TBTC"
@@ -378,7 +378,7 @@
       "SwapContractBlockNumber": 6000466,
       "TxExplorerUri": "https://ropsten.etherscan.io/tx/",
       "AddressExplorerUri": "https://ropsten.etherscan.io/address/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "WBTC/USD",
       "FeeCurrencySymbol": "ETH/WBTC"
@@ -396,7 +396,7 @@
       "BlockchainApiBaseUri": "https://testnet.litecore.io/",
       "TxExplorerUri": "https://chain.so/tx/LTCTEST/",
       "AddressExplorerUri": "https://chain.so/address/LTCTEST/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "LTC/USD",
       "FeeCurrencySymbol": ""
@@ -442,7 +442,7 @@
       "SwapContract": "KT1GXH82yUCykmLhNfDVKrhQUipDiKzLCL5D",
       "TxExplorerUri": "https://delphinet.tzkt.io/",
       "AddressExplorerUri": "https://delphinet.tzkt.io/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "XTZ/USD",
       "FeeCurrencySymbol": ""
@@ -508,7 +508,7 @@
       "ViewContract": "KT1Ka8cJ9E4CdWCaH2S5n8WMLpjwwxb4B1uw",
       "TxExplorerUri": "https://carthage.tzkt.io/",
       "AddressExplorerUri": "https://carthage.tzkt.io/",
-      "MaxRewardPercent": 0.35,
+      "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "TZBTC/USD",
       "FeeCurrencySymbol": "XTZ/TZBTC"
