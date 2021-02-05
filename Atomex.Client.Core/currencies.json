@@ -422,12 +422,12 @@
       "InitiateGasLimit": 110000,
       "InitiateStorageLimit": 350,
       "InitiateSize": 350,
-      "AddFee": 45000,
-      "AddGasLimit": 500000,
+      "AddFee": 11000,
+      "AddGasLimit": 110000,
       "AddStorageLimit": 150,
-      "AddSize": 20000,
-      "RedeemFee": 45000,
-      "RedeemGasLimit": 1000000,
+      "AddSize": 250,
+      "RedeemFee": 11000,
+      "RedeemGasLimit": 110000,
       "RedeemStorageLimit": 257,
       "RedeemSize": 250,
       "RefundFee": 11000,
@@ -446,8 +446,8 @@
       "SwapContract": "KT1BC2u8s7ARJMsUoRXvCR8QvUarzNHBMmdC",
       "TokenContract": "KT1MY79uA43Vc5YhsQSmTJXjmJjHahcQcF3z",
       "ViewContract": "KT1VjAzYAe5Vz9irLS5A1LmeMeKaeQQFvLzv",
-      "TxExplorerUri": "https://carthage.tzkt.io/",
-      "AddressExplorerUri": "https://carthage.tzkt.io/"
+      "TxExplorerUri": "https://delphi.tzkt.io/",
+      "AddressExplorerUri": "https://delphi.tzkt.io/"
     },
     "NYX": {
       "Name": "NYX",
