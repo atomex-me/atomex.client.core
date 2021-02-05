@@ -10,6 +10,8 @@ namespace Atomex.Core
 {
     public abstract class Currency
     {
+        public const decimal MaxRewardForRedeemDeviation = 0.05m;
+
         public const int MaxNameLength = 32;
         public const string CoinsDefaultFileName = "coins.default.json";
 
@@ -28,6 +30,12 @@ namespace Atomex.Core
         public string FeePriceCode { get; set; }
         public string FeePriceFormat { get; set; }
         public string FeeCurrencyName { get; set; }
+
+        public decimal MaxRewardPercent { get; set; }
+        public decimal MaxRewardPercentInBase { get; set; }
+        public string FeeCurrencyToBaseSymbol { get; set; }
+        public string FeeCurrencySymbol { get; set; }
+
 
         public IBlockchainApi BlockchainApi { get; set; }
         public string TxExplorerUri { get; set; }
@@ -63,23 +71,47 @@ namespace Atomex.Core
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default);
 
+        public abstract Task<decimal> GetEstimatedRedeemFeeAsync(
+            WalletAddress toAddress = null,
+            bool withRewardForRedeem = false,
+            CancellationToken cancellationToken = default);
+
         public abstract Task<decimal> GetRewardForRedeemAsync(
+            decimal maxRewardPercent,
+            decimal maxRewardPercentInBase,
+            string feeCurrencyToBaseSymbol,
+            decimal feeCurrencyToBasePrice,
+            string feeCurrencySymbol = null,
+            decimal feeCurrencyPrice = 0,
             CancellationToken cancellationToken = default);
 
         public virtual Task<decimal> GetDefaultFeePriceAsync(
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(1m);
-        }
+            CancellationToken cancellationToken = default) => Task.FromResult(1m);
 
-        public virtual decimal GetDefaultFee()
-        {
-            return 1m;
-        }
+        public virtual decimal GetDefaultFee() =>
+            1m;
 
-        public virtual decimal GetMaximumFee()
+        public virtual decimal GetMaximumFee() =>
+            decimal.MaxValue;
+
+        public static decimal CalculateRewardForRedeem(
+            decimal redeemFee,
+            string redeemFeeCurrency,
+            decimal redeemFeeDigitsMultiplier,
+            decimal maxRewardPercent,
+            decimal maxRewardPercentValue,
+            string feeCurrencyToBaseSymbol,
+            decimal feeCurrencyToBasePrice,
+            decimal baseDigitsMultiplier = 2)
         {
-            return decimal.MaxValue;
+            var redeemFeeInBase = AmountHelper.RoundDown(feeCurrencyToBaseSymbol.IsBaseCurrency(redeemFeeCurrency)
+                ? redeemFee * feeCurrencyToBasePrice
+                : redeemFee / feeCurrencyToBasePrice, baseDigitsMultiplier);
+
+            var k = maxRewardPercentValue / (decimal)Math.Log((double)((1 - maxRewardPercent) / MaxRewardForRedeemDeviation));
+            var p = (1 - maxRewardPercent) / (decimal)Math.Exp((double)(redeemFeeInBase / k)) + maxRewardPercent;
+
+            return AmountHelper.RoundDown(redeemFee * (1 + p), redeemFeeDigitsMultiplier);
         }
     }
 }

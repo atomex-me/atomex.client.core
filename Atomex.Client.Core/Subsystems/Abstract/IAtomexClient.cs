@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+
 using Atomex.Core;
 using Atomex.MarketData;
 using Atomex.Swaps;
@@ -26,6 +27,7 @@ namespace Atomex.Subsystems.Abstract
         void OrderSendAsync(Order order);
         void OrderCancelAsync(Order order);
         void SubscribeToMarketData(SubscriptionType type);
+        MarketDataOrderBook GetOrderBook(string symbol);
         MarketDataOrderBook GetOrderBook(Symbol symbol);
         Quote GetQuote(Symbol symbol);
     }

@@ -50,6 +50,11 @@ namespace Atomex.MarketData.Bitfinex
             return Quotes.TryGetValue(QuoteSymbols[$"{currency}{baseCurrency}"], out var rate) ? rate : null;
         }
 
+        public override Quote GetQuote(string symbol)
+        {
+            return Quotes.TryGetValue(QuoteSymbols[symbol.Replace("/", "")], out var rate) ? rate : null;
+        }
+
         protected override async Task UpdateAsync(
             CancellationToken cancellationToken = default)
         {

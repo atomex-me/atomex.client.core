@@ -162,8 +162,8 @@ namespace Atomex.Swaps.Tezos.NYX.Helpers
             Atomex.Tezos tezos,
             long refundTimeStamp,
             TimeSpan interval,
-            Action<Swap, CancellationToken> initiatedHandler = null,
-            Action<Swap, CancellationToken> canceledHandler = null,
+            Func<Swap, CancellationToken, Task> initiatedHandler = null,
+            Func<Swap, CancellationToken, Task> canceledHandler = null,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -172,7 +172,10 @@ namespace Atomex.Swaps.Tezos.NYX.Helpers
                 {
                     if (swap.IsCanceled)
                     {
-                        canceledHandler?.Invoke(swap, cancellationToken);
+                        await canceledHandler
+                            .Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
 
@@ -186,12 +189,18 @@ namespace Atomex.Swaps.Tezos.NYX.Helpers
 
                     if (isInitiatedResult.HasError && isInitiatedResult.Error.Code != Errors.RequestError)
                     {
-                        canceledHandler?.Invoke(swap, cancellationToken);
+                        await canceledHandler
+                            .Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
                     else if (!isInitiatedResult.HasError && isInitiatedResult.Value)
                     {
-                        initiatedHandler?.Invoke(swap, cancellationToken);
+                        await initiatedHandler
+                            .Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
 

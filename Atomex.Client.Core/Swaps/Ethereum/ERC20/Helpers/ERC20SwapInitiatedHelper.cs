@@ -321,8 +321,8 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
             Currency currency,
             long lockTimeInSec,
             TimeSpan interval,
-            Action<Swap, CancellationToken> initiatedHandler = null,
-            Action<Swap, CancellationToken> canceledHandler = null,
+            Func<Swap, CancellationToken, Task> initiatedHandler,
+            Func<Swap, CancellationToken, Task> canceledHandler,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -340,13 +340,17 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
                     {
                         if (isInitiatedResult.Error.Code != Errors.RequestError)
                         {
-                            canceledHandler?.Invoke(swap, cancellationToken);
+                            await canceledHandler.Invoke(swap, cancellationToken)
+                                .ConfigureAwait(false);
+
                             break;
                         }
                     }
                     else if (isInitiatedResult.Value)
                     {
-                        initiatedHandler?.Invoke(swap, cancellationToken);
+                        await initiatedHandler.Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
                         break;
                     }
 

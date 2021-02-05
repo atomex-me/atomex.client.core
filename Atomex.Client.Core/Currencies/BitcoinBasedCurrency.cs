@@ -88,11 +88,14 @@ namespace Atomex
             new PubKey(publicKey)
                 .VerifyMessage(data, Convert.ToBase64String(signature));
 
-        public override decimal GetFeeAmount(decimal fee, decimal feePrice) => fee;
+        public override decimal GetFeeAmount(decimal fee, decimal feePrice) =>
+            fee;
 
-        public override decimal GetFeeFromFeeAmount(decimal feeAmount, decimal feePrice) => feeAmount;
+        public override decimal GetFeeFromFeeAmount(decimal feeAmount, decimal feePrice) =>
+            feeAmount;
 
-        public override decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee) => 1m;
+        public override decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee) =>
+            1m;
 
         public override async Task<decimal> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default)
@@ -113,9 +116,20 @@ namespace Atomex
             return feeRate * DefaultRedeemTxSize / DigitsMultiplier;
         }
 
-        public override Task<decimal> GetRewardForRedeemAsync(
+        public override Task<decimal> GetEstimatedRedeemFeeAsync(
+            WalletAddress toAddress = null,
+            bool withRewardForRedeem = false,
             CancellationToken cancellationToken = default) =>
-            Task.FromResult(0m);
+            GetRedeemFeeAsync(toAddress, cancellationToken);
+
+        public override Task<decimal> GetRewardForRedeemAsync(
+            decimal maxRewardPercent,
+            decimal maxRewardPercentInBase,
+            string feeCurrencyToBaseSymbol,
+            decimal feeCurrencyToBasePrice,
+            string feeCurrencySymbol = null,
+            decimal feeCurrencyPrice = 0,
+            CancellationToken cancellationToken = default) => Task.FromResult(0m);
 
         public long GetMinimumFee(int txSize) =>
             (long) (MinTxFeeRate * txSize);
@@ -248,7 +262,10 @@ namespace Atomex
                 fee: fee);
         }
 
-        public static int EstimateSigSize(ITxOutput output, bool forRefund = false, bool forRedeem = false)
+        public static int EstimateSigSize(
+            ITxOutput output,
+            bool forRefund = false,
+            bool forRedeem = false)
         {
             if (!(output is BitcoinBasedTxOutput btcBasedOutput))
                 return 0;
@@ -275,9 +292,13 @@ namespace Atomex
             return sigSize;
         }
 
-        public static int EstimateSigSize(IEnumerable<ITxOutput> outputs, bool forRefund = false)
+        public static int EstimateSigSize(
+            IEnumerable<ITxOutput> outputs,
+            bool forRefund = false)
         {
-            return outputs.ToList().Sum(output => EstimateSigSize(output, forRefund));
+            return outputs
+                .ToList()
+                .Sum(output => EstimateSigSize(output, forRefund));
         }
 
         public virtual Task<decimal> GetFeeRateAsync(

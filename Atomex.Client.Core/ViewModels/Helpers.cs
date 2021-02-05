@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
@@ -38,6 +39,7 @@ namespace Atomex.ViewModels
             Currency toCurrency,
             IAccount account,
             IAtomexClient atomexClient,
+            ISymbolsProvider symbolsProvider,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -46,11 +48,11 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount = 0,
-                        PaymentFee = 0,
-                        MakerNetworkFee = 0,
+                        Amount           = 0,
+                        PaymentFee       = 0,
+                        MakerNetworkFee  = 0,
                         ReservedForSwaps = 0,
-                        Error = null
+                        Error            = null
                     };
                 }
 
@@ -77,6 +79,7 @@ namespace Atomex.ViewModels
                         toCurrency: toCurrency,
                         account: account,
                         atomexClient: atomexClient,
+                        symbolsProvider: symbolsProvider,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -88,9 +91,9 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount = 0m,
-                        PaymentFee = 0m,
-                        MakerNetworkFee = 0m,
+                        Amount           = 0m,
+                        PaymentFee       = 0m,
+                        MakerNetworkFee  = 0m,
                         ReservedForSwaps = 0m,
                         Error = hasSameChainForFees
                             ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
@@ -102,11 +105,11 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount = Math.Max(maxNetAmount, 0m),
-                        PaymentFee = maxFee,
-                        MakerNetworkFee = estimatedMakerNetworkFee,
+                        Amount           = Math.Max(maxNetAmount, 0m),
+                        PaymentFee       = maxFee,
+                        MakerNetworkFee  = estimatedMakerNetworkFee,
                         ReservedForSwaps = reservedForSwapsAmount,
-                        Error = null
+                        Error            = null
                     };
                 }
 
@@ -123,9 +126,9 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount = 0m,
-                        PaymentFee = 0m,
-                        MakerNetworkFee = 0m,
+                        Amount           = 0m,
+                        PaymentFee       = 0m,
+                        MakerNetworkFee  = 0m,
                         ReservedForSwaps = 0m,
                         Error = hasSameChainForFees
                             ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
@@ -135,11 +138,11 @@ namespace Atomex.ViewModels
 
                 return new SwapPaymentParams
                 {
-                    Amount = amount,
-                    PaymentFee = estimatedPaymentFee.Value,
-                    MakerNetworkFee = estimatedMakerNetworkFee,
+                    Amount           = amount,
+                    PaymentFee       = estimatedPaymentFee.Value,
+                    MakerNetworkFee  = estimatedMakerNetworkFee,
                     ReservedForSwaps = reservedForSwapsAmount,
-                    Error = null
+                    Error            = null
                 };
 
             }, cancellationToken);
@@ -151,6 +154,7 @@ namespace Atomex.ViewModels
             Currency toCurrency,
             IAccount account,
             IAtomexClient atomexClient,
+            ISymbolsProvider symbolsProvider,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -158,7 +162,10 @@ namespace Atomex.ViewModels
                 if (toCurrency == null)
                     return null;
 
-                var symbol = account.Symbols.SymbolByCurrencies(fromCurrency, toCurrency);
+                var symbol = symbolsProvider
+                    .GetSymbols(account.Network)
+                    .SymbolByCurrencies(fromCurrency, toCurrency);
+
                 if (symbol == null)
                     return null;
 
@@ -191,10 +198,10 @@ namespace Atomex.ViewModels
 
                 return new SwapPriceEstimation
                 {
-                    TargetAmount = targetAmount,
-                    OrderPrice = estimatedOrderPrice,
-                    Price = estimatedPrice,
-                    MaxAmount = estimatedMaxAmount,
+                    TargetAmount  = targetAmount,
+                    OrderPrice    = estimatedOrderPrice,
+                    Price         = estimatedPrice,
+                    MaxAmount     = estimatedMaxAmount,
                     IsNoLiquidity = isNoLiquidity
                 };
 
@@ -221,6 +228,7 @@ namespace Atomex.ViewModels
             Currency toCurrency,
             IAccount account,
             IAtomexClient atomexClient,
+            ISymbolsProvider symbolsProvider,
             CancellationToken cancellationToken = default)
         {
             var makerPaymentFee = await toCurrency
@@ -234,10 +242,14 @@ namespace Atomex.ViewModels
                     from: toCurrency.FeeCurrencyName,
                     to: toCurrency.Name,
                     account: account,
-                    atomexClient: atomexClient) ?? 0;
+                    atomexClient: atomexClient,
+                    symbolsProvider: symbolsProvider) ?? 0;
 
             var makerRedeemFee = await fromCurrency
-                .GetRedeemFeeAsync(toAddress: null, cancellationToken: cancellationToken)
+                .GetEstimatedRedeemFeeAsync(
+                    toAddress: null,
+                    withRewardForRedeem: false,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             // if fromCurrency.Name is not equal fromCurrency.FeeCurrencyName convert makerRedeemFee from fromCurrency.FeeCurrencyName to fromCurrency.Name
@@ -247,7 +259,8 @@ namespace Atomex.ViewModels
                     from: fromCurrency.FeeCurrencyName,
                     to: fromCurrency.Name,
                     account: account,
-                    atomexClient: atomexClient) ?? 0;
+                    atomexClient: atomexClient,
+                    symbolsProvider: symbolsProvider) ?? 0;
 
             // convert makerPaymentFee from toCurrency to fromCurrency
             makerPaymentFee = ConvertAmount(
@@ -255,7 +268,8 @@ namespace Atomex.ViewModels
                 from: toCurrency.Name,
                 to: fromCurrency.Name,
                 account: account,
-                atomexClient: atomexClient) ?? 0;
+                atomexClient: atomexClient,
+                symbolsProvider: symbolsProvider) ?? 0;
 
             return makerPaymentFee + makerRedeemFee;
         }
@@ -265,9 +279,12 @@ namespace Atomex.ViewModels
             string from,
             string to,
             IAccount account,
-            IAtomexClient atomexClient)
+            IAtomexClient atomexClient,
+            ISymbolsProvider symbolsProvider)
         {
-            var symbol = account.Symbols.SymbolByCurrencies(from, to);
+            var symbol = symbolsProvider
+                .GetSymbols(account.Network)
+                .SymbolByCurrencies(from, to);
 
             var toCurrency = account.Currencies.GetByName(to);
 
@@ -278,10 +295,10 @@ namespace Atomex.ViewModels
                 .GetOrderBook(symbol)
                 ?.TopOfBook();
 
-            if (quote == null || !quote.IsValid())
+            if (quote == null)
                 return null;
 
-            var middlePrice = (quote.Ask + quote.Bid) / 2;
+            var middlePrice = quote.GetMiddlePrice();
 
             return symbol.IsBaseCurrency(from)
                 ? AmountHelper.RoundDown(amount * middlePrice, toCurrency.DigitsMultiplier)

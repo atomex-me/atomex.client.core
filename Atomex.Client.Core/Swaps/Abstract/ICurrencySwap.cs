@@ -7,14 +7,17 @@ using Atomex.Core;
 
 namespace Atomex.Swaps.Abstract
 {
-    public delegate void OnSwapUpdatedDelegate(ICurrencySwap currencySwap, SwapEventArgs swapArgs);
+    public delegate Task OnSwapUpdatedAsyncDelegate(
+        ICurrencySwap currencySwap,
+        SwapEventArgs swapArgs,
+        CancellationToken cancellationToken = default);
 
     public interface ICurrencySwap
     {
-        OnSwapUpdatedDelegate InitiatorPaymentConfirmed { get; set; }
-        OnSwapUpdatedDelegate AcceptorPaymentConfirmed { get; set; }
-        OnSwapUpdatedDelegate AcceptorPaymentSpent { get; set; }
-        OnSwapUpdatedDelegate SwapUpdated { get; set; }
+        OnSwapUpdatedAsyncDelegate InitiatorPaymentConfirmed { get; set; }
+        OnSwapUpdatedAsyncDelegate AcceptorPaymentConfirmed { get; set; }
+        OnSwapUpdatedAsyncDelegate AcceptorPaymentSpent { get; set; }
+        OnSwapUpdatedAsyncDelegate SwapUpdated { get; set; }
 
         string Currency { get; }
 
