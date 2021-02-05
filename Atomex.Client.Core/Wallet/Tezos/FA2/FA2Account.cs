@@ -381,10 +381,10 @@ namespace Atomex.Wallet.Tezos
             var fa2 = FA2;
 
             return new[] {
-                fa2.RedeemFee.ToTez() + Math.Max((fa2.RedeemStorageLimit - fa2.ActivationStorage) / fa2.StorageFeeMultiplier, 0),
-                fa2.RefundFee.ToTez() + Math.Max((fa2.RefundStorageLimit - fa2.ActivationStorage) / fa2.StorageFeeMultiplier, 0),
-                xtz.RedeemFee.ToTez() + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) / xtz.StorageFeeMultiplier, 0),
-                xtz.RefundFee.ToTez() + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) / xtz.StorageFeeMultiplier, 0)
+                (fa2.RedeemFee + Math.Max((fa2.RedeemStorageLimit - fa2.ActivationStorage) * fa2.StorageFeeMultiplier, 0)).ToTez(),
+                (fa2.RefundFee + Math.Max((fa2.RefundStorageLimit - fa2.ActivationStorage) * fa2.StorageFeeMultiplier, 0)).ToTez(),
+                (xtz.RedeemFee + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0)).ToTez(),
+                (xtz.RefundFee + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0)).ToTez()
             }.Max() + fa2.RevealFee.ToTez() + Xtz.MicroTezReserve.ToTez();
         }
 
@@ -394,15 +394,15 @@ namespace Atomex.Wallet.Tezos
             var fa2 = FA2;
 
             if (type.HasFlag(BlockchainTransactionType.TokenApprove))
-                return fa2.ApproveStorageLimit;
+                return fa2.ApproveStorageLimit.ToTez();
             if (type.HasFlag(BlockchainTransactionType.SwapPayment))
-                return (fa2.ApproveStorageLimit + fa2.InitiateStorageLimit) / fa2.StorageFeeMultiplier;
+                return ((fa2.ApproveStorageLimit + fa2.InitiateStorageLimit) * fa2.StorageFeeMultiplier).ToTez();
             if (type.HasFlag(BlockchainTransactionType.SwapRefund))
-                return (fa2.RefundStorageLimit - fa2.ActivationStorage) / fa2.StorageFeeMultiplier;
+                return ((fa2.RefundStorageLimit - fa2.ActivationStorage) * fa2.StorageFeeMultiplier).ToTez();
             if (type.HasFlag(BlockchainTransactionType.SwapRedeem))
-                return (fa2.RedeemStorageLimit - fa2.ActivationStorage) / fa2.StorageFeeMultiplier;
+                return ((fa2.RedeemStorageLimit - fa2.ActivationStorage) * fa2.StorageFeeMultiplier).ToTez();
 
-            return (fa2.TransferStorageLimit - fa2.ActivationStorage) / fa2.StorageFeeMultiplier;
+            return ((fa2.TransferStorageLimit - fa2.ActivationStorage) * fa2.StorageFeeMultiplier).ToTez();
         }
 
         #endregion Common
