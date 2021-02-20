@@ -322,7 +322,7 @@ namespace Atomex.Wallet.Ethereum
         {
             var eth = Eth;
 
-            if (!(tx is EthereumTransaction ethTx))
+            if (tx is not EthereumTransaction ethTx)
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
             var oldTx = !ethTx.IsInternal
@@ -612,12 +612,28 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
         }
 
-        public override Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+        public override async Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            var erc20 = Erc20;
+            if (Currency == "ETH")
+                return await DataRepository
+                    .GetUnspentAddressesAsync(Currency)
+                    .ConfigureAwait(false);
 
-            return DataRepository.GetUnspentAddressesAsync(erc20.Name);
+            // todo: refactoring
+            var usdtAddresses = await DataRepository
+                .GetUnspentAddressesAsync("USDT")
+                .ConfigureAwait(false);
+
+            var tbtcAddresses = await DataRepository
+                .GetUnspentAddressesAsync("TBTC")
+                .ConfigureAwait(false);
+
+            var wbtcAddresses = await DataRepository
+                .GetUnspentAddressesAsync("WBTC")
+                .ConfigureAwait(false);
+
+            return usdtAddresses.Concat(tbtcAddresses).Concat(wbtcAddresses);
         }
 
         public override async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(

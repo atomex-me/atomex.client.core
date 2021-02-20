@@ -1,17 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using Atomex.Blockchain.Tezos.Internal.OperationResults;
-using Atomex.Common;
-using Atomex.Cryptography;
+
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
+
+using Atomex.Blockchain.Tezos.Internal.OperationResults;
+using Atomex.Common;
+using Atomex.Cryptography;
 
 namespace Atomex.Blockchain.Tezos.Internal
 {
@@ -125,7 +126,7 @@ namespace Atomex.Blockchain.Tezos.Internal
                 head = await GetHeader()
                     .ConfigureAwait(false);
 
-            if (!(operations is JArray arrOps))
+            if (operations is not JArray arrOps)
                 arrOps = new JArray(operations);
 
             var forgedOpGroup = await ForgeOperations(head, arrOps)
@@ -220,7 +221,7 @@ namespace Atomex.Blockchain.Tezos.Internal
                         op["gas_limit"] = gas.ToString();
                         op["storage_limit"] = storage_diff.ToString();
 
-                        JToken forgedOpLocal = Forge.ForgeOperationsLocal(null, op);
+                        var forgedOpLocal = Forge.ForgeOperationsLocal(null, op);
 
                         ///Checking for local and node forging results equality
 
@@ -231,6 +232,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
                         size = forgedOpLocal.ToString().Length / 2 + Math.Ceiling((tezos.HeadSizeInBytes + tezos.SigSizeInBytes) / operations.Count);
                         fee = tezos.MinimalFee + tezos.MinimalNanotezPerByte * size + (long)Math.Ceiling(tezos.MinimalNanotezPerGasUnit * gas) + 1;
+
                         if (defaultFee)
                             op["fee"] = fee.ToString();
                     }
@@ -271,7 +273,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
         public Task<JToken> ForgeOperations(JObject blockHead, JToken operations)
         {
-            if (!(operations is JArray arrOps))
+            if (operations is not JArray arrOps)
                 arrOps = new JArray(operations);
 
             var contents = new JObject
@@ -319,7 +321,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
             if (appliedOps?.Count > 0)
             {
-                if (!(appliedOps.First["contents"] is JArray contents))
+                if (appliedOps.First["contents"] is not JArray contents)
                     return operationResults;
 
                 foreach (var content in contents)

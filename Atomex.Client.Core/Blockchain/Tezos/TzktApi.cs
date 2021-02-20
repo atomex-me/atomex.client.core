@@ -812,7 +812,7 @@ namespace Atomex.Blockchain.Tezos
                     .RunOperations(head, tx.Operations)
                     .ConfigureAwait(false);
 
-                Log.Debug("getTokenBalance result {@result}", runResults);
+                //Log.Debug("getTokenBalance result {@result}", runResults.ToString());
 
                 return runResults?["contents"]?.LastOrDefault()?["metadata"]?["internal_operation_results"]?[0]?["result"]?["errors"]?[1]?["with"]?["args"]?[0]?["args"]?[0]?["int"]?.Value<decimal>();
             }
@@ -946,7 +946,7 @@ namespace Atomex.Blockchain.Tezos
                     .RunOperations(head, tx.Operations)
                     .ConfigureAwait(false);
 
-                Log.Debug("getTokenAllowance result {@result}", runResults);
+                //Log.Debug("getTokenAllowance result {@result}", runResults);
 
                 return runResults?["contents"]?.LastOrDefault()?["metadata"]?["internal_operation_results"]?[0]?["result"]?["errors"]?[1]?["with"]?["args"]?[0]?["args"]?[0]?["int"]?.Value<decimal>();
             }
