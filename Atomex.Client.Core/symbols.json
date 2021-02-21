@@ -124,6 +124,11 @@
       "Id": 25,
       "Name": "TZBTC/KUSD",
       "MinimumQty": 0.0001
+    },
+    {
+      "Id": 26,
+      "Name": "KUSD/USDT",
+      "MinimumQty": 0.0001
     }
   ],
   "TestNet": [
@@ -270,6 +275,11 @@
     {
       "Id": 29,
       "Name": "TZBTC/KUSD",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 30,
+      "Name": "KUSD/USDT",
       "MinimumQty": 0.0001
     }
   ]
