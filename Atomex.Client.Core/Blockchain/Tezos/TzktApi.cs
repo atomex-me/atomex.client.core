@@ -926,13 +926,13 @@ namespace Atomex.Blockchain.Tezos
 
                 var tx = new TezosTransaction
                 {
-                    Currency = token,
-                    From = callingAddress,
-                    To = token.TokenContractAddress,
-                    Fee = 0, //token.GetAllowanceFee,
-                    GasLimit = token.GetAllowanceGasLimit,
+                    Currency     = token,
+                    From         = callingAddress,
+                    To           = token.TokenContractAddress,
+                    Fee          = 0, //token.GetAllowanceFee,
+                    GasLimit     = token.GetAllowanceGasLimit,
                     StorageLimit = 0, //token.GetAllowanceStorageLimit,
-                    Params = GetAllowanceParams(holderAddress, spenderAddress, token.ViewContractAddress),
+                    Params       = GetAllowanceParams(holderAddress, spenderAddress, token.ViewContractAddress),
                 };
 
                 await tx.FillOperationsAsync(
@@ -948,7 +948,7 @@ namespace Atomex.Blockchain.Tezos
 
                 //Log.Debug("getTokenAllowance result {@result}", runResults);
 
-                return runResults?["contents"]?.LastOrDefault()?["metadata"]?["internal_operation_results"]?[0]?["result"]?["errors"]?[1]?["with"]?["args"]?[0]?["args"]?[0]?["int"]?.Value<decimal>();
+                return runResults?["contents"]?.LastOrDefault()?["metadata"]?["internal_operation_results"]?[0]?["result"]?["errors"]?[1]?["with"]?["args"]?[0]?["args"]?[0]?["int"]?.Value<decimal>() ?? 0;
             }
             catch (Exception e)
             {
