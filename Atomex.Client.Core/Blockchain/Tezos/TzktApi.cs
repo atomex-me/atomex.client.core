@@ -69,6 +69,9 @@ namespace Atomex.Blockchain.Tezos
                         .InjectOperations(tx.SignedMessage.SignedBytes)
                         .ConfigureAwait(false);
 
+                    if (injectedOperation != null)
+                        Log.Debug($"Injection result: {injectedOperation}");
+
                     txId = injectedOperation.ToString();
                 }
 
