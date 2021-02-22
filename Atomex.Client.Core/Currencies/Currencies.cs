@@ -65,7 +65,7 @@ namespace Atomex
         {
             return configurationSection.Key switch
             {
-                "BTC"   => new Bitcoin(configurationSection),
+                "BTC"   => (Currency) new Bitcoin(configurationSection),
                 "LTC"   => new Litecoin(configurationSection),
                 "ETH"   => new Ethereum(configurationSection),
                 "XTZ"   => new Tezos(configurationSection),
