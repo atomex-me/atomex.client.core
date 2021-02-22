@@ -322,7 +322,7 @@ namespace Atomex.Wallet.Ethereum
         {
             var eth = Eth;
 
-            if (tx is not EthereumTransaction ethTx)
+            if (!(tx is EthereumTransaction ethTx))
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
             var oldTx = !ethTx.IsInternal

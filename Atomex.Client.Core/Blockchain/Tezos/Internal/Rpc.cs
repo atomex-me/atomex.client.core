@@ -126,7 +126,7 @@ namespace Atomex.Blockchain.Tezos.Internal
                 head = await GetHeader()
                     .ConfigureAwait(false);
 
-            if (operations is not JArray arrOps)
+            if (!(operations is JArray arrOps))
                 arrOps = new JArray(operations);
 
             var forgedOpGroup = await ForgeOperations(head, arrOps)
@@ -273,7 +273,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
         public Task<JToken> ForgeOperations(JObject blockHead, JToken operations)
         {
-            if (operations is not JArray arrOps)
+            if (!(operations is JArray arrOps))
                 arrOps = new JArray(operations);
 
             var contents = new JObject
@@ -321,7 +321,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
             if (appliedOps?.Count > 0)
             {
-                if (appliedOps.First["contents"] is not JArray contents)
+                if (!(appliedOps.First["contents"] is JArray contents))
                     return operationResults;
 
                 foreach (var content in contents)

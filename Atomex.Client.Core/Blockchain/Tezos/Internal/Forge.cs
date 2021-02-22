@@ -28,7 +28,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
         public static JToken ForgeOperationsLocal(JObject blockHead, JToken operations)
         {
-            if (operations is not JArray arrOps)
+            if (!(operations is JArray arrOps))
                 arrOps = new JArray(operations);
 
             string res = blockHead != null ? Base58Check.Decode(blockHead["hash"].ToString(), Prefix.b).ToHexString() : "";

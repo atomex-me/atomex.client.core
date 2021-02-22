@@ -325,7 +325,7 @@ namespace Atomex.Wallet.Tezos
         {
             var xtz = Xtz;
 
-            if (tx is not TezosTransaction xtzTx)
+            if (!(tx is TezosTransaction xtzTx))
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
             var oldTx = !xtzTx.IsInternal
