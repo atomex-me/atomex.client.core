@@ -13,7 +13,20 @@ namespace Atomex
 {
     public class Currencies : ICurrencies
     {
-        private readonly string[] _currenciesOrder = new[] { "BTC", "ETH", "LTC", "XTZ", "USDT", "TZBTC", "NYX", "FA2", "WBTC", "TBTC" };
+        private readonly string[] _currenciesOrder = new[]
+        {
+            "BTC",
+            "ETH",
+            "LTC",
+            "XTZ",
+            "USDT",
+            "TZBTC",
+            "KUSD",
+            "NYX",
+            "FA2",
+            "WBTC",
+            "TBTC"
+        };
 
         private readonly object _sync = new object();
         private IDictionary<string, Currency> _currencies;
@@ -52,17 +65,18 @@ namespace Atomex
         {
             return configurationSection.Key switch
             {
-                "BTC" => (Currency)new Bitcoin(configurationSection),
-                "LTC" => (Currency)new Litecoin(configurationSection),
-                "ETH" => (Currency)new Ethereum(configurationSection),
-                "XTZ" => (Currency)new Tezos(configurationSection),
-                "USDT" => (Currency)new Tether(configurationSection),
-                "TBTC" => (Currency)new TBTC(configurationSection),
-                "WBTC" => (Currency)new WBTC(configurationSection),
-                "TZBTC" => (Currency)new TZBTC(configurationSection),
-                "NYX" => (Currency)new NYX(configurationSection),
-                "FA2" => (Currency)new FA2(configurationSection),
-                "FA12" => (Currency)new TZBTC(configurationSection),
+                "BTC"   => (Currency) new Bitcoin(configurationSection),
+                "LTC"   => new Litecoin(configurationSection),
+                "ETH"   => new Ethereum(configurationSection),
+                "XTZ"   => new Tezos(configurationSection),
+                "USDT"  => new ERC20(configurationSection),
+                "TBTC"  => new ERC20(configurationSection),
+                "WBTC"  => new ERC20(configurationSection),
+                "TZBTC" => new FA12(configurationSection),
+                "KUSD"  => new FA12(configurationSection),
+                "NYX"   => new NYX(configurationSection),
+                "FA2"   => new FA2(configurationSection),
+                "FA12"  => new FA12(configurationSection),
                 _ => throw new NotSupportedException($"{configurationSection.Key} not supported.")
             };
         }

@@ -1,17 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
-using Atomex.Blockchain.Tezos.Internal.OperationResults;
-using Atomex.Common;
-using Atomex.Cryptography;
+
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
+
+using Atomex.Blockchain.Tezos.Internal.OperationResults;
+using Atomex.Common;
+using Atomex.Cryptography;
 
 namespace Atomex.Blockchain.Tezos.Internal
 {
@@ -220,7 +221,7 @@ namespace Atomex.Blockchain.Tezos.Internal
                         op["gas_limit"] = gas.ToString();
                         op["storage_limit"] = storage_diff.ToString();
 
-                        JToken forgedOpLocal = Forge.ForgeOperationsLocal(null, op);
+                        var forgedOpLocal = Forge.ForgeOperationsLocal(null, op);
 
                         ///Checking for local and node forging results equality
 
@@ -231,6 +232,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
                         size = forgedOpLocal.ToString().Length / 2 + Math.Ceiling((tezos.HeadSizeInBytes + tezos.SigSizeInBytes) / operations.Count);
                         fee = tezos.MinimalFee + tezos.MinimalNanotezPerByte * size + (long)Math.Ceiling(tezos.MinimalNanotezPerGasUnit * gas) + 1;
+
                         if (defaultFee)
                             op["fee"] = fee.ToString();
                     }

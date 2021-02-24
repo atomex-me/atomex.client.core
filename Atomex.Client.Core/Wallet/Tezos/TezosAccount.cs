@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
@@ -10,7 +13,6 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using Serilog;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -35,8 +37,6 @@ namespace Atomex.Wallet.Tezos
         #region Common
 
         private Atomex.Tezos Xtz => Currencies.Get<Atomex.Tezos>(Currency);
-
-        private TezosTokens.FA12 Fa12 => Currencies.Get<TezosTokens.FA12>("TZBTC");
 
         public override async Task<Error> SendAsync(
             IEnumerable<WalletAddress> from,
@@ -354,7 +354,7 @@ namespace Atomex.Wallet.Tezos
                 }
                 else if (xtzTx.Amount == 0)
                 {
-                    xtzTx = ResolveFA12TransactionType(xtzTx, cancellationToken);
+                    xtzTx = ResolveFA12TransactionType(xtzTx);
                 }
             }
 
@@ -397,8 +397,7 @@ namespace Atomex.Wallet.Tezos
         }
 
         private TezosTransaction ResolveFA12TransactionType(
-            TezosTransaction tx,
-            CancellationToken cancellationToken = default)
+            TezosTransaction tx)
         {
             if (tx.Params["entrypoint"].ToString().Equals("initiate")
                 || tx.Params["entrypoint"].ToString().Equals("redeem")
@@ -455,10 +454,8 @@ namespace Atomex.Wallet.Tezos
         {
             var xtz = Xtz;
 
-            var isActive = to != null
-                ? await IsAllocatedDestinationAsync(type, to, cancellationToken)
-                    .ConfigureAwait(false)
-                : false;
+            var isActive = to != null && await IsAllocatedDestinationAsync(type, to, cancellationToken)
+                .ConfigureAwait(false);
 
             if (type.HasFlag(BlockchainTransactionType.SwapPayment) && isFirstTx)
                 return xtz.InitiateStorageLimit / xtz.StorageFeeMultiplier;
@@ -752,12 +749,24 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
         }
 
-        public override Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+        public override async Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            var fa12 = Fa12;
+            if (Currency != "XTZ")
+                return await DataRepository
+                    .GetUnspentAddressesAsync(Currency)
+                    .ConfigureAwait(false);
 
-            return DataRepository.GetUnspentAddressesAsync(fa12.Name);
+            // todo: refactoring
+            var tzBtcAddresses   = await DataRepository
+                .GetUnspentAddressesAsync("TZBTC")
+                .ConfigureAwait(false);
+
+            var kolibriAddresses = await DataRepository
+                .GetUnspentAddressesAsync("KUSD")
+                .ConfigureAwait(false);
+
+            return tzBtcAddresses.Concat(kolibriAddresses);
         }
 
         public override async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(

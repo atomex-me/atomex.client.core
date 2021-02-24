@@ -13,8 +13,8 @@ namespace Atomex.Wallet.Tezos
 {
     public class TezosWalletScanner : ICurrencyHdWalletScanner
     {
-        private const int DefaultInternalLookAhead = 1;
-        private const int DefaultExternalLookAhead = 1;
+        private const int DefaultInternalLookAhead = 2;
+        private const int DefaultExternalLookAhead = 2;
 
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
