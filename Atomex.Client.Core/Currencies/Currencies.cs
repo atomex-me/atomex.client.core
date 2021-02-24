@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Configuration;
+using Serilog;
 
 using Atomex.Abstract;
 using Atomex.Core;
@@ -33,18 +34,28 @@ namespace Atomex
 
         public Currencies(IConfiguration configuration)
         {
-            _currencies = configuration
-                .GetChildren()
-                .Select(GetFromSection).ToDictionary(c => c.Name, c => c);
+            Update(configuration);
         }
 
         public void Update(IConfiguration configuration)
         {
             lock (_sync)
             {
-                _currencies = configuration
-                    .GetChildren()
-                    .Select(GetFromSection).ToDictionary(c => c.Name, c => c);
+                var currencies = new List<Currency>();
+
+                foreach (var section in configuration.GetChildren())
+                {
+                    try
+                    {
+                        currencies.Add(GetFromSection(section));
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Warning(e, "Currency configuration update error.");
+                    }
+                }
+
+                _currencies = currencies.ToDictionary(c => c.Name, c => c);
             }
         }
 
@@ -92,7 +103,6 @@ namespace Atomex
                         result.Add(currency);
 
                 return result.GetEnumerator();
-                //return _currencies.Values.GetEnumerator();
             }
         }
 

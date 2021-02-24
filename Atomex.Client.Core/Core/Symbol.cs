@@ -19,11 +19,11 @@ namespace Atomex.Core
 
         public Symbol(IConfiguration configuration)
         {
-            Id = int.Parse(configuration["Id"]);
-            Name = configuration["Name"];
+            Id         = int.Parse(configuration["Id"]);
+            Name       = configuration["Name"];
             MinimumQty = decimal.Parse(configuration["MinimumQty"], CultureInfo.InvariantCulture);
-            Base = Name.Substring(0, Name.IndexOf('/'));
-            Quote = Name.Substring(Name.IndexOf('/') + 1);
+            Base       = Name.Substring(0, Name.IndexOf('/'));
+            Quote      = Name.Substring(Name.IndexOf('/') + 1);
         }
     }
 }
