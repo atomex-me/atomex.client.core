@@ -1,7 +1,10 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+
 using Microsoft.Extensions.Configuration;
+using Serilog;
 
 using Atomex.Abstract;
 using Atomex.Core;
@@ -15,19 +18,38 @@ namespace Atomex
 
         public Symbols(IConfiguration configuration)
         {
-            _symbols = configuration
-                .GetChildren()
-                .Select(s => new Symbol(s))
-                .ToDictionary(s => s.Name, s => s);
+            Update(configuration);
         }
 
         public void Update(IConfiguration configuration)
         {
             lock (_sync)
             {
-                _symbols = configuration
-                    .GetChildren()
-                    .Select(s => new Symbol(s))
+                var symbols = new List<Symbol>();
+
+                foreach (var section in configuration.GetChildren())
+                {
+                    try
+                    {
+                        symbols.Add(new Symbol(section));
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Warning(e, "Symbol configuration update error.");
+                    }
+                }
+
+                if (_symbols != null)
+                {
+                    var difference = _symbols.Keys
+                        .Except(symbols.Select(s => s.Name))
+                        .Select(s => _symbols[s]);
+
+                    if (difference.Any())
+                        symbols.AddRange(difference);
+                }
+
+                _symbols = symbols
                     .ToDictionary(s => s.Name, s => s);
             }
         }
