@@ -58,7 +58,7 @@ namespace Atomex.Swaps
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _swapClient = swapClient ?? throw new ArgumentNullException(nameof(swapClient));
-            _quotesProvider = quotesProvider ?? throw new ArgumentNullException(nameof(quotesProvider));
+            _quotesProvider = quotesProvider;
             _marketDataRepository = marketDataRepository ?? throw new ArgumentNullException(nameof(marketDataRepository));
 
             _currencySwaps = _account.Currencies

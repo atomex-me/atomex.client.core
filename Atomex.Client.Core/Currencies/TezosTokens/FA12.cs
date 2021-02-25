@@ -50,11 +50,11 @@ namespace Atomex.TezosTokens
             DigitsMultiplier        = decimal.Parse(configuration["DigitsMultiplier"]);
             DustDigitsMultiplier    = long.Parse(configuration["DustDigitsMultiplier"]);
             Digits                  = (int)BigInteger.Log10(new BigInteger(DigitsMultiplier));
-            Format                  = $"F{Digits}";
+            Format                  = $"F{(Digits < 9 ? Digits : 9)}";
 
             FeeDigits               = Digits;
             FeeCode                 = "XTZ";
-            FeeFormat               = $"F{FeeDigits}";
+            FeeFormat               = $"F{(FeeDigits < 9 ? FeeDigits : 9)}";
             HasFeePrice             = false;
             FeeCurrencyName         = "XTZ";
 
@@ -177,17 +177,5 @@ namespace Atomex.TezosTokens
 
         public override decimal GetDefaultFee() =>
             TransferGasLimit;
-    }
-
-    public class TZBTC : FA12
-    {
-        public TZBTC()
-        {
-        }
-
-        public TZBTC(IConfiguration configuration)
-            : base(configuration)
-        {
-        }
     }
 }

@@ -52,7 +52,7 @@ namespace Atomex.Swaps.Helpers
                 return 0m;
 
             var feeCurrencyToBaseQuote = currency.FeeCurrencyToBaseSymbol != null
-                ? quotesProvider.GetQuote(currency.FeeCurrencyToBaseSymbol)
+                ? quotesProvider?.GetQuote(currency.FeeCurrencyToBaseSymbol)
                 : null;
 
             var feeCurrencyToBasePrice = feeCurrencyToBaseQuote != null

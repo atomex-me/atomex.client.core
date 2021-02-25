@@ -37,11 +37,11 @@ namespace Atomex.EthereumTokens
             DigitsMultiplier           = decimal.Parse(configuration["DigitsMultiplier"]);
             DustDigitsMultiplier       = long.Parse(configuration["DustDigitsMultiplier"]);
             Digits                     = (int)BigInteger.Log10(new BigInteger(DigitsMultiplier));
-            Format                     = $"F{Digits}";
+            Format                     = $"F{(Digits < 9 ? Digits : 9)}";
 
             FeeDigits                  = Digits;
             FeeCode                    = "ETH";
-            FeeFormat                  = $"F{FeeDigits}";
+            FeeFormat                  = $"F{(FeeDigits < 9 ? FeeDigits : 9)}";
             FeeCurrencyName            = "ETH";
 
             HasFeePrice                = true;
@@ -124,53 +124,5 @@ namespace Atomex.EthereumTokens
 
         public override decimal GetDefaultFee() =>
             TransferGasLimit;
-    }
-
-    public class Tether : ERC20
-    {
-        public Tether()
-        {
-        }
-
-        public Tether(IConfiguration configuration)
-        {
-            Update(configuration);
-        }
-    }
-
-    //public class USDC : ERC20
-    //{
-    //    public USDC()
-    //    {
-    //    }
-
-    //    public USDC(IConfiguration configuration)
-    //    {
-    //        Update(configuration);
-    //    }
-    //}
-
-    public class TBTC : ERC20
-    {
-        public TBTC()
-        {
-        }
-
-        public TBTC(IConfiguration configuration)
-        {
-            Update(configuration);
-        }
-    }
-
-    public class WBTC : ERC20
-    {
-        public WBTC()
-        {
-        }
-
-        public WBTC(IConfiguration configuration)
-        {
-            Update(configuration);
-        }
     }
 }

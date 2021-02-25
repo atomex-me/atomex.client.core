@@ -62,7 +62,7 @@ namespace Atomex.Subsystems
             IConfiguration configuration,
             IAccount account,
             ISymbolsProvider symbolsProvider,
-            ICurrencyQuotesProvider quotesProvider)
+            ICurrencyQuotesProvider quotesProvider = null)
         {
             Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
@@ -70,7 +70,7 @@ namespace Atomex.Subsystems
             Account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
 
             SymbolsProvider = symbolsProvider ?? throw new ArgumentNullException(nameof(symbolsProvider));
-            QuotesProvider = quotesProvider ?? throw new ArgumentNullException(nameof(quotesProvider));
+            QuotesProvider = quotesProvider;
 
             _cts = new CancellationTokenSource();
         }

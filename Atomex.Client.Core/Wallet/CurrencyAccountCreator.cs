@@ -22,52 +22,57 @@ namespace Atomex.Wallet
                     currencies,
                     wallet,
                     dataRepository),
-                "LTC" => (ICurrencyAccount)new BitcoinBasedAccount(
+                "LTC" => new BitcoinBasedAccount(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                "USDT" => (ICurrencyAccount)new ERC20Account(
+                "USDT" => new ERC20Account(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                "USDC" => (ICurrencyAccount)new ERC20Account(
+                "USDC" => new ERC20Account(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                "TBTC" => (ICurrencyAccount)new ERC20Account(
+                "TBTC" => new ERC20Account(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                "WBTC" => (ICurrencyAccount)new ERC20Account(
+                "WBTC" => new ERC20Account(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                "ETH" => (ICurrencyAccount)new EthereumAccount(
+                "ETH" => new EthereumAccount(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                "NYX" => (ICurrencyAccount)new NYXAccount(
+                "NYX" => new NYXAccount(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                "FA2" => (ICurrencyAccount)new FA2Account(
+                "FA2" => new FA2Account(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                "TZBTC" => (ICurrencyAccount)new FA12Account(
+                "TZBTC" => new FA12Account(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                "XTZ" => (ICurrencyAccount)new TezosAccount(
+                "XTZ" => new TezosAccount(
+                    currency,
+                    currencies,
+                    wallet,
+                    dataRepository),
+                "KUSD" => new FA12Account(
                     currency,
                     currencies,
                     wallet,

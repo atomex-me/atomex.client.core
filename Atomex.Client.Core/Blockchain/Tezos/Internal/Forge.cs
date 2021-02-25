@@ -6,6 +6,7 @@ using System.Text;
 using Atomex.Common;
 using Atomex.Cryptography;
 using Serilog;
+using System.Numerics;
 
 namespace Atomex.Blockchain.Tezos.Internal
 {
@@ -246,6 +247,26 @@ namespace Atomex.Blockchain.Tezos.Internal
             return res;
         }
 
+        public static string forge_micheint(BigInteger value)
+        {
+            var abs = BigInteger.Abs(value);
+            var res = new List<byte>
+            {
+                (byte)(value.Sign < 0 ? (abs & 0x3F | 0x40) : (abs & 0x3F))
+            };
+
+            abs >>= 6;
+
+            while (abs > 0)
+            {
+                res[res.Count - 1] |= 0x80;
+                res.Add((byte)(abs & 0x7F));
+                abs >>= 7;
+            }
+
+            return res.ToArray().ToHexString();
+        }
+
         public static string forge_entrypoint(string value)
         {
             string res = "";
@@ -304,7 +325,7 @@ namespace Atomex.Blockchain.Tezos.Internal
                 else if (data["int"] != null)
                 {
                     res += "00";
-                    res += forge_int(data["int"].Value<int>());
+                    res += forge_micheint(BigInteger.Parse(data["int"].Value<string>()));
                 }
                 else if (data["string"] != null)
                 {

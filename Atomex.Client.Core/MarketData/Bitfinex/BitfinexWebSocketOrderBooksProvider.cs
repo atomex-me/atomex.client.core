@@ -5,10 +5,12 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Core;
-using Atomex.MarketData.Abstract;
+
 using Newtonsoft.Json.Linq;
 using Serilog;
+
+using Atomex.Core;
+using Atomex.MarketData.Abstract;
 
 namespace Atomex.MarketData.Bitfinex
 {
@@ -20,14 +22,18 @@ namespace Atomex.MarketData.Bitfinex
             { "LTCBTC", "LTCBTC" },
             { "XTZBTC", "XTZBTC" },
             { "XTZETH", "XTZETH" },
+
             { "BTCUSDT", "BTCUST" },
             { "ETHUSDT", "ETHUST" },
             { "LTCUSDT", "LTCUST" },
             { "XTZUSDT", "XTZUST" },
+
             { "ETHNYX", "ETHBTC" },
             { "XTZNYX", "XTZBTC" },
+
             { "FA2ETH", "XTZETH" },
             { "FA2BTC", "XTZBTC" },
+
             { "ETHTZBTC", "ETHBTC" },
             { "XTZTZBTC", "XTZBTC" },
             { "TZBTCUSDT", "BTCUST" },
@@ -39,6 +45,12 @@ namespace Atomex.MarketData.Bitfinex
             { "ETHWBTC", "ETHBTC" },
             { "XTZWBTC", "XTZBTC" },
             { "WBTCUSDT", "BTCUST" },
+
+            { "BTCKUSD", "BTCUST" },
+            { "ETHKUSD", "ETHUST" },
+            { "LTCKUSD", "LTCUST" },
+            { "XTZKUSD", "XTZUST" },
+            { "TZBTCKUSD", "BTCUST" },
         };
 
         private const int MaxReceiveBufferSize = 32768;
