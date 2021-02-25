@@ -55,7 +55,18 @@ namespace Atomex
                     }
                 }
 
-                _currencies = currencies.ToDictionary(c => c.Name, c => c);
+                if (_currencies != null)
+                {
+                    var difference = _currencies.Keys
+                        .Except(currencies.Select(c => c.Name))
+                        .Select(c => _currencies[c]);
+
+                    if (difference.Any())
+                        currencies.AddRange(difference);
+                }
+
+                _currencies = currencies
+                    .ToDictionary(c => c.Name, c => c);
             }
         }
 
