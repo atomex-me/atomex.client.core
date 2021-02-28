@@ -578,7 +578,7 @@
       "BbApiUri": "https://api.baking-bad.org/",
       "BcdApi": "https://api.better-call.dev/v1/",
       "BcdNetwork": "edo2net",
-      "SwapContract": "KT1B8poqe9NnQwWyKUP7g7GeYABG9qYTQjit",
+      "SwapContract": "KT1EdNAZTqjJFYRhQsQSnNGRomAhN6DpRup2",
       "TokenContract": "KT1E953Kx9UfbyQeEQUgbcuzRQGyK2mpEmPw",
       "ViewContract": "KT1HkNcxk44Jg84fGDCHHwaEUDCBi4LDcKrq",
       "TxExplorerUri": "https://edo2net.tzkt.io/",
