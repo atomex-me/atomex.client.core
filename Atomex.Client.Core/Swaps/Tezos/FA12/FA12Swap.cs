@@ -277,17 +277,18 @@ namespace Atomex.Swaps.Tezos.FA12
 
             var redeemTx = new TezosTransaction
             {
-                Currency      = fa12,
-                CreationTime  = DateTime.UtcNow,
-                From          = walletAddress.Address,
-                To            = fa12.SwapContractAddress,
-                Amount        = 0,
-                Fee           = fa12.RedeemFee + fa12.RevealFee,
-                GasLimit      = fa12.RedeemGasLimit,
-                StorageLimit  = fa12.RedeemStorageLimit,
-                Params        = RedeemParams(swap),
-                UseDefaultFee = true,
-                Type          = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
+                Currency            = fa12,
+                CreationTime        = DateTime.UtcNow,
+                From                = walletAddress.Address,
+                To                  = fa12.SwapContractAddress,
+                Amount              = 0,
+                Fee                 = fa12.RedeemFee + fa12.RevealFee,
+                GasLimit            = fa12.RedeemGasLimit,
+                StorageLimit        = fa12.RedeemStorageLimit,
+                Params              = RedeemParams(swap),
+                UseDefaultFee       = true,
+                Type                = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
+                UseSafeStorageLimit = true
             };
 
             var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
@@ -361,17 +362,18 @@ namespace Atomex.Swaps.Tezos.FA12
 
             var redeemTx = new TezosTransaction
             {
-                Currency      = fa12,
-                CreationTime  = DateTime.UtcNow,
-                From          = walletAddress.Address,
-                To            = fa12.SwapContractAddress,
-                Amount        = 0,
-                Fee           = fa12.RedeemFee + fa12.RevealFee,
-                GasLimit      = fa12.RedeemGasLimit,
-                StorageLimit  = fa12.RedeemStorageLimit,
-                Params        = RedeemParams(swap),
-                UseDefaultFee = true,
-                Type          = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
+                Currency            = fa12,
+                CreationTime        = DateTime.UtcNow,
+                From                = walletAddress.Address,
+                To                  = fa12.SwapContractAddress,
+                Amount              = 0,
+                Fee                 = fa12.RedeemFee + fa12.RevealFee,
+                GasLimit            = fa12.RedeemGasLimit,
+                StorageLimit        = fa12.RedeemStorageLimit,
+                Params              = RedeemParams(swap),
+                UseDefaultFee       = true,
+                Type                = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
+                UseSafeStorageLimit = true
             };
 
             var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
@@ -432,16 +434,17 @@ namespace Atomex.Swaps.Tezos.FA12
 
             var refundTx = new TezosTransaction   //todo: use estimated fee and storage limit
             {
-                Currency      = fa12,
-                CreationTime  = DateTime.UtcNow,
-                From          = walletAddress.Address,
-                To            = fa12.SwapContractAddress,
-                Fee           = fa12.RefundFee + fa12.RevealFee,
-                GasLimit      = fa12.RefundGasLimit,
-                StorageLimit  = fa12.RefundStorageLimit,
-                Params        = RefundParams(swap),
-                UseDefaultFee = true,
-                Type          = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
+                Currency            = fa12,
+                CreationTime        = DateTime.UtcNow,
+                From                = walletAddress.Address,
+                To                  = fa12.SwapContractAddress,
+                Fee                 = fa12.RefundFee + fa12.RevealFee,
+                GasLimit            = fa12.RefundGasLimit,
+                StorageLimit        = fa12.RefundStorageLimit,
+                Params              = RefundParams(swap),
+                UseDefaultFee       = true,
+                Type                = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund,
+                UseSafeStorageLimit = true
             };
 
             var signResult = await SignTransactionAsync(refundTx, cancellationToken)
@@ -762,65 +765,52 @@ namespace Atomex.Swaps.Tezos.FA12
                 {
                     transactions.Add(new TezosTransaction
                     {
-                        Currency      = fa12,
-                        CreationTime  = DateTime.UtcNow,
-                        From          = walletAddress.Address,
-                        To            = fa12.TokenContractAddress,
-                        Fee           = fa12.ApproveFee,
-                        GasLimit      = fa12.ApproveGasLimit,
-                        StorageLimit  = fa12.ApproveStorageLimit,
-                        Params        = ApproveParams(fa12.SwapContractAddress, 0),
-                        UseDefaultFee = true,
-                        Type          = BlockchainTransactionType.TokenApprove
+                        Currency            = fa12,
+                        CreationTime        = DateTime.UtcNow,
+                        From                = walletAddress.Address,
+                        To                  = fa12.TokenContractAddress,
+                        Fee                 = fa12.ApproveFee,
+                        GasLimit            = fa12.ApproveGasLimit,
+                        StorageLimit        = fa12.ApproveStorageLimit,
+                        Params              = ApproveParams(fa12.SwapContractAddress, 0),
+                        UseDefaultFee       = true,
+                        Type                = BlockchainTransactionType.TokenApprove,
+                        UseSafeStorageLimit = true
                     });
                 }
 
                 transactions.Add(new TezosTransaction
                 {
-                    Currency      = fa12,
-                    CreationTime  = DateTime.UtcNow,
-                    From          = walletAddress.Address,
-                    To            = fa12.TokenContractAddress,
-                    Fee           = fa12.ApproveFee,
-                    GasLimit      = fa12.ApproveGasLimit,
-                    StorageLimit  = fa12.ApproveStorageLimit,
-                    Params        = ApproveParams(fa12.SwapContractAddress, amountInTokens.ToTokenDigits(fa12.DigitsMultiplier)),
-                    UseDefaultFee = true,
-                    Type          = BlockchainTransactionType.TokenApprove
+                    Currency            = fa12,
+                    CreationTime        = DateTime.UtcNow,
+                    From                = walletAddress.Address,
+                    To                  = fa12.TokenContractAddress,
+                    Fee                 = fa12.ApproveFee,
+                    GasLimit            = fa12.ApproveGasLimit,
+                    StorageLimit        = fa12.ApproveStorageLimit,
+                    Params              = ApproveParams(fa12.SwapContractAddress, amountInTokens.ToTokenDigits(fa12.DigitsMultiplier)),
+                    UseDefaultFee       = true,
+                    Type                = BlockchainTransactionType.TokenApprove,
+                    UseSafeStorageLimit = true
                 });
 
                 if (isInitTx)
                 {
                     transactions.Add(new TezosTransaction
                     {
-                        Currency      = fa12,
-                        CreationTime  = DateTime.UtcNow,
-                        From          = walletAddress.Address,
-                        To            = fa12.SwapContractAddress,
-                        Fee           = feeAmountInMtz,
-                        GasLimit      = fa12.InitiateGasLimit,
-                        StorageLimit  = fa12.InitiateStorageLimit,
-                        Params        = InitParams(swap, fa12.TokenContractAddress, amountInTokens.ToTokenDigits(fa12.DigitsMultiplier), refundTimeStampUtcInSec, (long)rewardForRedeemInTokenDigits),
-                        UseDefaultFee = true,
-                        Type          = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
+                        Currency            = fa12,
+                        CreationTime        = DateTime.UtcNow,
+                        From                = walletAddress.Address,
+                        To                  = fa12.SwapContractAddress,
+                        Fee                 = feeAmountInMtz,
+                        GasLimit            = fa12.InitiateGasLimit,
+                        StorageLimit        = fa12.InitiateStorageLimit,
+                        Params              = InitParams(swap, fa12.TokenContractAddress, amountInTokens.ToTokenDigits(fa12.DigitsMultiplier), refundTimeStampUtcInSec, (long)rewardForRedeemInTokenDigits),
+                        UseDefaultFee       = true,
+                        Type                = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment,
+                        UseSafeStorageLimit = true
                     });
                 }
-                //else
-                //{
-                //    transactions.Add(new TezosTransaction
-                //    {
-                //        Currency = Xtz,
-                //        CreationTime = DateTime.UtcNow,
-                //        From = walletAddress.Address,
-                //        To = Xtz.SwapContractAddress,
-                //        Fee = feeAmountInMtz,
-                //        GasLimit = Xtz.AddGasLimit,
-                //        StorageLimit = Xtz.AddStorageLimit,
-                //        UseDefaultFee = true,
-                //        Params = AddParams(swap),
-                //        Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
-                //    });
-                //}
 
                 if (isInitTx)
                     isInitTx = false;

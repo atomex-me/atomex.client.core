@@ -3,14 +3,16 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Newtonsoft.Json.Linq;
+using Serilog;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.Abstract;
-using Newtonsoft.Json.Linq;
-using Serilog;
 
 namespace Atomex.Blockchain.Tezos
 {
@@ -44,6 +46,7 @@ namespace Atomex.Blockchain.Tezos
         public JArray Operations { get; private set; }
         public JObject Head { get; private set; }
         public SignedMessage SignedMessage { get; private set; }
+        public bool UseSafeStorageLimit { get; set; } = false;
 
         public List<TezosTransaction> InternalTxs { get; set; }
 
@@ -51,32 +54,32 @@ namespace Atomex.Blockchain.Tezos
         {
             var resTx = new TezosTransaction()
             {
-                Id = this.Id,
-                Currency = this.Currency,
-                State = this.State,
-                Type = this.Type,
-                CreationTime = this.CreationTime,
+                Id           = Id,
+                Currency     = Currency,
+                State        = State,
+                Type         = Type,
+                CreationTime = CreationTime,
 
-                From = this.From,
-                To = this.To,
-                Amount = this.Amount,
-                Fee = this.Fee,
-                GasLimit = this.GasLimit,
-                GasUsed = this.GasUsed,
-                StorageLimit = this.StorageLimit,
-                Burn = this.Burn,
-                Alias = this.Alias,
+                From         = From,
+                To           = To,
+                Amount       = Amount,
+                Fee          = Fee,
+                GasLimit     = GasLimit,
+                GasUsed      = GasUsed,
+                StorageLimit = StorageLimit,
+                Burn         = Burn,
+                Alias        = Alias,
 
-                Params = this.Params,
-                IsInternal = this.IsInternal,
-                InternalIndex = this.InternalIndex,
-                InternalTxs = new List<TezosTransaction>(),
+                Params        = Params,
+                IsInternal    = IsInternal,
+                InternalIndex = InternalIndex,
+                InternalTxs   = new List<TezosTransaction>(),
 
-                BlockInfo = (BlockInfo)(this.BlockInfo?.Clone() ?? null)
+                BlockInfo = (BlockInfo)(BlockInfo?.Clone() ?? null)
             };
 
-            if (this.InternalTxs != null)
-                foreach (var intTx in this.InternalTxs)
+            if (InternalTxs != null)
+                foreach (var intTx in InternalTxs)
                     resTx.InternalTxs.Add(intTx.Clone());
 
             return resTx;
@@ -107,20 +110,17 @@ namespace Atomex.Blockchain.Tezos
                 .GetCounter(xtz, From, head, ignoreCache: !incrementCounter)
                 .ConfigureAwait(false);
 
-            // if (managerKey["key"] == null)
             if (managerKey.Value<string>() == null)
             {
-                //var revealOpCounter = ;
-
                 var revealOp = new JObject
                 {
-                    ["kind"] = OperationType.Reveal,
-                    ["fee"] = "0",
-                    ["public_key"] = Base58Check.Encode(publicKey, Prefix.Edpk),
-                    ["source"] = From,
+                    ["kind"]          = OperationType.Reveal,
+                    ["fee"]           = "0",
+                    ["public_key"]    = Base58Check.Encode(publicKey, Prefix.Edpk),
+                    ["source"]        = From,
                     ["storage_limit"] = "0",
-                    ["gas_limit"] = xtz.RevealGasLimit.ToString(),
-                    ["counter"] = counter.ToString()
+                    ["gas_limit"]     = xtz.RevealGasLimit.ToString(),
+                    ["counter"]       = counter.ToString()
                 };
 
                 Operations.AddFirst(revealOp);
@@ -130,14 +130,14 @@ namespace Atomex.Blockchain.Tezos
 
             var transaction = new JObject
             {
-                ["kind"] = OperationType.Transaction,
-                ["source"] = From,
-                ["fee"] = ((int)Fee).ToString(CultureInfo.InvariantCulture),
-                ["counter"] = counter.ToString(),
-                ["gas_limit"] = gas,
+                ["kind"]          = OperationType.Transaction,
+                ["source"]        = From,
+                ["fee"]           = ((int)Fee).ToString(CultureInfo.InvariantCulture),
+                ["counter"]       = counter.ToString(),
+                ["gas_limit"]     = gas,
                 ["storage_limit"] = storage,
-                ["amount"] = Math.Round(Amount, 0).ToString(CultureInfo.InvariantCulture),
-                ["destination"] = To
+                ["amount"]        = Math.Round(Amount, 0).ToString(CultureInfo.InvariantCulture),
+                ["destination"]   = To
             };
 
             Operations.Add(transaction);
@@ -186,7 +186,7 @@ namespace Atomex.Blockchain.Tezos
                 UseDefaultFee = true;
 
             var fill = await rpc
-                .AutoFillOperations(xtz, Head, Operations, UseDefaultFee)
+                .AutoFillOperations(xtz, Head, Operations, UseSafeStorageLimit, UseDefaultFee)
                 .ConfigureAwait(false);
 
             if (!fill)
@@ -201,16 +201,7 @@ namespace Atomex.Blockchain.Tezos
                 .ForgeOperations(Head, Operations)
                 .ConfigureAwait(false);
 
-            var forgedOpGroupLocal = Forge.ForgeOperationsLocal(Head, Operations);
-
-            //if (true)  //if (config.CheckForge == true) add option for higher security tezos mode to config
-            //{
-            //    if (forgedOpGroupLocal.ToString() != forgedOpGroup.ToString())
-            //    {
-            //        Log.Error("Local and remote forge results differ");
-            //        return false;
-            //    }
-            //}
+            //var forgedOpGroupLocal = Forge.ForgeOperationsLocal(Head, Operations);
 
             SignedMessage = TezosSigner.SignHash(
                 data: Hex.FromString(forgedOpGroup.ToString()),
@@ -325,19 +316,15 @@ namespace Atomex.Blockchain.Tezos
 
             if (managerKey.Value<string>() == null)
             {
-                //var revealOpCounter = await TezosCounter.Instance
-                //    .GetCounter(xtz, From, Head, ignoreCache: true)
-                //    .ConfigureAwait(false);
-
                 var revealOp = new JObject
                 {
-                    ["kind"] = OperationType.Reveal,
-                    ["fee"] = "0",
-                    ["public_key"] = Base58Check.Encode(publicKey, Prefix.Edpk),
-                    ["source"] = From,
+                    ["kind"]          = OperationType.Reveal,
+                    ["fee"]           = "0",
+                    ["public_key"]    = Base58Check.Encode(publicKey, Prefix.Edpk),
+                    ["source"]        = From,
                     ["storage_limit"] = storage,
-                    ["gas_limit"] = gas,
-                    ["counter"] = counter.ToString()//revealOpCounter.ToString()
+                    ["gas_limit"]     = gas,
+                    ["counter"]       = counter.ToString()
                 };
 
                 Operations.AddFirst(revealOp);
@@ -345,19 +332,15 @@ namespace Atomex.Blockchain.Tezos
                 counter++;
             }
 
-            //var counter = await TezosCounter.Instance
-            //    .GetCounter(xtz, From, Head)
-            //    .ConfigureAwait(false);
-
             var transaction = new JObject
             {
-                ["kind"] = OperationType.Delegation,
-                ["source"] = From,
-                ["fee"] = ((int)Fee).ToString(CultureInfo.InvariantCulture),
-                ["counter"] = counter.ToString(),
-                ["gas_limit"] = gas,
+                ["kind"]          = OperationType.Delegation,
+                ["source"]        = From,
+                ["fee"]           = ((int)Fee).ToString(CultureInfo.InvariantCulture),
+                ["counter"]       = counter.ToString(),
+                ["gas_limit"]     = gas,
                 ["storage_limit"] = storage,
-                ["delegate"] = To
+                ["delegate"]      = To
             };
 
             Operations.Add(transaction);
@@ -375,7 +358,6 @@ namespace Atomex.Blockchain.Tezos
                 return false;
             }
 
-            // Fee = Operations[0]["fee"].Value<decimal>() / 1_000_000;
             Fee = Operations.Last["fee"].Value<decimal>() / 1_000_000;
             
             return true;
