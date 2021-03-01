@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Configuration;
 using Serilog;
 
@@ -14,7 +15,7 @@ namespace Atomex.Subsystems
     public class CurrenciesUpdater : ICurrenciesUpdater, IDisposable
     {
         private const string BaseUri = "https://atomex.me/";
-        private const string CurrenciesConfig = "currencies.json";
+        private const string CurrenciesConfig = "coins.v1.json";
 
         private readonly ICurrenciesProvider _currenciesProvider;
         private Task _updaterTask;

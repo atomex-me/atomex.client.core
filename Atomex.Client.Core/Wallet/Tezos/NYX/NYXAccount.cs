@@ -381,10 +381,10 @@ namespace Atomex.Wallet.Tezos
             var nyx = NYX;
 
             return new[] {
-                nyx.RedeemFee.ToTez() + Math.Max((nyx.RedeemStorageLimit - nyx.ActivationStorage) / nyx.StorageFeeMultiplier, 0),
-                nyx.RefundFee.ToTez() + Math.Max((nyx.RefundStorageLimit - nyx.ActivationStorage) / nyx.StorageFeeMultiplier, 0),
-                xtz.RedeemFee.ToTez() + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) / xtz.StorageFeeMultiplier, 0),
-                xtz.RefundFee.ToTez() + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) / xtz.StorageFeeMultiplier, 0)
+                (nyx.RedeemFee + Math.Max((nyx.RedeemStorageLimit - nyx.ActivationStorage) * nyx.StorageFeeMultiplier, 0)).ToTez(),
+                (nyx.RefundFee + Math.Max((nyx.RefundStorageLimit - nyx.ActivationStorage) * nyx.StorageFeeMultiplier, 0)).ToTez(),
+                (xtz.RedeemFee + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0)).ToTez(),
+                (xtz.RefundFee + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0)).ToTez()
             }.Max() + nyx.RevealFee.ToTez() + Xtz.MicroTezReserve.ToTez();
         }
 
@@ -394,15 +394,15 @@ namespace Atomex.Wallet.Tezos
             var nyx = NYX;
 
             if (type.HasFlag(BlockchainTransactionType.TokenApprove))
-                return nyx.ApproveStorageLimit;
+                return nyx.ApproveStorageLimit.ToTez();
             if (type.HasFlag(BlockchainTransactionType.SwapPayment))
-                return (nyx.ApproveStorageLimit + nyx.InitiateStorageLimit) / nyx.StorageFeeMultiplier;
+                return ((nyx.ApproveStorageLimit + nyx.InitiateStorageLimit) * nyx.StorageFeeMultiplier).ToTez();
             if (type.HasFlag(BlockchainTransactionType.SwapRefund))
-                return (nyx.RefundStorageLimit - nyx.ActivationStorage) / nyx.StorageFeeMultiplier;
+                return ((nyx.RefundStorageLimit - nyx.ActivationStorage) * nyx.StorageFeeMultiplier).ToTez();
             if (type.HasFlag(BlockchainTransactionType.SwapRedeem))
-                return (nyx.RedeemStorageLimit - nyx.ActivationStorage) / nyx.StorageFeeMultiplier;
+                return ((nyx.RedeemStorageLimit - nyx.ActivationStorage) * nyx.StorageFeeMultiplier).ToTez();
 
-            return (nyx.TransferStorageLimit - nyx.ActivationStorage) / nyx.StorageFeeMultiplier;
+            return ((nyx.TransferStorageLimit - nyx.ActivationStorage) * nyx.StorageFeeMultiplier).ToTez();
         }
 
         #endregion Common

@@ -439,10 +439,10 @@ namespace Atomex.Wallet.Tezos
             var xtz = Xtz;
 
             return new[] {
-                //fa12.RedeemFee.ToTez() + Math.Max((fa12.RedeemStorageLimit - fa12.ActivationStorage) / fa12.StorageFeeMultiplier, 0),
-                //fa12.RefundFee.ToTez() + Math.Max((fa12.RefundStorageLimit - fa12.ActivationStorage) / fa12.StorageFeeMultiplier, 0),
-                xtz.RedeemFee.ToTez() + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) / xtz.StorageFeeMultiplier, 0),
-                xtz.RefundFee.ToTez() + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) / xtz.StorageFeeMultiplier, 0)
+                //(fa12.RedeemFee + Math.Max((fa12.RedeemStorageLimit - fa12.ActivationStorage) / fa12.StorageFeeMultiplier, 0)).ToTez(),
+                //(fa12.RefundFee + Math.Max((fa12.RefundStorageLimit - fa12.ActivationStorage) / fa12.StorageFeeMultiplier, 0)).ToTez(),
+                (xtz.RedeemFee + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0)).ToTez(),
+                (xtz.RefundFee + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0)).ToTez()
             }.Max() + xtz.RevealFee.ToTez() + Xtz.MicroTezReserve.ToTez();
         }
 
@@ -454,25 +454,30 @@ namespace Atomex.Wallet.Tezos
         {
             var xtz = Xtz;
 
-            var isActive = to != null && await IsAllocatedDestinationAsync(type, to, cancellationToken)
-                .ConfigureAwait(false);
+            var isActive = to != null
+                ? await IsAllocatedDestinationAsync(type, to, cancellationToken)
+                    .ConfigureAwait(false)
+                : false;
 
             if (type.HasFlag(BlockchainTransactionType.SwapPayment) && isFirstTx)
-                return xtz.InitiateStorageLimit / xtz.StorageFeeMultiplier;
+                return (xtz.InitiateStorageLimit * xtz.StorageFeeMultiplier).ToTez();
             if (type.HasFlag(BlockchainTransactionType.SwapPayment) && !isFirstTx)
-                return xtz.AddStorageLimit / xtz.StorageFeeMultiplier;
+                return (xtz.AddStorageLimit * xtz.StorageFeeMultiplier).ToTez();
             if (type.HasFlag(BlockchainTransactionType.SwapRefund))
-                return isActive
-                    ? Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) / xtz.StorageFeeMultiplier, 0) // without activation storage fee
-                    : xtz.RefundStorageLimit / xtz.StorageFeeMultiplier;
+                return (isActive
+                    ? Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0) // without activation storage fee
+                    : xtz.RefundStorageLimit * xtz.StorageFeeMultiplier)
+                    .ToTez();
             if (type.HasFlag(BlockchainTransactionType.SwapRedeem))
-                return isActive
-                    ? Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) / xtz.StorageFeeMultiplier, 0) // without activation storage fee
-                    : xtz.RedeemStorageLimit / xtz.StorageFeeMultiplier;
+                return (isActive
+                    ? Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0) // without activation storage fee
+                    : xtz.RedeemStorageLimit * xtz.StorageFeeMultiplier)
+                    .ToTez();
 
-            return isActive || !isFirstTx
-                ? Math.Max((xtz.StorageLimit - xtz.ActivationStorage) / xtz.StorageFeeMultiplier, 0) // without activation storage fee
-                : xtz.StorageLimit / xtz.StorageFeeMultiplier;
+            return (isActive || !isFirstTx
+                ? Math.Max((xtz.StorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0) // without activation storage fee
+                : xtz.StorageLimit * xtz.StorageFeeMultiplier)
+                .ToTez();
         }
 
         public async Task<bool> IsRevealedSourceAsync(
