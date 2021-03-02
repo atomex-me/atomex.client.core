@@ -179,7 +179,7 @@ namespace Atomex.Blockchain.Tezos
                 .GetHeader()
                 .ConfigureAwait(false);
 
-            await FillOperationsAsync(Head, securePublicKey)
+            await FillOperationsAsync(Head, securePublicKey, incrementCounter: true, cancellationToken)
                 .ConfigureAwait(false);
 
             if (Type != BlockchainTransactionType.Output)
@@ -197,11 +197,11 @@ namespace Atomex.Blockchain.Tezos
 
             // todo: update Fee, GasLimit, StorageLimit
 
-            var forgedOpGroup = await rpc
-                .ForgeOperations(Head, Operations)
-                .ConfigureAwait(false);
+            //var forgedOpGroup = await rpc
+            //    .ForgeOperations(Head, Operations)
+            //    .ConfigureAwait(false);
 
-            //var forgedOpGroupLocal = Forge.ForgeOperationsLocal(Head, Operations);
+            var forgedOpGroup = Forge.ForgeOperationsLocal(Head, Operations);
 
             SignedMessage = TezosSigner.SignHash(
                 data: Hex.FromString(forgedOpGroup.ToString()),
@@ -266,7 +266,7 @@ namespace Atomex.Blockchain.Tezos
             return true;
         }
 
-        public async Task<bool> AutoFillAsync(
+        public async Task<bool> AutoFillDelegationFeeAsync(
             IKeyStorage keyStorage,
             WalletAddress address,
             bool useDefaultFee)

@@ -742,7 +742,7 @@ namespace Atomex.Swaps.Tezos.FA2
                 requiredAmountInTokens -= amountInTokens;
 
                 var allowanceResult = await fa2Api
-                    .TryGetTokenBigMapAllowanceAsync(
+                    .TryGetFa2BigMapAllowanceAsync(
                         holderAddress: walletAddress.Address,
                         spenderAddress: fa2.SwapContractAddress,
                         cancellationToken: cancellationToken)

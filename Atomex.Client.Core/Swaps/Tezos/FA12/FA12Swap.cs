@@ -743,7 +743,7 @@ namespace Atomex.Swaps.Tezos.FA12
                     .PublicKeyBytes());
 
                 var allowanceResult = await fa12Api
-                    .TryGetTokenAllowanceAsync(
+                    .TryGetFa12AllowanceAsync(
                         holderAddress: walletAddress.Address,
                         spenderAddress: fa12.SwapContractAddress,
                         callingAddress: walletAddress.Address,
