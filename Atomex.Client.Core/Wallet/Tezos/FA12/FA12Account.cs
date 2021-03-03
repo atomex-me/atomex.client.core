@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Newtonsoft.Json.Linq;
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
@@ -10,8 +14,6 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using Newtonsoft.Json.Linq;
-using Serilog;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -79,16 +81,16 @@ namespace Atomex.Wallet.Tezos
                
                 var tx = new TezosTransaction
                 {
-                    Currency = fa12,
-                    CreationTime = DateTime.UtcNow,
-                    From = selectedAddress.WalletAddress.Address,
-                    To = fa12.TokenContractAddress,
-                    Fee = selectedAddress.UsedFee.ToMicroTez(),
-                    GasLimit = fa12.TransferGasLimit,
-                    StorageLimit = storageLimit,
-                    Params = TransferParams(selectedAddress.WalletAddress.Address, to, Math.Round(addressAmountInDigits, 0)),
+                    Currency      = fa12,
+                    CreationTime  = DateTime.UtcNow,
+                    From          = selectedAddress.WalletAddress.Address,
+                    To            = fa12.TokenContractAddress,
+                    Fee           = selectedAddress.UsedFee.ToMicroTez(),
+                    GasLimit      = fa12.TransferGasLimit,
+                    StorageLimit  = storageLimit,
+                    Params        = TransferParams(selectedAddress.WalletAddress.Address, to, Math.Round(addressAmountInDigits, 0)),
                     UseDefaultFee = useDefaultFee,
-                    Type = BlockchainTransactionType.Output
+                    Type          = BlockchainTransactionType.Output
                 };
 
                 var signResult = await Wallet
@@ -1015,8 +1017,37 @@ namespace Atomex.Wallet.Tezos
         #region Helpers
         private JObject TransferParams(string from, string to, decimal amount)
         {
-            return JObject.Parse(@"{'entrypoint':'transfer','value':{'prim':'Pair','args':[{'string':'" + from + "'},{'prim':'Pair','args':[{'string':'" + to + "'},{'int':'" + amount + "'}]}]}}");
-        }
+            return JObject.FromObject(new
+            {
+                entrypoint = "transfer",
+                value = new
+                {
+                    prim = "Pair",
+                    args = new object[]
+                    {
+                        new
+                        {
+                            @string = from
+                        },
+                        new
+                        {
+                            prim = "Pair",
+                            args = new object[]
+                            {
+                                new
+                                {
+                                    @string = to
+                                },
+                                new
+                                {
+                                    @int = amount.ToString()
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+}
 
         #endregion Helpers
     }

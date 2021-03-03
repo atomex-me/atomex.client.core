@@ -71,7 +71,7 @@ namespace Atomex.Wallet.Tezos
                     code: Errors.InsufficientFunds,
                     description: "Insufficient funds");
 
-            var isActive = await IsAllocatedDestinationAsync(BlockchainTransactionType.Output, to, cancellationToken)
+            var isActive = await IsAllocatedDestinationAsync(to, cancellationToken)
                 .ConfigureAwait(false);
 
             // todo: min fee control
@@ -92,17 +92,21 @@ namespace Atomex.Wallet.Tezos
 
                 var tx = new TezosTransaction
                 {
-                    Currency = xtz,
-                    CreationTime = DateTime.UtcNow,
-                    From = selectedAddress.WalletAddress.Address,
-                    To = to,
-                    Amount = Math.Round(addressAmountMtz, 0),
-                    Fee = selectedAddress.UsedFee.ToMicroTez(),
-                    GasLimit = xtz.GasLimit,
-                    StorageLimit = storageLimit,
+                    Currency      = xtz,
+                    CreationTime  = DateTime.UtcNow,
+                    From          = selectedAddress.WalletAddress.Address,
+                    To            = to,
+                    Amount        = Math.Round(addressAmountMtz, 0),
+                    Fee           = selectedAddress.UsedFee.ToMicroTez(),
+                    GasLimit      = xtz.GasLimit,
+                    StorageLimit  = storageLimit,
                     UseDefaultFee = useDefaultFee,
-                    Type = BlockchainTransactionType.Output
+                    Type          = BlockchainTransactionType.Output
                 };
+
+                // fill operation
+
+                // auto fill if need
 
                 var signResult = await Wallet
                     .SignAsync(tx, selectedAddress.WalletAddress, cancellationToken)
@@ -380,19 +384,20 @@ namespace Atomex.Wallet.Tezos
             return true;
         }
 
-        protected void ResolveTezosTxAlias(TezosTransaction tx) {
-            string ALIAS_DELIMETER = "/";
+        protected void ResolveTezosTxAlias(TezosTransaction tx)
+        {
+            var ALIAS_DELIMETER = '/';
 
-            if (String.IsNullOrEmpty(tx.Alias) || tx.Alias.IndexOf(ALIAS_DELIMETER) == -1) {
+            if (string.IsNullOrEmpty(tx.Alias) || tx.Alias.IndexOf(ALIAS_DELIMETER) == -1)
                 return;
+
+            if (tx.Type.HasFlag(BlockchainTransactionType.Input))
+            {
+                tx.Alias = tx.Alias.Split(ALIAS_DELIMETER)[0];
             }
-
-            if (tx.Type.HasFlag(BlockchainTransactionType.Input)) {
-                tx.Alias = tx.Alias.Split(Convert.ToChar(ALIAS_DELIMETER))[0];
-            } else
-
-            if(tx.Type.HasFlag(BlockchainTransactionType.Output)) {
-                tx.Alias = tx.Alias.Split(Convert.ToChar(ALIAS_DELIMETER))[1];
+            else if (tx.Type.HasFlag(BlockchainTransactionType.Output))
+            {
+                tx.Alias = tx.Alias.Split(ALIAS_DELIMETER)[1];
             }
         }
 
@@ -454,10 +459,8 @@ namespace Atomex.Wallet.Tezos
         {
             var xtz = Xtz;
 
-            var isActive = to != null
-                ? await IsAllocatedDestinationAsync(type, to, cancellationToken)
-                    .ConfigureAwait(false)
-                : false;
+            var isActive = await IsAllocatedDestinationAsync(to, cancellationToken)
+                .ConfigureAwait(false);
 
             if (type.HasFlag(BlockchainTransactionType.SwapPayment) && isFirstTx)
                 return (xtz.InitiateStorageLimit * xtz.StorageFeeMultiplier).ToTez();
@@ -484,38 +487,18 @@ namespace Atomex.Wallet.Tezos
             string from,
             CancellationToken cancellationToken = default)
         {
-            if (from != null)
-            {
-                return await _tezosRevealChecker
-                    .IsRevealedAsync(from, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-
-            return false;
+            return from != null && await _tezosRevealChecker
+                .IsRevealedAsync(from, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         public async Task<bool> IsAllocatedDestinationAsync(
-            BlockchainTransactionType type,
             string to,
             CancellationToken cancellationToken = default)
         {
-            if (to != null)
-            {
-                return await _tezosAllocationChecker
-                    .IsAllocatedAsync(to, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            
-            if (type == BlockchainTransactionType.SwapRedeem) // || type == BlockchainTransactionType.SwapRefund)
-            {
-                return false;
-            }
-            else if (type == BlockchainTransactionType.SwapRefund)
-            {
-                return false;
-            }
-
-            return false;
+            return to != null && await _tezosAllocationChecker
+                .IsAllocatedAsync(to, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         #endregion Common

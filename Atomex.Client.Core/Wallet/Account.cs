@@ -159,27 +159,6 @@ namespace Atomex.Wallet
 
         public Task<Error> SendAsync(
             string currency,
-            IEnumerable<WalletAddress> from,
-            string to,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            bool useDefaultFee = false,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .SendAsync(
-                    from: from,
-                    to: to,
-                    amount: amount,
-                    fee: fee,
-                    feePrice: feePrice,
-                    useDefaultFee: useDefaultFee,
-                    cancellationToken: cancellationToken);
-        }
-
-        public Task<Error> SendAsync(
-            string currency,
             string to,
             decimal amount,
             decimal fee,

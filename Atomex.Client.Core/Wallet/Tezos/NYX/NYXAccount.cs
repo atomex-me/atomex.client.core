@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Newtonsoft.Json.Linq;
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
@@ -10,8 +14,6 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using Newtonsoft.Json.Linq;
-using Serilog;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -79,16 +81,16 @@ namespace Atomex.Wallet.Tezos
 
                 var tx = new TezosTransaction
                 {
-                    Currency = nyx,
-                    CreationTime = DateTime.UtcNow,
-                    From = selectedAddress.WalletAddress.Address,
-                    To = nyx.TokenContractAddress,
-                    Fee = selectedAddress.UsedFee.ToMicroTez(),
-                    GasLimit = nyx.TransferGasLimit,
-                    StorageLimit = storageLimit,
-                    Params = TransferParams(selectedAddress.WalletAddress.Address, to, Math.Round(addressAmountInDigits, 0)),
+                    Currency      = nyx,
+                    CreationTime  = DateTime.UtcNow,
+                    From          = selectedAddress.WalletAddress.Address,
+                    To            = nyx.TokenContractAddress,
+                    Fee           = selectedAddress.UsedFee.ToMicroTez(),
+                    GasLimit      = nyx.TransferGasLimit,
+                    StorageLimit  = storageLimit,
+                    Params        = TransferParams(to, Math.Round(addressAmountInDigits, 0)),
                     UseDefaultFee = useDefaultFee,
-                    Type = BlockchainTransactionType.Output
+                    Type          = BlockchainTransactionType.Output
                 };
 
                 var signResult = await Wallet
@@ -959,9 +961,30 @@ namespace Atomex.Wallet.Tezos
         #endregion Addresses
 
         #region Helpers
-        private JObject TransferParams(string from, string to, decimal amount)
+        private JObject TransferParams(string to, decimal amount)
         {
-            return JObject.Parse(@"{'entrypoint':'transfer','value':[{'prim':'Pair','args':[{'int':'" + amount + "'},{'string':'" + to + "'}]}]}");
+            return JObject.FromObject(new
+            {
+                entrypoint = "transfer",
+                value = new object[]
+                {
+                    new
+                    {
+                        prim = "Pair",
+                        args = new object[]
+                        {
+                            new
+                            {
+                                @int = amount.ToString()
+                            },
+                            new
+                            {
+                                @string = to
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         #endregion Helpers

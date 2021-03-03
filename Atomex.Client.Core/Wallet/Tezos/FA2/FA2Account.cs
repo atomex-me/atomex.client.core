@@ -3,6 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Newtonsoft.Json.Linq;
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
@@ -10,8 +14,6 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using Newtonsoft.Json.Linq;
-using Serilog;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -961,7 +963,53 @@ namespace Atomex.Wallet.Tezos
         #region Helpers
         private JObject TransferParams(long tokenId, string from, string to, decimal amount)
         {
-            return JObject.Parse(@"{'entrypoint':'transfer','value':[{'prim':'Pair','args':[{'string':'" + from + "'},[{'prim':'Pair','args':[{'string':'" + to + "'},{'prim':'Pair','args':[{'int':'" + tokenId + "'},{'int':'" + amount + "'}]}]}]]}]}");
+            return JObject.FromObject(new
+            {
+                entrypoint = "transfer",
+                value = new object[]
+                {
+                    new
+                    {
+                        prim = "Pair",
+                        args = new object[]
+                        {
+                            new
+                            {
+                                @string = from
+                            },
+                            new object[]
+                            {
+                                new
+                                {
+                                    prim = "Pair",
+                                    args = new object[]
+                                    {
+                                        new
+                                        {
+                                            @string = to,
+                                        },
+                                        new
+                                        {
+                                            prim = "Pair",
+                                            args = new object[]
+                                            {
+                                                new
+                                                {
+                                                    @int = tokenId.ToString()
+                                                },
+                                                new
+                                                {
+                                                    @int = amount.ToString()
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         #endregion Helpers

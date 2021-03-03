@@ -103,7 +103,7 @@ namespace Atomex.Blockchain.Tezos
 
             Operations = new JArray();
 
-            var gas = GasLimit.ToString(CultureInfo.InvariantCulture);
+            var gas     = GasLimit.ToString(CultureInfo.InvariantCulture);
             var storage = StorageLimit.ToString(CultureInfo.InvariantCulture);
 
             var counter = await TezosCounter.Instance
@@ -146,17 +146,17 @@ namespace Atomex.Blockchain.Tezos
                 transaction["parameters"] = Params;
         }
 
-        public async Task<bool> SignAsync(
+        public Task<bool> SignAsync(
             IKeyStorage keyStorage,
             WalletAddress address,
             CancellationToken cancellationToken = default)
         {
-            var xtz = (Atomex.Tezos) Currency;
+            //var xtz = (Atomex.Tezos) Currency;
 
             if (address.KeyIndex == null)
             {
                 Log.Error("Can't find private key for address {@address}", address);
-                return false;
+                return Task.FromResult(false);
             }
 
             using var securePrivateKey = keyStorage
@@ -165,7 +165,7 @@ namespace Atomex.Blockchain.Tezos
             if (securePrivateKey == null)
             {
                 Log.Error("Can't find private key for address {@address}", address);
-                return false;
+                return Task.FromResult(false);
             }
 
             using var privateKey = securePrivateKey.ToUnsecuredBytes();
@@ -173,33 +173,27 @@ namespace Atomex.Blockchain.Tezos
             using var securePublicKey = keyStorage
                 .GetPublicKey(Currency, address.KeyIndex);
 
-            var rpc = new Rpc(xtz.RpcNodeUri);
+            //var rpc = new Rpc(xtz.RpcNodeUri);
 
-            Head = await rpc
-                .GetHeader()
-                .ConfigureAwait(false);
-
-            await FillOperationsAsync(Head, securePublicKey, incrementCounter: true, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (Type != BlockchainTransactionType.Output)
-                UseDefaultFee = true;
-
-            var fill = await rpc
-                .AutoFillOperations(xtz, Head, Operations, UseSafeStorageLimit, UseDefaultFee)
-                .ConfigureAwait(false);
-
-            if (!fill)
-            {
-                Log.Error("Transaction autofilling error");
-                return false;
-            }
-
-            // todo: update Fee, GasLimit, StorageLimit
-
-            //var forgedOpGroup = await rpc
-            //    .ForgeOperations(Head, Operations)
+            //Head = await rpc
+            //    .GetHeader()
             //    .ConfigureAwait(false);
+
+            //await FillOperationsAsync(Head, securePublicKey, incrementCounter: true, cancellationToken)
+            //    .ConfigureAwait(false);
+
+            //if (Type != BlockchainTransactionType.Output)
+            //    UseDefaultFee = true;
+
+            //var fill = await rpc
+            //    .AutoFillOperations(xtz, Head, Operations, UseSafeStorageLimit, UseDefaultFee)
+            //    .ConfigureAwait(false);
+
+            //if (!fill)
+            //{
+            //    Log.Error("Transaction autofilling error");
+            //    return false;
+            //}
 
             var forgedOpGroup = Forge.ForgeOperationsLocal(Head, Operations);
 
@@ -209,7 +203,7 @@ namespace Atomex.Blockchain.Tezos
                 watermark: Watermark.Generic,
                 isExtendedKey: privateKey.Length == 64);
 
-            return true;
+            return Task.FromResult(SignedMessage != null);
         }
 
         public async Task<bool> SignDelegationOperationAsync(
