@@ -215,10 +215,11 @@ namespace Atomex
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default)
         {
-            var result = RedeemFee.ToTez() + RevealFee.ToTez() + MicroTezReserve.ToTez() + //todo: define another value for revealed
+            var result = (RedeemFee + RevealFee + MicroTezReserve + //todo: define another value for revealed
                 (toAddress != null && toAddress.AvailableBalance() > 0
                     ? 0
-                    : ActivationStorage / StorageFeeMultiplier);
+                    : ActivationStorage * StorageFeeMultiplier))
+                .ToTez();
 
             return Task.FromResult(result);
         }

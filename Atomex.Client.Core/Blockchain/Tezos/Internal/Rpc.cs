@@ -182,7 +182,12 @@ namespace Atomex.Blockchain.Tezos.Internal
             return opResults;
         }
 
-        public async Task<bool> AutoFillOperations(Atomex.Tezos tezos, JObject head, JArray operations, bool defaultFee = true)
+        public async Task<bool> AutoFillOperations(
+            Atomex.Tezos tezos,
+            JObject head,
+            JArray operations,
+            bool useSafeStorageLimit = false,
+            bool defaultFee = true)
         {
             var runResults = await RunOperations(head, operations)
                 .ConfigureAwait(false);
@@ -203,8 +208,6 @@ namespace Atomex.Blockchain.Tezos.Internal
                             ?.SelectToken("internal_operation_results")
                             ?.Sum(res => res["result"]?["consumed_gas"]?.Value<decimal>() ?? 0) ?? 0;
 
-                        //storage = operationResult?["storage_size"]?.Value<decimal>() ?? 0;
-
                         storage_diff = operationResult?["paid_storage_size_diff"]?.Value<decimal>() ?? 0;
                         storage_diff += tezos.ActivationStorage * (operationResult?["allocated_destination_contract"]?.ToString() == "True" ? 1 : 0);
                         storage_diff += tezos.ActivationStorage * metaData?["internal_operation_results"]
@@ -219,16 +222,12 @@ namespace Atomex.Blockchain.Tezos.Internal
                             .FirstOrDefault(o => o["counter"] != null && o["counter"].ToString() == result["counter"].ToString());
 
                         op["gas_limit"] = gas.ToString();
-                        op["storage_limit"] = storage_diff.ToString();
+
+                        op["storage_limit"] = useSafeStorageLimit
+                            ? Math.Max(op["storage_limit"].Value<decimal>(), storage_diff).ToString()
+                            : storage_diff.ToString();
 
                         var forgedOpLocal = Forge.ForgeOperationsLocal(null, op);
-
-                        ///Checking for local and node forging results equality
-
-                        //JToken forgedOp = await ForgeOperations(head, op);
-
-                        //if (forgedOpLocal.ToString() != forgedOp.ToString().Substring((int)tezos.HeadSizeInBytes * 2))
-                        //    Log.Error("Local operation forge result differs from remote"); //process the error
 
                         size = forgedOpLocal.ToString().Length / 2 + Math.Ceiling((tezos.HeadSizeInBytes + tezos.SigSizeInBytes) / operations.Count);
                         fee = tezos.MinimalFee + tezos.MinimalNanotezPerByte * size + (long)Math.Ceiling(tezos.MinimalNanotezPerGasUnit * gas) + 1;
