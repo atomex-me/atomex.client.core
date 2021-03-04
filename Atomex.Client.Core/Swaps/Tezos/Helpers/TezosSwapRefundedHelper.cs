@@ -2,10 +2,13 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Newtonsoft.Json.Linq;
+using Serilog;
+
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
-using Serilog;
 
 namespace Atomex.Swaps.Tezos.Helpers
 {
@@ -111,14 +114,36 @@ namespace Atomex.Swaps.Tezos.Helpers
         {
             try
             {
-                var secretHashBytes = Hex.FromString(tx.Params["value"]["args"][0]["args"][0]["bytes"].ToString());
+                if (tx.Params == null)
+                    return false;
 
-                return secretHashBytes.SequenceEqual(secretHash);
+                var entrypoint = tx.Params?["entrypoint"]?.ToString();
+
+                if (entrypoint == "default" && tx.Params?["value"]?["prim"]?.Value<string>() != "Right")
+                    return false;
+
+                var paramSecretHashInHex = entrypoint switch
+                {
+                    "default"  => GetSecretHash(tx.Params?["value"]?["args"]?[0]?["args"]?[0]),
+                    "withdraw" => GetSecretHash(tx.Params?["value"]?["args"]?[0]),
+                    "refund"   => GetSecretHash(tx.Params?["value"]),
+                    _          => ""
+                };
+
+                if (paramSecretHashInHex == null)
+                    return false;
+
+                var paramSecretHashBytes = Hex.FromString(paramSecretHashInHex);
+
+                return paramSecretHashBytes.SequenceEqual(secretHash);
             }
             catch (Exception)
             {
                 return false;
             }
         }
+
+        private static string GetSecretHash(JToken refundParams) =>
+            refundParams?["bytes"]?.Value<string>();
     }
 }
