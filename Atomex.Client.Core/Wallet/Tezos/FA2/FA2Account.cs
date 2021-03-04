@@ -89,7 +89,7 @@ namespace Atomex.Wallet.Tezos
                     GasLimit = fa2.TransferGasLimit,
                     StorageLimit = storageLimit,
                     Params = TransferParams(fa2.TokenID, selectedAddress.WalletAddress.Address, to, Math.Round(addressAmountInDigits, 0)),
-                    UseDefaultFee = useDefaultFee,
+                    UseRun = useDefaultFee,
                     Type = BlockchainTransactionType.Output
                 };
 

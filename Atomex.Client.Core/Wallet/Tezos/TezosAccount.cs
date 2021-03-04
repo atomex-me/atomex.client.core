@@ -100,7 +100,7 @@ namespace Atomex.Wallet.Tezos
                     Fee           = selectedAddress.UsedFee.ToMicroTez(),
                     GasLimit      = xtz.GasLimit,
                     StorageLimit  = storageLimit,
-                    UseDefaultFee = useDefaultFee,
+                    UseRun = useDefaultFee,
                     Type          = BlockchainTransactionType.Output
                 };
 

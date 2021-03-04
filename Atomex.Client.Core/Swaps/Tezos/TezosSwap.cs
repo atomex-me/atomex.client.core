@@ -253,7 +253,7 @@ namespace Atomex.Swaps.Tezos
                 GasLimit            = xtz.RedeemGasLimit,
                 StorageLimit        = xtz.RedeemStorageLimit,
                 Params              = RedeemParams(swap),
-                UseDefaultFee       = true,
+                UseRun       = true,
                 Type                = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
                 UseSafeStorageLimit = true
             };
@@ -340,7 +340,7 @@ namespace Atomex.Swaps.Tezos
                 GasLimit            = xtz.RedeemGasLimit,
                 StorageLimit        = xtz.RedeemStorageLimit,
                 Params              = RedeemParams(swap),
-                UseDefaultFee       = true,
+                UseRun       = true,
                 Type                = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
                 UseSafeStorageLimit = true
             };
@@ -411,7 +411,7 @@ namespace Atomex.Swaps.Tezos
                 GasLimit            = xtz.RefundGasLimit,
                 StorageLimit        = xtz.RefundStorageLimit,
                 Params              = RefundParams(swap),
-                UseDefaultFee       = true,
+                UseRun       = true,
                 Type                = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund,
                 UseSafeStorageLimit = true
             };
@@ -713,7 +713,7 @@ namespace Atomex.Swaps.Tezos
                         GasLimit            = xtz.InitiateGasLimit,
                         StorageLimit        = xtz.InitiateStorageLimit,
                         Params              = InitParams(swap, refundTimeStampUtcInSec, (long)rewardForRedeemInMtz),
-                        UseDefaultFee       = true,
+                        UseRun       = true,
                         Type                = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment,
                         UseSafeStorageLimit = true
                     });
@@ -730,7 +730,7 @@ namespace Atomex.Swaps.Tezos
                         Fee                 = feeAmountInMtz,
                         GasLimit            = xtz.AddGasLimit,
                         StorageLimit        = xtz.AddStorageLimit,
-                        UseDefaultFee       = true,
+                        UseRun       = true,
                         Params              = AddParams(swap),
                         Type                = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment,
                         UseSafeStorageLimit = true

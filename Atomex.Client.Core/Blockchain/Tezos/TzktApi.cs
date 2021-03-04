@@ -747,20 +747,21 @@ namespace Atomex.Blockchain.Tezos
 
                 var tx = new TezosTransaction
                 {
-                    Currency     = token,
-                    From         = callingAddress,
-                    To           = token.TokenContractAddress,
-                    Fee          = 0, //token.GetBalanceFee,
-                    GasLimit     = token.GetBalanceGasLimit,
-                    StorageLimit = 0, //token.GetBalanceStorageLimit,
-                    Params       = GetBalanceParams(address, token.ViewContractAddress),
+                    Currency          = token,
+                    From              = callingAddress,
+                    To                = token.TokenContractAddress,
+                    Fee               = 0, //token.GetBalanceFee,
+                    GasLimit          = token.GetBalanceGasLimit,
+                    StorageLimit      = 0, //token.GetBalanceStorageLimit,
+                    Params            = GetBalanceParams(address, token.ViewContractAddress),
+                    UseRun            = false,
+                    UseOfflineCounter = false
                 };
 
                 await tx
                     .FillOperationsAsync(
                         head: head,
                         securePublicKey: securePublicKey,
-                        incrementCounter: false,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -907,20 +908,21 @@ namespace Atomex.Blockchain.Tezos
 
                 var tx = new TezosTransaction
                 {
-                    Currency     = token,
-                    From         = callingAddress,
-                    To           = token.TokenContractAddress,
-                    Fee          = 0, //token.GetAllowanceFee,
-                    GasLimit     = token.GetAllowanceGasLimit,
-                    StorageLimit = 0, //token.GetAllowanceStorageLimit,
-                    Params       = GetAllowanceParams(holderAddress, spenderAddress, token.ViewContractAddress),
+                    Currency          = token,
+                    From              = callingAddress,
+                    To                = token.TokenContractAddress,
+                    Fee               = 0, //token.GetAllowanceFee,
+                    GasLimit          = token.GetAllowanceGasLimit,
+                    StorageLimit      = 0, //token.GetAllowanceStorageLimit,
+                    Params            = GetAllowanceParams(holderAddress, spenderAddress, token.ViewContractAddress),
+                    UseRun            = false,
+                    UseOfflineCounter = false
                 };
 
                 await tx
                     .FillOperationsAsync(
                         head: head,
                         securePublicKey: securePublicKey,
-                        incrementCounter: false,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

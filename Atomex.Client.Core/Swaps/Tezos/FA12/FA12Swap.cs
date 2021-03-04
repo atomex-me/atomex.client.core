@@ -286,7 +286,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 GasLimit            = fa12.RedeemGasLimit,
                 StorageLimit        = fa12.RedeemStorageLimit,
                 Params              = RedeemParams(swap),
-                UseDefaultFee       = true,
+                UseRun       = true,
                 Type                = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
                 UseSafeStorageLimit = true
             };
@@ -371,7 +371,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 GasLimit            = fa12.RedeemGasLimit,
                 StorageLimit        = fa12.RedeemStorageLimit,
                 Params              = RedeemParams(swap),
-                UseDefaultFee       = true,
+                UseRun       = true,
                 Type                = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
                 UseSafeStorageLimit = true
             };
@@ -442,7 +442,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 GasLimit            = fa12.RefundGasLimit,
                 StorageLimit        = fa12.RefundStorageLimit,
                 Params              = RefundParams(swap),
-                UseDefaultFee       = true,
+                UseRun       = true,
                 Type                = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund,
                 UseSafeStorageLimit = true
             };
@@ -773,7 +773,7 @@ namespace Atomex.Swaps.Tezos.FA12
                         GasLimit            = fa12.ApproveGasLimit,
                         StorageLimit        = fa12.ApproveStorageLimit,
                         Params              = ApproveParams(fa12.SwapContractAddress, 0),
-                        UseDefaultFee       = true,
+                        UseRun       = true,
                         Type                = BlockchainTransactionType.TokenApprove,
                         UseSafeStorageLimit = true
                     });
@@ -789,7 +789,7 @@ namespace Atomex.Swaps.Tezos.FA12
                     GasLimit            = fa12.ApproveGasLimit,
                     StorageLimit        = fa12.ApproveStorageLimit,
                     Params              = ApproveParams(fa12.SwapContractAddress, amountInTokens.ToTokenDigits(fa12.DigitsMultiplier)),
-                    UseDefaultFee       = true,
+                    UseRun       = true,
                     Type                = BlockchainTransactionType.TokenApprove,
                     UseSafeStorageLimit = true
                 });
@@ -806,7 +806,7 @@ namespace Atomex.Swaps.Tezos.FA12
                         GasLimit            = fa12.InitiateGasLimit,
                         StorageLimit        = fa12.InitiateStorageLimit,
                         Params              = InitParams(swap, fa12.TokenContractAddress, amountInTokens.ToTokenDigits(fa12.DigitsMultiplier), refundTimeStampUtcInSec, (long)rewardForRedeemInTokenDigits),
-                        UseDefaultFee       = true,
+                        UseRun       = true,
                         Type                = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment,
                         UseSafeStorageLimit = true
                     });

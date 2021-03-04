@@ -38,7 +38,7 @@ namespace Atomex.Blockchain.Tezos
         public decimal StorageLimit { get; set; }
         public decimal Burn { get; set; }
         public string Alias { get; set; }
-        public bool UseDefaultFee { get; set; }
+
         public JObject Params { get; set; }
         public bool IsInternal { get; set; }
         public int InternalIndex { get; set; }
@@ -46,7 +46,12 @@ namespace Atomex.Blockchain.Tezos
         public JArray Operations { get; private set; }
         public JObject Head { get; private set; }
         public SignedMessage SignedMessage { get; private set; }
+
+        public string OperationType { get; set; }
         public bool UseSafeStorageLimit { get; set; } = false;
+        public bool UseRun { get; set; } = true;
+        public bool UsePreApply { get; set; } = true;
+        public bool UseOfflineCounter { get; set; } = true;
 
         public List<TezosTransaction> InternalTxs { get; set; }
 
@@ -85,10 +90,53 @@ namespace Atomex.Blockchain.Tezos
             return resTx;
         }
 
-        public async Task FillOperationsAsync(
+        public async Task<bool> SignAsync(
+            IKeyStorage keyStorage,
+            WalletAddress address,
+            CancellationToken cancellationToken = default)
+        {
+            if (address.KeyIndex == null)
+            {
+                Log.Error("Can't find private key for address {@address}", address);
+                return false;
+            }
+
+            using var securePrivateKey = keyStorage
+                .GetPrivateKey(Currency, address.KeyIndex);
+
+            if (securePrivateKey == null)
+            {
+                Log.Error("Can't find private key for address {@address}", address);
+                return false;
+            }
+
+            using var privateKey = securePrivateKey.ToUnsecuredBytes();
+
+            if (Head == null)
+            {
+                var xtz = (Atomex.Tezos)Currency;
+
+                var rpc = new Rpc(xtz.RpcNodeUri);
+
+                Head = await rpc
+                    .GetHeader()
+                    .ConfigureAwait(false);
+            }
+
+            var forgedOpGroup = Forge.ForgeOperationsLocal(Head, Operations);
+
+            SignedMessage = TezosSigner.SignHash(
+                data: Hex.FromString(forgedOpGroup.ToString()),
+                privateKey: privateKey,
+                watermark: Watermark.Generic,
+                isExtendedKey: privateKey.Length == 64);
+
+            return SignedMessage != null;
+        }
+
+        public async Task<bool> FillOperationsAsync(
             JObject head,
             SecureBytes securePublicKey,
-            bool incrementCounter = true,
             CancellationToken cancellationToken = default)
         {
             using var publicKey = securePublicKey.ToUnsecuredBytes();
@@ -101,20 +149,31 @@ namespace Atomex.Blockchain.Tezos
                 .GetManagerKey(From)
                 .ConfigureAwait(false);
 
+            Head = head ?? await rpc
+                .GetHeader()
+                .ConfigureAwait(false);
+
             Operations = new JArray();
 
             var gas     = GasLimit.ToString(CultureInfo.InvariantCulture);
             var storage = StorageLimit.ToString(CultureInfo.InvariantCulture);
 
+            var revealed = managerKey.Value<string>() != null;
+
             var counter = await TezosCounter.Instance
-                .GetCounter(xtz, From, head, ignoreCache: !incrementCounter)
+                .GetCounter(
+                    address: From,
+                    head: head,
+                    tezosConfig: xtz,
+                    useOffline: UseOfflineCounter,
+                    counters: revealed ? 1 : 2)
                 .ConfigureAwait(false);
 
-            if (managerKey.Value<string>() == null)
+            if (!revealed)
             {
                 var revealOp = new JObject
                 {
-                    ["kind"]          = OperationType.Reveal,
+                    ["kind"]          = Internal.OperationType.Reveal,
                     ["fee"]           = "0",
                     ["public_key"]    = Base58Check.Encode(publicKey, Prefix.Edpk),
                     ["source"]        = From,
@@ -128,233 +187,134 @@ namespace Atomex.Blockchain.Tezos
                 counter++;
             }
 
-            var transaction = new JObject
+            var operation = new JObject
             {
-                ["kind"]          = OperationType.Transaction,
+                ["kind"]          = OperationType,
                 ["source"]        = From,
                 ["fee"]           = ((int)Fee).ToString(CultureInfo.InvariantCulture),
                 ["counter"]       = counter.ToString(),
                 ["gas_limit"]     = gas,
                 ["storage_limit"] = storage,
-                ["amount"]        = Math.Round(Amount, 0).ToString(CultureInfo.InvariantCulture),
-                ["destination"]   = To
             };
 
-            Operations.Add(transaction);
+            if (OperationType == Internal.OperationType.Transaction)
+            {
+                operation["amount"]      = Math.Round(Amount, 0).ToString(CultureInfo.InvariantCulture);
+                operation["destination"] = To;
+            }
+            else if (OperationType == Internal.OperationType.Delegation)
+            {
+                operation["delegate"] = To;
+            }
+            else throw new NotSupportedException($"Operation type {OperationType} not supporeted yet.");
+
+            Operations.Add(operation);
 
             if (Params != null)
-                transaction["parameters"] = Params;
-        }
+                operation["parameters"] = Params;
 
-        public Task<bool> SignAsync(
-            IKeyStorage keyStorage,
-            WalletAddress address,
-            CancellationToken cancellationToken = default)
-        {
-            //var xtz = (Atomex.Tezos) Currency;
-
-            if (address.KeyIndex == null)
+            if (UseRun)
             {
-                Log.Error("Can't find private key for address {@address}", address);
-                return Task.FromResult(false);
-            }
+                var fill = await rpc
+                    .AutoFillOperations(xtz, Head, Operations, UseSafeStorageLimit)
+                    .ConfigureAwait(false);
 
-            using var securePrivateKey = keyStorage
-                .GetPrivateKey(Currency, address.KeyIndex);
-
-            if (securePrivateKey == null)
-            {
-                Log.Error("Can't find private key for address {@address}", address);
-                return Task.FromResult(false);
-            }
-
-            using var privateKey = securePrivateKey.ToUnsecuredBytes();
-
-            using var securePublicKey = keyStorage
-                .GetPublicKey(Currency, address.KeyIndex);
-
-            //var rpc = new Rpc(xtz.RpcNodeUri);
-
-            //Head = await rpc
-            //    .GetHeader()
-            //    .ConfigureAwait(false);
-
-            //await FillOperationsAsync(Head, securePublicKey, incrementCounter: true, cancellationToken)
-            //    .ConfigureAwait(false);
-
-            //if (Type != BlockchainTransactionType.Output)
-            //    UseDefaultFee = true;
-
-            //var fill = await rpc
-            //    .AutoFillOperations(xtz, Head, Operations, UseSafeStorageLimit, UseDefaultFee)
-            //    .ConfigureAwait(false);
-
-            //if (!fill)
-            //{
-            //    Log.Error("Transaction autofilling error");
-            //    return false;
-            //}
-
-            var forgedOpGroup = Forge.ForgeOperationsLocal(Head, Operations);
-
-            SignedMessage = TezosSigner.SignHash(
-                data: Hex.FromString(forgedOpGroup.ToString()),
-                privateKey: privateKey,
-                watermark: Watermark.Generic,
-                isExtendedKey: privateKey.Length == 64);
-
-            return Task.FromResult(SignedMessage != null);
-        }
-
-        public async Task<bool> SignDelegationOperationAsync(
-            IKeyStorage keyStorage,
-            WalletAddress address,
-            CancellationToken cancellationToken = default)
-        {
-            var xtz = (Atomex.Tezos) Currency;
-
-            if (address.KeyIndex == null)
-            {
-                Log.Error("Can't find private key for address {@address}", address);
-                return false;
-            }
-
-            using var securePrivateKey = keyStorage
-                .GetPrivateKey(Currency, address.KeyIndex);
-
-            if (securePrivateKey == null)
-            {
-                Log.Error("Can't find private key for address {@address}", address);
-                return false;
-            }
-
-            using var privateKey = securePrivateKey.ToUnsecuredBytes();
-
-            var rpc = new Rpc(xtz.RpcNodeUri);
-
-            Head = await rpc
-                .GetHeader()
-                .ConfigureAwait(false);
-
-            var forgedOpGroup = await rpc
-                .ForgeOperations(Head, Operations)
-                .ConfigureAwait(false);
-
-            var forgedOpGroupLocal = Forge.ForgeOperationsLocal(Head, Operations);
-
-            if (true)  //if (config.CheckForge == true) add option for higher security tezos mode to config
-            {
-                if (forgedOpGroupLocal.ToString() != forgedOpGroup.ToString())
+                if (!fill)
                 {
-                    Log.Error("Local and remote forge results differ");
+                    Log.Error("Operation autofilling error");
                     return false;
                 }
-            }
 
-            SignedMessage = TezosSigner.SignHash(
-                data: Hex.FromString(forgedOpGroup.ToString()),
-                privateKey: privateKey,
-                watermark: Watermark.Generic,
-                isExtendedKey: privateKey.Length == 64);
+                Fee = Operations.Last["fee"].Value<decimal>().ToTez();
+            }
 
             return true;
         }
 
-        public async Task<bool> AutoFillDelegationFeeAsync(
-            IKeyStorage keyStorage,
-            WalletAddress address,
-            bool useDefaultFee)
-        {
-            var xtz = (Atomex.Tezos) Currency;
+        //public async Task<bool> AutoFillDelegationFeeAsync(
+        //    IKeyStorage keyStorage,
+        //    WalletAddress address,
+        //    bool useDefaultFee)
+        //{
+        //    var xtz = (Atomex.Tezos) Currency;
 
-            if (address.KeyIndex == null)
-            {
-                Log.Error("Can't find private key for address {@address}", address);
-                return false;
-            }
+        //    if (address.KeyIndex == null)
+        //    {
+        //        Log.Error("Can't find private key for address {@address}", address);
+        //        return false;
+        //    }
 
-            using var securePrivateKey = keyStorage
-                .GetPrivateKey(Currency, address.KeyIndex);
+        //    using var securePublicKey = keyStorage
+        //        .GetPublicKey(Currency, address.KeyIndex);
 
-            if (securePrivateKey == null)
-            {
-                Log.Error("Can't find private key for address {@address}", address);
-                return false;
-            }
+        //    using var publicKey = securePublicKey.ToUnsecuredBytes();
 
-            using var privateKey = securePrivateKey.ToUnsecuredBytes();
+        //    var rpc = new Rpc(xtz.RpcNodeUri);
 
-            using var securePublicKey = keyStorage
-                .GetPublicKey(Currency, address.KeyIndex);
+        //    Head = await rpc
+        //        .GetHeader()
+        //        .ConfigureAwait(false);
 
-            using var publicKey = securePublicKey.ToUnsecuredBytes();
+        //    var managerKey = await rpc
+        //        .GetManagerKey(From)
+        //        .ConfigureAwait(false);
 
-            var rpc = new Rpc(xtz.RpcNodeUri);
+        //    Operations = new JArray();
 
-            Head = await rpc
-                .GetHeader()
-                .ConfigureAwait(false);
+        //    var gas = GasLimit.ToString(CultureInfo.InvariantCulture);
+        //    var storage = StorageLimit.ToString(CultureInfo.InvariantCulture);
 
-            var managerKey = await rpc
-                .GetManagerKey(From)
-                .ConfigureAwait(false);
+        //    var counter = await TezosCounter.Instance
+        //        .GetCounter(xtz, From, Head, ignoreCache: true)
+        //        .ConfigureAwait(false);
 
-            Operations = new JArray();
+        //    if (managerKey.Value<string>() == null)
+        //    {
+        //        var revealOp = new JObject
+        //        {
+        //            ["kind"]          = OperationType.Reveal,
+        //            ["fee"]           = "0",
+        //            ["public_key"]    = Base58Check.Encode(publicKey, Prefix.Edpk),
+        //            ["source"]        = From,
+        //            ["storage_limit"] = storage,
+        //            ["gas_limit"]     = gas,
+        //            ["counter"]       = counter.ToString()
+        //        };
 
-            var gas = GasLimit.ToString(CultureInfo.InvariantCulture);
-            var storage = StorageLimit.ToString(CultureInfo.InvariantCulture);
+        //        Operations.AddFirst(revealOp);
 
-            var counter = await TezosCounter.Instance
-                .GetCounter(xtz, From, Head, ignoreCache: true)
-                .ConfigureAwait(false);
+        //        counter++;
+        //    }
 
-            if (managerKey.Value<string>() == null)
-            {
-                var revealOp = new JObject
-                {
-                    ["kind"]          = OperationType.Reveal,
-                    ["fee"]           = "0",
-                    ["public_key"]    = Base58Check.Encode(publicKey, Prefix.Edpk),
-                    ["source"]        = From,
-                    ["storage_limit"] = storage,
-                    ["gas_limit"]     = gas,
-                    ["counter"]       = counter.ToString()
-                };
+        //    var transaction = new JObject
+        //    {
+        //        ["kind"]          = OperationType.Delegation,
+        //        ["source"]        = From,
+        //        ["fee"]           = ((int)Fee).ToString(CultureInfo.InvariantCulture),
+        //        ["counter"]       = counter.ToString(),
+        //        ["gas_limit"]     = gas,
+        //        ["storage_limit"] = storage,
+        //        ["delegate"]      = To
+        //    };
 
-                Operations.AddFirst(revealOp);
+        //    Operations.Add(transaction);
 
-                counter++;
-            }
+        //    if (Params != null)
+        //        transaction["parameters"] = Params;
 
-            var transaction = new JObject
-            {
-                ["kind"]          = OperationType.Delegation,
-                ["source"]        = From,
-                ["fee"]           = ((int)Fee).ToString(CultureInfo.InvariantCulture),
-                ["counter"]       = counter.ToString(),
-                ["gas_limit"]     = gas,
-                ["storage_limit"] = storage,
-                ["delegate"]      = To
-            };
+        //    var fill = await rpc
+        //        .AutoFillOperations(xtz, Head, Operations, useDefaultFee)
+        //        .ConfigureAwait(false);
 
-            Operations.Add(transaction);
+        //    if (!fill)
+        //    {
+        //        Log.Error("Delegation autofilling error");
+        //        return false;
+        //    }
 
-            if (Params != null)
-                transaction["parameters"] = Params;
-
-            var fill = await rpc
-                .AutoFillOperations(xtz, Head, Operations, useDefaultFee)
-                .ConfigureAwait(false);
-
-            if (!fill)
-            {
-                Log.Error("Delegation autofilling error");
-                return false;
-            }
-
-            Fee = Operations.Last["fee"].Value<decimal>() / 1_000_000;
+        //    Fee = Operations.Last["fee"].Value<decimal>() / 1_000_000;
             
-            return true;
-        }
+        //    return true;
+        //}
     }
 }

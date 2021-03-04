@@ -288,7 +288,7 @@ namespace Atomex.Swaps.Tezos.FA2
                 GasLimit      = fa2.RedeemGasLimit,
                 StorageLimit  = fa2.RedeemStorageLimit,
                 Params        = RedeemParams(swap),
-                UseDefaultFee = true,
+                UseRun = true,
                 Type          = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
             };
 
@@ -374,7 +374,7 @@ namespace Atomex.Swaps.Tezos.FA2
                 GasLimit      = fa2.RedeemGasLimit,
                 StorageLimit  = fa2.RedeemStorageLimit,
                 Params        = RedeemParams(swap),
-                UseDefaultFee = true,
+                UseRun = true,
                 Type          = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
             };
 
@@ -444,7 +444,7 @@ namespace Atomex.Swaps.Tezos.FA2
                 GasLimit      = fa2.RefundGasLimit,
                 StorageLimit  = fa2.RefundStorageLimit,
                 Params        = RefundParams(swap),
-                UseDefaultFee = true,
+                UseRun = true,
                 Type          = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
             };
 
@@ -770,7 +770,7 @@ namespace Atomex.Swaps.Tezos.FA2
                         GasLimit      = fa2.ApproveGasLimit,
                         StorageLimit  = fa2.ApproveStorageLimit,
                         Params        = ApproveParams(walletAddress.Address, fa2.SwapContractAddress),
-                        UseDefaultFee = true,
+                        UseRun = true,
                         Type          = BlockchainTransactionType.TokenApprove
                     });
                 }
@@ -785,7 +785,7 @@ namespace Atomex.Swaps.Tezos.FA2
                     GasLimit      = fa2.InitiateGasLimit,
                     StorageLimit  = fa2.InitiateStorageLimit,
                     Params        = InitParams(swap, fa2.TokenContractAddress, fa2.TokenID, amountInTokens.ToTokenDigits(fa2.DigitsMultiplier), refundTimeStampUtcInSec, (long)rewardForRedeemInTokenDigits),
-                    UseDefaultFee = true,
+                    UseRun = true,
                     Type          = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
                 });
                 

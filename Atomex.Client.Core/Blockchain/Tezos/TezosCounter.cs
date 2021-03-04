@@ -1,28 +1,20 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain.Tezos.Internal;
+
 using Newtonsoft.Json.Linq;
+
+using Atomex.Blockchain.Tezos.Internal;
 
 namespace Atomex.Blockchain.Tezos
 {
     public class TezosCounter
     {
-        private TimeSpan ExpirationTimeOut { get; } = TimeSpan.FromSeconds(90);
-
-        private class CounterEntry
-        {
-            public int Value { get; set; }
-            public DateTime LastUpdatedTimeUtc { get; set; } 
-        }
-
-        private IDictionary<string, CounterEntry> _counters;
-        private readonly object _syncRoot;
+        private readonly Dictionary<string, int> _offlineCounters;
 
         private TezosCounter()
         {
-            _counters = new Dictionary<string, CounterEntry>();
-            _syncRoot = new object();
+            _offlineCounters = new Dictionary<string, int>();
         }
 
         private static TezosCounter _instance;
@@ -30,20 +22,26 @@ namespace Atomex.Blockchain.Tezos
         {
             get
             {
-                if (_instance == null)
-                    _instance = new TezosCounter();
+                var instance = _instance;
 
-                return _instance;
+                if (instance == null)
+                {
+                    Interlocked.CompareExchange(ref _instance, new TezosCounter(), null);
+                    instance = _instance;
+                }
+
+                return instance;
             }
         }
 
         public async Task<int> GetCounter(
-            Atomex.Tezos tezos,
             string address,
             JObject head,
-            bool ignoreCache = false)
+            Atomex.Tezos tezosConfig,
+            bool useOffline = false,
+            int counters = 1)
         {
-            var rpc = new Rpc(tezos.RpcNodeUri);
+            var rpc = new Rpc(tezosConfig.RpcNodeUri);
 
             var account = await rpc
                 .GetAccountForBlock(head["hash"].ToString(), address)
@@ -51,52 +49,29 @@ namespace Atomex.Blockchain.Tezos
 
             var counter = int.Parse(account["counter"].ToString());
 
-            lock (_syncRoot)
-            {
-                if (_counters.TryGetValue(address, out var offlineCounter))
-                {
-                    if (!ignoreCache &&
-                        offlineCounter.Value > counter &&
-                        DateTime.UtcNow - offlineCounter.LastUpdatedTimeUtc <= ExpirationTimeOut)
-                    {
-                        return ++offlineCounter.Value;
-                    }
-                    else
-                    {
-                        //++counter;
-                        _counters[address] = new CounterEntry
-                        {
-                            Value = ignoreCache ? counter : counter + 1,
-                            LastUpdatedTimeUtc = DateTime.UtcNow
-                        };
+            if (!useOffline)
+                return ++counter;
 
-                        return ++counter;
-                    }
+            lock (_offlineCounters)
+            {
+                if (_offlineCounters.TryGetValue(address, out var offlineCounter))
+                {
+                    _offlineCounters[address] = offlineCounter + counters;
+
+                    return ++offlineCounter;
                 }
                 else
                 {
-                    //++counter;
-                    _counters.Add(address, new CounterEntry
-                    {
-                        Value = ignoreCache ? counter : counter + 1,
-                        LastUpdatedTimeUtc = DateTime.UtcNow
-                    });
+                    _offlineCounters.Add(address, counter + counters);
 
                     return ++counter;
                 }
             }
         }
 
-        public async Task<int> GetCounter(Atomex.Tezos tezos, string address)
+        public void UpdateOfflineCounter(string address, int offlineCounter)
         {
-            var rpc = new Rpc(tezos.RpcNodeUri);
 
-            var head = await rpc
-                .GetHeader()
-                .ConfigureAwait(false);
-
-            return await GetCounter(tezos, address, head)
-                .ConfigureAwait(false);
         }
     }
 }
