@@ -30,5 +30,8 @@ namespace Atomex.Common
 
         public static DateTime FromHexString(this string hex) =>
             UnixStartTime.AddSeconds(int.Parse(hex, System.Globalization.NumberStyles.HexNumber));
+
+        public static long ToUnixTimeSeconds(this DateTime dateTime) =>
+            ((DateTimeOffset)dateTime.ToUniversalTime()).ToUnixTimeSeconds();
     }
 }
