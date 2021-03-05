@@ -62,6 +62,9 @@ namespace Atomex.Blockchain.Tezos.Internal
         public Task<JObject> GetHeader() =>
             QueryJ<JObject>($"chains/{_chain}/blocks/head/header");
 
+        public Task<JObject> GetHeader(int offset) =>
+            QueryJ<JObject>($"chains/{_chain}/blocks/head~{offset}/header");
+
         public Task<JObject> GetAccount(string address) =>
             GetAccountForBlock("head", address);
 
@@ -72,7 +75,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             QueryJ($"chains/{_chain}/blocks/head/context/contracts/{address}/manager_key");
 
         public async Task<bool> AutoFillOperations(
-            Atomex.Tezos tezos,
+            Atomex.Tezos tezosConfig,
             JObject head,
             JArray operations,
             bool useSafeStorageLimit = false,
@@ -92,14 +95,14 @@ namespace Atomex.Blockchain.Tezos.Internal
                 {
                     try
                     {
-                        gas = tezos.GasReserve + operationResult?["consumed_gas"]?.Value<decimal>() ?? 0;
+                        gas = tezosConfig.GasReserve + operationResult?["consumed_gas"]?.Value<decimal>() ?? 0;
                         gas += metaData
                             ?.SelectToken("internal_operation_results")
                             ?.Sum(res => res["result"]?["consumed_gas"]?.Value<decimal>() ?? 0) ?? 0;
 
                         storage_diff = operationResult?["paid_storage_size_diff"]?.Value<decimal>() ?? 0;
-                        storage_diff += tezos.ActivationStorage * (operationResult?["allocated_destination_contract"]?.ToString() == "True" ? 1 : 0);
-                        storage_diff += tezos.ActivationStorage * metaData?["internal_operation_results"]
+                        storage_diff += tezosConfig.ActivationStorage * (operationResult?["allocated_destination_contract"]?.ToString() == "True" ? 1 : 0);
+                        storage_diff += tezosConfig.ActivationStorage * metaData?["internal_operation_results"]
                             ?.Where(res => res["result"]?["allocated_destination_contract"]?.ToString() == "True")
                             .Count() ?? 0;
                         storage_diff += metaData
@@ -118,8 +121,8 @@ namespace Atomex.Blockchain.Tezos.Internal
 
                         var forgedOpLocal = Forge.ForgeOperationsLocal(null, op);
 
-                        size = forgedOpLocal.ToString().Length / 2 + Math.Ceiling((tezos.HeadSizeInBytes + tezos.SigSizeInBytes) / operations.Count);
-                        fee = tezos.MinimalFee + tezos.MinimalNanotezPerByte * size + (long)Math.Ceiling(tezos.MinimalNanotezPerGasUnit * gas) + 1;
+                        size = forgedOpLocal.ToString().Length / 2 + Math.Ceiling((tezosConfig.HeadSizeInBytes + tezosConfig.SigSizeInBytes) / operations.Count);
+                        fee = tezosConfig.MinimalFee + tezosConfig.MinimalNanotezPerByte * size + (long)Math.Ceiling(tezosConfig.MinimalNanotezPerGasUnit * gas) + 1;
 
                         if (useDefaultFee)
                             op["fee"] = fee.ToString();

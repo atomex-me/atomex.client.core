@@ -17,6 +17,9 @@ namespace Atomex.Swaps.Abstract
         Task RestoreSwapsAsync(
             CancellationToken cancellationToken = default);
 
+        Task SwapTimeoutControlAsync(
+            CancellationToken cancellationToken = default);
+
         void Clear();
     }
 }

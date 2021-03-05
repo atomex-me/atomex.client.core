@@ -1,4 +1,5 @@
 ﻿using System;
+
 using Atomex.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;

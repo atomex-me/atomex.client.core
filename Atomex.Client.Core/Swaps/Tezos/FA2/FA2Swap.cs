@@ -57,65 +57,62 @@ namespace Atomex.Swaps.Tezos.FA2
 
             try
             {
-                var approvalTxs = txs
-                    .Where(tx => tx.Type.HasFlag(BlockchainTransactionType.TokenApprove))
-                    .ToList();
-
-                foreach (var approvalTx in approvalTxs)
-                {
-                    var signResult = await SignTransactionAsync(approvalTx, cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (!signResult)
-                    {
-                        Log.Error("Approve transaction signing error");
-                        return;
-                    }
-
-                    await BroadcastTxAsync(swap, approvalTx, cancellationToken, false, true, false)
-                        .ConfigureAwait(false);
-
-                    var isApproved = await WaitPaymentConfirmationAsync(
-                            txId: approvalTx.Id,
-                            timeout: InitiationTimeout,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (!isApproved)
-                    {
-                        Log.Error("Approve payment txs not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
-                        return;
-                    }
-                }
-
-                txs = txs
-                    .Where(tx => tx.Type.HasFlag(BlockchainTransactionType.SwapPayment))
-                    .ToList();
-
-                var isInitiateTx = true;
-
                 foreach (var tx in txs)
                 {
-                    var signResult = await SignTransactionAsync(tx, cancellationToken)
-                        .ConfigureAwait(false);
+                    var isInitiateTx = tx.Type.HasFlag(BlockchainTransactionType.SwapPayment);
 
-                    if (!signResult)
+                    try
                     {
-                        Log.Error("Transaction signing error");
-                        return;
-                    }
+                        await TezosAccount.AddressLocker
+                            .LockAsync(tx.From, cancellationToken)
+                            .ConfigureAwait(false);
 
-                    if (isInitiateTx)
-                    {
-                        swap.PaymentTx = tx;
-                        swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
+                        var address = await _account
+                            .GetAddressAsync(tx.From, cancellationToken)
+                            .ConfigureAwait(false);
 
-                        await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentSigned, cancellationToken)
+                        using var securePublicKey = _account.Wallet
+                            .GetPublicKey(FA2, address.KeyIndex);
+
+                        // fill operation
+                        var fillResult = await tx
+                            .FillOperationsAsync(
+                                securePublicKey: securePublicKey,
+                                headOffset: Atomex.Tezos.HeadOffset,
+                                cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+
+                        var signResult = await SignTransactionAsync(tx, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (!signResult)
+                        {
+                            Log.Error("Transaction signing error");
+                            return;
+                        }
+
+                        if (isInitiateTx)
+                        {
+                            swap.PaymentTx = tx;
+                            swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
+
+                            await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentSigned, cancellationToken)
+                                .ConfigureAwait(false);
+                        }
+
+                        await BroadcastTxAsync(
+                                swap: swap,
+                                tx: tx,
+                                cancellationToken: cancellationToken,
+                                updateBalance: isInitiateTx,
+                                notifyIfUnconfirmed: true,
+                                notifyIfBalanceUpdated: isInitiateTx)
                             .ConfigureAwait(false);
                     }
-
-                    await BroadcastTxAsync(swap, tx, cancellationToken)
-                        .ConfigureAwait(false);
+                    finally
+                    {
+                        TezosAccount.AddressLocker.Unlock(tx.From);
+                    }
 
                     if (isInitiateTx)
                     {
@@ -124,24 +121,6 @@ namespace Atomex.Swaps.Tezos.FA2
 
                         await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentBroadcast)
                             .ConfigureAwait(false);
-
-                        isInitiateTx = false;
-
-                        // check initiate payment tx confirmation
-                        if (txs.Count > 1)
-                        {
-                            var isInitiated = await WaitPaymentConfirmationAsync(
-                                    txId: tx.Id,
-                                    timeout: InitiationTimeout,
-                                    cancellationToken: cancellationToken)
-                                .ConfigureAwait(false);
-
-                            if (!isInitiated)
-                            {
-                                Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
-                                return;
-                            }
-                        }
                     }
                 }
             }
@@ -213,13 +192,12 @@ namespace Atomex.Swaps.Tezos.FA2
                 swap.RedeemTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
             {
                 // redeem already broadcast
-                TrackTransactionConfirmationAsync(
-                        swap: swap,
-                        currency: fa2,
-                        txId: swap.RedeemTx.Id,
-                        confirmationHandler: RedeemConfirmedEventHandler,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
+                _ = TrackTransactionConfirmationAsync(
+                    swap: swap,
+                    currency: fa2,
+                    txId: swap.RedeemTx.Id,
+                    confirmationHandler: RedeemConfirmedEventHandler,
+                    cancellationToken: cancellationToken);
 
                 return;
             }
@@ -279,36 +257,61 @@ namespace Atomex.Swaps.Tezos.FA2
 
             var redeemTx = new TezosTransaction
             {
-                Currency      = fa2,
-                CreationTime  = DateTime.UtcNow,
-                From          = walletAddress.Address,
-                To            = fa2.SwapContractAddress,
-                Amount        = 0,
-                Fee           = fa2.RedeemFee + fa2.RevealFee,
-                GasLimit      = fa2.RedeemGasLimit,
-                StorageLimit  = fa2.RedeemStorageLimit,
-                Params        = RedeemParams(swap),
-                UseRun = true,
-                Type          = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
+                Currency     = fa2,
+                CreationTime = DateTime.UtcNow,
+                From         = walletAddress.Address,
+                To           = fa2.SwapContractAddress,
+                Amount       = 0,
+                Fee          = fa2.RedeemFee + fa2.RevealFee,
+                GasLimit     = fa2.RedeemGasLimit,
+                StorageLimit = fa2.RedeemStorageLimit,
+                Params       = RedeemParams(swap),
+                Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
+
+                UseRun              = true,
+                UseSafeStorageLimit = true,
+                UseOfflineCounter   = true
             };
 
-            var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!signResult)
+            try
             {
-                Log.Error("Transaction signing error");
-                return;
+                await TezosAccount.AddressLocker
+                    .LockAsync(redeemTx.From, cancellationToken)
+                    .ConfigureAwait(false);
+
+                using var securePublicKey = _account.Wallet
+                    .GetPublicKey(FA2, walletAddress.KeyIndex);
+
+                // fill operation
+                var fillResult = await redeemTx
+                    .FillOperationsAsync(
+                        securePublicKey: securePublicKey,
+                        headOffset: Atomex.Tezos.HeadOffset,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!signResult)
+                {
+                    Log.Error("Transaction signing error");
+                    return;
+                }
+
+                swap.RedeemTx = redeemTx;
+                swap.StateFlags |= SwapStateFlags.IsRedeemSigned;
+
+                await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemSigned, cancellationToken)
+                    .ConfigureAwait(false);
+
+                await BroadcastTxAsync(swap, redeemTx, cancellationToken)
+                    .ConfigureAwait(false);
             }
-
-            swap.RedeemTx = redeemTx;
-            swap.StateFlags |= SwapStateFlags.IsRedeemSigned;
-
-            await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemSigned, cancellationToken)
-                .ConfigureAwait(false);
-
-            await BroadcastTxAsync(swap, redeemTx, cancellationToken)
-                .ConfigureAwait(false);
+            finally
+            {
+                TezosAccount.AddressLocker.Unlock(redeemTx.From);
+            }
 
             swap.RedeemTx = redeemTx;
             swap.StateFlags |= SwapStateFlags.IsRedeemBroadcast;
@@ -316,13 +319,12 @@ namespace Atomex.Swaps.Tezos.FA2
             await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemBroadcast, cancellationToken)
                 .ConfigureAwait(false);
 
-            TrackTransactionConfirmationAsync(
-                    swap: swap,
-                    currency: fa2,
-                    txId: redeemTx.Id,
-                    confirmationHandler: RedeemConfirmedEventHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = TrackTransactionConfirmationAsync(
+                swap: swap,
+                currency: fa2,
+                txId: redeemTx.Id,
+                confirmationHandler: RedeemConfirmedEventHandler,
+                cancellationToken: cancellationToken);
         }
 
         public override async Task RedeemForPartyAsync(
@@ -365,30 +367,56 @@ namespace Atomex.Swaps.Tezos.FA2
 
             var redeemTx = new TezosTransaction
             {
-                Currency      = fa2,
-                CreationTime  = DateTime.UtcNow,
-                From          = walletAddress.Address,
-                To            = fa2.SwapContractAddress,
-                Amount        = 0,
-                Fee           = fa2.RedeemFee + fa2.RevealFee,
-                GasLimit      = fa2.RedeemGasLimit,
-                StorageLimit  = fa2.RedeemStorageLimit,
-                Params        = RedeemParams(swap),
-                UseRun = true,
-                Type          = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
+                Currency     = fa2,
+                CreationTime = DateTime.UtcNow,
+                From         = walletAddress.Address,
+                To           = fa2.SwapContractAddress,
+                Amount       = 0,
+                Fee          = fa2.RedeemFee + fa2.RevealFee,
+                GasLimit     = fa2.RedeemGasLimit,
+                StorageLimit = fa2.RedeemStorageLimit,
+                Params       = RedeemParams(swap),
+                Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
+
+                UseRun              = true,
+                UseSafeStorageLimit = true,
+                UseOfflineCounter   = true
             };
 
-            var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!signResult)
+            try
             {
-                Log.Error("Transaction signing error");
-                return;
-            }
+                await TezosAccount.AddressLocker
+                    .LockAsync(redeemTx.From, cancellationToken)
+                    .ConfigureAwait(false);
 
-            await BroadcastTxAsync(swap, redeemTx, cancellationToken)
-                .ConfigureAwait(false);
+                using var securePublicKey = _account.Wallet
+                    .GetPublicKey(FA2, walletAddress.KeyIndex);
+
+                // fill operation
+                var fillResult = await redeemTx
+                    .FillOperationsAsync(
+                        securePublicKey: securePublicKey,
+                        headOffset: Atomex.Tezos.HeadOffset,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+
+                var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!signResult)
+                {
+                    Log.Error("Transaction signing error");
+                    return;
+                }
+
+                await BroadcastTxAsync(swap, redeemTx, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            finally
+            {
+                TezosAccount.AddressLocker.Unlock(redeemTx.From);
+            }
         }
 
         public override async Task RefundAsync(
@@ -402,13 +430,12 @@ namespace Atomex.Swaps.Tezos.FA2
                 swap.RefundTx.CreationTime != null &&
                 swap.RefundTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
             {
-                TrackTransactionConfirmationAsync(
-                        swap: swap,
-                        currency: fa2,
-                        txId: swap.RefundTx.Id,
-                        confirmationHandler: RefundConfirmedEventHandler,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
+                _ = TrackTransactionConfirmationAsync(
+                    swap: swap,
+                    currency: fa2,
+                    txId: swap.RefundTx.Id,
+                    confirmationHandler: RefundConfirmedEventHandler,
+                    cancellationToken: cancellationToken);
 
                 return;
             }
@@ -434,37 +461,62 @@ namespace Atomex.Swaps.Tezos.FA2
                 return;
             }
 
-            var refundTx = new TezosTransaction   //todo: use estimated fee and storage limit
+            var refundTx = new TezosTransaction
             {
-                Currency      = fa2,
-                CreationTime  = DateTime.UtcNow,
-                From          = walletAddress.Address,
-                To            = fa2.SwapContractAddress,
-                Fee           = fa2.RefundFee + fa2.RevealFee,
-                GasLimit      = fa2.RefundGasLimit,
-                StorageLimit  = fa2.RefundStorageLimit,
-                Params        = RefundParams(swap),
-                UseRun = true,
-                Type          = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
+                Currency     = fa2,
+                CreationTime = DateTime.UtcNow,
+                From         = walletAddress.Address,
+                To           = fa2.SwapContractAddress,
+                Fee          = fa2.RefundFee + fa2.RevealFee,
+                GasLimit     = fa2.RefundGasLimit,
+                StorageLimit = fa2.RefundStorageLimit,
+                Params       = RefundParams(swap),
+                Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund,
+
+                UseRun              = true,
+                UseSafeStorageLimit = true,
+                UseOfflineCounter   = true
             };
 
-            var signResult = await SignTransactionAsync(refundTx, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!signResult)
+            try
             {
-                Log.Error("Transaction signing error");
-                return;
+                await TezosAccount.AddressLocker
+                    .LockAsync(refundTx.From, cancellationToken)
+                    .ConfigureAwait(false);
+
+                using var securePublicKey = _account.Wallet
+                    .GetPublicKey(FA2, walletAddress.KeyIndex);
+
+                // fill operation
+                var fillResult = await refundTx
+                    .FillOperationsAsync(
+                        securePublicKey: securePublicKey,
+                        headOffset: Atomex.Tezos.HeadOffset,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                var signResult = await SignTransactionAsync(refundTx, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!signResult)
+                {
+                    Log.Error("Transaction signing error");
+                    return;
+                }
+
+                swap.RefundTx = refundTx;
+                swap.StateFlags |= SwapStateFlags.IsRefundSigned;
+
+                await UpdateSwapAsync(swap, SwapStateFlags.IsRefundSigned, cancellationToken)
+                    .ConfigureAwait(false);
+
+                await BroadcastTxAsync(swap, refundTx, cancellationToken)
+                    .ConfigureAwait(false);
             }
-
-            swap.RefundTx = refundTx;
-            swap.StateFlags |= SwapStateFlags.IsRefundSigned;
-
-            await UpdateSwapAsync(swap, SwapStateFlags.IsRefundSigned, cancellationToken)
-                .ConfigureAwait(false);
-
-            await BroadcastTxAsync(swap, refundTx, cancellationToken)
-                .ConfigureAwait(false);
+            finally
+            {
+                TezosAccount.AddressLocker.Unlock(refundTx.From);
+            }
 
             swap.RefundTx = refundTx;
             swap.StateFlags |= SwapStateFlags.IsRefundBroadcast;
@@ -472,13 +524,12 @@ namespace Atomex.Swaps.Tezos.FA2
             await UpdateSwapAsync(swap, SwapStateFlags.IsRefundBroadcast, cancellationToken)
                 .ConfigureAwait(false);
 
-            TrackTransactionConfirmationAsync(
-                    swap: swap,
-                    currency: fa2,
-                    txId: refundTx.Id,
-                    confirmationHandler: RefundConfirmedEventHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = TrackTransactionConfirmationAsync(
+                swap: swap,
+                currency: fa2,
+                txId: refundTx.Id,
+                confirmationHandler: RefundConfirmedEventHandler,
+                cancellationToken: cancellationToken);
         }
 
         public override Task StartWaitForRedeemAsync(
@@ -670,6 +721,7 @@ namespace Atomex.Swaps.Tezos.FA2
                 requiredAmountInTokens += AmountHelper.RoundDown(swap.MakerNetworkFee, fa2.DigitsMultiplier);
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();
+
             var rewardForRedeemInTokenDigits = swap.IsInitiator
                 ? swap.PartyRewardForRedeem.ToTokenDigits(fa2.DigitsMultiplier)
                 : 0;
@@ -707,7 +759,6 @@ namespace Atomex.Swaps.Tezos.FA2
                 Log.Debug("Available balance: {@balance}", balanceInTokens);
 
                 var balanceInMtz = balanceInTz.ToMicroTez();
-                var balanceInTokenDigits = balanceInTokens.ToTokenDigits(fa2.DigitsMultiplier);
 
                 var isRevealed = await _account
                     .IsRevealedSourceAsync(walletAddress.Address, cancellationToken)
@@ -739,7 +790,8 @@ namespace Atomex.Swaps.Tezos.FA2
                 if (amountInTokens == 0)
                     break;
 
-                requiredAmountInTokens -= amountInTokens;
+                if (requiredAmountInTokens > amountInTokens)
+                    continue; // insufficient funds
 
                 var allowanceResult = await fa2Api
                     .TryGetFa2BigMapAllowanceAsync(
@@ -762,42 +814,44 @@ namespace Atomex.Swaps.Tezos.FA2
                 {
                     transactions.Add(new TezosTransaction
                     {
-                        Currency      = fa2,
-                        CreationTime  = DateTime.UtcNow,
-                        From          = walletAddress.Address,
-                        To            = fa2.TokenContractAddress,
-                        Fee           = fa2.ApproveFee,
-                        GasLimit      = fa2.ApproveGasLimit,
-                        StorageLimit  = fa2.ApproveStorageLimit,
-                        Params        = ApproveParams(walletAddress.Address, fa2.SwapContractAddress),
-                        UseRun = true,
-                        Type          = BlockchainTransactionType.TokenApprove
+                        Currency     = fa2,
+                        CreationTime = DateTime.UtcNow,
+                        From         = walletAddress.Address,
+                        To           = fa2.TokenContractAddress,
+                        Fee          = fa2.ApproveFee,
+                        GasLimit     = fa2.ApproveGasLimit,
+                        StorageLimit = fa2.ApproveStorageLimit,
+                        Params       = ApproveParams(walletAddress.Address, fa2.SwapContractAddress),
+                        Type         = BlockchainTransactionType.TokenApprove,
+
+                        UseRun              = true,
+                        UseSafeStorageLimit = true,
+                        UseOfflineCounter   = true
                     });
                 }
 
                 transactions.Add(new TezosTransaction
                 {
-                    Currency      = fa2,
-                    CreationTime  = DateTime.UtcNow,
-                    From          = walletAddress.Address,
-                    To            = fa2.SwapContractAddress,
-                    Fee           = feeAmountInMtz,
-                    GasLimit      = fa2.InitiateGasLimit,
-                    StorageLimit  = fa2.InitiateStorageLimit,
-                    Params        = InitParams(swap, fa2.TokenContractAddress, fa2.TokenID, amountInTokens.ToTokenDigits(fa2.DigitsMultiplier), refundTimeStampUtcInSec, (long)rewardForRedeemInTokenDigits),
-                    UseRun = true,
-                    Type          = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
+                    Currency     = fa2,
+                    CreationTime = DateTime.UtcNow,
+                    From         = walletAddress.Address,
+                    To           = fa2.SwapContractAddress,
+                    Fee          = feeAmountInMtz,
+                    GasLimit     = fa2.InitiateGasLimit,
+                    StorageLimit = fa2.InitiateStorageLimit,
+                    Params       = InitParams(swap, fa2.TokenContractAddress, fa2.TokenID, amountInTokens.ToTokenDigits(fa2.DigitsMultiplier), refundTimeStampUtcInSec, (long)rewardForRedeemInTokenDigits),
+                    Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment,
+
+                    UseRun              = true,
+                    UseSafeStorageLimit = true,
+                    UseOfflineCounter   = true
                 });
                 
-                if (requiredAmountInTokens <= 0)
-                    break;
+                break;
             }
 
-            if (requiredAmountInTokens > 0)
-            {
-                Log.Warning("Insufficient funds (left {@requredAmount}).", requiredAmountInTokens);
-                return Enumerable.Empty<TezosTransaction>();
-            }
+            if (!transactions.Any())
+                Log.Warning("Insufficient funds.");
 
             return transactions;
         }
@@ -869,29 +923,6 @@ namespace Atomex.Swaps.Tezos.FA2
                 .ConfigureAwait(false);
 
             // todo: transaction receipt status control
-        }
-
-        private async Task<bool> WaitPaymentConfirmationAsync(
-            string txId,
-            TimeSpan timeout,
-            CancellationToken cancellationToken = default)
-        {
-            var timeStamp = DateTime.UtcNow;
-
-            while (DateTime.UtcNow < timeStamp + timeout)
-            {
-                await Task.Delay(InitiationCheckInterval, cancellationToken)
-                    .ConfigureAwait(false);
-
-                var tx = await FA2Account
-                    .GetTransactionByIdAsync(txId)
-                    .ConfigureAwait(false);
-
-                if (tx != null && tx.IsConfirmed)
-                    return true;
-            }
-
-            return false;
         }
 
         private JObject ApproveParams(

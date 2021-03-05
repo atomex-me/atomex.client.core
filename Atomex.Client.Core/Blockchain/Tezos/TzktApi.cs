@@ -56,20 +56,26 @@ namespace Atomex.Blockchain.Tezos
                 tx.State = BlockchainTransactionState.Pending;
 
                 var rpc = new Rpc(_rpcNodeUri);
+                var readyForInject = true;
 
-                var opResults = await rpc
-                    .PreApplyOperations(tx.Head, tx.Operations, tx.SignedMessage.EncodedSignature)
-                    .ConfigureAwait(false);
+                if (tx.UsePreApply)
+                {
+                    var opResults = await rpc
+                        .PreApplyOperations(tx.Head, tx.Operations, tx.SignedMessage.EncodedSignature)
+                        .ConfigureAwait(false);
 
-                if (!opResults.Any())
-                    return new Error(Errors.EmptyPreApplyOperations, "Empty pre apply operations");
+                    if (!opResults.Any())
+                        return new Error(Errors.EmptyPreApplyOperations, "Empty pre apply operations");
+
+                    foreach (var opResult in opResults)
+                        Log.Debug("OperationResult {@result}: {@opResult}", opResult.Succeeded, opResult.Data.ToString());
+
+                    readyForInject = opResults.Any() && opResults.All(op => op.Succeeded);
+                }
 
                 string txId = null;
 
-                foreach (var opResult in opResults)
-                    Log.Debug("OperationResult {@result}: {@opResult}", opResult.Succeeded, opResult.Data.ToString());
-
-                if (opResults.Any() && opResults.All(op => op.Succeeded))
+                if (readyForInject)
                 {
                     var injectedOperation = await rpc
                         .InjectOperations(tx.SignedMessage.SignedBytes)
@@ -741,10 +747,6 @@ namespace Atomex.Blockchain.Tezos
             {
                 var rpc = new Rpc(_rpcNodeUri);
 
-                var head = await rpc
-                    .GetHeader()
-                    .ConfigureAwait(false);
-
                 var tx = new TezosTransaction
                 {
                     Currency          = token,
@@ -754,19 +756,19 @@ namespace Atomex.Blockchain.Tezos
                     GasLimit          = token.GetBalanceGasLimit,
                     StorageLimit      = 0, //token.GetBalanceStorageLimit,
                     Params            = GetBalanceParams(address, token.ViewContractAddress),
+
                     UseRun            = false,
-                    UseOfflineCounter = false
+                    UseOfflineCounter = false,
                 };
 
                 await tx
                     .FillOperationsAsync(
-                        head: head,
                         securePublicKey: securePublicKey,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 var runResults = await rpc
-                    .RunOperations(head, tx.Operations)
+                    .RunOperations(tx.Head, tx.Operations)
                     .ConfigureAwait(false);
 
                 return runResults
@@ -902,10 +904,6 @@ namespace Atomex.Blockchain.Tezos
             {
                 var rpc = new Rpc(_rpcNodeUri);
 
-                var head = await rpc
-                    .GetHeader()
-                    .ConfigureAwait(false);
-
                 var tx = new TezosTransaction
                 {
                     Currency          = token,
@@ -915,19 +913,19 @@ namespace Atomex.Blockchain.Tezos
                     GasLimit          = token.GetAllowanceGasLimit,
                     StorageLimit      = 0, //token.GetAllowanceStorageLimit,
                     Params            = GetAllowanceParams(holderAddress, spenderAddress, token.ViewContractAddress),
+
                     UseRun            = false,
                     UseOfflineCounter = false
                 };
 
                 await tx
                     .FillOperationsAsync(
-                        head: head,
                         securePublicKey: securePublicKey,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 var runResults = await rpc
-                    .RunOperations(head, tx.Operations)
+                    .RunOperations(tx.Head, tx.Operations)
                     .ConfigureAwait(false);
 
                 return runResults

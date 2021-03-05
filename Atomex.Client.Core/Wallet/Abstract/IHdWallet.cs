@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
@@ -52,6 +53,14 @@ namespace Atomex.Wallet.Abstract
         /// <param name="index">Key index</param>
         /// <returns>Address</returns>
         WalletAddress GetAddress(Currency currency, int chain, uint index);
+
+        /// <summary>
+        /// Gets public key for <paramref name="currency"/> key with <paramref name="keyIndex"/>
+        /// </summary>
+        /// <param name="currency">Currency</param>
+        /// <param name="keyIndex">Key index</param>
+        /// <returns>Public key bytes</returns>
+        SecureBytes GetPublicKey(Currency currency, KeyIndex keyIndex);
 
         /// <summary>
         /// Gets public key for service key with <paramref name="index"/>

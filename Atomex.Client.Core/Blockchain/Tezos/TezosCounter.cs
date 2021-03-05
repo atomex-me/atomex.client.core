@@ -2,8 +2,6 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-using Newtonsoft.Json.Linq;
-
 using Atomex.Blockchain.Tezos.Internal;
 
 namespace Atomex.Blockchain.Tezos
@@ -34,44 +32,73 @@ namespace Atomex.Blockchain.Tezos
             }
         }
 
-        public async Task<int> GetCounter(
+        private async Task<int> GetCounterFromRpcAsync(
             string address,
-            JObject head,
-            Atomex.Tezos tezosConfig,
-            bool useOffline = false,
-            int counters = 1)
+            string head,
+            string rpcNodeUri)
         {
-            var rpc = new Rpc(tezosConfig.RpcNodeUri);
+            var rpc = new Rpc(rpcNodeUri);
 
             var account = await rpc
-                .GetAccountForBlock(head["hash"].ToString(), address)
+                .GetAccountForBlock(head, address)
                 .ConfigureAwait(false);
 
-            var counter = int.Parse(account["counter"].ToString());
+            return int.Parse(account["counter"].ToString());
+        }
 
-            if (!useOffline)
-                return ++counter;
+        public async Task<int> GetCounterAsync(
+            string address,
+            string head,
+            string rpcNodeUri)
+        {
+            var currentCounter = await GetCounterFromRpcAsync(address, head, rpcNodeUri)
+                .ConfigureAwait(false);
+
+            // update offline counter if need
+            lock (_offlineCounters)
+            {
+                if (_offlineCounters.TryGetValue(address, out var offlineCounter))
+                {
+                    if (offlineCounter < currentCounter)
+                        _offlineCounters[address] = currentCounter;
+                }
+                else
+                {
+                    _offlineCounters[address] = currentCounter;
+                }
+            }
+
+            return ++currentCounter;
+        }
+
+        public async Task<int> GetOfflineCounterAsync(
+            string address,
+            string head,
+            string rpcNodeUri,
+            int numberOfCounters = 1)
+        {
+            var currentCounter = await GetCounterFromRpcAsync(address, head, rpcNodeUri)
+                .ConfigureAwait(false);
 
             lock (_offlineCounters)
             {
                 if (_offlineCounters.TryGetValue(address, out var offlineCounter))
                 {
-                    _offlineCounters[address] = offlineCounter + counters;
+                    // update offline counter
+                    if (offlineCounter < currentCounter)
+                        offlineCounter = currentCounter;
+
+                    _offlineCounters[address] = offlineCounter + numberOfCounters;
 
                     return ++offlineCounter;
                 }
                 else
                 {
-                    _offlineCounters.Add(address, counter + counters);
+                    _offlineCounters.Add(address, currentCounter + numberOfCounters);
 
-                    return ++counter;
+                    return ++currentCounter;
                 }
             }
-        }
-
-        public void UpdateOfflineCounter(string address, int offlineCounter)
-        {
-
         }
     }
 }

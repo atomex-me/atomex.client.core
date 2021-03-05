@@ -4,12 +4,14 @@ using System.IO;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+
+using NBitcoin;
+using Serilog;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using NBitcoin;
-using Serilog;
 using Network = Atomex.Core.Network;
 
 namespace Atomex.Wallet
@@ -88,10 +90,11 @@ namespace Atomex.Wallet
             };
         }
 
-        public SecureBytes GetServicePublicKey(uint index)
-        {
-            return KeyStorage.GetServicePublicKey(index);
-        }
+        public SecureBytes GetPublicKey(Currency currency, KeyIndex keyIndex) =>
+            KeyStorage.GetPublicKey(currency, keyIndex);
+
+        public SecureBytes GetServicePublicKey(uint index) =>
+            KeyStorage.GetServicePublicKey(index);
 
         public Task<byte[]> SignAsync(
             byte[] data,

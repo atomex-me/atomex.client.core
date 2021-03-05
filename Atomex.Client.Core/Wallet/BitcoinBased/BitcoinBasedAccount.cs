@@ -194,7 +194,7 @@ namespace Atomex.Wallet.BitcoinBased
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            UpdateBalanceAsync(cancellationToken).FireAndForget();
+            _ = UpdateBalanceAsync(cancellationToken);
 
             return null;
         }
@@ -525,99 +525,96 @@ namespace Atomex.Wallet.BitcoinBased
 
         #region Balances
 
-        public override async Task UpdateBalanceAsync(
+        public override Task UpdateBalanceAsync(
             CancellationToken cancellationToken = default)
         {
-            var currency = BtcBasedCurrency;
-
-            var outputs = (await DataRepository
-                .GetOutputsAsync(Currency, currency.OutputType())
-                .ConfigureAwait(false))
-                .ToList();
-
-            //var unconfirmedTxs = (await DataRepository
-            //    .GetUnconfirmedTransactionsAsync(Currency)
-            //    .ConfigureAwait(false))
-            //    .Cast<IInOutTransaction>()
-            //    .ToList();
-
-            // calculate balances
-            var totalBalance = 0m;
-            var totalUnconfirmedIncome = 0m;
-            var totalUnconfirmedOutcome = 0m;
-            var addressBalances = new Dictionary<string, WalletAddress>();
-
-            foreach (var o in outputs)
+            return Task.Run(async () =>
             {
-                var address = o.DestinationAddress(currency);
-                var amount = o.Value / (decimal)currency.DigitsMultiplier;
-
-                var isSpent = o.IsSpent;
-
-                //var isConfirmedOutput = unconfirmedTxs
-                //    .FirstOrDefault(t => t.Outputs
-                //        .FirstOrDefault(to => to.Index == o.Index && to.TxId == o.TxId) != null) == null;
-
-                var tx = await DataRepository
-                    .GetTransactionByIdAsync(Currency, o.TxId, currency.TransactionType)
-                    .ConfigureAwait(false);
-
-                var isConfirmedOutput = tx?.IsConfirmed ?? false;
-
-                //var isConfirmedInput = isSpent && unconfirmedTxs
-                //    .FirstOrDefault(t => t.Inputs
-                //        .FirstOrDefault(ti => ti.Index == o.Index && ti.Hash == o.TxId) != null) == null;
-
-                var isConfirmedInput = false;
-
-                if (isSpent)
+                try
                 {
-                    var spentTx = await DataRepository
-                        .GetTransactionByIdAsync(Currency, o.SpentTxPoint.Hash, currency.TransactionType)
+                    var currency = BtcBasedCurrency;
+
+                    var outputs = (await DataRepository
+                        .GetOutputsAsync(Currency, currency.OutputType())
+                        .ConfigureAwait(false))
+                        .ToList();
+
+                    // calculate balances
+                    var totalBalance = 0m;
+                    var totalUnconfirmedIncome = 0m;
+                    var totalUnconfirmedOutcome = 0m;
+                    var addressBalances = new Dictionary<string, WalletAddress>();
+
+                    foreach (var o in outputs)
+                    {
+                        var address = o.DestinationAddress(currency);
+                        var amount = o.Value / (decimal)currency.DigitsMultiplier;
+
+                        var isSpent = o.IsSpent;
+
+                        var tx = await DataRepository
+                            .GetTransactionByIdAsync(Currency, o.TxId, currency.TransactionType)
+                            .ConfigureAwait(false);
+
+                        var isConfirmedOutput = tx?.IsConfirmed ?? false;
+
+                        var isConfirmedInput = false;
+
+                        if (isSpent)
+                        {
+                            var spentTx = await DataRepository
+                                .GetTransactionByIdAsync(Currency, o.SpentTxPoint.Hash, currency.TransactionType)
+                                .ConfigureAwait(false);
+
+                            isConfirmedInput = spentTx?.IsConfirmed ?? false;
+                        }
+
+                        if (addressBalances.TryGetValue(address, out var walletAddress))
+                        {
+                            walletAddress.Balance += isConfirmedOutput && (!isSpent || !isConfirmedInput) ? amount : 0;
+                            walletAddress.UnconfirmedIncome += !isConfirmedOutput && !isSpent ? amount : 0;
+                            walletAddress.UnconfirmedOutcome += isConfirmedOutput && isSpent && !isConfirmedInput ? -amount : 0;
+                        }
+                        else
+                        {
+                            walletAddress = await DataRepository
+                                .GetWalletAddressAsync(Currency, address)
+                                .ConfigureAwait(false);
+
+                            walletAddress.Balance = isConfirmedOutput && (!isSpent || !isConfirmedInput) ? amount : 0;
+                            walletAddress.UnconfirmedIncome = !isConfirmedOutput && !isSpent ? amount : 0;
+                            walletAddress.UnconfirmedOutcome = isConfirmedOutput && isSpent && !isConfirmedInput ? -amount : 0;
+                            walletAddress.HasActivity = true;
+
+                            addressBalances.Add(address, walletAddress);
+                        }
+
+                        totalBalance += isConfirmedOutput && (!isSpent || !isConfirmedInput) ? amount : 0;
+                        totalUnconfirmedIncome += !isConfirmedOutput && !isSpent ? amount : 0;
+                        totalUnconfirmedOutcome += isConfirmedOutput && isSpent && !isConfirmedInput ? -amount : 0;
+                    }
+
+                    // upsert addresses
+                    await DataRepository
+                        .UpsertAddressesAsync(addressBalances.Values)
                         .ConfigureAwait(false);
 
-                    isConfirmedInput = spentTx?.IsConfirmed ?? false;
+                    Balance = totalBalance;
+                    UnconfirmedIncome = totalUnconfirmedIncome;
+                    UnconfirmedOutcome = totalUnconfirmedOutcome;
+
+                    RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
                 }
-
-                // balance = sum (all confirmed unspended outputs) + sum(all confirmed spent outputs with unconfirmed spent tx)
-                // unconfirmedIncome = sum(all unconfirmed unspended outputs)
-                // unconfirmedOutcome = -sum(all confirmed spent outputs with unconfirmed spent tx)
-
-                if (addressBalances.TryGetValue(address, out var walletAddress))
+                catch (OperationCanceledException)
                 {
-                    walletAddress.Balance += isConfirmedOutput && (!isSpent || !isConfirmedInput) ? amount : 0;
-                    walletAddress.UnconfirmedIncome += !isConfirmedOutput && !isSpent ? amount : 0;
-                    walletAddress.UnconfirmedOutcome += isConfirmedOutput && isSpent && !isConfirmedInput ? -amount : 0;
+                    Log.Debug($"{Currency} UpdateBalanceAsync canceled.");
                 }
-                else
+                catch (Exception e)
                 {
-                    walletAddress = await DataRepository
-                        .GetWalletAddressAsync(Currency, address)
-                        .ConfigureAwait(false);
-
-                    walletAddress.Balance = isConfirmedOutput && (!isSpent || !isConfirmedInput) ? amount : 0;
-                    walletAddress.UnconfirmedIncome = !isConfirmedOutput && !isSpent ? amount : 0;
-                    walletAddress.UnconfirmedOutcome = isConfirmedOutput && isSpent && !isConfirmedInput ? -amount : 0;
-                    walletAddress.HasActivity = true;
-
-                    addressBalances.Add(address, walletAddress);
+                    Log.Error(e, $"{Currency} UpdateBalanceAsync error.");
                 }
 
-                totalBalance += isConfirmedOutput && (!isSpent || !isConfirmedInput) ? amount : 0;
-                totalUnconfirmedIncome += !isConfirmedOutput && !isSpent ? amount : 0;
-                totalUnconfirmedOutcome += isConfirmedOutput && isSpent && !isConfirmedInput ? -amount : 0;
-            }
-
-            // upsert addresses
-            await DataRepository
-                .UpsertAddressesAsync(addressBalances.Values)
-                .ConfigureAwait(false);
-
-            Balance = totalBalance;
-            UnconfirmedIncome = totalUnconfirmedIncome;
-            UnconfirmedOutcome = totalUnconfirmedOutcome;
-
-            RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
+            }, cancellationToken);
         }
 
         public override async Task UpdateBalanceAsync(

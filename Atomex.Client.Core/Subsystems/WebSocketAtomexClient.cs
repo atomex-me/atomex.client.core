@@ -127,7 +127,7 @@ namespace Atomex.Subsystems
                 .ConfigureAwait(false);
 
             // start async unconfirmed transactions tracking
-            TrackUnconfirmedTransactionsAsync(_cts.Token).FireAndForget();
+            _ = TrackUnconfirmedTransactionsAsync(_cts.Token);
 
             // init swap manager
             SwapManager = new SwapManager(
@@ -138,8 +138,19 @@ namespace Atomex.Subsystems
 
             SwapManager.SwapUpdated += (sender, args) => SwapUpdated?.Invoke(sender, args);
 
-            // start async swaps restore
-            SwapManager.RestoreSwapsAsync(_cts.Token).FireAndForget();
+            _ = Task.Run(async () =>
+            {
+                // restore swaps
+                await SwapManager
+                    .RestoreSwapsAsync(_cts.Token)
+                    .ConfigureAwait(false);
+
+                // timeout control
+                await SwapManager
+                    .SwapTimeoutControlAsync(_cts.Token)
+                    .ConfigureAwait(false);
+
+            }, _cts.Token);
         }
 
         public async Task StopAsync()
@@ -222,7 +233,7 @@ namespace Atomex.Subsystems
         private void OnUnconfirmedTransactionAddedEventHandler(object sender, TransactionEventArgs e)
         {
             if (!e.Transaction.IsConfirmed && e.Transaction.State != BlockchainTransactionState.Failed)
-                TrackTransactionAsync(e.Transaction, _cts.Token);
+                _ = TrackTransactionAsync(e.Transaction, _cts.Token);
         }
 
         #endregion
@@ -477,7 +488,11 @@ namespace Atomex.Subsystems
 
                 foreach (var tx in txs)
                     if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
-                        TrackTransactionAsync(tx, cancellationToken).FireAndForget();      
+                        _ = TrackTransactionAsync(tx, cancellationToken);      
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("TrackUnconfirmedTransactionsAsync canceled");
             }
             catch (Exception e)
             {
@@ -491,36 +506,48 @@ namespace Atomex.Subsystems
         {
             return Task.Run(async () =>
             {
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    var result = await transaction
-                        .IsTransactionConfirmed(
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (result.HasError) // todo: additional reaction
-                        break;
-
-                    if (result.Value.IsConfirmed || (result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed))
+                    while (!cancellationToken.IsCancellationRequested)
                     {
-                        TransactionProcessedHandler(result.Value.Transaction, cancellationToken);
-                        break;
+                        var result = await transaction
+                            .IsTransactionConfirmed(
+                                cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (result.HasError) // todo: additional reaction
+                            break;
+
+                        if (result.Value.IsConfirmed || (result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed))
+                        {
+                            TransactionProcessedHandler(result.Value.Transaction, cancellationToken);
+                            break;
+                        }
+
+                        // mark old unconfirmed txs as failed
+                        if (transaction.CreationTime != null &&
+                            DateTime.UtcNow > transaction.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
+                            !Currencies.IsBitcoinBased(transaction.Currency.Name))
+                        {
+                            transaction.State = BlockchainTransactionState.Failed;
+
+                            TransactionProcessedHandler(transaction, cancellationToken);
+                            break;
+                        }
+
+                        await Task.Delay(TransactionConfirmationCheckInterval(transaction?.Currency.Name), cancellationToken)
+                            .ConfigureAwait(false);
                     }
-
-                    // mark old unconfirmed txs as failed
-                    if (transaction.CreationTime != null &&
-                        DateTime.UtcNow > transaction.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
-                        !Currencies.IsBitcoinBased(transaction.Currency.Name))
-                    {
-                        transaction.State = BlockchainTransactionState.Failed;
-
-                        TransactionProcessedHandler(transaction, cancellationToken);
-                        break;
-                    }
-
-                    await Task.Delay(TransactionConfirmationCheckInterval(transaction?.Currency.Name), cancellationToken)
-                        .ConfigureAwait(false);
                 }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("TrackTransactionAsync canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "TrackTransactionAsync error.");
+                }
+
             }, _cts.Token);
         }
 

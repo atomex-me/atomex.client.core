@@ -1,18 +1,21 @@
-﻿using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text;
+
+using Serilog;
+using Newtonsoft.Json.Linq;
+
 using Atomex.Common;
 using Atomex.Cryptography;
-using Serilog;
-using System.Numerics;
 
 namespace Atomex.Blockchain.Tezos.Internal
 {
     public class Forge
     {
-        public static Dictionary<string, int> operation_tags = new Dictionary<string, int> {
+        public static Dictionary<string, int> OperationTags = new Dictionary<string, int>
+        {
             {"endorsement", 0 },
             {"proposal", 5 },
             {"ballot", 6 },
@@ -26,22 +29,24 @@ namespace Atomex.Blockchain.Tezos.Internal
             {"delegation", 110 }
         };
 
-        public static JToken ForgeOperationsLocal(JObject blockHead, JToken operations)
+        public static JToken ForgeOperationsLocal(string blockHeadHash, JToken operations)
         {
             if (!(operations is JArray arrOps))
                 arrOps = new JArray(operations);
 
-            string res = blockHead != null ? Base58Check.Decode(blockHead["hash"].ToString(), Prefix.b).ToHexString() : "";
+            var res = blockHeadHash != null
+                ? Base58Check.Decode(blockHeadHash, Prefix.b).ToHexString()
+                : "";
 
             foreach (JObject op in arrOps)
             {
                 switch (op["kind"].ToString())
                 {
                     case "reveal":
-                        res += forge_reveal(op);
+                        res += ForgeReveal(op);
                         break;
                     case "transaction":
-                        res += forge_transaction(op);
+                        res += ForgeTransaction(op);
                         break;
                     //todo:
                     //case "activate_account":
@@ -51,7 +56,7 @@ namespace Atomex.Blockchain.Tezos.Internal
                     //    res += forge_origination(op);
                     //    break;
                     case "delegation":
-                        res += forge_delegation(op);
+                        res += ForgeDelegation(op);
                         break;
                     default:
                         Log.Error("Not implemented forge error");
@@ -63,70 +68,72 @@ namespace Atomex.Blockchain.Tezos.Internal
             return res;
         }
 
-        private static string forge_reveal(JObject op)
+        private static string ForgeReveal(JObject op)
         {
-            string res = forge_nat((ulong)operation_tags[op["kind"].ToString()]);
+            var res = ForgeNat((ulong)OperationTags[op["kind"].ToString()]);
 
-            res += forge_source(op["source"].ToString());
-            res += forge_nat(op["fee"].Value<ulong>());
-            res += forge_nat(op["counter"].Value<ulong>());
-            res += forge_nat(op["gas_limit"].Value<ulong>());
-            res += forge_nat(op["storage_limit"].Value<ulong>());
-            res += forge_public_key(op["public_key"].ToString());
+            res += ForgeSource(op["source"].ToString());
+            res += ForgeNat(op["fee"].Value<ulong>());
+            res += ForgeNat(op["counter"].Value<ulong>());
+            res += ForgeNat(op["gas_limit"].Value<ulong>());
+            res += ForgeNat(op["storage_limit"].Value<ulong>());
+            res += ForgePublicKey(op["public_key"].ToString());
 
             return res;
         }
 
-        private static string forge_transaction(JObject op)
+        private static string ForgeTransaction(JObject op)
         {
-            string res = forge_nat((ulong)operation_tags[op["kind"].ToString()]);
-            res += forge_source(op["source"].ToString());
-            res += forge_nat(op["fee"].Value<ulong>());
-            res += forge_nat(op["counter"].Value<ulong>());
-            res += forge_nat(op["gas_limit"].Value<ulong>());
-            res += forge_nat(op["storage_limit"].Value<ulong>());
-            res += forge_nat(op["amount"].Value<ulong>());
+            var res = ForgeNat((ulong)OperationTags[op["kind"].ToString()]);
+            res += ForgeSource(op["source"].ToString());
+            res += ForgeNat(op["fee"].Value<ulong>());
+            res += ForgeNat(op["counter"].Value<ulong>());
+            res += ForgeNat(op["gas_limit"].Value<ulong>());
+            res += ForgeNat(op["storage_limit"].Value<ulong>());
+            res += ForgeNat(op["amount"].Value<ulong>());
             res += ForgeAddress(op["destination"].ToString());
 
             if (op["parameters"] != null)
             {
-                res += forge_bool(true);
-                res += ForgeMichelson.forge_entrypoint(op["parameters"]["entrypoint"].Value<string>());
-                res += forge_array(ForgeMichelson.forge_micheline(op["parameters"]["value"]));
+                res += ForgeBool(true);
+                res += ForgeMichelson.ForgeEntrypoint(op["parameters"]["entrypoint"].Value<string>());
+                res += ForgeArray(ForgeMichelson.ForgeMicheline(op["parameters"]["value"]));
             }
             else
-                res += forge_bool(false);
+                res += ForgeBool(false);
 
             return res;
         }
 
-        private static string forge_delegation(JObject op)
+        private static string ForgeDelegation(JObject op)
         {
-            string res = forge_nat((ulong)operation_tags[op["kind"].ToString()]);
-            res += forge_source(op["source"].ToString());
-            res += forge_nat(op["fee"].Value<ulong>());
-            res += forge_nat(op["counter"].Value<ulong>());
-            res += forge_nat(op["gas_limit"].Value<ulong>());
-            res += forge_nat(op["storage_limit"].Value<ulong>());
+            var res = ForgeNat((ulong)OperationTags[op["kind"].ToString()]);
+            res += ForgeSource(op["source"].ToString());
+            res += ForgeNat(op["fee"].Value<ulong>());
+            res += ForgeNat(op["counter"].Value<ulong>());
+            res += ForgeNat(op["gas_limit"].Value<ulong>());
+            res += ForgeNat(op["storage_limit"].Value<ulong>());
 
 
             if (op["delegate"] != null)
             {
-                res += forge_bool(true);
-                res += forge_source(op["delegate"].ToString());
+                res += ForgeBool(true);
+                res += ForgeSource(op["delegate"].ToString());
             }
             else
-                res += forge_bool(false);
+            {
+                res += ForgeBool(false);
+            }
 
             return res;
         }
-        public static string forge_array(string value)
+        public static string ForgeArray(string value)
         {
             var bytes = BitConverter.GetBytes(value.Length / 2).Reverse().ToArray();
             return bytes.ToHexString() + value;
         }
 
-        private static string forge_nat(ulong value)
+        private static string ForgeNat(ulong value)
         {
             if (value < 0)
                 throw new ArgumentException("Value cannot be negative", nameof(value));
@@ -154,68 +161,56 @@ namespace Atomex.Blockchain.Tezos.Internal
         {
             var prefix = value.Substring(0, 3);
 
-            string res = Base58Check.Decode(value).ToHexString().Substring(6);
+            var res = Base58Check.Decode(value).ToHexString().Substring(6);
 
-            if (prefix == "tz1")
-                res = "0000" + res;
-            else if (prefix == "tz2")
-                res = "0001" + res;
-            else if (prefix == "tz3")
-                res = "0002" + res;
-            else if (prefix == "KT1")
-                res = "01" + res + "00";
-            else
-                throw new Exception($"Value address exception. Invalid prefix {prefix}");
-
-            return res;
+            return prefix switch
+            {
+                "tz1" => "0000" + res,
+                "tz2" => "0001" + res,
+                "tz3" => "0002" + res,
+                "KT1" => "01" + res + "00",
+                _     => throw new Exception($"Value address exception. Invalid prefix {prefix}")
+            };
         }
 
-        private static string forge_source(string value)
+        private static string ForgeSource(string value)
         {
             var prefix = value.Substring(0, 3);
 
-            string res = Base58Check.Decode(value).ToHexString().Substring(6);
+            var res = Base58Check.Decode(value).ToHexString().Substring(6);
 
-            if (prefix == "tz1")
-                res = "00" + res;
-            else if (prefix == "tz2")
-                res = "01" + res;
-            else if (prefix == "tz3")
-                res = "02" + res;
-            else
-                throw new Exception($"Value source exception. Invalid prefix {prefix}");
-
-            return res;
+            return prefix switch
+            {
+                "tz1" => "00" + res,
+                "tz2" => "01" + res,
+                "tz3" => "02" + res,
+                _ => throw new Exception($"Value source exception. Invalid prefix {prefix}")
+            };
         }
 
-        private static string forge_bool(bool value)
-        {
-            return value ? "FF" : "00";
-        }
+        private static string ForgeBool(bool value) =>
+            value ? "FF" : "00";
 
-        private static string forge_public_key(string value)
+        private static string ForgePublicKey(string value)
         {
             var prefix = value.Substring(0, 4);
 
-            string res = Base58Check.Decode(value).ToHexString().Substring(8);
+            var res = Base58Check.Decode(value).ToHexString().Substring(8);
 
-            if (prefix == "edpk")
-                res = "00" + res;
-            else if (prefix == "sppk")
-                res = "01" + res;
-            else if (prefix == "p2pk")
-                res = "02" + res;
-            else
-                throw new Exception($"Value public_key exception. Invalid prefix {prefix}");
-
-            return res;
+            return prefix switch
+            {
+                "edpk" => "00" + res,
+                "sppk" => "01" + res,
+                "p2pk" => "02" + res,
+                _ => throw new Exception($"Value public_key exception. Invalid prefix {prefix}")
+            };
         }
 
     }
 
     public class ForgeMichelson
     {
-        public static string forge_int(int value)
+        public static string ForgeInt(int value)
         {
             var binary = Convert.ToString(Math.Abs(value), 2);
 
@@ -240,14 +235,17 @@ namespace Atomex.Blockchain.Tezos.Internal
 
             for (int i = 0; i < septets.Count; i++)
             {
-                string prefix = i == septets.Count - 1 ? "0" : "1";
+                var prefix = i == septets.Count - 1
+                    ? "0"
+                    : "1";
+
                 res += Convert.ToByte(prefix + septets[i], 2).ToString("X2");
             }
 
             return res;
         }
 
-        public static string forge_micheint(BigInteger value)
+        public static string ForgeMicheint(BigInteger value)
         {
             var abs = BigInteger.Abs(value);
             var res = new List<byte>
@@ -267,31 +265,31 @@ namespace Atomex.Blockchain.Tezos.Internal
             return res.ToArray().ToHexString();
         }
 
-        public static string forge_entrypoint(string value)
+        public static string ForgeEntrypoint(string value)
         {
             string res = "";
 
-            if (entrypoint_tags.ContainsKey(value))
+            if (EntrypointTags.ContainsKey(value))
             {
-                res += entrypoint_tags[value].ToString("X2");
+                res += EntrypointTags[value].ToString("X2");
             }
             else
             {
                 res += "ff";
-                res += Forge.forge_array(Encoding.Default.GetBytes(value).ToHexString());
+                res += Forge.ForgeArray(Encoding.Default.GetBytes(value).ToHexString());
             }
 
             return res;
         }
 
-        public static string forge_micheline(JToken data)
+        public static string ForgeMicheline(JToken data)
         {
             string res = "";
 
             if (data is JArray)
             {
                 res += "02";
-                res += Forge.forge_array(string.Concat(data.Select(item => forge_micheline(item))));
+                res += Forge.ForgeArray(string.Concat(data.Select(item => ForgeMicheline(item))));
             }
             else if (data is JObject)
             {
@@ -300,37 +298,37 @@ namespace Atomex.Blockchain.Tezos.Internal
                     var args_len = data["args"]?.Count() ?? 0;
                     var annots_len = data["annots"]?.Count() ?? 0;
 
-                    res += len_tags[args_len][annots_len > 0];
-                    res += prim_tags[data["prim"].ToString()];
+                    res += LenTags[args_len][annots_len > 0];
+                    res += PrimTags[data["prim"].ToString()];
 
                     if (args_len > 0)
                     {
-                        string args = string.Concat(data["args"].Select(item => forge_micheline(item)));
+                        string args = string.Concat(data["args"].Select(item => ForgeMicheline(item)));
                         if (args_len < 3)
                             res += args;
                         else
-                            res += Forge.forge_array(args);
+                            res += Forge.ForgeArray(args);
                     }
 
                     if (annots_len > 0)
-                        res += Forge.forge_array(string.Join(" ", data["annots"]));
+                        res += Forge.ForgeArray(string.Join(" ", data["annots"]));
                     else if (args_len == 3)
                         res += new string('0', 8);
                 }
                 else if (data["bytes"] != null)
                 {
                     res += "0A";
-                    res += Forge.forge_array(data["bytes"].ToString());
+                    res += Forge.ForgeArray(data["bytes"].ToString());
                 }
                 else if (data["int"] != null)
                 {
                     res += "00";
-                    res += forge_micheint(BigInteger.Parse(data["int"].Value<string>()));
+                    res += ForgeMicheint(BigInteger.Parse(data["int"].Value<string>()));
                 }
                 else if (data["string"] != null)
                 {
                     res += "01";
-                    res += Forge.forge_array(Encoding.Default.GetBytes(data["string"].Value<string>()).ToHexString());
+                    res += Forge.ForgeArray(Encoding.Default.GetBytes(data["string"].Value<string>()).ToHexString());
                 }
                 else
                 {
@@ -345,7 +343,8 @@ namespace Atomex.Blockchain.Tezos.Internal
             return res;
         }
 
-        private static Dictionary<bool, string>[] len_tags = new Dictionary<bool, string>[] {
+        private static Dictionary<bool, string>[] LenTags = new Dictionary<bool, string>[]
+        {
             new Dictionary<bool, string> {
                 { false, "03" },
                 { true, "04" }
@@ -364,7 +363,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             }
         };
 
-        public static Dictionary<string, int> entrypoint_tags = new Dictionary<string, int> {
+        public static Dictionary<string, int> EntrypointTags = new Dictionary<string, int> {
             {"default", 0 },
             {"root", 1 },
             {"do", 2 },
@@ -372,7 +371,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             {"remove_delegate", 4 }
         };
 
-        private static Dictionary<string, string> prim_tags = new Dictionary<string, string> {
+        private static Dictionary<string, string> PrimTags = new Dictionary<string, string> {
             {"parameter", "00" },
             {"storage", "01" },
             {"code", "02" },
@@ -486,6 +485,5 @@ namespace Atomex.Blockchain.Tezos.Internal
             {"address", "6E" },
             {"SLICE", "6F" }
         };
-
     }
 }

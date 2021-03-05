@@ -182,13 +182,12 @@ namespace Atomex.Swaps.Ethereum
                 swap.RedeemTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(30) > DateTime.UtcNow)
             {
                 // redeem already broadcast
-                TrackTransactionConfirmationAsync(
-                        swap: swap,
-                        currency: eth,
-                        txId: swap.RedeemTx.Id,
-                        confirmationHandler: RedeemConfirmedEventHandler,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
+                _ = TrackTransactionConfirmationAsync(
+                    swap: swap,
+                    currency: eth,
+                    txId: swap.RedeemTx.Id,
+                    confirmationHandler: RedeemConfirmedEventHandler,
+                    cancellationToken: cancellationToken);
 
                 return;
             }
@@ -285,13 +284,12 @@ namespace Atomex.Swaps.Ethereum
             await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemBroadcast, cancellationToken)
                 .ConfigureAwait(false);
 
-            TrackTransactionConfirmationAsync(
-                    swap: swap,
-                    currency: eth,
-                    txId: redeemTx.Id,
-                    confirmationHandler: RedeemConfirmedEventHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = TrackTransactionConfirmationAsync(
+                swap: swap,
+                currency: eth,
+                txId: redeemTx.Id,
+                confirmationHandler: RedeemConfirmedEventHandler,
+                cancellationToken: cancellationToken);
         }
 
         public override async Task RedeemForPartyAsync(
@@ -392,13 +390,12 @@ namespace Atomex.Swaps.Ethereum
                 swap.RefundTx.CreationTime != null &&
                 swap.RefundTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(20) > DateTime.UtcNow)
             {
-                TrackTransactionConfirmationAsync(
-                        swap: swap,
-                        currency: eth,
-                        txId: swap.RefundTx.Id,
-                        confirmationHandler: RefundConfirmedEventHandler,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
+                _ = TrackTransactionConfirmationAsync(
+                    swap: swap,
+                    currency: eth,
+                    txId: swap.RefundTx.Id,
+                    confirmationHandler: RefundConfirmedEventHandler,
+                    cancellationToken: cancellationToken);
 
                 return;
             }
@@ -483,13 +480,12 @@ namespace Atomex.Swaps.Ethereum
             await UpdateSwapAsync(swap, SwapStateFlags.IsRefundBroadcast, cancellationToken)
                 .ConfigureAwait(false);
 
-            TrackTransactionConfirmationAsync(
-                    swap: swap,
-                    currency: eth,
-                    txId: refundTx.Id,
-                    confirmationHandler: RefundConfirmedEventHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = TrackTransactionConfirmationAsync(
+                swap: swap,
+                currency: eth,
+                txId: refundTx.Id,
+                confirmationHandler: RefundConfirmedEventHandler,
+                cancellationToken: cancellationToken);
         }
 
         public override Task StartWaitForRedeemAsync(

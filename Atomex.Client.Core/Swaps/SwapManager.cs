@@ -496,49 +496,54 @@ namespace Atomex.Swaps
             return null; // no error
         }
 
-        public async Task RestoreSwapsAsync(
+        public Task RestoreSwapsAsync(
             CancellationToken cancellationToken = default)
         {
-            try
+            return Task.Run(async () =>
             {
-                var activeSwapsIds = (await _account
-                    .GetSwapsAsync()
-                    .ConfigureAwait(false))
-                    .Where(s => s.IsActive)
-                    .Select(s => s.Id)
-                    .ToList();
-
-                foreach (var activeSwapId in activeSwapsIds)
+                try
                 {
-                    try
-                    {
-                        await LockSwapAsync(activeSwapId)
-                            .ConfigureAwait(false);
+                    var activeSwapsIds = (await _account
+                        .GetSwapsAsync()
+                        .ConfigureAwait(false))
+                        .Where(s => s.IsActive)
+                        .Select(s => s.Id)
+                        .ToList();
 
-                        var swap = await _account
-                            .GetSwapByIdAsync(activeSwapId)
-                            .ConfigureAwait(false);
+                    foreach (var activeSwapId in activeSwapsIds)
+                    {
+                        try
+                        {
+                            await LockSwapAsync(activeSwapId)
+                                .ConfigureAwait(false);
 
-                        await RestoreSwapAsync(swap, cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                    catch (Exception e)
-                    {
-                        Log.Error(e, "Swap {@id} restore error", activeSwapId);
-                    }
-                    finally
-                    {
-                        UnlockSwap(activeSwapId);
+                            var swap = await _account
+                                .GetSwapByIdAsync(activeSwapId)
+                                .ConfigureAwait(false);
+
+                            await RestoreSwapAsync(swap, cancellationToken)
+                                .ConfigureAwait(false);
+                        }
+                        catch (Exception e)
+                        {
+                            Log.Error(e, "Swap {@id} restore error", activeSwapId);
+                        }
+                        finally
+                        {
+                            UnlockSwap(activeSwapId);
+                        }
                     }
                 }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Swaps restore error");
-            }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("RestoreSwapsAsync canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Swaps restore error");
+                }
 
-            SwapTimeoutControlAsync(cancellationToken)
-                .FireAndForget();
+            }, cancellationToken);
         }
 
         private async Task RestoreSwapAsync(
@@ -689,7 +694,7 @@ namespace Atomex.Swaps
             }
         }
 
-        private Task SwapTimeoutControlAsync(
+        public Task SwapTimeoutControlAsync(
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -722,10 +727,15 @@ namespace Atomex.Swaps
                         }
                     }
                 }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("Swaps timeout control canceled.");
+                }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Swaps timeout control error");
+                    Log.Error(e, "Swaps timeout control error.");
                 }
+
             }, cancellationToken);
         }
 
