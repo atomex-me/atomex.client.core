@@ -81,8 +81,19 @@ namespace Atomex.Blockchain.Tezos.Internal
             bool useSafeStorageLimit = false,
             bool useDefaultFee = true)
         {
-            var runResults = await RunOperations(head, operations)
-                .ConfigureAwait(false);
+            JObject runResults = null;
+
+            try
+            {
+                runResults = await RunOperations(head, operations)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "RunOperations error.");
+
+                return false;
+            }
 
             foreach (var result in runResults.SelectToken("contents"))
             {
@@ -164,6 +175,20 @@ namespace Atomex.Blockchain.Tezos.Internal
                 .ConfigureAwait(false);
 
             return result;
+        }
+
+        public Task<JToken> ForgeOperations(JObject blockHead, JToken operations)
+        {
+            if (!(operations is JArray arrOps))
+                arrOps = new JArray(operations);
+
+            var contents = new JObject
+            {
+                ["branch"] = blockHead["hash"],
+                ["contents"] = arrOps
+            };
+
+            return QueryJ($"chains/{_chain}/blocks/head/helpers/forge/operations", contents);
         }
 
         public async Task<List<OperationResult>> PreApplyOperations(

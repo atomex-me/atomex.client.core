@@ -90,7 +90,7 @@ namespace Atomex.Blockchain.Tezos
             return resTx;
         }
 
-        public Task<bool> SignAsync(
+        public async Task<bool> SignAsync(
             IKeyStorage keyStorage,
             WalletAddress address,
             CancellationToken cancellationToken = default)
@@ -98,7 +98,7 @@ namespace Atomex.Blockchain.Tezos
             if (address.KeyIndex == null)
             {
                 Log.Error("Can't find private key for address {@address}", address);
-                return Task.FromResult(false);
+                return false;
             }
 
             using var securePrivateKey = keyStorage
@@ -107,12 +107,20 @@ namespace Atomex.Blockchain.Tezos
             if (securePrivateKey == null)
             {
                 Log.Error("Can't find private key for address {@address}", address);
-                return Task.FromResult(false);
+                return false;
             }
 
             using var privateKey = securePrivateKey.ToUnsecuredBytes();
 
-            var forgedOpGroup = Forge.ForgeOperationsLocal(Head["hash"].ToString(), Operations);
+            var xtz = (Atomex.Tezos)Currency;
+
+            var rpc = new Rpc(xtz.RpcNodeUri);
+
+            var forgedOpGroup = await rpc
+                .ForgeOperations(Head, Operations)
+                .ConfigureAwait(false);
+
+            //var forgedOpGroup = Forge.ForgeOperationsLocal(Head["hash"].ToString(), Operations);
 
             SignedMessage = TezosSigner.SignHash(
                 data: Hex.FromString(forgedOpGroup.ToString()),
@@ -120,7 +128,7 @@ namespace Atomex.Blockchain.Tezos
                 watermark: Watermark.Generic,
                 isExtendedKey: privateKey.Length == 64);
 
-            return Task.FromResult(SignedMessage != null);
+            return SignedMessage != null;
         }
 
         public async Task<bool> FillOperationsAsync(

@@ -78,7 +78,7 @@ namespace Atomex.Swaps.Tezos.FA12
                         var fillResult = await tx
                             .FillOperationsAsync(
                                 securePublicKey: securePublicKey,
-                                headOffset: Atomex.Tezos.HeadOffset,
+                                //headOffset: Atomex.Tezos.HeadOffset,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
