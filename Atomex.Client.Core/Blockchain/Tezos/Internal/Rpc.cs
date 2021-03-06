@@ -261,6 +261,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             using var response = await HttpHelper.HttpClient
                 .SendAsync(request)
                 .ConfigureAwait(false);
+
             var responseBody = await response.Content
                 .ReadAsStringAsync()
                 .ConfigureAwait(false);

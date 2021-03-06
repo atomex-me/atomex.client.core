@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -8,11 +9,19 @@ namespace Atomex.Blockchain.Tezos
 {
     public class TezosCounter
     {
-        private readonly Dictionary<string, int> _offlineCounters;
+        private TimeSpan ExpirationPeriod = TimeSpan.FromMinutes(10); // ~ 10 blocks
+
+        private class CounterEntry
+        {
+            public int Value { get; set; }
+            public DateTimeOffset Expiration { get; set; }
+        }
+
+        private readonly Dictionary<string, CounterEntry> _offlineCounters;
 
         private TezosCounter()
         {
-            _offlineCounters = new Dictionary<string, int>();
+            _offlineCounters = new Dictionary<string, CounterEntry>();
         }
 
         private static TezosCounter _instance;
@@ -57,14 +66,25 @@ namespace Atomex.Blockchain.Tezos
             // update offline counter if need
             lock (_offlineCounters)
             {
-                if (_offlineCounters.TryGetValue(address, out var offlineCounter))
+                if (_offlineCounters.TryGetValue(address, out var offlineCounterEntry))
                 {
-                    if (offlineCounter < currentCounter)
-                        _offlineCounters[address] = currentCounter;
+                    if (offlineCounterEntry.Value < currentCounter ||
+                        DateTimeOffset.UtcNow > offlineCounterEntry.Expiration)
+                    {
+                        _offlineCounters[address] = new CounterEntry
+                        {
+                            Value = currentCounter,
+                            Expiration = DateTimeOffset.UtcNow + ExpirationPeriod
+                        };
+                    }
                 }
                 else
                 {
-                    _offlineCounters[address] = currentCounter;
+                    _offlineCounters[address] = new CounterEntry
+                    {
+                        Value = currentCounter,
+                        Expiration = DateTimeOffset.UtcNow + ExpirationPeriod
+                    };
                 }
             }
 
@@ -82,19 +102,28 @@ namespace Atomex.Blockchain.Tezos
 
             lock (_offlineCounters)
             {
-                if (_offlineCounters.TryGetValue(address, out var offlineCounter))
+                if (_offlineCounters.TryGetValue(address, out var offlineCounterEntry))
                 {
                     // update offline counter
-                    if (offlineCounter < currentCounter)
-                        offlineCounter = currentCounter;
+                    var offlineCounter = offlineCounterEntry.Value < currentCounter || DateTimeOffset.UtcNow > offlineCounterEntry.Expiration
+                        ? currentCounter
+                        : offlineCounterEntry.Value;
 
-                    _offlineCounters[address] = offlineCounter + numberOfCounters;
+                    _offlineCounters[address] = new CounterEntry
+                    {
+                        Value = offlineCounter + numberOfCounters,
+                        Expiration = DateTimeOffset.UtcNow + ExpirationPeriod
+                    };
 
                     return ++offlineCounter;
                 }
                 else
                 {
-                    _offlineCounters.Add(address, currentCounter + numberOfCounters);
+                    _offlineCounters[address] = new CounterEntry
+                    {
+                        Value = currentCounter + numberOfCounters,
+                        Expiration = DateTimeOffset.UtcNow + ExpirationPeriod
+                    };
 
                     return ++currentCounter;
                 }
