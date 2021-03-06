@@ -146,10 +146,12 @@ namespace Atomex.Blockchain.Tezos
                 .GetManagerKey(From)
                 .ConfigureAwait(false);
 
+            var actualHead = await rpc
+                .GetHeader()
+                .ConfigureAwait(false);
+
             if (Head == null)
-                Head = await rpc
-                    .GetHeader(headOffset)
-                    .ConfigureAwait(false);
+                Head = actualHead;
 
             Operations = new JArray();
 
@@ -161,14 +163,14 @@ namespace Atomex.Blockchain.Tezos
                 ? await TezosCounter.Instance
                     .GetOfflineCounterAsync(
                         address: From,
-                        head: Head["hash"].ToString(),
+                        head: actualHead["hash"].ToString(),
                         rpcNodeUri: tezosConfig.RpcNodeUri,
                         numberOfCounters: revealed ? 1 : 2)
                     .ConfigureAwait(false)
                 : await TezosCounter.Instance
                     .GetCounterAsync(
                         address: From,
-                        head: Head["hash"].ToString(),
+                        head: actualHead["hash"].ToString(),
                         rpcNodeUri: tezosConfig.RpcNodeUri)
                     .ConfigureAwait(false);
 
