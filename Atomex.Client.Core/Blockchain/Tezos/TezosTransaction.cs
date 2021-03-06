@@ -47,7 +47,7 @@ namespace Atomex.Blockchain.Tezos
         public JArray Operations { get; private set; }
         public SignedMessage SignedMessage { get; private set; }
 
-        public string OperationType { get; set; }
+        public string OperationType { get; set; } = Internal.OperationType.Transaction;
         public bool UseSafeStorageLimit { get; set; } = false;
         public bool UseRun { get; set; } = true;
         public bool UsePreApply { get; set; } = false;
