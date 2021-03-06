@@ -88,104 +88,118 @@ namespace Atomex.Subsystems
 
         public async Task StartAsync()
         {
-            Log.Information("Start terminal services");
-
-            var configuration = Configuration.GetSection($"Services:{Account.Network}");
-
-            // init schemes
-            var schemes = new ProtoSchemes();
-
-            // init market data repository
-            MarketDataRepository = new MarketDataRepository(
-                symbols: SymbolsProvider.GetSymbols(Account.Network));
-
-            // init exchange client
-            ExchangeClient = new ExchangeWebClient(configuration, schemes);
-            ExchangeClient.Connected     += OnExchangeConnectedEventHandler;
-            ExchangeClient.Disconnected  += OnExchangeDisconnectedEventHandler;
-            ExchangeClient.AuthOk        += OnExchangeAuthOkEventHandler;
-            ExchangeClient.AuthNonce     += OnExchangeAuthNonceEventHandler;
-            ExchangeClient.Error         += OnExchangeErrorEventHandler;
-            ExchangeClient.OrderReceived += OnExchangeOrderEventHandler;
-            ExchangeClient.SwapReceived  += OnSwapReceivedEventHandler;
-
-            // init market data client
-            MarketDataClient = new MarketDataWebClient(configuration, schemes);
-            MarketDataClient.Connected        += OnMarketDataConnectedEventHandler;
-            MarketDataClient.Disconnected     += OnMarketDataDisconnectedEventHandler;
-            MarketDataClient.AuthOk           += OnMarketDataAuthOkEventHandler;
-            MarketDataClient.AuthNonce        += OnMarketDataAuthNonceEventHandler;
-            MarketDataClient.Error            += OnMarketDataErrorEventHandler;
-            MarketDataClient.QuotesReceived   += OnQuotesReceivedEventHandler;
-            MarketDataClient.EntriesReceived  += OnEntriesReceivedEventHandler;
-            MarketDataClient.SnapshotReceived += OnSnapshotReceivedEventHandler;
-
-            // start services
-            var exchangeConnectTask = ExchangeClient.ConnectAsync();
-            var marketDataConnectTask = MarketDataClient.ConnectAsync();
-            await Task.WhenAll(exchangeConnectTask, marketDataConnectTask)
-                .ConfigureAwait(false);
-
-            // start async unconfirmed transactions tracking
-            _ = TrackUnconfirmedTransactionsAsync(_cts.Token);
-
-            // init swap manager
-            SwapManager = new SwapManager(
-                account: Account,
-                swapClient: ExchangeClient,
-                quotesProvider: QuotesProvider,
-                marketDataRepository: MarketDataRepository);
-
-            SwapManager.SwapUpdated += (sender, args) => SwapUpdated?.Invoke(sender, args);
-
-            _ = Task.Run(async () =>
+            try
             {
+                Log.Information("Start terminal services");
+
+                var configuration = Configuration.GetSection($"Services:{Account.Network}");
+
+                // init schemes
+                var schemes = new ProtoSchemes();
+
+                // init market data repository
+                MarketDataRepository = new MarketDataRepository(
+                    symbols: SymbolsProvider.GetSymbols(Account.Network));
+
+                // init exchange client
+                ExchangeClient = new ExchangeWebClient(configuration, schemes);
+                ExchangeClient.Connected += OnExchangeConnectedEventHandler;
+                ExchangeClient.Disconnected += OnExchangeDisconnectedEventHandler;
+                ExchangeClient.AuthOk += OnExchangeAuthOkEventHandler;
+                ExchangeClient.AuthNonce += OnExchangeAuthNonceEventHandler;
+                ExchangeClient.Error += OnExchangeErrorEventHandler;
+                ExchangeClient.OrderReceived += OnExchangeOrderEventHandler;
+                ExchangeClient.SwapReceived += OnSwapReceivedEventHandler;
+
+                // init market data client
+                MarketDataClient = new MarketDataWebClient(configuration, schemes);
+                MarketDataClient.Connected += OnMarketDataConnectedEventHandler;
+                MarketDataClient.Disconnected += OnMarketDataDisconnectedEventHandler;
+                MarketDataClient.AuthOk += OnMarketDataAuthOkEventHandler;
+                MarketDataClient.AuthNonce += OnMarketDataAuthNonceEventHandler;
+                MarketDataClient.Error += OnMarketDataErrorEventHandler;
+                MarketDataClient.QuotesReceived += OnQuotesReceivedEventHandler;
+                MarketDataClient.EntriesReceived += OnEntriesReceivedEventHandler;
+                MarketDataClient.SnapshotReceived += OnSnapshotReceivedEventHandler;
+
+                // start services
+                var exchangeConnectTask = ExchangeClient.ConnectAsync();
+                var marketDataConnectTask = MarketDataClient.ConnectAsync();
+                await Task.WhenAll(exchangeConnectTask, marketDataConnectTask)
+                    .ConfigureAwait(false);
+
+                // start async unconfirmed transactions tracking
+                _ = TrackUnconfirmedTransactionsAsync(_cts.Token);
+
+                // init swap manager
+                SwapManager = new SwapManager(
+                    account: Account,
+                    swapClient: ExchangeClient,
+                    quotesProvider: QuotesProvider,
+                    marketDataRepository: MarketDataRepository);
+
+                SwapManager.SwapUpdated += (sender, args) => SwapUpdated?.Invoke(sender, args);
+
+                _ = Task.Run(async () =>
+                {
                 // restore swaps
                 await SwapManager
-                    .RestoreSwapsAsync(_cts.Token)
-                    .ConfigureAwait(false);
+                        .RestoreSwapsAsync(_cts.Token)
+                        .ConfigureAwait(false);
 
                 // timeout control
                 await SwapManager
-                    .SwapTimeoutControlAsync(_cts.Token)
-                    .ConfigureAwait(false);
+                        .SwapTimeoutControlAsync(_cts.Token)
+                        .ConfigureAwait(false);
 
-            }, _cts.Token);
+                }, _cts.Token);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "StartAsync error.");
+            }
         }
 
         public async Task StopAsync()
         {
-            if (ExchangeClient == null || MarketDataClient == null)
-                return;
+            try
+            {
+                if (ExchangeClient == null || MarketDataClient == null)
+                    return;
 
-            Log.Information("Stop terminal services");
+                Log.Information("Stop terminal services");
 
-            // cancel all terminal background tasks
-            _cts.Cancel();
+                // cancel all terminal background tasks
+                _cts.Cancel();
 
-            // close services
-            await Task.WhenAll(ExchangeClient.CloseAsync(), MarketDataClient.CloseAsync())
-                .ConfigureAwait(false);
+                // close services
+                await Task.WhenAll(ExchangeClient.CloseAsync(), MarketDataClient.CloseAsync())
+                    .ConfigureAwait(false);
 
-            ExchangeClient.Connected     -= OnExchangeConnectedEventHandler;
-            ExchangeClient.Disconnected  -= OnExchangeDisconnectedEventHandler;
-            ExchangeClient.AuthOk        -= OnExchangeAuthOkEventHandler;
-            ExchangeClient.AuthNonce     -= OnExchangeAuthNonceEventHandler;
-            ExchangeClient.Error         -= OnExchangeErrorEventHandler;
-            ExchangeClient.OrderReceived -= OnExchangeOrderEventHandler;
-            ExchangeClient.SwapReceived  -= OnSwapReceivedEventHandler;
+                ExchangeClient.Connected -= OnExchangeConnectedEventHandler;
+                ExchangeClient.Disconnected -= OnExchangeDisconnectedEventHandler;
+                ExchangeClient.AuthOk -= OnExchangeAuthOkEventHandler;
+                ExchangeClient.AuthNonce -= OnExchangeAuthNonceEventHandler;
+                ExchangeClient.Error -= OnExchangeErrorEventHandler;
+                ExchangeClient.OrderReceived -= OnExchangeOrderEventHandler;
+                ExchangeClient.SwapReceived -= OnSwapReceivedEventHandler;
 
-            MarketDataClient.Connected        -= OnMarketDataConnectedEventHandler;
-            MarketDataClient.Disconnected     -= OnMarketDataDisconnectedEventHandler;
-            MarketDataClient.AuthOk           -= OnMarketDataAuthOkEventHandler;
-            MarketDataClient.AuthNonce        -= OnMarketDataAuthNonceEventHandler;
-            MarketDataClient.Error            -= OnMarketDataErrorEventHandler;
-            MarketDataClient.QuotesReceived   -= OnQuotesReceivedEventHandler;
-            MarketDataClient.EntriesReceived  -= OnEntriesReceivedEventHandler;
-            MarketDataClient.SnapshotReceived -= OnSnapshotReceivedEventHandler;
+                MarketDataClient.Connected -= OnMarketDataConnectedEventHandler;
+                MarketDataClient.Disconnected -= OnMarketDataDisconnectedEventHandler;
+                MarketDataClient.AuthOk -= OnMarketDataAuthOkEventHandler;
+                MarketDataClient.AuthNonce -= OnMarketDataAuthNonceEventHandler;
+                MarketDataClient.Error -= OnMarketDataErrorEventHandler;
+                MarketDataClient.QuotesReceived -= OnQuotesReceivedEventHandler;
+                MarketDataClient.EntriesReceived -= OnEntriesReceivedEventHandler;
+                MarketDataClient.SnapshotReceived -= OnSnapshotReceivedEventHandler;
 
-            SwapManager.SwapUpdated -= SwapUpdated;
-            SwapManager.Clear();
+                SwapManager.SwapUpdated -= SwapUpdated;
+                SwapManager.Clear();
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "StopAsync error.");
+            }
         }
 
         private void SwapUpdatedHandler(object sender, SwapEventArgs swapEventArgs)

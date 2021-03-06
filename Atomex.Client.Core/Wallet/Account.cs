@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
@@ -91,14 +90,7 @@ namespace Atomex.Wallet
                 currencies: Currencies,
                 network: wallet.Network);
 
-            CurrencyAccounts = Currencies
-                .ToDictionary(
-                    c => c.Name,
-                    c => CurrencyAccountCreator.Create(
-                        currency: c.Name,
-                        wallet: Wallet,
-                        dataRepository: DataRepository,
-                        currencies: Currencies));
+            CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, DataRepository);
 
             UserSettings = UserSettings.TryLoadFromFile(
                 pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
@@ -118,15 +110,7 @@ namespace Atomex.Wallet
             DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
 
             Currencies = currenciesProvider.GetCurrencies(Network);
-
-            CurrencyAccounts = Currencies
-                .ToDictionary(
-                    c => c.Name,
-                    c => CurrencyAccountCreator.Create(
-                        currency: c.Name,
-                        wallet: Wallet,
-                        dataRepository: DataRepository,
-                        currencies: Currencies));
+            CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, DataRepository);
 
             UserSettings = UserSettings.TryLoadFromFile(
                 pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",

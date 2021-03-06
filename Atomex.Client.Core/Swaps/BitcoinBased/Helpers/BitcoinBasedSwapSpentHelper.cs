@@ -26,77 +26,89 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
             Func<Swap, CancellationToken, Task> refundTimeReachedHandler = null,
             CancellationToken cancellationToken = default)
         {
-            var bitcoinBased = (BitcoinBasedCurrency)currency;
-
-            var side = swap.Symbol
-                .OrderSideForBuyCurrency(swap.PurchasedCurrency);
-
-            var requiredAmount = AmountHelper.QtyToAmount(side, swap.Qty, swap.Price, bitcoinBased.DigitsMultiplier);
-            var requiredAmountInSatoshi = bitcoinBased.CoinToSatoshi(requiredAmount);
-
-            var lockTimeInSeconds = swap.IsInitiator
-                ? CurrencySwap.DefaultInitiatorLockTimeInSeconds
-                : CurrencySwap.DefaultAcceptorLockTimeInSeconds;
-
-            var refundTimeUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds))
-                .ToUnixTimeSeconds();
-
-            var redeemScript = swap.RefundAddress == null && swap.RedeemScript != null
-                ? new Script(Convert.FromBase64String(swap.RedeemScript))
-                : BitcoinBasedSwapTemplate
-                    .GenerateHtlcP2PkhSwapPayment(
-                        aliceRefundAddress: swap.RefundAddress,
-                        bobAddress: swap.PartyAddress,
-                        lockTimeStamp: refundTimeUtcInSec,
-                        secretHash: swap.SecretHash,
-                        secretSize: CurrencySwap.DefaultSecretSize,
-                        expectedNetwork: bitcoinBased.Network);
-
-            var swapOutput = ((IBitcoinBasedTransaction)swap.PaymentTx)
-                .Outputs
-                .Cast<BitcoinBasedTxOutput>()
-                .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript) && o.Value >= requiredAmountInSatoshi);
-
-            if (swapOutput == null)
-                throw new InternalException(
-                    code: Errors.SwapError,
-                    description: "Payment tx have not swap output");
-
             return Task.Run(async () =>
             {
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    Log.Debug("Output spent control for {@currency} swap {@swapId}", currency.Name, swap.Id);
+                    var bitcoinBased = (BitcoinBasedCurrency)currency;
 
-                    var result = await currency
-                        .GetSpentPointAsync(
-                            hash: swap.PaymentTxId,
-                            index: swapOutput.Index,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
+                    var side = swap.Symbol
+                        .OrderSideForBuyCurrency(swap.PurchasedCurrency);
 
-                    if (result != null && !result.HasError)
+                    var requiredAmount = AmountHelper.QtyToAmount(side, swap.Qty, swap.Price, bitcoinBased.DigitsMultiplier);
+                    var requiredAmountInSatoshi = bitcoinBased.CoinToSatoshi(requiredAmount);
+
+                    var lockTimeInSeconds = swap.IsInitiator
+                        ? CurrencySwap.DefaultInitiatorLockTimeInSeconds
+                        : CurrencySwap.DefaultAcceptorLockTimeInSeconds;
+
+                    var refundTimeUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds))
+                        .ToUnixTimeSeconds();
+
+                    var redeemScript = swap.RefundAddress == null && swap.RedeemScript != null
+                        ? new Script(Convert.FromBase64String(swap.RedeemScript))
+                        : BitcoinBasedSwapTemplate
+                            .GenerateHtlcP2PkhSwapPayment(
+                                aliceRefundAddress: swap.RefundAddress,
+                                bobAddress: swap.PartyAddress,
+                                lockTimeStamp: refundTimeUtcInSec,
+                                secretHash: swap.SecretHash,
+                                secretSize: CurrencySwap.DefaultSecretSize,
+                                expectedNetwork: bitcoinBased.Network);
+
+                    var swapOutput = ((IBitcoinBasedTransaction)swap.PaymentTx)
+                        .Outputs
+                        .Cast<BitcoinBasedTxOutput>()
+                        .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript) && o.Value >= requiredAmountInSatoshi);
+
+                    if (swapOutput == null)
+                        throw new InternalException(
+                            code: Errors.SwapError,
+                            description: "Payment tx have not swap output");
+
+                    while (!cancellationToken.IsCancellationRequested)
                     {
-                        if (result.Value != null)
+                        Log.Debug("Output spent control for {@currency} swap {@swapId}", currency.Name, swap.Id);
+
+                        var result = await currency
+                            .GetSpentPointAsync(
+                                hash: swap.PaymentTxId,
+                                index: swapOutput.Index,
+                                cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (result != null && !result.HasError)
                         {
-                            await completionHandler.Invoke(swap, result.Value, cancellationToken)
+                            if (result.Value != null)
+                            {
+                                await completionHandler.Invoke(swap, result.Value, cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                break;
+                            }
+                        }
+
+                        if (DateTime.UtcNow >= refundTimeUtc)
+                        {
+                            await refundTimeReachedHandler.Invoke(swap, cancellationToken)
                                 .ConfigureAwait(false);
 
                             break;
                         }
-                    }
 
-                    if (DateTime.UtcNow >= refundTimeUtc)
-                    {
-                        await refundTimeReachedHandler.Invoke(swap, cancellationToken)
+                        await Task.Delay(interval, cancellationToken)
                             .ConfigureAwait(false);
-
-                        break;
                     }
-
-                    await Task.Delay(interval, cancellationToken)
-                        .ConfigureAwait(false);
                 }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("StartSwapSpentControlAsync canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "StartSwapSpentControlAsync error");
+                }
+
             }, cancellationToken);
         }
     }

@@ -133,44 +133,56 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
         {
             return Task.Run(async () =>
             {
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    var isRedeemedResult = await IsRedeemedAsync(
-                            swap: swap,
-                            currency: currency,
-                            tezos: tezos,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (isRedeemedResult.HasError && isRedeemedResult.Error.Code != Errors.RequestError) // has error
+                    while (!cancellationToken.IsCancellationRequested)
                     {
-                        await canceledHandler
-                            .Invoke(swap, refundTimeUtc, cancellationToken)
+                        var isRedeemedResult = await IsRedeemedAsync(
+                                swap: swap,
+                                currency: currency,
+                                tezos: tezos,
+                                cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        break;
-                    }
-                    else if (!isRedeemedResult.HasError && isRedeemedResult.Value != null) // has secret
-                    {
-                        await redeemedHandler
-                            .Invoke(swap, isRedeemedResult.Value, cancellationToken)
+                        if (isRedeemedResult.HasError && isRedeemedResult.Error.Code != Errors.RequestError) // has error
+                        {
+                            await canceledHandler
+                                .Invoke(swap, refundTimeUtc, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            break;
+                        }
+                        else if (!isRedeemedResult.HasError && isRedeemedResult.Value != null) // has secret
+                        {
+                            await redeemedHandler
+                                .Invoke(swap, isRedeemedResult.Value, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            break;
+                        }
+
+                        if (!cancelOnlyIfRefundTimeReached || DateTime.UtcNow >= refundTimeUtc)
+                        {
+                            await canceledHandler
+                                .Invoke(swap, refundTimeUtc, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            break;
+                        }
+
+                        await Task.Delay(interval, cancellationToken)
                             .ConfigureAwait(false);
-
-                        break;
                     }
-
-                    if (!cancelOnlyIfRefundTimeReached || DateTime.UtcNow >= refundTimeUtc)
-                    {
-                        await canceledHandler
-                            .Invoke(swap, refundTimeUtc, cancellationToken)
-                            .ConfigureAwait(false);
-
-                        break;
-                    }
-
-                    await Task.Delay(interval, cancellationToken)
-                        .ConfigureAwait(false);
                 }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("StartSwapRedeemedControlAsync canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "StartSwapRedeemedControlAsync error.");
+                }
+
             }, cancellationToken);
         }
 

@@ -140,15 +140,14 @@ namespace Atomex.Swaps.Ethereum
 
             var refundTimeUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
 
-            EthereumSwapInitiatedHelper.StartSwapInitiatedControlAsync(
-                    swap: swap,
-                    currency: Eth,
-                    refundTimeStamp: refundTimeUtcInSec,
-                    interval: ConfirmationCheckInterval,
-                    initiatedHandler: initiatedHandler,
-                    canceledHandler: SwapCanceledHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = EthereumSwapInitiatedHelper.StartSwapInitiatedControlAsync(
+                swap: swap,
+                currency: Eth,
+                refundTimeStamp: refundTimeUtcInSec,
+                interval: ConfirmationCheckInterval,
+                initiatedHandler: initiatedHandler,
+                canceledHandler: SwapCanceledHandler,
+                cancellationToken: cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -497,16 +496,15 @@ namespace Atomex.Swaps.Ethereum
                 : DefaultAcceptorLockTimeInSeconds;
 
             // start redeem control async
-            EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
-                    swap: swap,
-                    currency: Eth,
-                    refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
-                    interval: TimeSpan.FromSeconds(30),
-                    cancelOnlyIfRefundTimeReached: true,
-                    redeemedHandler: RedeemCompletedEventHandler,
-                    canceledHandler: RedeemCanceledEventHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+                swap: swap,
+                currency: Eth,
+                refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
+                interval: TimeSpan.FromSeconds(30),
+                cancelOnlyIfRefundTimeReached: true,
+                redeemedHandler: RedeemCompletedEventHandler,
+                canceledHandler: RedeemCanceledEventHandler,
+                cancellationToken: cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -518,16 +516,15 @@ namespace Atomex.Swaps.Ethereum
             Log.Debug("Wait redeem for swap {@swapId}", swap.Id);
 
             // start redeem control async
-            EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
-                    swap: swap,
-                    currency: Eth,
-                    refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
-                    interval: TimeSpan.FromSeconds(30),
-                    cancelOnlyIfRefundTimeReached: true,
-                    redeemedHandler: RedeemBySomeoneCompletedEventHandler,
-                    canceledHandler: RedeemBySomeoneCanceledEventHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+                swap: swap,
+                currency: Eth,
+                refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
+                interval: TimeSpan.FromSeconds(30),
+                cancelOnlyIfRefundTimeReached: true,
+                redeemedHandler: RedeemBySomeoneCompletedEventHandler,
+                canceledHandler: RedeemBySomeoneCanceledEventHandler,
+                cancellationToken: cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -601,11 +598,10 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
 
                 // get transactions & update balance for address async
-                AddressHelper.UpdateAddressBalanceAsync<EthereumWalletScanner, EthereumAccount>(
-                        account: _account,
-                        address: swap.ToAddress,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
+                _ = AddressHelper.UpdateAddressBalanceAsync<EthereumWalletScanner, EthereumAccount>(
+                    account: _account,
+                    address: swap.ToAddress,
+                    cancellationToken: cancellationToken);
             }
         }
 

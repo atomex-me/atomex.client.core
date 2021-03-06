@@ -1,5 +1,4 @@
-﻿using Serilog;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,24 +7,6 @@ namespace Atomex.Common
 {
     public static class AsyncHelpers
     {
-        public static async void FireAndForget(this Task task, Action<Exception> exceptionHandler = null)
-        {
-            try
-            {
-                await task;
-            }
-            catch (OperationCanceledException)
-            {
-                Log.Debug("Task \"fire and forget\" canceled.");
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, $"Task \"fire and forget\" error: {e.Message}");
-
-                exceptionHandler?.Invoke(e);
-            }
-        }
-
         public static T WaitForResult<T>(this Task<T> task)
         {
             try

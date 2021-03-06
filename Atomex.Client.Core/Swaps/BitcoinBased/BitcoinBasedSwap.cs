@@ -414,12 +414,11 @@ namespace Atomex.Swaps.BitcoinBased
             await UpdateSwapAsync(swap, SwapStateFlags.IsRefundSigned, cancellationToken)
                 .ConfigureAwait(false);
 
-            swap.RefundTx.ForceBroadcast(
-                    swap: swap,
-                    interval: ForceRefundInterval,
-                    completionHandler: RefundBroadcastEventHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = swap.RefundTx.ForceBroadcast(
+                swap: swap,
+                interval: ForceRefundInterval,
+                completionHandler: RefundBroadcastEventHandler,
+                cancellationToken: cancellationToken);
         }
 
         public override Task StartWaitForRedeemAsync(
@@ -432,15 +431,14 @@ namespace Atomex.Swaps.BitcoinBased
                 ? DefaultInitiatorLockTimeInSeconds
                 : DefaultAcceptorLockTimeInSeconds;
 
-            BitcoinBasedSwapSpentHelper.StartSwapSpentControlAsync(
-                    swap: swap,
-                    currency: currency,
-                    refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
-                    interval: OutputSpentCheckInterval,
-                    completionHandler: PaymentSpentEventHandler,
-                    refundTimeReachedHandler: RefundTimeReachedHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = BitcoinBasedSwapSpentHelper.StartSwapSpentControlAsync(
+                swap: swap,
+                currency: currency,
+                refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
+                interval: OutputSpentCheckInterval,
+                completionHandler: PaymentSpentEventHandler,
+                refundTimeReachedHandler: RefundTimeReachedHandler,
+                cancellationToken: cancellationToken);
 
             if (!swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed))
                 _ = TrackTransactionConfirmationAsync(

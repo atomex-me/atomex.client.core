@@ -551,16 +551,15 @@ namespace Atomex.Swaps.Tezos
                 : DefaultAcceptorLockTimeInSeconds;
 
             // start redeem control async
-            TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
-                    swap: swap,
-                    currency: Xtz,
-                    refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
-                    interval: TimeSpan.FromSeconds(30),
-                    cancelOnlyIfRefundTimeReached: true,
-                    redeemedHandler: RedeemCompletedEventHandler,
-                    canceledHandler: RedeemCanceledEventHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+                swap: swap,
+                currency: Xtz,
+                refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
+                interval: TimeSpan.FromSeconds(30),
+                cancelOnlyIfRefundTimeReached: true,
+                redeemedHandler: RedeemCompletedEventHandler,
+                canceledHandler: RedeemCanceledEventHandler,
+                cancellationToken: cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -572,16 +571,15 @@ namespace Atomex.Swaps.Tezos
             Log.Debug("Wait redeem for swap {@swapId}", swap.Id);
 
             // start redeem control async
-            TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
-                    swap: swap,
-                    currency: Xtz,
-                    refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
-                    interval: TimeSpan.FromSeconds(30),
-                    cancelOnlyIfRefundTimeReached: true,
-                    redeemedHandler: RedeemBySomeoneCompletedEventHandler,
-                    canceledHandler: RedeemBySomeoneCanceledEventHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+                swap: swap,
+                currency: Xtz,
+                refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
+                interval: TimeSpan.FromSeconds(30),
+                cancelOnlyIfRefundTimeReached: true,
+                redeemedHandler: RedeemBySomeoneCompletedEventHandler,
+                canceledHandler: RedeemBySomeoneCanceledEventHandler,
+                cancellationToken: cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -655,11 +653,10 @@ namespace Atomex.Swaps.Tezos
                     .ConfigureAwait(false);
 
                 // get transactions & update balance for address async 
-                AddressHelper.UpdateAddressBalanceAsync<TezosWalletScanner, TezosAccount>(
-                        account: _account,
-                        address: swap.ToAddress,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
+                _ = AddressHelper.UpdateAddressBalanceAsync<TezosWalletScanner, TezosAccount>(
+                    account: _account,
+                    address: swap.ToAddress,
+                    cancellationToken: cancellationToken);
             }
         }
 

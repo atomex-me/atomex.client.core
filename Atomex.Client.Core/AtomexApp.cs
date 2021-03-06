@@ -60,13 +60,14 @@ namespace Atomex
 
         private void StartTerminal()
         {
-            Terminal.StartAsync().FireAndForget();
+            _ = Terminal.StartAsync();
         }
 
         private void StopTerminal()
         {
             Terminal.Account.Lock();
-            Terminal.StopAsync().FireAndForget();
+
+            _ = Terminal.StopAsync();
         }
 
         public IAtomexApp UseTerminal(IAtomexClient terminal, bool restart = false)
