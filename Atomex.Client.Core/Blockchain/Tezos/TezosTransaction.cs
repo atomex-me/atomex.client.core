@@ -52,6 +52,7 @@ namespace Atomex.Blockchain.Tezos
         public bool UseRun { get; set; } = true;
         public bool UsePreApply { get; set; } = false;
         public bool UseOfflineCounter { get; set; } = true;
+        public int UsedCounters { get; set; }
 
         public List<TezosTransaction> InternalTxs { get; set; }
 
@@ -159,13 +160,15 @@ namespace Atomex.Blockchain.Tezos
             var storage  = StorageLimit.ToString(CultureInfo.InvariantCulture);
             var revealed = managerKey.Value<string>() != null;
 
+            UsedCounters = revealed ? 1 : 2;
+
             var counter = UseOfflineCounter
                 ? await TezosCounter.Instance
                     .GetOfflineCounterAsync(
                         address: From,
                         head: actualHead["hash"].ToString(),
                         rpcNodeUri: tezosConfig.RpcNodeUri,
-                        numberOfCounters: revealed ? 1 : 2)
+                        numberOfCounters: UsedCounters)
                     .ConfigureAwait(false)
                 : await TezosCounter.Instance
                     .GetCounterAsync(
@@ -235,6 +238,12 @@ namespace Atomex.Blockchain.Tezos
             }
 
             return true;
+        }
+
+        public void RollbackOfflineCounterIfNeed()
+        {
+            if (UseOfflineCounter)
+                TezosCounter.Instance.RollbackOfflineCounter(From, UsedCounters);
         }
     }
 }

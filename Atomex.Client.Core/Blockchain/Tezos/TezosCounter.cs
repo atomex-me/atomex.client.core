@@ -129,5 +129,19 @@ namespace Atomex.Blockchain.Tezos
                 }
             }
         }
+
+        public void RollbackOfflineCounter(
+            string address,
+            int numberOfCounters)
+        {
+            lock (_offlineCounters)
+            {
+                if (_offlineCounters.TryGetValue(address, out var offlineCounterEntry))
+                {
+                    offlineCounterEntry.Value -= numberOfCounters;
+                    offlineCounterEntry.Expiration = DateTimeOffset.UtcNow + ExpirationPeriod;
+                }
+            }
+        }
     }
 }

@@ -50,9 +50,10 @@ namespace Atomex.Blockchain.Tezos
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default)
         {
+            var tx = (TezosTransaction)transaction;
+
             try
             {
-                var tx = (TezosTransaction)transaction;
                 tx.State = BlockchainTransactionState.Pending;
 
                 var rpc = new Rpc(_rpcNodeUri);
@@ -88,7 +89,11 @@ namespace Atomex.Blockchain.Tezos
                 }
 
                 if (txId == null)
+                {
+                    tx.RollbackOfflineCounterIfNeed();
+
                     return new Error(Errors.NullTxId, "Null tx id");
+                }
 
                 tx.Id = txId;
 
@@ -97,6 +102,8 @@ namespace Atomex.Blockchain.Tezos
             catch (Exception e)
             {
                 Log.Error(e, $"Broadcast error: {e.Message}");
+
+                tx.RollbackOfflineCounterIfNeed();
 
                 return new Error(Errors.RequestError, e.Message);
             }
