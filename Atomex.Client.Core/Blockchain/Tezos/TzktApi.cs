@@ -96,6 +96,8 @@ namespace Atomex.Blockchain.Tezos
             }
             catch (Exception e)
             {
+                Log.Error(e, $"Broadcast error: {e.Message}");
+
                 return new Error(Errors.RequestError, e.Message);
             }
         }
