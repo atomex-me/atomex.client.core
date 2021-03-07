@@ -29,19 +29,19 @@ namespace Atomex.Common
         {
             var bytes = new byte[_data.Length / 2];
 
-            var bstr = IntPtr.Zero;
+            var unistr = IntPtr.Zero;
 
             RuntimeHelpers.PrepareConstrainedRegions();
 
             try
             {
-                bstr = bstr = Marshal.SecureStringToBSTR(_data);
+                unistr = Marshal.SecureStringToGlobalAllocUnicode(_data);
 
                 var i = 0;
 
                 unsafe
                 {
-                    for (var ptr = (char*)bstr.ToPointer(); *ptr != 0;)
+                    for (var ptr = (char*)unistr.ToPointer(); *ptr != 0;)
                     {
                         bytes[i] = (byte)(HexCharToByte(*ptr) << 4);
                         ++ptr;
@@ -54,8 +54,8 @@ namespace Atomex.Common
             }
             finally
             {
-                if (bstr != IntPtr.Zero)
-                    Marshal.ZeroFreeBSTR(bstr);
+                if (unistr != IntPtr.Zero)
+                    Marshal.ZeroFreeGlobalAllocUnicode(unistr);
             }
 
             return new ScopedBytes(bytes);
