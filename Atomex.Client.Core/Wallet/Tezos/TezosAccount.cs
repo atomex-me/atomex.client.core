@@ -655,6 +655,10 @@ namespace Atomex.Wallet.Tezos
 
                     RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
                 }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug($"{Currency} UpdateBalanceAsync canceled.");
+                }
                 catch (Exception e)
                 {
                     Log.Error(e, "Tezos UpdateBalanceAsync error.");
@@ -663,86 +667,101 @@ namespace Atomex.Wallet.Tezos
             }, cancellationToken);
         }
 
-        public override async Task UpdateBalanceAsync(
+        public override Task UpdateBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            var xtz = Xtz;
-
-            var walletAddress = await DataRepository
-                .GetWalletAddressAsync(Currency, address)
-                .ConfigureAwait(false);
-
-            if (walletAddress == null)
-                return;
-
-            var balanceResult = await xtz.BlockchainApi
-                .TryGetBalanceAsync(address, cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            if (balanceResult.HasError)
+            return Task.Run(async () =>
             {
-                Log.Error("Error while balance update for {@address} with code {@code} and description {@description}",
-                    address,
-                    balanceResult.Error.Code,
-                    balanceResult.Error.Description);
-                return;
-            }
+                try
+                {
+                    var xtz = Xtz;
 
-            var balance = balanceResult.Value; //.ToTez();
+                    var walletAddress = await DataRepository
+                        .GetWalletAddressAsync(Currency, address)
+                        .ConfigureAwait(false);
 
-            // calculate unconfirmed balances
-            var unconfirmedTxs = (await DataRepository
-                .GetUnconfirmedTransactionsAsync(Currency, xtz.TransactionType)
-                .ConfigureAwait(false))
-                .Cast<TezosTransaction>()
-                .ToList();
+                    if (walletAddress == null)
+                        return;
 
-            var unconfirmedInternalTxs = unconfirmedTxs.Aggregate(new List<TezosTransaction>(), (list, tx) =>
-            {
-                if (tx.InternalTxs != null)
-                    list.AddRange(tx.InternalTxs);
+                    var balanceResult = await xtz.BlockchainApi
+                        .TryGetBalanceAsync(address, cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
 
-                return list;
-            });
+                    if (balanceResult.HasError)
+                    {
+                        Log.Error("Error while balance update for {@address} with code {@code} and description {@description}",
+                            address,
+                            balanceResult.Error.Code,
+                            balanceResult.Error.Description);
+                        return;
+                    }
 
-            var unconfirmedIncome = 0m;
-            var unconfirmedOutcome = 0m;
+                    var balance = balanceResult.Value; //.ToTez();
 
-            foreach (var utx in unconfirmedTxs.Concat(unconfirmedInternalTxs))
-            {
-                var isFailed = utx.State == BlockchainTransactionState.Failed;
+                    // calculate unconfirmed balances
+                    var unconfirmedTxs = (await DataRepository
+                        .GetUnconfirmedTransactionsAsync(Currency, xtz.TransactionType)
+                        .ConfigureAwait(false))
+                        .Cast<TezosTransaction>()
+                        .ToList();
 
-                unconfirmedIncome += address == utx.To && !isFailed
-                    ? Atomex.Tezos.MtzToTz(utx.Amount)
-                    : 0;
-                unconfirmedOutcome += address == utx.From && !isFailed
-                    ? -Atomex.Tezos.MtzToTz(utx.Amount + utx.Fee + utx.Burn)
-                    : 0;
-            }
+                    var unconfirmedInternalTxs = unconfirmedTxs.Aggregate(new List<TezosTransaction>(), (list, tx) =>
+                    {
+                        if (tx.InternalTxs != null)
+                            list.AddRange(tx.InternalTxs);
 
-            var balanceDifference = balance - walletAddress.Balance;
-            var unconfirmedIncomeDifference = unconfirmedIncome - walletAddress.UnconfirmedIncome;
-            var unconfirmedOutcomeDifference = unconfirmedOutcome - walletAddress.UnconfirmedOutcome;
+                        return list;
+                    });
 
-            if (balanceDifference != 0 ||
-                unconfirmedIncomeDifference != 0 ||
-                unconfirmedOutcomeDifference != 0)
-            {
-                walletAddress.Balance = balance;
-                walletAddress.UnconfirmedIncome = unconfirmedIncome;
-                walletAddress.UnconfirmedOutcome = unconfirmedOutcome;
-                walletAddress.HasActivity = true;
+                    var unconfirmedIncome = 0m;
+                    var unconfirmedOutcome = 0m;
 
-                await DataRepository.UpsertAddressAsync(walletAddress)
-                    .ConfigureAwait(false);
+                    foreach (var utx in unconfirmedTxs.Concat(unconfirmedInternalTxs))
+                    {
+                        var isFailed = utx.State == BlockchainTransactionState.Failed;
 
-                Balance += balanceDifference;
-                UnconfirmedIncome += unconfirmedIncomeDifference;
-                UnconfirmedOutcome += unconfirmedOutcomeDifference;
+                        unconfirmedIncome += address == utx.To && !isFailed
+                            ? Atomex.Tezos.MtzToTz(utx.Amount)
+                            : 0;
+                        unconfirmedOutcome += address == utx.From && !isFailed
+                            ? -Atomex.Tezos.MtzToTz(utx.Amount + utx.Fee + utx.Burn)
+                            : 0;
+                    }
 
-                RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
-            }
+                    var balanceDifference = balance - walletAddress.Balance;
+                    var unconfirmedIncomeDifference = unconfirmedIncome - walletAddress.UnconfirmedIncome;
+                    var unconfirmedOutcomeDifference = unconfirmedOutcome - walletAddress.UnconfirmedOutcome;
+
+                    if (balanceDifference != 0 ||
+                        unconfirmedIncomeDifference != 0 ||
+                        unconfirmedOutcomeDifference != 0)
+                    {
+                        walletAddress.Balance = balance;
+                        walletAddress.UnconfirmedIncome = unconfirmedIncome;
+                        walletAddress.UnconfirmedOutcome = unconfirmedOutcome;
+                        walletAddress.HasActivity = true;
+
+                        await DataRepository.UpsertAddressAsync(walletAddress)
+                            .ConfigureAwait(false);
+
+                        Balance += balanceDifference;
+                        UnconfirmedIncome += unconfirmedIncomeDifference;
+                        UnconfirmedOutcome += unconfirmedOutcomeDifference;
+
+                        RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug($"{Currency} UpdateBalanceAsync canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Tezos UpdateBalanceAsync error.");
+                }
+
+            }, cancellationToken);
         }
 
         #endregion Balances
