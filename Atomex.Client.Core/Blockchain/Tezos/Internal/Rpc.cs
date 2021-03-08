@@ -12,7 +12,6 @@ using Serilog;
 
 using Atomex.Blockchain.Tezos.Internal.OperationResults;
 using Atomex.Common;
-using Atomex.Cryptography;
 
 namespace Atomex.Blockchain.Tezos.Internal
 {
@@ -24,8 +23,6 @@ namespace Atomex.Blockchain.Tezos.Internal
 
     public class Rpc
     {
-        //public const string DefaultProvider = "http://localhost:8732";
-
         private static readonly Dictionary<string, IOperationHandler> OpHandlers = new Dictionary<string, IOperationHandler>
         {
             { OperationType.ActivateAccount, new ActivateAccountOperationHandler() },
@@ -59,20 +56,14 @@ namespace Atomex.Blockchain.Tezos.Internal
             _chain = chain;
         }
 
-        public Task<JObject> Describe() =>
-            QueryJ<JObject>("describe?recurse=true");
-
-        public Task<JObject> GetHead() =>
-            QueryJ<JObject>($"chains/{_chain}/blocks/head");
-
         public Task<JObject> GetDelegate(string address) =>
             QueryJ<JObject>($"chains/{_chain}/blocks/head/context/delegates/{address}");
 
         public Task<JObject> GetHeader() =>
             QueryJ<JObject>($"chains/{_chain}/blocks/head/header");
 
-        public Task<JObject> GetBlockById(string id) =>
-            QueryJ<JObject>($"chains/{_chain}/blocks/{id}");
+        public Task<JObject> GetHeader(int offset) =>
+            QueryJ<JObject>($"chains/{_chain}/blocks/head~{offset}/header");
 
         public Task<JObject> GetAccount(string address) =>
             GetAccountForBlock("head", address);
@@ -80,117 +71,29 @@ namespace Atomex.Blockchain.Tezos.Internal
         public Task<JObject> GetAccountForBlock(string blockHash, string address) =>
             QueryJ<JObject>($"chains/{_chain}/blocks/{blockHash}/context/contracts/{address}");
 
-        public async Task<decimal> GetBalance(string address)
-        {
-            var response = await QueryJ($"chains/{_chain}/blocks/head/context/contracts/{address}/balance")
-                .ConfigureAwait(false);
-
-            return decimal.Parse(response.ToString());
-        }
-
-        public Task<JObject> GetNetworkStat() =>
-            QueryJ<JObject>("network/stat");
-
-        public async Task<int> GetCounter(string address)
-        {
-            var counter = await QueryJ($"chains/{_chain}/blocks/head/context/contracts/{address}/counter")
-                .ConfigureAwait(false);
-
-            return Convert.ToInt32(counter.ToString());
-        }
-
         public Task<JToken> GetManagerKey(string address) =>
             QueryJ($"chains/{_chain}/blocks/head/context/contracts/{address}/manager_key");
 
-        public async Task<ActivateAccountOperationResult> Activate(string address, string secret)
-        {
-            var activateOp = new JObject
-            {
-                ["kind"] = OperationType.ActivateAccount,
-                ["pkh"] = address,
-                ["secret"] = secret
-            };
-
-            var sendResults = await SendOperations(activateOp, null)
-                .ConfigureAwait(false);
-
-            return sendResults.LastOrDefault() as ActivateAccountOperationResult;
-        }
-
-        private async Task<List<OperationResult>> SendOperations(
-            JToken operations,
-            Keys keys,
-            JObject head = null)
-        {
-            if (head == null)
-                head = await GetHeader()
-                    .ConfigureAwait(false);
-
-            if (!(operations is JArray arrOps))
-                arrOps = new JArray(operations);
-
-            var forgedOpGroup = await ForgeOperations(head, arrOps)
-                .ConfigureAwait(false);
-
-            SignedMessage signedOpGroup;
-
-            if (keys == null)
-            {
-                signedOpGroup = new SignedMessage
-                {
-                    SignedBytes = forgedOpGroup + "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-                    EncodedSignature = "edsigtXomBKi5CTRf5cjATJWSyaRvhfYNHqSUGrn4SdbYRcGwQrUGjzEfQDTuqHhuA8b2d8NarZjz8TRf65WkpQmo423BtomS8Q"
-                };
-            }
-            else
-            {
-                var privateKey = Base58Check.Decode(keys.DecryptPrivateKey(), Prefix.Edsk);
-
-                signedOpGroup = TezosSigner.SignHash(
-                    data: Hex.FromString(forgedOpGroup.ToString()),
-                    privateKey: privateKey,
-                    watermark: Watermark.Generic,
-                    isExtendedKey: privateKey.Length == 64);
-
-                privateKey.Clear();
-            }
-
-            var opResults = await PreApplyOperations(head, arrOps, signedOpGroup.EncodedSignature)
-                .ConfigureAwait(false);
-
-            /////deleting too big contractCode from response
-            //foreach (var opResult in opResults)
-            //{
-            //    if (opResult.Data?["metadata"]?["operation_result"]?["status"]?.ToString() == "failed")
-            //    {
-            //        foreach (JObject error in opResult.Data["metadata"]["operation_result"]["errors"])
-            //        {
-            //            if (error["contractCode"]?.ToString().Length > 1000)
-            //                error["contractCode"] = "";
-            //        }
-            //    }
-            //}
-
-            if (opResults.Any() && opResults.All(op => op.Succeeded))
-            {
-                var injectedOperation = await InjectOperations(signedOpGroup.SignedBytes)
-                    .ConfigureAwait(false);
-
-                opResults.Last().Data["op_hash"] = injectedOperation.ToString();
-            }
-
-            return opResults;
-        }
-
         public async Task<bool> AutoFillOperations(
-            Atomex.Tezos tezos,
+            Atomex.Tezos tezosConfig,
             JObject head,
             JArray operations,
             bool useSafeStorageLimit = false,
-            bool defaultFee = true)
+            bool useDefaultFee = true)
         {
-            var runResults = await RunOperations(head, operations)
-                .ConfigureAwait(false);
+            JObject runResults = null;
+
+            try
+            {
+                runResults = await RunOperations(head, operations)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "RunOperations error.");
+
+                return false;
+            }
 
             foreach (var result in runResults.SelectToken("contents"))
             {
@@ -203,14 +106,14 @@ namespace Atomex.Blockchain.Tezos.Internal
                 {
                     try
                     {
-                        gas = tezos.GasReserve + operationResult?["consumed_gas"]?.Value<decimal>() ?? 0;
+                        gas = tezosConfig.GasReserve + operationResult?["consumed_gas"]?.Value<decimal>() ?? 0;
                         gas += metaData
                             ?.SelectToken("internal_operation_results")
                             ?.Sum(res => res["result"]?["consumed_gas"]?.Value<decimal>() ?? 0) ?? 0;
 
                         storage_diff = operationResult?["paid_storage_size_diff"]?.Value<decimal>() ?? 0;
-                        storage_diff += tezos.ActivationStorage * (operationResult?["allocated_destination_contract"]?.ToString() == "True" ? 1 : 0);
-                        storage_diff += tezos.ActivationStorage * metaData?["internal_operation_results"]
+                        storage_diff += tezosConfig.ActivationStorage * (operationResult?["allocated_destination_contract"]?.ToString() == "True" ? 1 : 0);
+                        storage_diff += tezosConfig.ActivationStorage * metaData?["internal_operation_results"]
                             ?.Where(res => res["result"]?["allocated_destination_contract"]?.ToString() == "True")
                             .Count() ?? 0;
                         storage_diff += metaData
@@ -229,25 +132,29 @@ namespace Atomex.Blockchain.Tezos.Internal
 
                         var forgedOpLocal = Forge.ForgeOperationsLocal(null, op);
 
-                        size = forgedOpLocal.ToString().Length / 2 + Math.Ceiling((tezos.HeadSizeInBytes + tezos.SigSizeInBytes) / operations.Count);
-                        fee = tezos.MinimalFee + tezos.MinimalNanotezPerByte * size + (long)Math.Ceiling(tezos.MinimalNanotezPerGasUnit * gas) + 1;
+                        size = forgedOpLocal.ToString().Length / 2 + Math.Ceiling((tezosConfig.HeadSizeInBytes + tezosConfig.SigSizeInBytes) / operations.Count);
+                        fee = tezosConfig.MinimalFee + tezosConfig.MinimalNanotezPerByte * size + (long)Math.Ceiling(tezosConfig.MinimalNanotezPerGasUnit * gas) + 1;
 
-                        if (defaultFee)
+                        if (useDefaultFee)
                             op["fee"] = fee.ToString();
                     }
                     catch (Exception ex)
                     {
-                        Log.Error("Transaction autofilling error: " + ex.Message.ToString()); //process the error
+                        Log.Error("Operation autofilling error: " + ex.Message.ToString());
                         return false;
                     }
                 }
                 else
                 {
-                    Log.Error("Transaction running failed: "); //process the error
+                    Log.Error("Operation running failed: ");
                     Log.Error(result.ToString());
+
+                    //var isCounterInTheFuture = runResults.ToString().Contains("counter_in_the_future");
+
                     return false;
                 }
             }
+
             return true;
         }
 
@@ -379,6 +286,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             using var response = await HttpHelper.HttpClient
                 .SendAsync(request)
                 .ConfigureAwait(false);
+
             var responseBody = await response.Content
                 .ReadAsStringAsync()
                 .ConfigureAwait(false);

@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
-using Atomex.Core;
+
 using Microsoft.Extensions.Configuration;
+
+using Atomex.Core;
 
 namespace Atomex.Abstract
 {

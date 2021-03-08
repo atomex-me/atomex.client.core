@@ -25,10 +25,15 @@ namespace Atomex.Swaps.Helpers
                         .ScanAsync(address, cancellationToken)
                         .ConfigureAwait(false);
                 }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("UpdateAddressBalanceAsync canceled.");
+                }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Address balance update task error");
+                    Log.Error(e, "Address balance update task error.");
                 }
+
             }, cancellationToken);
         }
 
@@ -54,10 +59,15 @@ namespace Atomex.Swaps.Helpers
                         .ScanAsync(address, cancellationToken)
                         .ConfigureAwait(false);
                 }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("UpdateAddressBalanceAsync canceled.");
+                }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Address balance update task error");
+                    Log.Error(e, "Address balance update task error.");
                 }
+
             }, cancellationToken);
         }
     }

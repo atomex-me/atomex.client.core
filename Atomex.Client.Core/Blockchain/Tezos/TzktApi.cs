@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -18,15 +19,20 @@ namespace Atomex.Blockchain.Tezos
     public class TzktApi : BlockchainApi, ITezosBlockchainApi, ITokenBlockchainApi
     {
         private const string Tezos = "XTZ";
-        private const string tzBTC = "TZBTX";
         private const string NYX = "NYX";
         private const string FA2 = "FA2";
-
 
         private readonly Currency _currency;
         private readonly string _baseUri;
         private readonly string _rpcNodeUri;
         private readonly HttpRequestHeaders _headers;
+
+        private class TxsSource
+        {
+            public string BaseUri { get; set; }
+            public string RequestUri { get; set; }
+            public Func<string, Result<IEnumerable<TezosTransaction>>> Parser { get; set; }
+        }
 
         public TzktApi(Atomex.Tezos currency)
         {
@@ -44,26 +50,33 @@ namespace Atomex.Blockchain.Tezos
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default)
         {
+            var tx = (TezosTransaction)transaction;
+
             try
             {
-                var tx = (TezosTransaction)transaction;
                 tx.State = BlockchainTransactionState.Pending;
 
                 var rpc = new Rpc(_rpcNodeUri);
+                var readyForInject = true;
 
-                var opResults = await rpc
-                    .PreApplyOperations(tx.Head, tx.Operations, tx.SignedMessage.EncodedSignature)
-                    .ConfigureAwait(false);
+                if (tx.UsePreApply)
+                {
+                    var opResults = await rpc
+                        .PreApplyOperations(tx.Head, tx.Operations, tx.SignedMessage.EncodedSignature)
+                        .ConfigureAwait(false);
 
-                if (!opResults.Any())
-                    return new Error(Errors.EmptyPreApplyOperations, "Empty pre apply operations");
+                    if (!opResults.Any())
+                        return new Error(Errors.EmptyPreApplyOperations, "Empty pre apply operations");
+
+                    foreach (var opResult in opResults)
+                        Log.Debug("OperationResult {@result}: {@opResult}", opResult.Succeeded, opResult.Data.ToString());
+
+                    readyForInject = opResults.Any() && opResults.All(op => op.Succeeded);
+                }
 
                 string txId = null;
 
-                foreach (var opResult in opResults)
-                    Log.Debug("OperationResult {@result}: {@opResult}", opResult.Succeeded, opResult.Data.ToString());
-
-                if (opResults.Any() && opResults.All(op => op.Succeeded))
+                if (readyForInject)
                 {
                     var injectedOperation = await rpc
                         .InjectOperations(tx.SignedMessage.SignedBytes)
@@ -76,7 +89,11 @@ namespace Atomex.Blockchain.Tezos
                 }
 
                 if (txId == null)
+                {
+                    tx.RollbackOfflineCounterIfNeed();
+
                     return new Error(Errors.NullTxId, "Null tx id");
+                }
 
                 tx.Id = txId;
 
@@ -84,6 +101,10 @@ namespace Atomex.Blockchain.Tezos
             }
             catch (Exception e)
             {
+                Log.Error(e, $"Broadcast error: {e.Message}");
+
+                tx.RollbackOfflineCounterIfNeed();
+
                 return new Error(Errors.RequestError, e.Message);
             }
         }
@@ -122,7 +143,8 @@ namespace Atomex.Blockchain.Tezos
 
             var requestUri = $"operations/transactions/{txId}";
 
-            return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
+            return await HttpHelper
+                .GetAsyncResult<IBlockchainTransaction>(
                     baseUri: _baseUri,
                     requestUri: requestUri,
                     headers: _headers,
@@ -171,7 +193,8 @@ namespace Atomex.Blockchain.Tezos
 
             var requestUri = $"accounts/{address}/operations?type=transaction";
 
-            var txsResult = await HttpHelper.GetAsyncResult(
+            var txsResult = await HttpHelper
+                .GetAsyncResult(
                     baseUri: _baseUri,
                     requestUri: requestUri,
                     headers: _headers,
@@ -188,109 +211,23 @@ namespace Atomex.Blockchain.Tezos
             return new Result<IEnumerable<IBlockchainTransaction>>(txsResult.Value);
         }
 
-        private class TxsSource
-        {
-            public string BaseUri { get; set; }
-            public string RequestUri { get; set; }
-            public Func<string, Result<IEnumerable<TezosTransaction>>> Parser { get; set; }
-        }
-
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTokenTransactionsAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            var txsSources = new List<TxsSource>();
-
-            if (_currency.Name == NYX)
+            var txsSources = _currency.Name switch
             {
-                var token = _currency as TezosTokens.NYX;
-
-                txsSources = new List<TxsSource>
-                {
-                    new TxsSource
-                    {
-                        BaseUri = _baseUri,
-                        RequestUri = $"operations/transactions?sender={address}&target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"setAllowTransferFrom\"*",
-                        Parser = new Func<string, Result<IEnumerable<TezosTransaction>>>(content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
-                    },
-                    new TxsSource
-                    {
-                        BaseUri = _baseUri,
-                        RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transfer\"*{address}*",
-                        Parser = new Func<string, Result<IEnumerable<TezosTransaction>>>(content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
-                    },
-                    new TxsSource
-                    {
-                        BaseUri = _baseUri,
-                        RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transfer\"*{Forge.ForgeAddress(address)}*",
-                        Parser = new Func<string, Result<IEnumerable<TezosTransaction>>>(content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
-                    },
-                    new TxsSource
-                    {
-                        BaseUri = _baseUri,
-                        RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transferFrom\"*{address}*",
-                        Parser = new Func<string, Result<IEnumerable<TezosTransaction>>>(content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
-                    },
-                    new TxsSource
-                    {
-                        BaseUri = _baseUri,
-                        RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transferFrom\"*{Forge.ForgeAddress(address)}*",
-                        Parser = new Func<string, Result<IEnumerable<TezosTransaction>>>(content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
-                    }
-                };
-            }
-            else if (_currency.Name == FA2)
-            {
-                var token = _currency as TezosTokens.FA2;
-
-                txsSources = new List<TxsSource>
-                {
-                    new TxsSource
-                    {
-                        BaseUri = _baseUri,
-                        RequestUri = $"operations/transactions?sender={address}&target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"update_operators\"*",
-                        Parser = new Func<string, Result<IEnumerable<TezosTransaction>>>(content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
-                    },
-                    new TxsSource
-                    {
-                        BaseUri = _baseUri,
-                        RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transfer\"*{address}*",
-                        Parser = new Func<string, Result<IEnumerable<TezosTransaction>>>(content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
-                    },
-                    new TxsSource
-                    {
-                        BaseUri = _baseUri,
-                        RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transfer\"*{Forge.ForgeAddress(address)}*",
-                        Parser = new Func<string, Result<IEnumerable<TezosTransaction>>>(content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
-                    }
-                };
-            }
-            else
-            {
-                var token = _currency as TezosTokens.FA12;
-
-                txsSources = new List<TxsSource>
-                {
-                    new TxsSource
-                    {
-                        BaseUri = _baseUri,
-                        RequestUri = $"operations/transactions?sender={address}&target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"approve\"*",
-                        Parser = new Func<string, Result<IEnumerable<TezosTransaction>>>(content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
-                    },
-                    new TxsSource
-                    {
-                        BaseUri = token.BcdApi,
-                        RequestUri = $"tokens/{token.BcdNetwork}/transfers/{address}?size=10000", // todo: use contract filter {token.TokenContractAddress}";
-                        Parser = new Func<string, Result<IEnumerable<TezosTransaction>>>(content => ParseTokenTxs(JsonConvert.DeserializeObject<JObject>(content)))
-                    },
-                };
-            }
+                NYX => GetNyxTxsSource(address),
+                FA2 => GetFa2TxsSource(address),
+                _   => GetFa12TxsSource(address)
+            };
 
             var txsResult = Enumerable.Empty<IBlockchainTransaction>();
 
             foreach (var txsSource in txsSources)
             {
-                var txsRes = await HttpHelper.GetAsyncResult(
+                var txsRes = await HttpHelper
+                    .GetAsyncResult(
                         baseUri: txsSource.BaseUri,
                         requestUri: txsSource.RequestUri,
                         headers: _headers,
@@ -320,6 +257,34 @@ namespace Atomex.Blockchain.Tezos
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
         }
 
+        public async Task<Result<IEnumerable<TezosTransaction>>> GetTransactionsAsync(
+            string from,
+            string to,
+            string parameters,
+            CancellationToken cancellationToken = default)
+        {
+            return await HttpHelper
+                .GetAsyncResult(
+                    baseUri: _baseUri,
+                    requestUri: $"operations/transactions?sender={from}&target={to}&parameters.eq={parameters}",
+                    headers: _headers,
+                    responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content), parseTokenParams: false),
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        public async Task<Result<IEnumerable<TezosTransaction>>> TryGetTransactionsAsync(
+            string from,
+            string to,
+            string parameters,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResultHelper.TryDo((c) => GetTransactionsAsync(from, to, parameters, c), attempts, attemptsIntervalMs, cancellationToken)
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
+        }
+
         public async Task<Result<TezosAddressInfo>> GetAddressInfoAsync(
             string address,
             CancellationToken cancellationToken = default)
@@ -338,9 +303,9 @@ namespace Atomex.Blockchain.Tezos
                         {
                             return new TezosAddressInfo
                             {
-                                Address = address,
-                                IsAllocated = false,
-                                IsRevealed = false,
+                                Address          = address,
+                                IsAllocated      = false,
+                                IsRevealed       = false,
                                 LastCheckTimeUtc = DateTime.UtcNow
                             };
                         }
@@ -349,18 +314,18 @@ namespace Atomex.Blockchain.Tezos
                         {
                             return new TezosAddressInfo
                             {
-                                Address = address,
-                                IsAllocated = decimal.Parse(addressInfo["balance"].Value<string>()) > 0,
-                                IsRevealed = addressInfo["revealed"].Value<bool>(),
+                                Address          = address,
+                                IsAllocated      = decimal.Parse(addressInfo["balance"].Value<string>()) > 0,
+                                IsRevealed       = addressInfo["revealed"].Value<bool>(),
                                 LastCheckTimeUtc = DateTime.UtcNow
                             };
                         }
 
                         return new TezosAddressInfo
                         {
-                            Address = address,
-                            IsAllocated = true,
-                            IsRevealed = true,
+                            Address          = address,
+                            IsAllocated      = true,
+                            IsRevealed       = true,
                             LastCheckTimeUtc = DateTime.UtcNow
                         };
                     },
@@ -386,9 +351,9 @@ namespace Atomex.Blockchain.Tezos
                         {
                             return new Account
                             {
-                                Address = address,
+                                Address         = address,
                                 DelegateAddress = accountInfo["delegate"]["address"].ToString(),
-                                DelegationTime = DateTimeOffset.Parse(accountInfo["delegationTime"].ToString()).DateTime,
+                                DelegationTime  = DateTimeOffset.Parse(accountInfo["delegationTime"].ToString()).DateTime,
                                 DelegationLevel = accountInfo["delegationLevel"].Value<decimal>()
                             };
                         }
@@ -454,17 +419,17 @@ namespace Atomex.Blockchain.Tezos
 
             if (transaction["target"]?["address"]?.ToString() != tokenContractAddress)
             {
-                Log.Debug(
-                    "Error while parsing token transactions {@Id}",
+                Log.Debug("Error while parsing token transactions {@Id}",
                     transaction["hash"].ToString());
+
                 return null;
             }
 
             //if (transaction["hasInternals"].Value<bool>())
             //    return null;
 
-            tx.Fee = transaction["bakerFee"].Value<decimal>();
-            tx.GasLimit = transaction["gasLimit"].Value<decimal>();
+            tx.Fee          = transaction["bakerFee"].Value<decimal>();
+            tx.GasLimit     = transaction["gasLimit"].Value<decimal>();
             tx.StorageLimit = transaction["storageLimit"].Value<decimal>();
 
             var parameters = transaction.ContainsKey("parameters")
@@ -473,9 +438,9 @@ namespace Atomex.Blockchain.Tezos
 
             if (parameters?["entrypoint"]?.ToString() == "approve")
             {
-                tx.Type = BlockchainTransactionType.TokenApprove;
-                tx.From = transaction["sender"]?["address"]?.ToString();
-                tx.To = transaction["target"]?["address"]?.ToString();
+                tx.Type   = BlockchainTransactionType.TokenApprove;
+                tx.From   = transaction["sender"]?["address"]?.ToString();
+                tx.To     = transaction["target"]?["address"]?.ToString();
                 tx.Amount = 0;
             }
             else if (parameters?["entrypoint"]?.ToString() == "transfer")
@@ -483,20 +448,21 @@ namespace Atomex.Blockchain.Tezos
                 if (parameters?["value"]?["args"]?[0]?["string"] != null)
                 {
                     tx.From = parameters?["value"]?["args"]?[0]?["string"]?.ToString();
-                    tx.To = parameters?["value"]?["args"]?[1]?["args"]?[0]?["string"]?.ToString();
+                    tx.To   = parameters?["value"]?["args"]?[1]?["args"]?[0]?["string"]?.ToString();
                 }
                 else
                 {
                     tx.From = Unforge.UnforgeAddress(parameters?["value"]?["args"]?[0]?["bytes"]?.ToString());
-                    tx.To = Unforge.UnforgeAddress(parameters?["value"]?["args"]?[1]?["args"]?[0]?["bytes"]?.ToString());
+                    tx.To   = Unforge.UnforgeAddress(parameters?["value"]?["args"]?[1]?["args"]?[0]?["bytes"]?.ToString());
                 }
+
                 tx.Amount = parameters?["value"]?["args"]?[1]?["args"]?[1]?["int"]?.Value<decimal>() ?? 0;
             }
             else
             {
-                Log.Error(
-                    "Error while parsing FA12 token transactions {@Id}",
+                Log.Error("Error while parsing FA12 token transactions {@Id}",
                     transaction["hash"].ToString());
+
                 return null;
             }
 
@@ -509,15 +475,15 @@ namespace Atomex.Blockchain.Tezos
         {
             var tokenContractAddress = (_currency as TezosTokens.NYX).TokenContractAddress;
 
-            tx.Fee = transaction["bakerFee"].Value<decimal>();
-            tx.GasLimit = transaction["gasLimit"].Value<decimal>();
+            tx.Fee          = transaction["bakerFee"].Value<decimal>();
+            tx.GasLimit     = transaction["gasLimit"].Value<decimal>();
             tx.StorageLimit = transaction["storageLimit"].Value<decimal>();
 
             if (transaction["target"]?["address"]?.ToString() != tokenContractAddress)
             {
-                Log.Warning(
-                    "Unsupported data while parsing token transactions {@Id}",
+                Log.Warning("Unsupported data while parsing token transactions {@Id}",
                     transaction["hash"].ToString());
+
                 return tx;
             }
 
@@ -527,19 +493,18 @@ namespace Atomex.Blockchain.Tezos
 
             if (parameters?["entrypoint"]?.ToString() == "setAllowTransferFrom")
             {
-                tx.Type = BlockchainTransactionType.TokenApprove;
-                tx.From = transaction["sender"]?["address"]?.ToString();
-                tx.To = transaction["target"]?["address"]?.ToString();
+                tx.Type   = BlockchainTransactionType.TokenApprove;
+                tx.From   = transaction["sender"]?["address"]?.ToString();
+                tx.To     = transaction["target"]?["address"]?.ToString();
                 tx.Amount = 0;
             }
             else if (parameters?["entrypoint"]?.ToString() == "transfer")
             {
                 tx.From = transaction["sender"]?["address"]?.ToString();
 
-                if (parameters?["value"]?[0]?["args"]?[1]?["string"] != null)
-                    tx.To = parameters?["value"]?[0]?["args"]?[1]?["string"]?.ToString();
-                else
-                    tx.To = Unforge.UnforgeAddress(parameters?["value"]?[0]?["args"]?[1]?["bytes"]?.ToString());
+                tx.To = parameters?["value"]?[0]?["args"]?[1]?["string"] != null
+                    ? parameters?["value"]?[0]?["args"]?[1]?["string"]?.ToString()
+                    : Unforge.UnforgeAddress(parameters?["value"]?[0]?["args"]?[1]?["bytes"]?.ToString());
 
                 tx.Amount = parameters?["value"]?[0]?["args"]?[0]?["int"]?.Value<decimal>() ?? 0;
             }
@@ -548,20 +513,21 @@ namespace Atomex.Blockchain.Tezos
                 if (parameters?["value"]?[0]?["args"]?[1]?["string"] != null)
                 {
                     tx.From = parameters?["value"]?[0]?["args"]?[0]?["args"]?[1]?["string"]?.ToString();
-                    tx.To = parameters?["value"]?[0]?["args"]?[1]?["string"]?.ToString();
+                    tx.To   = parameters?["value"]?[0]?["args"]?[1]?["string"]?.ToString();
                 }
                 else
                 {
                     tx.From = Unforge.UnforgeAddress(parameters?["value"]?[0]?["args"]?[0]?["args"]?[1]?["bytes"]?.ToString());
-                    tx.To = Unforge.UnforgeAddress(parameters?["value"]?[0]?["args"]?[1]?["bytes"]?.ToString());
+                    tx.To   = Unforge.UnforgeAddress(parameters?["value"]?[0]?["args"]?[1]?["bytes"]?.ToString());
                 }
+
                 tx.Amount = parameters?["value"]?[0]?["args"]?[0]?["args"]?[0]?["int"]?.Value<decimal>() ?? 0;
             }
             else
             {
-                Log.Error(
-                    "Error while parsing NYX token transactions {@Id}",
+                Log.Error("Error while parsing NYX token transactions {@Id}",
                     transaction["hash"].ToString());
+
                 return null;
             }
 
@@ -574,15 +540,15 @@ namespace Atomex.Blockchain.Tezos
         {
             var tokenContractAddress = (_currency as TezosTokens.FA2).TokenContractAddress;
 
-            tx.Fee = transaction["bakerFee"].Value<decimal>();
-            tx.GasLimit = transaction["gasLimit"].Value<decimal>();
+            tx.Fee          = transaction["bakerFee"].Value<decimal>();
+            tx.GasLimit     = transaction["gasLimit"].Value<decimal>();
             tx.StorageLimit = transaction["storageLimit"].Value<decimal>();
 
             if (transaction["target"]?["address"]?.ToString() != tokenContractAddress)
             {
-                Log.Warning(
-                    "Unsupported data while parsing token transactions {@Id}",
+                Log.Warning("Unsupported data while parsing token transactions {@Id}",
                     transaction["hash"].ToString());
+
                 return tx;
             }
 
@@ -592,9 +558,9 @@ namespace Atomex.Blockchain.Tezos
 
             if (parameters?["entrypoint"]?.ToString() == "update_operators")
             {
-                tx.Type = BlockchainTransactionType.TokenApprove;
-                tx.From = transaction["sender"]?["address"]?.ToString();
-                tx.To = transaction["target"]?["address"]?.ToString();
+                tx.Type   = BlockchainTransactionType.TokenApprove;
+                tx.From   = transaction["sender"]?["address"]?.ToString();
+                tx.To     = transaction["target"]?["address"]?.ToString();
                 tx.Amount = 0;
             }
             else if (parameters?["entrypoint"]?.ToString() == "transfer")
@@ -602,20 +568,21 @@ namespace Atomex.Blockchain.Tezos
                 if (parameters?["value"]?[0]?["args"]?[0]?["string"] != null)
                 {
                     tx.From = parameters?["value"]?[0]?["args"]?[0]?["string"]?.ToString();
-                    tx.To = parameters?["value"]?[0]?["args"]?[1]?[0]?["args"]?[0]?["string"]?.ToString();
+                    tx.To   = parameters?["value"]?[0]?["args"]?[1]?[0]?["args"]?[0]?["string"]?.ToString();
                 }
                 else
                 {
                     tx.From = Unforge.UnforgeAddress(parameters?["value"]?[0]?["args"]?[0]?["bytes"]?.ToString());
-                    tx.To = Unforge.UnforgeAddress(parameters?["value"]?[0]?["args"]?[1]?[0]?["args"]?[0]?["bytes"]?.ToString());
+                    tx.To   = Unforge.UnforgeAddress(parameters?["value"]?[0]?["args"]?[1]?[0]?["args"]?[0]?["bytes"]?.ToString());
                 }
+
                 tx.Amount = parameters?["value"]?[0]?["args"]?[1]?[0]?["args"]?[1]?["args"]?[1]?["int"]?.Value<decimal>() ?? 0;
             }
             else
             {
-                Log.Error(
-                    "Error while parsing FA2 token transactions {@Id}",
+                Log.Error("Error while parsing FA2 token transactions {@Id}",
                     transaction["hash"].ToString());
+
                 return null;
             }
 
@@ -638,7 +605,7 @@ namespace Atomex.Blockchain.Tezos
                 var alias = $"{transaction["sender"]["alias"]?.Value<string>()}/{transaction["target"]["alias"]?.Value<string>()}";
 
                 if (alias.Length == 1) {
-                    alias = String.Empty;
+                    alias = string.Empty;
                 }
 
                 var tx = new TezosTransaction()
@@ -671,12 +638,12 @@ namespace Atomex.Blockchain.Tezos
 
                 if (_currency.Name != Tezos && parseTokenParams)
                 {
-                    if (_currency.Name == NYX)
-                        tx = ParseNYXParams(tx, transaction);
-                    else if (_currency.Name == FA2)
-                        tx = ParseFA2Params(tx, transaction);
-                    else
-                        tx = ParseFA12Params(tx, transaction);
+                    tx = _currency.Name switch
+                    {
+                        NYX => ParseNYXParams(tx, transaction),
+                        FA2 => ParseFA2Params(tx, transaction),
+                        _   => ParseFA12Params(tx, transaction)
+                    };
                 }
                 else
                 {
@@ -725,7 +692,7 @@ namespace Atomex.Blockchain.Tezos
                 var alias = $"{tx["from_alias"]?.Value<string>()}/{tx["to_alias"]?.Value<string>()}";
 
                 if (alias.Length == 1) {
-                    alias = String.Empty;
+                    alias = string.Empty;
                 }
 
                 if (!contract.Equals(token.TokenContractAddress, StringComparison.OrdinalIgnoreCase))
@@ -768,11 +735,11 @@ namespace Atomex.Blockchain.Tezos
         private BlockchainTransactionState StateFromStatus(string status) =>
             status switch
             {
-                "applied" => BlockchainTransactionState.Confirmed,
+                "applied"     => BlockchainTransactionState.Confirmed,
                 "backtracked" => BlockchainTransactionState.Failed,
-                "skipped" => BlockchainTransactionState.Failed,
-                "failed" => BlockchainTransactionState.Failed,
-                _ => BlockchainTransactionState.Unknown
+                "skipped"     => BlockchainTransactionState.Failed,
+                "failed"      => BlockchainTransactionState.Failed,
+                _             => BlockchainTransactionState.Unknown
             };
 
         #region ITokenBlockchainApi
@@ -789,35 +756,46 @@ namespace Atomex.Blockchain.Tezos
             {
                 var rpc = new Rpc(_rpcNodeUri);
 
-                var head = await rpc
-                    .GetHeader()
-                    .ConfigureAwait(false);
-
                 var tx = new TezosTransaction
                 {
-                    Currency = token,
-                    From = callingAddress,
-                    To = token.TokenContractAddress,
-                    Fee = 0, //token.GetBalanceFee,
-                    GasLimit = token.GetBalanceGasLimit,
-                    StorageLimit = 0, //token.GetBalanceStorageLimit,
-                    Params = GetBalanceParams(address, token.ViewContractAddress),
+                    Currency          = token,
+                    From              = callingAddress,
+                    To                = token.TokenContractAddress,
+                    Fee               = 0, //token.GetBalanceFee,
+                    GasLimit          = token.GetBalanceGasLimit,
+                    StorageLimit      = 0, //token.GetBalanceStorageLimit,
+                    Params            = GetBalanceParams(address, token.ViewContractAddress),
+
+                    UseRun            = false,
+                    UseOfflineCounter = false,
                 };
 
-                await tx.FillOperationsAsync(
-                        head: head,
+                await tx
+                    .FillOperationsAsync(
                         securePublicKey: securePublicKey,
-                        incrementCounter: false,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 var runResults = await rpc
-                    .RunOperations(head, tx.Operations)
+                    .RunOperations(tx.Head, tx.Operations)
                     .ConfigureAwait(false);
 
-                //Log.Debug("getTokenBalance result {@result}", runResults.ToString());
-
-                return runResults?["contents"]?.LastOrDefault()?["metadata"]?["internal_operation_results"]?[0]?["result"]?["errors"]?[1]?["with"]?["args"]?[0]?["args"]?[0]?["int"]?.Value<decimal>();
+                return runResults
+                    ?["contents"]
+                    ?.LastOrDefault()
+                    ?["metadata"]
+                    ?["internal_operation_results"]
+                    ?[0]
+                    ?["result"]
+                    ?["errors"]
+                    ?[1]
+                    ?["with"]
+                    ?["args"]
+                    ?[0]
+                    ?["args"]
+                    ?[0]
+                    ?["int"]
+                    ?.Value<decimal>();
             }
             catch (Exception e)
             {
@@ -837,17 +815,28 @@ namespace Atomex.Blockchain.Tezos
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting balance after {attempts} attempts");
         }
 
-        public async Task<Result<decimal>> GetTokenBigMapBalanceAsync(
+        public Task<Result<decimal>> GetTokenBigMapBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            if (_currency.Name == NYX)
+            return _currency.Name switch
             {
-                var token = _currency as TezosTokens.NYX;
+                NYX => GetNyxBigMapBalanceAsync(address, cancellationToken),
+                FA2 => GetFa2BigMapBalanceAsync(address, cancellationToken),
+                _   => throw new NotSupportedException($"Get BigMap balance not supported for {_currency.Name}")
+            };
+        }
 
-                try
-                {
-                    return await HttpHelper.GetAsyncResult<decimal>(
+        private async Task<Result<decimal>> GetNyxBigMapBalanceAsync(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            var token = _currency as TezosTokens.NYX;
+
+            try
+            {
+                return await HttpHelper
+                    .GetAsyncResult<decimal>(
                         baseUri: token.BcdApi,
                         requestUri: $"bigmap/{token.BcdNetwork}/{token.TokenPointerBalance}/keys?q={address}",
                         headers: _headers,
@@ -862,19 +851,23 @@ namespace Atomex.Blockchain.Tezos
                         },
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    return new Error(Errors.RequestError, e.Message);
-                }
             }
-            else if (_currency.Name == FA2)
+            catch (Exception e)
             {
-                var token = _currency as TezosTokens.FA2;
+                return new Error(Errors.RequestError, e.Message);
+            }
+        }
 
-                try
-                {
-                    return await HttpHelper.GetAsyncResult<decimal>(
+        private async Task<Result<decimal>> GetFa2BigMapBalanceAsync(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            var token = _currency as TezosTokens.FA2;
+
+            try
+            {
+                return await HttpHelper
+                    .GetAsyncResult<decimal>(
                         baseUri: token.BcdApi,
                         requestUri: $"bigmap/{token.BcdNetwork}/{token.TokenPointerBalance}/keys?q={token.TokenID}",
                         headers: _headers,
@@ -889,14 +882,11 @@ namespace Atomex.Blockchain.Tezos
                         },
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    return new Error(Errors.RequestError, e.Message);
-                }
             }
-            else
-                return null;
+            catch (Exception e)
+            {
+                return new Error(Errors.RequestError, e.Message);
+            }
         }
 
         public async Task<Result<decimal>> TryGetTokenBigMapBalanceAsync(
@@ -910,7 +900,7 @@ namespace Atomex.Blockchain.Tezos
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting big map balance after {attempts} attempts");
         }
 
-        public async Task<Result<decimal>> GetTokenAllowanceAsync(
+        public async Task<Result<decimal>> GetFa12AllowanceAsync(
             string holderAddress,
             string spenderAddress,
             string callingAddress,
@@ -923,35 +913,46 @@ namespace Atomex.Blockchain.Tezos
             {
                 var rpc = new Rpc(_rpcNodeUri);
 
-                var head = await rpc
-                    .GetHeader()
-                    .ConfigureAwait(false);
-
                 var tx = new TezosTransaction
                 {
-                    Currency     = token,
-                    From         = callingAddress,
-                    To           = token.TokenContractAddress,
-                    Fee          = 0, //token.GetAllowanceFee,
-                    GasLimit     = token.GetAllowanceGasLimit,
-                    StorageLimit = 0, //token.GetAllowanceStorageLimit,
-                    Params       = GetAllowanceParams(holderAddress, spenderAddress, token.ViewContractAddress),
+                    Currency          = token,
+                    From              = callingAddress,
+                    To                = token.TokenContractAddress,
+                    Fee               = 0, //token.GetAllowanceFee,
+                    GasLimit          = token.GetAllowanceGasLimit,
+                    StorageLimit      = 0, //token.GetAllowanceStorageLimit,
+                    Params            = GetAllowanceParams(holderAddress, spenderAddress, token.ViewContractAddress),
+
+                    UseRun            = false,
+                    UseOfflineCounter = false
                 };
 
-                await tx.FillOperationsAsync(
-                        head: head,
+                await tx
+                    .FillOperationsAsync(
                         securePublicKey: securePublicKey,
-                        incrementCounter: false,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 var runResults = await rpc
-                    .RunOperations(head, tx.Operations)
+                    .RunOperations(tx.Head, tx.Operations)
                     .ConfigureAwait(false);
 
-                //Log.Debug("getTokenAllowance result {@result}", runResults);
-
-                return runResults?["contents"]?.LastOrDefault()?["metadata"]?["internal_operation_results"]?[0]?["result"]?["errors"]?[1]?["with"]?["args"]?[0]?["args"]?[0]?["int"]?.Value<decimal>() ?? 0;
+                return runResults
+                    ?["contents"]
+                    ?.LastOrDefault()
+                    ?["metadata"]
+                    ?["internal_operation_results"]
+                    ?[0]
+                    ?["result"]
+                    ?["errors"]
+                    ?[1]
+                    ?["with"]
+                    ?["args"]
+                    ?[0]
+                    ?["args"]
+                    ?[0]
+                    ?["int"]
+                    ?.Value<decimal>() ?? 0;
             }
             catch (Exception e)
             {
@@ -959,7 +960,7 @@ namespace Atomex.Blockchain.Tezos
             }
         }
 
-        public async Task<Result<decimal>> TryGetTokenAllowanceAsync(
+        public async Task<Result<decimal>> TryGetFa12AllowanceAsync(
             string holderAddress,
             string spenderAddress,
             string callingAddress,
@@ -968,98 +969,215 @@ namespace Atomex.Blockchain.Tezos
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
-            return await ResultHelper.TryDo((c) => GetTokenAllowanceAsync(holderAddress, spenderAddress, callingAddress, securePublicKey, c), attempts, attemptsIntervalMs, cancellationToken)
+            return await ResultHelper.TryDo((c) => GetFa12AllowanceAsync(holderAddress, spenderAddress, callingAddress, securePublicKey, c), attempts, attemptsIntervalMs, cancellationToken)
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting balance after {attempts} attempts");
         }
 
-        public async Task<Result<decimal>> GetTokenBigMapAllowanceAsync(
+        public async Task<Result<decimal>> GetFa2BigMapAllowanceAsync(
             string holderAddress,
             string spenderAddress,
             CancellationToken cancellationToken = default)
         {
-            if (_currency.Name == FA2)
+            var token = _currency as TezosTokens.FA2;
+
+            try
             {
-                var token = _currency as TezosTokens.FA2;
+                return await HttpHelper.GetAsyncResult<decimal>(
+                    baseUri: token.BcdApi,
+                    requestUri: $"bigmap/{token.BcdNetwork}/{token.TokenPointerAllowance}/keys?q={holderAddress}",
+                    headers: _headers,
+                    responseHandler: (response, content) =>
+                    {
+                        var bigMap = JsonConvert.DeserializeObject<JArray>(content);
 
-                try
-                {
-                    return await HttpHelper.GetAsyncResult<decimal>(
-                        baseUri: token.BcdApi,
-                        requestUri: $"bigmap/{token.BcdNetwork}/{token.TokenPointerAllowance}/keys?q={holderAddress}",
-                        headers: _headers,
-                        responseHandler: (response, content) =>
-                        {
-                            var bigMap = JsonConvert.DeserializeObject<JArray>(content);
+                        if (bigMap.Count == 0)
+                            return 0;
 
-                            if (bigMap.Count == 0)
-                                return 0;
-
-                            //todo: refactoring
-                            if (bigMap[0]["data"]["value"].Contains("children"))
-                                return (bigMap[0]["data"]?["value"]?["children"]?.Where(a => a["value"]?.Value<string>() == spenderAddress) != null) ? 1 : 0;
-                            else
-                                return 0;
-                        },
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    return new Error(Errors.RequestError, e.Message);
-                }
+                        //todo: refactoring
+                        if (bigMap[0]["data"]["value"].Contains("children"))
+                            return (bigMap[0]["data"]?["value"]?["children"]?.Where(a => a["value"]?.Value<string>() == spenderAddress) != null) ? 1 : 0;
+                        else
+                            return 0;
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
             }
-            else
-                return 0;
+            catch (Exception e)
+            {
+                return new Error(Errors.RequestError, e.Message);
+            }
         }
 
-        public async Task<Result<decimal>> TryGetTokenBigMapAllowanceAsync(
+        public async Task<Result<decimal>> TryGetFa2BigMapAllowanceAsync(
             string holderAddress,
             string spenderAddress,
             int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
-            return await ResultHelper.TryDo((c) => GetTokenBigMapAllowanceAsync(holderAddress, spenderAddress, c), attempts, attemptsIntervalMs, cancellationToken)
+            return await ResultHelper.TryDo((c) => GetFa2BigMapAllowanceAsync(holderAddress, spenderAddress, c), attempts, attemptsIntervalMs, cancellationToken)
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting big map allowance after {attempts} attempts");
         }
 
         #endregion
 
-        private JObject GetBalanceParams(string holderAddress, string viewContractAddress)
+        private JObject GetBalanceParams(
+            string holderAddress,
+            string viewContractAddress)
         {
-            return JObject.Parse(@"{'entrypoint':'getBalance','value':{'args': [{'string':'" + holderAddress + "'},{'string':'" + viewContractAddress + "%viewNat'}],'prim': 'Pair'}}");
+            return JObject.FromObject(new
+            {
+                entrypoint = "getBalance",
+                value = new
+                {
+                    args = new object[]
+                    {
+                        new
+                        {
+                            @string = holderAddress,
+                        },
+                        new
+                        {
+                            @string = viewContractAddress + "%viewNat",
+                        },
+                    },
+                    prim = "Pair"
+                }
+            });
         }
 
-        private JObject GetAllowanceParams(string holderAddress, string spenderAddress, string viewContractAddress)
+        private JObject GetAllowanceParams(
+            string holderAddress,
+            string spenderAddress,
+            string viewContractAddress)
         {
-            return JObject.Parse(@"{'entrypoint':'getAllowance','value':{'args':[{'args':[{'string':'" + holderAddress + "'},{'string':'" + spenderAddress + "'}],'prim':'Pair'},{'string':'" + viewContractAddress + "%viewNat'}],'prim': 'Pair'}}");
+            return JObject.FromObject(new
+            {
+                entrypoint = "getAllowance",
+                value = new
+                {
+                    args = new object[]
+                    {
+                        new
+                        {
+                            args = new object[]
+                            {
+                                new
+                                {
+                                    @string = holderAddress
+                                },
+                                new
+                                {
+                                    @string = spenderAddress
+                                }
+                            },
+                            prim = "Pair"
+                        },
+                        new
+                        {
+                            @string = viewContractAddress + "%viewNat"
+                        }
+                    },
+                    prim = "Pair"
+                }
+            });
         }
 
-        public async Task<Result<IEnumerable<TezosTransaction>>> GetTransactionsAsync(
-            string from,
-            string to,
-            string parameters,
-            CancellationToken cancellationToken = default)
+        private IEnumerable<TxsSource> GetNyxTxsSource(string address)
         {
-            return await HttpHelper.GetAsyncResult(
-                        baseUri: _baseUri,
-                        requestUri: $"operations/transactions?sender={from}&target={to}&parameters.eq={parameters}",
-                        headers: _headers,
-                        responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content), parseTokenParams: false),
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
+            var token = _currency as TezosTokens.NYX;
+
+            return new List<TxsSource>
+            {
+                new TxsSource
+                {
+                    BaseUri    = _baseUri,
+                    RequestUri = $"operations/transactions?sender={address}&target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"setAllowTransferFrom\"*",
+                    Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
+                        content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
+                },
+                new TxsSource
+                {
+                    BaseUri    = _baseUri,
+                    RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transfer\"*{address}*",
+                    Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
+                        content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
+                },
+                new TxsSource
+                {
+                    BaseUri    = _baseUri,
+                    RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transfer\"*{Forge.ForgeAddress(address)}*",
+                    Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
+                        content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
+                },
+                new TxsSource
+                {
+                    BaseUri    = _baseUri,
+                    RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transferFrom\"*{address}*",
+                    Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
+                        content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
+                },
+                new TxsSource
+                {
+                    BaseUri    = _baseUri,
+                    RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transferFrom\"*{Forge.ForgeAddress(address)}*",
+                    Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
+                        content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
+                }
+            };
         }
 
-        public async Task<Result<IEnumerable<TezosTransaction>>> TryGetTransactionsAsync(
-            string from,
-            string to,
-            string parameters,
-            int attempts = 10,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
+        private IEnumerable<TxsSource> GetFa2TxsSource(string address)
         {
-            return await ResultHelper.TryDo((c) => GetTransactionsAsync(from, to, parameters, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
+            var token = _currency as TezosTokens.FA2;
+
+            return new List<TxsSource>
+            {
+                new TxsSource
+                {
+                    BaseUri    = _baseUri,
+                    RequestUri = $"operations/transactions?sender={address}&target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"update_operators\"*",
+                    Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
+                        content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
+                },
+                new TxsSource
+                {
+                    BaseUri    = _baseUri,
+                    RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transfer\"*{address}*",
+                    Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
+                        content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
+                },
+                new TxsSource
+                {
+                    BaseUri    = _baseUri,
+                    RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transfer\"*{Forge.ForgeAddress(address)}*",
+                    Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
+                        content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
+                }
+            };
+        }
+
+        private IEnumerable<TxsSource> GetFa12TxsSource(string address)
+        {
+            var token = _currency as TezosTokens.FA12;
+
+            return new List<TxsSource>
+            {
+                new TxsSource
+                {
+                    BaseUri    = _baseUri,
+                    RequestUri = $"operations/transactions?sender={address}&target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"approve\"*",
+                    Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
+                        content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
+                },
+                new TxsSource
+                {
+                    BaseUri    = token.BcdApi,
+                    RequestUri = $"tokens/{token.BcdNetwork}/transfers/{address}?size=10000", // todo: use contract filter {token.TokenContractAddress}";
+                    Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
+                        content => ParseTokenTxs(JsonConvert.DeserializeObject<JObject>(content)))
+                },
+            };
         }
     }
 }
