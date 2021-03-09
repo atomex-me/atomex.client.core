@@ -2,10 +2,12 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
-using Serilog;
 
 namespace Atomex.Swaps.Tezos.FA12.Helpers
 {
