@@ -322,9 +322,11 @@ namespace Atomex.Wallet
     {
       lock (_sync)
       {
-        string _txBsonKey = _transactionsBson.Keys.Where(key => key.Contains(id)).First();
-        _transactionsBson.Remove(_txBsonKey);
-        SaveDataCallback?.Invoke(AvailableDataType.RemoveTransaction, _txBsonKey, null);
+        string[] parsedId = id.Split(Convert.ToChar(":"));
+        string txId = parsedId[0];
+        string currencyName = parsedId[1];
+
+        SaveDataCallback?.Invoke(AvailableDataType.RemoveTransaction, $"{txId}/{currencyName}", null);
 
         return Task.FromResult(_transactions.Remove(id));
       }
