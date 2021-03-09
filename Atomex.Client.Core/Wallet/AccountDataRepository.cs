@@ -17,19 +17,19 @@ namespace Atomex.Wallet
   public class AccountDataRepository : IAccountDataRepository
   {
     private readonly Dictionary<string, WalletAddress> _addresses;
-    private readonly Dictionary<string, string> _addressesBson;
+    // private readonly Dictionary<string, string> _addressesBson;
 
     private readonly Dictionary<string, IBlockchainTransaction> _transactions;
-    private readonly Dictionary<string, string> _transactionsBson;
+    // private readonly Dictionary<string, string> _transactionsBson;
 
     private readonly Dictionary<string, OutputEntity> _outputs;
-    private readonly Dictionary<string, string> _outputsBson;
+    // private readonly Dictionary<string, string> _outputsBson;
 
     private readonly Dictionary<long, Swap> _swaps;
-    private readonly Dictionary<long, string> _swapsBson;
+    // private readonly Dictionary<long, string> _swapsBson;
 
     private readonly Dictionary<string, Order> _orders;
-    private readonly Dictionary<string, string> _ordersBson;
+    // private readonly Dictionary<string, string> _ordersBson;
 
     private ICurrencies _currencies;
 
@@ -59,19 +59,19 @@ namespace Atomex.Wallet
     public AccountDataRepository(ICurrencies currencies, string initialData = null)
     {
       _addresses = new Dictionary<string, WalletAddress>();
-      _addressesBson = new Dictionary<string, string>();
+      // _addressesBson = new Dictionary<string, string>();
 
       _transactions = new Dictionary<string, IBlockchainTransaction>();
-      _transactionsBson = new Dictionary<string, string>();
+      // _transactionsBson = new Dictionary<string, string>();
 
       _outputs = new Dictionary<string, OutputEntity>();
-      _outputsBson = new Dictionary<string, string>();
+      // _outputsBson = new Dictionary<string, string>();
 
       _swaps = new Dictionary<long, Swap>();
-      _swapsBson = new Dictionary<long, string>();
+      // _swapsBson = new Dictionary<long, string>();
 
       _orders = new Dictionary<string, Order>();
-      _ordersBson = new Dictionary<string, string>();
+      // _ordersBson = new Dictionary<string, string>();
 
       _sync = new object();
 
@@ -151,7 +151,7 @@ namespace Atomex.Wallet
         _addresses[walletId] = walletAddress; // todo: copy?
 
         var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(walletAddress)));
-        _addressesBson[walletId] = data;
+        // _addressesBson[walletId] = data;
         SaveDataCallback?.Invoke(AvailableDataType.WalletAddress, walletId, data);
 
         return Task.FromResult(true);
@@ -169,7 +169,7 @@ namespace Atomex.Wallet
           _addresses[walletId] = walletAddress; // todo: copy?
 
           var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(walletAddress)));
-          _addressesBson[walletId] = data;
+          // _addressesBson[walletId] = data;
           SaveDataCallback?.Invoke(AvailableDataType.WalletAddress, walletId, data);
         }
 
@@ -189,7 +189,7 @@ namespace Atomex.Wallet
         _addresses[walletId] = walletAddress; // todo: copy?
 
         var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(walletAddress)));
-        _addressesBson[walletId] = data;
+        // _addressesBson[walletId] = data;
         SaveDataCallback?.Invoke(AvailableDataType.WalletAddress, walletId, data);
 
         return Task.FromResult(true);
@@ -268,7 +268,7 @@ namespace Atomex.Wallet
         _transactions[$"{tx.Id}:{tx.Currency.Name}"] = tx; // todo: copy?
 
         var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument<IBlockchainTransaction>(tx)));
-        _transactionsBson[$"{tx.Id}/{tx.Currency.Name}"] = data;
+        // _transactionsBson[$"{tx.Id}/{tx.Currency.Name}"] = data;
 
         SaveDataCallback?.Invoke(AvailableDataType.Transaction, $"{tx.Id}/{tx.Currency.Name}", data);
 
@@ -356,7 +356,7 @@ namespace Atomex.Wallet
           _outputs[id] = entity;
 
           var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(output)));
-          _outputsBson[$"{id}/{currency}/{address}"] = data;
+          // _outputsBson[$"{id}/{currency}/{address}"] = data;
           SaveDataCallback?.Invoke(AvailableDataType.Output, $"{id}/{currency}/{address}", data);
         }
 
@@ -474,7 +474,7 @@ namespace Atomex.Wallet
         _orders[order.ClientOrderId] = order; // todo: copy?
 
         var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(order)));
-        _ordersBson[order.ClientOrderId] = data;
+        // _ordersBson[order.ClientOrderId] = data;
         SaveDataCallback?.Invoke(AvailableDataType.Order, order.ClientOrderId, data);
 
         return Task.FromResult(true);
@@ -598,7 +598,7 @@ namespace Atomex.Wallet
         _swaps[swap.Id] = swap; // todo: copy?
 
         var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(swap)));
-        _swapsBson[swap.Id] = data;
+        // _swapsBson[swap.Id] = data;
         SaveDataCallback?.Invoke(AvailableDataType.Swap, swap.Id.ToString(), data);
 
         return Task.FromResult(true);
