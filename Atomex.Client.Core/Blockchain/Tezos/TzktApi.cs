@@ -13,6 +13,7 @@ using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Tezos;
+using Atomex.TezosTokens;
 
 namespace Atomex.Blockchain.Tezos
 {
@@ -244,6 +245,41 @@ namespace Atomex.Blockchain.Tezos
                 txsResult = txsResult.Concat(txsRes.Value);
             }
 
+            if (_currency is FA12 fa12)
+            {
+                var size = fa12.BcdSizeLimit;
+                var total = 0L;
+                string lastId = null;
+                var hasPages = true;
+
+                while (hasPages)
+                {
+                    var requestUri = $"tokens/{fa12.BcdNetwork}/transfers/{address}?size={size}&contracts={fa12.TokenContractAddress}";
+
+                    if (lastId != null)
+                        requestUri += $"&last_id={lastId}";
+
+                    var txsRes = await HttpHelper
+                        .GetAsyncResult(
+                            baseUri: fa12.BcdApi,
+                            requestUri: requestUri,
+                            headers: _headers,
+                            responseHandler: (response, content) => ParseTokenTxs(JsonConvert.DeserializeObject<JObject>(content), out total, out lastId),
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (txsRes == null)
+                        return new Error(Errors.RequestError, $"Connection error while getting token approve transactions for address {address}");
+
+                    if (txsRes.HasError)
+                        return txsRes.Error;
+
+                    txsResult = txsResult.Concat(txsRes.Value);
+
+                    hasPages = total > size;
+                }
+            }
+
             return new Result<IEnumerable<IBlockchainTransaction>>(txsResult);
         }
 
@@ -415,7 +451,7 @@ namespace Atomex.Blockchain.Tezos
 
         private TezosTransaction ParseFA12Params(TezosTransaction tx, JObject transaction)
         {
-            var tokenContractAddress = (_currency as TezosTokens.FA12).TokenContractAddress;
+            var tokenContractAddress = (_currency as FA12).TokenContractAddress;
 
             if (transaction["target"]?["address"]?.ToString() != tokenContractAddress)
             {
@@ -473,7 +509,7 @@ namespace Atomex.Blockchain.Tezos
 
         private TezosTransaction ParseNYXParams(TezosTransaction tx, JObject transaction)
         {
-            var tokenContractAddress = (_currency as TezosTokens.NYX).TokenContractAddress;
+            var tokenContractAddress = (_currency as NYX).TokenContractAddress;
 
             tx.Fee          = transaction["bakerFee"].Value<decimal>();
             tx.GasLimit     = transaction["gasLimit"].Value<decimal>();
@@ -538,7 +574,7 @@ namespace Atomex.Blockchain.Tezos
 
         private TezosTransaction ParseFA2Params(TezosTransaction tx, JObject transaction)
         {
-            var tokenContractAddress = (_currency as TezosTokens.FA2).TokenContractAddress;
+            var tokenContractAddress = (_currency as FA2).TokenContractAddress;
 
             tx.Fee          = transaction["bakerFee"].Value<decimal>();
             tx.GasLimit     = transaction["gasLimit"].Value<decimal>();
@@ -676,11 +712,17 @@ namespace Atomex.Blockchain.Tezos
             return result;
         }
 
-        private Result<IEnumerable<TezosTransaction>> ParseTokenTxs(JObject data)
+        private Result<IEnumerable<TezosTransaction>> ParseTokenTxs(JObject data, out long total, out string lastId)
         {
-            var token = _currency as TezosTokens.FA12;
+            var token = _currency as FA12;
 
             var result = new List<TezosTransaction>();
+
+            total = data["total"]?.Value<long>() ?? 0;
+
+            lastId = data.ContainsKey("last_id")
+                ? data["last_id"]?.Value<string>()
+                : null;
 
             var transfers = data["transfers"] as JArray;
 
@@ -750,7 +792,7 @@ namespace Atomex.Blockchain.Tezos
             SecureBytes securePublicKey,
             CancellationToken cancellationToken = default)
         {
-            var token = _currency as TezosTokens.FA12;
+            var token = _currency as FA12;
 
             try
             {
@@ -831,7 +873,7 @@ namespace Atomex.Blockchain.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            var token = _currency as TezosTokens.NYX;
+            var token = _currency as NYX;
 
             try
             {
@@ -862,7 +904,7 @@ namespace Atomex.Blockchain.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            var token = _currency as TezosTokens.FA2;
+            var token = _currency as FA2;
 
             try
             {
@@ -907,7 +949,7 @@ namespace Atomex.Blockchain.Tezos
             SecureBytes securePublicKey,
             CancellationToken cancellationToken = default)
         {
-            var token = _currency as TezosTokens.FA12;
+            var token = _currency as FA12;
 
             try
             {
@@ -978,7 +1020,7 @@ namespace Atomex.Blockchain.Tezos
             string spenderAddress,
             CancellationToken cancellationToken = default)
         {
-            var token = _currency as TezosTokens.FA2;
+            var token = _currency as FA2;
 
             try
             {
@@ -1085,7 +1127,7 @@ namespace Atomex.Blockchain.Tezos
 
         private IEnumerable<TxsSource> GetNyxTxsSource(string address)
         {
-            var token = _currency as TezosTokens.NYX;
+            var token = _currency as NYX;
 
             return new List<TxsSource>
             {
@@ -1129,7 +1171,7 @@ namespace Atomex.Blockchain.Tezos
 
         private IEnumerable<TxsSource> GetFa2TxsSource(string address)
         {
-            var token = _currency as TezosTokens.FA2;
+            var token = _currency as FA2;
 
             return new List<TxsSource>
             {
@@ -1159,7 +1201,7 @@ namespace Atomex.Blockchain.Tezos
 
         private IEnumerable<TxsSource> GetFa12TxsSource(string address)
         {
-            var token = _currency as TezosTokens.FA12;
+            var token = _currency as FA12;
 
             return new List<TxsSource>
             {
@@ -1169,14 +1211,7 @@ namespace Atomex.Blockchain.Tezos
                     RequestUri = $"operations/transactions?sender={address}&target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"approve\"*",
                     Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
                         content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
-                },
-                new TxsSource
-                {
-                    BaseUri    = token.BcdApi,
-                    RequestUri = $"tokens/{token.BcdNetwork}/transfers/{address}?size=10000", // todo: use contract filter {token.TokenContractAddress}";
-                    Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
-                        content => ParseTokenTxs(JsonConvert.DeserializeObject<JObject>(content)))
-                },
+                }
             };
         }
     }

@@ -133,7 +133,7 @@ namespace Atomex.Blockchain.Tezos.Internal
                         var forgedOpLocal = Forge.ForgeOperationsLocal(null, op);
 
                         size = forgedOpLocal.ToString().Length / 2 + Math.Ceiling((tezosConfig.HeadSizeInBytes + tezosConfig.SigSizeInBytes) / operations.Count);
-                        fee = tezosConfig.MinimalFee + tezosConfig.MinimalNanotezPerByte * size + (long)Math.Ceiling(tezosConfig.MinimalNanotezPerGasUnit * gas) + 1;
+                        fee = tezosConfig.MinimalFee + tezosConfig.MinimalNanotezPerByte * size + (long)Math.Ceiling(tezosConfig.MinimalNanotezPerGasUnit * gas) + 10;
 
                         if (useDefaultFee)
                             op["fee"] = fee.ToString();
