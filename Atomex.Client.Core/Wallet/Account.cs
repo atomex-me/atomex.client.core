@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
@@ -91,16 +90,7 @@ namespace Atomex.Wallet
                 currencies: Currencies,
                 network: wallet.Network);
 
-            Log.Error($"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultDataFileName}");
-
-            CurrencyAccounts = Currencies
-                .ToDictionary(
-                    c => c.Name,
-                    c => CurrencyAccountCreator.Create(
-                        currency: c.Name,
-                        wallet: Wallet,
-                        dataRepository: DataRepository,
-                        currencies: Currencies));
+            CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, DataRepository);
 
             UserSettings = UserSettings.TryLoadFromFile(
                 pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
@@ -120,15 +110,7 @@ namespace Atomex.Wallet
             DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
 
             Currencies = currenciesProvider.GetCurrencies(Network);
-
-            CurrencyAccounts = Currencies
-                .ToDictionary(
-                    c => c.Name,
-                    c => CurrencyAccountCreator.Create(
-                        currency: c.Name,
-                        wallet: Wallet,
-                        dataRepository: DataRepository,
-                        currencies: Currencies));
+            CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, DataRepository);
 
             UserSettings = UserSettings.TryLoadFromFile(
                 pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
@@ -157,27 +139,6 @@ namespace Atomex.Wallet
         {
             UserSettings = userSettings;
             return this;
-        }
-
-        public Task<Error> SendAsync(
-            string currency,
-            IEnumerable<WalletAddress> from,
-            string to,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            bool useDefaultFee = false,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .SendAsync(
-                    from: from,
-                    to: to,
-                    amount: amount,
-                    fee: fee,
-                    feePrice: feePrice,
-                    useDefaultFee: useDefaultFee,
-                    cancellationToken: cancellationToken);
         }
 
         public Task<Error> SendAsync(

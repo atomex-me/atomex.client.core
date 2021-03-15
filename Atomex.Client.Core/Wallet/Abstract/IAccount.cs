@@ -61,66 +61,6 @@ namespace Atomex.Wallet.Abstract
         /// <returns>this</returns>
         IAccount UseUserSettings(UserSettings userSettings);
 
-        ///// <summary>
-        ///// Send <paramref name="amount"/> from <paramref name="from"/> with <paramref name="fee"/> and <paramref name="feePrice"/> to address <paramref name="to"/>
-        ///// </summary>
-        ///// <param name="currency">Currency</param>
-        ///// <param name="from">From addresses</param>
-        ///// <param name="to">Destination address</param>
-        ///// <param name="amount">Amount to send</param>
-        ///// <param name="fee">Fee</param>
-        ///// <param name="feePrice">Fee price</param>
-        ///// <param name="cancellationToken">Cancellation token</param>
-        ///// <returns>Null if success, otherwise false</returns>
-        //Task<Error> SendAsync(
-        //    string currency,
-        //    IEnumerable<WalletAddress> from,
-        //    string to,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Send <paramref name="amount"/> from <paramref name="from"/> with <paramref name="fee"/> and <paramref name="feePrice"/> to address <paramref name="to"/>
-        /// </summary>
-        /// <param name="currency">Currency</param>
-        /// <param name="from">From addresses</param>
-        /// <param name="to">Destination address</param>
-        /// <param name="amount">Amount to send</param>
-        /// <param name="fee">Fee</param>
-        /// <param name="feePrice">Fee price</param>
-        /// <param name="useDefaultFee">Dafault fee mode</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Null if success, otherwise false</returns>
-        Task<Error> SendAsync(
-            string currency,
-            IEnumerable<WalletAddress> from,
-            string to,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            bool useDefaultFee = false,
-            CancellationToken cancellationToken = default);
-
-        ///// <summary>
-        ///// Send <paramref name="amount"/> with <paramref name="fee"/> and <paramref name="feePrice"/> to address <paramref name="to"/>
-        ///// </summary>
-        ///// <param name="currency">Currency</param>
-        ///// <param name="to">Destination address</param>
-        ///// <param name="amount">Amount to send</param>
-        ///// <param name="fee">Fee</param>
-        ///// <param name="feePrice">Fee price</param>
-        ///// <param name="cancellationToken">Cancellation token</param>
-        ///// <returns>Null if success, otherwise false</returns>
-        //Task<Error> SendAsync(
-        //    string currency,
-        //    string to,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    CancellationToken cancellationToken = default);
-
         /// <summary>
         /// Send <paramref name="amount"/> with <paramref name="fee"/> and <paramref name="feePrice"/> to address <paramref name="to"/>
         /// </summary>

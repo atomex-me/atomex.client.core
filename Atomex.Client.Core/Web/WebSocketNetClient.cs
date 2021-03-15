@@ -103,7 +103,7 @@ namespace Atomex.Web
 
                         // Log.Error("Try to reconnect through {@interval}, attempt: {@attempt}", reconnectInterval,
                         // _reconnectAttempts);
-                        ConnectAsync().FireAndForget();
+                        _ = ConnectAsync();
                     }
                 catch (OperationCanceledException)
                 {

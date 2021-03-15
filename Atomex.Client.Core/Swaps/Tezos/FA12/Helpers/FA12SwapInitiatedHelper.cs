@@ -190,36 +190,48 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
         {
             return Task.Run(async () =>
             {
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    if (swap.IsCanceled)
+                    while (!cancellationToken.IsCancellationRequested)
                     {
-                        canceledHandler?.Invoke(swap, cancellationToken);
-                        break;
-                    }
+                        if (swap.IsCanceled)
+                        {
+                            canceledHandler?.Invoke(swap, cancellationToken);
+                            break;
+                        }
 
-                    var isInitiatedResult = await IsInitiatedAsync(
-                            swap: swap,
-                            currency: currency,
-                            tezos: tezos,
-                            refundTimeStamp: refundTimeStamp,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
+                        var isInitiatedResult = await IsInitiatedAsync(
+                                swap: swap,
+                                currency: currency,
+                                tezos: tezos,
+                                refundTimeStamp: refundTimeStamp,
+                                cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
 
-                    if (isInitiatedResult.HasError && isInitiatedResult.Error.Code != Errors.RequestError)
-                    {
-                        canceledHandler?.Invoke(swap, cancellationToken);
-                        break;
-                    }
-                    else if (!isInitiatedResult.HasError && isInitiatedResult.Value)
-                    {
-                        initiatedHandler?.Invoke(swap, cancellationToken);
-                        break;
-                    }
+                        if (isInitiatedResult.HasError && isInitiatedResult.Error.Code != Errors.RequestError)
+                        {
+                            canceledHandler?.Invoke(swap, cancellationToken);
+                            break;
+                        }
+                        else if (!isInitiatedResult.HasError && isInitiatedResult.Value)
+                        {
+                            initiatedHandler?.Invoke(swap, cancellationToken);
+                            break;
+                        }
 
-                    await Task.Delay(interval, cancellationToken)
-                        .ConfigureAwait(false);
+                        await Task.Delay(interval, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
                 }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("StartSwapInitiatedControlAsync canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "StartSwapInitiatedControlAsync error.");
+                }
+
             }, cancellationToken);
         }
 

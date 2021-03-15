@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Common;
+
 using Serilog;
 using WebSocketSharp;
+
+using Atomex.Common;
 
 namespace Atomex.Web
 {
@@ -111,7 +113,7 @@ namespace Atomex.Web
 
         protected void SendAsync(byte[] data)
         {
-            _ws.SendAsync(data).FireAndForget();
+            _ = _ws.SendAsync(data);
         }
 
         private async void TryToReconnect()
@@ -140,7 +142,7 @@ namespace Atomex.Web
                 {
                     _reconnectAttempts++;
 
-                    ConnectAsync().FireAndForget();
+                    _ = ConnectAsync();
                 }
             }
             catch (OperationCanceledException)

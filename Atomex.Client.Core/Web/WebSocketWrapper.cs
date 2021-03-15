@@ -215,7 +215,7 @@ namespace Atomex.Web
             _state = CustomStates.Closed;
             if (_onDisconnected != null)
                 _onDisconnected(this);
-            Close().FireAndForget();
+            _ = Close();
         }
 
         private void CallOnConnected()

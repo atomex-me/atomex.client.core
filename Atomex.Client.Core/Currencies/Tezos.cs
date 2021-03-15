@@ -4,6 +4,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 
+using Newtonsoft.Json.Linq;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Internal;
@@ -12,13 +14,14 @@ using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.Bip;
 using Atomex.Wallet.Tezos;
-using Newtonsoft.Json.Linq;
 
 namespace Atomex
 {
     public class Tezos : Currency
     {
         public const long XtzDigitsMultiplier = 1_000_000;
+        public const int HeadOffset = 55;
+
         protected const int PkHashSize = 20 * 8;
 
         public decimal MinimalFee { get; protected set; }

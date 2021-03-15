@@ -100,14 +100,14 @@ namespace Atomex.Wallet.Ethereum
 
                 var tx = new EthereumTransaction
                 {
-                    Currency = eth,
-                    Type = BlockchainTransactionType.Output,
+                    Currency     = eth,
+                    Type         = BlockchainTransactionType.Output,
                     CreationTime = DateTime.UtcNow,
-                    To = to.ToLowerInvariant(),
-                    Amount = Atomex.Ethereum.EthToWei(selectedAddress.UsedAmount),
-                    Nonce = nonceAsyncResult.Value,
-                    GasPrice = new BigInteger(Atomex.Ethereum.GweiToWei(feePrice)),
-                    GasLimit = new BigInteger(feePerTx),
+                    To           = to.ToLowerInvariant(),
+                    Amount       = Atomex.Ethereum.EthToWei(selectedAddress.UsedAmount),
+                    Nonce        = nonceAsyncResult.Value,
+                    GasPrice     = new BigInteger(Atomex.Ethereum.GweiToWei(feePrice)),
+                    GasLimit     = new BigInteger(feePerTx),
                 };
 
                 var signResult = await Wallet
@@ -149,8 +149,7 @@ namespace Atomex.Wallet.Ethereum
                     .ConfigureAwait(false);
             }
 
-            UpdateBalanceAsync(cancellationToken)
-                .FireAndForget();
+            _ = UpdateBalanceAsync(cancellationToken);
 
             return null;
         }
@@ -376,211 +375,240 @@ namespace Atomex.Wallet.Ethereum
 
         #region Balances
 
-        public override async Task UpdateBalanceAsync(
+        public override Task UpdateBalanceAsync(
              CancellationToken cancellationToken = default)
         {
-            var eth = Eth;
-
-            var txs = (await DataRepository
-                .GetTransactionsAsync(Currency, eth.TransactionType)
-                .ConfigureAwait(false))
-                .Cast<EthereumTransaction>()
-                .ToList();
-
-            var internalTxs = txs.Aggregate(new List<EthereumTransaction>(), (list, tx) =>
+            return Task.Run(async () =>
             {
-                if (tx.InternalTxs != null)
-                    list.AddRange(tx.InternalTxs);
-
-                return list;
-            });
-
-            // calculate balances
-
-            var totalUnconfirmedIncome = 0m;
-            var totalUnconfirmedOutcome = 0m;
-            var addressBalances = new Dictionary<string, WalletAddress>();
-
-            foreach (var tx in txs.Concat(internalTxs))
-            {
-                var addresses = new HashSet<string>();
-
-                var isFromSelf = await IsSelfAddressAsync(tx.From, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (isFromSelf)
-                    addresses.Add(tx.From);
-
-                var isToSelf = await IsSelfAddressAsync(tx.To, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (isToSelf)
-                    addresses.Add(tx.To);
-
-                foreach (var address in addresses)
+                try
                 {
-                    var isIncome = address == tx.To;
-                    var isOutcome = address == tx.From;
-                    var isConfirmed = tx.IsConfirmed;
-                    var isFailed = tx.State == BlockchainTransactionState.Failed;
+                    var eth = Eth;
 
-                    var income = isIncome && !isFailed
-                        ? Atomex.Ethereum.WeiToEth(tx.Amount)
-                        : 0;
+                    var txs = (await DataRepository
+                        .GetTransactionsAsync(Currency, eth.TransactionType)
+                        .ConfigureAwait(false))
+                        .Cast<EthereumTransaction>()
+                        .ToList();
 
-                    var outcome = isOutcome
-                        ? (!isFailed
-                            ? -Atomex.Ethereum.WeiToEth(tx.Amount + tx.GasPrice * (tx.GasUsed != 0 ? tx.GasUsed : tx.GasLimit))
-                            : -Atomex.Ethereum.WeiToEth(tx.GasPrice * tx.GasUsed))
-                        : 0;
-
-                    if (addressBalances.TryGetValue(address, out var walletAddress))
+                    var internalTxs = txs.Aggregate(new List<EthereumTransaction>(), (list, tx) =>
                     {
-                        //walletAddress.Balance            += isConfirmed ? income + outcome : 0;
-                        walletAddress.UnconfirmedIncome += !isConfirmed ? income : 0;
-                        walletAddress.UnconfirmedOutcome += !isConfirmed ? outcome : 0;
-                    }
-                    else
+                        if (tx.InternalTxs != null)
+                            list.AddRange(tx.InternalTxs);
+
+                        return list;
+                    });
+
+                    // calculate balances
+
+                    var totalUnconfirmedIncome = 0m;
+                    var totalUnconfirmedOutcome = 0m;
+                    var addressBalances = new Dictionary<string, WalletAddress>();
+
+                    foreach (var tx in txs.Concat(internalTxs))
                     {
-                        walletAddress = await DataRepository
-                            .GetWalletAddressAsync(Currency, address)
+                        var addresses = new HashSet<string>();
+
+                        var isFromSelf = await IsSelfAddressAsync(tx.From, cancellationToken)
                             .ConfigureAwait(false);
 
-                        //walletAddress.Balance            = isConfirmed ? income + outcome : 0;
-                        walletAddress.UnconfirmedIncome = !isConfirmed ? income : 0;
-                        walletAddress.UnconfirmedOutcome = !isConfirmed ? outcome : 0;
-                        walletAddress.HasActivity = true;
+                        if (isFromSelf)
+                            addresses.Add(tx.From);
 
-                        addressBalances.Add(address, walletAddress);
+                        var isToSelf = await IsSelfAddressAsync(tx.To, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (isToSelf)
+                            addresses.Add(tx.To);
+
+                        foreach (var address in addresses)
+                        {
+                            var isIncome = address == tx.To;
+                            var isOutcome = address == tx.From;
+                            var isConfirmed = tx.IsConfirmed;
+                            var isFailed = tx.State == BlockchainTransactionState.Failed;
+
+                            var income = isIncome && !isFailed
+                                ? Atomex.Ethereum.WeiToEth(tx.Amount)
+                                : 0;
+
+                            var outcome = isOutcome
+                                ? (!isFailed
+                                    ? -Atomex.Ethereum.WeiToEth(tx.Amount + tx.GasPrice * (tx.GasUsed != 0 ? tx.GasUsed : tx.GasLimit))
+                                    : -Atomex.Ethereum.WeiToEth(tx.GasPrice * tx.GasUsed))
+                                : 0;
+
+                            if (addressBalances.TryGetValue(address, out var walletAddress))
+                            {
+                                //walletAddress.Balance            += isConfirmed ? income + outcome : 0;
+                                walletAddress.UnconfirmedIncome += !isConfirmed ? income : 0;
+                                walletAddress.UnconfirmedOutcome += !isConfirmed ? outcome : 0;
+                            }
+                            else
+                            {
+                                walletAddress = await DataRepository
+                                    .GetWalletAddressAsync(Currency, address)
+                                    .ConfigureAwait(false);
+
+                                //walletAddress.Balance            = isConfirmed ? income + outcome : 0;
+                                walletAddress.UnconfirmedIncome = !isConfirmed ? income : 0;
+                                walletAddress.UnconfirmedOutcome = !isConfirmed ? outcome : 0;
+                                walletAddress.HasActivity = true;
+
+                                addressBalances.Add(address, walletAddress);
+                            }
+
+                            //totalBalance            += isConfirmed ? income + outcome : 0;
+                            totalUnconfirmedIncome += !isConfirmed ? income : 0;
+                            totalUnconfirmedOutcome += !isConfirmed ? outcome : 0;
+                        }
                     }
 
-                    //totalBalance            += isConfirmed ? income + outcome : 0;
-                    totalUnconfirmedIncome += !isConfirmed ? income : 0;
-                    totalUnconfirmedOutcome += !isConfirmed ? outcome : 0;
+                    var totalBalance = 0m;
+                    var api = eth.BlockchainApi;
+
+                    foreach (var wa in addressBalances.Values)
+                    {
+                        var balanceResult = await api
+                            .TryGetBalanceAsync(
+                                address: wa.Address,
+                                cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (balanceResult.HasError)
+                        {
+                            Log.Error("Error while getting balance for {@address} with code {@code} and description {@description}",
+                                wa.Address,
+                                balanceResult.Error.Code,
+                                balanceResult.Error.Description);
+
+                            continue; // todo: may be return?
+                        }
+
+                        wa.Balance = balanceResult.Value;
+
+                        totalBalance += wa.Balance;
+                    }
+
+                    // upsert addresses
+                    await DataRepository
+                        .UpsertAddressesAsync(addressBalances.Values)
+                        .ConfigureAwait(false);
+
+                    Balance = totalBalance;
+                    UnconfirmedIncome = totalUnconfirmedIncome;
+                    UnconfirmedOutcome = totalUnconfirmedOutcome;
+
+                    RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
                 }
-            }
-
-            var totalBalance = 0m;
-            var api = eth.BlockchainApi;
-
-            foreach (var wa in addressBalances.Values)
-            {
-                var balanceResult = await api
-                    .TryGetBalanceAsync(
-                        address: wa.Address,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (balanceResult.HasError)
+                catch (OperationCanceledException)
                 {
-                    Log.Error("Error while getting balance for {@address} with code {@code} and description {@description}",
-                        wa.Address,
-                        balanceResult.Error.Code,
-                        balanceResult.Error.Description);
-
-                    continue; // todo: may be return?
+                    Log.Debug($"{Currency} UpdateBalanceAsync canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, $"{Currency} UpdateBalanceAsync error.");
                 }
 
-                wa.Balance = balanceResult.Value;
-
-                totalBalance += wa.Balance;
-            }
-
-            // upsert addresses
-            await DataRepository
-                .UpsertAddressesAsync(addressBalances.Values)
-                .ConfigureAwait(false);
-
-            Balance = totalBalance;
-            UnconfirmedIncome = totalUnconfirmedIncome;
-            UnconfirmedOutcome = totalUnconfirmedOutcome;
-
-            RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
+            }, cancellationToken);
         }
 
-        public override async Task UpdateBalanceAsync(
+        public override Task UpdateBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            var eth = Eth;
-
-            var walletAddress = await DataRepository
-                .GetWalletAddressAsync(Currency, address)
-                .ConfigureAwait(false);
-
-            if (walletAddress == null)
-                return;
-
-            var balanceResult = await eth.BlockchainApi
-                .TryGetBalanceAsync(address, cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            if (balanceResult.HasError)
+            return Task.Run(async () =>
             {
-                Log.Error("Error while balance update for {@address} with code {@code} and description {@description}",
-                    address,
-                    balanceResult.Error.Code,
-                    balanceResult.Error.Description);
+                try
+                {
+                    var eth = Eth;
 
-                return;
-            }
+                    var walletAddress = await DataRepository
+                        .GetWalletAddressAsync(Currency, address)
+                        .ConfigureAwait(false);
 
-            var balance = balanceResult.Value;
+                    if (walletAddress == null)
+                        return;
 
-            // calculate unconfirmed balances
-            var unconfirmedTxs = (await DataRepository
-                .GetUnconfirmedTransactionsAsync(Currency, eth.TransactionType)
-                .ConfigureAwait(false))
-                .Cast<EthereumTransaction>()
-                .ToList();
+                    var balanceResult = await eth.BlockchainApi
+                        .TryGetBalanceAsync(address, cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
 
-            var unconfirmedInternalTxs = unconfirmedTxs.Aggregate(new List<EthereumTransaction>(), (list, tx) =>
-            {
-                if (tx.InternalTxs != null)
-                    list.AddRange(tx.InternalTxs);
+                    if (balanceResult.HasError)
+                    {
+                        Log.Error("Error while balance update for {@address} with code {@code} and description {@description}",
+                            address,
+                            balanceResult.Error.Code,
+                            balanceResult.Error.Description);
 
-                return list;
-            });
+                        return;
+                    }
 
-            var unconfirmedIncome = 0m;
-            var unconfirmedOutcome = 0m;
+                    var balance = balanceResult.Value;
 
-            foreach (var utx in unconfirmedTxs.Concat(unconfirmedInternalTxs))
-            {
-                var isFailed = utx.State == BlockchainTransactionState.Failed;
+                    // calculate unconfirmed balances
+                    var unconfirmedTxs = (await DataRepository
+                        .GetUnconfirmedTransactionsAsync(Currency, eth.TransactionType)
+                        .ConfigureAwait(false))
+                        .Cast<EthereumTransaction>()
+                        .ToList();
 
-                unconfirmedIncome += address == utx.To && !isFailed
-                    ? Atomex.Ethereum.WeiToEth(utx.Amount)
-                    : 0;
-                unconfirmedOutcome += address == utx.From && !isFailed
-                    ? -Atomex.Ethereum.WeiToEth(utx.Amount + utx.GasPrice * (utx.GasUsed != 0 ? utx.GasUsed : utx.GasLimit))
-                    : 0;
-            }
+                    var unconfirmedInternalTxs = unconfirmedTxs.Aggregate(new List<EthereumTransaction>(), (list, tx) =>
+                    {
+                        if (tx.InternalTxs != null)
+                            list.AddRange(tx.InternalTxs);
 
-            var balanceDifference = balance - walletAddress.Balance;
-            var unconfirmedIncomeDifference = unconfirmedIncome - walletAddress.UnconfirmedIncome;
-            var unconfirmedOutcomeDifference = unconfirmedOutcome - walletAddress.UnconfirmedOutcome;
+                        return list;
+                    });
 
-            if (balanceDifference != 0 ||
-                unconfirmedIncomeDifference != 0 ||
-                unconfirmedOutcomeDifference != 0)
-            {
-                walletAddress.Balance = balance;
-                walletAddress.UnconfirmedIncome = unconfirmedIncome;
-                walletAddress.UnconfirmedOutcome = unconfirmedOutcome;
-                walletAddress.HasActivity = true;
+                    var unconfirmedIncome = 0m;
+                    var unconfirmedOutcome = 0m;
 
-                await DataRepository.UpsertAddressAsync(walletAddress)
-                    .ConfigureAwait(false);
+                    foreach (var utx in unconfirmedTxs.Concat(unconfirmedInternalTxs))
+                    {
+                        var isFailed = utx.State == BlockchainTransactionState.Failed;
 
-                Balance += balanceDifference;
-                UnconfirmedIncome += unconfirmedIncomeDifference;
-                UnconfirmedOutcome += unconfirmedOutcomeDifference;
+                        unconfirmedIncome += address == utx.To && !isFailed
+                            ? Atomex.Ethereum.WeiToEth(utx.Amount)
+                            : 0;
+                        unconfirmedOutcome += address == utx.From && !isFailed
+                            ? -Atomex.Ethereum.WeiToEth(utx.Amount + utx.GasPrice * (utx.GasUsed != 0 ? utx.GasUsed : utx.GasLimit))
+                            : 0;
+                    }
 
-                RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
-            }
+                    var balanceDifference = balance - walletAddress.Balance;
+                    var unconfirmedIncomeDifference = unconfirmedIncome - walletAddress.UnconfirmedIncome;
+                    var unconfirmedOutcomeDifference = unconfirmedOutcome - walletAddress.UnconfirmedOutcome;
+
+                    if (balanceDifference != 0 ||
+                        unconfirmedIncomeDifference != 0 ||
+                        unconfirmedOutcomeDifference != 0)
+                    {
+                        walletAddress.Balance = balance;
+                        walletAddress.UnconfirmedIncome = unconfirmedIncome;
+                        walletAddress.UnconfirmedOutcome = unconfirmedOutcome;
+                        walletAddress.HasActivity = true;
+
+                        await DataRepository.UpsertAddressAsync(walletAddress)
+                            .ConfigureAwait(false);
+
+                        Balance += balanceDifference;
+                        UnconfirmedIncome += unconfirmedIncomeDifference;
+                        UnconfirmedOutcome += unconfirmedOutcomeDifference;
+
+                        RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("UpdateBalanceAsync canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "UpdateBalanceAsync error.");
+                }
+
+            }, cancellationToken);
         }
-
 
         #endregion Balances
 

@@ -142,15 +142,14 @@ namespace Atomex.Swaps.BitcoinBased
 
             var refundTimeUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
 
-            BitcoinBasedSwapInitiatedHelper.StartSwapInitiatedControlAsync(
-                    swap: swap,
-                    currency: BitcoinBased,
-                    refundTimeStamp: refundTimeUtcInSec,
-                    interval: ConfirmationCheckInterval,
-                    initiatedHandler: initiatedHandler,
-                    canceledHandler: SwapCanceledHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = BitcoinBasedSwapInitiatedHelper.StartSwapInitiatedControlAsync(
+                swap: swap,
+                currency: BitcoinBased,
+                refundTimeStamp: refundTimeUtcInSec,
+                interval: ConfirmationCheckInterval,
+                initiatedHandler: initiatedHandler,
+                canceledHandler: SwapCanceledHandler,
+                cancellationToken: cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -224,13 +223,12 @@ namespace Atomex.Swaps.BitcoinBased
 
                 if (!needReplaceTx)
                 {
-                    TrackTransactionConfirmationAsync(
-                            swap: swap,
-                            currency: currency,
-                            txId: swap.RedeemTx.Id,
-                            confirmationHandler: RedeemConfirmedEventHandler,
-                            cancellationToken: cancellationToken)
-                        .FireAndForget();
+                    _ = TrackTransactionConfirmationAsync(
+                        swap: swap,
+                        currency: currency,
+                        txId: swap.RedeemTx.Id,
+                        confirmationHandler: RedeemConfirmedEventHandler,
+                        cancellationToken: cancellationToken);
 
                     return;
                 }
@@ -341,13 +339,12 @@ namespace Atomex.Swaps.BitcoinBased
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            TrackTransactionConfirmationAsync(
-                    swap: swap,
-                    currency: currency,
-                    txId: swap.RedeemTx.Id,
-                    confirmationHandler: RedeemConfirmedEventHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = TrackTransactionConfirmationAsync(
+                swap: swap,
+                currency: currency,
+                txId: swap.RedeemTx.Id,
+                confirmationHandler: RedeemConfirmedEventHandler,
+                cancellationToken: cancellationToken);
         }
 
         public override Task RedeemForPartyAsync(
@@ -364,13 +361,12 @@ namespace Atomex.Swaps.BitcoinBased
         {
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast))
             {
-                TrackTransactionConfirmationAsync(
-                        swap: swap,
-                        currency: Currencies.GetByName(swap.SoldCurrency),
-                        txId: swap.RefundTx.Id,
-                        confirmationHandler: RefundConfirmedEventHandler,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
+                _ = TrackTransactionConfirmationAsync(
+                    swap: swap,
+                    currency: Currencies.GetByName(swap.SoldCurrency),
+                    txId: swap.RefundTx.Id,
+                    confirmationHandler: RefundConfirmedEventHandler,
+                    cancellationToken: cancellationToken);
 
                 return;
             }
@@ -418,12 +414,11 @@ namespace Atomex.Swaps.BitcoinBased
             await UpdateSwapAsync(swap, SwapStateFlags.IsRefundSigned, cancellationToken)
                 .ConfigureAwait(false);
 
-            swap.RefundTx.ForceBroadcast(
-                    swap: swap,
-                    interval: ForceRefundInterval,
-                    completionHandler: RefundBroadcastEventHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = swap.RefundTx.ForceBroadcast(
+                swap: swap,
+                interval: ForceRefundInterval,
+                completionHandler: RefundBroadcastEventHandler,
+                cancellationToken: cancellationToken);
         }
 
         public override Task StartWaitForRedeemAsync(
@@ -436,24 +431,22 @@ namespace Atomex.Swaps.BitcoinBased
                 ? DefaultInitiatorLockTimeInSeconds
                 : DefaultAcceptorLockTimeInSeconds;
 
-            BitcoinBasedSwapSpentHelper.StartSwapSpentControlAsync(
-                    swap: swap,
-                    currency: currency,
-                    refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
-                    interval: OutputSpentCheckInterval,
-                    completionHandler: PaymentSpentEventHandler,
-                    refundTimeReachedHandler: RefundTimeReachedHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = BitcoinBasedSwapSpentHelper.StartSwapSpentControlAsync(
+                swap: swap,
+                currency: currency,
+                refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
+                interval: OutputSpentCheckInterval,
+                completionHandler: PaymentSpentEventHandler,
+                refundTimeReachedHandler: RefundTimeReachedHandler,
+                cancellationToken: cancellationToken);
 
             if (!swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed))
-                TrackTransactionConfirmationAsync(
-                        swap: swap,
-                        currency: currency,
-                        txId: swap.PaymentTxId,
-                        confirmationHandler: PaymentConfirmedEventHandler,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
+                _ = TrackTransactionConfirmationAsync(
+                    swap: swap,
+                    currency: currency,
+                    txId: swap.PaymentTxId,
+                    confirmationHandler: PaymentConfirmedEventHandler,
+                    cancellationToken: cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -805,13 +798,12 @@ namespace Atomex.Swaps.BitcoinBased
                         updateBalance: true)
                     .ConfigureAwait(false);
 
-                TrackTransactionConfirmationAsync(
-                        swap: swap,
-                        currency: Currencies.GetByName(swap.SoldCurrency),
-                        txId: txId,
-                        confirmationHandler: RefundConfirmedEventHandler,
-                        cancellationToken: cancellationToken)
-                    .FireAndForget();
+                _ = TrackTransactionConfirmationAsync(
+                    swap: swap,
+                    currency: Currencies.GetByName(swap.SoldCurrency),
+                    txId: txId,
+                    confirmationHandler: RefundConfirmedEventHandler,
+                    cancellationToken: cancellationToken);
             }
             catch (Exception e)
             {

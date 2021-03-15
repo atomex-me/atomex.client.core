@@ -46,6 +46,10 @@ namespace Atomex.Swaps.Helpers
                             .ConfigureAwait(false);
                     }
                 }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("ForceBroadcast canceled.");
+                }
                 catch (Exception e)
                 {
                     Log.Error("Error while broadcast {@currency} tx.", tx.Currency.Name);
