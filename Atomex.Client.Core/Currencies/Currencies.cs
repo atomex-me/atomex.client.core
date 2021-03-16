@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+
 using Microsoft.Extensions.Configuration;
 using Serilog;
 
@@ -121,5 +122,8 @@ namespace Atomex
 
         public static bool IsBitcoinBased(string name) =>
             name == "BTC" || name == "LTC";
+
+        public static bool IsTezosToken(string name) =>
+            name == "TZBTC" || name == "KUSD" || name == "FA2" || name == "FA12" || name == "NYX";
     }
 }

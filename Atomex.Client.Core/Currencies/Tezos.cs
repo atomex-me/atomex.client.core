@@ -4,6 +4,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 
+using Newtonsoft.Json.Linq;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Internal;
@@ -18,6 +20,8 @@ namespace Atomex
     public class Tezos : Currency
     {
         public const long XtzDigitsMultiplier = 1_000_000;
+        public const int HeadOffset = 55;
+
         protected const int PkHashSize = 20 * 8;
 
         public decimal MinimalFee { get; protected set; }
@@ -259,5 +263,76 @@ namespace Atomex
 
         public override decimal GetMaximumFee() =>
             MaxFee.ToTez();
+
+        private static bool CheckAddress(string address, byte[] prefix)
+        {
+            try
+            {
+                Base58Check.Decode(address, prefix);
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private static bool CheckAddress(string address) =>
+            CheckAddress(address, Prefix.Tz1) ||
+            CheckAddress(address, Prefix.Tz2) ||
+            CheckAddress(address, Prefix.Tz3) ||
+            CheckAddress(address, Prefix.KT);
+
+        public static string ParseAddress(JToken michelineExpr)
+        {
+            if (michelineExpr["string"] != null)
+            {
+                var address = michelineExpr["string"].Value<string>();
+                if (!CheckAddress(address))
+                    throw new FormatException($"Invalid address: {address}");
+
+                return address;
+            }
+
+            if (michelineExpr["bytes"] != null)
+            {
+                var hex = michelineExpr["bytes"].Value<string>();
+                var raw = Hex.FromString(hex);
+
+                if (raw.Length != 22)
+                    throw new ArgumentException($"Invalid address size: {raw.Length}");
+
+                var data = hex.Substring(0, 4) switch
+                {
+                    "0000" => Prefix.Tz1.ConcatArrays(raw.SubArray(2)),
+                    "0001" => Prefix.Tz2.ConcatArrays(raw.SubArray(2)),
+                    "0002" => Prefix.Tz3.ConcatArrays(raw.SubArray(2)),
+                    _ => raw[0] == 0x01 && raw[21] == 0x00 ? Prefix.KT.ConcatArrays(raw.SubArray(1, 20)) : null
+                };
+                if (data == null)
+                    throw new ArgumentException($"Unknown address prefix: {hex}");
+
+                return Base58Check.Encode(data);
+            }
+
+            throw new ArgumentException($"Either string or bytes are accepted: {michelineExpr}");
+        }
+
+        public static long ParseTimestamp(JToken michelineExpr)
+        {
+            if (michelineExpr["int"] != null)
+            {
+                var timestamp = michelineExpr["int"].Value<long>();
+                if (timestamp < 0)
+                    throw new ArgumentException("Timestamp cannot be negative");
+
+                return timestamp;
+            }
+
+            if (michelineExpr["string"] != null)
+                return michelineExpr["string"].Value<DateTime>().ToUnixTimeSeconds();
+
+            throw new ArgumentException($"Either int or string are accepted: {michelineExpr}");
+        }
     }
 }

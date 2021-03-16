@@ -34,14 +34,14 @@ namespace Atomex.Blockchain.Abstract
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);
 
-        Task<Result<decimal>> GetTokenAllowanceAsync(
+        Task<Result<decimal>> GetFa12AllowanceAsync(
             string holderAddress,
             string spenderAddress,
             string callingAddress,
             SecureBytes securePublicKey,
             CancellationToken cancellationToken = default);
 
-        Task<Result<decimal>> TryGetTokenAllowanceAsync(
+        Task<Result<decimal>> TryGetFa12AllowanceAsync(
             string holderAddress,
             string spenderAddress,
             string callingAddress,
@@ -50,7 +50,7 @@ namespace Atomex.Blockchain.Abstract
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);
 
-        Task<Result<decimal>> TryGetTokenBigMapAllowanceAsync(
+        Task<Result<decimal>> TryGetFa2BigMapAllowanceAsync(
             string holderAddress,
             string spenderAddress,
             int attempts = 3,

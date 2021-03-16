@@ -9,7 +9,7 @@ namespace Atomex.Common
     {
         public static Task ConnectAsync(this WebSocket socket)
         {
-            return Task.Factory.StartNew(() =>
+            return Task.Run(() =>
             {
                 try
                 {
@@ -24,7 +24,7 @@ namespace Atomex.Common
 
         public static Task CloseAsync(this WebSocket socket, CloseStatusCode statusCode)
         {
-            return Task.Factory.StartNew(() =>
+            return Task.Run(() =>
             {
                 try
                 {
@@ -39,7 +39,7 @@ namespace Atomex.Common
 
         public static Task SendAsync(this WebSocket socket, byte[] data)
         {
-            return Task.Factory.StartNew(() =>
+            return Task.Run(() =>
             {
                 try
                 {

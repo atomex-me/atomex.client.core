@@ -114,26 +114,38 @@ namespace Atomex.Swaps.Abstract
         {
             return Task.Run(async () =>
             {
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    var result = await currency
-                        .IsTransactionConfirmed(txId, cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (result.HasError)
-                        break;
-
-                    if (result.Value.IsConfirmed)
+                    while (!cancellationToken.IsCancellationRequested)
                     {
-                        await confirmationHandler.Invoke(swap, result.Value.Transaction, cancellationToken)
+                        var result = await currency
+                            .IsTransactionConfirmed(txId, cancellationToken)
                             .ConfigureAwait(false);
 
-                        break;
-                    }
+                        if (result.HasError)
+                            break;
 
-                    await Task.Delay(ConfirmationCheckInterval, cancellationToken)
-                        .ConfigureAwait(false);
+                        if (result.Value.IsConfirmed)
+                        {
+                            await confirmationHandler.Invoke(swap, result.Value.Transaction, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            break;
+                        }
+
+                        await Task.Delay(ConfirmationCheckInterval, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
                 }
+                catch (OperationCanceledException)
+                {
+                    // nothing to do...
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, $"{Currency} TrackTransactionConfirmationAsync error");
+                }
+
             }, cancellationToken);
         }
 
@@ -145,23 +157,35 @@ namespace Atomex.Swaps.Abstract
         {
             return Task.Run(async () =>
             {
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    Log.Debug("Refund time check for swap {@swapId}", swap.Id);
-
-                    var refundTimeReached = DateTime.UtcNow >= refundTimeUtc;
-
-                    if (refundTimeReached)
+                    while (!cancellationToken.IsCancellationRequested)
                     {
-                        await refundTimeReachedHandler.Invoke(swap, cancellationToken)
+                        Log.Debug("Refund time check for swap {@swapId}", swap.Id);
+
+                        var refundTimeReached = DateTime.UtcNow >= refundTimeUtc;
+
+                        if (refundTimeReached)
+                        {
+                            await refundTimeReachedHandler.Invoke(swap, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            break;
+                        }
+
+                        await Task.Delay(RefundTimeCheckInterval, cancellationToken)
                             .ConfigureAwait(false);
-
-                        break;
                     }
-
-                    await Task.Delay(RefundTimeCheckInterval, cancellationToken)
-                        .ConfigureAwait(false);
                 }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("ControlRefundTimeAsync canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "ControlRefundTimeAsync error");
+                }
+
             }, cancellationToken);
         }
 
@@ -286,12 +310,11 @@ namespace Atomex.Swaps.Abstract
         {
             Log.Debug("Handle redeem control canceled event for swap {@swapId}", swap.Id);
 
-            ControlRefundTimeAsync(
-                    swap: swap,
-                    refundTimeUtc: refundTimeUtc,
-                    refundTimeReachedHandler: RefundTimeReachedHandler,
-                    cancellationToken: cancellationToken)
-                .FireAndForget();
+            _ = ControlRefundTimeAsync(
+                swap: swap,
+                refundTimeUtc: refundTimeUtc,
+                refundTimeReachedHandler: RefundTimeReachedHandler,
+                cancellationToken: cancellationToken);
 
             return Task.CompletedTask;
         }

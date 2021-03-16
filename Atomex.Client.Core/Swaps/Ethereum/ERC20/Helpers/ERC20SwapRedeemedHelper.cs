@@ -110,17 +110,38 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
         {
             return Task.Run(async () =>
             {
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    var isRedeemedResult = await IsRedeemedAsync(
-                            swap: swap,
-                            currency: currency,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (isRedeemedResult.HasError) // has error
+                    while (!cancellationToken.IsCancellationRequested)
                     {
-                        if (isRedeemedResult.Error.Code != Errors.RequestError) // ignore connection errors
+                        var isRedeemedResult = await IsRedeemedAsync(
+                                swap: swap,
+                                currency: currency,
+                                cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (isRedeemedResult.HasError) // has error
+                        {
+                            if (isRedeemedResult.Error.Code != Errors.RequestError) // ignore connection errors
+                            {
+                                await canceledHandler
+                                    .Invoke(swap, refundTimeUtc, cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                break;
+                            }
+                        }
+
+                        if (isRedeemedResult.Value != null) // has secret
+                        {
+                            await redeemedHandler
+                                .Invoke(swap, isRedeemedResult.Value, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            break;
+                        }
+
+                        if (!cancelOnlyIfRefundTimeReached || DateTime.UtcNow >= refundTimeUtc)
                         {
                             await canceledHandler
                                 .Invoke(swap, refundTimeUtc, cancellationToken)
@@ -128,29 +149,20 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 
                             break;
                         }
-                    }
 
-                    if (isRedeemedResult.Value != null) // has secret
-                    {
-                        await redeemedHandler
-                            .Invoke(swap, isRedeemedResult.Value, cancellationToken)
+                        await Task.Delay(interval, cancellationToken)
                             .ConfigureAwait(false);
-
-                        break;
                     }
-
-                    if (!cancelOnlyIfRefundTimeReached || DateTime.UtcNow >= refundTimeUtc)
-                    {
-                        await canceledHandler
-                            .Invoke(swap, refundTimeUtc, cancellationToken)
-                            .ConfigureAwait(false);
-
-                        break;
-                    }
-
-                    await Task.Delay(interval, cancellationToken)
-                        .ConfigureAwait(false);
                 }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("StartSwapRedeemedControlAsync canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "StartSwapRedeemedControlAsync error.");
+                }
+
             }, cancellationToken);
         }
     }

@@ -327,36 +327,48 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
         {
             return Task.Run(async () =>
             {
-                while (!cancellationToken.IsCancellationRequested)
+                try
                 {
-                    var isInitiatedResult = await IsInitiatedAsync(
-                            swap: swap,
-                            currency: currency,
-                            lockTimeInSec: lockTimeInSec,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (isInitiatedResult.HasError)
+                    while (!cancellationToken.IsCancellationRequested)
                     {
-                        if (isInitiatedResult.Error.Code != Errors.RequestError)
+                        var isInitiatedResult = await IsInitiatedAsync(
+                                swap: swap,
+                                currency: currency,
+                                lockTimeInSec: lockTimeInSec,
+                                cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (isInitiatedResult.HasError)
                         {
-                            await canceledHandler.Invoke(swap, cancellationToken)
+                            if (isInitiatedResult.Error.Code != Errors.RequestError)
+                            {
+                                await canceledHandler.Invoke(swap, cancellationToken)
+                                    .ConfigureAwait(false);
+
+                                break;
+                            }
+                        }
+                        else if (isInitiatedResult.Value)
+                        {
+                            await initiatedHandler.Invoke(swap, cancellationToken)
                                 .ConfigureAwait(false);
 
                             break;
                         }
-                    }
-                    else if (isInitiatedResult.Value)
-                    {
-                        await initiatedHandler.Invoke(swap, cancellationToken)
+
+                        await Task.Delay(interval, cancellationToken)
                             .ConfigureAwait(false);
-
-                        break;
                     }
-
-                    await Task.Delay(interval, cancellationToken)
-                        .ConfigureAwait(false);
                 }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("StartSwapInitiatedControlAsync canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "StartSwapInitiatedControlAsync error.");
+                }
+
             }, cancellationToken);
         }
     }

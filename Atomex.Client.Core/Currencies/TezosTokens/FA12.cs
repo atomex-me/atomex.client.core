@@ -34,6 +34,8 @@ namespace Atomex.TezosTokens
         public string BcdApi { get; private set; }
         public string BcdNetwork { get; private set; }
 
+        public int BcdSizeLimit { get; private set; }
+
         public FA12()
         {
         }
@@ -135,6 +137,10 @@ namespace Atomex.TezosTokens
             BbApiUri                = configuration["BbApiUri"];
             BcdApi                  = configuration["BcdApi"];
             BcdNetwork              = configuration["BcdNetwork"];
+
+            BcdSizeLimit = !string.IsNullOrEmpty(configuration["BcdSizeLimit"])
+                ? int.Parse(configuration["BcdSizeLimit"])
+                : 10;
 
             BlockchainApi           = ResolveBlockchainApi(configuration, this);
             TxExplorerUri           = configuration["TxExplorerUri"];
