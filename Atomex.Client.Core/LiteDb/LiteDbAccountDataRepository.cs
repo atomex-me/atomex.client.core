@@ -43,7 +43,7 @@ namespace Atomex.LiteDb
         private bool _swapsLoaded;
         private readonly object _syncRoot = new object();
 
-        private string ConnectionString => $"FileName={_pathToDb};Password={_sessionPassword}";
+        private string ConnectionString => $"FileName={_pathToDb};Password={_sessionPassword};Mode=Exclusive";
 
         public LiteDbAccountDataRepository(
             string pathToDb,

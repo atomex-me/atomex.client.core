@@ -54,20 +54,20 @@ namespace Atomex.LiteDb
             string pathToDb,
             string sessionPassword)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
 
             var totalOrders = db.GetCollection("Orders").Count();
 
             var removedOrders = db.DropCollection("Orders");
 
-            db.Shrink();
+            // db.Shrink();
         }
 
         private static ushort GetDataBaseVersion(
             string pathToDb,
             string sessionPassword)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
 
             return db.Engine.UserVersion;
         }
@@ -77,7 +77,7 @@ namespace Atomex.LiteDb
             string sessionPassword,
             ushort targetVersion)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
 
             db.Engine.UserVersion = targetVersion;
         }

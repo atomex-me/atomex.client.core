@@ -22,7 +22,7 @@ namespace Atomex.LiteDb
 
         public static ushort MigrateFrom_0_to_1(string pathToDb, string sessionPassword)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
             
             if (db.Engine.UserVersion != Version0)
                 throw new Exception("Invalid db version");
@@ -45,7 +45,7 @@ namespace Atomex.LiteDb
             string sessionPassword,
             Network network)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
             
             if (db.Engine.UserVersion != Version1)
                 throw new Exception("Invalid db version");
@@ -76,7 +76,7 @@ namespace Atomex.LiteDb
             string sessionPassword,
             Network network)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
             
             if (db.Engine.UserVersion != Version2)
                 throw new Exception("Invalid db version");
@@ -126,7 +126,7 @@ namespace Atomex.LiteDb
             string sessionPassword,
             Network network)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
 
             if (db.Engine.UserVersion != Version3)
                 throw new Exception("Invalid db version");
@@ -229,7 +229,7 @@ namespace Atomex.LiteDb
             string sessionPassword,
             Network network)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
 
             if (db.Engine.UserVersion != Version4)
                 throw new Exception("Invalid db version");
@@ -268,7 +268,7 @@ namespace Atomex.LiteDb
 
         private static void Shrink(LiteDatabase db, string sessionPassword)
         {
-            db.Shrink(sessionPassword);
+            // db.Shrink(sessionPassword);
 
             Log.Debug("Db successfully shrinked");
         }
