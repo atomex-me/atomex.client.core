@@ -17,6 +17,7 @@ using Atomex.MarketData.Abstract;
 using Atomex.Subsystems.Abstract;
 using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
+using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Atomex.Web;
 
@@ -127,6 +128,8 @@ namespace Atomex.Subsystems
                 var marketDataConnectTask = MarketDataClient.ConnectAsync();
                 await Task.WhenAll(exchangeConnectTask, marketDataConnectTask)
                     .ConfigureAwait(false);
+
+                _ = BalanceUpdateLoopAsync(_cts.Token);
 
                 // start async unconfirmed transactions tracking
                 _ = TrackUnconfirmedTransactionsAsync(_cts.Token);
@@ -490,6 +493,33 @@ namespace Atomex.Subsystems
         }
 
         #endregion
+        
+        private Task BalanceUpdateLoopAsync(CancellationToken cancellationToken)
+        {
+            return Task.Run(async () =>
+            {
+                try
+                {
+                    while (!cancellationToken.IsCancellationRequested)
+                    {
+                        await new HdWalletScanner(Account)
+                            .ScanFreeAddressesAsync(cancellationToken)
+                            .ConfigureAwait(false);
+
+                        await Task.Delay(TimeSpan.FromSeconds(Account.UserSettings.BalanceUpdateIntervalInSec), cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("Balance autoupdate task canceled.");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Balance autoupdate task error");
+                }
+            });
+        }
 
         private async Task TrackUnconfirmedTransactionsAsync(
             CancellationToken cancellationToken)
