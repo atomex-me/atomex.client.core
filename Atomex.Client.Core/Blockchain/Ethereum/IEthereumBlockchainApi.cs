@@ -20,10 +20,12 @@ namespace Atomex.Blockchain.Ethereum
 
         Task<Result<BigInteger>> GetTransactionCountAsync(
             string address,
+            bool pending = true,
             CancellationToken cancellationToken = default);
 
         Task<Result<BigInteger>> TryGetTransactionCountAsync(
             string address,
+            bool pending = true,
             int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);

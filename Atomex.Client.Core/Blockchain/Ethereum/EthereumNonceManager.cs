@@ -1,74 +1,61 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Common;
 
 namespace Atomex.Blockchain.Ethereum
 {
     public class EthereumNonceManager
     {
-        private TimeSpan ExpirationTimeOut { get; } = TimeSpan.FromSeconds(180);
-
-        private class NonceEntry
-        {
-            public BigInteger Value { get; set; }
-            public DateTime LastUpdatedTimeUtc { get; set; }
-        }
-
-        private readonly IDictionary<string, NonceEntry> _nonces;
-        private readonly object _syncRoot;
+        private readonly IDictionary<string, BigInteger> _offlineNonces;
 
         private EthereumNonceManager()
         {
-            _nonces = new Dictionary<string, NonceEntry>();
-            _syncRoot = new object();
+            _offlineNonces = new Dictionary<string, BigInteger>();
         }
 
         private static EthereumNonceManager _instance;
-        public static EthereumNonceManager Instance => _instance ?? (_instance = new EthereumNonceManager());
+        public static EthereumNonceManager Instance
+        {
+            get {
+                var instance = _instance;
+
+                if (instance == null)
+                {
+                    Interlocked.CompareExchange(ref _instance, new EthereumNonceManager(), null);
+                    instance = _instance;
+                }
+
+                return instance;
+            }
+        }
 
         public async Task<Result<BigInteger>> GetNonceAsync(
             Atomex.Ethereum ethereum,
             string address,
+            bool pending = true,
             CancellationToken cancellationToken = default)
         {
             var transactionCountResult = await ((IEthereumBlockchainApi)ethereum.BlockchainApi)
-                .GetTransactionCountAsync(address, cancellationToken)
+                .GetTransactionCountAsync(address, pending, cancellationToken)
                 .ConfigureAwait(false);
 
             if (transactionCountResult.HasError)
                 return transactionCountResult;
 
-            var nonce = transactionCountResult.Value;
+            var nonceFromNetwork = transactionCountResult.Value;
 
-            lock (_syncRoot)
+            lock (_offlineNonces)
             {
-                if (_nonces.TryGetValue(address, out var offlineNonce))
-                {
-                    if (offlineNonce.Value >= nonce &&
-                        DateTime.UtcNow - offlineNonce.LastUpdatedTimeUtc <= ExpirationTimeOut)
-                    {
-                        return offlineNonce.Value++;
-                    }
+                var currentNonce = _offlineNonces.TryGetValue(address, out var offlineNonce) && offlineNonce > nonceFromNetwork && !pending
+                    ? offlineNonce
+                    : nonceFromNetwork;
 
-                    _nonces[address] = new NonceEntry
-                    {
-                        Value = nonce + 1,
-                        LastUpdatedTimeUtc = DateTime.UtcNow
-                    };
+                _offlineNonces[address] = currentNonce + 1;
 
-                    return nonce;
-                }
-
-                _nonces.Add(address, new NonceEntry
-                {
-                    Value = nonce + 1,
-                    LastUpdatedTimeUtc = DateTime.UtcNow
-                });
-
-                return nonce;
+                return currentNonce;
             }
         }
     }

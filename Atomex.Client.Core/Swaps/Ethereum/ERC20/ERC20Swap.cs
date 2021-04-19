@@ -49,11 +49,11 @@ namespace Atomex.Swaps.Ethereum
                 ? DefaultInitiatorLockTimeInSeconds
                 : DefaultAcceptorLockTimeInSeconds;
 
-            var txs = (await CreatePaymentTxsAsync(swap, lockTimeInSeconds, cancellationToken)
+            var paymentTxs = (await CreatePaymentTxsAsync(swap, lockTimeInSeconds, cancellationToken)
                 .ConfigureAwait(false))
                 .ToList();
 
-            if (txs.Count == 0)
+            if (paymentTxs.Count == 0)
             {
                 Log.Error("Can't create payment transactions");
                 return;
@@ -61,77 +61,111 @@ namespace Atomex.Swaps.Ethereum
 
             try
             {
-                foreach (int i in new int[] { 0, 1})
-                {
-                    var approvalTxs = txs
-                        .Where((tx, j) => j % 3 == i)
-                        .ToList();
+                //foreach (int i in new int[] { 0, 1})
+                //{
+                //    var approvalTxs = txs
+                //        .Where((tx, j) => j % 3 == i)
+                //        .ToList();
                     
-                    var isApproved = await ApproveAsync(swap, approvalTxs, cancellationToken)
-                        .ConfigureAwait(false);
+                //    var isApproved = await ApproveAsync(swap, approvalTxs, cancellationToken)
+                //        .ConfigureAwait(false);
 
-                    if (!isApproved)
-                    {
-                        Log.Error("Approve txs are not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
-                        return;
-                    }
-                }
+                //    if (!isApproved)
+                //    {
+                //        Log.Error("Approve txs are not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
+                //        return;
+                //    }
+                //}
 
-                txs = txs
-                    .Where(tx => tx.Type.HasFlag(BlockchainTransactionType.SwapPayment))
-                    .ToList();
+                //txs = txs
+                //    .Where(tx => tx.Type.HasFlag(BlockchainTransactionType.SwapPayment))
+                //    .ToList();
 
                 var isInitiateTx = true;
 
-                foreach (var tx in txs)
+                foreach (var paymentTx in paymentTxs)
                 {
-                    var signResult = await SignTransactionAsync(tx, cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (!signResult)
+                    try
                     {
-                        Log.Error("Transaction signing error");
-                        return;
-                    }
+                        await EthereumAccount.AddressLocker
+                            .LockAsync(paymentTx.From, cancellationToken)
+                            .ConfigureAwait(false);
 
-                    if (isInitiateTx)
-                    {
-                        swap.PaymentTx = tx;
-                        swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
+                        // todo: create token approve transactions
 
-                        await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentSigned, cancellationToken)
+                        
+
+                        var nonceResult = await EthereumNonceManager.Instance
+                            .GetNonceAsync(Erc20, paymentTx.From, pending: true, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (nonceResult.HasError)
+                        {
+                            Log.Error("Nonce getting error with code {@code} and description {@description}",
+                                nonceResult.Error.Code,
+                                nonceResult.Error.Description);
+
+                            return;
+                        }
+
+                        paymentTx.Nonce = nonceResult.Value;
+
+                        var signResult = await SignTransactionAsync(paymentTx, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (!signResult)
+                        {
+                            Log.Error("Transaction signing error");
+                            return;
+                        }
+
+                        if (isInitiateTx)
+                        {
+                            swap.PaymentTx = paymentTx;
+                            swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
+
+                            await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentSigned, cancellationToken)
+                                .ConfigureAwait(false);
+                        }
+
+                        await BroadcastTxAsync(swap, paymentTx, cancellationToken)
                             .ConfigureAwait(false);
                     }
-
-                    await BroadcastTxAsync(swap, tx, cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (isInitiateTx)
+                    catch
                     {
-                        swap.PaymentTx = tx;
+                        throw;
+                    }
+                    finally
+                    {
+                        EthereumAccount.AddressLocker.Unlock(paymentTx.From);
+                    }
+
+                    //if (isInitiateTx)
+                    //{
+                        swap.PaymentTx = paymentTx;
                         swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
 
                         await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentBroadcast, cancellationToken)
                             .ConfigureAwait(false);
 
-                        isInitiateTx = false;
+                        //isInitiateTx = false;
 
-                        // delay for contract initiation
-                        if (txs.Count > 1)
-                        {
-                            var isInitiated = await WaitPaymentConfirmationAsync(
-                                    txId: tx.Id,
-                                    timeout: InitiationTimeout,
-                                    cancellationToken: cancellationToken)
-                                .ConfigureAwait(false);
+                        //// delay for contract initiation
+                        //if (paymentTxs.Count > 1)
+                        //{
+                        //    var isInitiated = await WaitPaymentConfirmationAsync(
+                        //            txId: paymentTx.Id,
+                        //            timeout: InitiationTimeout,
+                        //            cancellationToken: cancellationToken)
+                        //        .ConfigureAwait(false);
 
-                            if (!isInitiated)
-                            {
-                                Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
-                                return;
-                            }
-                        }
-                    }
+                        //    if (!isInitiated)
+                        //    {
+                        //        Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
+                        //        return;
+                        //    }
+                        //}
+                    //}
                 }
             }
             catch (Exception e)
@@ -283,7 +317,7 @@ namespace Atomex.Swaps.Ethereum
             }
 
             var nonceResult = await EthereumNonceManager.Instance
-                .GetNonceAsync(erc20, walletAddress.Address, cancellationToken)
+                .GetNonceAsync(erc20, walletAddress.Address, pending: true, cancellationToken)
                 .ConfigureAwait(false);
 
             if (nonceResult.HasError)

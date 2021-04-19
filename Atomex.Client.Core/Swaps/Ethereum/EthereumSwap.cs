@@ -70,26 +70,52 @@ namespace Atomex.Swaps.Ethereum
 
                 foreach (var paymentTx in paymentTxs)
                 {
-                    var signResult = await SignTransactionAsync(paymentTx, cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (!signResult)
+                    try
                     {
-                        Log.Error("Transaction signing error");
-                        return;
-                    }
+                        await EthereumAccount.AddressLocker
+                            .LockAsync(paymentTx.From, cancellationToken)
+                            .ConfigureAwait(false);
 
-                    if (isInitiateTx)
-                    {
-                        swap.PaymentTx = paymentTx;
-                        swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
+                        var nonceResult = await EthereumNonceManager.Instance
+                            .GetNonceAsync(Eth, paymentTx.From)
+                            .ConfigureAwait(false);
 
-                        await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentSigned, cancellationToken)
+                        if (nonceResult.HasError)
+                        {
+                            Log.Error("Nonce getting error with code {@code} and description {@description}",
+                                nonceResult.Error.Code,
+                                nonceResult.Error.Description);
+
+                            return;
+                        }
+
+                        paymentTx.Nonce = nonceResult.Value;
+
+                        var signResult = await SignTransactionAsync(paymentTx, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (!signResult)
+                        {
+                            Log.Error("Transaction signing error");
+                            return;
+                        }
+
+                        if (isInitiateTx)
+                        {
+                            swap.PaymentTx = paymentTx;
+                            swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
+
+                            await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentSigned, cancellationToken)
+                                .ConfigureAwait(false);
+                        }
+
+                        await BroadcastTxAsync(swap, paymentTx, cancellationToken)
                             .ConfigureAwait(false);
                     }
-
-                    await BroadcastTxAsync(swap, paymentTx, cancellationToken)
-                        .ConfigureAwait(false);
+                    finally
+                    {
+                        EthereumAccount.AddressLocker.Unlock(paymentTx.From);
+                    }
 
                     if (isInitiateTx)
                     {
@@ -227,55 +253,72 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var nonceResult = await EthereumNonceManager.Instance
-                .GetNonceAsync(eth, walletAddress.Address, cancellationToken)
-                .ConfigureAwait(false);
+            EthereumTransaction redeemTx;
 
-            if (nonceResult.HasError)
+            try
             {
-                Log.Error("Nonce getting error with code {@code} and description {@description}", 
-                    nonceResult.Error.Code, 
-                    nonceResult.Error.Description);
+                await EthereumAccount.AddressLocker
+                    .LockAsync(walletAddress.Address, cancellationToken)
+                    .ConfigureAwait(false);
 
-                return;
+                var nonceResult = await EthereumNonceManager.Instance
+                    .GetNonceAsync(eth, walletAddress.Address, pending: true, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (nonceResult.HasError)
+                {
+                    Log.Error("Nonce getting error with code {@code} and description {@description}",
+                        nonceResult.Error.Code,
+                        nonceResult.Error.Description);
+
+                    return;
+                }
+
+                var message = new RedeemFunctionMessage
+                {
+                    FromAddress  = walletAddress.Address,
+                    HashedSecret = swap.SecretHash,
+                    Secret       = swap.Secret,
+                    Nonce        = nonceResult.Value,
+                    GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
+                };
+
+                message.Gas = await EstimateGasAsync(message, new BigInteger(Eth.RedeemGasLimit))
+                    .ConfigureAwait(false);
+
+                var txInput = message.CreateTransactionInput(eth.SwapContractAddress);
+
+                redeemTx = new EthereumTransaction(eth, txInput)
+                {
+                    Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
+                };
+
+                var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!signResult)
+                {
+                    Log.Error("Transaction signing error");
+                    return;
+                }
+
+                swap.RedeemTx = redeemTx;
+                swap.StateFlags |= SwapStateFlags.IsRedeemSigned;
+
+                await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemSigned, cancellationToken)
+                    .ConfigureAwait(false);
+
+                await BroadcastTxAsync(swap, redeemTx, cancellationToken)
+                    .ConfigureAwait(false);
             }
-
-            var message = new RedeemFunctionMessage
+            catch
             {
-                FromAddress  = walletAddress.Address,
-                HashedSecret = swap.SecretHash,
-                Secret       = swap.Secret,
-                Nonce        = nonceResult.Value,
-                GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
-            };
-
-            message.Gas = await EstimateGasAsync(message, new BigInteger(Eth.RedeemGasLimit))
-                .ConfigureAwait(false);
-
-            var txInput = message.CreateTransactionInput(eth.SwapContractAddress);
-
-            var redeemTx = new EthereumTransaction(eth, txInput)
-            {
-                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
-            };
-
-            var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!signResult)
-            {
-                Log.Error("Transaction signing error");
-                return;
+                throw;
             }
-
-            swap.RedeemTx = redeemTx;
-            swap.StateFlags |= SwapStateFlags.IsRedeemSigned;
-
-            await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemSigned, cancellationToken)
-                .ConfigureAwait(false);
-
-            await BroadcastTxAsync(swap, redeemTx, cancellationToken)
-                .ConfigureAwait(false);
+            finally
+            {
+                EthereumAccount.AddressLocker.Unlock(walletAddress.Address);
+            }
 
             swap.RedeemTx = redeemTx;
             swap.StateFlags |= SwapStateFlags.IsRedeemBroadcast;
@@ -333,8 +376,12 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
+            using var addressLock = await EthereumAccount.AddressLocker
+                .GetLockAsync(walletAddress.Address, cancellationToken)
+                .ConfigureAwait(false);
+
             var nonceResult = await EthereumNonceManager.Instance
-                .GetNonceAsync(eth, walletAddress.Address, cancellationToken)
+                .GetNonceAsync(eth, walletAddress.Address, pending: true, cancellationToken)
                 .ConfigureAwait(false);
 
             if (nonceResult.HasError)
@@ -424,54 +471,71 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var nonceResult = await EthereumNonceManager.Instance
-                .GetNonceAsync(eth, walletAddress.Address)
-                .ConfigureAwait(false);
+            EthereumTransaction refundTx;
 
-            if (nonceResult.HasError)
+            try
             {
-                Log.Error("Nonce getting error with code {@code} and description {@description}",
-                    nonceResult.Error.Code,
-                    nonceResult.Error.Description);
+                await EthereumAccount.AddressLocker
+                    .LockAsync(walletAddress.Address, cancellationToken)
+                    .ConfigureAwait(false);
 
-                return;
+                var nonceResult = await EthereumNonceManager.Instance
+                    .GetNonceAsync(eth, walletAddress.Address, pending: true, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (nonceResult.HasError)
+                {
+                    Log.Error("Nonce getting error with code {@code} and description {@description}",
+                        nonceResult.Error.Code,
+                        nonceResult.Error.Description);
+
+                    return;
+                }
+
+                var message = new RefundFunctionMessage
+                {
+                    FromAddress = walletAddress.Address,
+                    HashedSecret = swap.SecretHash,
+                    GasPrice = Atomex.Ethereum.GweiToWei(gasPrice),
+                    Nonce = nonceResult.Value,
+                };
+
+                message.Gas = await EstimateGasAsync(message, new BigInteger(eth.RefundGasLimit))
+                    .ConfigureAwait(false);
+
+                var txInput = message.CreateTransactionInput(eth.SwapContractAddress);
+
+                refundTx = new EthereumTransaction(eth, txInput)
+                {
+                    Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
+                };
+
+                var signResult = await SignTransactionAsync(refundTx, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!signResult)
+                {
+                    Log.Error("Transaction signing error");
+                    return;
+                }
+
+                swap.RefundTx = refundTx;
+                swap.StateFlags |= SwapStateFlags.IsRefundSigned;
+
+                await UpdateSwapAsync(swap, SwapStateFlags.IsRefundSigned, cancellationToken)
+                    .ConfigureAwait(false);
+
+                await BroadcastTxAsync(swap, refundTx, cancellationToken)
+                    .ConfigureAwait(false);
             }
-
-            var message = new RefundFunctionMessage
+            catch
             {
-                FromAddress  = walletAddress.Address,
-                HashedSecret = swap.SecretHash,
-                GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
-                Nonce        = nonceResult.Value,
-            };
-
-            message.Gas = await EstimateGasAsync(message, new BigInteger(eth.RefundGasLimit))
-                .ConfigureAwait(false);
-
-            var txInput = message.CreateTransactionInput(eth.SwapContractAddress);
-
-            var refundTx = new EthereumTransaction(eth, txInput)
-            {
-                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
-            };
-
-            var signResult = await SignTransactionAsync(refundTx, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!signResult)
-            {
-                Log.Error("Transaction signing error");
-                return;
+                throw;
             }
-
-            swap.RefundTx = refundTx;
-            swap.StateFlags |= SwapStateFlags.IsRefundSigned;
-
-            await UpdateSwapAsync(swap, SwapStateFlags.IsRefundSigned, cancellationToken)
-                .ConfigureAwait(false);
-
-            await BroadcastTxAsync(swap, refundTx, cancellationToken)
-                .ConfigureAwait(false);
+            finally
+            {
+                EthereumAccount.AddressLocker.Unlock(walletAddress.Address);
+            }
 
             swap.RefundTx = refundTx;
             swap.StateFlags |= SwapStateFlags.IsRefundBroadcast;
@@ -720,19 +784,6 @@ namespace Atomex.Swaps.Ethereum
 
                 requiredAmountInEth -= amountInEth;
 
-                var nonceResult = await EthereumNonceManager.Instance
-                    .GetNonceAsync(eth, walletAddress.Address)
-                    .ConfigureAwait(false);
-
-                if (nonceResult.HasError)
-                {
-                    Log.Error("Nonce getting error with code {@code} and description {@description}",
-                        nonceResult.Error.Code,
-                        nonceResult.Error.Description);
-
-                    return null;
-                }
-
                 TransactionInput txInput;
 
                 if (isInitTx)
@@ -745,7 +796,7 @@ namespace Atomex.Swaps.Ethereum
                         AmountToSend    = Atomex.Ethereum.EthToWei(amountInEth),
                         FromAddress     = walletAddress.Address,
                         GasPrice        = Atomex.Ethereum.GweiToWei(gasPrice),
-                        Nonce           = nonceResult.Value,
+                        //Nonce           = nonceResult.Value,
                         RedeemFee       = Atomex.Ethereum.EthToWei(rewardForRedeemInEth)
                     };
 
@@ -766,7 +817,7 @@ namespace Atomex.Swaps.Ethereum
                         AmountToSend = Atomex.Ethereum.EthToWei(amountInEth),
                         FromAddress  = walletAddress.Address,
                         GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
-                        Nonce        = nonceResult.Value,
+                        //Nonce        = nonceResult.Value,
                     };
 
                     message.Gas = await EstimateGasAsync(message, new BigInteger(eth.AddGasLimit))
