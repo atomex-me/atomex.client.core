@@ -111,10 +111,10 @@ namespace Atomex.Swaps.Tezos.FA12
                             await BroadcastTxAsync(
                                     swap: swap,
                                     tx: tx,
-                                    cancellationToken: cancellationToken,
                                     updateBalance: isInitiateTx,
                                     notifyIfUnconfirmed: true,
-                                    notifyIfBalanceUpdated: isInitiateTx)
+                                    notifyIfBalanceUpdated: isInitiateTx,
+                                    cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
                         }
                     }
