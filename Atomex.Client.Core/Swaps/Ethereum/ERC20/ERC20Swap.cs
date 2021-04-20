@@ -59,6 +59,8 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
+            var isInitiated = false;
+
             try
             {
                 foreach (var paymentTx in paymentTxs)
@@ -130,11 +132,31 @@ namespace Atomex.Swaps.Ethereum
                         EthereumAccount.AddressLocker.Unlock(paymentTx.From);
                     }
 
-                    swap.PaymentTx = paymentTx;
-                    swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
+                    if (!isInitiated)
+                    {
+                        isInitiated = true;
 
-                    await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentBroadcast, cancellationToken)
-                        .ConfigureAwait(false);
+                        swap.PaymentTx = paymentTx;
+                        swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
+
+                        await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentBroadcast, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (paymentTxs.Count > 1)
+                        {
+                            var isInitiateConfirmed = await WaitPaymentConfirmationAsync(
+                                    txId: paymentTx.Id,
+                                    timeout: InitiationTimeout,
+                                    cancellationToken: cancellationToken)
+                                .ConfigureAwait(false);
+
+                            if (!isInitiateConfirmed)
+                            {
+                                Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
+                                return;
+                            }
+                        }
+                    }
                 }
             }
             catch (Exception e)
@@ -245,55 +267,72 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var nonceResult = await EthereumNonceManager.Instance
-                .GetNonceAsync(erc20, walletAddress.Address, pending: true, cancellationToken)
-                .ConfigureAwait(false);
+            EthereumTransaction redeemTx;
 
-            if (nonceResult.HasError)
+            try
             {
-                Log.Error("Nonce getting error with code {@code} and description {@description}",
-                    nonceResult.Error.Code,
-                    nonceResult.Error.Description);
+                await EthereumAccount.AddressLocker
+                    .LockAsync(walletAddress.Address, cancellationToken)
+                    .ConfigureAwait(false);
 
-                return;
+                var nonceResult = await EthereumNonceManager.Instance
+                    .GetNonceAsync(erc20, walletAddress.Address, pending: true, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (nonceResult.HasError)
+                {
+                    Log.Error("Nonce getting error with code {@code} and description {@description}",
+                        nonceResult.Error.Code,
+                        nonceResult.Error.Description);
+
+                    return;
+                }
+
+                var message = new ERC20RedeemFunctionMessage
+                {
+                    FromAddress  = walletAddress.Address,
+                    HashedSecret = swap.SecretHash,
+                    Secret       = swap.Secret,
+                    Nonce        = nonceResult.Value,
+                    GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
+                };
+
+                message.Gas = await EstimateGasAsync(message, new BigInteger(erc20.RedeemGasLimit), cancellationToken)
+                    .ConfigureAwait(false);
+
+                var txInput = message.CreateTransactionInput(erc20.SwapContractAddress);
+
+                redeemTx = new EthereumTransaction(erc20, txInput)
+                {
+                    Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
+                };
+
+                var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!signResult)
+                {
+                    Log.Error("Transaction signing error");
+                    return;
+                }
+
+                swap.RedeemTx = redeemTx;
+                swap.StateFlags |= SwapStateFlags.IsRedeemSigned;
+
+                await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemSigned, cancellationToken)
+                    .ConfigureAwait(false);
+
+                await BroadcastTxAsync(swap, redeemTx, cancellationToken)
+                    .ConfigureAwait(false);
             }
-
-            var message = new ERC20RedeemFunctionMessage
+            catch
             {
-                FromAddress  = walletAddress.Address,
-                HashedSecret = swap.SecretHash,
-                Secret       = swap.Secret,
-                Nonce        = nonceResult.Value,
-                GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
-            };
-
-            message.Gas = await EstimateGasAsync(message, new BigInteger(erc20.RedeemGasLimit), cancellationToken)
-                .ConfigureAwait(false);
-
-            var txInput = message.CreateTransactionInput(erc20.SwapContractAddress);
-
-            var redeemTx = new EthereumTransaction(erc20, txInput)
-            {
-                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
-            };
-
-            var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!signResult)
-            {
-                Log.Error("Transaction signing error");
-                return;
+                throw;
             }
-
-            swap.RedeemTx = redeemTx;
-            swap.StateFlags |= SwapStateFlags.IsRedeemSigned;
-
-            await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemSigned, cancellationToken)
-                .ConfigureAwait(false);
-
-            await BroadcastTxAsync(swap, redeemTx, cancellationToken)
-                .ConfigureAwait(false);
+            finally
+            {
+                EthereumAccount.AddressLocker.Unlock(walletAddress.Address);
+            }
 
             swap.RedeemTx = redeemTx;
             swap.StateFlags |= SwapStateFlags.IsRedeemBroadcast;
@@ -339,6 +378,10 @@ namespace Atomex.Swaps.Ethereum
                 Log.Error("Insufficient balance for party redeem. Cannot find the address containing the required amount of funds.");
                 return;
             }
+
+            using var addressLock = await EthereumAccount.AddressLocker
+                .GetLockAsync(walletAddress.Address, cancellationToken)
+                .ConfigureAwait(false);
 
             var nonceResult = await EthereumNonceManager.Instance
                 .GetNonceAsync(erc20, walletAddress.Address, pending: true, cancellationToken)
@@ -431,54 +474,71 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var nonceResult = await EthereumNonceManager.Instance
-                .GetNonceAsync(erc20, walletAddress.Address, pending: true, cancellationToken)
-                .ConfigureAwait(false);
+            EthereumTransaction refundTx;
 
-            if (nonceResult.HasError)
+            try
             {
-                Log.Error("Nonce getting error with code {@code} and description {@description}",
-                    nonceResult.Error.Code,
-                    nonceResult.Error.Description);
+                await EthereumAccount.AddressLocker
+                    .LockAsync(walletAddress.Address, cancellationToken)
+                    .ConfigureAwait(false);
 
-                return;
+                var nonceResult = await EthereumNonceManager.Instance
+                    .GetNonceAsync(erc20, walletAddress.Address, pending: true, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (nonceResult.HasError)
+                {
+                    Log.Error("Nonce getting error with code {@code} and description {@description}",
+                        nonceResult.Error.Code,
+                        nonceResult.Error.Description);
+
+                    return;
+                }
+
+                var message = new ERC20RefundFunctionMessage
+                {
+                    FromAddress  = walletAddress.Address,
+                    HashedSecret = swap.SecretHash,
+                    GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
+                    Nonce        = nonceResult.Value,
+                };
+
+                message.Gas = await EstimateGasAsync(message, new BigInteger(erc20.RefundGasLimit), cancellationToken)
+                    .ConfigureAwait(false);
+
+                var txInput = message.CreateTransactionInput(erc20.SwapContractAddress);
+
+                refundTx = new EthereumTransaction(erc20, txInput)
+                {
+                    Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
+                };
+
+                var signResult = await SignTransactionAsync(refundTx, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!signResult)
+                {
+                    Log.Error("Transaction signing error");
+                    return;
+                }
+
+                swap.RefundTx = refundTx;
+                swap.StateFlags |= SwapStateFlags.IsRefundSigned;
+
+                await UpdateSwapAsync(swap, SwapStateFlags.IsRefundSigned, cancellationToken)
+                    .ConfigureAwait(false);
+
+                await BroadcastTxAsync(swap, refundTx, cancellationToken)
+                    .ConfigureAwait(false);
             }
-
-            var message = new ERC20RefundFunctionMessage
+            catch
             {
-                FromAddress  = walletAddress.Address,
-                HashedSecret = swap.SecretHash,
-                GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
-                Nonce        = nonceResult.Value,
-            };
-
-            message.Gas = await EstimateGasAsync(message, new BigInteger(erc20.RefundGasLimit), cancellationToken)
-                .ConfigureAwait(false);
-
-            var txInput = message.CreateTransactionInput(erc20.SwapContractAddress);
-
-            var refundTx = new EthereumTransaction(erc20, txInput)
-            {
-                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
-            };
-
-            var signResult = await SignTransactionAsync(refundTx, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!signResult)
-            {
-                Log.Error("Transaction signing error");
-                return;
+                throw;
             }
-
-            swap.RefundTx = refundTx;
-            swap.StateFlags |= SwapStateFlags.IsRefundSigned;
-
-            await UpdateSwapAsync(swap, SwapStateFlags.IsRefundSigned, cancellationToken)
-                .ConfigureAwait(false);
-
-            await BroadcastTxAsync(swap, refundTx, cancellationToken)
-                .ConfigureAwait(false);
+            finally
+            {
+                EthereumAccount.AddressLocker.Unlock(walletAddress.Address);
+            }
 
             swap.RefundTx = refundTx;
             swap.StateFlags |= SwapStateFlags.IsRefundBroadcast;
@@ -664,14 +724,16 @@ namespace Atomex.Swaps.Ethereum
 
         #region Helpers
 
-        //private decimal RequiredAmountInTokens(Swap swap, ERC20 erc20)
-        //{
-        //    var requiredAmountInERC20 = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
+        private decimal RequiredAmountInTokens(Swap swap, EthereumTokens.ERC20 erc20)
+        {
+            var requiredAmountInERC20 = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
 
-        //    // maker network fee
-        //    if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInERC20) // network fee size check
-        //        requiredAmountInERC20 += AmountHelper.RoundDown(swap.MakerNetworkFee, erc20.DigitsMultiplier);
-        //}
+            // maker network fee
+            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInERC20) // network fee size check
+                requiredAmountInERC20 += AmountHelper.RoundDown(swap.MakerNetworkFee, erc20.DigitsMultiplier);
+
+            return requiredAmountInERC20;
+        }
 
         protected override async Task<IEnumerable<EthereumTransaction>> CreatePaymentTxsAsync(
             Swap swap,
@@ -682,11 +744,7 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create payment transactions for swap {@swapId}", swap.Id);
 
-            var requiredAmountInERC20 = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
-
-            // maker network fee
-            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInERC20) // network fee size check
-                requiredAmountInERC20 += AmountHelper.RoundDown(swap.MakerNetworkFee, erc20.DigitsMultiplier);
+            var requiredAmountInERC20 = RequiredAmountInTokens(swap, erc20);
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
             var isInitTx = true;
@@ -862,11 +920,7 @@ namespace Atomex.Swaps.Ethereum
                 transactions.Add(tx);
             }
 
-            var requiredAmountInERC20 = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
-
-            // maker network fee
-            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInERC20) // network fee size check
-                requiredAmountInERC20 += AmountHelper.RoundDown(swap.MakerNetworkFee, erc20.DigitsMultiplier);
+            var requiredAmountInERC20 = RequiredAmountInTokens(swap, erc20);
 
             var balanceInERC20 = (await Erc20Account
                 .GetAddressBalanceAsync(

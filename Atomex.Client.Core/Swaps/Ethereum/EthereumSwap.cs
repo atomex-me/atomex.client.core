@@ -29,8 +29,8 @@ namespace Atomex.Swaps.Ethereum
         protected const int MaxRefundCheckAttempts = 2;
         protected const int RedeemCheckAttemptIntervalInSec = 5;
         protected const int RefundCheckAttemptIntervalInSec = 5;
-        protected static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(10);
-        protected static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(15);
+        protected static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(20);
+        protected static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(30);
         private Atomex.Ethereum Eth => Currencies.Get<Atomex.Ethereum>(Currency);
         protected readonly EthereumAccount _account;
 
