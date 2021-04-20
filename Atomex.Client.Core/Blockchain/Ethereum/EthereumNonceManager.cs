@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,11 +10,17 @@ namespace Atomex.Blockchain.Ethereum
 {
     public class EthereumNonceManager
     {
-        private readonly IDictionary<string, BigInteger> _offlineNonces;
+        private class NonceEntry
+        {
+            public DateTimeOffset LastUpdated { get; set; }
+            public BigInteger Nonce { get; set; }
+        }
+
+        private readonly IDictionary<string, NonceEntry> _offlineNonces;
 
         private EthereumNonceManager()
         {
-            _offlineNonces = new Dictionary<string, BigInteger>();
+            _offlineNonces = new Dictionary<string, NonceEntry>();
         }
 
         private static EthereumNonceManager _instance;
@@ -49,11 +56,17 @@ namespace Atomex.Blockchain.Ethereum
 
             lock (_offlineNonces)
             {
-                var currentNonce = _offlineNonces.TryGetValue(address, out var offlineNonce) && offlineNonce > nonceFromNetwork && !pending
-                    ? offlineNonce
+                var currentNonce = _offlineNonces.TryGetValue(address, out var offlineNonce)
+                    && offlineNonce.Nonce > nonceFromNetwork
+                    && DateTimeOffset.UtcNow - offlineNonce.LastUpdated < TimeSpan.FromMinutes(5)
+                    ? offlineNonce.Nonce
                     : nonceFromNetwork;
 
-                _offlineNonces[address] = currentNonce + 1;
+                _offlineNonces[address] = new NonceEntry
+                {
+                    Nonce = currentNonce + 1,
+                    LastUpdated = DateTimeOffset.UtcNow
+                };
 
                 return currentNonce;
             }
