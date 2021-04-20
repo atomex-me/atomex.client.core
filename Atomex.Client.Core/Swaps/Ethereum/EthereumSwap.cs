@@ -784,6 +784,16 @@ namespace Atomex.Swaps.Ethereum
 
                 requiredAmountInEth -= amountInEth;
 
+                var nonceResult = await ((IEthereumBlockchainApi)eth.BlockchainApi)
+                    .GetTransactionCountAsync(walletAddress.Address, pending: false, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (nonceResult.HasError)
+                {
+                    Log.Error($"Getting nonce error: {nonceResult.Error.Description}");
+                    return Enumerable.Empty<EthereumTransaction>();
+                }
+                    
                 TransactionInput txInput;
 
                 if (isInitTx)
@@ -796,7 +806,7 @@ namespace Atomex.Swaps.Ethereum
                         AmountToSend    = Atomex.Ethereum.EthToWei(amountInEth),
                         FromAddress     = walletAddress.Address,
                         GasPrice        = Atomex.Ethereum.GweiToWei(gasPrice),
-                        //Nonce           = nonceResult.Value,
+                        Nonce           = nonceResult.Value,
                         RedeemFee       = Atomex.Ethereum.EthToWei(rewardForRedeemInEth)
                     };
 
@@ -817,7 +827,7 @@ namespace Atomex.Swaps.Ethereum
                         AmountToSend = Atomex.Ethereum.EthToWei(amountInEth),
                         FromAddress  = walletAddress.Address,
                         GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
-                        //Nonce        = nonceResult.Value,
+                        Nonce        = nonceResult.Value,
                     };
 
                     message.Gas = await EstimateGasAsync(message, new BigInteger(eth.AddGasLimit))
