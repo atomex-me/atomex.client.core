@@ -39,5 +39,8 @@ namespace Atomex.Common
         {
             return RoundDown(amount - refAmount, digitsMultiplier / dustMultiplier) == 0 ? amount : Math.Min(amount, refAmount);
         }
+
+        public static decimal RoundAmount(decimal value, decimal digitsMultiplier) =>
+            Math.Floor(value * digitsMultiplier);
     }
 }
