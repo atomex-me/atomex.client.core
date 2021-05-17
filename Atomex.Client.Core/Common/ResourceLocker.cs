@@ -5,6 +5,27 @@ using System.Threading.Tasks;
 
 namespace Atomex.Common
 {
+    public class ResourceLock<T> : IDisposable
+    {
+        private readonly T _resource;
+        private ResourceLocker<T> _locker;
+
+        public ResourceLock(ResourceLocker<T> locker, T resource)
+        {
+            _locker = locker;
+            _resource = resource;
+        }
+
+        public void Dispose()
+        {
+            if (_locker != null)
+            {
+                _locker.Unlock(_resource);
+                _locker = null;
+            }
+        }
+    }
+
     public class ResourceLocker<T> : IDisposable
     {
         private readonly ConcurrentDictionary<T, SemaphoreSlim> _semaphores;
@@ -33,6 +54,15 @@ namespace Atomex.Common
                 createdSemaphore?.Dispose();
 
             return semaphore.WaitAsync(cancellationToken);
+        }
+
+        public async Task<ResourceLock<T>> GetLockAsync(
+            T resource,
+            CancellationToken cancellationToken = default)
+        {
+            await LockAsync(resource, cancellationToken);
+
+            return new ResourceLock<T>(this, resource);
         }
 
         /// <summary>

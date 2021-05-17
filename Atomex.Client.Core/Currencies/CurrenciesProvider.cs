@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
+
 using Microsoft.Extensions.Configuration;
 
 using Atomex.Abstract;
@@ -26,8 +28,10 @@ namespace Atomex
             {
                 var networkConfiguration = configuration.GetSection(network.ToString());
 
-                if (networkConfiguration != null)
-                    _currencies.Add(network, new Currencies(networkConfiguration));
+                if (!networkConfiguration.GetChildren().Any())
+                    continue;
+
+                _currencies.Add(network, new Currencies(networkConfiguration));
             }
         }
 
@@ -36,6 +40,9 @@ namespace Atomex
             foreach (var network in Networks)
             {
                 var networkConfiguration = configuration.GetSection(network.ToString());
+
+                if (!networkConfiguration.GetChildren().Any())
+                    continue;
 
                 if (networkConfiguration != null && _currencies.TryGetValue(network, out var currencies))
                     currencies.Update(networkConfiguration); 
