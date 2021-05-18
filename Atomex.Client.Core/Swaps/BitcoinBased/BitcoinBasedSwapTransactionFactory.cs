@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
+using NBitcoin;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
@@ -204,7 +206,8 @@ namespace Atomex.Swaps.BitcoinBased
                 changeAddress: refundAddress,
                 amount: amount,
                 fee: 0,
-                lockTime: lockTime);
+                lockTime: lockTime,
+                knownRedeems: new Script(redeemScript));
 
             var feeRate = await currency
                 .GetFeeRateAsync()
@@ -222,7 +225,8 @@ namespace Atomex.Swaps.BitcoinBased
                 changeAddress: refundAddress,
                 amount: amount - fee,
                 fee: fee,
-                lockTime: lockTime);
+                lockTime: lockTime,
+                knownRedeems: new Script(redeemScript));
 
             return tx;
         }
@@ -251,7 +255,8 @@ namespace Atomex.Swaps.BitcoinBased
                 changeAddress: redeemAddress,
                 amount: amount,
                 fee: 0,
-                lockTime: DateTimeOffset.MinValue);
+                lockTime: DateTimeOffset.MinValue,
+                knownRedeems: new Script(redeemScript));
 
             var feeRate = await currency
                 .GetFeeRateAsync()
@@ -269,7 +274,8 @@ namespace Atomex.Swaps.BitcoinBased
                 changeAddress: redeemAddress,
                 amount: amount - fee,
                 fee: fee,
-                lockTime: DateTimeOffset.MinValue);
+                lockTime: DateTimeOffset.MinValue,
+                knownRedeems: new Script(redeemScript));
 
             if (sequenceNumber > 0)
                 tx.SetSequenceNumber(sequenceNumber);

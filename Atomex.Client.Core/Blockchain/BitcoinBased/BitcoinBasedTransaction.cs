@@ -339,7 +339,8 @@ namespace Atomex.Blockchain.BitcoinBased
             Script destination,
             Script change,
             long amount,
-            long fee)
+            long fee,
+            params Script[] knownRedeems)
         {
             return CreateTransaction(
                 currency: currency,
@@ -348,7 +349,8 @@ namespace Atomex.Blockchain.BitcoinBased
                 change: change,
                 amount: amount,
                 fee: fee,
-                lockTime: DateTimeOffset.MinValue);
+                lockTime: DateTimeOffset.MinValue,
+                knownRedeems: knownRedeems);
         }
 
         public static BitcoinBasedTransaction CreateTransaction(
@@ -358,7 +360,8 @@ namespace Atomex.Blockchain.BitcoinBased
             Script change,
             long amount,
             long fee,
-            DateTimeOffset lockTime)
+            DateTimeOffset lockTime,
+            params Script[] knownRedeems)
         {
             var tx = currency.Network.CreateTransactionBuilder()
                 .SetDustPrevention(false)
@@ -369,6 +372,7 @@ namespace Atomex.Blockchain.BitcoinBased
                 .SetLockTime(lockTime != DateTimeOffset.MinValue
                     ? new LockTime(lockTime)
                     : NBitcoin.LockTime.Zero)
+                .AddKnownRedeems(knownRedeems)
                 .BuildTransaction(false);
 
             return new BitcoinBasedTransaction(

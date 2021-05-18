@@ -101,7 +101,7 @@ namespace Atomex.Subsystems
                 if (content != null)
                 {
                     var configuration = new ConfigurationBuilder()
-                        .AddJsonString(content, "currencies.json")
+                        .AddJsonString(content)
                         .Build();
                     
                     _currenciesProvider.Update(configuration);

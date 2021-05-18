@@ -100,7 +100,7 @@ namespace Atomex.Subsystems
                 if (content != null)
                 {
                     var configuration = new ConfigurationBuilder()
-                        .AddJsonString(content, "symbols.json")
+                        .AddJsonString(content)
                         .Build();
                     
                     _symbolsProvider.Update(configuration);

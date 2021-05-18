@@ -160,7 +160,8 @@ namespace Atomex
             string changeAddress,
             long amount,
             long fee,
-            DateTimeOffset lockTime)
+            DateTimeOffset lockTime,
+            params Script[] knownRedeems)
         {
             return CreateP2PkhTx(
                 unspentOutputs: unspentOutputs,
@@ -168,7 +169,8 @@ namespace Atomex
                 changeAddress: changeAddress,
                 amount: amount,
                 fee: fee,
-                lockTime: lockTime);
+                lockTime: lockTime,
+                knownRedeems: knownRedeems);
         }
 
         public IBitcoinBasedTransaction CreateP2PkhTx(
@@ -177,7 +179,8 @@ namespace Atomex
             string changeAddress,
             long amount,
             long fee,
-            DateTimeOffset lockTime)
+            DateTimeOffset lockTime,
+            params Script[] knownRedeems)
         {
             var coins = unspentOutputs
                 .Cast<BitcoinBasedTxOutput>()
@@ -196,7 +199,8 @@ namespace Atomex
                 change: change,
                 amount: amount,
                 fee: fee,
-                lockTime: lockTime);
+                lockTime: lockTime,
+                knownRedeems: knownRedeems);
         }
 
         public IBitcoinBasedTransaction CreateP2WPkhTx(
@@ -204,7 +208,8 @@ namespace Atomex
             string destinationAddress,
             string changeAddress,
             long amount,
-            long fee)
+            long fee,
+            params Script[] knownRedeems)
         {
             var coins = unspentOutputs
                 .Cast<BitcoinBasedTxOutput>()
@@ -222,7 +227,8 @@ namespace Atomex
                 destination: destination,
                 change: change,
                 amount: amount,
-                fee: fee);
+                fee: fee,
+                knownRedeems: knownRedeems);
         }
 
         public virtual IBitcoinBasedTransaction CreateHtlcP2PkhScriptSwapPaymentTx(
