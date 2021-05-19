@@ -16,6 +16,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.LiteDb;
 using Atomex.Wallet.Abstract;
+using Atomex.Cryptography;
 
 namespace Atomex.Wallet
 {
@@ -268,6 +269,14 @@ namespace Atomex.Wallet
 
         public T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount =>
             GetCurrencyAccount(currency) as T;
+
+        public string GetUserId(uint keyIndex = 0)
+        {
+            using var servicePublicKey = Wallet.GetServicePublicKey(keyIndex);
+            using var publicKey = servicePublicKey.ToUnsecuredBytes();
+
+            return Sha256.Compute(Sha256.Compute(publicKey)).ToHexString();
+        }
 
         #endregion Common
 
