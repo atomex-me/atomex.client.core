@@ -12,26 +12,29 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.TezosTokens;
+using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Helpers;
 using Atomex.Swaps.Tezos.NYX.Helpers;
 using Atomex.Wallet.Tezos;
 
 namespace Atomex.Swaps.Tezos.NYX
 {
-    public class NYXSwap : TezosSwap
+    public class NyxSwap : CurrencySwap
     {
-        private NYXAccount NYXAccount => _account as NYXAccount;
+        private NyxAccount NyxAccount { get; }
         private TezosAccount TezosAccount { get; }
-        private TezosTokens.NYX NYX => Currencies.Get<TezosTokens.NYX>(Currency);
-        private Atomex.Tezos Xtz => Currencies.Get<Atomex.Tezos>(TezosAccount.Currency);
+        private NyxConfig NYX => Currencies.Get<NyxConfig>(Currency);
+        private TezosConfig Xtz => Currencies.Get<TezosConfig>(TezosAccount.Currency);
 
-        public NYXSwap(
-            NYXAccount account,
+        public NyxSwap(
+            NyxAccount account,
             TezosAccount tezosAccount,
             ICurrencies currencies)
-            : base(account, currencies)
+            : base(account.Currency, currencies)
         {
-            TezosAccount = tezosAccount ?? throw new ArgumentNullException(nameof(account));
+            NyxAccount = account ?? throw new ArgumentNullException(nameof(account));
+            TezosAccount = tezosAccount ?? throw new ArgumentNullException(nameof(tezosAccount));
         }
 
         public override async Task PayAsync(
@@ -74,18 +77,19 @@ namespace Atomex.Swaps.Tezos.NYX
                         {
                             var isInitiateTx = tx.Type.HasFlag(BlockchainTransactionType.SwapPayment);
 
-                            var address = await _account
+                            var address = await NyxAccount
                                 .GetAddressAsync(tx.From, cancellationToken)
                                 .ConfigureAwait(false);
 
-                            using var securePublicKey = _account.Wallet
+                            using var securePublicKey = NyxAccount
+                                .Wallet
                                 .GetPublicKey(NYX, address.KeyIndex);
 
                             // fill operation
                             var fillResult = await tx
                                 .FillOperationsAsync(
                                     securePublicKey: securePublicKey,
-                                    headOffset: Atomex.Tezos.HeadOffset,
+                                    headOffset: TezosConfig.HeadOffset,
                                     cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
 
@@ -177,8 +181,8 @@ namespace Atomex.Swaps.Tezos.NYX
                     swap: swap,
                     currency: nyx,
                     tezos: Xtz,
-                    attempts: MaxRedeemCheckAttempts,
-                    attemptIntervalInSec: RedeemCheckAttemptIntervalInSec,
+                    attempts: TezosSwap.MaxRedeemCheckAttempts,
+                    attemptIntervalInSec: TezosSwap.RedeemCheckAttemptIntervalInSec,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -240,7 +244,7 @@ namespace Atomex.Swaps.Tezos.NYX
 
             Log.Debug("Create redeem for swap {@swapId}", swap.Id);
 
-            var walletAddress = (await NYXAccount
+            var walletAddress = (await NyxAccount
                 .GetUnspentAddressesAsync(
                     toAddress: swap.ToAddress,
                     amount: 0,
@@ -283,14 +287,14 @@ namespace Atomex.Swaps.Tezos.NYX
                     .LockAsync(redeemTx.From, cancellationToken)
                     .ConfigureAwait(false);
 
-                using var securePublicKey = _account.Wallet
+                using var securePublicKey = NyxAccount.Wallet
                     .GetPublicKey(NYX, walletAddress.KeyIndex);
 
                 // fill operation
                 var fillResult = await redeemTx
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
-                        headOffset: Atomex.Tezos.HeadOffset,
+                        headOffset: TezosConfig.HeadOffset,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -350,7 +354,7 @@ namespace Atomex.Swaps.Tezos.NYX
 
             Log.Debug("Create redeem for acceptor for swap {@swapId}", swap.Id);
 
-            var walletAddress = (await NYXAccount
+            var walletAddress = (await NyxAccount
                 .GetUnspentAddressesAsync(
                     toAddress: swap.PartyAddress, // todo: check it
                     amount: 0,
@@ -393,14 +397,14 @@ namespace Atomex.Swaps.Tezos.NYX
                     .LockAsync(redeemTx.From, cancellationToken)
                     .ConfigureAwait(false);
 
-                using var securePublicKey = _account.Wallet
+                using var securePublicKey = NyxAccount.Wallet
                     .GetPublicKey(NYX, walletAddress.KeyIndex);
 
                 // fill operation
                 var fillResult = await redeemTx
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
-                        headOffset: Atomex.Tezos.HeadOffset,
+                        headOffset: TezosConfig.HeadOffset,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -445,7 +449,7 @@ namespace Atomex.Swaps.Tezos.NYX
 
             Log.Debug("Create refund for swap {@swap}", swap.Id);
 
-            var walletAddress = (await NYXAccount
+            var walletAddress = (await NyxAccount
                 .GetUnspentAddressesAsync(
                     toAddress: null, // todo: get refund address
                     amount: 0,
@@ -487,14 +491,14 @@ namespace Atomex.Swaps.Tezos.NYX
                     .LockAsync(refundTx.From, cancellationToken)
                     .ConfigureAwait(false);
 
-                using var securePublicKey = _account.Wallet
+                using var securePublicKey = NyxAccount.Wallet
                     .GetPublicKey(NYX, walletAddress.KeyIndex);
 
                 // fill operation
                 var fillResult = await refundTx
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
-                        headOffset: Atomex.Tezos.HeadOffset,
+                        headOffset: TezosConfig.HeadOffset,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -608,8 +612,8 @@ namespace Atomex.Swaps.Tezos.NYX
                         swap: swap,
                         currency: NYX,
                         tezos: Xtz,
-                        attempts: MaxRefundCheckAttempts,
-                        attemptIntervalInSec: RefundCheckAttemptIntervalInSec,
+                        attempts: TezosSwap.MaxRefundCheckAttempts,
+                        attemptIntervalInSec: TezosSwap.RefundCheckAttemptIntervalInSec,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -649,8 +653,9 @@ namespace Atomex.Swaps.Tezos.NYX
                     .ConfigureAwait(false);
 
                 // get transactions & update balance for address async 
-                _ = AddressHelper.UpdateAddressBalanceAsync<TezosWalletScanner, TezosAccount>(
-                    account: _account,
+                _ = AddressHelper.UpdateAddressBalanceAsync<NyxWalletScanner, NyxAccount, TezosAccount>(
+                    account: NyxAccount,
+                    baseAccount: TezosAccount,
                     address: swap.ToAddress,
                     cancellationToken: cancellationToken);
             }
@@ -667,7 +672,7 @@ namespace Atomex.Swaps.Tezos.NYX
             {
                 if (swap.Secret?.Length > 0)
                 {
-                    var walletAddress = (await _account
+                    var walletAddress = (await NyxAccount
                         .GetUnspentAddressesAsync(
                             toAddress: swap.ToAddress,
                             amount: 0,
@@ -704,7 +709,7 @@ namespace Atomex.Swaps.Tezos.NYX
 
         #region Helpers
 
-        private decimal RequiredAmountInTokens(Swap swap, TezosTokens.NYX nyx)
+        private decimal RequiredAmountInTokens(Swap swap, TezosTokens.NyxConfig nyx)
         {
             var requiredAmountInTokens = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, nyx.DigitsMultiplier);
 
@@ -715,7 +720,7 @@ namespace Atomex.Swaps.Tezos.NYX
             return requiredAmountInTokens;
         }
 
-        protected override async Task<IEnumerable<TezosTransaction>> CreatePaymentTxsAsync(
+        protected async Task<IEnumerable<TezosTransaction>> CreatePaymentTxsAsync(
             Swap swap,
             int lockTimeSeconds,
             CancellationToken cancellationToken = default)
@@ -727,7 +732,7 @@ namespace Atomex.Swaps.Tezos.NYX
             var requiredAmountInTokens = RequiredAmountInTokens(swap, nyx);
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();
 
-            var unspentAddresses = (await NYXAccount
+            var unspentAddresses = (await NyxAccount
                 .GetUnspentAddressesAsync(cancellationToken)
                 .ConfigureAwait(false))
                 .ToList()
@@ -750,7 +755,7 @@ namespace Atomex.Swaps.Tezos.NYX
                     .ConfigureAwait(false))
                     .Available;
 
-                var balanceInTokens = (await NYXAccount
+                var balanceInTokens = (await NyxAccount
                     .GetAddressBalanceAsync(
                         address: walletAddress.Address,
                         cancellationToken: cancellationToken)
@@ -761,7 +766,7 @@ namespace Atomex.Swaps.Tezos.NYX
 
                 var balanceInMtz = balanceInTz.ToMicroTez();
 
-                var isRevealed = await _account
+                var isRevealed = await TezosAccount
                     .IsRevealedSourceAsync(walletAddress.Address, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -827,11 +832,11 @@ namespace Atomex.Swaps.Tezos.NYX
         {
             var nyx = NYX;
 
-            var walletAddress = await NYXAccount
+            var walletAddress = await NyxAccount
                 .GetAddressAsync(paymentTx.From, cancellationToken)
                 .ConfigureAwait(false);
 
-            var balanceInTokens = (await NYXAccount
+            var balanceInTokens = (await NyxAccount
                 .GetAddressBalanceAsync(
                     address: walletAddress.Address,
                     cancellationToken: cancellationToken)
@@ -868,13 +873,13 @@ namespace Atomex.Swaps.Tezos.NYX
             TezosTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            var walletAddress = await NYXAccount
+            var walletAddress = await NyxAccount
                 .GetAddressAsync(
                     address: tx.From,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            return await NYXAccount.Wallet
+            return await NyxAccount.Wallet
                 .SignAsync(
                     tx: tx,
                     address: walletAddress,
@@ -905,7 +910,7 @@ namespace Atomex.Swaps.Tezos.NYX
             Log.Debug("TxId {@id} for swap {@swapId}", txId, swap.Id);
 
             // account new unconfirmed transaction
-            await NYXAccount
+            await NyxAccount
                 .UpsertTransactionAsync(
                     tx: tx,
                     updateBalance: updateBalance,

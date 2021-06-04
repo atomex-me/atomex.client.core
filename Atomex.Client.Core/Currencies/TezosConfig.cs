@@ -17,7 +17,7 @@ using Atomex.Wallet.Tezos;
 
 namespace Atomex
 {
-    public class Tezos : Currency
+    public class TezosConfig : CurrencyConfig
     {
         public const long XtzDigitsMultiplier = 1_000_000;
         public const int HeadOffset = 55;
@@ -71,11 +71,11 @@ namespace Atomex
         public string BbApiUri { get; protected set; }
         public string SwapContractAddress { get; protected set; }
 
-        public Tezos()
+        public TezosConfig()
         {
         }
 
-        public Tezos(IConfiguration configuration)
+        public TezosConfig(IConfiguration configuration)
         {
             Update(configuration);
         }
@@ -163,7 +163,7 @@ namespace Atomex
 
         protected static IBlockchainApi ResolveBlockchainApi(
             IConfiguration configuration,
-            Tezos tezos)
+            TezosConfig tezos)
         {
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();

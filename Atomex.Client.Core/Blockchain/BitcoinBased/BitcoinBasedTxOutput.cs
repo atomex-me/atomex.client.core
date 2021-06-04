@@ -49,10 +49,10 @@ namespace Atomex.Blockchain.BitcoinBased
             return IsP2Sh && new Script(redeemScript).PaymentScript.Equals(Coin.TxOut.ScriptPubKey);
         }
 
-        public string DestinationAddress(Currency currency)
+        public string DestinationAddress(CurrencyConfig currency)
         {
             return Coin.TxOut.ScriptPubKey
-                .GetDestinationAddress(((BitcoinBasedCurrency) currency).Network)
+                .GetDestinationAddress(((BitcoinBasedConfig) currency).Network)
                 .ToString();
         }
     }

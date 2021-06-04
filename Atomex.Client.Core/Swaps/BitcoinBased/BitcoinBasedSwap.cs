@@ -27,7 +27,7 @@ namespace Atomex.Swaps.BitcoinBased
         private const int InputGettingIntervalInSec = 5;
         private readonly IBitcoinBasedSwapTransactionFactory _transactionFactory;
 
-        private BitcoinBasedCurrency BitcoinBased => Currencies.Get<BitcoinBasedCurrency>(Currency);
+        private BitcoinBasedConfig BitcoinBased => Currencies.Get<BitcoinBasedConfig>(Currency);
         private readonly BitcoinBasedAccount _account;
 
         public BitcoinBasedSwap(
@@ -256,7 +256,7 @@ namespace Atomex.Swaps.BitcoinBased
             var refundTimeUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds))
                 .ToUnixTimeSeconds();
 
-            var bitcoinBased = (BitcoinBasedCurrency)currency;
+            var bitcoinBased = (BitcoinBasedConfig)currency;
 
             var partyRedeemScript = swap.PartyRefundAddress == null && swap.PartyRedeemScript != null
                 ? new Script(Convert.FromBase64String(swap.PartyRedeemScript))
@@ -381,7 +381,7 @@ namespace Atomex.Swaps.BitcoinBased
                 .GetAddressAsync(swap.RefundAddress)
                 .ConfigureAwait(false);
 
-            var currency = Currencies.Get<BitcoinBasedCurrency>(Currency);
+            var currency = Currencies.Get<BitcoinBasedConfig>(Currency);
 
             var redeemScript = BitcoinBasedSwapTemplate
                 .GenerateHtlcP2PkhSwapPayment(
@@ -516,7 +516,7 @@ namespace Atomex.Swaps.BitcoinBased
             string refundAddress,
             DateTimeOffset lockTime)
         {
-            var currency = Currencies.Get<BitcoinBasedCurrency>(swap.SoldCurrency);
+            var currency = Currencies.Get<BitcoinBasedConfig>(swap.SoldCurrency);
 
             Log.Debug("Create swap payment {@currency} tx for swap {@swapId}",
                 currency.Name,
@@ -579,7 +579,7 @@ namespace Atomex.Swaps.BitcoinBased
         {
             Log.Debug("Create refund tx for swap {@swapId}", swap.Id);
 
-            var currency = Currencies.Get<BitcoinBasedCurrency>(Currency);
+            var currency = Currencies.Get<BitcoinBasedConfig>(Currency);
 
             var amountInSatoshi = currency.CoinToSatoshi(
                 AmountHelper.QtyToAmount(
@@ -618,7 +618,7 @@ namespace Atomex.Swaps.BitcoinBased
         {
             Log.Debug("Create redeem tx for swap {@swapId}", swap.Id);
 
-            var currency = Currencies.Get<BitcoinBasedCurrency>(Currency);
+            var currency = Currencies.Get<BitcoinBasedConfig>(Currency);
 
             var amountInSatoshi = currency.CoinToSatoshi(
                 AmountHelper.QtyToAmount(

@@ -70,7 +70,7 @@ namespace Atomex.Wallet
             return KeyStorage.EncryptAsync(password);
         }
 
-        public WalletAddress GetAddress(Currency currency, int chain, uint index)
+        public WalletAddress GetAddress(CurrencyConfig currency, int chain, uint index)
         {
             using var securePublicKey = KeyStorage.GetPublicKey(currency, chain, index);
 
@@ -90,7 +90,7 @@ namespace Atomex.Wallet
             };
         }
 
-        public SecureBytes GetPublicKey(Currency currency, KeyIndex keyIndex) =>
+        public SecureBytes GetPublicKey(CurrencyConfig currency, KeyIndex keyIndex) =>
             KeyStorage.GetPublicKey(currency, keyIndex);
 
         public SecureBytes GetServicePublicKey(uint index) =>
@@ -99,7 +99,7 @@ namespace Atomex.Wallet
         public Task<byte[]> SignAsync(
             byte[] data,
             WalletAddress address,
-            Currency currency,
+            CurrencyConfig currency,
             CancellationToken cancellationToken = default)
         {
             if (data == null)
@@ -204,7 +204,7 @@ namespace Atomex.Wallet
         public Task<byte[]> SignHashAsync(
             byte[] hash,
             WalletAddress address,
-            Currency currency,
+            CurrencyConfig currency,
             CancellationToken cancellationToken = default)
         {
             if (hash == null)
@@ -278,7 +278,7 @@ namespace Atomex.Wallet
             return Task.FromResult(signature);
         }
 
-        public byte[] GetDeterministicSecret(Currency currency, DateTime timeStamp)
+        public byte[] GetDeterministicSecret(CurrencyConfig currency, DateTime timeStamp)
         {
             return KeyStorage.GetDeterministicSecret(currency, timeStamp);
         }

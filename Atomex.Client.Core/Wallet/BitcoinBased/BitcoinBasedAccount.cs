@@ -20,9 +20,9 @@ using Atomex.Swaps.BitcoinBased;
 
 namespace Atomex.Wallet.BitcoinBased
 {
-    public class BitcoinBasedAccount : CurrencyAccount, IAddressResolver
+    public class BitcoinBasedAccount : CurrencyAccount, IAddressResolver, ILegacyCurrencyAccount
     {
-        private BitcoinBasedCurrency BtcBasedCurrency => Currencies.Get<BitcoinBasedCurrency>(Currency);
+        private BitcoinBasedConfig BtcBasedCurrency => Currencies.Get<BitcoinBasedConfig>(Currency);
 
         public BitcoinBasedAccount(
             string currency,
@@ -35,7 +35,7 @@ namespace Atomex.Wallet.BitcoinBased
 
         #region Common
 
-        public override async Task<Error> SendAsync(
+        public async Task<Error> SendAsync(
             IEnumerable<WalletAddress> from,
             string to,
             decimal amount,
@@ -62,7 +62,7 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public override async Task<Error> SendAsync(
+        public async Task<Error> SendAsync(
             string to,
             decimal amount,
             decimal fee,
@@ -199,7 +199,7 @@ namespace Atomex.Wallet.BitcoinBased
             return null;
         }
 
-        public override async Task<decimal?> EstimateFeeAsync(
+        public async Task<decimal?> EstimateFeeAsync(
             string to,
             decimal amount,
             BlockchainTransactionType type,
@@ -229,7 +229,7 @@ namespace Atomex.Wallet.BitcoinBased
 
             foreach (var selectedOutputs in availableOutputs.SelectOutputs())
             {
-                var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(selectedOutputs);
+                var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(selectedOutputs);
 
                 var selectedInSatoshi = selectedOutputs.Sum(o => o.Value);
 
@@ -249,7 +249,7 @@ namespace Atomex.Wallet.BitcoinBased
                 
                 var estimatedTxVirtualSize = estimatedTx.VirtualSize();
                 var estimatedTxSize = estimatedTxVirtualSize + estimatedSigSize;
-                var estimatedTxSizeWithChange = estimatedTxVirtualSize + estimatedSigSize + BitcoinBasedCurrency.OutputSize;
+                var estimatedTxSizeWithChange = estimatedTxVirtualSize + estimatedSigSize + BitcoinBasedConfig.OutputSize;
 
                 var estimatedFeeInSatoshi = (long)(estimatedTxSize * feeRate);
 
@@ -344,7 +344,7 @@ namespace Atomex.Wallet.BitcoinBased
 
             foreach (var selectedOutputs in availableOutputs.SelectOutputs())
             {
-                var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(selectedOutputs);
+                var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(selectedOutputs);
 
                 var selectedInSatoshi = selectedOutputs.Sum(o => o.Value);
 
@@ -382,7 +382,7 @@ namespace Atomex.Wallet.BitcoinBased
             return null; // insufficient funds
         }
 
-        public override async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
+        public async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
             decimal fee = 0,
@@ -405,7 +405,7 @@ namespace Atomex.Wallet.BitcoinBased
                 return (0m, 0m, 0m);
 
             var availableAmountInSatoshi = unspentOutputs.Sum(o => o.Value);
-            var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(unspentOutputs);
+            var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(unspentOutputs);
 
             var testTx = currency
                 .CreatePaymentTx(
@@ -440,7 +440,7 @@ namespace Atomex.Wallet.BitcoinBased
                 .ToList();
 
             var availableAmountInSatoshi = unspentOutputs.Sum(o => o.Value);
-            var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(unspentOutputs);
+            var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(unspentOutputs);
 
             var estimatedTx = currency
                 .CreateHtlcP2PkhScriptSwapPaymentTx(
@@ -693,7 +693,7 @@ namespace Atomex.Wallet.BitcoinBased
 
         #region Addresses
 
-        public override async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+        public async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string toAddress,
             decimal amount,
             decimal fee,
@@ -762,6 +762,15 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
 
             return ResolvePublicKey(refundAddress);
+        }
+
+        public async Task<WalletAddress> GetRedeemAddressAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var redeemAddress = await GetFreeExternalAddressAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            return ResolvePublicKey(redeemAddress);
         }
 
         #endregion Addresses
@@ -877,7 +886,7 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         private async Task UpsertOutputAsync(
-            Currency currency,
+            CurrencyConfig currency,
             ITxOutput output,
             string address)
         {
@@ -942,11 +951,6 @@ namespace Atomex.Wallet.BitcoinBased
             CancellationToken cancellationToken = default)
         {
             return GetAddressAsync(address, cancellationToken);
-        }
-
-        public override Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(IList<WalletAddress> from, string to, decimal amount, decimal fee, decimal feePrice, FeeUsagePolicy feeUsagePolicy, AddressUsagePolicy addressUsagePolicy, BlockchainTransactionType transactionType, CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
         }
 
         #endregion AddressResolver

@@ -25,13 +25,13 @@ namespace Atomex.Swaps.Ethereum
 {
     public class EthereumSwap : CurrencySwap
     {
-        protected const int MaxRedeemCheckAttempts = 2;
-        protected const int MaxRefundCheckAttempts = 2;
-        protected const int RedeemCheckAttemptIntervalInSec = 5;
-        protected const int RefundCheckAttemptIntervalInSec = 5;
-        protected static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(20);
-        protected static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(30);
-        private Atomex.Ethereum Eth => Currencies.Get<Atomex.Ethereum>(Currency);
+        public const int MaxRedeemCheckAttempts = 2;
+        public const int MaxRefundCheckAttempts = 2;
+        public const int RedeemCheckAttemptIntervalInSec = 5;
+        public const int RefundCheckAttemptIntervalInSec = 5;
+        public static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(20);
+        public static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(30);
+        private EthereumConfig Eth => Currencies.Get<EthereumConfig>(Currency);
         protected readonly EthereumAccount _account;
 
         public EthereumSwap(
@@ -280,7 +280,7 @@ namespace Atomex.Swaps.Ethereum
                     HashedSecret = swap.SecretHash,
                     Secret       = swap.Secret,
                     Nonce        = nonceResult.Value,
-                    GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
+                    GasPrice     = EthereumConfig.GweiToWei(gasPrice),
                 };
 
                 message.Gas = await EstimateGasAsync(message, new BigInteger(Eth.RedeemGasLimit))
@@ -399,7 +399,7 @@ namespace Atomex.Swaps.Ethereum
                 HashedSecret = swap.SecretHash,
                 Secret       = swap.Secret,
                 Nonce        = nonceResult.Value,
-                GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
+                GasPrice     = EthereumConfig.GweiToWei(gasPrice),
             };
 
             message.Gas = await EstimateGasAsync(message, new BigInteger(eth.RedeemGasLimit))
@@ -496,7 +496,7 @@ namespace Atomex.Swaps.Ethereum
                 {
                     FromAddress = walletAddress.Address,
                     HashedSecret = swap.SecretHash,
-                    GasPrice = Atomex.Ethereum.GweiToWei(gasPrice),
+                    GasPrice = EthereumConfig.GweiToWei(gasPrice),
                     Nonce = nonceResult.Value,
                 };
 
@@ -803,11 +803,11 @@ namespace Atomex.Swaps.Ethereum
                         HashedSecret    = swap.SecretHash,
                         Participant     = swap.PartyAddress,
                         RefundTimestamp = refundTimeStampUtcInSec,
-                        AmountToSend    = Atomex.Ethereum.EthToWei(amountInEth),
+                        AmountToSend    = EthereumConfig.EthToWei(amountInEth),
                         FromAddress     = walletAddress.Address,
-                        GasPrice        = Atomex.Ethereum.GweiToWei(gasPrice),
+                        GasPrice        = EthereumConfig.GweiToWei(gasPrice),
                         Nonce           = nonceResult.Value,
-                        RedeemFee       = Atomex.Ethereum.EthToWei(rewardForRedeemInEth)
+                        RedeemFee       = EthereumConfig.EthToWei(rewardForRedeemInEth)
                     };
 
                     var initiateGasLimit = rewardForRedeemInEth == 0
@@ -824,9 +824,9 @@ namespace Atomex.Swaps.Ethereum
                     var message = new AddFunctionMessage
                     {
                         HashedSecret = swap.SecretHash,
-                        AmountToSend = Atomex.Ethereum.EthToWei(amountInEth),
+                        AmountToSend = EthereumConfig.EthToWei(amountInEth),
                         FromAddress  = walletAddress.Address,
-                        GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
+                        GasPrice     = EthereumConfig.GweiToWei(gasPrice),
                         Nonce        = nonceResult.Value,
                     };
 
@@ -935,7 +935,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         // todo: use etherscan instead
-        protected static string UriByChain(Chain chain)
+        public static string UriByChain(Chain chain)
         {
             return chain switch
             {

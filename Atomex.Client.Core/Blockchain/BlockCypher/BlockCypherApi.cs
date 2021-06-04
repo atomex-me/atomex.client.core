@@ -28,15 +28,15 @@ namespace Atomex.Blockchain.BlockCypher
         private static readonly RequestLimitControl RequestLimitControl
             = new RequestLimitControl(MinDelayBetweenRequestMs);
 
-        public BitcoinBasedCurrency Currency { get; }
+        public BitcoinBasedConfig Currency { get; }
 
-        public BlockCypherApi(BitcoinBasedCurrency currency, string baseUri)
+        public BlockCypherApi(BitcoinBasedConfig currency, string baseUri)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
             BaseUri = baseUri;
         }
 
-        public BlockCypherApi(BitcoinBasedCurrency currency, IConfiguration configuration)
+        public BlockCypherApi(BitcoinBasedConfig currency, IConfiguration configuration)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
             BaseUri = configuration["BlockchainApiBaseUri"];

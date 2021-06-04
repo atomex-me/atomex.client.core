@@ -43,7 +43,7 @@ namespace Atomex.MarketData.Bitfinex
         }
 
         public BitfinexWebSocketQuotesProvider(
-            IEnumerable<Currency> currencies,
+            IEnumerable<CurrencyConfig> currencies,
             string baseCurrency)
         {
             _channels = new Dictionary<int, string>();

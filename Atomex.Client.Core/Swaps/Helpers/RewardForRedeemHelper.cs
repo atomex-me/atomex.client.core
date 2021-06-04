@@ -22,7 +22,7 @@ namespace Atomex.Swaps.Helpers
                 .Currencies
                 .GetByName(walletAddress.Currency);
 
-            if (currency is BitcoinBasedCurrency)
+            if (currency is BitcoinBasedConfig)
                 return 0m;
 
             var feeCurrency = currency.FeeCurrencyName;

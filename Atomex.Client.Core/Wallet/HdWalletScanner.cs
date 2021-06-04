@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
 using Atomex.Wallet.Ethereum;
 using Atomex.Wallet.Tezos;
-using Serilog;
 
 namespace Atomex.Wallet
 {
@@ -28,6 +30,7 @@ namespace Atomex.Wallet
                     if (currency.IsTransactionsAvailable)
                         await ScanAsync(currency.Name, skipUsed, cancellationToken)
                             .ConfigureAwait(false);
+
             }, cancellationToken);
         }
 
@@ -41,6 +44,7 @@ namespace Atomex.Wallet
                 await GetCurrencyScanner(currency)
                     .ScanAsync(skipUsed, cancellationToken)
                     .ConfigureAwait(false);
+
             }, cancellationToken);
         }
 
@@ -66,6 +70,7 @@ namespace Atomex.Wallet
                         Log.Error(e, "Free address scan error for currency: {@currency}", currency.Name);
                     }
                 }
+
             }, cancellationToken);
         }
 
@@ -90,31 +95,46 @@ namespace Atomex.Wallet
         {
             return currency switch
             {
-                "BTC" => (ICurrencyHdWalletScanner)new BitcoinBasedWalletScanner(Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
-                "LTC" => new BitcoinBasedWalletScanner(Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
-                "USDT" => new ERC20WalletScanner(
-                    Account.GetCurrencyAccount<ERC20Account>(currency),
+                "BTC" => (ICurrencyHdWalletScanner)new BitcoinBasedWalletScanner(
+                    Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
+
+                "LTC" => new BitcoinBasedWalletScanner(
+                    Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
+
+                "USDT" => new Erc20WalletScanner(
+                    Account.GetCurrencyAccount<Erc20Account>(currency),
                     Account.GetCurrencyAccount<EthereumAccount>("ETH")),
-                "TBTC" => new ERC20WalletScanner(
-                    Account.GetCurrencyAccount<ERC20Account>(currency),
+
+                "TBTC" => new Erc20WalletScanner(
+                    Account.GetCurrencyAccount<Erc20Account>(currency),
                     Account.GetCurrencyAccount<EthereumAccount>("ETH")),
-                "WBTC" => new ERC20WalletScanner(
-                    Account.GetCurrencyAccount<ERC20Account>(currency),
+
+                "WBTC" => new Erc20WalletScanner(
+                    Account.GetCurrencyAccount<Erc20Account>(currency),
                     Account.GetCurrencyAccount<EthereumAccount>("ETH")),
-                "ETH" => new EthereumWalletScanner(Account.GetCurrencyAccount<EthereumAccount>(currency)),
-                "XTZ" => new TezosWalletScanner(Account.GetCurrencyAccount<TezosAccount>(currency)),
-                "TZBTC" => new TezosWalletScanner(
-                    Account.GetCurrencyAccount<FA12Account>(currency), 
+
+                "ETH" => new EthereumWalletScanner(
+                    Account.GetCurrencyAccount<EthereumAccount>(currency)),
+
+                "XTZ" => new TezosWalletScanner(
+                    Account.GetCurrencyAccount<TezosAccount>(currency)),
+
+                "TZBTC" => new Fa12WalletScanner(
+                    Account.GetCurrencyAccount<Fa12Account>(currency), 
                     Account.GetCurrencyAccount<TezosAccount>("XTZ")),
-                "KUSD" => new TezosWalletScanner(
-                    Account.GetCurrencyAccount<FA12Account>(currency),
+
+                "KUSD" => new Fa12WalletScanner(
+                    Account.GetCurrencyAccount<Fa12Account>(currency),
                     Account.GetCurrencyAccount<TezosAccount>("XTZ")),
-                "NYX" => new TezosWalletScanner(
-                    Account.GetCurrencyAccount<NYXAccount>(currency), 
+
+                "NYX" => new NyxWalletScanner(
+                    Account.GetCurrencyAccount<NyxAccount>(currency), 
                     Account.GetCurrencyAccount<TezosAccount>("XTZ")),
-                "FA2" => new TezosWalletScanner(
-                    Account.GetCurrencyAccount<FA2Account>(currency),
+
+                "FA2" => new Fa2WalletScanner(
+                    Account.GetCurrencyAccount<Fa2Account>(currency),
                     Account.GetCurrencyAccount<TezosAccount>("XTZ")),
+
                 _ => throw new NotSupportedException($"Currency {currency} not supported")
             };
         }

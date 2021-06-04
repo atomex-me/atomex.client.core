@@ -21,7 +21,7 @@ namespace Atomex.Blockchain.Ethereum
 
         public string Id { get; set; }
         public string UniqueId => $"{Id}:{Currency.Name}";
-        public Currency Currency { get; set; }
+        public CurrencyConfig Currency { get; set; }
         public BlockInfo BlockInfo { get; set; }
         public BlockchainTransactionState State { get; set; }
         public BlockchainTransactionType Type { get; set; }
@@ -47,7 +47,7 @@ namespace Atomex.Blockchain.Ethereum
         }
 
         public EthereumTransaction(
-            Currency currency,
+            CurrencyConfig currency,
             Transaction tx,
             TransactionReceipt txReceipt,
             DateTime blockTimeStamp)
@@ -86,7 +86,7 @@ namespace Atomex.Blockchain.Ethereum
             };
         }
 
-        public EthereumTransaction(Currency currency, TransactionInput txInput)
+        public EthereumTransaction(CurrencyConfig currency, TransactionInput txInput)
         {
             Currency = currency;
             Type = BlockchainTransactionType.Unknown;
@@ -137,7 +137,7 @@ namespace Atomex.Blockchain.Ethereum
 
         public bool Verify()
         {
-            var currency = (Atomex.Ethereum)Currency;
+            var currency = (Atomex.EthereumConfig)Currency;
 
             return Web3.OfflineTransactionSigner
                 .VerifyTransaction(
@@ -174,7 +174,7 @@ namespace Atomex.Blockchain.Ethereum
 
             using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
 
-            var chain = ((Atomex.Ethereum) Currency).Chain;
+            var chain = ((Atomex.EthereumConfig) Currency).Chain;
 
             RlpEncodedTx = Web3.OfflineTransactionSigner
                 .SignTransaction(

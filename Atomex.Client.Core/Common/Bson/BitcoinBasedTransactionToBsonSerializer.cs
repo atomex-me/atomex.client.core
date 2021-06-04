@@ -22,9 +22,9 @@ namespace Atomex.Common.Bson
         private const string FeesKey = nameof(BitcoinBasedTransaction.Fees);
         private const string AmountKey = nameof(BitcoinBasedTransaction.Amount);
 
-        private readonly IEnumerable<Currency> _currencies;
+        private readonly IEnumerable<CurrencyConfig> _currencies;
 
-        public BitcoinBasedTransactionToBsonSerializer(IEnumerable<Currency> currencies)
+        public BitcoinBasedTransactionToBsonSerializer(IEnumerable<CurrencyConfig> currencies)
         {
             _currencies = currencies;
         }
@@ -41,7 +41,7 @@ namespace Atomex.Common.Bson
 
             var currency = _currencies.FirstOrDefault(c => c.Name.Equals(currencyName));
 
-            if (currency is BitcoinBasedCurrency btcBaseCurrency)
+            if (currency is BitcoinBasedConfig btcBaseCurrency)
             {
                 var blockInfo = !bson[BlockInfoKey].IsNull
                     ? BsonMapper.ToObject<BlockInfo>(bson[BlockInfoKey].AsDocument)

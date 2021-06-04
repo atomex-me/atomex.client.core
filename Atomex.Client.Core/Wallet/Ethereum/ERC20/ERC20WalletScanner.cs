@@ -3,27 +3,29 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Ethereum.ERC20;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using Atomex.Blockchain.Ethereum.ERC20;
-using Serilog;
 using static Atomex.Blockchain.Ethereum.EtherScanApi;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class ERC20WalletScanner : ICurrencyHdWalletScanner
+    public class Erc20WalletScanner : ICurrencyHdWalletScanner
     {
         private const int DefaultInternalLookAhead = 1;
         private const int DefaultExternalLookAhead = 1;
 
         protected int InternalLookAhead { get; } = DefaultInternalLookAhead;
         protected int ExternalLookAhead { get; } = DefaultExternalLookAhead;
-        private EthereumTokens.ERC20 Currency => Account.Currencies.Get<EthereumTokens.ERC20>(Account.Currency);
-        private ERC20Account Account { get; }
+        private EthereumTokens.Erc20Config Currency => Account.Currencies.Get<EthereumTokens.Erc20Config>(Account.Currency);
+        private Erc20Account Account { get; }
         private EthereumAccount EthereumAccount { get; }
 
-        public ERC20WalletScanner(ERC20Account account, EthereumAccount ethereumAccount)
+        public Erc20WalletScanner(Erc20Account account, EthereumAccount ethereumAccount)
         {
             Account = account ?? throw new ArgumentNullException(nameof(account));
             EthereumAccount = ethereumAccount ?? throw new ArgumentNullException(nameof(ethereumAccount));

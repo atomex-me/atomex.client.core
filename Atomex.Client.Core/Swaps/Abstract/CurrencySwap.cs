@@ -107,7 +107,7 @@ namespace Atomex.Swaps.Abstract
 
         protected Task TrackTransactionConfirmationAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             string txId,
             Func<Swap, IBlockchainTransaction, CancellationToken, Task> confirmationHandler,
             CancellationToken cancellationToken = default)

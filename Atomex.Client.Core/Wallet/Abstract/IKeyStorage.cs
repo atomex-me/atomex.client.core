@@ -5,7 +5,7 @@ namespace Atomex.Wallet.Abstract
 {
     public interface IKeyStorage
     {
-        SecureBytes GetPrivateKey(Currency currency, KeyIndex keyIndex);
-        SecureBytes GetPublicKey(Currency currency, KeyIndex keyIndex);
+        SecureBytes GetPrivateKey(CurrencyConfig currency, KeyIndex keyIndex);
+        SecureBytes GetPublicKey(CurrencyConfig currency, KeyIndex keyIndex);
     }
 }

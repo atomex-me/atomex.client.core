@@ -12,18 +12,19 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class FA12Account : TezosAccount
+    public class Fa12Account : CurrencyAccount, ILegacyCurrencyAccount
     {
         private readonly TezosAccount _tezosAccount;
-        private TezosTokens.FA12 Fa12 => Currencies.Get<TezosTokens.FA12>(Currency);
-        private Atomex.Tezos Xtz => Currencies.Get<Atomex.Tezos>("XTZ");
+        private Fa12Config Fa12 => Currencies.Get<Fa12Config>(Currency);
+        private TezosConfig Xtz => Currencies.Get<TezosConfig>("XTZ");
 
-        public FA12Account(
+        public Fa12Account(
             string currency,
             ICurrencies currencies,
             IHdWallet wallet,
@@ -36,7 +37,7 @@ namespace Atomex.Wallet.Tezos
 
         #region Common
 
-        public override async Task<Error> SendAsync(
+        public async Task<Error> SendAsync(
             IEnumerable<WalletAddress> from,
             string to,
             decimal amount,
@@ -109,7 +110,7 @@ namespace Atomex.Wallet.Tezos
                     var fillResult = await tx
                         .FillOperationsAsync(
                             securePublicKey: securePublicKey,
-                            headOffset: Atomex.Tezos.HeadOffset,
+                            headOffset: Atomex.TezosConfig.HeadOffset,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -173,7 +174,7 @@ namespace Atomex.Wallet.Tezos
             return null;
         }
 
-        public override async Task<Error> SendAsync(
+        public async Task<Error> SendAsync(
             string to,
             decimal amount,
             decimal fee,
@@ -197,7 +198,7 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
         }
 
-        public override async Task<decimal?> EstimateFeeAsync(
+        public async Task<decimal?> EstimateFeeAsync(
             string to,
             decimal amount,
             BlockchainTransactionType type,
@@ -239,7 +240,7 @@ namespace Atomex.Wallet.Tezos
             return selectedAddresses.Sum(s => s.UsedFee);
         }
 
-        public override async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
+        public async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
             decimal fee = 0,
@@ -370,7 +371,7 @@ namespace Atomex.Wallet.Tezos
             xtzTx.InternalTxs?.ForEach(async t => await ResolveTransactionTypeAsync(t, cancellationToken)
                 .ConfigureAwait(false));
 
-            ResolveTezosTxAlias(xtzTx);
+            TezosAccount.ResolveTezosTxAlias(xtzTx);
 
             return true;
         }
@@ -383,7 +384,8 @@ namespace Atomex.Wallet.Tezos
         {
             var fa12 = Fa12;
 
-            var isRevealed = await IsRevealedSourceAsync(from, cancellationToken)
+            var isRevealed = await _tezosAccount
+                .IsRevealedSourceAsync(from, cancellationToken)
                 .ConfigureAwait(false);
 
             if (type.HasFlag(BlockchainTransactionType.TokenApprove))
@@ -740,7 +742,7 @@ namespace Atomex.Wallet.Tezos
             return xtzUnspentAddresses.FirstOrDefault();
         }
 
-        public override async Task<WalletAddress> GetRedeemAddressAsync(   //todo: match it with xtz balances
+        public async Task<WalletAddress> GetRedeemAddressAsync(   //todo: match it with xtz balances
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = await DataRepository
@@ -776,11 +778,13 @@ namespace Atomex.Wallet.Tezos
                     return ResolvePublicKey(lastActiveAddress);
             }
 
-            return await base.GetRedeemAddressAsync(cancellationToken)
+            var redeemAddress = await GetFreeExternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+            return ResolvePublicKey(redeemAddress);
         }
 
-        public override async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+        public async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string toAddress,
             decimal amount,
             decimal fee,

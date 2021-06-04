@@ -21,14 +21,14 @@ namespace Atomex.Swaps.Tezos
 {
     public class TezosSwap : CurrencySwap
     {
-        protected const int MaxRedeemCheckAttempts = 10;
-        protected const int MaxRefundCheckAttempts = 10;
-        protected const int RedeemCheckAttemptIntervalInSec = 5;
-        protected const int RefundCheckAttemptIntervalInSec = 5;
-        protected static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(10);
-        protected static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(15);
+        public const int MaxRedeemCheckAttempts = 10;
+        public const int MaxRefundCheckAttempts = 10;
+        public const int RedeemCheckAttemptIntervalInSec = 5;
+        public const int RefundCheckAttemptIntervalInSec = 5;
+        public static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(10);
+        public static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(15);
 
-        private Atomex.Tezos Xtz => Currencies.Get<Atomex.Tezos>(Currency);
+        private TezosConfig Xtz => Currencies.Get<TezosConfig>(Currency);
         protected readonly TezosAccount _account;
 
         public TezosSwap(
@@ -83,7 +83,7 @@ namespace Atomex.Swaps.Tezos
                         var fillResult = await paymentTx
                             .FillOperationsAsync(
                                 securePublicKey: securePublicKey,
-                                headOffset: Atomex.Tezos.HeadOffset,
+                                headOffset: Atomex.TezosConfig.HeadOffset,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
@@ -301,7 +301,7 @@ namespace Atomex.Swaps.Tezos
                 var fillResult = await redeemTx
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
-                        headOffset: Atomex.Tezos.HeadOffset,
+                        headOffset: Atomex.TezosConfig.HeadOffset,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -413,7 +413,7 @@ namespace Atomex.Swaps.Tezos
             var fillResult = await redeemTx
                 .FillOperationsAsync(
                     securePublicKey: securePublicKey,
-                    headOffset: Atomex.Tezos.HeadOffset,
+                    headOffset: Atomex.TezosConfig.HeadOffset,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -502,7 +502,7 @@ namespace Atomex.Swaps.Tezos
                 var fillResult = await refundTx
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
-                        headOffset: Atomex.Tezos.HeadOffset,
+                        headOffset: Atomex.TezosConfig.HeadOffset,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

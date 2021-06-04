@@ -126,16 +126,16 @@ namespace Atomex.Blockchain.BitCore
         private static readonly RequestLimitControl RequestLimitControl
             = new RequestLimitControl(MinDelayBetweenRequestMs);
 
-        public BitcoinBasedCurrency Currency { get; }
+        public BitcoinBasedConfig Currency { get; }
         public string Network => Currency.Network == NBitcoin.Network.Main ? "mainnet" : "testnet";
 
-        public BitCoreApi(BitcoinBasedCurrency currency, IConfiguration configuration)
+        public BitCoreApi(BitcoinBasedConfig currency, IConfiguration configuration)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
             BaseUri = configuration["BlockchainApiBaseUri"];
         }
 
-        public BitCoreApi(BitcoinBasedCurrency currency, string baseUri)
+        public BitCoreApi(BitcoinBasedConfig currency, string baseUri)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
             BaseUri = baseUri ?? throw new ArgumentNullException(nameof(baseUri));

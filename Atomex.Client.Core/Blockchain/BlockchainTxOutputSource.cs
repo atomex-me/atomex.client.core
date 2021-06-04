@@ -8,9 +8,9 @@ namespace Atomex.Blockchain
 {
     public class BlockchainTxOutputSource : ITxOutputSource
     {
-        private readonly BitcoinBasedCurrency _currency;
+        private readonly BitcoinBasedConfig _currency;
 
-        public BlockchainTxOutputSource(BitcoinBasedCurrency currency)
+        public BlockchainTxOutputSource(BitcoinBasedConfig currency)
         {
             _currency = currency ?? throw new ArgumentNullException(nameof(currency));
         }

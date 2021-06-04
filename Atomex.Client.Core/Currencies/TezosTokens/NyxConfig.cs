@@ -8,7 +8,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.TezosTokens
 {
-    public class FA2 : Tezos
+    public class NyxConfig : TezosConfig
     {
         public decimal GetBalanceFee { get; private set; }
         public decimal GetBalanceGasLimit { get; private set; }
@@ -28,17 +28,15 @@ namespace Atomex.TezosTokens
 
         public string TokenContractAddress { get; private set; }
         public int TokenPointerBalance { get; private set; }
-        public int TokenPointerAllowance { get; private set; }
         public string ViewContractAddress { get; private set; }
         public string BcdApi { get; private set; }
         public string BcdNetwork { get; private set; }
-        public long TokenID { get; private set; }
 
-        public FA2()
+        public NyxConfig()
         {
         }
 
-        public FA2(IConfiguration configuration)
+        public NyxConfig(IConfiguration configuration)
         {
             Update(configuration);
         }
@@ -115,7 +113,6 @@ namespace Atomex.TezosTokens
             BbApiUri                = configuration["BbApiUri"];
             BcdApi                  = configuration["BcdApi"];
             BcdNetwork              = configuration["BcdNetwork"];
-            TokenID                 = long.Parse(configuration["TokenID"], CultureInfo.InvariantCulture);
 
             BlockchainApi           = ResolveBlockchainApi(configuration, this);
             TxExplorerUri           = configuration["TxExplorerUri"];
@@ -123,12 +120,11 @@ namespace Atomex.TezosTokens
             SwapContractAddress     = configuration["SwapContract"];
             TokenContractAddress    = configuration["TokenContract"];
             TokenPointerBalance     = int.Parse(configuration["TokenPointerBalance"], CultureInfo.InvariantCulture);
-            TokenPointerAllowance   = int.Parse(configuration["TokenPointerAllowance"], CultureInfo.InvariantCulture);
             TransactionType         = typeof(TezosTransaction);
 
             IsTransactionsAvailable = true;
             IsSwapAvailable         = true;
-            Bip44Code               = Bip44.Tezos; 
+            Bip44Code               = Bip44.Tezos;
         }
 
         public override decimal GetDefaultFee() =>

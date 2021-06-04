@@ -22,7 +22,7 @@ namespace Atomex.Blockchain.Tezos
 
         public string Id { get; set; }
         public string UniqueId => $"{Id}:{Currency.Name}";
-        public Currency Currency { get; set; }
+        public CurrencyConfig Currency { get; set; }
         public BlockInfo BlockInfo { get; set; }
         public BlockchainTransactionState State { get; set ; }
         public BlockchainTransactionType Type { get; set; }
@@ -113,7 +113,7 @@ namespace Atomex.Blockchain.Tezos
 
             using var privateKey = securePrivateKey.ToUnsecuredBytes();
 
-            var xtz = (Atomex.Tezos)Currency;
+            var xtz = (Atomex.TezosConfig)Currency;
 
             var rpc = new Rpc(xtz.RpcNodeUri);
 
@@ -139,7 +139,7 @@ namespace Atomex.Blockchain.Tezos
         {
             using var publicKey = securePublicKey.ToUnsecuredBytes();
 
-            var tezosConfig = (Atomex.Tezos)Currency;
+            var tezosConfig = (Atomex.TezosConfig)Currency;
 
             var rpc = new Rpc(tezosConfig.RpcNodeUri);
 

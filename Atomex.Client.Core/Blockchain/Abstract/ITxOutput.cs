@@ -10,6 +10,6 @@ namespace Atomex.Blockchain.Abstract
         string TxId { get; }
         bool IsSpent { get; }
         ITxPoint SpentTxPoint { get; set; }
-        string DestinationAddress(Currency currency);
+        string DestinationAddress(CurrencyConfig currency);
     }
 }

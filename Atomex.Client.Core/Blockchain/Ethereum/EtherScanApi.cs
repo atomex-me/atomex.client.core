@@ -122,9 +122,9 @@ namespace Atomex.Blockchain.Ethereum
             }
         }
 
-        private Currency Currency { get; }
+        private CurrencyConfig Currency { get; }
 
-        public EtherScanApi(Atomex.Ethereum currency)
+        public EtherScanApi(Atomex.EthereumConfig currency)
         {
             Currency = currency;
             BaseUrl = currency.BlockchainApiBaseUri;
@@ -148,7 +148,7 @@ namespace Atomex.Blockchain.Ethereum
                        var json = JsonConvert.DeserializeObject<JObject>(content);
 
                        return json.ContainsKey("result")
-                           ? Atomex.Ethereum.WeiToEth(BigInteger.Parse(json["result"].ToString()))
+                           ? Atomex.EthereumConfig.WeiToEth(BigInteger.Parse(json["result"].ToString()))
                            : 0;
                    },
                    cancellationToken: cancellationToken)
@@ -702,7 +702,7 @@ namespace Atomex.Blockchain.Ethereum
         }
 
         public async Task<Result<decimal>> GetERC20AllowanceAsync(
-            EthereumTokens.ERC20 erc20,
+            EthereumTokens.Erc20Config erc20,
             string tokenAddress,
             FunctionMessage allowanceMessage,
             CancellationToken cancellationToken = default)

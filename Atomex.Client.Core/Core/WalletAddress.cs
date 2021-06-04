@@ -1,4 +1,5 @@
 ﻿using System;
+
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.Core

@@ -23,7 +23,7 @@ namespace Atomex.Blockchain.Tezos
         private const string NYX = "NYX";
         private const string FA2 = "FA2";
 
-        private readonly Currency _currency;
+        private readonly CurrencyConfig _currency;
         private readonly string _baseUri;
         private readonly string _rpcNodeUri;
         private readonly HttpRequestHeaders _headers;
@@ -35,7 +35,7 @@ namespace Atomex.Blockchain.Tezos
             public Func<string, Result<IEnumerable<TezosTransaction>>> Parser { get; set; }
         }
 
-        public TzktApi(Atomex.Tezos currency)
+        public TzktApi(Atomex.TezosConfig currency)
         {
             _currency = currency;
             _baseUri = currency.BaseUri;
@@ -219,7 +219,7 @@ namespace Atomex.Blockchain.Tezos
             var txsSources = _currency.Name switch
             {
                 NYX => GetNyxTxsSource(address),
-                FA2 => GetFa2TxsSource(address),
+                //FA2 => GetFa2TxsSource(address),
                 _   => GetFa12TxsSource(address)
             };
 
@@ -245,7 +245,7 @@ namespace Atomex.Blockchain.Tezos
                 txsResult = txsResult.Concat(txsRes.Value);
             }
 
-            if (_currency is FA12 fa12)
+            if (_currency is Fa12Config fa12)
             {
                 var size = fa12.BcdSizeLimit;
                 var total = 0L;
@@ -449,9 +449,11 @@ namespace Atomex.Blockchain.Tezos
             return addressInfo.Value.IsRevealed;
         }
 
-        private TezosTransaction ParseFA12Params(TezosTransaction tx, JObject transaction)
+        private TezosTransaction ParseFA12Params(
+            TezosTransaction tx,
+            JObject transaction)
         {
-            var tokenContractAddress = (_currency as FA12).TokenContractAddress;
+            var tokenContractAddress = (_currency as Fa12Config).TokenContractAddress;
 
             if (transaction["target"]?["address"]?.ToString() != tokenContractAddress)
             {
@@ -507,9 +509,11 @@ namespace Atomex.Blockchain.Tezos
             return tx;
         }
 
-        private TezosTransaction ParseNYXParams(TezosTransaction tx, JObject transaction)
+        private TezosTransaction ParseNYXParams(
+            TezosTransaction tx,
+            JObject transaction)
         {
-            var tokenContractAddress = (_currency as NYX).TokenContractAddress;
+            var tokenContractAddress = (_currency as NyxConfig).TokenContractAddress;
 
             tx.Fee          = transaction["bakerFee"].Value<decimal>();
             tx.GasLimit     = transaction["gasLimit"].Value<decimal>();
@@ -572,9 +576,11 @@ namespace Atomex.Blockchain.Tezos
             return tx;
         }
 
-        private TezosTransaction ParseFA2Params(TezosTransaction tx, JObject transaction)
+        private TezosTransaction ParseFA2Params(
+            TezosTransaction tx,
+            JObject transaction)
         {
-            var tokenContractAddress = (_currency as FA2).TokenContractAddress;
+            var tokenContractAddress = (_currency as Fa2Config).TokenContractAddress;
 
             tx.Fee          = transaction["bakerFee"].Value<decimal>();
             tx.GasLimit     = transaction["gasLimit"].Value<decimal>();
@@ -627,7 +633,9 @@ namespace Atomex.Blockchain.Tezos
             return tx;
         }
 
-        private Result<IEnumerable<TezosTransaction>> ParseTxs(JArray data, bool parseTokenParams = true)
+        private Result<IEnumerable<TezosTransaction>> ParseTxs(
+            JArray data,
+            bool parseTokenParams = true)
         {
             var result = new List<TezosTransaction>();
 
@@ -712,9 +720,12 @@ namespace Atomex.Blockchain.Tezos
             return result;
         }
 
-        private Result<IEnumerable<TezosTransaction>> ParseTokenTxs(JObject data, out long total, out string lastId)
+        private Result<IEnumerable<TezosTransaction>> ParseTokenTxs(
+            JObject data,
+            out long total,
+            out string lastId)
         {
-            var token = _currency as FA12;
+            var token = _currency as Fa12Config;
 
             var result = new List<TezosTransaction>();
 
@@ -774,7 +785,8 @@ namespace Atomex.Blockchain.Tezos
             return result;
         }
 
-        private BlockchainTransactionState StateFromStatus(string status) =>
+        private BlockchainTransactionState StateFromStatus(
+            string status) =>
             status switch
             {
                 "applied"     => BlockchainTransactionState.Confirmed,
@@ -792,7 +804,7 @@ namespace Atomex.Blockchain.Tezos
             SecureBytes securePublicKey,
             CancellationToken cancellationToken = default)
         {
-            var token = _currency as FA12;
+            var token = _currency as Fa12Config;
 
             try
             {
@@ -857,23 +869,23 @@ namespace Atomex.Blockchain.Tezos
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting balance after {attempts} attempts");
         }
 
-        public Task<Result<decimal>> GetTokenBigMapBalanceAsync(
-            string address,
-            CancellationToken cancellationToken = default)
-        {
-            return _currency.Name switch
-            {
-                NYX => GetNyxBigMapBalanceAsync(address, cancellationToken),
-                FA2 => GetFa2BigMapBalanceAsync(address, cancellationToken),
-                _   => throw new NotSupportedException($"Get BigMap balance not supported for {_currency.Name}")
-            };
-        }
+        //public Task<Result<decimal>> GetTokenBigMapBalanceAsync(
+        //    string address,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return _currency.Name switch
+        //    {
+        //        NYX => GetNyxBigMapBalanceAsync(address, cancellationToken),
+        //        FA2 => GetFa2BigMapBalanceAsync(address, cancellationToken),
+        //        _   => throw new NotSupportedException($"Get BigMap balance not supported for {_currency.Name}")
+        //    };
+        //}
 
         private async Task<Result<decimal>> GetNyxBigMapBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            var token = _currency as NYX;
+            var token = _currency as NyxConfig;
 
             try
             {
@@ -900,47 +912,47 @@ namespace Atomex.Blockchain.Tezos
             }
         }
 
-        private async Task<Result<decimal>> GetFa2BigMapBalanceAsync(
-            string address,
-            CancellationToken cancellationToken = default)
-        {
-            var token = _currency as FA2;
+        //private async Task<Result<decimal>> GetFa2BigMapBalanceAsync(
+        //    string address,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    var token = _currency as Fa2Config;
 
-            try
-            {
-                return await HttpHelper
-                    .GetAsyncResult<decimal>(
-                        baseUri: token.BcdApi,
-                        requestUri: $"bigmap/{token.BcdNetwork}/{token.TokenPointerBalance}/keys?q={token.TokenID}",
-                        headers: _headers,
-                        responseHandler: (response, content) =>
-                        {
-                            var bigMap = JsonConvert.DeserializeObject<JArray>(content);
+        //    try
+        //    {
+        //        return await HttpHelper
+        //            .GetAsyncResult<decimal>(
+        //                baseUri: token.BcdApi,
+        //                requestUri: $"bigmap/{token.BcdNetwork}/{token.TokenPointerBalance}/keys?q={token.TokenID}",
+        //                headers: _headers,
+        //                responseHandler: (response, content) =>
+        //                {
+        //                    var bigMap = JsonConvert.DeserializeObject<JArray>(content);
 
-                            if (bigMap.Count == 0)
-                                return 0;
+        //                    if (bigMap.Count == 0)
+        //                        return 0;
 
-                            return bigMap[0]["data"]?["value"]?["value"]?.Value<string>() == address ? 1 : 0;
-                        },
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                return new Error(Errors.RequestError, e.Message);
-            }
-        }
+        //                    return bigMap[0]["data"]?["value"]?["value"]?.Value<string>() == address ? 1 : 0;
+        //                },
+        //                cancellationToken: cancellationToken)
+        //            .ConfigureAwait(false);
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        return new Error(Errors.RequestError, e.Message);
+        //    }
+        //}
 
-        public async Task<Result<decimal>> TryGetTokenBigMapBalanceAsync(
-            string address,
-            int pointer,
-            int attempts = 3,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            return await ResultHelper.TryDo((c) => GetTokenBigMapBalanceAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting big map balance after {attempts} attempts");
-        }
+        //public async Task<Result<decimal>> TryGetTokenBigMapBalanceAsync(
+        //    string address,
+        //    int pointer,
+        //    int attempts = 3,
+        //    int attemptsIntervalMs = 1000,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return await ResultHelper.TryDo((c) => GetTokenBigMapBalanceAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
+        //        .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting big map balance after {attempts} attempts");
+        //}
 
         public async Task<Result<decimal>> GetFa12AllowanceAsync(
             string holderAddress,
@@ -949,7 +961,7 @@ namespace Atomex.Blockchain.Tezos
             SecureBytes securePublicKey,
             CancellationToken cancellationToken = default)
         {
-            var token = _currency as FA12;
+            var token = _currency as Fa12Config;
 
             try
             {
@@ -1015,51 +1027,51 @@ namespace Atomex.Blockchain.Tezos
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting balance after {attempts} attempts");
         }
 
-        public async Task<Result<decimal>> GetFa2BigMapAllowanceAsync(
-            string holderAddress,
-            string spenderAddress,
-            CancellationToken cancellationToken = default)
-        {
-            var token = _currency as FA2;
+        //public async Task<Result<decimal>> GetFa2BigMapAllowanceAsync(
+        //    string holderAddress,
+        //    string spenderAddress,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    var token = _currency as Fa2Config;
 
-            try
-            {
-                return await HttpHelper.GetAsyncResult<decimal>(
-                    baseUri: token.BcdApi,
-                    requestUri: $"bigmap/{token.BcdNetwork}/{token.TokenPointerAllowance}/keys?q={holderAddress}",
-                    headers: _headers,
-                    responseHandler: (response, content) =>
-                    {
-                        var bigMap = JsonConvert.DeserializeObject<JArray>(content);
+        //    try
+        //    {
+        //        return await HttpHelper.GetAsyncResult<decimal>(
+        //            baseUri: token.BcdApi,
+        //            requestUri: $"bigmap/{token.BcdNetwork}/{token.TokenPointerAllowance}/keys?q={holderAddress}",
+        //            headers: _headers,
+        //            responseHandler: (response, content) =>
+        //            {
+        //                var bigMap = JsonConvert.DeserializeObject<JArray>(content);
 
-                        if (bigMap.Count == 0)
-                            return 0;
+        //                if (bigMap.Count == 0)
+        //                    return 0;
 
-                        //todo: refactoring
-                        if (bigMap[0]["data"]["value"].Contains("children"))
-                            return (bigMap[0]["data"]?["value"]?["children"]?.Where(a => a["value"]?.Value<string>() == spenderAddress) != null) ? 1 : 0;
-                        else
-                            return 0;
-                    },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                return new Error(Errors.RequestError, e.Message);
-            }
-        }
+        //                //todo: refactoring
+        //                if (bigMap[0]["data"]["value"].Contains("children"))
+        //                    return (bigMap[0]["data"]?["value"]?["children"]?.Where(a => a["value"]?.Value<string>() == spenderAddress) != null) ? 1 : 0;
+        //                else
+        //                    return 0;
+        //            },
+        //            cancellationToken: cancellationToken)
+        //        .ConfigureAwait(false);
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        return new Error(Errors.RequestError, e.Message);
+        //    }
+        //}
 
-        public async Task<Result<decimal>> TryGetFa2BigMapAllowanceAsync(
-            string holderAddress,
-            string spenderAddress,
-            int attempts = 3,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            return await ResultHelper.TryDo((c) => GetFa2BigMapAllowanceAsync(holderAddress, spenderAddress, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting big map allowance after {attempts} attempts");
-        }
+        //public async Task<Result<decimal>> TryGetFa2BigMapAllowanceAsync(
+        //    string holderAddress,
+        //    string spenderAddress,
+        //    int attempts = 3,
+        //    int attemptsIntervalMs = 1000,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return await ResultHelper.TryDo((c) => GetFa2BigMapAllowanceAsync(holderAddress, spenderAddress, c), attempts, attemptsIntervalMs, cancellationToken)
+        //        .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting big map allowance after {attempts} attempts");
+        //}
 
         #endregion
 
@@ -1125,9 +1137,10 @@ namespace Atomex.Blockchain.Tezos
             });
         }
 
-        private IEnumerable<TxsSource> GetNyxTxsSource(string address)
+        private IEnumerable<TxsSource> GetNyxTxsSource(
+            string address)
         {
-            var token = _currency as NYX;
+            var token = _currency as NyxConfig;
 
             return new List<TxsSource>
             {
@@ -1169,39 +1182,41 @@ namespace Atomex.Blockchain.Tezos
             };
         }
 
-        private IEnumerable<TxsSource> GetFa2TxsSource(string address)
-        {
-            var token = _currency as FA2;
+        //private IEnumerable<TxsSource> GetFa2TxsSource(
+        //    string address)
+        //{
+        //    var token = _currency as Fa2Config;
 
-            return new List<TxsSource>
-            {
-                new TxsSource
-                {
-                    BaseUri    = _baseUri,
-                    RequestUri = $"operations/transactions?sender={address}&target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"update_operators\"*",
-                    Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
-                        content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
-                },
-                new TxsSource
-                {
-                    BaseUri    = _baseUri,
-                    RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transfer\"*{address}*",
-                    Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
-                        content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
-                },
-                new TxsSource
-                {
-                    BaseUri    = _baseUri,
-                    RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transfer\"*{Forge.ForgeAddress(address)}*",
-                    Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
-                        content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
-                }
-            };
-        }
+        //    return new List<TxsSource>
+        //    {
+        //        new TxsSource
+        //        {
+        //            BaseUri    = _baseUri,
+        //            RequestUri = $"operations/transactions?sender={address}&target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"update_operators\"*",
+        //            Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
+        //                content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
+        //        },
+        //        new TxsSource
+        //        {
+        //            BaseUri    = _baseUri,
+        //            RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transfer\"*{address}*",
+        //            Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
+        //                content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
+        //        },
+        //        new TxsSource
+        //        {
+        //            BaseUri    = _baseUri,
+        //            RequestUri = $"operations/transactions?target={token.TokenContractAddress}&parameters.as=*\"entrypoint\":\"transfer\"*{Forge.ForgeAddress(address)}*",
+        //            Parser     = new Func<string, Result<IEnumerable<TezosTransaction>>>(
+        //                content => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)))
+        //        }
+        //    };
+        //}
 
-        private IEnumerable<TxsSource> GetFa12TxsSource(string address)
+        private IEnumerable<TxsSource> GetFa12TxsSource(
+            string address)
         {
-            var token = _currency as FA12;
+            var token = _currency as Fa12Config;
 
             return new List<TxsSource>
             {

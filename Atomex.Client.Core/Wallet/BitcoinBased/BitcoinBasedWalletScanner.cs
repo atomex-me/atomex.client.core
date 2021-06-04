@@ -18,7 +18,7 @@ namespace Atomex.Wallet.BitcoinBased
         private const int DefaultExternalLookAhead = 3;
 
         private BitcoinBasedAccount Account { get; }
-        private Currency Currency => Account.Currencies.GetByName(Account.Currency);
+        private CurrencyConfig Currency => Account.Currencies.GetByName(Account.Currency);
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
 

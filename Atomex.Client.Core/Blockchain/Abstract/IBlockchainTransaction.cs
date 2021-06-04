@@ -29,7 +29,7 @@ namespace Atomex.Blockchain.Abstract
     public interface IBlockchainTransaction
     {
         string Id { get; }
-        Currency Currency { get; }
+        CurrencyConfig Currency { get; }
         BlockInfo BlockInfo { get; }
         BlockchainTransactionState State { get; set; }
         BlockchainTransactionType Type { get; set; }

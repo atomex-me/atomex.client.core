@@ -16,10 +16,10 @@ namespace Atomex.Swaps.Tezos.NYX.Helpers
     {
         public static async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             CancellationToken cancellationToken = default)
         {
-            var nyx = currency as TezosTokens.NYX;
+            var nyx = currency as TezosTokens.NyxConfig;
 
             if (!(swap.PaymentTx is TezosTransaction savedTx))
                 return new Error(Errors.SwapError, "Saved tx is null");
@@ -54,8 +54,8 @@ namespace Atomex.Swaps.Tezos.NYX.Helpers
 
         public static async Task<Result<bool>> IsInitiatedAsync(
             Swap swap,
-            Currency currency,
-            Atomex.Tezos tezos,
+            CurrencyConfig currency,
+            Atomex.TezosConfig tezos,
             long refundTimeStamp,
             CancellationToken cancellationToken = default)
         {
@@ -63,7 +63,7 @@ namespace Atomex.Swaps.Tezos.NYX.Helpers
             {
                 Log.Debug("Tezos NYX: check initiated event");
 
-                var nyx = (TezosTokens.NYX)currency;
+                var nyx = (TezosTokens.NyxConfig)currency;
 
                 var side = swap.Symbol
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
@@ -158,8 +158,8 @@ namespace Atomex.Swaps.Tezos.NYX.Helpers
 
         public static Task StartSwapInitiatedControlAsync(
             Swap swap,
-            Currency currency,
-            Atomex.Tezos tezos,
+            CurrencyConfig currency,
+            Atomex.TezosConfig tezos,
             long refundTimeStamp,
             TimeSpan interval,
             Func<Swap, CancellationToken, Task> initiatedHandler = null,

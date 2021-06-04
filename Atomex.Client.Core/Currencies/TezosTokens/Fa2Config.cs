@@ -1,24 +1,15 @@
 ﻿using System.Globalization;
 using System.Numerics;
-using System.Threading;
-using System.Threading.Tasks;
+
 using Microsoft.Extensions.Configuration;
 
 using Atomex.Blockchain.Tezos;
-using Atomex.Common;
 using Atomex.Wallet.Bip;
 
 namespace Atomex.TezosTokens
 {
-    public class FA12 : Tezos
+    public class Fa2Config : TezosConfig
     {
-        public decimal GetBalanceFee { get; private set; }
-        public decimal GetBalanceGasLimit { get; private set; }
-        public decimal GetBalanceStorageLimit { get; private set; }
-        public decimal GetBalanceSize { get; private set; }
-
-        public decimal GetAllowanceGasLimit { get; private set; }
-
         public decimal TransferFee { get; private set; }
         public decimal TransferGasLimit { get; private set; }
         public decimal TransferStorageLimit { get; private set; }
@@ -29,18 +20,15 @@ namespace Atomex.TezosTokens
         public decimal ApproveStorageLimit { get; private set; }
         public decimal ApproveSize { get; private set; }
 
-        public string TokenContractAddress { get; private set; }
-        public string ViewContractAddress { get; private set; }
         public string BcdApi { get; private set; }
         public string BcdNetwork { get; private set; }
+        
 
-        public int BcdSizeLimit { get; private set; }
-
-        public FA12()
+        public Fa2Config()
         {
         }
 
-        public FA12(IConfiguration configuration)
+        public Fa2Config(IConfiguration configuration)
         {
             Update(configuration);
         }
@@ -52,18 +40,18 @@ namespace Atomex.TezosTokens
             DigitsMultiplier        = decimal.Parse(configuration["DigitsMultiplier"]);
             DustDigitsMultiplier    = long.Parse(configuration["DustDigitsMultiplier"]);
             Digits                  = (int)BigInteger.Log10(new BigInteger(DigitsMultiplier));
-            Format                  = $"F{(Digits < 9 ? Digits : 9)}";
+            Format                  = $"F{Digits}";
 
             FeeDigits               = Digits;
             FeeCode                 = "XTZ";
-            FeeFormat               = $"F{(FeeDigits < 9 ? FeeDigits : 9)}";
+            FeeFormat               = $"F{FeeDigits}";
             HasFeePrice             = false;
             FeeCurrencyName         = "XTZ";
 
-            MaxRewardPercent        = configuration[nameof(MaxRewardPercent)] != null
+            MaxRewardPercent = configuration[nameof(MaxRewardPercent)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercent)], CultureInfo.InvariantCulture)
                 : 0m;
-            MaxRewardPercentInBase  = configuration[nameof(MaxRewardPercentInBase)] != null
+            MaxRewardPercentInBase = configuration[nameof(MaxRewardPercentInBase)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercentInBase)], CultureInfo.InvariantCulture)
                 : 0m;
             FeeCurrencyToBaseSymbol = configuration[nameof(FeeCurrencyToBaseSymbol)];
@@ -81,18 +69,8 @@ namespace Atomex.TezosTokens
 
             MaxFee                  = decimal.Parse(configuration[nameof(MaxFee)], CultureInfo.InvariantCulture);
 
-            GasLimit                = decimal.Parse(configuration[nameof(GasLimit)], CultureInfo.InvariantCulture);
-            StorageLimit            = decimal.Parse(configuration[nameof(StorageLimit)], CultureInfo.InvariantCulture);
-
             RevealFee               = decimal.Parse(configuration[nameof(RevealFee)], CultureInfo.InvariantCulture);
             RevealGasLimit          = decimal.Parse(configuration[nameof(RevealGasLimit)], CultureInfo.InvariantCulture);
-
-            GetBalanceGasLimit      = decimal.Parse(configuration[nameof(GetBalanceGasLimit)], CultureInfo.InvariantCulture);
-            GetBalanceStorageLimit  = decimal.Parse(configuration[nameof(GetBalanceStorageLimit)], CultureInfo.InvariantCulture);
-            GetBalanceSize          = decimal.Parse(configuration[nameof(GetBalanceSize)], CultureInfo.InvariantCulture);
-            GetBalanceFee           = MinimalFee + (GetBalanceGasLimit + GasReserve) * MinimalNanotezPerGasUnit + GetBalanceSize * MinimalNanotezPerByte + 1;
-
-            GetAllowanceGasLimit    = decimal.Parse(configuration[nameof(GetAllowanceGasLimit)], CultureInfo.InvariantCulture);
 
             TransferGasLimit        = decimal.Parse(configuration[nameof(TransferGasLimit)], CultureInfo.InvariantCulture);
             TransferStorageLimit    = decimal.Parse(configuration[nameof(TransferStorageLimit)], CultureInfo.InvariantCulture);
@@ -104,20 +82,10 @@ namespace Atomex.TezosTokens
             ApproveSize             = decimal.Parse(configuration[nameof(ApproveSize)], CultureInfo.InvariantCulture);
             ApproveFee              = MinimalFee + (ApproveGasLimit + GasReserve) * MinimalNanotezPerGasUnit + ApproveSize * MinimalNanotezPerByte + 1;
 
-            AddGasLimit             = decimal.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
-            AddStorageLimit         = decimal.Parse(configuration[nameof(AddStorageLimit)], CultureInfo.InvariantCulture);
-            AddSize                 = decimal.Parse(configuration[nameof(AddSize)], CultureInfo.InvariantCulture);
-            AddFee                  = MinimalFee + (AddGasLimit + GasReserve) * MinimalNanotezPerGasUnit + AddSize * MinimalNanotezPerByte + 1;
-
             InitiateGasLimit        = decimal.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
             InitiateStorageLimit    = decimal.Parse(configuration[nameof(InitiateStorageLimit)], CultureInfo.InvariantCulture);
             InitiateSize            = decimal.Parse(configuration[nameof(InitiateSize)], CultureInfo.InvariantCulture);
             InitiateFee             = MinimalFee + (InitiateGasLimit + GasReserve) * MinimalNanotezPerGasUnit + InitiateSize * MinimalNanotezPerByte + 1;
-
-            AddGasLimit             = decimal.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
-            AddStorageLimit         = decimal.Parse(configuration[nameof(AddStorageLimit)], CultureInfo.InvariantCulture);
-            AddSize                 = decimal.Parse(configuration[nameof(AddSize)], CultureInfo.InvariantCulture);
-            AddFee                  = MinimalFee + (AddGasLimit + GasReserve) * MinimalNanotezPerGasUnit + AddSize * MinimalNanotezPerByte + 1;
 
             RedeemGasLimit          = decimal.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
             RedeemStorageLimit      = decimal.Parse(configuration[nameof(RedeemStorageLimit)], CultureInfo.InvariantCulture);
@@ -138,50 +106,21 @@ namespace Atomex.TezosTokens
             BcdApi                  = configuration["BcdApi"];
             BcdNetwork              = configuration["BcdNetwork"];
 
-            BcdSizeLimit = !string.IsNullOrEmpty(configuration["BcdSizeLimit"])
-                ? int.Parse(configuration["BcdSizeLimit"])
-                : 10;
-
             BlockchainApi           = ResolveBlockchainApi(configuration, this);
             TxExplorerUri           = configuration["TxExplorerUri"];
             AddressExplorerUri      = configuration["AddressExplorerUri"];
             SwapContractAddress     = configuration["SwapContract"];
-            TokenContractAddress    = configuration["TokenContract"];
-            ViewContractAddress     = configuration["ViewContract"];
             TransactionType         = typeof(TezosTransaction);
 
             IsTransactionsAvailable = true;
-            IsSwapAvailable         = true;
-            Bip44Code               = Bip44.Tezos;
-        }
-
-        public override async Task<decimal> GetRewardForRedeemAsync(
-            decimal maxRewardPercent,
-            decimal maxRewardPercentInBase,
-            string feeCurrencyToBaseSymbol,
-            decimal feeCurrencyToBasePrice,
-            string feeCurrencySymbol = null,
-            decimal feeCurrencyPrice = 0,
-            CancellationToken cancellationToken = default)
-        {
-            var rewardForRedeemInXtz = await base.GetRewardForRedeemAsync(
-                maxRewardPercent: maxRewardPercent,
-                maxRewardPercentInBase: maxRewardPercentInBase,
-                feeCurrencyToBaseSymbol: feeCurrencyToBaseSymbol,
-                feeCurrencyToBasePrice: feeCurrencyToBasePrice,
-                feeCurrencySymbol: feeCurrencySymbol,
-                feeCurrencyPrice: feeCurrencyPrice,
-                cancellationToken: cancellationToken);
-
-            if (feeCurrencySymbol == null || feeCurrencyPrice == 0)
-                return 0m;
-
-            return AmountHelper.RoundDown(feeCurrencySymbol.IsBaseCurrency(Name)
-                ? rewardForRedeemInXtz / feeCurrencyPrice
-                : rewardForRedeemInXtz * feeCurrencyPrice, DigitsMultiplier);
+            IsSwapAvailable         = false;
+            Bip44Code               = Bip44.Tezos; 
         }
 
         public override decimal GetDefaultFee() =>
             TransferGasLimit;
+
+        public static string UniqueTokenId(string tokenContractAddress, long tokenId) =>
+            $"FA2:{tokenContractAddress}:{tokenId}";
     }
 }

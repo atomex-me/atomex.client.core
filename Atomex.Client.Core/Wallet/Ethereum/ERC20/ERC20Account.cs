@@ -15,14 +15,15 @@ using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.ERC20;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class ERC20Account : EthereumAccount
+    public class Erc20Account : CurrencyAccount, ILegacyCurrencyAccount
     {
-        public ERC20Account(
+        public Erc20Account(
             string currency,
             ICurrencies currencies,
             IHdWallet wallet,
@@ -33,10 +34,10 @@ namespace Atomex.Wallet.Ethereum
 
         #region Common
 
-        private EthereumTokens.ERC20 Erc20 => Currencies.Get<EthereumTokens.ERC20>(Currency);
-        private Atomex.Ethereum Eth => Currencies.Get<Atomex.Ethereum>("ETH");
+        private Erc20Config Erc20 => Currencies.Get<Erc20Config>(Currency);
+        private EthereumConfig Eth => Currencies.Get<EthereumConfig>("ETH");
 
-        public override async Task<Error> SendAsync(
+        public async Task<Error> SendAsync(
             IEnumerable<WalletAddress> from,
             string to,
             decimal amount,
@@ -86,7 +87,7 @@ namespace Atomex.Wallet.Ethereum
                     selectedAddress.WalletAddress.Address,
                     selectedAddress.WalletAddress.AvailableBalance());
 
-                using var addressLock = await AddressLocker
+                using var addressLock = await EthereumAccount.AddressLocker
                     .GetLockAsync(selectedAddress.WalletAddress.Address, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -105,7 +106,7 @@ namespace Atomex.Wallet.Ethereum
                     Value       = erc20.TokensToTokenDigits(selectedAddress.UsedAmount),
                     FromAddress = selectedAddress.WalletAddress.Address,
                     Gas         = new BigInteger(feePerTx),
-                    GasPrice    = new BigInteger(Atomex.Ethereum.GweiToWei(feePrice)),
+                    GasPrice    = new BigInteger(EthereumConfig.GweiToWei(feePrice)),
                     Nonce       = nonceResult.Value
                 };
 
@@ -176,7 +177,31 @@ namespace Atomex.Wallet.Ethereum
             return null;
         }
 
-        public override async Task<decimal?> EstimateFeeAsync(
+        public async Task<Error> SendAsync(
+            string to,
+            decimal amount,
+            decimal feePerTx,
+            decimal feePrice,
+            bool useDefaultFee = false,
+            CancellationToken cancellationToken = default)
+        {
+            var unspentAddresses = (await DataRepository
+                .GetUnspentAddressesAsync(Currency)
+                .ConfigureAwait(false))
+                .ToList();
+
+            return await SendAsync(
+                    from: unspentAddresses,
+                    to: to,
+                    amount: amount,
+                    feePerTx: feePerTx,
+                    feePrice: feePrice,
+                    useDefaultFee: useDefaultFee,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        public async Task<decimal?> EstimateFeeAsync(
             string to,
             decimal amount,
             BlockchainTransactionType type,
@@ -215,7 +240,7 @@ namespace Atomex.Wallet.Ethereum
             return selectedAddresses.Sum(s => s.UsedFee);
         }
 
-        public override async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
+        public async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
             decimal feePerTx = 0,
@@ -279,7 +304,7 @@ namespace Atomex.Wallet.Ethereum
             return (amount, fee, 0m);
         }
 
-        public override async Task<decimal> EstimateMaxFeeAsync(
+        public async Task<decimal> EstimateMaxFeeAsync(
             string to,
             decimal amount,
             BlockchainTransactionType type,
@@ -585,7 +610,7 @@ namespace Atomex.Wallet.Ethereum
 
         #region Addresses
 
-        public override async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+        public async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string toAddress,
             decimal amount,
             decimal fee,
@@ -839,7 +864,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
         }
 
-        public override async Task<WalletAddress> GetRedeemAddressAsync(
+        public async Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = await DataRepository
@@ -875,8 +900,10 @@ namespace Atomex.Wallet.Ethereum
                     return ResolvePublicKey(lastActiveAddress);
             }
 
-            return await base.GetRedeemAddressAsync(cancellationToken)
+            var redeemAddress = await GetFreeExternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+            return ResolvePublicKey(redeemAddress);
         }
 
         #endregion Addresses

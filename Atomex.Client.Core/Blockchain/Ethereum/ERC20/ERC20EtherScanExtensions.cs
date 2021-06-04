@@ -281,7 +281,7 @@ namespace Atomex.Blockchain.Ethereum.ERC20
 
         public static EthereumTransaction TransformApprovalEvent(
             this EtherScanApi.ContractEvent contractEvent,
-            EthereumTokens.ERC20 erc20,
+            EthereumTokens.Erc20Config erc20,
             long lastBlockNumber)
         {
             if (!contractEvent.IsERC20ApprovalEvent())
@@ -326,7 +326,7 @@ namespace Atomex.Blockchain.Ethereum.ERC20
         public static EthereumTransaction TransformTransferEvent(
             this EtherScanApi.ContractEvent contractEvent,
             string address,
-            EthereumTokens.ERC20 erc20,
+            EthereumTokens.Erc20Config erc20,
             long lastBlockNumber)
         {
             if (!contractEvent.IsERC20TransferEvent())

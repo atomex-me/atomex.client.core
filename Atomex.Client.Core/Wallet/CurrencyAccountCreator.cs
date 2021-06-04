@@ -24,16 +24,29 @@ namespace Atomex.Wallet
                 {
                     if (!accounts.TryGetValue("XTZ", out var tezosAccount))
                     {
-                        tezosAccount = CreateCurrencyAccount("XTZ", wallet, dataRepository, currencies);
+                        tezosAccount = CreateCurrencyAccount(
+                            currency: "XTZ",
+                            wallet: wallet,
+                            dataRepository: dataRepository,
+                            currencies: currencies);
 
                         accounts.Add("XTZ", tezosAccount);
                     }
 
-                    accounts.Add(currency.Name, CreateCurrencyAccount(currency.Name, wallet, dataRepository, currencies, tezosAccount));
+                    accounts.Add(currency.Name, CreateCurrencyAccount(
+                        currency: currency.Name,
+                        wallet: wallet,
+                        dataRepository: dataRepository,
+                        currencies: currencies,
+                        baseChainAccount: tezosAccount));
                 }
                 else
                 {
-                    accounts.Add(currency.Name, CreateCurrencyAccount(currency.Name, wallet, dataRepository, currencies));
+                    accounts.Add(currency.Name, CreateCurrencyAccount(
+                        currency: currency.Name,
+                        wallet: wallet,
+                        dataRepository: dataRepository,
+                        currencies: currencies));
                 }
             }
 
@@ -59,22 +72,22 @@ namespace Atomex.Wallet
                     currencies,
                     wallet,
                     dataRepository),
-                "USDT" => new ERC20Account(
+                "USDT" => new Erc20Account(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                "USDC" => new ERC20Account(
+                "USDC" => new Erc20Account(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                "TBTC" => new ERC20Account(
+                "TBTC" => new Erc20Account(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                "WBTC" => new ERC20Account(
+                "WBTC" => new Erc20Account(
                     currency,
                     currencies,
                     wallet,
@@ -84,19 +97,19 @@ namespace Atomex.Wallet
                     currencies,
                     wallet,
                     dataRepository),
-                "NYX" => new NYXAccount(
+                "NYX" => new NyxAccount(
                     currency,
                     currencies,
                     wallet,
                     dataRepository,
                     baseChainAccount as TezosAccount),
-                "FA2" => new FA2Account(
+                "FA2" => new Fa2Account(
                     currency,
                     currencies,
                     wallet,
                     dataRepository,
                     baseChainAccount as TezosAccount),
-                "TZBTC" => new FA12Account(
+                "TZBTC" => new Fa12Account(
                     currency,
                     currencies,
                     wallet,
@@ -107,7 +120,7 @@ namespace Atomex.Wallet
                     currencies,
                     wallet,
                     dataRepository),
-                "KUSD" => new FA12Account(
+                "KUSD" => new Fa12Account(
                     currency,
                     currencies,
                     wallet,

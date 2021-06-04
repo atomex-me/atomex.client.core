@@ -14,9 +14,9 @@ using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.Cryptography;
 using Atomex.LiteDb;
 using Atomex.Wallet.Abstract;
-using Atomex.Cryptography;
 
 namespace Atomex.Wallet
 {
@@ -142,61 +142,61 @@ namespace Atomex.Wallet
             return this;
         }
 
-        public Task<Error> SendAsync(
-            string currency,
-            string to,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            bool useDefaultFee = false,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .SendAsync(
-                    to: to,
-                    amount: amount,
-                    fee: fee,
-                    feePrice: feePrice,
-                    useDefaultFee: useDefaultFee,
-                    cancellationToken: cancellationToken);
-        }
+        //public Task<Error> SendAsync(
+        //    string currency,
+        //    string to,
+        //    decimal amount,
+        //    decimal fee,
+        //    decimal feePrice,
+        //    bool useDefaultFee = false,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return GetCurrencyAccount(currency)
+        //        .SendAsync(
+        //            to: to,
+        //            amount: amount,
+        //            fee: fee,
+        //            feePrice: feePrice,
+        //            useDefaultFee: useDefaultFee,
+        //            cancellationToken: cancellationToken);
+        //}
 
-        public Task<decimal?> EstimateFeeAsync(
-            string currency,
-            string to,
-            decimal amount,
-            BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .EstimateFeeAsync(to, amount, type, fee, feePrice, cancellationToken);
-        }
+        //public Task<decimal?> EstimateFeeAsync(
+        //    string currency,
+        //    string to,
+        //    decimal amount,
+        //    BlockchainTransactionType type,
+        //    decimal fee = 0,
+        //    decimal feePrice = 0,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return GetCurrencyAccount(currency)
+        //        .EstimateFeeAsync(to, amount, type, fee, feePrice, cancellationToken);
+        //}
 
-        public Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
-            string currency,
-            string to,
-            BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0, 
-            bool reserve = false,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .EstimateMaxAmountToSendAsync(to, type, fee, feePrice, reserve, cancellationToken);
-        }
+        //public Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
+        //    string currency,
+        //    string to,
+        //    BlockchainTransactionType type,
+        //    decimal fee = 0,
+        //    decimal feePrice = 0, 
+        //    bool reserve = false,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return GetCurrencyAccount(currency)
+        //        .EstimateMaxAmountToSendAsync(to, type, fee, feePrice, reserve, cancellationToken);
+        //}
 
-        public Task<decimal> EstimateMaxFeeAsync(
-            string currency,
-            string to,
-            decimal amount,
-            BlockchainTransactionType type,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .EstimateMaxFeeAsync(to, amount, type, cancellationToken);
-        }
+        //public Task<decimal> EstimateMaxFeeAsync(
+        //    string currency,
+        //    string to,
+        //    decimal amount,
+        //    BlockchainTransactionType type,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return GetCurrencyAccount(currency)
+        //        .EstimateMaxFeeAsync(to, amount, type, cancellationToken);
+        //}
 
         public async Task<Auth> CreateAuthRequestAsync(AuthNonce nonce, uint keyIndex = 0)
         {
@@ -345,36 +345,36 @@ namespace Atomex.Wallet
                 .GetUnspentAddressesAsync(cancellationToken);
         }
 
-        public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
-            string currency,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .GetUnspentTokenAddressesAsync(cancellationToken);
-        }
+        //public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+        //    string currency,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return GetCurrencyAccount(currency)
+        //        .GetUnspentTokenAddressesAsync(cancellationToken);
+        //}
 
-        public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
-            string currency,
-            string toAddress,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            FeeUsagePolicy feeUsagePolicy,
-            AddressUsagePolicy addressUsagePolicy,
-            BlockchainTransactionType transactionType,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .GetUnspentAddressesAsync(
-                    toAddress: toAddress,
-                    amount: amount,
-                    fee: fee,
-                    feePrice: feePrice,
-                    feeUsagePolicy: feeUsagePolicy,
-                    addressUsagePolicy: addressUsagePolicy,
-                    transactionType: transactionType,
-                    cancellationToken: cancellationToken);
-        }
+        //public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+        //    string currency,
+        //    string toAddress,
+        //    decimal amount,
+        //    decimal fee,
+        //    decimal feePrice,
+        //    FeeUsagePolicy feeUsagePolicy,
+        //    AddressUsagePolicy addressUsagePolicy,
+        //    BlockchainTransactionType transactionType,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return GetCurrencyAccount(currency)
+        //        .GetUnspentAddressesAsync(
+        //            toAddress: toAddress,
+        //            amount: amount,
+        //            fee: fee,
+        //            feePrice: feePrice,
+        //            feeUsagePolicy: feeUsagePolicy,
+        //            addressUsagePolicy: addressUsagePolicy,
+        //            transactionType: transactionType,
+        //            cancellationToken: cancellationToken);
+        //}
 
         public Task<WalletAddress> GetFreeInternalAddressAsync(
             string currency,
@@ -392,13 +392,13 @@ namespace Atomex.Wallet
                 .GetFreeExternalAddressAsync(cancellationToken);
         }
 
-        public Task<WalletAddress> GetRedeemAddressAsync(   //todo: check if always returns the biggest address
-            string currency,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .GetRedeemAddressAsync(cancellationToken);   
-        }
+        //public Task<WalletAddress> GetRedeemAddressAsync(   //todo: check if always returns the biggest address
+        //    string currency,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return GetCurrencyAccount(currency)
+        //        .GetRedeemAddressAsync(cancellationToken);   
+        //}
 
         #endregion Addresses
 

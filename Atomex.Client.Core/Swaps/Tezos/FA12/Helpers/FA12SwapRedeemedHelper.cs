@@ -16,15 +16,15 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
     {
         public static async Task<Result<byte[]>> IsRedeemedAsync(
             Swap swap,
-            Currency currency,
-            Atomex.Tezos tezos,
+            CurrencyConfig currency,
+            Atomex.TezosConfig tezos,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 Log.Debug("Tezos FA12: check redeem event");
 
-                var fa12 = (TezosTokens.FA12)currency;
+                var fa12 = (TezosTokens.Fa12Config)currency;
 
                 var contractAddress = fa12.SwapContractAddress;
 
@@ -88,8 +88,8 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
 
         public static async Task<Result<byte[]>> IsRedeemedAsync(
             Swap swap,
-            Currency currency,
-            Atomex.Tezos tezos,
+            CurrencyConfig currency,
+            Atomex.TezosConfig tezos,
             int attempts,
             int attemptIntervalInSec,
             CancellationToken cancellationToken = default)
@@ -122,8 +122,8 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
 
         public static Task StartSwapRedeemedControlAsync(
             Swap swap,
-            Currency currency,
-            Atomex.Tezos tezos,
+            CurrencyConfig currency,
+            Atomex.TezosConfig tezos,
             DateTime refundTimeUtc,
             TimeSpan interval,
             bool cancelOnlyIfRefundTimeReached = true,
