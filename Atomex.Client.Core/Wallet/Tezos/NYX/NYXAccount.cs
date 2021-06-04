@@ -534,7 +534,7 @@ namespace Atomex.Wallet.Tezos
                         var nyxApi = nyx.BlockchainApi as ITokenBlockchainApi;
 
                         var balanceResult = await nyxApi
-                            .TryGetTokenBigMapBalanceAsync(
+                            .TryGetNyxBigMapBalanceAsync(
                                 address: wa.Address,
                                 pointer: nyx.TokenPointerBalance,
                                 cancellationToken: cancellationToken)
@@ -635,7 +635,7 @@ namespace Atomex.Wallet.Tezos
             var nyxApi = nyx.BlockchainApi as ITokenBlockchainApi;
 
             var balanceResult = await nyxApi
-                .TryGetTokenBigMapBalanceAsync(
+                .TryGetNyxBigMapBalanceAsync(
                     address: address,
                     pointer: nyx.TokenPointerBalance,
                     cancellationToken: cancellationToken)

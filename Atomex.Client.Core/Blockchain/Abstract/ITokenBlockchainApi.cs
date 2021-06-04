@@ -1,5 +1,6 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Common;
 
 namespace Atomex.Blockchain.Abstract
@@ -27,12 +28,12 @@ namespace Atomex.Blockchain.Abstract
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);
 
-        //Task<Result<decimal>> TryGetTokenBigMapBalanceAsync(
-        //    string address,
-        //    int pointer,
-        //    int attempts = 10,
-        //    int attemptsIntervalMs = 1000,
-        //    CancellationToken cancellationToken = default);
+        Task<Result<decimal>> TryGetNyxBigMapBalanceAsync(
+            string address,
+            int pointer,
+            int attempts = 10,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default);
 
         Task<Result<decimal>> GetFa12AllowanceAsync(
             string holderAddress,
@@ -49,12 +50,5 @@ namespace Atomex.Blockchain.Abstract
             int attempts = 10,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);
-
-        //Task<Result<decimal>> TryGetFa2BigMapAllowanceAsync(
-        //    string holderAddress,
-        //    string spenderAddress,
-        //    int attempts = 3,
-        //    int attemptsIntervalMs = 1000,
-        //    CancellationToken cancellationToken = default);
     }
 }

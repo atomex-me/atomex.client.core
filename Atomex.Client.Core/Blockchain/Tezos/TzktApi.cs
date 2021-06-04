@@ -12,8 +12,8 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Wallet.Tezos;
 using Atomex.TezosTokens;
+using Atomex.Wallet.Tezos;
 
 namespace Atomex.Blockchain.Tezos
 {
@@ -35,7 +35,7 @@ namespace Atomex.Blockchain.Tezos
             public Func<string, Result<IEnumerable<TezosTransaction>>> Parser { get; set; }
         }
 
-        public TzktApi(Atomex.TezosConfig currency)
+        public TzktApi(TezosConfig currency)
         {
             _currency = currency;
             _baseUri = currency.BaseUri;
@@ -785,8 +785,7 @@ namespace Atomex.Blockchain.Tezos
             return result;
         }
 
-        private BlockchainTransactionState StateFromStatus(
-            string status) =>
+        private BlockchainTransactionState StateFromStatus(string status) =>
             status switch
             {
                 "applied"     => BlockchainTransactionState.Confirmed,
@@ -869,18 +868,6 @@ namespace Atomex.Blockchain.Tezos
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting balance after {attempts} attempts");
         }
 
-        //public Task<Result<decimal>> GetTokenBigMapBalanceAsync(
-        //    string address,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return _currency.Name switch
-        //    {
-        //        NYX => GetNyxBigMapBalanceAsync(address, cancellationToken),
-        //        FA2 => GetFa2BigMapBalanceAsync(address, cancellationToken),
-        //        _   => throw new NotSupportedException($"Get BigMap balance not supported for {_currency.Name}")
-        //    };
-        //}
-
         private async Task<Result<decimal>> GetNyxBigMapBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
@@ -912,47 +899,16 @@ namespace Atomex.Blockchain.Tezos
             }
         }
 
-        //private async Task<Result<decimal>> GetFa2BigMapBalanceAsync(
-        //    string address,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var token = _currency as Fa2Config;
-
-        //    try
-        //    {
-        //        return await HttpHelper
-        //            .GetAsyncResult<decimal>(
-        //                baseUri: token.BcdApi,
-        //                requestUri: $"bigmap/{token.BcdNetwork}/{token.TokenPointerBalance}/keys?q={token.TokenID}",
-        //                headers: _headers,
-        //                responseHandler: (response, content) =>
-        //                {
-        //                    var bigMap = JsonConvert.DeserializeObject<JArray>(content);
-
-        //                    if (bigMap.Count == 0)
-        //                        return 0;
-
-        //                    return bigMap[0]["data"]?["value"]?["value"]?.Value<string>() == address ? 1 : 0;
-        //                },
-        //                cancellationToken: cancellationToken)
-        //            .ConfigureAwait(false);
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        return new Error(Errors.RequestError, e.Message);
-        //    }
-        //}
-
-        //public async Task<Result<decimal>> TryGetTokenBigMapBalanceAsync(
-        //    string address,
-        //    int pointer,
-        //    int attempts = 3,
-        //    int attemptsIntervalMs = 1000,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return await ResultHelper.TryDo((c) => GetTokenBigMapBalanceAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
-        //        .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting big map balance after {attempts} attempts");
-        //}
+        public async Task<Result<decimal>> TryGetNyxBigMapBalanceAsync(
+            string address,
+            int pointer,
+            int attempts = 3,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResultHelper.TryDo((c) => GetNyxBigMapBalanceAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting big map balance after {attempts} attempts");
+        }
 
         public async Task<Result<decimal>> GetFa12AllowanceAsync(
             string holderAddress,
@@ -1026,52 +982,6 @@ namespace Atomex.Blockchain.Tezos
             return await ResultHelper.TryDo((c) => GetFa12AllowanceAsync(holderAddress, spenderAddress, callingAddress, securePublicKey, c), attempts, attemptsIntervalMs, cancellationToken)
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting balance after {attempts} attempts");
         }
-
-        //public async Task<Result<decimal>> GetFa2BigMapAllowanceAsync(
-        //    string holderAddress,
-        //    string spenderAddress,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var token = _currency as Fa2Config;
-
-        //    try
-        //    {
-        //        return await HttpHelper.GetAsyncResult<decimal>(
-        //            baseUri: token.BcdApi,
-        //            requestUri: $"bigmap/{token.BcdNetwork}/{token.TokenPointerAllowance}/keys?q={holderAddress}",
-        //            headers: _headers,
-        //            responseHandler: (response, content) =>
-        //            {
-        //                var bigMap = JsonConvert.DeserializeObject<JArray>(content);
-
-        //                if (bigMap.Count == 0)
-        //                    return 0;
-
-        //                //todo: refactoring
-        //                if (bigMap[0]["data"]["value"].Contains("children"))
-        //                    return (bigMap[0]["data"]?["value"]?["children"]?.Where(a => a["value"]?.Value<string>() == spenderAddress) != null) ? 1 : 0;
-        //                else
-        //                    return 0;
-        //            },
-        //            cancellationToken: cancellationToken)
-        //        .ConfigureAwait(false);
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        return new Error(Errors.RequestError, e.Message);
-        //    }
-        //}
-
-        //public async Task<Result<decimal>> TryGetFa2BigMapAllowanceAsync(
-        //    string holderAddress,
-        //    string spenderAddress,
-        //    int attempts = 3,
-        //    int attemptsIntervalMs = 1000,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return await ResultHelper.TryDo((c) => GetFa2BigMapAllowanceAsync(holderAddress, spenderAddress, c), attempts, attemptsIntervalMs, cancellationToken)
-        //        .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting big map allowance after {attempts} attempts");
-        //}
 
         #endregion
 
