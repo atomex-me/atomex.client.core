@@ -27,9 +27,8 @@ namespace Atomex.Wallet
             return Task.Run(async () =>
             {
                 foreach (var currency in Account.Currencies)
-                    if (currency.IsTransactionsAvailable)
-                        await ScanAsync(currency.Name, skipUsed, cancellationToken)
-                            .ConfigureAwait(false);
+                    await ScanAsync(currency.Name, skipUsed, cancellationToken)
+                        .ConfigureAwait(false);
 
             }, cancellationToken);
         }
@@ -125,10 +124,6 @@ namespace Atomex.Wallet
 
                 "KUSD" => new Fa12WalletScanner(
                     Account.GetCurrencyAccount<Fa12Account>(currency),
-                    Account.GetCurrencyAccount<TezosAccount>("XTZ")),
-
-                "NYX" => new NyxWalletScanner(
-                    Account.GetCurrencyAccount<NyxAccount>(currency), 
                     Account.GetCurrencyAccount<TezosAccount>("XTZ")),
 
                 "FA2" => new Fa2WalletScanner(

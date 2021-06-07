@@ -176,6 +176,7 @@ namespace Atomex.Wallet.Ethereum
                     "Error while getting last block number with code {@code} and description {@description}",
                     lastBlockNumberResult.Error.Code,
                     lastBlockNumberResult.Error.Description);
+
                 return;
             }
 
@@ -186,6 +187,7 @@ namespace Atomex.Wallet.Ethereum
                 Log.Error(
                     "Error in block number {@lastBlockNumber}",
                     lastBlockNumber);
+
                 return;
             }
 
@@ -248,6 +250,7 @@ namespace Atomex.Wallet.Ethereum
                     address,
                     approveEventsResult.Error.Code,
                     approveEventsResult.Error.Description);
+
                 return null;
             }
 
@@ -275,6 +278,7 @@ namespace Atomex.Wallet.Ethereum
                     address,
                     outEventsResult.Error.Code,
                     outEventsResult.Error.Description);
+
                 return null;
             }
 
@@ -302,6 +306,7 @@ namespace Atomex.Wallet.Ethereum
                     address,
                     inEventsResult.Error.Code,
                     inEventsResult.Error.Description);
+
                 return null;
             }
 

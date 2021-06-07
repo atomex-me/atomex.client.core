@@ -22,7 +22,7 @@ namespace Atomex.TezosTokens
 
         public string BcdApi { get; private set; }
         public string BcdNetwork { get; private set; }
-        
+        public int BcdSizeLimit { get; private set; }
 
         public Fa2Config()
         {
@@ -106,13 +106,16 @@ namespace Atomex.TezosTokens
             BcdApi                  = configuration["BcdApi"];
             BcdNetwork              = configuration["BcdNetwork"];
 
+            BcdSizeLimit = !string.IsNullOrEmpty(configuration["BcdSizeLimit"])
+                ? int.Parse(configuration["BcdSizeLimit"])
+                : 10;
+
             BlockchainApi           = ResolveBlockchainApi(configuration, this);
             TxExplorerUri           = configuration["TxExplorerUri"];
             AddressExplorerUri      = configuration["AddressExplorerUri"];
             SwapContractAddress     = configuration["SwapContract"];
             TransactionType         = typeof(TezosTransaction);
 
-            IsTransactionsAvailable = true;
             IsSwapAvailable         = false;
             Bip44Code               = Bip44.Tezos; 
         }
@@ -122,5 +125,12 @@ namespace Atomex.TezosTokens
 
         public static string UniqueTokenId(string tokenContractAddress, long tokenId) =>
             $"FA2:{tokenContractAddress}:{tokenId}";
+
+        public BcdApiSettings BcdApiSettings => new BcdApiSettings
+        {
+            Uri     = BcdApi,
+            Network = BcdNetwork,
+            MaxSize = BcdSizeLimit
+        };
     }
 }

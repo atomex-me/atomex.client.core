@@ -63,7 +63,6 @@ namespace Atomex
             TxExplorerUri           = configuration["TxExplorerUri"];
             AddressExplorerUri      = configuration["AddressExplorerUri"];
 
-            IsTransactionsAvailable = true;
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Litecoin;
         }

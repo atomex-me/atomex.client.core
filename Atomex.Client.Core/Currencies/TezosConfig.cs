@@ -2,8 +2,8 @@
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
 
 using Atomex.Blockchain.Abstract;
@@ -19,6 +19,7 @@ namespace Atomex
 {
     public class TezosConfig : CurrencyConfig
     {
+        public const string Xtz = "XTZ";
         public const long XtzDigitsMultiplier = 1_000_000;
         public const int HeadOffset = 55;
 
@@ -156,7 +157,6 @@ namespace Atomex
             SwapContractAddress     = configuration["SwapContract"];
             TransactionType         = typeof(TezosTransaction);
 
-            IsTransactionsAvailable = true;
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Tezos;
         }

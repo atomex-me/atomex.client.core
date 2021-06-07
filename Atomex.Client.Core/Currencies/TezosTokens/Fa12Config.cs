@@ -33,7 +33,6 @@ namespace Atomex.TezosTokens
         public string ViewContractAddress { get; private set; }
         public string BcdApi { get; private set; }
         public string BcdNetwork { get; private set; }
-
         public int BcdSizeLimit { get; private set; }
 
         public Fa12Config()
@@ -150,7 +149,6 @@ namespace Atomex.TezosTokens
             ViewContractAddress     = configuration["ViewContract"];
             TransactionType         = typeof(TezosTransaction);
 
-            IsTransactionsAvailable = true;
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Tezos;
         }
@@ -183,5 +181,12 @@ namespace Atomex.TezosTokens
 
         public override decimal GetDefaultFee() =>
             TransferGasLimit;
+
+        public BcdApiSettings BcdApiSettings => new BcdApiSettings
+        {
+            Uri     = BcdApi,
+            Network = BcdNetwork,
+            MaxSize = BcdSizeLimit
+        };
     }
 }

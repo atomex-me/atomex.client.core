@@ -24,7 +24,6 @@ namespace Atomex
             "USDT",
             "TZBTC",
             "KUSD",
-            "NFT",
             "WBTC",
             "TBTC"
         };
@@ -99,7 +98,8 @@ namespace Atomex
                 "WBTC"  => new Erc20Config(configurationSection),
                 "TZBTC" => new Fa12Config(configurationSection),
                 "KUSD"  => new Fa12Config(configurationSection),
-                "NFT"   => new Fa2Config(configurationSection),
+                //"FA12"  => new Fa12Config(configurationSection),
+                //"FA2"   => new Fa2Config(configurationSection),
                 _       => null
             };
         }
@@ -126,9 +126,7 @@ namespace Atomex
         public static bool IsTezosToken(string name) =>
             name == "TZBTC" ||
             name == "KUSD" ||
-            name == "NFT" ||
             name == "FA2" ||
-            name == "FA12" ||
-            name == "NYX";
+            name == "FA12";
     }
 }

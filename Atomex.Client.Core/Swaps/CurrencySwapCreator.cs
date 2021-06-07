@@ -7,7 +7,6 @@ using Atomex.Swaps.BitcoinBased;
 using Atomex.Swaps.Ethereum;
 using Atomex.Swaps.Tezos;
 using Atomex.Swaps.Tezos.FA12;
-using Atomex.Swaps.Tezos.NYX;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
@@ -37,14 +36,9 @@ namespace Atomex.Swaps
                     account: account.GetCurrencyAccount<EthereumAccount>(currency.Name),
                     currencies: account.Currencies),
 
-                NyxConfig _ => new NyxSwap(
-                    account: account.GetCurrencyAccount<NyxAccount>(currency.Name),
-                    tezosAccount: account.GetCurrencyAccount<TezosAccount>("XTZ"),
-                    currencies: account.Currencies),
-
                 Fa12Config _ => new Fa12Swap(
                     account: account.GetCurrencyAccount<Fa12Account>(currency.Name),
-                    tezosAccount: account.GetCurrencyAccount<TezosAccount>("XTZ"),
+                    tezosAccount: account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz),
                     currencies: account.Currencies),
 
                 TezosConfig _ => new TezosSwap(

@@ -202,9 +202,6 @@ namespace Atomex.Wallet.BitcoinBased
         private async Task ScanTransactionsAsync(
             CancellationToken cancellationToken = default)
         {
-            if (!Currency.IsTransactionsAvailable)
-                return;
-
             var outputs = await Account
                 .GetOutputsAsync()
                 .ConfigureAwait(false);

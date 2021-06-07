@@ -9,6 +9,7 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.TezosTokens;
 
 namespace Atomex.Swaps.Tezos.FA12.Helpers
 {
@@ -19,7 +20,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
             CurrencyConfig currency,
             CancellationToken cancellationToken = default)
         {
-            var fa12 = currency as TezosTokens.Fa12Config;
+            var fa12 = currency as Fa12Config;
 
             if (!(swap.PaymentTx is TezosTransaction savedTx))
                 return new Error(Errors.SwapError, "Saved tx is null");
@@ -63,7 +64,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
             {
                 Log.Debug("Tezos FA12: check initiated event");
 
-                var fa12 = (TezosTokens.Fa12Config)currency;
+                var fa12 = (Fa12Config)currency;
 
                 var side = swap.Symbol
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
@@ -181,7 +182,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
         public static Task StartSwapInitiatedControlAsync(
             Swap swap,
             CurrencyConfig currency,
-            Atomex.TezosConfig tezos,
+            TezosConfig tezos,
             long refundTimeStamp,
             TimeSpan interval,
             Func<Swap, CancellationToken, Task> initiatedHandler,

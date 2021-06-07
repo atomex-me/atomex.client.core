@@ -22,7 +22,7 @@ namespace Atomex.Wallet.Tezos
     {
         private readonly TezosAccount _tezosAccount;
         private Fa12Config Fa12 => Currencies.Get<Fa12Config>(Currency);
-        private TezosConfig Xtz => Currencies.Get<TezosConfig>("XTZ");
+        private TezosConfig Xtz => Currencies.Get<TezosConfig>(TezosConfig.Xtz);
 
         public Fa12Account(
             string currency,
@@ -110,7 +110,7 @@ namespace Atomex.Wallet.Tezos
                     var fillResult = await tx
                         .FillOperationsAsync(
                             securePublicKey: securePublicKey,
-                            headOffset: Atomex.TezosConfig.HeadOffset,
+                            headOffset: TezosConfig.HeadOffset,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -1036,7 +1036,7 @@ namespace Atomex.Wallet.Tezos
 
             var lastActiveAddress = await DataRepository
                 .GetLastActiveWalletAddressAsync(
-                    currency: "XTZ",
+                    currency: TezosConfig.Xtz,
                     chain: Bip44.External)
                 .ConfigureAwait(false);
 
@@ -1050,6 +1050,7 @@ namespace Atomex.Wallet.Tezos
         #endregion Addresses
 
         #region Helpers
+
         private JObject TransferParams(string from, string to, decimal amount)
         {
             return JObject.FromObject(new
@@ -1082,7 +1083,7 @@ namespace Atomex.Wallet.Tezos
                     }
                 }
             });
-}
+        }
 
         #endregion Helpers
     }

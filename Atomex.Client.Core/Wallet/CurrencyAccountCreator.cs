@@ -97,12 +97,6 @@ namespace Atomex.Wallet
                     currencies,
                     wallet,
                     dataRepository),
-                "NYX" => new NyxAccount(
-                    currency,
-                    currencies,
-                    wallet,
-                    dataRepository,
-                    baseChainAccount as TezosAccount),
                 "FA2" => new Fa2Account(
                     currency,
                     currencies,

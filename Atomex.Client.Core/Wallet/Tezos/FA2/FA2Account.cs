@@ -21,7 +21,7 @@ namespace Atomex.Wallet.Tezos
     {
         private readonly TezosAccount _tezosAccount;
         private Fa2Config Fa2Config => Currencies.Get<Fa2Config>(Currency);
-        private TezosConfig XtzConfig => Currencies.Get<TezosConfig>("XTZ");
+        private TezosConfig XtzConfig => Currencies.Get<TezosConfig>(TezosConfig.Xtz);
 
         public Fa2Account(
             string currency,
@@ -79,13 +79,11 @@ namespace Atomex.Wallet.Tezos
             var availableBalanceInTz = xtzAddress.AvailableBalance().ToMicroTez() - feeInMtz - xtz.MicroTezReserve;
 
             if (availableBalanceInTz < 0)
-            {
                 return new Error(
                     code: Errors.InsufficientFunds,
                     description: $"Insufficient funds to pay fee for address {from}. " +
                         $"Available: {xtzAddress.AvailableBalance()}. " +
                         $"Required: {feeInMtz + xtz.MicroTezReserve}");
-            }
 
             Log.Debug("Send {@amount} tokens from address {@address} with available balance {@balance}",
                 amount,
@@ -305,11 +303,28 @@ namespace Atomex.Wallet.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            //var fa2 = Fa2Config;
+            var fa2 = Fa2Config;
 
-            //var walletAddress = await DataRepository
-            //    .GetWalletAddressAsync(Currency, address)
+            //var xtzAddress = await DataRepository
+            //    .GetWalletAddressAsync("XTZ", address)
             //    .ConfigureAwait(false);
+
+            var bcdApi = new BcdApi(fa2.BcdApiSettings);
+
+            var tokenBalancesCountResult = await bcdApi
+                .GetTokenBalancesCountAsync(address, cancellationToken)
+                .ConfigureAwait(false);
+
+            var tokenBalancesCount = tokenBalancesCountResult.Value;
+
+            foreach (var contract in tokenBalancesCount.Keys)
+            {
+                var tokenBalances = await bcdApi
+                    .GetTokenBalancesAsync(address, contract, cancellationToken)
+                    .ConfigureAwait(false);
+
+
+            }
 
             //if (walletAddress == null)
             //    return;
@@ -421,7 +436,7 @@ namespace Atomex.Wallet.Tezos
             //    return unspentAddresses.MaxBy(a => a.AvailableBalance());
 
             var unspentTezosAddresses = await DataRepository
-                .GetUnspentAddressesAsync("XTZ")
+                .GetUnspentAddressesAsync(TezosConfig.Xtz)
                 .ConfigureAwait(false);
 
             if (unspentTezosAddresses.Any())
@@ -436,7 +451,7 @@ namespace Atomex.Wallet.Tezos
 
             var lastActiveAddress = await DataRepository
                 .GetLastActiveWalletAddressAsync(
-                    currency: "XTZ",
+                    currency: TezosConfig.Xtz,
                     chain: Bip44.External)
                 .ConfigureAwait(false);
 
@@ -450,6 +465,7 @@ namespace Atomex.Wallet.Tezos
         #endregion Addresses
 
         #region Helpers
+
         private JObject TransferParams(
             int tokenId,
             string from,

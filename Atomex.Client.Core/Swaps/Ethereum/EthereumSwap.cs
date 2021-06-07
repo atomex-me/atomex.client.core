@@ -67,7 +67,6 @@ namespace Atomex.Swaps.Ethereum
 
             try
             {
-
                 foreach (var paymentTx in paymentTxs)
                 {
                     try

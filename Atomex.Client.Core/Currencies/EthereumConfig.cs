@@ -121,7 +121,6 @@ namespace Atomex
             AddressExplorerUri         = configuration["AddressExplorerUri"];
             TransactionType            = typeof(EthereumTransaction);
 
-            IsTransactionsAvailable    = true;
             IsSwapAvailable            = true;
             Bip44Code                  = Bip44.Ethereum;
         }
