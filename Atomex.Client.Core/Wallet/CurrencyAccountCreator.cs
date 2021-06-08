@@ -110,7 +110,6 @@ namespace Atomex.Wallet
                     dataRepository,
                     baseChainAccount as TezosAccount),
                 "XTZ" => new TezosAccount(
-                    currency,
                     currencies,
                     wallet,
                     dataRepository),

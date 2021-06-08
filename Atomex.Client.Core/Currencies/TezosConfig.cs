@@ -72,6 +72,10 @@ namespace Atomex
         public string BbApiUri { get; protected set; }
         public string SwapContractAddress { get; protected set; }
 
+        public string BcdApi { get; protected set; }
+        public string BcdNetwork { get; protected set; }
+        public int BcdSizeLimit { get; protected set; }
+
         public TezosConfig()
         {
         }
@@ -159,6 +163,13 @@ namespace Atomex
 
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Tezos;
+
+            BcdApi     = configuration["BcdApi"];
+            BcdNetwork = configuration["BcdNetwork"];
+
+            BcdSizeLimit = !string.IsNullOrEmpty(configuration["BcdSizeLimit"])
+                ? int.Parse(configuration["BcdSizeLimit"])
+                : 10;
         }
 
         protected static IBlockchainApi ResolveBlockchainApi(
@@ -334,5 +345,12 @@ namespace Atomex
 
             throw new ArgumentException($"Either int or string are accepted: {michelineExpr}");
         }
+
+        public BcdApiSettings BcdApiSettings => new BcdApiSettings
+        {
+            Uri     = BcdApi,
+            Network = BcdNetwork,
+            MaxSize = BcdSizeLimit
+        };
     }
 }

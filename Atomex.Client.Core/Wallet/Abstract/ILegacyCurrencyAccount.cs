@@ -78,6 +78,9 @@ namespace Atomex.Wallet.Abstract
         //    BlockchainTransactionType transactionType,
         //    CancellationToken cancellationToken = default);
 
+        Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+            CancellationToken cancellationToken = default);
+
         #endregion Addresses
     }
 }

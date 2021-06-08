@@ -906,6 +906,12 @@ namespace Atomex.Wallet.Ethereum
             return ResolvePublicKey(redeemAddress);
         }
 
+        public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
         #endregion Addresses
     }
 }

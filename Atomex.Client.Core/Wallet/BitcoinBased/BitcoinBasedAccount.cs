@@ -773,6 +773,12 @@ namespace Atomex.Wallet.BitcoinBased
             return ResolvePublicKey(redeemAddress);
         }
 
+        public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
         #endregion Addresses
 
         #region Transactions

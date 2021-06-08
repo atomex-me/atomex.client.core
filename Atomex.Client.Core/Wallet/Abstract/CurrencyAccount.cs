@@ -21,7 +21,7 @@ namespace Atomex.Wallet.Abstract
         public string Currency { get; }
         public ICurrencies Currencies { get; }
         public IHdWallet Wallet { get; }
-        protected IAccountDataRepository DataRepository { get; }
+        public IAccountDataRepository DataRepository { get; }
         protected decimal Balance { get; set; }
         protected decimal UnconfirmedIncome { get; set; }
         protected decimal UnconfirmedOutcome { get; set; }
@@ -37,7 +37,7 @@ namespace Atomex.Wallet.Abstract
             Wallet         = wallet ?? throw new ArgumentNullException(nameof(wallet));
             DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
 
-            PreloadBalances();
+            LoadBalances();
         }
 
         #region Common
@@ -146,7 +146,7 @@ namespace Atomex.Wallet.Abstract
             string address,
             CancellationToken cancellationToken = default);
 
-        private void PreloadBalances()
+        protected void LoadBalances()
         {
             var addresses = DataRepository
                 .GetUnspentAddressesAsync(Currency)
@@ -154,8 +154,8 @@ namespace Atomex.Wallet.Abstract
 
             foreach (var address in addresses)
             {
-                Balance += address.Balance;
-                UnconfirmedIncome += address.UnconfirmedIncome;
+                Balance            += address.Balance;
+                UnconfirmedIncome  += address.UnconfirmedIncome;
                 UnconfirmedOutcome += address.UnconfirmedOutcome;
             }
         }

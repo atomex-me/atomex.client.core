@@ -2,6 +2,7 @@
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Configuration;
 
 using Atomex.Blockchain.Tezos;
@@ -31,9 +32,6 @@ namespace Atomex.TezosTokens
 
         public string TokenContractAddress { get; private set; }
         public string ViewContractAddress { get; private set; }
-        public string BcdApi { get; private set; }
-        public string BcdNetwork { get; private set; }
-        public int BcdSizeLimit { get; private set; }
 
         public Fa12Config()
         {
@@ -181,12 +179,5 @@ namespace Atomex.TezosTokens
 
         public override decimal GetDefaultFee() =>
             TransferGasLimit;
-
-        public BcdApiSettings BcdApiSettings => new BcdApiSettings
-        {
-            Uri     = BcdApi,
-            Network = BcdNetwork,
-            MaxSize = BcdSizeLimit
-        };
     }
 }

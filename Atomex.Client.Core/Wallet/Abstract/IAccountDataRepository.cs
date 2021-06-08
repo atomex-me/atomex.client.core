@@ -12,22 +12,39 @@ namespace Atomex.Wallet.Abstract
 
         Task<bool> UpsertAddressAsync(
             WalletAddress walletAddress);
+
         Task<int> UpsertAddressesAsync(
             IEnumerable<WalletAddress> walletAddresses);
+
         Task<bool> TryInsertAddressAsync(
             WalletAddress walletAddress);
+
         Task<WalletAddress> GetWalletAddressAsync(
             string currency,
             string address);
+
         Task<WalletAddress> GetLastActiveWalletAddressAsync(
             string currency,
             int chain);
+
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string currency,
             bool includeUnconfirmed = true);
 
         Task<IEnumerable<WalletAddress>> GetAddressesAsync(
             string currency);
+
+        Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync();
+
+        Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync(
+            string address);
+
+        Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync(
+            string address,
+            string contractAddress);
+
+        Task<int> UpsertTezosTokenAddressesAsync(
+            IEnumerable<WalletAddress> walletAddresses);
 
         #endregion Addresses
 

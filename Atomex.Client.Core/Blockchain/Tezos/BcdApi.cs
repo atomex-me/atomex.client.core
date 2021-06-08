@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
@@ -20,7 +21,7 @@ namespace Atomex.Blockchain.Tezos
         [JsonPropertyName("network")]
         public string Network { get; set; }
         [JsonPropertyName("token_id")]
-        public int TokenId { get; set; }
+        public decimal TokenId { get; set; }
         [JsonPropertyName("symbol")]
         public string Symbol { get; set; }
         [JsonPropertyName("name")]
@@ -31,6 +32,9 @@ namespace Atomex.Blockchain.Tezos
         public bool IsTransferable { get; set; }
         [JsonPropertyName("balance")]
         public string Balance { get; set; }
+
+        public decimal GetTokenBalance() =>
+            decimal.Parse(Balance) / (decimal)BigInteger.Pow(10, Decimals);
     }
 
     public class TokenBalanceResponse
@@ -48,7 +52,7 @@ namespace Atomex.Blockchain.Tezos
         [JsonPropertyName("network")]
         public string Network { get; set; }
         [JsonPropertyName("token_id")]
-        public int TokenId { get; set; }
+        public decimal TokenId { get; set; }
         [JsonPropertyName("symbol")]
         public string Symbol { get; set; }
         [JsonPropertyName("name")]
@@ -80,7 +84,7 @@ namespace Atomex.Blockchain.Tezos
         [JsonPropertyName("to")]
         public string To { get; set; }
         [JsonPropertyName("token_id")]
-        public int TokenId { get; set; }
+        public decimal TokenId { get; set; }
         [JsonPropertyName("amount")]
         public string Amount { get; set; }
         [JsonPropertyName("counter")]
@@ -185,7 +189,7 @@ namespace Atomex.Blockchain.Tezos
         public async Task<Result<List<TokenTransfer>>> GetTokenTransfers(
             string address,
             string contractAddress,
-            int tokenId,
+            decimal tokenId,
             CancellationToken cancellationToken = default)
         {
             int size = _config.MaxSize;

@@ -20,10 +20,6 @@ namespace Atomex.TezosTokens
         public decimal ApproveStorageLimit { get; private set; }
         public decimal ApproveSize { get; private set; }
 
-        public string BcdApi { get; private set; }
-        public string BcdNetwork { get; private set; }
-        public int BcdSizeLimit { get; private set; }
-
         public Fa2Config()
         {
         }
@@ -103,9 +99,9 @@ namespace Atomex.TezosTokens
             BaseUri                 = configuration["BlockchainApiBaseUri"];
             RpcNodeUri              = configuration["BlockchainRpcNodeUri"];
             BbApiUri                = configuration["BbApiUri"];
+
             BcdApi                  = configuration["BcdApi"];
             BcdNetwork              = configuration["BcdNetwork"];
-
             BcdSizeLimit = !string.IsNullOrEmpty(configuration["BcdSizeLimit"])
                 ? int.Parse(configuration["BcdSizeLimit"])
                 : 10;
@@ -125,12 +121,5 @@ namespace Atomex.TezosTokens
 
         public static string UniqueTokenId(string tokenContractAddress, long tokenId) =>
             $"FA2:{tokenContractAddress}:{tokenId}";
-
-        public BcdApiSettings BcdApiSettings => new BcdApiSettings
-        {
-            Uri     = BcdApi,
-            Network = BcdNetwork,
-            MaxSize = BcdSizeLimit
-        };
     }
 }
