@@ -10,6 +10,7 @@ using Serilog;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Common.Bson;
 using Atomex.Core;
@@ -306,6 +307,34 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<WalletAddress>());
         }
 
+        public Task<WalletAddress> GetTezosTokenAddressAsync(
+            string uniqueTokenId,
+            string address)
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    var addresses = db.GetCollection(TezosTokensAddresses);
+                    
+                    var document = addresses.FindById($"{address}:{uniqueTokenId}");
+
+                    var walletAddress = document != null
+                        ? _bsonMapper.ToObject<WalletAddress>(document)
+                        : null;
+
+                    return Task.FromResult(walletAddress);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error getting token wallet address");
+            }
+
+            return Task.FromResult<WalletAddress>(null);
+        }
+
         public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync()
         {
             try
@@ -416,6 +445,36 @@ namespace Atomex.LiteDb
         }
 
         #endregion Addresses
+
+        #region TokenTransfers
+
+        public Task<int> UpsertTezosTokenTransfersAsync(
+            IEnumerable<TokenTransfer> tokenTransfers)
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+
+                    var transfers = db.GetCollection(TezosTokensTransfers);
+
+                    var documents = tokenTransfers.Select(t => _bsonMapper.ToDocument(t));
+
+                    var upserted = transfers.Upsert(documents);
+
+                    return Task.FromResult(upserted);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error adding transfers");
+            }
+
+            return Task.FromResult(0);
+        }
+
+        #endregion TokenTransfers
 
         #region Transactions
 

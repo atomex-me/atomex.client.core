@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Tezos;
 using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract
@@ -34,6 +36,10 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<WalletAddress>> GetAddressesAsync(
             string currency);
 
+        Task<WalletAddress> GetTezosTokenAddressAsync(
+            string uniqueTokenId,
+            string address);
+
         Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync();
 
         Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync(
@@ -48,20 +54,31 @@ namespace Atomex.Wallet.Abstract
 
         #endregion Addresses
 
+        #region TokenTransfers
+
+        Task<int> UpsertTezosTokenTransfersAsync(
+            IEnumerable<TokenTransfer> tokenTransfers);
+
+        #endregion TokenTransfers
+
         #region Transactions
 
         Task<bool> UpsertTransactionAsync(
             IBlockchainTransaction tx);
+
         Task<IBlockchainTransaction> GetTransactionByIdAsync(
             string currency,
             string txId,
             Type transactionType);
+
         Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
             string currency,
             Type transactionType);
+
         Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
             string currency,
             Type transactionType);
+
         Task<bool> RemoveTransactionByIdAsync(
             string id);
 

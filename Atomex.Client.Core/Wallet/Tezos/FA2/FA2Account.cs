@@ -49,10 +49,10 @@ namespace Atomex.Wallet.Tezos
             var fa2 = Fa2Config;
             var xtz = XtzConfig;
 
-            var fa2token = Fa2Config.UniqueTokenId(tokenContract, tokenId);
+            var fa2token = TezosConfig.UniqueTokenId(tokenContract, tokenId, "FA2");
 
             var fromAddress = await DataRepository
-                .GetWalletAddressAsync(fa2token, from)
+                .GetTezosTokenAddressAsync(fa2token, from)
                 .ConfigureAwait(false);
 
             if (fromAddress.AvailableBalance() < amount)
@@ -116,7 +116,7 @@ namespace Atomex.Wallet.Tezos
                     .ConfigureAwait(false);
 
                 using var securePublicKey = Wallet
-                    .GetPublicKey(fa2, fromAddress.KeyIndex);
+                    .GetPublicKey(xtz, fromAddress.KeyIndex);
 
                 // fill operation
                 var fillResult = await tx
@@ -135,7 +135,7 @@ namespace Atomex.Wallet.Tezos
                         code: Errors.TransactionSigningError,
                         description: "Transaction signing error");
 
-                var broadcastResult = await fa2.BlockchainApi
+                var broadcastResult = await xtz.BlockchainApi
                     .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -151,7 +151,8 @@ namespace Atomex.Wallet.Tezos
 
                 Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
-                await UpsertTransactionAsync(
+                await _tezosAccount
+                    .UpsertTransactionAsync(
                         tx: tx,
                         updateBalance: false,
                         notifyIfUnconfirmed: true,
@@ -165,73 +166,14 @@ namespace Atomex.Wallet.Tezos
                     .Unlock(from);
             }
 
-            _ = UpdateBalanceAsync(cancellationToken);
-
             return null;
         }
 
-        protected override async Task<bool> ResolveTransactionTypeAsync(
+        protected override Task<bool> ResolveTransactionTypeAsync(
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            var fa2 = Fa2Config;
-
-            if (!(tx is TezosTransaction xtzTx))
-                throw new ArgumentException("Invalid tx type", nameof(tx));
-
-            var oldTx = (TezosTransaction)await DataRepository
-                .GetTransactionByIdAsync(Currency, tx.Id, fa2.TransactionType)
-                .ConfigureAwait(false);
-
-            //if (oldTx != null && oldTx.IsConfirmed)
-            //  return false;
-
-            var isFromSelf = await IsSelfAddressAsync(
-                    address: xtzTx.From,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            var isToSelf = await IsSelfAddressAsync(
-                    address: xtzTx.To,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            if (isFromSelf)
-                xtzTx.Type |= BlockchainTransactionType.Output;
-
-            if (isToSelf)
-                xtzTx.Type |= BlockchainTransactionType.Input;
-
-            if (oldTx != null)
-            {
-                if (xtzTx.IsInternal)
-                {
-                    if (oldTx.Type.HasFlag(BlockchainTransactionType.SwapPayment))
-                        xtzTx.Type |= BlockchainTransactionType.SwapPayment;
-                    if (oldTx.Type.HasFlag(BlockchainTransactionType.SwapRedeem))
-                        xtzTx.Type |= BlockchainTransactionType.SwapRedeem;
-                    if (oldTx.Type.HasFlag(BlockchainTransactionType.SwapRefund))
-                        xtzTx.Type |= BlockchainTransactionType.SwapRefund;
-                }
-                else
-                    xtzTx.Type |= oldTx.Type;
-
-                if (oldTx.IsConfirmed)
-                {
-                    xtzTx.Fee = oldTx.Fee;
-                    xtzTx.GasLimit = oldTx.GasLimit;
-                    xtzTx.GasUsed = oldTx.GasUsed;
-                }
-            }
-
-            // todo: recognize swap payment/refund/redeem
-
-            xtzTx.InternalTxs?.ForEach(async t => await ResolveTransactionTypeAsync(t, cancellationToken)
-                .ConfigureAwait(false));
-
-            TezosAccount.ResolveTezosTxAlias(xtzTx);
-
-            return true;
+            throw new NotImplementedException();
         }
 
         #endregion Common
@@ -243,182 +185,36 @@ namespace Atomex.Wallet.Tezos
         {
             return Task.Run(async () =>
             {
-                try
-                {
-                    //var fa2 = Fa2Config;
+                var scanner = new TezosTokensScanner(_tezosAccount);
 
-                    //foreach (var wa in addresses.Values)
-                    //{
-                    //    var fa2Api = fa2.BlockchainApi as ITokenBlockchainApi;
+                await scanner
+                    .ScanContractAsync(TezosConfig.ExtractContract(Currency), cancellationToken)
+                    .ConfigureAwait(false);
 
-                    //    var balanceResult = await fa2Api
-                    //        .TryGetTokenBigMapBalanceAsync(
-                    //            address: wa.Address,
-                    //            pointer: fa2.TokenPointerBalance,
-                    //            cancellationToken: cancellationToken)
-                    //        .ConfigureAwait(false);
+                LoadBalances();
 
-                    //    if (balanceResult.HasError)
-                    //    {
-                    //        Log.Error("Error while getting token balance for {@address} with code {@code} and description {@description}",
-                    //            wa.Address,
-                    //            balanceResult.Error.Code,
-                    //            balanceResult.Error.Description);
-
-                    //        continue; // todo: may be return?
-                    //    }
-
-                    //    wa.Balance = balanceResult.Value.FromTokenDigits(fa2.DigitsMultiplier);
-
-                    //    totalBalance += wa.Balance;
-                    //}
-
-                    //if (totalBalanceSum != totalBalance)
-                    //{
-                    //    Log.Warning("Transaction balance sum is different from the actual {@name} token balance",
-                    //        fa2.Name);
-
-                    //    //Balance = totalBalance;
-                    //}
-
-                    //// upsert addresses
-                    //await DataRepository
-                    //    .UpsertAddressesAsync(addresses.Values)
-                    //    .ConfigureAwait(false);
-
-                    //UnconfirmedIncome = totalUnconfirmedIncome;
-                    //UnconfirmedOutcome = totalUnconfirmedOutcome;
-
-                    //RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, $"{Currency} UpdateBalanceAsync error.");
-                }
+                RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
 
             }, cancellationToken);
         }
 
-        public override async Task UpdateBalanceAsync(
+        public override Task UpdateBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            var fa2 = Fa2Config;
-
-            //var xtzAddress = await DataRepository
-            //    .GetWalletAddressAsync("XTZ", address)
-            //    .ConfigureAwait(false);
-
-            var bcdApi = new BcdApi(fa2.BcdApiSettings);
-
-            var tokenBalancesCountResult = await bcdApi
-                .GetTokenBalancesCountAsync(address, cancellationToken)
-                .ConfigureAwait(false);
-
-            var tokenBalancesCount = tokenBalancesCountResult.Value;
-
-            foreach (var contract in tokenBalancesCount.Keys)
+            return Task.Run(async () =>
             {
-                var tokenBalances = await bcdApi
-                    .GetTokenBalancesAsync(address, contract, cancellationToken)
+                var scanner = new TezosTokensScanner(_tezosAccount);
+
+                await scanner
+                    .ScanContractAsync(address, TezosConfig.ExtractContract(Currency), cancellationToken)
                     .ConfigureAwait(false);
 
+                LoadBalances();
 
-            }
+                RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
 
-            //if (walletAddress == null)
-            //    return;
-
-            //var txs = (await DataRepository
-            //    .GetTransactionsAsync(Currency, fa2.TransactionType)
-            //    .ConfigureAwait(false))
-            //    .Cast<TezosTransaction>()
-            //    .ToList();
-
-            //var internalTxs = txs.Aggregate(new List<TezosTransaction>(), (list, tx) =>
-            //{
-            //    if (tx.InternalTxs != null)
-            //        list.AddRange(tx.InternalTxs);
-
-            //    return list;
-            //});
-
-            //var balance = 0m;
-            //var unconfirmedIncome = 0m;
-            //var unconfirmedOutcome = 0m;
-
-            //foreach (var tx in txs.Concat(internalTxs))
-            //{
-            //    var isIncome = address == tx.To;
-            //    var isOutcome = address == tx.From;
-            //    var isConfirmed = tx.IsConfirmed;
-            //    var isFailed = tx.State == BlockchainTransactionState.Failed;
-
-            //    var income = isIncome && !isFailed
-            //        ? tx.Amount.FromTokenDigits(fa2.DigitsMultiplier)
-            //        : 0;
-
-            //    var outcome = isOutcome && !isFailed
-            //        ? -tx.Amount.FromTokenDigits(fa2.DigitsMultiplier)
-            //        : 0;
-
-            //    balance += isConfirmed ? income + outcome : 0;
-            //    unconfirmedIncome += !isConfirmed ? income : 0;
-            //    unconfirmedOutcome += !isConfirmed ? outcome : 0;
-            //}
-
-            //var fa2Api = fa2.BlockchainApi as ITokenBlockchainApi;
-
-            //var balanceResult = await fa2Api
-            //    .TryGetTokenBigMapBalanceAsync(
-            //        address: address,
-            //        pointer: fa2.TokenPointerBalance,
-            //        cancellationToken: cancellationToken)
-            //    .ConfigureAwait(false);
-
-            //if (balanceResult.HasError)
-            //{
-            //    Log.Error("Error while balance update token for {@address} with code {@code} and description {@description}",
-            //        address,
-            //        balanceResult.Error.Code,
-            //        balanceResult.Error.Description);
-            //    return;
-            //}
-
-            //var balanceRes = balanceResult.Value.FromTokenDigits(fa2.DigitsMultiplier);
-
-            //if (balance != balanceRes)
-            //{
-            //    Log.Warning("Transaction balance sum for address {@address} is {@balanceSum}, which is different from the actual address balance {@balance}",
-            //        address,
-            //        balance,
-            //        balanceRes);
-
-            //    balance = balanceRes;
-            //}
-
-            //var balanceDifference = balance - walletAddress.Balance;
-            //var unconfirmedIncomeDifference = unconfirmedIncome - walletAddress.UnconfirmedIncome;
-            //var unconfirmedOutcomeDifference = unconfirmedOutcome - walletAddress.UnconfirmedOutcome;
-
-            //if (balanceDifference != 0 ||
-            //    unconfirmedIncomeDifference != 0 ||
-            //    unconfirmedOutcomeDifference != 0)
-            //{
-            //    walletAddress.Balance = balance;
-            //    walletAddress.UnconfirmedIncome = unconfirmedIncome;
-            //    walletAddress.UnconfirmedOutcome = unconfirmedOutcome;
-            //    walletAddress.HasActivity = true;
-
-            //    await DataRepository.UpsertAddressAsync(walletAddress)
-            //        .ConfigureAwait(false);
-
-            //    Balance += balanceDifference;
-            //    UnconfirmedIncome += unconfirmedIncomeDifference;
-            //    UnconfirmedOutcome += unconfirmedOutcomeDifference;
-
-            //    RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
-            //}
+            }, cancellationToken);
         }
 
         #endregion Balances

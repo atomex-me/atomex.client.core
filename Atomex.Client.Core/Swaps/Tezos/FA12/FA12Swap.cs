@@ -161,7 +161,7 @@ namespace Atomex.Swaps.Tezos.FA12
 
             var refundTimeUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();
 
-            _ = FA12SwapInitiatedHelper.StartSwapInitiatedControlAsync(
+            _ = Fa12SwapInitiatedHelper.StartSwapInitiatedControlAsync(
                 swap: swap,
                 currency: Fa12,
                 tezos: Xtz,
@@ -180,7 +180,7 @@ namespace Atomex.Swaps.Tezos.FA12
         {
             var fa12 = Fa12;
             
-            var secretResult = await FA12SwapRedeemedHelper
+            var secretResult = await Fa12SwapRedeemedHelper
                 .IsRedeemedAsync(
                     swap: swap,
                     currency: fa12,
@@ -218,7 +218,7 @@ namespace Atomex.Swaps.Tezos.FA12
             if (swap.IsAcceptor &&
                 swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultInitiatorLockTimeInSeconds) < DateTime.UtcNow)
             {
-                var isRefundedByParty = await FA12SwapRefundedHelper
+                var isRefundedByParty = await Fa12SwapRefundedHelper
                     .IsRefundedAsync(swap, fa12, Xtz, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -553,7 +553,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 : DefaultAcceptorLockTimeInSeconds;
 
             // start redeem control async
-            _ = FA12SwapRedeemedHelper.StartSwapRedeemedControlAsync(
+            _ = Fa12SwapRedeemedHelper.StartSwapRedeemedControlAsync(
                 swap: swap,
                 currency: Fa12,
                 tezos: Xtz,
@@ -574,7 +574,7 @@ namespace Atomex.Swaps.Tezos.FA12
             Log.Debug("Wait redeem for swap {@swapId}", swap.Id);
 
             // start redeem control async
-            _ = FA12SwapRedeemedHelper.StartSwapRedeemedControlAsync(
+            _ = Fa12SwapRedeemedHelper.StartSwapRedeemedControlAsync(
                 swap: swap,
                 currency: Fa12,
                 tezos: Xtz,
@@ -595,7 +595,7 @@ namespace Atomex.Swaps.Tezos.FA12
             var currency = Currencies
                 .GetByName(swap.SoldCurrency);
 
-            return await FA12SwapInitiatedHelper
+            return await Fa12SwapInitiatedHelper
                 .TryToFindPaymentAsync(
                     swap: swap,
                     currency: currency,
@@ -613,7 +613,7 @@ namespace Atomex.Swaps.Tezos.FA12
 
             try
             {
-                var isRefundedResult = await FA12SwapRefundedHelper.IsRefundedAsync(
+                var isRefundedResult = await Fa12SwapRefundedHelper.IsRefundedAsync(
                         swap: swap,
                         currency: Fa12,
                         tezos: Xtz,

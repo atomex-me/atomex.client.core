@@ -186,8 +186,6 @@ namespace Atomex.Wallet.Tezos
                 }
             }
 
-            _ = UpdateBalanceAsync(cancellationToken);
-
             return null;
         }
 

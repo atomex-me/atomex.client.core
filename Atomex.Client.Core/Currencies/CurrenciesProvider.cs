@@ -51,9 +51,6 @@ namespace Atomex
             Updated?.Invoke(this, EventArgs.Empty);
         }
 
-        public ICurrencies GetCurrencies(Network network)
-        {
-            return _currencies[network];
-        }
+        public ICurrencies GetCurrencies(Network network) => _currencies[network];
     }
 }

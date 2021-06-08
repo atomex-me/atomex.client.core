@@ -352,5 +352,11 @@ namespace Atomex
             Network = BcdNetwork,
             MaxSize = BcdSizeLimit
         };
+
+        public static string UniqueTokenId(string tokenContractAddress, decimal tokenId, string contractType) =>
+            $"{tokenContractAddress}:{tokenId}:{contractType}";
+
+        public static string ExtractContract(string uniqueTokenId) =>
+            uniqueTokenId.Split(':')[0];
     }
 }

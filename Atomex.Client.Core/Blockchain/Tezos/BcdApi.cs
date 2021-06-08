@@ -12,7 +12,43 @@ using Atomex.Core;
 
 namespace Atomex.Blockchain.Tezos
 {
-    public class TokenContractCount : Dictionary<string, int> { }
+    public class TokenContractWithMetadata
+    {
+        [JsonPropertyName("address")]
+        public string Address { get; set; }
+        [JsonPropertyName("network")]
+        public string Network { get; set; }
+        [JsonPropertyName("description")]
+        public string Description { get; set; }
+        [JsonPropertyName("homepage")]
+        public string HomePage { get; set; }
+        [JsonPropertyName("interfaces")]
+        public List<string> Interfaces { get; set; }
+        [JsonPropertyName("count")]
+        public int Count { get; set; }
+
+        public string GetContractType()
+        {
+            if (Interfaces == null)
+                return "";
+
+            if (Interfaces.FirstOrDefault(i => i.StartsWith("TZIP-007")) != null)
+                return "FA12";
+
+            if (Interfaces.FirstOrDefault(i => i.StartsWith("TZIP-012")) != null)
+                return "FA2";
+
+            return "";
+        }
+    }
+
+    public class TokenContractResponse : Dictionary<string, TokenContractWithMetadata>
+    {
+        public string GetContractType(string contractAddress) =>
+            TryGetValue(contractAddress, out var tokenContract)
+                ? tokenContract.GetContractType()
+                : "";
+    }
 
     public class TokenBalance
     {
@@ -63,6 +99,8 @@ namespace Atomex.Blockchain.Tezos
 
     public class TokenTransfer
     {
+        public string Id => $"{Hash}:{Nonce}";
+
         [JsonPropertyName("indexed_time")]
         public int IndexedTime { get; set; }
         [JsonPropertyName("network")]
@@ -126,16 +164,16 @@ namespace Atomex.Blockchain.Tezos
             _config = bcdConfig ?? throw new ArgumentNullException(nameof(bcdConfig));
         }
 
-        public Task<Result<TokenContractCount>> GetTokenBalancesCountAsync(
+        public Task<Result<TokenContractResponse>> GetTokenContractsAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = $"/v1/account/{_config.Network}/{address}/count";
+            var requestUri = $"/v1/account/{_config.Network}/{address}/count_with_metadata";
 
-            return HttpHelper.GetAsyncResult<TokenContractCount>(
+            return HttpHelper.GetAsyncResult<TokenContractResponse>(
                 baseUri: _config.Uri,
                 requestUri: requestUri,
-                responseHandler: (response, content) => JsonSerializer.Deserialize<TokenContractCount>(content),
+                responseHandler: (response, content) => JsonSerializer.Deserialize<TokenContractResponse>(content),
                 cancellationToken: cancellationToken);
         }
 

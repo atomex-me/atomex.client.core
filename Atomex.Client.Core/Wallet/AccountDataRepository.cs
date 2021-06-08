@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
@@ -20,6 +21,7 @@ namespace Atomex.Wallet
         private readonly Dictionary<long, Swap> _swaps;
         private readonly Dictionary<string, Order> _orders;
         private readonly Dictionary<string, WalletAddress> _tezosTokensAddresses;
+        private readonly Dictionary<string, TokenTransfer> _tezosTransfers;
 
         private readonly object _sync;
 
@@ -38,6 +40,7 @@ namespace Atomex.Wallet
             _swaps                = new Dictionary<long, Swap>();
             _orders               = new Dictionary<string, Order>();
             _tezosTokensAddresses = new Dictionary<string, WalletAddress>();
+            _tezosTransfers       = new Dictionary<string, TokenTransfer>();
             _sync                 = new object();
         }
 
@@ -191,6 +194,24 @@ namespace Atomex.Wallet
         }
 
         #endregion Addresses
+
+        #region TokenTransfers
+
+        public Task<int> UpsertTezosTokenTransfersAsync(
+            IEnumerable<TokenTransfer> tokenTransfers)
+        {
+            lock (_sync)
+            {
+                foreach (var tokenTransfer in tokenTransfers)
+                {
+                    _tezosTransfers[tokenTransfer.Id] = tokenTransfer; // todo: copy ?
+                }
+
+                return Task.FromResult(tokenTransfers.Count());
+            }
+        }
+
+        #endregion TokenTransfers
 
         #region Transactions
 

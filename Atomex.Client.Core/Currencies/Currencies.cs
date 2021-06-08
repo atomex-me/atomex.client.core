@@ -76,9 +76,23 @@ namespace Atomex
         {
             lock (_sync)
             {
-                return _currencies.TryGetValue(name, out var currency)
-                    ? currency
-                    : null;
+                if (_currencies.TryGetValue(name, out var currency))
+                    return currency;
+
+                // try to resolve tokens
+                var nameParts = name.Split(':');
+
+                if (nameParts.Length != 3)
+                    return null;
+
+                var contractType = nameParts.Last();
+
+                return contractType switch
+                {
+                    "FA12" => _currencies["FA12"],
+                    "FA2"  => _currencies["FA2"],
+                    _      => null
+                };
             }
         }
 
@@ -98,8 +112,9 @@ namespace Atomex
                 "WBTC"  => new Erc20Config(configurationSection),
                 "TZBTC" => new Fa12Config(configurationSection),
                 "KUSD"  => new Fa12Config(configurationSection),
-                //"FA12"  => new Fa12Config(configurationSection),
-                //"FA2"   => new Fa2Config(configurationSection),
+
+                "FA12"  => new Fa12Config(configurationSection),
+                "FA2"   => new Fa2Config(configurationSection),
                 _       => null
             };
         }
@@ -121,7 +136,8 @@ namespace Atomex
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public static bool IsBitcoinBased(string name) =>
-            name == "BTC" || name == "LTC";
+            name == "BTC" ||
+            name == "LTC";
 
         public static bool IsTezosToken(string name) =>
             name == "TZBTC" ||

@@ -13,7 +13,7 @@ using Atomex.TezosTokens;
 
 namespace Atomex.Swaps.Tezos.FA12.Helpers
 {
-    public static class FA12SwapInitiatedHelper
+    public static class Fa12SwapInitiatedHelper
     {
         public static async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
             Swap swap,
@@ -56,7 +56,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
         public static async Task<Result<bool>> IsInitiatedAsync(
             Swap swap,
             CurrencyConfig currency,
-            Atomex.TezosConfig tezos,
+            TezosConfig tezos,
             long refundTimeStamp,
             CancellationToken cancellationToken = default)
         {

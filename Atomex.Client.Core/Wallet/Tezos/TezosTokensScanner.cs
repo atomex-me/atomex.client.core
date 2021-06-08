@@ -24,7 +24,30 @@ namespace Atomex.Wallet.Tezos
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            return Task.Run(async () =>
+            {
+                //var tezosConfig = _tezosAccount.Config;
+
+                //var bcdSettings = tezosConfig.BcdApiSettings;
+
+                //var bcdApi = new BcdApi(bcdSettings);
+
+                //var tokenBalancesCountResult = await bcdApi
+                //    .GetTokenBalancesCountAsync(address, cancellationToken)
+                //    .ConfigureAwait(false);
+
+                //var tokenBalancesCount = tokenBalancesCountResult.Value;
+
+                //foreach (var contract in tokenBalancesCount.Keys)
+                //{
+                //    var tokenBalances = await bcdApi
+                //        .GetTokenBalancesAsync(address, contract, cancellationToken)
+                //        .ConfigureAwait(false);
+
+
+                //}
+
+            }, cancellationToken);
         }
 
         public Task ScanAsync(
@@ -58,13 +81,30 @@ namespace Atomex.Wallet.Tezos
 
                 var bcdApi = new BcdApi(bcdSettings);
 
+                var tokenContractsResult = await bcdApi
+                    .GetTokenContractsAsync(address, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (tokenContractsResult.HasError)
+                {
+                    Log.Error($"Error while get token contracts for " +
+                        $"address: {address}. " +
+                        $"Code: {tokenContractsResult.Error.Code}. " +
+                        $"Description: {tokenContractsResult.Error.Description}.");
+
+                    return;
+                }
+
+                var contractType = tokenContractsResult.Value
+                    .GetContractType(contractAddress);
+
                 var tokenBalancesResult = await bcdApi
                     .GetTokenBalancesAsync(address, contractAddress, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (tokenBalancesResult.HasError)
                 {
-                    Log.Error($"Error while scan tokens balance for " +
+                    Log.Error("Error while scan tokens balance for " +
                         $"contract: {contractAddress} and " +
                         $"address: {address}. " +
                         $"Code: {tokenBalancesResult.Error.Code}. " +
@@ -79,11 +119,11 @@ namespace Atomex.Wallet.Tezos
                     .ToList();
 
                 var tokenBalanceDict = tokenBalancesResult.Value
-                    .ToDictionary(tb => $"{tb.Contract}:{tb.TokenId}", tb => tb);
+                    .ToDictionary(tb => TezosConfig.UniqueTokenId(tb.Contract, tb.TokenId, contractType), tb => tb);
 
                 foreach (var localTokenAddress in localTokenAddresses)
                 {
-                    var tokenId = localTokenAddress.Currency; // {contract}:{tokenId}
+                    var tokenId = localTokenAddress.Currency;
 
                     if (tokenBalanceDict.TryGetValue(tokenId, out var tb))
                     {
@@ -102,7 +142,7 @@ namespace Atomex.Wallet.Tezos
                 {
                     Address     = address,
                     Balance     = tb.GetTokenBalance(),
-                    Currency    = $"{tb.Contract}:{tb.TokenId}",
+                    Currency    = TezosConfig.UniqueTokenId(tb.Contract, tb.TokenId, contractType),
                     KeyIndex    = xtzAddress.KeyIndex,
                     HasActivity = true
                 });
@@ -115,7 +155,35 @@ namespace Atomex.Wallet.Tezos
 
                 // scan transfers
 
+                foreach (var localTokenAddress in localTokenAddresses)
+                {
+                    var currencyParts = localTokenAddress.Currency.Split(':');
 
+                    var transfersResult = await bcdApi
+                        .GetTokenTransfers(
+                            address: localTokenAddress.Address,
+                            contractAddress: currencyParts[0],
+                            tokenId: decimal.Parse(currencyParts[1]),
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (transfersResult.HasError)
+                    {
+                        Log.Error($"Error while get transfers for " +
+                            $"address: {localTokenAddress.Address}, " +
+                            $"contract: {currencyParts[0]} and " +
+                            $"token id: {currencyParts[1]}. " +
+                            $"Code: {transfersResult.Error.Code}. " +
+                            $"Description: {transfersResult.Error.Description}.");
+
+                        return;
+                    }
+
+                    if (transfersResult?.Value?.Any() ?? false)
+                        await _tezosAccount.DataRepository
+                            .UpsertTezosTokenTransfersAsync(transfersResult.Value)
+                            .ConfigureAwait(false);
+                }
 
             }, cancellationToken);
         }

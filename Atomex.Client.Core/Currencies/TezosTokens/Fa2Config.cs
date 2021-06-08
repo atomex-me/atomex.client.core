@@ -118,8 +118,5 @@ namespace Atomex.TezosTokens
 
         public override decimal GetDefaultFee() =>
             TransferGasLimit;
-
-        public static string UniqueTokenId(string tokenContractAddress, long tokenId) =>
-            $"FA2:{tokenContractAddress}:{tokenId}";
     }
 }
