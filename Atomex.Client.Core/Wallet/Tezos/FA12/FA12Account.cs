@@ -86,7 +86,7 @@ namespace Atomex.Wallet.Tezos
                     Currency      = xtz,
                     CreationTime  = DateTime.UtcNow,
                     From          = selectedAddress.WalletAddress.Address,
-                    To            = fa12.TokenContractAddress,
+                    To            = fa12.GetTokenContract(Currency),
                     Fee           = selectedAddress.UsedFee.ToMicroTez(),
                     GasLimit      = fa12.TransferGasLimit,
                     StorageLimit  = storageLimit,
@@ -167,8 +167,9 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetUnspentAddressesAsync(Currency)
+                .GetTezosTokenAddressesByTokenIdAsync(Currency)
                 .ConfigureAwait(false))
+                .Where(w => w.AvailableBalance() > 0)
                 .ToList();
 
             return await SendAsync(
@@ -376,7 +377,7 @@ namespace Atomex.Wallet.Tezos
                 var scanner = new TezosTokensScanner(_tezosAccount);
 
                 await scanner
-                    .ScanContractAsync(Fa12Config.TokenContractAddress, cancellationToken)
+                    .ScanContractAsync(Fa12Config.GetTokenContract(Currency), cancellationToken)
                     .ConfigureAwait(false);
 
                 LoadBalances();
@@ -395,7 +396,7 @@ namespace Atomex.Wallet.Tezos
                 var scanner = new TezosTokensScanner(_tezosAccount);
 
                 await scanner
-                    .ScanContractAsync(address, Fa12Config.TokenContractAddress, cancellationToken)
+                    .ScanContractAsync(address, Fa12Config.GetTokenContract(Currency), cancellationToken)
                     .ConfigureAwait(false);
 
                 LoadBalances();

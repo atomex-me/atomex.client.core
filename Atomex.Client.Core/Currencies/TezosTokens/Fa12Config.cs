@@ -179,5 +179,10 @@ namespace Atomex.TezosTokens
 
         public override decimal GetDefaultFee() =>
             TransferGasLimit;
+
+        public string GetTokenContract(string uniqueTokenId) =>
+            string.IsNullOrEmpty(TokenContractAddress)
+                ? ExtractContract(uniqueTokenId)
+                : TokenContractAddress;
     }
 }

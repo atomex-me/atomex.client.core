@@ -144,6 +144,21 @@ namespace Atomex.Wallet
             }
         }
 
+        public Task<WalletAddress> GetTezosTokenAddressAsync(
+            string uniqueTokenId,
+            string address)
+        {
+            lock (_sync)
+            {
+                var walletId = $"{uniqueTokenId}:{address}";
+
+                if (_addresses.TryGetValue(walletId, out var walletAddress))
+                    return Task.FromResult(walletAddress);
+
+                return Task.FromResult<WalletAddress>(null);
+            }
+        }
+
         public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync()
         {
             lock (_sync)
@@ -171,9 +186,23 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var addresses = _tezosTokensAddresses.Values
-                    .Where(w => w.Address == address && w.Currency.StartsWith(contractAddress));
+                    .Where(w => w.Address == address && w.Currency.StartsWith(contractAddress))
+                    .ToList();
 
-                return Task.FromResult(addresses);
+                return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
+            }
+        }
+
+        public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesByContractAsync(
+            string contractAddress)
+        {
+            lock (_sync)
+            {
+                var addresses = _tezosTokensAddresses.Values
+                    .Where(w => w.Currency.StartsWith(contractAddress))
+                    .ToList();
+
+                return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
             }
         }
 

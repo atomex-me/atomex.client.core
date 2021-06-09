@@ -415,6 +415,32 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<WalletAddress>());
         }
 
+        public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesByContractAsync(
+            string contractAddress)
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    var tezosTokenAddresses = db.GetCollection(TezosTokensAddresses);
+
+                    var addresses = tezosTokenAddresses
+                        .Find(Query.StartsWith(CurrencyKey, contractAddress))
+                        .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
+                        .ToList();
+
+                    return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error getting tezos tokens addresses");
+            }
+
+            return Task.FromResult(Enumerable.Empty<WalletAddress>());
+        }
+
         public Task<int> UpsertTezosTokenAddressesAsync(
             IEnumerable<WalletAddress> walletAddresses)
         {

@@ -224,38 +224,59 @@ namespace Atomex.Wallet.Tezos
         public override async Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
-            //var unspentAddresses = await DataRepository
-            //    .GetUnspentAddressesAsync(Currency)
-            //    .ConfigureAwait(false);
+            // 1. try to find address with tokens
+            var contractAddress = TezosConfig.ExtractContract(Currency);
 
-            //if (unspentAddresses.Any())
-            //    return unspentAddresses.MaxBy(a => a.AvailableBalance());
+            var addresses = (await DataRepository
+                .GetTezosTokenAddressesByContractAsync(contractAddress)
+                .ConfigureAwait(false))
+                .Where(w => w.Currency == Currency)
+                .ToList();
 
-            var unspentTezosAddresses = await DataRepository
+            if (addresses.Any())
+            {
+                var addressWithMaxBalance = addresses.MaxBy(a => a.AvailableBalance());
+
+                if (addressWithMaxBalance.AvailableBalance() > 0)
+                    return addressWithMaxBalance;
+            }
+
+            // 2. try to find xtz address with max balance
+            var unspentXtzAddresses = await DataRepository
                 .GetUnspentAddressesAsync(TezosConfig.Xtz)
                 .ConfigureAwait(false);
 
-            if (unspentTezosAddresses.Any())
+            if (unspentXtzAddresses.Any())
             {
-                var tezosAddress = unspentTezosAddresses.MaxBy(a => a.AvailableBalance());
+                var xtzAddress = unspentXtzAddresses.MaxBy(a => a.AvailableBalance());
 
-                return await DivideAddressAsync(
-                    chain: tezosAddress.KeyIndex.Chain,
-                    index: tezosAddress.KeyIndex.Index,
-                    cancellationToken: cancellationToken);
+                var fa2Address = Wallet.GetAddress(
+                    Fa2Config,
+                    xtzAddress.KeyIndex.Chain,
+                    xtzAddress.KeyIndex.Index);
+
+                await DataRepository
+                    .UpsertTezosTokenAddressesAsync(new WalletAddress[] { fa2Address })
+                    .ConfigureAwait(false);
+
+                return fa2Address;
             }
 
-            var lastActiveAddress = await DataRepository
-                .GetLastActiveWalletAddressAsync(
-                    currency: TezosConfig.Xtz,
-                    chain: Bip44.External)
+            // 3. use free xtz address
+            var freeXtzAddress = await _tezosAccount
+                .GetFreeExternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await DivideAddressAsync(
-                    chain: Bip44.External,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    cancellationToken: cancellationToken)
+            var freeFa2Address = Wallet.GetAddress(
+                Fa2Config,
+                freeXtzAddress.KeyIndex.Chain,
+                freeXtzAddress.KeyIndex.Index);
+
+            await DataRepository
+                .UpsertTezosTokenAddressesAsync(new WalletAddress[] { freeFa2Address })
                 .ConfigureAwait(false);
+
+            return freeFa2Address;
         }
 
         #endregion Addresses

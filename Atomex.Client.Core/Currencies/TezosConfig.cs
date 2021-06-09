@@ -358,5 +358,8 @@ namespace Atomex
 
         public static string ExtractContract(string uniqueTokenId) =>
             uniqueTokenId.Split(':')[0];
+
+        public static decimal ExtractTokenId(string uniqueTokenId) =>
+            decimal.Parse(uniqueTokenId.Split(':')[1]);
     }
 }
