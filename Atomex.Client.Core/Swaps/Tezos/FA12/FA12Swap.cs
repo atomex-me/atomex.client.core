@@ -78,12 +78,12 @@ namespace Atomex.Swaps.Tezos.FA12
                         {
                             var isInitiateTx = tx.Type.HasFlag(BlockchainTransactionType.SwapPayment);
 
-                            var address = await Fa12Account
+                            var address = await TezosAccount
                                 .GetAddressAsync(tx.From, cancellationToken)
                                 .ConfigureAwait(false);
 
-                            using var securePublicKey = Fa12Account.Wallet
-                                .GetPublicKey(Fa12, address.KeyIndex);
+                            using var securePublicKey = TezosAccount.Wallet
+                                .GetPublicKey(Xtz, address.KeyIndex);
 
                             // fill operation
                             var fillResult = await tx
@@ -269,7 +269,7 @@ namespace Atomex.Swaps.Tezos.FA12
 
             var redeemTx = new TezosTransaction
             {
-                Currency     = fa12,
+                Currency     = Xtz,
                 CreationTime = DateTime.UtcNow,
                 From         = walletAddress.Address,
                 To           = fa12.SwapContractAddress,
@@ -291,8 +291,8 @@ namespace Atomex.Swaps.Tezos.FA12
                     .LockAsync(redeemTx.From, cancellationToken)
                     .ConfigureAwait(false);
 
-                using var securePublicKey = Fa12Account.Wallet
-                    .GetPublicKey(Fa12, walletAddress.KeyIndex);
+                using var securePublicKey = TezosAccount.Wallet
+                    .GetPublicKey(Xtz, walletAddress.KeyIndex);
 
                 // fill operation
                 var fillResult = await redeemTx
@@ -337,7 +337,7 @@ namespace Atomex.Swaps.Tezos.FA12
 
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
-                currency: fa12,
+                currency: Xtz,
                 txId: redeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -383,7 +383,7 @@ namespace Atomex.Swaps.Tezos.FA12
 
             var redeemTx = new TezosTransaction
             {
-                Currency     = fa12,
+                Currency     = Xtz,
                 CreationTime = DateTime.UtcNow,
                 From         = walletAddress.Address,
                 To           = fa12.SwapContractAddress,
@@ -403,8 +403,8 @@ namespace Atomex.Swaps.Tezos.FA12
                 .GetLockAsync(redeemTx.From, cancellationToken)
                 .ConfigureAwait(false);
 
-            using var securePublicKey = Fa12Account.Wallet
-                .GetPublicKey(Fa12, walletAddress.KeyIndex);
+            using var securePublicKey = TezosAccount.Wallet
+                .GetPublicKey(Xtz, walletAddress.KeyIndex);
 
             // fill operation
             var fillResult = await redeemTx
@@ -440,7 +440,7 @@ namespace Atomex.Swaps.Tezos.FA12
             {
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
-                    currency: fa12,
+                    currency: Xtz,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -471,7 +471,7 @@ namespace Atomex.Swaps.Tezos.FA12
 
             var refundTx = new TezosTransaction
             {
-                Currency     = fa12,
+                Currency     = Xtz,
                 CreationTime = DateTime.UtcNow,
                 From         = walletAddress.Address,
                 To           = fa12.SwapContractAddress,
@@ -492,8 +492,8 @@ namespace Atomex.Swaps.Tezos.FA12
                     .LockAsync(refundTx.From, cancellationToken)
                     .ConfigureAwait(false);
 
-                using var securePublicKey = Fa12Account.Wallet
-                    .GetPublicKey(Fa12, walletAddress.KeyIndex);
+                using var securePublicKey = TezosAccount.Wallet
+                    .GetPublicKey(Xtz, walletAddress.KeyIndex);
 
                 // fill operation
                 var fillResult = await refundTx
@@ -538,7 +538,7 @@ namespace Atomex.Swaps.Tezos.FA12
 
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
-                currency: fa12,
+                currency: Xtz,
                 txId: refundTx.Id,
                 confirmationHandler: RefundConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -806,7 +806,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 
                 transactions.Add(new TezosTransaction
                 {
-                    Currency     = fa12,
+                    Currency     = Xtz,
                     CreationTime = DateTime.UtcNow,
                     From         = walletAddress.Address,
                     To           = fa12.SwapContractAddress,
@@ -835,11 +835,11 @@ namespace Atomex.Swaps.Tezos.FA12
             TezosTransaction paymentTx,
             CancellationToken cancellationToken = default)
         {
-            var walletAddress = await Fa12Account
+            var walletAddress = await TezosAccount
                 .GetAddressAsync(paymentTx.From, cancellationToken)
                 .ConfigureAwait(false);
 
-            using var callingAddressPublicKey = new SecureBytes((await Fa12Account.GetAddressAsync(walletAddress.Address)
+            using var callingAddressPublicKey = new SecureBytes((await TezosAccount.GetAddressAsync(walletAddress.Address)
                 .ConfigureAwait(false))
                 .PublicKeyBytes());
 
@@ -871,7 +871,7 @@ namespace Atomex.Swaps.Tezos.FA12
             {
                 transactions.Add(new TezosTransaction
                 {
-                    Currency     = fa12,
+                    Currency     = Xtz,
                     CreationTime = DateTime.UtcNow,
                     From         = walletAddress.Address,
                     To           = fa12.TokenContractAddress,
@@ -904,7 +904,7 @@ namespace Atomex.Swaps.Tezos.FA12
 
             transactions.Add(new TezosTransaction
             {
-                Currency     = fa12,
+                Currency     = Xtz,
                 CreationTime = DateTime.UtcNow,
                 From         = walletAddress.Address,
                 To           = fa12.TokenContractAddress,
@@ -963,7 +963,7 @@ namespace Atomex.Swaps.Tezos.FA12
             Log.Debug("TxId {@id} for swap {@swapId}", txId, swap.Id);
 
             // account new unconfirmed transaction
-            await Fa12Account
+            await TezosAccount
                 .UpsertTransactionAsync(
                     tx: tx,
                     updateBalance: updateBalance,
@@ -972,21 +972,21 @@ namespace Atomex.Swaps.Tezos.FA12
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var xtzTx = tx.Clone();
-            xtzTx.Currency = Xtz;
-            xtzTx.Amount = 0;
-            xtzTx.Type = BlockchainTransactionType.Output | (tx.Type.HasFlag(BlockchainTransactionType.TokenApprove)
-                ? BlockchainTransactionType.TokenCall
-                : BlockchainTransactionType.SwapCall);
+            //var xtzTx = tx.Clone();
+            //xtzTx.Currency = Xtz;
+            //xtzTx.Amount = 0;
+            //xtzTx.Type = BlockchainTransactionType.Output | (tx.Type.HasFlag(BlockchainTransactionType.TokenApprove)
+            //    ? BlockchainTransactionType.TokenCall
+            //    : BlockchainTransactionType.SwapCall);
 
-            await TezosAccount
-                .UpsertTransactionAsync(
-                    tx: xtzTx,
-                    updateBalance: updateBalance,
-                    notifyIfUnconfirmed: notifyIfUnconfirmed,
-                    notifyIfBalanceUpdated: notifyIfBalanceUpdated,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+            //await TezosAccount
+            //    .UpsertTransactionAsync(
+            //        tx: xtzTx,
+            //        updateBalance: updateBalance,
+            //        notifyIfUnconfirmed: notifyIfUnconfirmed,
+            //        notifyIfBalanceUpdated: notifyIfBalanceUpdated,
+            //        cancellationToken: cancellationToken)
+            //    .ConfigureAwait(false);
 
             // todo: transaction receipt status control
         }

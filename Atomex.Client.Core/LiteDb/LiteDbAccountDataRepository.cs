@@ -307,6 +307,10 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<WalletAddress>());
         }
 
+        #endregion Addresses
+
+        #region TezosTokensAddresses
+
         public Task<WalletAddress> GetTezosTokenAddressAsync(
             string uniqueTokenId,
             string address)
@@ -470,7 +474,75 @@ namespace Atomex.LiteDb
             return Task.FromResult(0);
         }
 
-        #endregion Addresses
+        public Task<IEnumerable<WalletAddress>> GetUnspentTezosTokenAddressesAsync(
+            string uniqueTokenId)
+        {
+            var query = Query.And(
+                Query.EQ(CurrencyKey, uniqueTokenId),
+                Query.Or(
+                    Query.Not(BalanceKey, 0m),
+                    Query.Not(UnconfirmedIncomeKey, 0m),
+                    Query.Not(UnconfirmedOutcomeKey, 0m))
+                );
+
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    var addresses = db.GetCollection(TezosTokensAddresses);
+
+                    var unspentAddresses = addresses
+                        .Find(query)
+                        .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
+                        .ToList();
+
+                    return Task.FromResult<IEnumerable<WalletAddress>>(unspentAddresses);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error getting unspent tezos tokens wallet addresses");
+            }
+
+            return Task.FromResult(Enumerable.Empty<WalletAddress>());
+        }
+
+        public Task<bool> TryInsertTezosTokenAddressAsync(
+            WalletAddress address)
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+
+                    var addresses = db.GetCollection(TezosTokensAddresses);
+                    addresses.EnsureIndex(IndexKey);
+                    addresses.EnsureIndex(CurrencyKey);
+                    addresses.EnsureIndex(AddressKey);
+
+                    if (!addresses.Exists(Query.EQ(IdKey, address.UniqueId)))
+                    {
+                        var document = _bsonMapper.ToDocument(address);
+
+                        var id = addresses.Insert(document);
+
+                        return Task.FromResult(id != null);
+                    }
+
+                    return Task.FromResult(false);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error updating tezos token address");
+            }
+
+            return Task.FromResult(false);
+        }
+
+        #endregion TezosTokensAddresses
 
         #region TokenTransfers
 

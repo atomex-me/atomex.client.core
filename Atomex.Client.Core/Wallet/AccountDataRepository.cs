@@ -144,6 +144,10 @@ namespace Atomex.Wallet
             }
         }
 
+        #endregion Addresses
+
+        #region TezosTokensAddresses
+
         public Task<WalletAddress> GetTezosTokenAddressAsync(
             string uniqueTokenId,
             string address)
@@ -152,7 +156,7 @@ namespace Atomex.Wallet
             {
                 var walletId = $"{uniqueTokenId}:{address}";
 
-                if (_addresses.TryGetValue(walletId, out var walletAddress))
+                if (_tezosTokensAddresses.TryGetValue(walletId, out var walletAddress))
                     return Task.FromResult(walletAddress);
 
                 return Task.FromResult<WalletAddress>(null);
@@ -222,7 +226,34 @@ namespace Atomex.Wallet
             }
         }
 
-        #endregion Addresses
+        public Task<IEnumerable<WalletAddress>> GetUnspentTezosTokenAddressesAsync(
+            string uniqueTokenId)
+        {
+            lock (_sync)
+            {
+                var addresses = _tezosTokensAddresses.Values
+                    .Where(w => w.Currency == uniqueTokenId && w.Balance != 0 && w.UnconfirmedIncome != 0 && w.UnconfirmedOutcome != 0);
+
+                return Task.FromResult(addresses);
+            }
+        }
+
+        public Task<bool> TryInsertTezosTokenAddressAsync(WalletAddress address)
+        {
+            lock (_sync)
+            {
+                var walletId = $"{address.Currency}:{address.Address}";
+
+                if (_tezosTokensAddresses.ContainsKey(walletId))
+                    return Task.FromResult(false);
+
+                _tezosTokensAddresses[walletId] = address; // todo: copy?
+
+                return Task.FromResult(true);
+            }
+        }
+
+        #endregion TezosTokensAddresses
 
         #region TokenTransfers
 

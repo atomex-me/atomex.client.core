@@ -225,21 +225,13 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             // 1. try to find address with tokens
-            var contractAddress = TezosConfig.ExtractContract(Currency);
-
             var addresses = (await DataRepository
-                .GetTezosTokenAddressesByContractAsync(contractAddress)
+                .GetUnspentTezosTokenAddressesAsync(Currency)
                 .ConfigureAwait(false))
-                .Where(w => w.Currency == Currency)
                 .ToList();
 
             if (addresses.Any())
-            {
-                var addressWithMaxBalance = addresses.MaxBy(a => a.AvailableBalance());
-
-                if (addressWithMaxBalance.AvailableBalance() > 0)
-                    return addressWithMaxBalance;
-            }
+                return addresses.MaxBy(a => a.AvailableBalance());
 
             // 2. try to find xtz address with max balance
             var unspentXtzAddresses = await DataRepository
@@ -250,13 +242,20 @@ namespace Atomex.Wallet.Tezos
             {
                 var xtzAddress = unspentXtzAddresses.MaxBy(a => a.AvailableBalance());
 
-                var fa2Address = Wallet.GetAddress(
+                var fa2Address = await DataRepository
+                    .GetTezosTokenAddressAsync(Currency, xtzAddress.Address)
+                    .ConfigureAwait(false);
+
+                if (fa2Address != null)
+                    return fa2Address;
+
+                fa2Address = Wallet.GetAddress(
                     Fa2Config,
                     xtzAddress.KeyIndex.Chain,
                     xtzAddress.KeyIndex.Index);
 
                 await DataRepository
-                    .UpsertTezosTokenAddressesAsync(new WalletAddress[] { fa2Address })
+                    .TryInsertTezosTokenAddressAsync(fa2Address)
                     .ConfigureAwait(false);
 
                 return fa2Address;
@@ -267,13 +266,20 @@ namespace Atomex.Wallet.Tezos
                 .GetFreeExternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var freeFa2Address = Wallet.GetAddress(
+            var freeFa2Address = await DataRepository
+                .GetTezosTokenAddressAsync(Currency, freeXtzAddress.Address)
+                .ConfigureAwait(false);
+
+            if (freeFa2Address != null)
+                return freeFa2Address;
+
+            freeFa2Address = Wallet.GetAddress(
                 Fa2Config,
                 freeXtzAddress.KeyIndex.Chain,
                 freeXtzAddress.KeyIndex.Index);
 
             await DataRepository
-                .UpsertTezosTokenAddressesAsync(new WalletAddress[] { freeFa2Address })
+                .TryInsertTezosTokenAddressAsync(freeFa2Address)
                 .ConfigureAwait(false);
 
             return freeFa2Address;

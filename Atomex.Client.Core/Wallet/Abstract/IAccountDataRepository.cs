@@ -36,14 +36,18 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<WalletAddress>> GetAddressesAsync(
             string currency);
 
+        #endregion Addresses
+
+        #region TezosTokensAddresses
+
         Task<WalletAddress> GetTezosTokenAddressAsync(
             string uniqueTokenId,
             string address);
 
-        Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync();
-
-        Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesByTokenIdAsync(
+        Task<IEnumerable<WalletAddress>> GetUnspentTezosTokenAddressesAsync(
             string uniqueTokenId);
+
+        Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync();
 
         Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync(
             string address);
@@ -55,10 +59,13 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesByContractAsync(
             string contractAddress);
 
+        Task<bool> TryInsertTezosTokenAddressAsync(
+            WalletAddress address);
+
         Task<int> UpsertTezosTokenAddressesAsync(
             IEnumerable<WalletAddress> walletAddresses);
 
-        #endregion Addresses
+        #endregion TezosTokensAddresses
 
         #region TokenTransfers
 

@@ -14,7 +14,6 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -167,9 +166,8 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetTezosTokenAddressesByTokenIdAsync(Currency)
+                .GetUnspentTezosTokenAddressesAsync(Currency)
                 .ConfigureAwait(false))
-                .Where(w => w.AvailableBalance() > 0)
                 .ToList();
 
             return await SendAsync(
@@ -192,7 +190,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetUnspentAddressesAsync(Currency)
+                .GetUnspentTezosTokenAddressesAsync(Currency)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -236,7 +234,7 @@ namespace Atomex.Wallet.Tezos
             var xtz = XtzConfig;
 
             var unspentAddresses = (await DataRepository
-                .GetUnspentAddressesAsync(Currency)
+                .GetUnspentTezosTokenAddressesAsync(Currency)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -413,43 +411,64 @@ namespace Atomex.Wallet.Tezos
         public async Task<WalletAddress> GetRedeemAddressAsync( // todo: match it with xtz balances
             CancellationToken cancellationToken = default)
         {
+            // 1. try to find address with tokens
             var unspentAddresses = await DataRepository
-                .GetUnspentAddressesAsync(Currency)
+                .GetUnspentTezosTokenAddressesAsync(Currency)
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
                 return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance()));
 
+            // 2. try to find xtz address with max balance
             var unspentTezosAddresses = await DataRepository
                 .GetUnspentAddressesAsync(TezosConfig.Xtz)
                 .ConfigureAwait(false);
 
             if (unspentTezosAddresses.Any())
             {
-                var tezosAddress = unspentTezosAddresses.MaxBy(a => a.AvailableBalance());
+                var xtzAddress = unspentTezosAddresses.MaxBy(a => a.AvailableBalance());
 
-                return await DivideAddressAsync(
-                    chain: tezosAddress.KeyIndex.Chain,
-                    index: tezosAddress.KeyIndex.Index,
-                    cancellationToken: cancellationToken);
-            }
-
-            foreach (var chain in new[] { Bip44.Internal, Bip44.External })
-            {
-                var lastActiveAddress = await DataRepository
-                    .GetLastActiveWalletAddressAsync(
-                        currency: Currency,
-                        chain: chain)
+                var fa12Address = await DataRepository
+                    .GetTezosTokenAddressAsync(Currency, xtzAddress.Address)
                     .ConfigureAwait(false);
 
-                if (lastActiveAddress != null)
-                    return ResolvePublicKey(lastActiveAddress);
+                if (fa12Address != null)
+                    return ResolvePublicKey(fa12Address);
+
+                fa12Address = Wallet.GetAddress(
+                    Fa12Config,
+                    xtzAddress.KeyIndex.Chain,
+                    xtzAddress.KeyIndex.Index);
+
+                await DataRepository
+                    .TryInsertTezosTokenAddressAsync(fa12Address)
+                    .ConfigureAwait(false);
+
+                return fa12Address;
             }
 
-            var redeemAddress = await GetFreeExternalAddressAsync(cancellationToken)
+            // 3. use xtz redeem address
+            var xtzRedeemAddress = await _tezosAccount
+                .GetRedeemAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return ResolvePublicKey(redeemAddress);
+            var fa12RedeemAddress = await DataRepository
+                .GetTezosTokenAddressAsync(Currency, xtzRedeemAddress.Address)
+                .ConfigureAwait(false);
+
+            if (fa12RedeemAddress != null)
+                return ResolvePublicKey(fa12RedeemAddress);
+
+            fa12RedeemAddress = Wallet.GetAddress(
+                Fa12Config,
+                xtzRedeemAddress.KeyIndex.Chain,
+                xtzRedeemAddress.KeyIndex.Index);
+
+            await DataRepository
+                .TryInsertTezosTokenAddressAsync(fa12RedeemAddress)
+                .ConfigureAwait(false);
+
+            return fa12RedeemAddress;
         }
 
         public async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
@@ -463,7 +482,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetUnspentAddressesAsync(Currency)
+                .GetUnspentTezosTokenAddressesAsync(Currency)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -598,9 +617,9 @@ namespace Atomex.Wallet.Tezos
                         return new List<SelectedWalletAddress> {
                             new SelectedWalletAddress
                             {
-                                WalletAddress = address,
-                                UsedAmount = amount,
-                                UsedFee = txFeeInTez,
+                                WalletAddress  = address,
+                                UsedAmount     = amount,
+                                UsedFee        = txFeeInTez,
                                 UsedStorageFee = storageFeeInTez
                             }
                         };
@@ -616,9 +635,9 @@ namespace Atomex.Wallet.Tezos
                 if (amountToUse > 0)
                     result.Add(new SelectedWalletAddress
                     {
-                        WalletAddress = address,
-                        UsedAmount = amountToUse,
-                        UsedFee = txFeeInTez,
+                        WalletAddress  = address,
+                        UsedAmount     = amountToUse,
+                        UsedFee        = txFeeInTez,
                         UsedStorageFee = storageFeeInTez
                     });
 
@@ -680,47 +699,16 @@ namespace Atomex.Wallet.Tezos
             return Enumerable.Empty<SelectedWalletAddress>();
         }
 
-        public override async Task<WalletAddress> GetFreeExternalAddressAsync(
+        public override Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
-            var unspentAddresses = await DataRepository
-                .GetUnspentAddressesAsync(Currency)
-                .ConfigureAwait(false);
-
-            if (unspentAddresses.Any())
-                return unspentAddresses.MaxBy(a => a.AvailableBalance());
-
-            var unspentTezosAddresses = await DataRepository
-                .GetUnspentAddressesAsync(TezosConfig.Xtz)
-                .ConfigureAwait(false);
-
-            if (unspentTezosAddresses.Any())
-            {   
-                var tezosAddress = unspentTezosAddresses.MaxBy(a => a.AvailableBalance());
-
-                return await DivideAddressAsync(
-                    chain: tezosAddress.KeyIndex.Chain,
-                    index: tezosAddress.KeyIndex.Index,
-                    cancellationToken: cancellationToken);
-            }
-
-            var lastActiveAddress = await DataRepository
-                .GetLastActiveWalletAddressAsync(
-                    currency: TezosConfig.Xtz,
-                    chain: Bip44.External)
-                .ConfigureAwait(false);
-
-            return await DivideAddressAsync(
-                    chain: Bip44.External,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+            return GetRedeemAddressAsync(cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            return DataRepository.GetUnspentTezosTokenAddressesAsync(Currency);
         }
 
         #endregion Addresses

@@ -124,7 +124,7 @@ namespace Atomex.Wallet.Tezos
                     var fillResult = await tx
                         .FillOperationsAsync(
                             securePublicKey: securePublicKey,
-                            headOffset: Atomex.TezosConfig.HeadOffset,
+                            headOffset: TezosConfig.HeadOffset,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -793,21 +793,11 @@ namespace Atomex.Wallet.Tezos
         public async Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            if (Currency != "XTZ")
-                return await DataRepository
-                    .GetUnspentAddressesAsync(Currency)
-                    .ConfigureAwait(false);
-
-            // todo: refactoring
-            var tzBtcAddresses   = await DataRepository
-                .GetUnspentAddressesAsync("TZBTC")
-                .ConfigureAwait(false);
-
-            var kolibriAddresses = await DataRepository
-                .GetUnspentAddressesAsync("KUSD")
-                .ConfigureAwait(false);
-
-            return tzBtcAddresses.Concat(kolibriAddresses);
+            return (await DataRepository
+                .GetTezosTokenAddressesAsync()
+                .ConfigureAwait(false))
+                .Where(w => w.AvailableBalance() > 0)
+                .ToList();
         }
 
         public async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
