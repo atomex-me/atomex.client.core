@@ -76,23 +76,9 @@ namespace Atomex
         {
             lock (_sync)
             {
-                if (_currencies.TryGetValue(name, out var currency))
-                    return currency;
-
-                // try to resolve tokens
-                var nameParts = name.Split(':');
-
-                if (nameParts.Length != 3)
-                    return null;
-
-                var contractType = nameParts.Last();
-
-                return contractType switch
-                {
-                    "FA12" => _currencies["FA12"],
-                    "FA2"  => _currencies["FA2"],
-                    _      => null
-                };
+                return _currencies.TryGetValue(name, out var currency)
+                    ? currency
+                    : null;
             }
         }
 

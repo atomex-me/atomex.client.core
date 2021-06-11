@@ -822,6 +822,16 @@ namespace Atomex.Wallet.BitcoinBased
                 RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency.Name));
         }
 
+        public Task<IBlockchainTransaction> GetTransactionByIdAsync(string txId)
+        {
+            var currency = Currencies.GetByName(Currency);
+
+            return DataRepository.GetTransactionByIdAsync(
+                currency: Currency,
+                txId: txId,
+                transactionType: currency.TransactionType);
+        }
+
         #endregion Transactions
 
         #region Outputs
@@ -934,17 +944,20 @@ namespace Atomex.Wallet.BitcoinBased
 
         public Task<IEnumerable<ITxOutput>> GetOutputsAsync()
         {
-            return DataRepository.GetOutputsAsync(Currency, BtcBasedCurrency.OutputType());
+            return DataRepository
+                .GetOutputsAsync(Currency, BtcBasedCurrency.OutputType());
         }
 
         public Task<IEnumerable<ITxOutput>> GetOutputsAsync(string address)
         {
-            return DataRepository.GetOutputsAsync(Currency, address, BtcBasedCurrency.OutputType());
+            return DataRepository
+                .GetOutputsAsync(Currency, address, BtcBasedCurrency.OutputType());
         }
 
         public Task<ITxOutput> GetOutputAsync(string txId, uint index)
         {
-            return DataRepository.GetOutputAsync(Currency, txId, index, BtcBasedCurrency.OutputType());
+            return DataRepository
+                .GetOutputAsync(Currency, txId, index, BtcBasedCurrency.OutputType());
         }
 
         #endregion Outputs
@@ -960,5 +973,37 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         #endregion AddressResolver
+
+        protected IEnumerable<WalletAddress> ApplyAddressUsagePolicy(
+            List<WalletAddress> addresses,
+            decimal amount,
+            decimal fee,
+            decimal feePrice,
+            AddressUsagePolicy addressUsagePolicy)
+        {
+            var currency = Currencies.GetByName(Currency);
+
+            switch (addressUsagePolicy)
+            {
+                case AddressUsagePolicy.UseMinimalBalanceFirst:
+                    addresses = addresses.SortList(new AvailableBalanceAscending());
+                    break;
+                case AddressUsagePolicy.UseMaximumBalanceFirst:
+                    addresses = addresses.SortList(new AvailableBalanceDescending());
+                    break;
+                case AddressUsagePolicy.UseOnlyOneAddress:
+                    var walletAddress = addresses
+                        .FirstOrDefault(w => w.AvailableBalance() >= amount + currency.GetFeeAmount(fee, feePrice));
+
+                    return walletAddress != null
+                        ? new List<WalletAddress> { walletAddress }
+                        : Enumerable.Empty<WalletAddress>();
+
+                default:
+                    throw new Exception("Address usage policy not supported");
+            }
+
+            return addresses;
+        }
     }
 }

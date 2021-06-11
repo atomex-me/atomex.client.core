@@ -300,13 +300,6 @@ namespace Atomex.Wallet.Abstract
 
         #region Transactions
 
-        Task UpsertTransactionAsync(
-            IBlockchainTransaction tx,
-            bool updateBalance = false,
-            bool notifyIfUnconfirmed = true,
-            bool notifyIfBalanceUpdated = true,
-            CancellationToken cancellationToken = default);
-
         Task<IBlockchainTransaction> GetTransactionByIdAsync(string currency, string txId);
         Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(string currency);
         Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync();

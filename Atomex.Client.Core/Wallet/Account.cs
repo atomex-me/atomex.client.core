@@ -345,37 +345,6 @@ namespace Atomex.Wallet
                 .GetUnspentAddressesAsync(cancellationToken);
         }
 
-        //public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
-        //    string currency,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return GetCurrencyAccount(currency)
-        //        .GetUnspentTokenAddressesAsync(cancellationToken);
-        //}
-
-        //public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
-        //    string currency,
-        //    string toAddress,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    FeeUsagePolicy feeUsagePolicy,
-        //    AddressUsagePolicy addressUsagePolicy,
-        //    BlockchainTransactionType transactionType,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return GetCurrencyAccount(currency)
-        //        .GetUnspentAddressesAsync(
-        //            toAddress: toAddress,
-        //            amount: amount,
-        //            fee: fee,
-        //            feePrice: feePrice,
-        //            feeUsagePolicy: feeUsagePolicy,
-        //            addressUsagePolicy: addressUsagePolicy,
-        //            transactionType: transactionType,
-        //            cancellationToken: cancellationToken);
-        //}
-
         public Task<WalletAddress> GetFreeInternalAddressAsync(
             string currency,
             CancellationToken cancellationToken = default)
@@ -392,33 +361,9 @@ namespace Atomex.Wallet
                 .GetFreeExternalAddressAsync(cancellationToken);
         }
 
-        //public Task<WalletAddress> GetRedeemAddressAsync(   //todo: check if always returns the biggest address
-        //    string currency,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return GetCurrencyAccount(currency)
-        //        .GetRedeemAddressAsync(cancellationToken);   
-        //}
-
         #endregion Addresses
 
         #region Transactions
-
-        public Task UpsertTransactionAsync(
-            IBlockchainTransaction tx,
-            bool updateBalance = false,
-            bool notifyIfUnconfirmed = true,
-            bool notifyIfBalanceUpdated = true,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(tx.Currency.Name)
-                .UpsertTransactionAsync(
-                    tx: tx,
-                    updateBalance: updateBalance,
-                    notifyIfUnconfirmed: notifyIfUnconfirmed,
-                    notifyIfBalanceUpdated: notifyIfBalanceUpdated,
-                    cancellationToken: cancellationToken);
-        }
 
         public Task<IBlockchainTransaction> GetTransactionByIdAsync(
             string currency,

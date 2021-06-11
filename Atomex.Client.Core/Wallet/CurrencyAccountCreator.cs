@@ -22,15 +22,15 @@ namespace Atomex.Wallet
             {
                 if (Currencies.IsTezosToken(currency.Name))
                 {
-                    if (!accounts.TryGetValue("XTZ", out var tezosAccount))
+                    if (!accounts.TryGetValue(TezosConfig.Xtz, out var tezosAccount))
                     {
                         tezosAccount = CreateCurrencyAccount(
-                            currency: "XTZ",
+                            currency: TezosConfig.Xtz,
                             wallet: wallet,
                             dataRepository: dataRepository,
                             currencies: currencies);
 
-                        accounts.Add("XTZ", tezosAccount);
+                        accounts.Add(TezosConfig.Xtz, tezosAccount);
                     }
 
                     accounts.Add(currency.Name, CreateCurrencyAccount(
@@ -97,12 +97,6 @@ namespace Atomex.Wallet
                     currencies,
                     wallet,
                     dataRepository),
-                "FA2" => new Fa2Account(
-                    currency,
-                    currencies,
-                    wallet,
-                    dataRepository,
-                    baseChainAccount as TezosAccount),
                 "TZBTC" => new Fa12Account(
                     currency,
                     currencies,
@@ -119,6 +113,12 @@ namespace Atomex.Wallet
                     wallet,
                     dataRepository,
                     baseChainAccount as TezosAccount),
+                //"FA2" => new Fa2Account(
+                //    currency,
+                //    currencies,
+                //    wallet,
+                //    dataRepository,
+                //    baseChainAccount as TezosAccount),
                 _ => throw new NotSupportedException($"Not supported currency {currency}"),
             };
         }

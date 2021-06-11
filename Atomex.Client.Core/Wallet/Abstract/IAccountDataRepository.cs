@@ -41,11 +41,15 @@ namespace Atomex.Wallet.Abstract
         #region TezosTokensAddresses
 
         Task<WalletAddress> GetTezosTokenAddressAsync(
-            string uniqueTokenId,
+            string currency,
+            string tokenContract,
+            decimal tokenId,
             string address);
 
         Task<IEnumerable<WalletAddress>> GetUnspentTezosTokenAddressesAsync(
-            string uniqueTokenId);
+            string currency,
+            string tokenContract,
+            decimal tokenId);
 
         Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync();
 

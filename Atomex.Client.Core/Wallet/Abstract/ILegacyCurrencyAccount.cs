@@ -44,12 +44,6 @@ namespace Atomex.Wallet.Abstract
             bool reserve = false,
             CancellationToken cancellationToken = default);
 
-        //Task<decimal> EstimateMaxFeeAsync(
-        //    string to,
-        //    decimal amount,
-        //    BlockchainTransactionType type,
-        //    CancellationToken cancellationToken = default);
-
         #endregion Common
 
         #region Addresses
@@ -67,20 +61,20 @@ namespace Atomex.Wallet.Abstract
         Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default);
 
-        //Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
-        //    IList<WalletAddress> from,
-        //    string to,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    FeeUsagePolicy feeUsagePolicy,
-        //    AddressUsagePolicy addressUsagePolicy,
-        //    BlockchainTransactionType transactionType,
-        //    CancellationToken cancellationToken = default);
-
         Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             CancellationToken cancellationToken = default);
 
         #endregion Addresses
+
+        #region Transactions
+
+        Task UpsertTransactionAsync(
+            IBlockchainTransaction tx,
+            bool updateBalance = false,
+            bool notifyIfUnconfirmed = true,
+            bool notifyIfBalanceUpdated = true,
+            CancellationToken cancellationToken = default);
+
+        #endregion Transactions
     }
 }

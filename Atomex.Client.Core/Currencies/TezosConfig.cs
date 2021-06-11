@@ -261,7 +261,7 @@ namespace Atomex
 
             return Task.FromResult(CalculateRewardForRedeem(
                 redeemFee: redeemFeeInXtz,
-                redeemFeeCurrency: "XTZ",
+                redeemFeeCurrency: Xtz,
                 redeemFeeDigitsMultiplier: XtzDigitsMultiplier,
                 maxRewardPercent: maxRewardPercent,
                 maxRewardPercentValue: maxRewardPercentInBase,
@@ -352,14 +352,5 @@ namespace Atomex
             Network = BcdNetwork,
             MaxSize = BcdSizeLimit
         };
-
-        public static string UniqueTokenId(string tokenContractAddress, decimal tokenId, string contractType) =>
-            $"{tokenContractAddress}:{tokenId}:{contractType}";
-
-        public static string ExtractContract(string uniqueTokenId) =>
-            uniqueTokenId.Split(':')[0];
-
-        public static decimal ExtractTokenId(string uniqueTokenId) =>
-            decimal.Parse(uniqueTokenId.Split(':')[1]);
     }
 }

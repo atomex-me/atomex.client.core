@@ -8,7 +8,10 @@ namespace Atomex.Core
     {
         public const int MaxNumberLength = 256;
 
-        public string UniqueId => $"{Address}:{Currency}";
+        public string UniqueId => Currency != "FA12" || Currency != "FA2"
+            ? $"{Address}:{Currency}"
+            : $"{Address}:{Currency}:{TokenContract}:{TokenId}";
+
         public long Id { get; set; }
         public string Currency { get; set; }
         public string Address { get; set; }
@@ -27,6 +30,9 @@ namespace Atomex.Core
         /// </summary>
         public string ProofOfPossession { get; set; }
         public string Nonce { get; set; }
+
+        public string TokenContract { get; set; }
+        public decimal TokenId { get; set; }
 
         public byte[] PublicKeyBytes() => Convert.FromBase64String(PublicKey);
 

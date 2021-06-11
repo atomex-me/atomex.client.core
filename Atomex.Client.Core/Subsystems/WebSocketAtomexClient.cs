@@ -572,6 +572,7 @@ namespace Atomex.Subsystems
             try
             {
                 await Account
+                    .GetCurrencyAccount<ILegacyCurrencyAccount>(tx.Currency.Name)
                     .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

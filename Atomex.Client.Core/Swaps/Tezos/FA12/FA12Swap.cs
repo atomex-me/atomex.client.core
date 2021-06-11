@@ -971,24 +971,6 @@ namespace Atomex.Swaps.Tezos.FA12
                     notifyIfBalanceUpdated: notifyIfBalanceUpdated,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-
-            //var xtzTx = tx.Clone();
-            //xtzTx.Currency = Xtz;
-            //xtzTx.Amount = 0;
-            //xtzTx.Type = BlockchainTransactionType.Output | (tx.Type.HasFlag(BlockchainTransactionType.TokenApprove)
-            //    ? BlockchainTransactionType.TokenCall
-            //    : BlockchainTransactionType.SwapCall);
-
-            //await TezosAccount
-            //    .UpsertTransactionAsync(
-            //        tx: xtzTx,
-            //        updateBalance: updateBalance,
-            //        notifyIfUnconfirmed: notifyIfUnconfirmed,
-            //        notifyIfBalanceUpdated: notifyIfBalanceUpdated,
-            //        cancellationToken: cancellationToken)
-            //    .ConfigureAwait(false);
-
-            // todo: transaction receipt status control
         }
 
         private JObject ApproveParams(
