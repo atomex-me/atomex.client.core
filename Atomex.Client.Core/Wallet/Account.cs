@@ -319,15 +319,6 @@ namespace Atomex.Wallet
 
         #region Addresses
 
-        public Task<WalletAddress> DivideAddressAsync(
-            string currency,
-            int chain,
-            uint index)
-        {
-            return GetCurrencyAccount(currency)
-                .DivideAddressAsync(chain, index);
-        }
-
         public Task<WalletAddress> GetAddressAsync(
             string currency,
             string address,
@@ -343,14 +334,6 @@ namespace Atomex.Wallet
         {
             return GetCurrencyAccount(currency)
                 .GetUnspentAddressesAsync(cancellationToken);
-        }
-
-        public Task<WalletAddress> GetFreeInternalAddressAsync(
-            string currency,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .GetFreeInternalAddressAsync(cancellationToken);
         }
 
         public Task<WalletAddress> GetFreeExternalAddressAsync(

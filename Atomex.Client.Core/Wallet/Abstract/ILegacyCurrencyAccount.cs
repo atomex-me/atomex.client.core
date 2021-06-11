@@ -48,6 +48,11 @@ namespace Atomex.Wallet.Abstract
 
         #region Addresses
 
+        Task<WalletAddress> DivideAddressAsync(
+            int chain,
+            uint index,
+            CancellationToken cancellationToken = default);
+
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string toAddress,
             decimal amount,

@@ -32,11 +32,6 @@ namespace Atomex.Wallet.Abstract
 
         #region Addresses
 
-        Task<WalletAddress> DivideAddressAsync(
-            int chain,
-            uint index,
-            CancellationToken cancellationToken = default);
-
         Task<WalletAddress> GetAddressAsync(
             string address,
             CancellationToken cancellationToken = default);
@@ -44,9 +39,6 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             CancellationToken cancellationToken = default);
         
-        Task<WalletAddress> GetFreeInternalAddressAsync(
-            CancellationToken cancellationToken = default);
-
         Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default);
 

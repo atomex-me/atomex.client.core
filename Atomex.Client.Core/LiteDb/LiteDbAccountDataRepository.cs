@@ -312,7 +312,9 @@ namespace Atomex.LiteDb
         #region TezosTokensAddresses
 
         public Task<WalletAddress> GetTezosTokenAddressAsync(
-            string uniqueTokenId,
+            string currency,
+            string tokenContract,
+            decimal tokenId,
             string address)
         {
             try
@@ -322,7 +324,7 @@ namespace Atomex.LiteDb
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
                     var addresses = db.GetCollection(TezosTokensAddresses);
                     
-                    var document = addresses.FindById($"{address}:{uniqueTokenId}");
+                    var document = addresses.FindById($"{address}:{currency}:{tokenContract}:{tokenId}");
 
                     var walletAddress = document != null
                         ? _bsonMapper.ToObject<WalletAddress>(document)
@@ -392,7 +394,7 @@ namespace Atomex.LiteDb
 
         public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync(
             string address,
-            string contractAddress)
+            string tokenContract)
         {
             try
             {
@@ -404,7 +406,7 @@ namespace Atomex.LiteDb
                     var addresses = tezosTokenAddresses
                         .Find(Query.And(
                             Query.EQ(AddressKey, address),
-                            Query.StartsWith(CurrencyKey, contractAddress)))
+                            Query.EQ(nameof(WalletAddress.TokenContract), tokenContract)))
                         .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
                         .ToList();
 
@@ -420,7 +422,7 @@ namespace Atomex.LiteDb
         }
 
         public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesByContractAsync(
-            string contractAddress)
+            string tokenContract)
         {
             try
             {
@@ -430,7 +432,7 @@ namespace Atomex.LiteDb
                     var tezosTokenAddresses = db.GetCollection(TezosTokensAddresses);
 
                     var addresses = tezosTokenAddresses
-                        .Find(Query.StartsWith(CurrencyKey, contractAddress))
+                        .Find(Query.EQ(nameof(WalletAddress.TokenContract), tokenContract))
                         .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
                         .ToList();
 
@@ -475,10 +477,14 @@ namespace Atomex.LiteDb
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentTezosTokenAddressesAsync(
-            string uniqueTokenId)
+            string currency,
+            string tokenContract,
+            decimal tokenId)
         {
             var query = Query.And(
-                Query.EQ(CurrencyKey, uniqueTokenId),
+                Query.EQ(CurrencyKey, currency),
+                Query.EQ(nameof(WalletAddress.TokenContract), tokenContract),
+                Query.EQ(nameof(WalletAddress.TokenId), tokenId),
                 Query.Or(
                     Query.Not(BalanceKey, 0m),
                     Query.Not(UnconfirmedIncomeKey, 0m),
