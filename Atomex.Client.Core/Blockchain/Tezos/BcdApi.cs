@@ -64,8 +64,19 @@ namespace Atomex.Blockchain.Tezos
         public string Name { get; set; }
         [JsonPropertyName("decimals")]
         public int Decimals { get; set; }
+        [JsonPropertyName("description")]
+        public string Description { get; set; }
+        [JsonPropertyName("artifact_uri")]
+        public string ArtifactUri { get; set; }
+        [JsonPropertyName("display_uri")]
+        public string DisplayUri { get; set; }
+        [JsonPropertyName("thumbnail_uri")]
+        public string ThumbnailUri { get; set; }
         [JsonPropertyName("is_transferable")]
         public bool IsTransferable { get; set; }
+        [JsonPropertyName("creators")]
+        public List<string> Creators { get; set; }
+
         [JsonPropertyName("balance")]
         public string Balance { get; set; }
 

@@ -264,8 +264,8 @@ namespace Atomex.Wallet.Tezos
 
             foreach (var address in addresses)
             {
-                Balance += address.Balance;
-                UnconfirmedIncome += address.UnconfirmedIncome;
+                Balance            += address.Balance;
+                UnconfirmedIncome  += address.UnconfirmedIncome;
                 UnconfirmedOutcome += address.UnconfirmedOutcome;
             }
         }
@@ -365,8 +365,11 @@ namespace Atomex.Wallet.Tezos
             if (walletAddress == null)
                 return null;
 
-            walletAddress.TokenContract = _tokenContract;
-            walletAddress.TokenId = _tokenId;
+            walletAddress.TokenBalance = new TokenBalance
+            {
+                Contract = _tokenContract,
+                TokenId  = _tokenId
+            };
 
             await DataRepository
                 .TryInsertTezosTokenAddressAsync(walletAddress)

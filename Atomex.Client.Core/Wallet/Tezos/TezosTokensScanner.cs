@@ -87,7 +87,7 @@ namespace Atomex.Wallet.Tezos
                 var contracts = (await _tezosAccount.DataRepository
                     .GetTezosTokenAddressesAsync(address)
                     .ConfigureAwait(false))
-                    .Select(a => TezosConfig.ExtractContract(a.Currency))
+                    .Select(a => a.TokenBalance.Contract)
                     .ToList();
 
                 // add contracts from network
@@ -228,22 +228,26 @@ namespace Atomex.Wallet.Tezos
 
                 var tokenBalanceDict = tokenBalancesResult.Value
                     .ToDictionary(
-                        tb => TezosConfig.UniqueTokenId(tb.Contract, tb.TokenId, contractType),
+                        tb => UniqueTokenId(contractType, tb.Contract, tb.TokenId),
                         tb => tb);
 
-                foreach (var localTokenAddress in localTokenAddresses)
+                foreach (var localAddress in localTokenAddresses)
                 {
-                    var tokenId = localTokenAddress.Currency;
+                    //var tokenId = localTokenAddress.Currency;
+                    var uniqueTokenId = UniqueTokenId(
+                        localAddress.Currency,
+                        localAddress.TokenBalance.Contract,
+                        localAddress.TokenBalance.TokenId);
 
-                    if (tokenBalanceDict.TryGetValue(tokenId, out var tb))
+                    if (tokenBalanceDict.TryGetValue(uniqueTokenId, out var tb))
                     {
-                        localTokenAddress.Balance = tb.GetTokenBalance();
+                        localAddress.Balance = tb.GetTokenBalance();
 
-                        tokenBalanceDict.Remove(tokenId);
+                        tokenBalanceDict.Remove(uniqueTokenId);
                     }
                     else
                     {
-                        localTokenAddress.Balance = 0;
+                        localAddress.Balance = 0;
                         // todo: may be remove zero address from db?
                     }
                 }
@@ -255,11 +259,12 @@ namespace Atomex.Wallet.Tezos
                 var newTokenAddresses = tokenBalanceDict.Values
                     .Select(tb => new WalletAddress
                     {
-                        Address     = address,
-                        Balance     = tb.GetTokenBalance(),
-                        Currency    = TezosConfig.UniqueTokenId(tb.Contract, tb.TokenId, contractType),
-                        KeyIndex    = xtzAddress.KeyIndex,
-                        HasActivity = true
+                        Address      = address,
+                        Balance      = tb.GetTokenBalance(),
+                        Currency     = contractType,
+                        KeyIndex     = xtzAddress.KeyIndex,
+                        HasActivity  = true,
+                        TokenBalance = tb
                     });
 
                 localTokenAddresses.AddRange(newTokenAddresses);
@@ -270,24 +275,22 @@ namespace Atomex.Wallet.Tezos
 
                 // scan transfers
 
-                foreach (var localTokenAddress in localTokenAddresses)
+                foreach (var localAddress in localTokenAddresses)
                 {
-                    var currencyParts = localTokenAddress.Currency.Split(':');
-
                     var transfersResult = await bcdApi
                         .GetTokenTransfers(
-                            address: localTokenAddress.Address,
-                            contractAddress: currencyParts[0],
-                            tokenId: decimal.Parse(currencyParts[1]),
+                            address: localAddress.Address,
+                            contractAddress: localAddress.TokenBalance.Contract,
+                            tokenId: localAddress.TokenBalance.TokenId,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
                     if (transfersResult.HasError)
                     {
                         Log.Error($"Error while get transfers for " +
-                            $"address: {localTokenAddress.Address}, " +
-                            $"contract: {currencyParts[0]} and " +
-                            $"token id: {currencyParts[1]}. " +
+                            $"address: {localAddress.Address}, " +
+                            $"contract: {localAddress.TokenBalance.Contract} and " +
+                            $"token id: {localAddress.TokenBalance.TokenId}. " +
                             $"Code: {transfersResult.Error.Code}. " +
                             $"Description: {transfersResult.Error.Description}.");
 
@@ -302,5 +305,8 @@ namespace Atomex.Wallet.Tezos
 
             }, cancellationToken);
         }
+
+        private static string UniqueTokenId(string type, string contract, decimal tokenId) =>
+            $"{type}:{contract}:{tokenId}";
     }
 }

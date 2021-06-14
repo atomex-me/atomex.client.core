@@ -1,5 +1,5 @@
 ﻿using System;
-
+using Atomex.Blockchain.Tezos;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.Core
@@ -10,7 +10,7 @@ namespace Atomex.Core
 
         public string UniqueId => Currency != "FA12" || Currency != "FA2"
             ? $"{Address}:{Currency}"
-            : $"{Address}:{Currency}:{TokenContract}:{TokenId}";
+            : $"{Address}:{Currency}:{TokenBalance.Contract}:{TokenBalance.TokenId}";
 
         public long Id { get; set; }
         public string Currency { get; set; }
@@ -31,8 +31,7 @@ namespace Atomex.Core
         public string ProofOfPossession { get; set; }
         public string Nonce { get; set; }
 
-        public string TokenContract { get; set; }
-        public decimal TokenId { get; set; }
+        public TokenBalance TokenBalance { get; set; }
 
         public byte[] PublicKeyBytes() => Convert.FromBase64String(PublicKey);
 
