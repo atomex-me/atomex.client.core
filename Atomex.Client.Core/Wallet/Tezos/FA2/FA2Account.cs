@@ -8,13 +8,13 @@ using Newtonsoft.Json.Linq;
 using Serilog;
 
 using Atomex.Abstract;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
-using Atomex.Blockchain;
 
 namespace Atomex.Wallet.Tezos
 {

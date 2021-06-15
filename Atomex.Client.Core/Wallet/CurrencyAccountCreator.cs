@@ -97,22 +97,22 @@ namespace Atomex.Wallet
                     currencies,
                     wallet,
                     dataRepository),
-                "TZBTC" => new Fa12Account(
-                    currency,
-                    currencies,
-                    wallet,
-                    dataRepository,
-                    baseChainAccount as TezosAccount),
+                //"TZBTC" => new Fa12Account(
+                //    currency,
+                //    currencies,
+                //    wallet,
+                //    dataRepository,
+                //    baseChainAccount as TezosAccount),
                 "XTZ" => new TezosAccount(
                     currencies,
                     wallet,
                     dataRepository),
-                "KUSD" => new Fa12Account(
-                    currency,
-                    currencies,
-                    wallet,
-                    dataRepository,
-                    baseChainAccount as TezosAccount),
+                //"KUSD" => new Fa12Account(
+                //    currency,
+                //    currencies,
+                //    wallet,
+                //    dataRepository,
+                //    baseChainAccount as TezosAccount),
                 //"FA2" => new Fa2Account(
                 //    currency,
                 //    currencies,

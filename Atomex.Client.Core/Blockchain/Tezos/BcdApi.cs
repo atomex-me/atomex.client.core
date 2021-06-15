@@ -6,7 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-
+using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 
@@ -108,9 +108,22 @@ namespace Atomex.Blockchain.Tezos
         public int Decimals { get; set; }
     }
 
-    public class TokenTransfer
+    public class TokenTransfer : IBlockchainTransaction
     {
         public string Id => $"{Hash}:{Nonce}";
+        public CurrencyConfig Currency { get; set; }
+        public BlockInfo BlockInfo => new BlockInfo
+        {
+            BlockHash     = null,
+            BlockHeight   = Level,
+            BlockTime     = TimeStamp.UtcDateTime,
+            Confirmations = 1,
+            FirstSeen     = TimeStamp.UtcDateTime
+        };
+        public BlockchainTransactionState State { get; set; } = BlockchainTransactionState.Confirmed;
+        public BlockchainTransactionType Type { get; set; } = BlockchainTransactionType.TokenCall;
+        public DateTime? CreationTime => TimeStamp.UtcDateTime;
+        public bool IsConfirmed => true;
 
         [JsonPropertyName("indexed_time")]
         public int IndexedTime { get; set; }

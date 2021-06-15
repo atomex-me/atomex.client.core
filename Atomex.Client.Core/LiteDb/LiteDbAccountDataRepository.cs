@@ -406,7 +406,7 @@ namespace Atomex.LiteDb
                     var addresses = tezosTokenAddresses
                         .Find(Query.And(
                             Query.EQ(AddressKey, address),
-                            Query.EQ(nameof(WalletAddress.TokenContract), tokenContract)))
+                            Query.EQ("TokenBalance.Contract", tokenContract)))
                         .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
                         .ToList();
 
@@ -432,7 +432,7 @@ namespace Atomex.LiteDb
                     var tezosTokenAddresses = db.GetCollection(TezosTokensAddresses);
 
                     var addresses = tezosTokenAddresses
-                        .Find(Query.EQ(nameof(WalletAddress.TokenContract), tokenContract))
+                        .Find(Query.EQ("TokenBalance.Contract", tokenContract))
                         .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
                         .ToList();
 
@@ -483,8 +483,8 @@ namespace Atomex.LiteDb
         {
             var query = Query.And(
                 Query.EQ(CurrencyKey, currency),
-                Query.EQ(nameof(WalletAddress.TokenContract), tokenContract),
-                Query.EQ(nameof(WalletAddress.TokenId), tokenId),
+                Query.EQ("TokenBalance.Contract", tokenContract),
+                Query.EQ("TokenBalance.TokenId", tokenId),
                 Query.Or(
                     Query.Not(BalanceKey, 0m),
                     Query.Not(UnconfirmedIncomeKey, 0m),

@@ -33,7 +33,7 @@ namespace Atomex.Blockchain.Abstract
         BlockInfo BlockInfo { get; }
         BlockchainTransactionState State { get; set; }
         BlockchainTransactionType Type { get; set; }
-        DateTime? CreationTime { get; set; }
+        DateTime? CreationTime { get; }
 
         bool IsConfirmed { get; }
     }
