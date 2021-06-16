@@ -739,7 +739,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 : 0;
 
             var unspentAddresses = (await Fa12Account
-                .GetUnspentAddressesAsync(cancellationToken)
+                .GetUnspentTokenAddressesAsync(cancellationToken)
                 .ConfigureAwait(false))
                 .ToList()
                 .SortList(new AvailableBalanceAscending());
@@ -925,13 +925,13 @@ namespace Atomex.Swaps.Tezos.FA12
             TezosTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            var walletAddress = await Fa12Account
+            var walletAddress = await TezosAccount
                 .GetAddressAsync(
                     address: tx.From,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            return await Fa12Account.Wallet
+            return await TezosAccount.Wallet
                 .SignAsync(
                     tx: tx,
                     address: walletAddress,

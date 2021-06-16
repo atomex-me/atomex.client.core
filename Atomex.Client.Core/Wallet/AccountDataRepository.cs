@@ -148,7 +148,7 @@ namespace Atomex.Wallet
 
         #endregion Addresses
 
-        #region TezosTokensAddresses
+        #region TezosTokens
 
         public Task<WalletAddress> GetTezosTokenAddressAsync(
             string currency,
@@ -265,10 +265,6 @@ namespace Atomex.Wallet
             }
         }
 
-        #endregion TezosTokensAddresses
-
-        #region TokenTransfers
-
         public Task<int> UpsertTezosTokenTransfersAsync(
             IEnumerable<TokenTransfer> tokenTransfers)
         {
@@ -283,7 +279,25 @@ namespace Atomex.Wallet
             }
         }
 
-        #endregion TokenTransfers
+        public Task<IEnumerable<TokenTransfer>> GetTezosTokenTransfersAsync(
+            string contractAddress,
+            int offset = 0,
+            int limit = 20)
+        {
+            lock (_sync)
+            {
+                var txs = _tezosTransfers.Values
+                    .Where(t => t.Contract == contractAddress)
+                    .ToList()
+                    .SortList((t1, t2) => t1.TimeStamp.CompareTo(t2.TimeStamp))
+                    .Skip(offset)
+                    .Take(limit);
+
+                return Task.FromResult(txs);
+            }
+        }
+
+        #endregion TezosTokens
 
         #region Transactions
 

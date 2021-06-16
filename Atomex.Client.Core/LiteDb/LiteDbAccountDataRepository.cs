@@ -20,23 +20,26 @@ namespace Atomex.LiteDb
 {
     public class LiteDbAccountDataRepository : IAccountDataRepository
     {
-        private const string OrdersCollectionName = "Orders";
-        private const string SwapsCollectionName = "Swaps";
+        private const string OrdersCollectionName      = "Orders";
+        private const string SwapsCollectionName       = "Swaps";
         private const string TransactionCollectionName = "Transactions";
-        private const string OutputsCollectionName = "Outputs";
-        private const string AddressesCollectionName = "Addresses";
-        private const string TezosTokensAddresses = "TezosTokensAddresses";
-        private const string TezosTokensTransfers = "TezosTokensTransfers";
+        private const string OutputsCollectionName     = "Outputs";
+        private const string AddressesCollectionName   = "Addresses";
+        private const string TezosTokensAddresses      = "TezosTokensAddresses";
+        private const string TezosTokensTransfers      = "TezosTokensTransfers";
 
-        private const string IdKey = "_id";
-        private const string CurrencyKey = nameof(WalletAddress.Currency);
-        private const string AddressKey = nameof(WalletAddress.Address);
-        private const string BalanceKey = nameof(WalletAddress.Balance);
-        private const string UnconfirmedIncomeKey = nameof(WalletAddress.UnconfirmedIncome);
+        private const string IdKey                 = "_id";
+        private const string CurrencyKey           = nameof(WalletAddress.Currency);
+        private const string AddressKey            = nameof(WalletAddress.Address);
+        private const string BalanceKey            = nameof(WalletAddress.Balance);
+        private const string UnconfirmedIncomeKey  = nameof(WalletAddress.UnconfirmedIncome);
         private const string UnconfirmedOutcomeKey = nameof(WalletAddress.UnconfirmedOutcome);
-        private const string ChainKey = "KeyIndex.Chain";
-        private const string IndexKey = "KeyIndex.Index";
-        private const string HasActivityKey = nameof(WalletAddress.HasActivity);
+        private const string ChainKey              = nameof(KeyIndex) + "." + nameof(KeyIndex.Chain);
+        private const string IndexKey              = nameof(KeyIndex) + "." + nameof(KeyIndex.Index);
+        private const string HasActivityKey        = nameof(WalletAddress.HasActivity);
+        private const string TokenContractKey      = nameof(TokenBalance) + "." + nameof(TokenBalance.Contract);
+        private const string TokenIdKey            = nameof(TokenBalance) + "." + nameof(TokenBalance.TokenId);
+        private const string TransferContract      = nameof(TokenTransfer.Contract);
 
         private readonly string _pathToDb;
         private readonly string _sessionPassword;
@@ -309,7 +312,7 @@ namespace Atomex.LiteDb
 
         #endregion Addresses
 
-        #region TezosTokensAddresses
+        #region TezosTokens
 
         public Task<WalletAddress> GetTezosTokenAddressAsync(
             string currency,
@@ -406,7 +409,7 @@ namespace Atomex.LiteDb
                     var addresses = tezosTokenAddresses
                         .Find(Query.And(
                             Query.EQ(AddressKey, address),
-                            Query.EQ("TokenBalance.Contract", tokenContract)))
+                            Query.EQ(TokenContractKey, tokenContract)))
                         .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
                         .ToList();
 
@@ -432,7 +435,7 @@ namespace Atomex.LiteDb
                     var tezosTokenAddresses = db.GetCollection(TezosTokensAddresses);
 
                     var addresses = tezosTokenAddresses
-                        .Find(Query.EQ("TokenBalance.Contract", tokenContract))
+                        .Find(Query.EQ(TokenContractKey, tokenContract))
                         .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
                         .ToList();
 
@@ -483,8 +486,8 @@ namespace Atomex.LiteDb
         {
             var query = Query.And(
                 Query.EQ(CurrencyKey, currency),
-                Query.EQ("TokenBalance.Contract", tokenContract),
-                Query.EQ("TokenBalance.TokenId", tokenId),
+                Query.EQ(TokenContractKey, tokenContract),
+                Query.EQ(TokenIdKey, tokenId),
                 Query.Or(
                     Query.Not(BalanceKey, 0m),
                     Query.Not(UnconfirmedIncomeKey, 0m),
@@ -548,10 +551,6 @@ namespace Atomex.LiteDb
             return Task.FromResult(false);
         }
 
-        #endregion TezosTokensAddresses
-
-        #region TokenTransfers
-
         public Task<int> UpsertTezosTokenTransfersAsync(
             IEnumerable<TokenTransfer> tokenTransfers)
         {
@@ -563,7 +562,8 @@ namespace Atomex.LiteDb
 
                     var transfers = db.GetCollection(TezosTokensTransfers);
 
-                    var documents = tokenTransfers.Select(t => _bsonMapper.ToDocument(t));
+                    var documents = tokenTransfers
+                        .Select(t => _bsonMapper.ToDocument(t));
 
                     var upserted = transfers.Upsert(documents);
 
@@ -578,7 +578,34 @@ namespace Atomex.LiteDb
             return Task.FromResult(0);
         }
 
-        #endregion TokenTransfers
+        public Task<IEnumerable<TokenTransfer>> GetTezosTokenTransfersAsync(
+            string contractAddress,
+            int offset = 0,
+            int limit = int.MaxValue)
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+
+                    var transfers = db.GetCollection(TezosTokensTransfers)
+                        .Find(Query.EQ(TransferContract, contractAddress), skip: offset, limit: limit)
+                        .Select(d => _bsonMapper.ToObject<TokenTransfer>(d))
+                        .ToList();
+
+                    return Task.FromResult<IEnumerable<TokenTransfer>>(transfers);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error getting tezos tokens transfers");
+            }
+
+            return Task.FromResult(Enumerable.Empty<TokenTransfer>());
+        }
+
+        #endregion TezosTokens
 
         #region Transactions
 
