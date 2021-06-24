@@ -332,7 +332,7 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var txs = _transactions.Values
-                    .Where(t => t.Currency.Name == currency);
+                    .Where(t => t.Currency == currency);
 
                 return Task.FromResult(txs);
             }
@@ -345,7 +345,7 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var txs = _transactions.Values
-                    .Where(t => t.Currency.Name == currency && !t.IsConfirmed);
+                    .Where(t => t.Currency == currency && !t.IsConfirmed);
 
                 return Task.FromResult(txs);
             }

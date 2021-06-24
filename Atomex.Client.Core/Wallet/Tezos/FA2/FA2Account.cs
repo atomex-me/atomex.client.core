@@ -70,8 +70,8 @@ namespace Atomex.Wallet.Tezos
             bool useDefaultFee = true,
             CancellationToken cancellationToken = default)
         {
-            var fa2 = Fa2Config;
-            var xtz = XtzConfig;
+            var fa2Config = Fa2Config;
+            var xtzConfig = XtzConfig;
 
             var fromAddress = await DataRepository
                 .GetTezosTokenAddressAsync(Currency, _tokenContract, _tokenId, from)
@@ -85,43 +85,43 @@ namespace Atomex.Wallet.Tezos
                         $"Required: {amount}.");
 
             var xtzAddress = await DataRepository
-                .GetWalletAddressAsync(xtz.Name, from)
+                .GetWalletAddressAsync(xtzConfig.Name, from)
                 .ConfigureAwait(false);
 
             var isRevealed = await _tezosAccount
                 .IsRevealedSourceAsync(from, cancellationToken)
                 .ConfigureAwait(false);
 
-            var storageFeeInMtz = (fa2.TransferStorageLimit - fa2.ActivationStorage) * fa2.StorageFeeMultiplier;
+            var storageFeeInMtz = (fa2Config.TransferStorageLimit - fa2Config.ActivationStorage) * fa2Config.StorageFeeMultiplier;
 
             var feeInMtz = useDefaultFee
-                ? fa2.TransferFee + (isRevealed ? 0 : fa2.RevealFee) + storageFeeInMtz
+                ? fa2Config.TransferFee + (isRevealed ? 0 : fa2Config.RevealFee) + storageFeeInMtz
                 : fee;
 
-            var availableBalanceInTz = xtzAddress.AvailableBalance().ToMicroTez() - feeInMtz - xtz.MicroTezReserve;
+            var availableBalanceInTz = xtzAddress.AvailableBalance().ToMicroTez() - feeInMtz - xtzConfig.MicroTezReserve;
 
             if (availableBalanceInTz < 0)
                 return new Error(
                     code: Errors.InsufficientFunds,
                     description: $"Insufficient funds to pay fee for address {from}. " +
                         $"Available: {xtzAddress.AvailableBalance()}. " +
-                        $"Required: {feeInMtz + xtz.MicroTezReserve}");
+                        $"Required: {feeInMtz + xtzConfig.MicroTezReserve}");
 
             Log.Debug("Send {@amount} tokens from address {@address} with available balance {@balance}",
                 amount,
                 from,
                 fromAddress.AvailableBalance());
 
-            var storageLimit = Math.Max(fa2.TransferStorageLimit - fa2.ActivationStorage, 0); // without activation storage fee
+            var storageLimit = Math.Max(fa2Config.TransferStorageLimit - fa2Config.ActivationStorage, 0); // without activation storage fee
 
             var tx = new TezosTransaction
             {
-                Currency     = xtz,
+                Currency     = xtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
                 From         = from,
                 To           = tokenContract,
                 Fee          = feeInMtz,
-                GasLimit     = fa2.TransferGasLimit,
+                GasLimit     = fa2Config.TransferGasLimit,
                 StorageLimit = storageLimit,
                 Params       = TransferParams(tokenId, from, to, amount),
                 Type         = BlockchainTransactionType.Output | BlockchainTransactionType.TokenCall,
@@ -138,18 +138,19 @@ namespace Atomex.Wallet.Tezos
                     .ConfigureAwait(false);
 
                 using var securePublicKey = Wallet
-                    .GetPublicKey(xtz, fromAddress.KeyIndex);
+                    .GetPublicKey(xtzConfig, fromAddress.KeyIndex);
 
                 // fill operation
                 var fillResult = await tx
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
+                        tezosConfig: xtzConfig,
                         headOffset: TezosConfig.HeadOffset,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 var signResult = await Wallet
-                    .SignAsync(tx, fromAddress, cancellationToken)
+                    .SignAsync(tx, fromAddress, xtzConfig, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!signResult)
@@ -157,7 +158,7 @@ namespace Atomex.Wallet.Tezos
                         code: Errors.TransactionSigningError,
                         description: "Transaction signing error");
 
-                var broadcastResult = await xtz.BlockchainApi
+                var broadcastResult = await xtzConfig.BlockchainApi
                     .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

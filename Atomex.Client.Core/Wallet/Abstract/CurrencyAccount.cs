@@ -234,7 +234,7 @@ namespace Atomex.Wallet.Abstract
                 RaiseUnconfirmedTransactionAdded(new TransactionEventArgs(tx));
 
             if (updateBalance && notifyIfBalanceUpdated)
-                RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency.Name));
+                RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
         }
 
         #endregion Transactions

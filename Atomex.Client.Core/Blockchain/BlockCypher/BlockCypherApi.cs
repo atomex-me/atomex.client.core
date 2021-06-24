@@ -237,7 +237,7 @@ namespace Atomex.Blockchain.BlockCypher
                         return new Error(Errors.InvalidResponse, "Invalid tx response.");
 
                     return new BitcoinBasedTransaction(
-                        currency: Currency,
+                        currency: Currency.Name,
                         tx: Transaction.Parse(txHex, Currency.Network),
                         blockInfo: new BlockInfo
                         {

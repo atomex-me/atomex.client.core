@@ -106,6 +106,7 @@ namespace Atomex.Wallet.Abstract
         Task<bool> SignAsync(
             IAddressBasedTransaction tx,
             WalletAddress address,
+            CurrencyConfig currency,
             CancellationToken cancellationToken = default);
 
         /// <summary>

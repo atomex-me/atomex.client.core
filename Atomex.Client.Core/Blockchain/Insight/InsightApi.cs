@@ -227,15 +227,15 @@ namespace Atomex.Blockchain.Insight
                         var tx = JsonConvert.DeserializeObject<Tx>(content);
 
                         return new BitcoinBasedTransaction(
-                            currency: Currency,
+                            currency: Currency.Name,
                             tx: Transaction.Parse(rawTxResult.Value, Currency.Network),
                             blockInfo: new BlockInfo
                             {
                                 Confirmations = tx.Confirmations,
-                                BlockHash = null,
-                                BlockHeight = tx.BlockHeight.GetValueOrDefault(0),
-                                BlockTime = tx.BlockTime.ToUtcDateTime(),
-                                FirstSeen = tx.Time.ToUtcDateTime()
+                                BlockHash     = null,
+                                BlockHeight   = tx.BlockHeight.GetValueOrDefault(0),
+                                BlockTime     = tx.BlockTime.ToUtcDateTime(),
+                                FirstSeen     = tx.Time.ToUtcDateTime()
                             },
                             fees: (long) (tx.Fees * Currency.DigitsMultiplier)
                         );

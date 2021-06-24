@@ -3,13 +3,15 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using NBitcoin;
+using NBitcoin.Policy;
+using Serilog;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using NBitcoin;
-using NBitcoin.Policy;
-using Serilog;
 
 namespace Atomex.Blockchain.BitcoinBased
 {
@@ -20,9 +22,9 @@ namespace Atomex.Blockchain.BitcoinBased
         private Transaction Tx { get; }
 
         public string Id => Tx.GetHash().ToString();
-        public string UniqueId => $"{Id}:{Currency.Name}";
+        public string UniqueId => $"{Id}:{Currency}";
 
-        public CurrencyConfig Currency { get; }
+        public string Currency { get; }
         public BlockInfo BlockInfo { get; }
         public BlockchainTransactionState State { get; set; }
         public BlockchainTransactionType Type { get; set; }
@@ -68,15 +70,15 @@ namespace Atomex.Blockchain.BitcoinBased
         }
 
         public BitcoinBasedTransaction(
-            CurrencyConfig currency,
+            string currency,
             Transaction tx,
             BlockInfo blockInfo = null,
             long? fees = null)
         {
-            Currency = currency;
-            Tx = tx;
+            Currency  = currency;
+            Tx        = tx;
             BlockInfo = blockInfo;
-            Fees = fees;
+            Fees      = fees;
 
             CreationTime = blockInfo != null
                 ? blockInfo.FirstSeen ?? blockInfo.BlockTime
@@ -104,7 +106,7 @@ namespace Atomex.Blockchain.BitcoinBased
 
                 var walletAddress = await addressResolver
                     .GetAddressAsync(
-                        currency: Currency.Name,
+                        currency: Currency,
                         address: address,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
@@ -115,7 +117,8 @@ namespace Atomex.Blockchain.BitcoinBased
                     return false;
                 }
 
-                using var securePrivateKey = keyStorage.GetPrivateKey(Currency, walletAddress.KeyIndex);
+                using var securePrivateKey = keyStorage
+                    .GetPrivateKey(Currency, walletAddress.KeyIndex);
 
                 Sign(securePrivateKey, spentOutput);
             }
@@ -307,7 +310,7 @@ namespace Atomex.Blockchain.BitcoinBased
         public IBitcoinBasedTransaction Clone()
         {
             return new BitcoinBasedTransaction(
-                currency: (BitcoinBasedConfig)Currency,
+                currency: Currency,
                 tx: Tx.Clone(),
                 blockInfo: (BlockInfo)BlockInfo?.Clone(),
                 fees: Fees);
@@ -376,7 +379,7 @@ namespace Atomex.Blockchain.BitcoinBased
                 .BuildTransaction(false);
 
             return new BitcoinBasedTransaction(
-                currency: currency,
+                currency: currency.Name,
                 tx: tx,
                 blockInfo: null,
                 fees: (long)tx.GetFee(coins.ToArray()).ToUnit(MoneyUnit.Satoshi));

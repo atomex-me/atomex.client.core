@@ -1,7 +1,10 @@
 ﻿using System;
+
+using Nethereum.Hex.HexTypes;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
-using Nethereum.Hex.HexTypes;
+using Atomex.EthereumTokens;
 
 namespace Atomex.Blockchain.Ethereum.ERC20
 {
@@ -86,7 +89,7 @@ namespace Atomex.Blockchain.Ethereum.ERC20
             if (transaction.Input == "0x")
                 return transaction;
 
-            if (transaction.Currency.Name == "ETH")
+            if (transaction.Currency == "ETH")
             {
                 if (transaction.IsERC20TransferTransaction() ||
                     transaction.IsERC20ApproveTransaction())
@@ -281,7 +284,7 @@ namespace Atomex.Blockchain.Ethereum.ERC20
 
         public static EthereumTransaction TransformApprovalEvent(
             this EtherScanApi.ContractEvent contractEvent,
-            EthereumTokens.Erc20Config erc20,
+            Erc20Config erc20,
             long lastBlockNumber)
         {
             if (!contractEvent.IsERC20ApprovalEvent())
@@ -291,21 +294,21 @@ namespace Atomex.Blockchain.Ethereum.ERC20
 
             var tx = new EthereumTransaction() //todo: make a refactoring
             {
-                Currency = erc20,
-                Id = contractEvent.HexTransactionHash,
-                Type = BlockchainTransactionType.Output | BlockchainTransactionType.TokenApprove,
-                State = BlockchainTransactionState.Confirmed, //todo: check if true in 100% cases
+                Currency     = erc20.Name,
+                Id           = contractEvent.HexTransactionHash,
+                Type         = BlockchainTransactionType.Output | BlockchainTransactionType.TokenApprove,
+                State        = BlockchainTransactionState.Confirmed, //todo: check if true in 100% cases
                 CreationTime = contractEvent.HexTimeStamp.Substring(PrefixOffset).FromHexString(),
 
                 From = approvalEvent.Owner,
-                To = approvalEvent.Spender,
+                To   = approvalEvent.Spender,
                 Amount = 0,
                 ////Nonce 
                 GasPrice = new HexBigInteger(contractEvent.HexGasPrice).Value,
                 ////GasLimit
-                GasLimit = new HexBigInteger(contractEvent.HexGasUsed).Value,
+                GasLimit      = new HexBigInteger(contractEvent.HexGasUsed).Value,
                 ReceiptStatus = true,
-                IsInternal = false,
+                IsInternal    = false,
                 InternalIndex = 0,
                 BlockInfo = new BlockInfo
                 {
@@ -336,7 +339,7 @@ namespace Atomex.Blockchain.Ethereum.ERC20
 
             var tx = new EthereumTransaction() //todo: make a refactoring
             {
-                Currency = erc20,
+                Currency = erc20.Name,
                 Id = contractEvent.HexTransactionHash,
 
                 Type = transferEvent.From == address

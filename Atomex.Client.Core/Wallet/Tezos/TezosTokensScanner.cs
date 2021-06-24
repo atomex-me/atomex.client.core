@@ -307,7 +307,7 @@ namespace Atomex.Wallet.Tezos
                         return;
                     }
 
-                    transfersResult.Value.ForEach(t => t.Currency = _tezosAccount.Currencies.GetByName(contractType));
+                    transfersResult.Value.ForEach(t => t.Currency = contractType);
 
                     if (transfersResult?.Value?.Any() ?? false)
                         await _tezosAccount.DataRepository

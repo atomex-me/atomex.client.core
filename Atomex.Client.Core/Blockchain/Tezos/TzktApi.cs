@@ -225,7 +225,7 @@ namespace Atomex.Blockchain.Tezos
                     baseUri: _baseUri,
                     requestUri: $"operations/transactions?sender={from}&target={to}&parameters.eq={parameters}",
                     headers: _headers,
-                    responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content), parseTokenParams: false),
+                    responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -371,8 +371,7 @@ namespace Atomex.Blockchain.Tezos
         }
 
         private Result<IEnumerable<TezosTransaction>> ParseTxs(
-            JArray data,
-            bool parseTokenParams = true)
+            JArray data)
         {
             var result = new List<TezosTransaction>();
 
@@ -391,7 +390,7 @@ namespace Atomex.Blockchain.Tezos
                 var tx = new TezosTransaction()
                 {
                     Id       = transaction["hash"].ToString(),
-                    Currency = _currency,
+                    Currency = _currency.Name,
                     State    = state,
                     Type     = BlockchainTransactionType.Unknown,
                     CreationTime = DateTime.SpecifyKind(DateTime.Parse(transaction["timestamp"].ToString()), DateTimeKind.Utc),
@@ -464,7 +463,7 @@ namespace Atomex.Blockchain.Tezos
             SecureBytes securePublicKey,
             CancellationToken cancellationToken = default)
         {
-            var token = _currency as Fa12Config;
+            var tokenConfig = _currency as Fa12Config;
 
             try
             {
@@ -472,13 +471,13 @@ namespace Atomex.Blockchain.Tezos
 
                 var tx = new TezosTransaction
                 {
-                    Currency          = token,
+                    Currency          = tokenConfig.Name,
                     From              = callingAddress,
-                    To                = token.TokenContractAddress,
+                    To                = tokenConfig.TokenContractAddress,
                     Fee               = 0, //token.GetAllowanceFee,
-                    GasLimit          = token.GetAllowanceGasLimit,
+                    GasLimit          = tokenConfig.GetAllowanceGasLimit,
                     StorageLimit      = 0, //token.GetAllowanceStorageLimit,
-                    Params            = GetAllowanceParams(holderAddress, spenderAddress, token.ViewContractAddress),
+                    Params            = GetAllowanceParams(holderAddress, spenderAddress, tokenConfig.ViewContractAddress),
 
                     UseRun            = false,
                     UseOfflineCounter = false
@@ -487,6 +486,7 @@ namespace Atomex.Blockchain.Tezos
                 await tx
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
+                        tezosConfig: tokenConfig,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

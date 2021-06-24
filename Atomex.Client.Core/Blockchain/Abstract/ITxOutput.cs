@@ -1,6 +1,4 @@
-﻿using Atomex.Core;
-
-namespace Atomex.Blockchain.Abstract
+﻿namespace Atomex.Blockchain.Abstract
 {
     public interface ITxOutput
     {
@@ -10,6 +8,6 @@ namespace Atomex.Blockchain.Abstract
         string TxId { get; }
         bool IsSpent { get; }
         ITxPoint SpentTxPoint { get; set; }
-        string DestinationAddress(CurrencyConfig currency);
+        string DestinationAddress(BitcoinBasedConfig bitcoinBasedConfig);
     }
 }

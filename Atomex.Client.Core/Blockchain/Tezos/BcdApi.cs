@@ -112,7 +112,7 @@ namespace Atomex.Blockchain.Tezos
     public class TokenTransfer : IBlockchainTransaction
     {
         public string Id => $"{Hash}:{Nonce}";
-        public CurrencyConfig Currency { get; set; }
+        public string Currency { get; set; }
         public BlockInfo BlockInfo => new BlockInfo
         {
             BlockHash     = null,

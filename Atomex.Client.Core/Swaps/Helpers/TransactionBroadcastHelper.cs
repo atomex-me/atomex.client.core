@@ -2,6 +2,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Core;
 using Atomex.Blockchain.Abstract;
 
@@ -37,7 +38,7 @@ namespace Atomex.Swaps.Helpers
                         else
                         {
                             Log.Error("Error while broadcast {@currency} tx with. Code: {@code}. Description: {@desc}",
-                                tx.Currency.Name,
+                                tx.Currency,
                                 broadcastResult.Error.Code,
                                 broadcastResult.Error.Description);
                         }
@@ -52,7 +53,7 @@ namespace Atomex.Swaps.Helpers
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Error while broadcast {@currency} tx.", tx.Currency.Name);
+                    Log.Error(e, "Error while broadcast {@currency} tx.", tx.Currency);
                 }
 
                 return null;

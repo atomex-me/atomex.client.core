@@ -602,15 +602,15 @@ namespace Atomex.Blockchain.SoChain
                         var tx = JsonConvert.DeserializeObject<Response<Tx>>(content);
 
                         return new BitcoinBasedTransaction(
-                            currency: Currency,
+                            currency: Currency.Name,
                             tx: Transaction.Parse(tx.Data.TxHex, Currency.Network),
                             blockInfo: new BlockInfo
                             {
                                 Confirmations = tx.Data.Confirmations,
-                                BlockHash = tx.Data.BlockHash,
-                                BlockHeight = tx.Data.BlockNo.GetValueOrDefault(0),
-                                BlockTime = tx.Data.Time.ToUtcDateTime(),
-                                FirstSeen = tx.Data.Time.ToUtcDateTime()
+                                BlockHash     = tx.Data.BlockHash,
+                                BlockHeight   = tx.Data.BlockNo.GetValueOrDefault(0),
+                                BlockTime     = tx.Data.Time.ToUtcDateTime(),
+                                FirstSeen     = tx.Data.Time.ToUtcDateTime()
                             },
                             fees: (long)(decimal.Parse(tx.Data.Fee, CultureInfo.InvariantCulture) * Satoshi)
                         );

@@ -244,7 +244,7 @@ namespace Atomex.Blockchain.Ethereum
                        return new EthereumTransaction
                        {
                            Id            = tx["hash"].Value<string>(),
-                           Currency      = Currency,
+                           Currency      = Currency.Name,
                            Type          = BlockchainTransactionType.Unknown,
                            //State = state,
                            //CreationTime = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
@@ -664,7 +664,7 @@ namespace Atomex.Blockchain.Ethereum
                 result.Add(new EthereumTransaction
                 {
                     Id            = id,
-                    Currency      = Currency,
+                    Currency      = Currency.Name,
                     Type          = BlockchainTransactionType.Unknown,
                     State         = state,
                     CreationTime  = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),

@@ -819,7 +819,7 @@ namespace Atomex.Wallet.BitcoinBased
                 RaiseUnconfirmedTransactionAdded(new TransactionEventArgs(tx));
 
             if (updateBalance && notifyIfBalanceUpdated)
-                RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency.Name));
+                RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
         }
 
         public Task<IBlockchainTransaction> GetTransactionByIdAsync(string txId)
@@ -888,7 +888,7 @@ namespace Atomex.Wallet.BitcoinBased
                 var input = tx.Inputs[i];
                 
                 var selfInput = await DataRepository
-                    .GetOutputAsync(Currency, input.Hash, input.Index, tx.Currency.OutputType())
+                    .GetOutputAsync(Currency, input.Hash, input.Index, typeof(BitcoinBasedTxOutput))
                     .ConfigureAwait(false);
 
                 if (selfInput == null)

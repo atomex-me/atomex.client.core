@@ -1,4 +1,5 @@
 ﻿using System;
+
 using Atomex.Core;
 
 namespace Atomex.Blockchain.Abstract
@@ -15,21 +16,21 @@ namespace Atomex.Blockchain.Abstract
     [Flags]
     public enum BlockchainTransactionType
     {
-        Unknown = 0x00,
-        Input = 0x01,
-        Output = 0x02,
-        SwapPayment = 0x04,
-        SwapRefund = 0x08,
-        SwapRedeem = 0x10,
+        Unknown      = 0x00,
+        Input        = 0x01,
+        Output       = 0x02,
+        SwapPayment  = 0x04,
+        SwapRefund   = 0x08,
+        SwapRedeem   = 0x10,
         TokenApprove = 0x20,
-        TokenCall = 0x40,
-        SwapCall = 0x80,
+        TokenCall    = 0x40,
+        SwapCall     = 0x80,
     }
 
     public interface IBlockchainTransaction
     {
         string Id { get; }
-        CurrencyConfig Currency { get; }
+        string Currency { get; }
         BlockInfo BlockInfo { get; }
         BlockchainTransactionState State { get; set; }
         BlockchainTransactionType Type { get; set; }

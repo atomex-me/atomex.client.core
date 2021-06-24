@@ -69,8 +69,8 @@ namespace Atomex.Wallet.Tezos
             bool useDefaultFee = true,
             CancellationToken cancellationToken = default)
         {
-            var fa12 = Fa12Config;
-            var xtz = XtzConfig;
+            var fa12Config = Fa12Config;
+            var xtzConfig = XtzConfig;
 
             var fromAddresses = from
                 .Where(w => w.Address != to) // filter self address usage
@@ -95,23 +95,23 @@ namespace Atomex.Wallet.Tezos
 
             foreach (var selectedAddress in selectedAddresses)
             {
-                var addressAmountInDigits = selectedAddress.UsedAmount.ToTokenDigits(fa12.DigitsMultiplier);
+                var addressAmountInDigits = selectedAddress.UsedAmount.ToTokenDigits(fa12Config.DigitsMultiplier);
 
                 Log.Debug("Send {@amount} tokens from address {@address} with available balance {@balance}",
                     addressAmountInDigits,
                     selectedAddress.WalletAddress.Address,
                     selectedAddress.WalletAddress.AvailableBalance());
 
-                var storageLimit = Math.Max(fa12.TransferStorageLimit - fa12.ActivationStorage, 0); // without activation storage fee
+                var storageLimit = Math.Max(fa12Config.TransferStorageLimit - fa12Config.ActivationStorage, 0); // without activation storage fee
                
                 var tx = new TezosTransaction
                 {
-                    Currency      = xtz,
+                    Currency      = xtzConfig.Name,
                     CreationTime  = DateTime.UtcNow,
                     From          = selectedAddress.WalletAddress.Address,
                     To            = _tokenContract,
                     Fee           = selectedAddress.UsedFee.ToMicroTez(),
-                    GasLimit      = fa12.TransferGasLimit,
+                    GasLimit      = fa12Config.TransferGasLimit,
                     StorageLimit  = storageLimit,
                     Params        = TransferParams(selectedAddress.WalletAddress.Address, to, Math.Round(addressAmountInDigits, 0)),
                     Type          = BlockchainTransactionType.Output | BlockchainTransactionType.TokenCall,
@@ -128,18 +128,19 @@ namespace Atomex.Wallet.Tezos
                         .ConfigureAwait(false);
 
                     using var securePublicKey = Wallet
-                        .GetPublicKey(xtz, selectedAddress.WalletAddress.KeyIndex);
+                        .GetPublicKey(xtzConfig, selectedAddress.WalletAddress.KeyIndex);
 
                     // fill operation
                     var fillResult = await tx
                         .FillOperationsAsync(
                             securePublicKey: securePublicKey,
+                            tezosConfig: xtzConfig,
                             headOffset: TezosConfig.HeadOffset,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
                     var signResult = await Wallet
-                        .SignAsync(tx, selectedAddress.WalletAddress, cancellationToken)
+                        .SignAsync(tx, selectedAddress.WalletAddress, xtzConfig, cancellationToken)
                         .ConfigureAwait(false);
 
                     if (!signResult)

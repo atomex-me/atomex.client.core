@@ -50,7 +50,7 @@ namespace Atomex.Wallet.Tezos
             bool useDefaultFee = true,
             CancellationToken cancellationToken = default)
         {
-            var xtz = Config;
+            var xtzConfig = Config;
 
             var fromAddresses = from
                 .Where(w => w.Address != to) // filter self address usage
@@ -89,18 +89,18 @@ namespace Atomex.Wallet.Tezos
                     selectedAddress.WalletAddress.AvailableBalance());
 
                 var storageLimit = isActive || !isFirstTx
-                    ? Math.Max(xtz.StorageLimit - xtz.ActivationStorage, 0) // without activation storage fee
-                    : xtz.StorageLimit;
+                    ? Math.Max(xtzConfig.StorageLimit - xtzConfig.ActivationStorage, 0) // without activation storage fee
+                    : xtzConfig.StorageLimit;
 
                 var tx = new TezosTransaction
                 {
-                    Currency      = xtz,
+                    Currency      = xtzConfig.Name,
                     CreationTime  = DateTime.UtcNow,
                     From          = selectedAddress.WalletAddress.Address,
                     To            = to,
                     Amount        = Math.Round(addressAmountMtz, 0),
                     Fee           = selectedAddress.UsedFee.ToMicroTez(),
-                    GasLimit      = xtz.GasLimit,
+                    GasLimit      = xtzConfig.GasLimit,
                     StorageLimit  = storageLimit,
                     Type          = BlockchainTransactionType.Output,
 
@@ -118,18 +118,19 @@ namespace Atomex.Wallet.Tezos
                         .ConfigureAwait(false);
 
                     using var securePublicKey = Wallet
-                        .GetPublicKey(xtz, selectedAddress.WalletAddress.KeyIndex);
+                        .GetPublicKey(xtzConfig, selectedAddress.WalletAddress.KeyIndex);
 
                     // fill operation
                     var fillResult = await tx
                         .FillOperationsAsync(
                             securePublicKey: securePublicKey,
+                            tezosConfig: xtzConfig,
                             headOffset: TezosConfig.HeadOffset,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
                     var signResult = await Wallet
-                        .SignAsync(tx, selectedAddress.WalletAddress, cancellationToken)
+                        .SignAsync(tx, selectedAddress.WalletAddress, xtzConfig, cancellationToken)
                         .ConfigureAwait(false);
 
                     if (!signResult)
@@ -137,7 +138,7 @@ namespace Atomex.Wallet.Tezos
                             code: Errors.TransactionSigningError,
                             description: "Transaction signing error");
 
-                    var broadcastResult = await xtz.BlockchainApi
+                    var broadcastResult = await xtzConfig.BlockchainApi
                         .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 

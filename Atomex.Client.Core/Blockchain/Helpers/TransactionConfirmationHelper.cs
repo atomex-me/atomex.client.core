@@ -2,10 +2,12 @@
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
-using Serilog;
 
 namespace Atomex.Blockchain.Helpers
 {

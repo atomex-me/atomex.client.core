@@ -541,7 +541,7 @@ namespace Atomex.Subsystems
                         // mark old unconfirmed txs as failed
                         if (transaction.CreationTime != null &&
                             DateTime.UtcNow > transaction.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
-                            !Currencies.IsBitcoinBased(transaction.Currency.Name))
+                            !Currencies.IsBitcoinBased(transaction.Currency))
                         {
                             transaction.State = BlockchainTransactionState.Failed;
 
@@ -549,7 +549,7 @@ namespace Atomex.Subsystems
                             break;
                         }
 
-                        await Task.Delay(TransactionConfirmationCheckInterval(transaction?.Currency.Name), cancellationToken)
+                        await Task.Delay(TransactionConfirmationCheckInterval(transaction?.Currency), cancellationToken)
                             .ConfigureAwait(false);
                     }
                 }
@@ -572,12 +572,12 @@ namespace Atomex.Subsystems
             try
             {
                 await Account
-                    .GetCurrencyAccount<ILegacyCurrencyAccount>(tx.Currency.Name)
+                    .GetCurrencyAccount<ILegacyCurrencyAccount>(tx.Currency)
                     .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 await Account
-                    .UpdateBalanceAsync(tx.Currency.Name, cancellationToken)
+                    .UpdateBalanceAsync(tx.Currency, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException)

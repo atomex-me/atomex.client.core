@@ -186,7 +186,7 @@ namespace Atomex.Blockchain.BitCore
                         var tx = JsonConvert.DeserializeObject<Tx>(content);
 
                         return new BitcoinBasedTransaction(
-                            currency: Currency,
+                            currency: Currency.Name,
                             tx: Transaction.Parse(txHexResult.Value, Currency.Network),
                             blockInfo: new BlockInfo
                             {

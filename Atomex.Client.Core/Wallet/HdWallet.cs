@@ -176,6 +176,7 @@ namespace Atomex.Wallet
         public async Task<bool> SignAsync(
             IAddressBasedTransaction tx,
             WalletAddress address,
+            CurrencyConfig currencyConfig,
             CancellationToken cancellationToken = default)
         {
             if (tx == null)
@@ -190,7 +191,7 @@ namespace Atomex.Wallet
             }
 
             var signResult = await tx
-                .SignAsync(KeyStorage, address, cancellationToken)
+                .SignAsync(KeyStorage, address, currencyConfig, cancellationToken)
                 .ConfigureAwait(false);
 
             if (signResult)
@@ -204,7 +205,7 @@ namespace Atomex.Wallet
         public Task<byte[]> SignHashAsync(
             byte[] hash,
             WalletAddress address,
-            CurrencyConfig currency,
+            CurrencyConfig currencyConfig,
             CancellationToken cancellationToken = default)
         {
             if (hash == null)
@@ -227,11 +228,11 @@ namespace Atomex.Wallet
                 return Task.FromResult<byte[]>(null);
             }
 
-            var signature = KeyStorage.SignHash(currency, hash, address.KeyIndex);
+            var signature = KeyStorage.SignHash(currencyConfig, hash, address.KeyIndex);
 
             Log.Verbose("Hash signature in base64: {@signature}", Convert.ToBase64String(signature));
 
-            if (!KeyStorage.VerifyHash(currency, hash, signature, address.KeyIndex))
+            if (!KeyStorage.VerifyHash(currencyConfig, hash, signature, address.KeyIndex))
             {
                 Log.Error("Signature verify error");
                 return Task.FromResult<byte[]>(null);
