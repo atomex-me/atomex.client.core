@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 
 using Atomex.Abstract;
+using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
 using Atomex.Wallet.Ethereum;
@@ -62,64 +63,39 @@ namespace Atomex.Wallet
         {
             return currency switch
             {
-                "BTC" => (ICurrencyAccount)new BitcoinBasedAccount(
+                "BTC" or "LTC" => (ICurrencyAccount) new BitcoinBasedAccount(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                "LTC" => new BitcoinBasedAccount(
+
+                "USDT" or "USDC" or "TBTC" or "WBTC" => new Erc20Account(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                "USDT" => new Erc20Account(
-                    currency,
-                    currencies,
-                    wallet,
-                    dataRepository),
-                "USDC" => new Erc20Account(
-                    currency,
-                    currencies,
-                    wallet,
-                    dataRepository),
-                "TBTC" => new Erc20Account(
-                    currency,
-                    currencies,
-                    wallet,
-                    dataRepository),
-                "WBTC" => new Erc20Account(
-                    currency,
-                    currencies,
-                    wallet,
-                    dataRepository),
+
                 "ETH" => new EthereumAccount(
                     currency,
                     currencies,
                     wallet,
                     dataRepository),
-                //"TZBTC" => new Fa12Account(
-                //    currency,
-                //    currencies,
-                //    wallet,
-                //    dataRepository,
-                //    baseChainAccount as TezosAccount),
+
+                "TZBTC" or "KUSD" => new Fa12Account(
+                    currency: currency,
+                    tokenContract: currencies.Get<Fa12Config>(currency).TokenContractAddress,
+                    tokenId: 0,
+                    currencies: currencies,
+                    wallet: wallet,
+                    dataRepository: dataRepository,
+                    tezosAccount: baseChainAccount as TezosAccount),
+
                 "XTZ" => new TezosAccount(
                     currencies,
                     wallet,
                     dataRepository),
-                //"KUSD" => new Fa12Account(
-                //    currency,
-                //    currencies,
-                //    wallet,
-                //    dataRepository,
-                //    baseChainAccount as TezosAccount),
-                //"FA2" => new Fa2Account(
-                //    currency,
-                //    currencies,
-                //    wallet,
-                //    dataRepository,
-                //    baseChainAccount as TezosAccount),
-                _ => throw new NotSupportedException($"Not supported currency {currency}"),
+
+                _ => throw new NotSupportedException($"Not supported currency {currency}."),
             };
         }
     }

@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
@@ -192,7 +193,7 @@ namespace Atomex.Blockchain.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = $"/v1/account/{_config.Network}/{address}/count_with_metadata";
+            var requestUri = $"account/{_config.Network}/{address}/count_with_metadata";
 
             return HttpHelper.GetAsyncResult<TokenContractResponse>(
                 baseUri: _config.Uri,
@@ -214,7 +215,7 @@ namespace Atomex.Blockchain.Tezos
 
             while (hasPages)
             {
-                var requestUri = $"/v1/account/{_config.Network}/{address}/token_balances?" +
+                var requestUri = $"account/{_config.Network}/{address}/token_balances?" +
                     $"contract={contractAddress}&" +
                     $"size={size}&" +
                     $"offset={offset}";
@@ -262,7 +263,7 @@ namespace Atomex.Blockchain.Tezos
 
             while (hasPages)
             {
-                var requestUri = $"v1/tokens/{_config.Network}/transfers/{address}?" +
+                var requestUri = $"tokens/{_config.Network}/transfers/{address}?" +
                     $"token_id={tokenId}" +
                     $"&size={size}" +
                     "&offset=0" +

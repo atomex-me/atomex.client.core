@@ -36,7 +36,6 @@ namespace Atomex.Wallet.Tezos
         protected decimal UnconfirmedIncome { get; set; }
         protected decimal UnconfirmedOutcome { get; set; }
 
-
         private Fa12Config Fa12Config => Currencies.Get<Fa12Config>(Currency);
         private TezosConfig XtzConfig => Currencies.Get<TezosConfig>(TezosConfig.Xtz);
 
