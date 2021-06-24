@@ -61,7 +61,7 @@ namespace Atomex.Wallet.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(async () =>
+            return Task.Run((async () =>
             {
                 var tezosConfig = _tezosAccount.Config;
 
@@ -101,15 +101,19 @@ namespace Atomex.Wallet.Tezos
                 // scan by address and contract
                 foreach (var contractAddress in contracts)
                 {
+                    var contractWithMetadata = tokenContractsResult.Value.TryGetValue(contractAddress, out var contract)
+                        ? contract
+                        : null;
+
                     await ScanContractAsync(
                             address,
                             contractAddress,
-                            tokenContractsResult.Value[contractAddress],
+                            contractWithMetadata,
                             cancellationToken)
                         .ConfigureAwait(false);
                 }
 
-            }, cancellationToken);
+            }), cancellationToken);
         }
 
         public Task ScanContractAsync(
@@ -179,10 +183,14 @@ namespace Atomex.Wallet.Tezos
                     return;
                 }
 
+                var contractWithMetadata = tokenContractsResult.Value.TryGetValue(contractAddress, out var contract)
+                    ? contract
+                    : null;
+
                 await ScanContractAsync(
                         address,
                         contractAddress,
-                        tokenContractsResult.Value[contractAddress],
+                        contractWithMetadata,
                         cancellationToken)
                     .ConfigureAwait(false);
 
@@ -205,6 +213,8 @@ namespace Atomex.Wallet.Tezos
 
                 var contractType = contract
                     ?.GetContractType() ?? "";
+
+
 
                 var tokenBalancesResult = await bcdApi
                     .GetTokenBalancesAsync(address, contractAddress, cancellationToken)
@@ -233,7 +243,6 @@ namespace Atomex.Wallet.Tezos
 
                 foreach (var localAddress in localTokenAddresses)
                 {
-                    //var tokenId = localTokenAddress.Currency;
                     var uniqueTokenId = UniqueTokenId(
                         localAddress.Currency,
                         localAddress.TokenBalance.Contract,
@@ -269,9 +278,10 @@ namespace Atomex.Wallet.Tezos
 
                 localTokenAddresses.AddRange(newTokenAddresses);
 
-                await _tezosAccount.DataRepository
-                    .UpsertTezosTokenAddressesAsync(localTokenAddresses)
-                    .ConfigureAwait(false);
+                if (localTokenAddresses.Any())
+                    await _tezosAccount.DataRepository
+                        .UpsertTezosTokenAddressesAsync(localTokenAddresses)
+                        .ConfigureAwait(false);
 
                 // scan transfers
 
@@ -296,6 +306,8 @@ namespace Atomex.Wallet.Tezos
 
                         return;
                     }
+
+                    transfersResult.Value.ForEach(t => t.Currency = _tezosAccount.Currencies.GetByName(contractType));
 
                     if (transfersResult?.Value?.Any() ?? false)
                         await _tezosAccount.DataRepository

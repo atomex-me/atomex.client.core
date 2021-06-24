@@ -33,16 +33,16 @@ namespace Atomex.LiteDb
                     currentVersion = LiteDbMigrations.MigrateFrom_0_to_1(pathToDb, sessionPassword);
 
                 if (currentVersion == LiteDbMigrations.Version1)
-                    LiteDbMigrations.MigrateFrom_1_to_2(pathToDb, sessionPassword, network);
+                    currentVersion = LiteDbMigrations.MigrateFrom_1_to_2(pathToDb, sessionPassword, network);
 
                 if (currentVersion == LiteDbMigrations.Version2)
-                    LiteDbMigrations.MigrateFrom_2_to_3(pathToDb, sessionPassword, network);
+                    currentVersion = LiteDbMigrations.MigrateFrom_2_to_3(pathToDb, sessionPassword, network);
 
                 if (currentVersion == LiteDbMigrations.Version3)
-                    LiteDbMigrations.MigrateFrom_3_to_4(pathToDb, sessionPassword, network);
+                    currentVersion = LiteDbMigrations.MigrateFrom_3_to_4(pathToDb, sessionPassword, network);
 
                 if (currentVersion == LiteDbMigrations.Version4)
-                    LiteDbMigrations.MigrateFrom_4_to_5(pathToDb, sessionPassword, network);
+                    currentVersion = LiteDbMigrations.MigrateFrom_4_to_5(pathToDb, sessionPassword, network);
             }
             catch (Exception e)
             {
