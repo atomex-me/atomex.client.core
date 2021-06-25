@@ -105,6 +105,10 @@ namespace Atomex.Wallet.Abstract
 
         protected void LoadBalances()
         {
+            Balance            = 0;
+            UnconfirmedIncome  = 0;
+            UnconfirmedOutcome = 0;
+
             var addresses = DataRepository
                 .GetUnspentAddressesAsync(Currency)
                 .WaitForResult();

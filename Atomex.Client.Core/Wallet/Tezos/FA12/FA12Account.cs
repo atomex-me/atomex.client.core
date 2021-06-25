@@ -56,6 +56,8 @@ namespace Atomex.Wallet.Tezos
             _tokenContract = tokenContract ?? throw new ArgumentNullException(nameof(tokenContract));
             _tokenId       = tokenId;
             _tezosAccount  = tezosAccount ?? throw new ArgumentNullException(nameof(tezosAccount));
+
+            LoadBalances();
         }
 
         #region Common
@@ -451,6 +453,10 @@ namespace Atomex.Wallet.Tezos
 
         private void LoadBalances()
         {
+            Balance            = 0;
+            UnconfirmedIncome  = 0;
+            UnconfirmedOutcome = 0;
+
             var addresses = DataRepository
                 .GetUnspentTezosTokenAddressesAsync(Currency, _tokenContract, _tokenId)
                 .WaitForResult();

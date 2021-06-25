@@ -9,7 +9,7 @@ namespace Atomex.Core
     {
         public const int MaxNumberLength = 256;
 
-        public string UniqueId => Currency != "FA12" || Currency != "FA2"
+        public string UniqueId => Currency != "FA12" && Currency != "FA2"
             ? $"{Address}:{Currency}"
             : $"{Address}:{Currency}:{TokenBalance.Contract}:{TokenBalance.TokenId}";
 

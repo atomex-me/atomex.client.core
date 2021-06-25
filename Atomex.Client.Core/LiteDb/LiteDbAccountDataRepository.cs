@@ -485,7 +485,7 @@ namespace Atomex.LiteDb
             decimal tokenId)
         {
             var query = Query.And(
-                Query.EQ(CurrencyKey, currency),
+                //Query.EQ(CurrencyKey, currency),
                 Query.EQ(TokenContractKey, tokenContract),
                 Query.EQ(TokenIdKey, tokenId),
                 Query.Or(

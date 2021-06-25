@@ -239,7 +239,7 @@ namespace Atomex.Wallet
             {
                 var addresses = _tezosTokensAddresses.Values
                     .Where(w =>
-                        w.Currency == currency && 
+                        //w.Currency == currency && 
                         w.TokenBalance.Contract == tokenContract &&
                         w.TokenBalance.TokenId == tokenId &&
                         (w.Balance != 0 || 
