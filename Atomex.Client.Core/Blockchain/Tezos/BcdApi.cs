@@ -33,10 +33,10 @@ namespace Atomex.Blockchain.Tezos
             if (Interfaces == null)
                 return "";
 
-            if (Interfaces.FirstOrDefault(i => i.StartsWith("TZIP-007")) != null)
+            if (Interfaces.FirstOrDefault(i => i == "TZIP-7" || i == "TZIP-007" || i.StartsWith("TZIP-007")) != null)
                 return "FA12";
 
-            if (Interfaces.FirstOrDefault(i => i.StartsWith("TZIP-012")) != null)
+            if (Interfaces.FirstOrDefault(i => i == "TZIP-12" || i == "TZIP-012" || i.StartsWith("TZIP-012")) != null)
                 return "FA2";
 
             return "";
@@ -122,7 +122,7 @@ namespace Atomex.Blockchain.Tezos
             FirstSeen     = TimeStamp.UtcDateTime
         };
         public BlockchainTransactionState State { get; set; } = BlockchainTransactionState.Confirmed;
-        public BlockchainTransactionType Type { get; set; } = BlockchainTransactionType.TokenCall;
+        public BlockchainTransactionType Type { get; set; }
         public DateTime? CreationTime => TimeStamp.UtcDateTime;
         public bool IsConfirmed => true;
 
@@ -154,12 +154,16 @@ namespace Atomex.Blockchain.Tezos
         public int Counter { get; set; }
         [JsonPropertyName("nonce")]
         public int Nonce { get; set; }
+        [JsonPropertyName("token")]
+        public Token Token { get; set; }
         [JsonPropertyName("alias")]
         public string Alias { get; set; }
         [JsonPropertyName("initiator_alias")]
         public string InitiatorAlias { get; set; }
         [JsonPropertyName("to_alias")]
         public string ToAlias { get; set; }
+        [JsonPropertyName("entrypoint")]
+        public string Entrypoint { get; set; }
     }
 
 

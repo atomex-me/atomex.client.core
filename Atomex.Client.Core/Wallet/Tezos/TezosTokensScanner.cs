@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 using Serilog;
 
+using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
@@ -214,8 +215,6 @@ namespace Atomex.Wallet.Tezos
                 var contractType = contract
                     ?.GetContractType() ?? "";
 
-
-
                 var tokenBalancesResult = await bcdApi
                     .GetTokenBalancesAsync(address, contractAddress, cancellationToken)
                     .ConfigureAwait(false);
@@ -307,7 +306,13 @@ namespace Atomex.Wallet.Tezos
                         return;
                     }
 
-                    transfersResult.Value.ForEach(t => t.Currency = contractType);
+                    // todo: fix 'self' transfers
+                    transfersResult.Value.ForEach(t => {
+                        t.Currency = contractType;
+                        t.Type |= localAddress.Address == t.From
+                            ? BlockchainTransactionType.Output
+                            : BlockchainTransactionType.Input;
+                    });
 
                     if (transfersResult?.Value?.Any() ?? false)
                         await _tezosAccount.DataRepository
