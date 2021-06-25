@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+
+using NBitcoin;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
-using NBitcoin;
 
 namespace Atomex.Client.Core.Tests
 {
@@ -15,7 +17,7 @@ namespace Atomex.Client.Core.Tests
             foreach (var output in outputs)
                 tx.Outputs.Add(new TxOut(new Money(output), to.Hash)); // p2pkh
 
-            return new BitcoinBasedTransaction(currency, tx);
+            return new BitcoinBasedTransaction(currency.Name, tx);
         }
 
         public static IBitcoinBasedTransaction CreateSegwitPaymentTx(

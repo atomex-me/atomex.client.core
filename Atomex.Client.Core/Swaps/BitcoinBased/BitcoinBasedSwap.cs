@@ -27,7 +27,7 @@ namespace Atomex.Swaps.BitcoinBased
         private const int InputGettingIntervalInSec = 5;
         private readonly IBitcoinBasedSwapTransactionFactory _transactionFactory;
 
-        private BitcoinBasedConfig BitcoinBased => Currencies.Get<BitcoinBasedConfig>(Currency);
+        private BitcoinBasedConfig Config => Currencies.Get<BitcoinBasedConfig>(Currency);
         private readonly BitcoinBasedAccount _account;
 
         public BitcoinBasedSwap(
@@ -144,7 +144,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             _ = BitcoinBasedSwapInitiatedHelper.StartSwapInitiatedControlAsync(
                 swap: swap,
-                currency: BitcoinBased,
+                currency: Config,
                 refundTimeStamp: refundTimeUtcInSec,
                 interval: ConfirmationCheckInterval,
                 initiatedHandler: initiatedHandler,
@@ -415,6 +415,7 @@ namespace Atomex.Swaps.BitcoinBased
                 .ConfigureAwait(false);
 
             _ = swap.RefundTx.ForceBroadcast(
+                blockchainApi: Config.BlockchainApi,
                 swap: swap,
                 interval: ForceRefundInterval,
                 completionHandler: RefundBroadcastEventHandler,
@@ -590,6 +591,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             var tx = await _transactionFactory
                 .CreateSwapRefundTxAsync(
+                    currency: currency,
                     paymentTx: paymentTx,
                     amount: amountInSatoshi,
                     refundAddress: refundAddress,
@@ -642,6 +644,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             var tx = await _transactionFactory
                 .CreateSwapRedeemTxAsync(
+                    currency: currency,
                     paymentTx: paymentTx,
                     amount: amountInSatoshi,
                     redeemAddress: redeemAddress,

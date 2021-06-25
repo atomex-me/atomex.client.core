@@ -1,7 +1,8 @@
-﻿using Serilog;
-using System;
+﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
 
 using Atomex.Core;
 using Atomex.Blockchain.Abstract;
@@ -12,6 +13,7 @@ namespace Atomex.Swaps.Helpers
     {
         public static Task<string> ForceBroadcast(
             this IBlockchainTransaction tx,
+            IBlockchainApi blockchainApi,
             Swap swap,
             TimeSpan interval,
             Action<Swap, string, CancellationToken> completionHandler = null,
@@ -23,7 +25,7 @@ namespace Atomex.Swaps.Helpers
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        var broadcastResult = await tx.Currency.BlockchainApi
+                        var broadcastResult = await blockchainApi
                             .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 

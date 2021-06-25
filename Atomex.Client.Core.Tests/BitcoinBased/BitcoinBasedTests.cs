@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Atomex.Blockchain;
-using Atomex.Blockchain.BitcoinBased;
-using Atomex.Common;
+
 using NBitcoin;
 using Xunit;
+
+using Atomex.Blockchain.BitcoinBased;
+using Atomex.Common;
 
 namespace Atomex.Client.Core.Tests
 {
@@ -113,9 +114,9 @@ namespace Atomex.Client.Core.Tests
             var initTx = BitcoinBasedCommon.CreateFakeTx(currency, Common.Alice.PubKey, 1_0000_0000, 1_0000_0000);
             var tx = CreatePaymentTx(currency);
 
-            tx.Sign(Common.Alice, initTx.Outputs);
+            tx.Sign(Common.Alice, initTx.Outputs, currency);
 
-            Assert.True(tx.Verify(initTx.Outputs));
+            Assert.True(tx.Verify(initTx.Outputs, currency));
 
             return tx;
         }
@@ -127,9 +128,9 @@ namespace Atomex.Client.Core.Tests
             var initTx = BitcoinBasedCommon.CreateFakeTx(currency, Common.Alice.PubKey, 1_0000_0000, 1_0000_0000);
             var tx = CreateSegwitPaymentTx(currency);
 
-            tx.Sign(Common.Alice, initTx.Outputs);
+            tx.Sign(Common.Alice, initTx.Outputs, currency);
 
-            Assert.True(tx.Verify(initTx.Outputs));
+            Assert.True(tx.Verify(initTx.Outputs, currency));
 
             return tx;
         }
@@ -141,9 +142,9 @@ namespace Atomex.Client.Core.Tests
             var initTx = BitcoinBasedCommon.CreateFakeTx(currency, Common.Alice.PubKey, 1_0000_0000, 1_0000_0000);
             var (tx, redeemScript) = CreateHtlcP2PkhScriptSwapPaymentTx(currency);
 
-            tx.Sign(Common.Alice, initTx.Outputs);
+            tx.Sign(Common.Alice, initTx.Outputs, currency);
 
-            Assert.True(tx.Verify(initTx.Outputs));
+            Assert.True(tx.Verify(initTx.Outputs, currency));
 
             return (tx, redeemScript);
         }
@@ -186,7 +187,7 @@ namespace Atomex.Client.Core.Tests
 
             refundTx.NonStandardSign(refundScript, paymentTxOutputs.First());
 
-            Assert.True(refundTx.Verify(paymentTxOutputs));
+            Assert.True(refundTx.Verify(paymentTxOutputs, currency));
 
             return refundTx;
         }
@@ -226,7 +227,7 @@ namespace Atomex.Client.Core.Tests
 
             redeemTx.NonStandardSign(scriptSig, paymentTxOutputs.First());
 
-            Assert.True(redeemTx.Verify(paymentTxOutputs));
+            Assert.True(redeemTx.Verify(paymentTxOutputs, currency));
 
             return redeemTx;
         }
@@ -255,9 +256,9 @@ namespace Atomex.Client.Core.Tests
                 amount: 9999_0000,
                 fee: 1_0000);
 
-            spentTx.Sign(Common.Bob, paymentTxOutputs);
+            spentTx.Sign(Common.Bob, paymentTxOutputs, currency);
 
-            Assert.True(spentTx.Verify(paymentTxOutputs));
+            Assert.True(spentTx.Verify(paymentTxOutputs, currency));
         }
 
         [Theory]

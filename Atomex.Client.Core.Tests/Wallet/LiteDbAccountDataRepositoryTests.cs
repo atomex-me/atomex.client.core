@@ -29,23 +29,23 @@ namespace Atomex.Client.Core.Tests
 
             return new Swap
             {
-                Id = id,
-                Secret = new byte[] { 0x01, 0x02, 0x03 },
+                Id         = id,
+                Secret     = new byte[] { 0x01, 0x02, 0x03 },
                 StateFlags = SwapStateFlags.HasPayment | SwapStateFlags.HasPartyPayment,
-                TimeStamp = UtcNow,
-                Symbol = "ETH/BTC",
-                Side = Side.Buy,
+                TimeStamp  = UtcNow,
+                Symbol     = "ETH/BTC",
+                Side       = Side.Buy,
                 SecretHash = new byte[] { 0x04, 0x05, 0x06 },
 
                 PaymentTx = new BitcoinBasedTransaction(
-                    currency: Common.BtcTestNet,
+                    currency: Common.BtcTestNet.Name,
                     tx: Transaction.Create(NBitcoin.Network.TestNet)),
 
                 PartyPaymentTx = new EthereumTransaction()
                 {
-                    Currency = Common.EthTestNet,
-                    From = "abcdefghj",
-                    To = "eprstifg"
+                    Currency = Common.EthTestNet.Name,
+                    From     = "abcdefghj",
+                    To       = "eprstifg"
                 }
             };
         }
@@ -125,11 +125,11 @@ namespace Atomex.Client.Core.Tests
 
             var tx = new EthereumTransaction
             {
-                Id = id,
-                Currency = Common.EthTestNet,
+                Id          = id,
+                Currency    = Common.EthTestNet.Name,
                 InternalTxs = new List<EthereumTransaction>
                 {
-                    new EthereumTransaction {Currency = Common.EthTestNet}
+                    new EthereumTransaction {Currency = Common.EthTestNet.Name}
                 }
             };
 

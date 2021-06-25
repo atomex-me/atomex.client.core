@@ -70,7 +70,10 @@ namespace Atomex.Wallet
             return KeyStorage.EncryptAsync(password);
         }
 
-        public WalletAddress GetAddress(CurrencyConfig currency, int chain, uint index)
+        public WalletAddress GetAddress(
+            CurrencyConfig currency,
+            int chain,
+            uint index)
         {
             using var securePublicKey = KeyStorage.GetPublicKey(currency, chain, index);
 
@@ -83,10 +86,10 @@ namespace Atomex.Wallet
 
             return new WalletAddress
             {
-                Currency = currency.Name,
-                Address = address,
+                Currency  = currency.Name,
+                Address   = address,
                 PublicKey = Convert.ToBase64String(publicKey),
-                KeyIndex = new KeyIndex { Chain = chain, Index = index }
+                KeyIndex  = new KeyIndex { Chain = chain, Index = index }
             };
         }
 
@@ -144,6 +147,7 @@ namespace Atomex.Wallet
             IInOutTransaction tx,
             IEnumerable<ITxOutput> spentOutputs,
             IAddressResolver addressResolver,
+            CurrencyConfig currencyConfig,
             CancellationToken cancellationToken = default)
         {
             if (tx == null)
@@ -162,6 +166,7 @@ namespace Atomex.Wallet
                     addressResolver: addressResolver,
                     keyStorage: KeyStorage,
                     spentOutputs: spentOutputs,
+                    currencyConfig: currencyConfig,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -283,27 +288,6 @@ namespace Atomex.Wallet
         {
             return KeyStorage.GetDeterministicSecret(currency, timeStamp);
         }
-
-        //public bool Verify(
-        //    WalletAddress walletAddress,
-        //    byte[] data,
-        //    byte[] signature)
-        //{
-        //    if (walletAddress == null)
-        //        throw new ArgumentNullException(nameof(walletAddress));
-
-        //    if (data == null)
-        //        throw new ArgumentNullException(nameof(data));
-
-        //    if (signature == null)
-        //        throw new ArgumentNullException(nameof(signature));
-
-        //    return KeyStorage.VerifyMessage(
-        //        currency: walletAddress.Currency,
-        //        data: data,
-        //        signature: signature,
-        //        keyIndex: walletAddress.KeyIndex);
-        //}
 
         public static HdWallet LoadFromFile(string pathToWallet, SecureString password)
         {

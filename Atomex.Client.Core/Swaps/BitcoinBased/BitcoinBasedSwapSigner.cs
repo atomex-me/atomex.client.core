@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+
+using NBitcoin;
+using Serilog;
+
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Core;
 using Atomex.Wallet.BitcoinBased;
-using NBitcoin;
-using Serilog;
 
 namespace Atomex.Swaps.BitcoinBased
 {
@@ -35,7 +37,8 @@ namespace Atomex.Swaps.BitcoinBased
                 .SignAsync(
                     tx: tx,
                     spentOutputs: spentOutputs,
-                    addressResolver: Account)
+                    addressResolver: Account,
+                    currencyConfig: Account.Config)
                 .ConfigureAwait(false);
 
             if (!result)
@@ -44,7 +47,7 @@ namespace Atomex.Swaps.BitcoinBased
                 return null;
             }
 
-            if (!tx.Verify(spentOutputs, out var errors))
+            if (!tx.Verify(spentOutputs, out var errors, Account.Config))
             {
                 Log.Error("Payment transaction verify errors: {errors}", errors);
                 return null;
@@ -87,7 +90,7 @@ namespace Atomex.Swaps.BitcoinBased
             }
 
             // firstly check, if transaction is already signed
-            if (tx.Verify(spentOutput))
+            if (tx.Verify(spentOutput, Account.Config))
                 return tx;
 
             // clean any signature, if exists
@@ -115,7 +118,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             tx.NonStandardSign(refundScriptSig, spentOutput);
 
-            if (!tx.Verify(spentOutput, out var errors))
+            if (!tx.Verify(spentOutput, out var errors, Account.Config))
             {
                 Log.Error("Refund transaction verify errors: {errors}", errors);
                 return null;
@@ -176,7 +179,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             tx.NonStandardSign(redeemScriptSig, spentOutput);
 
-            if (!tx.Verify(spentOutput, out var errors))
+            if (!tx.Verify(spentOutput, out var errors, Account.Config))
             {
                 Log.Error("Redeem transaction verify errors: {errors}", errors);
                 return null;

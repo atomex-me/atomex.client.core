@@ -183,14 +183,13 @@ namespace Atomex.Swaps.BitcoinBased
         }
 
         public async Task<IBitcoinBasedTransaction> CreateSwapRefundTxAsync(
+            BitcoinBasedConfig currency,
             IBitcoinBasedTransaction paymentTx,
             long amount,
             string refundAddress,
             DateTimeOffset lockTime,
             byte[] redeemScript)
         {
-            var currency = (BitcoinBasedConfig)paymentTx.Currency;
-
             var swapOutput = paymentTx.Outputs
                 .Cast<BitcoinBasedTxOutput>()
                 .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));
@@ -232,14 +231,13 @@ namespace Atomex.Swaps.BitcoinBased
         }
 
         public async Task<IBitcoinBasedTransaction> CreateSwapRedeemTxAsync(
+            BitcoinBasedConfig currency,
             IBitcoinBasedTransaction paymentTx,
             long amount,
             string redeemAddress,
             byte[] redeemScript,
             uint sequenceNumber = 0)
         {
-            var currency = (BitcoinBasedConfig)paymentTx.Currency;
-
             var swapOutput = paymentTx.Outputs
                 .Cast<BitcoinBasedTxOutput>()
                 .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));

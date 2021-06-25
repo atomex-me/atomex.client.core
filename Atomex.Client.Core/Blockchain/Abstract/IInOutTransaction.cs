@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Atomex.Core;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.Blockchain.Abstract
@@ -16,6 +18,7 @@ namespace Atomex.Blockchain.Abstract
             IAddressResolver addressResolver,
             IKeyStorage keyStorage,
             IEnumerable<ITxOutput> spentOutputs,
+            CurrencyConfig currencyConfig,
             CancellationToken cancellationToken = default);
     }
 }

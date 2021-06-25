@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Configuration;
 using Serilog;
 
@@ -515,7 +516,7 @@ namespace Atomex.Subsystems
         }
 
         private Task TrackTransactionAsync(
-            IBlockchainTransaction transaction,
+            IBlockchainTransaction tx,
             CancellationToken cancellationToken)
         {
             return Task.Run(async () =>
@@ -524,8 +525,12 @@ namespace Atomex.Subsystems
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        var result = await transaction
+                        var currency = Account.Currencies
+                            .GetByName(tx.Currency);
+
+                        var result = await currency
                             .IsTransactionConfirmed(
+                                txId: tx.Id,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
@@ -539,17 +544,17 @@ namespace Atomex.Subsystems
                         }
 
                         // mark old unconfirmed txs as failed
-                        if (transaction.CreationTime != null &&
-                            DateTime.UtcNow > transaction.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
-                            !Currencies.IsBitcoinBased(transaction.Currency))
+                        if (tx.CreationTime != null &&
+                            DateTime.UtcNow > tx.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
+                            !Currencies.IsBitcoinBased(tx.Currency))
                         {
-                            transaction.State = BlockchainTransactionState.Failed;
+                            tx.State = BlockchainTransactionState.Failed;
 
-                            TransactionProcessedHandler(transaction, cancellationToken);
+                            TransactionProcessedHandler(tx, cancellationToken);
                             break;
                         }
 
-                        await Task.Delay(TransactionConfirmationCheckInterval(transaction?.Currency), cancellationToken)
+                        await Task.Delay(TransactionConfirmationCheckInterval(tx?.Currency), cancellationToken)
                             .ConfigureAwait(false);
                     }
                 }
