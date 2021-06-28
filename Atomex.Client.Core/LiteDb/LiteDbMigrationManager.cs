@@ -8,7 +8,7 @@ namespace Atomex.LiteDb
 {
     public enum MigrationActionType
     {
-        TransactionsDeleted
+        XtzTransactionsDeleted
     }
 
     public static class LiteDbMigrationManager
@@ -51,7 +51,8 @@ namespace Atomex.LiteDb
                     currentVersion = LiteDbMigrations.MigrateFrom_4_to_5(pathToDb, sessionPassword, network);
                 
                 if (currentVersion == LiteDbMigrations.Version5)
-                    migrationComplete?.Invoke(MigrationActionType.TransactionsDeleted);
+                    currentVersion = LiteDbMigrations.MigrateFrom_5_to_6(pathToDb, sessionPassword);
+                    migrationComplete?.Invoke(MigrationActionType.XtzTransactionsDeleted);
                     
             }
             catch (Exception e)
