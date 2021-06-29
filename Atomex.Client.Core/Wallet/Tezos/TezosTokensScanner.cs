@@ -84,6 +84,12 @@ namespace Atomex.Wallet.Tezos
                     return;
                 }
 
+                // upsert contracts
+                if (tokenContractsResult.Value.Any())
+                    await _tezosAccount.DataRepository
+                        .UpsertTezosTokenContractsAsync(tokenContractsResult.Value.Values)
+                        .ConfigureAwait(false);
+
                 // contracts from local db
                 var contracts = (await _tezosAccount.DataRepository
                     .GetTezosTokenAddressesAsync(address)
@@ -183,6 +189,12 @@ namespace Atomex.Wallet.Tezos
 
                     return;
                 }
+
+                // upsert contracts
+                if (tokenContractsResult.Value.Any())
+                    await _tezosAccount.DataRepository
+                        .UpsertTezosTokenContractsAsync(tokenContractsResult.Value.Values)
+                        .ConfigureAwait(false);
 
                 var contractWithMetadata = tokenContractsResult.Value.TryGetValue(contractAddress, out var contract)
                     ? contract

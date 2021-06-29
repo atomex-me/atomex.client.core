@@ -27,6 +27,7 @@ namespace Atomex.LiteDb
         private const string AddressesCollectionName   = "Addresses";
         private const string TezosTokensAddresses      = "TezosTokensAddresses";
         private const string TezosTokensTransfers      = "TezosTokensTransfers";
+        private const string TezosTokensContracts      = "TezosTokensContracts";
 
         private const string IdKey                 = "_id";
         private const string CurrencyKey           = nameof(WalletAddress.Currency);
@@ -45,11 +46,10 @@ namespace Atomex.LiteDb
         private readonly string _sessionPassword;
         private readonly BsonMapper _bsonMapper;
 
-        private readonly ConcurrentDictionary<long, Swap> _swapById =
-            new ConcurrentDictionary<long, Swap>();
+        private readonly ConcurrentDictionary<long, Swap> _swapById = new();
 
         private bool _swapsLoaded;
-        private readonly object _syncRoot = new object();
+        private readonly object _syncRoot = new();
 
         private string ConnectionString => $"FileName={_pathToDb};Password={_sessionPassword};Mode=Exclusive";
 
@@ -603,6 +603,58 @@ namespace Atomex.LiteDb
             }
 
             return Task.FromResult(Enumerable.Empty<TokenTransfer>());
+        }
+
+        public Task<int> UpsertTezosTokenContractsAsync(
+            IEnumerable<TokenContract> tokenContracts)
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+
+                    var contracts = db.GetCollection(TezosTokensContracts);
+
+                    var documents = tokenContracts
+                        .Select(t => _bsonMapper.ToDocument(t));
+
+                    var upserted = contracts.Upsert(documents);
+
+                    return Task.FromResult(upserted);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error adding contracts");
+            }
+
+            return Task.FromResult(0);
+        }
+
+        public Task<IEnumerable<TokenContract>> GetTezosTokenContractsAsync()
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    var contractsCollection = db.GetCollection(TezosTokensContracts);
+
+                    var contracts = contractsCollection
+                        .FindAll()
+                        .Select(d => _bsonMapper.ToObject<TokenContract>(d))
+                        .ToList();
+
+                    return Task.FromResult<IEnumerable<TokenContract>>(contracts);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error getting tezos tokens contracts");
+            }
+
+            return Task.FromResult(Enumerable.Empty<TokenContract>());
         }
 
         #endregion TezosTokens

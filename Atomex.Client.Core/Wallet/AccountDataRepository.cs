@@ -21,7 +21,8 @@ namespace Atomex.Wallet
         private readonly Dictionary<long, Swap> _swaps;
         private readonly Dictionary<string, Order> _orders;
         private readonly Dictionary<string, WalletAddress> _tezosTokensAddresses;
-        private readonly Dictionary<string, TokenTransfer> _tezosTransfers;
+        private readonly Dictionary<string, TokenTransfer> _tezosTokensTransfers;
+        private readonly Dictionary<string, TokenContract> _tezosTokensContracts;
 
         private readonly object _sync;
 
@@ -40,7 +41,8 @@ namespace Atomex.Wallet
             _swaps                = new Dictionary<long, Swap>();
             _orders               = new Dictionary<string, Order>();
             _tezosTokensAddresses = new Dictionary<string, WalletAddress>();
-            _tezosTransfers       = new Dictionary<string, TokenTransfer>();
+            _tezosTokensTransfers = new Dictionary<string, TokenTransfer>();
+            _tezosTokensContracts = new Dictionary<string, TokenContract>();
             _sync                 = new object();
         }
 
@@ -272,7 +274,7 @@ namespace Atomex.Wallet
             {
                 foreach (var tokenTransfer in tokenTransfers)
                 {
-                    _tezosTransfers[tokenTransfer.Id] = tokenTransfer; // todo: copy ?
+                    _tezosTokensTransfers[tokenTransfer.Id] = tokenTransfer; // todo: copy ?
                 }
 
                 return Task.FromResult(tokenTransfers.Count());
@@ -286,7 +288,7 @@ namespace Atomex.Wallet
         {
             lock (_sync)
             {
-                var txs = _tezosTransfers.Values
+                var txs = _tezosTokensTransfers.Values
                     .Where(t => t.Contract == contractAddress)
                     .ToList()
                     .SortList((t1, t2) => t1.TimeStamp.CompareTo(t2.TimeStamp))
@@ -294,6 +296,28 @@ namespace Atomex.Wallet
                     .Take(limit);
 
                 return Task.FromResult(txs);
+            }
+        }
+
+        public Task<int> UpsertTezosTokenContractsAsync(
+            IEnumerable<TokenContract> tokenContracts)
+        {
+            lock (_sync)
+            {
+                foreach (var tc in tokenContracts)
+                {
+                    _tezosTokensContracts[tc.Id] = tc; // todo: copy?
+                }
+
+                return Task.FromResult(tokenContracts.Count());
+            }
+        }
+
+        public Task<IEnumerable<TokenContract>> GetTezosTokenContractsAsync()
+        {
+            lock (_sync)
+            {
+                return Task.FromResult<IEnumerable<TokenContract>>(_tezosTokensContracts.Values);
             }
         }
 

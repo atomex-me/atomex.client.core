@@ -5,11 +5,11 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NBitcoin;
-using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
@@ -26,20 +26,20 @@ namespace Atomex.Blockchain.BlockCypher
         private string BaseUri { get; }
 
         private static readonly RequestLimitControl RequestLimitControl
-            = new RequestLimitControl(MinDelayBetweenRequestMs);
+            = new(MinDelayBetweenRequestMs);
 
         public BitcoinBasedConfig Currency { get; }
 
         public BlockCypherApi(BitcoinBasedConfig currency, string baseUri)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
-            BaseUri = baseUri;
+            BaseUri  = baseUri;
         }
 
         public BlockCypherApi(BitcoinBasedConfig currency, IConfiguration configuration)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
-            BaseUri = configuration["BlockchainApiBaseUri"];
+            BaseUri  = configuration["BlockchainApiBaseUri"];
         }
 
         public override async Task<Result<string>> BroadcastAsync(

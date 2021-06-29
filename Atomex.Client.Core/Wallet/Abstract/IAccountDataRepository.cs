@@ -77,6 +77,11 @@ namespace Atomex.Wallet.Abstract
             int offset = 0,
             int limit = 20);
 
+        Task<int> UpsertTezosTokenContractsAsync(
+            IEnumerable<TokenContract> tokenContracts);
+
+        Task<IEnumerable<TokenContract>> GetTezosTokenContractsAsync();
+
         #endregion TezosTokens
 
         #region Transactions

@@ -13,20 +13,26 @@ using Atomex.Core;
 
 namespace Atomex.Blockchain.Tezos
 {
-    public class TokenContractWithMetadata
+    public class TokenContract
     {
+        public string Id => Address;
+
         [JsonPropertyName("address")]
         public string Address { get; set; }
         [JsonPropertyName("network")]
         public string Network { get; set; }
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
         [JsonPropertyName("description")]
         public string Description { get; set; }
         [JsonPropertyName("homepage")]
         public string HomePage { get; set; }
+        [JsonPropertyName("version")]
+        public string Version { get; set; }
+        [JsonPropertyName("authors")]
+        public List<string> Authors { get; set; }
         [JsonPropertyName("interfaces")]
         public List<string> Interfaces { get; set; }
-        [JsonPropertyName("count")]
-        public int Count { get; set; }
 
         public string GetContractType()
         {
@@ -41,6 +47,12 @@ namespace Atomex.Blockchain.Tezos
 
             return "";
         }
+    }
+
+    public class TokenContractWithMetadata : TokenContract
+    {
+        [JsonPropertyName("count")]
+        public int Count { get; set; }
     }
 
     public class TokenContractResponse : Dictionary<string, TokenContractWithMetadata>
@@ -113,7 +125,7 @@ namespace Atomex.Blockchain.Tezos
     {
         public string Id => $"{Hash}:{Nonce}";
         public string Currency { get; set; }
-        public BlockInfo BlockInfo => new BlockInfo
+        public BlockInfo BlockInfo => new()
         {
             BlockHash     = null,
             BlockHeight   = Level,
