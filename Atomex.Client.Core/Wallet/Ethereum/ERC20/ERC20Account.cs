@@ -909,7 +909,7 @@ namespace Atomex.Wallet.Ethereum
         public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            return GetUnspentAddressesAsync(cancellationToken);
         }
 
         #endregion Addresses

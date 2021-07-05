@@ -228,7 +228,12 @@ namespace Atomex.Wallet.Tezos
                     ?.GetContractType() ?? "";
 
                 var tokenBalancesResult = await bcdApi
-                    .GetTokenBalancesAsync(address, contractAddress, cancellationToken)
+                    .GetTokenBalancesAsync(
+                        address: address,
+                        contractAddress: contractAddress,
+                        offset: 0,
+                        count: 20,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (tokenBalancesResult.HasError)
@@ -301,8 +306,9 @@ namespace Atomex.Wallet.Tezos
                     var transfersResult = await bcdApi
                         .GetTokenTransfers(
                             address: localAddress.Address,
-                            contractAddress: localAddress.TokenBalance.Contract,
+                            contract: localAddress.TokenBalance.Contract,
                             tokenId: localAddress.TokenBalance.TokenId,
+                            count: 20,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -333,6 +339,24 @@ namespace Atomex.Wallet.Tezos
                 }
 
             }, cancellationToken);
+        }
+
+        public Task LoadBalancesAsync(
+            string contractAddress,
+            int offset = 0,
+            int count = 20,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task LoadTransfersAsync(
+            string contractAddress,
+            int offset = 0,
+            int count = 0,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
         }
 
         private static string UniqueTokenId(string type, string contract, decimal tokenId) =>

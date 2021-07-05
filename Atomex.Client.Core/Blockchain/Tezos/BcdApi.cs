@@ -89,7 +89,6 @@ namespace Atomex.Blockchain.Tezos
         public bool IsTransferable { get; set; }
         [JsonPropertyName("creators")]
         public List<string> Creators { get; set; }
-
         [JsonPropertyName("balance")]
         public string Balance { get; set; }
 
@@ -218,23 +217,26 @@ namespace Atomex.Blockchain.Tezos
                 cancellationToken: cancellationToken);
         }
 
+
         public async Task<Result<List<TokenBalance>>> GetTokenBalancesAsync(
             string address,
-            string contractAddress,
+            string contractAddress = null,
+            int offset = 0,
+            int count = 20,
             CancellationToken cancellationToken = default)
         {
-            int offset = 0;
-            int size = _config.MaxSize;
             var hasPages = true;
 
             var tokenBalances = new List<TokenBalance>();
 
-            while (hasPages)
+            while (hasPages && tokenBalances.Count < count)
             {
+                var size = Math.Min(count - tokenBalances.Count, _config.MaxSize);
+
                 var requestUri = $"account/{_config.Network}/{address}/token_balances?" +
-                    $"contract={contractAddress}&" +
-                    $"size={size}&" +
-                    $"offset={offset}";
+                    $"size={size}" +
+                    $"&offset={offset}" +
+                    (contractAddress != null ? $"&contract={contractAddress}" : "");
 
                 var balances = await HttpHelper
                     .GetAsyncResult<TokenBalanceResponse>(
@@ -265,26 +267,50 @@ namespace Atomex.Blockchain.Tezos
             return tokenBalances;
         }
 
-        public async Task<Result<List<TokenTransfer>>> GetTokenTransfers(
+        public Task<Result<List<TokenTransfer>>> GetTokenTransfers(
             string address,
-            string contractAddress,
-            decimal tokenId,
+            string contract,
+            decimal? tokenId = null,
+            int start = 0,
+            int end = int.MaxValue,
+            int count = 20,
             CancellationToken cancellationToken = default)
         {
-            int size = _config.MaxSize;
+            return GetTokenTransfers(
+                address: address,
+                contracts: new string[] { contract },
+                tokenId: tokenId,
+                start: start,
+                end: end,
+                count: count,
+                cancellationToken: cancellationToken);
+        }
+
+        public async Task<Result<List<TokenTransfer>>> GetTokenTransfers(
+            string address,
+            IEnumerable<string> contracts,
+            decimal? tokenId = null,
+            int start = 0,
+            int end = int.MaxValue,
+            int count = 20,
+            CancellationToken cancellationToken = default)
+        {
             var hasPages = true;
             string lastId = null;
 
             var tokenTransfers = new List<TokenTransfer>();
 
-            while (hasPages)
+            while (hasPages && tokenTransfers.Count < count)
             {
+                var size = Math.Min(count - tokenTransfers.Count, _config.MaxSize);
+
                 var requestUri = $"tokens/{_config.Network}/transfers/{address}?" +
-                    $"token_id={tokenId}" +
-                    $"&size={size}" +
-                    "&offset=0" +
-                    $"&contracts={contractAddress}" +
-                    (lastId != null ? $"&last_id={lastId}" : "");
+                    $"size={size}" +
+                    $"&contracts={string.Join(",", contracts)}" +
+                    (tokenId != null    ? $"&token_id={tokenId}" : "") +
+                    (start > 0          ? $"&start={start}"      : "") +
+                    (end < int.MaxValue ? $"&end={end}"          : "") +
+                    (lastId != null     ? $"&last_id={lastId}"   : "");
 
                 var transfers = await HttpHelper
                     .GetAsyncResult<TokenTransferResponse>(
