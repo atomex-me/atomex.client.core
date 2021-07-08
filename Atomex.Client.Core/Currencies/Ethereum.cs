@@ -79,6 +79,7 @@ namespace Atomex
             DigitsMultiplier           = EthDigitsMultiplier;
             Digits                     = (int)Math.Log10(EthDigitsMultiplier);
             Format                     = $"F{Digits}";
+            IsToken                    = bool.Parse(configuration["IsToken"]);
 
             FeeDigits                  = Digits; // in gas
             FeeCode                    = Name;

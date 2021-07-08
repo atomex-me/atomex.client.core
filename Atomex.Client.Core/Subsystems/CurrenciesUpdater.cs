@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -11,7 +10,7 @@ using Atomex.Abstract;
 using Atomex.Common;
 using Atomex.Common.Configuration;
 using Atomex.Subsystems.Abstract;
-using Newtonsoft.Json.Linq;
+
 
 namespace Atomex.Subsystems
 {
@@ -21,16 +20,9 @@ namespace Atomex.Subsystems
         // private const string CurrenciesConfig = "coins.v2.json";
 
         // todo: reupload to Atomex domain
-        private const string BaseUri = "https://pi.turborouter.keenetic.pro";
-        private const string CurrenciesConfig = "seafilef/2b0875c0769f44ab97d0/?dl=1";
+        private const string BaseUri = "https://pi.turborouter.keenetic.pro/";
+        private const string CurrenciesConfig = "seafile/f/2b0875c0769f44ab97d0/?dl=1";
         
-        private enum ConfigKey
-        {
-            Abstract,
-            BasedOn,
-            Name
-        }
-
         private readonly ICurrenciesProvider _currenciesProvider;
         private Task _updaterTask;
         private CancellationTokenSource _cts;
@@ -114,11 +106,10 @@ namespace Atomex.Subsystems
 
                 if (content != null)
                 {
-                    JObject jObjConfig = JObject.Parse(content);
-                    CreateNestedConfig(jObjConfig);
+                    var stringConfig = _currenciesProvider.CreateNestedConfig(content);
 
                     var configuration = new ConfigurationBuilder()
-                        .AddJsonString(jObjConfig.ToString())
+                        .AddJsonString(stringConfig)
                         .Build();
 
                     _currenciesProvider.Update(configuration);
@@ -129,64 +120,7 @@ namespace Atomex.Subsystems
                 Log.Error(e, "Currencies update error");
             }
         }
-
-        private void CreateNestedConfig(JObject jObjConfig)
-        {
-            IList<string> abstractCurrencies;
-            IList<string> networkKeys = jObjConfig.Properties().Select(p => p.Name).ToList();
-
-            foreach (var networkKey in networkKeys)
-            {
-                abstractCurrencies = new List<string>();
-                var network = jObjConfig[networkKey] as JObject;
-                
-                // filling abstract currencies
-                foreach (JObject currency in network.Values())
-                {
-                    if (currency.Value<bool>(nameof(ConfigKey.Abstract)))
-                    {
-                        abstractCurrencies.Add(currency.Value<string>(nameof(ConfigKey.Name)));
-                    
-                        var basedOnCurr = network[currency.Value<string>(nameof(ConfigKey.BasedOn))] as JObject;
-                        var clonedBasedOnCurr = (JObject) basedOnCurr.DeepClone();
-                    
-                        clonedBasedOnCurr.Merge(currency, new JsonMergeSettings
-                        {
-                            MergeArrayHandling = MergeArrayHandling.Union
-                        });
-
-                        var stringed = clonedBasedOnCurr.ToString();
-                        network[currency.Value<string>(nameof(ConfigKey.Name))] = clonedBasedOnCurr;
-                    }
-                }
-
-                // filling tokens
-                foreach (JObject currency in network.Values())
-                {
-                    if (currency.Value<bool>(nameof(ConfigKey.Abstract)) == true || 
-                        currency.Value<string>(nameof(ConfigKey.BasedOn)) == null)
-                    {
-                        continue;
-                    }
-                
-                    var basedOnCurr = network[currency.Value<string>(nameof(ConfigKey.BasedOn))] as JObject;
-                    var clonedBasedOnCurr = (JObject) basedOnCurr.DeepClone();
-                
-                    clonedBasedOnCurr.Merge(currency, new JsonMergeSettings
-                    {
-                        MergeArrayHandling = MergeArrayHandling.Union
-                    });
-                
-                    network[currency.Value<string>(nameof(ConfigKey.Name))] = clonedBasedOnCurr;
-                }
-
-                foreach (var abstractCurr in abstractCurrencies)
-                {
-                    network.Property(abstractCurr).Remove();
-                }
-            }
-        }
-
+        
         protected virtual void Dispose(bool disposing)
         {
             if (disposing)
