@@ -1,6 +1,6 @@
 ﻿using Atomex.Core;
 
-namespace Atomex.Subsystems
+namespace Atomex.Services
 {
     public class TerminalErrorEventArgs : TerminalServiceEventArgs
     {

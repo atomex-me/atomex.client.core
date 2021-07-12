@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Configuration;
 using Serilog;
 
@@ -14,13 +15,13 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.MarketData;
 using Atomex.MarketData.Abstract;
-using Atomex.Subsystems.Abstract;
+using Atomex.Services.Abstract;
 using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Web;
 
-namespace Atomex.Subsystems
+namespace Atomex.Services
 {
     public class WebSocketAtomexClient : IAtomexClient
     {
@@ -142,15 +143,15 @@ namespace Atomex.Subsystems
 
                 _ = Task.Run(async () =>
                 {
-                // restore swaps
-                await SwapManager
-                        .RestoreSwapsAsync(_cts.Token)
-                        .ConfigureAwait(false);
+                    // restore swaps
+                    await SwapManager
+                            .RestoreSwapsAsync(_cts.Token)
+                            .ConfigureAwait(false);
 
-                // timeout control
-                await SwapManager
-                        .SwapTimeoutControlAsync(_cts.Token)
-                        .ConfigureAwait(false);
+                    // timeout control
+                    await SwapManager
+                            .SwapTimeoutControlAsync(_cts.Token)
+                            .ConfigureAwait(false);
 
                 }, _cts.Token);
             }
@@ -231,7 +232,7 @@ namespace Atomex.Subsystems
             ExchangeClient.OrderCancelAsync(order);
 
         public void SubscribeToMarketData(SubscriptionType type) =>
-            MarketDataClient.SubscribeAsync(new List<Subscription> { new Subscription {Type = type} });
+            MarketDataClient.SubscribeAsync(new List<Subscription> { new Subscription { Type = type } });
 
         public MarketDataOrderBook GetOrderBook(string symbol) =>
             MarketDataRepository?.OrderBookBySymbol(symbol);
@@ -291,7 +292,7 @@ namespace Atomex.Subsystems
                     Log.Debug("Exchange heart beat loop canceled.");
                 }
             }
- 
+
             ServiceDisconnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
         }
 
@@ -481,7 +482,7 @@ namespace Atomex.Subsystems
                     .ConfigureAwait(false);
 
                 if (error != null)
-                     OnError(TerminalService.Exchange, error.Description);
+                    OnError(TerminalService.Exchange, error.Description);
             }
             catch (Exception e)
             {
@@ -502,7 +503,7 @@ namespace Atomex.Subsystems
 
                 foreach (var tx in txs)
                     if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
-                        _ = TrackTransactionAsync(tx, cancellationToken);      
+                        _ = TrackTransactionAsync(tx, cancellationToken);
             }
             catch (OperationCanceledException)
             {
@@ -532,7 +533,7 @@ namespace Atomex.Subsystems
                         if (result.HasError) // todo: additional reaction
                             break;
 
-                        if (result.Value.IsConfirmed || (result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed))
+                        if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed)
                         {
                             TransactionProcessedHandler(result.Value.Transaction, cancellationToken);
                             break;
