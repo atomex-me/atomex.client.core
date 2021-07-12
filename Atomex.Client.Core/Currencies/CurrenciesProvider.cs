@@ -31,17 +31,12 @@ namespace Atomex
             BasedOn,
             Name
         }
-
-        public CurrenciesProvider(IConfiguration configuration)
-        {
-            SetupConfiguration(configuration);
-        }
         
         public CurrenciesProvider(string configuration)
         {
             var nestedJsonConfig = CreateNestedConfig(configuration);
             
-            IConfiguration buildedConfig = new ConfigurationBuilder()
+            var buildedConfig = new ConfigurationBuilder()
                 .AddJsonString(nestedJsonConfig)
                 .Build();
 

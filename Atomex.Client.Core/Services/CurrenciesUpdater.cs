@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Collections.Generic;
 
 using Microsoft.Extensions.Configuration;
 using Serilog;
@@ -9,20 +8,15 @@ using Serilog;
 using Atomex.Abstract;
 using Atomex.Common;
 using Atomex.Common.Configuration;
-using Atomex.Subsystems.Abstract;
+using Atomex.Services.Abstract;
 
-
-namespace Atomex.Subsystems
+namespace Atomex.Services
 {
     public class CurrenciesUpdater : ICurrenciesUpdater, IDisposable
     {
-        // private const string BaseUri = "https://atomex.me/";
-        // private const string CurrenciesConfig = "coins.v2.json";
+        private const string BaseUri = "https://atomex.me/";
+        private const string CurrenciesConfig = "coins.v3.json";
 
-        // todo: reupload to Atomex domain
-        private const string BaseUri = "https://pi.turborouter.keenetic.pro/";
-        private const string CurrenciesConfig = "seafile/f/2b0875c0769f44ab97d0/?dl=1";
-        
         private readonly ICurrenciesProvider _currenciesProvider;
         private Task _updaterTask;
         private CancellationTokenSource _cts;
@@ -120,7 +114,7 @@ namespace Atomex.Subsystems
                 Log.Error(e, "Currencies update error");
             }
         }
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (disposing)
