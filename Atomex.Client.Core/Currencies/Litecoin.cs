@@ -30,6 +30,7 @@ namespace Atomex
         {
             Name                    = configuration["Name"];
             Description             = configuration["Description"];
+            IsToken                 = bool.Parse(configuration["IsToken"]);
 
             DigitsMultiplier        = LtcDigitsMultiplier;
             Digits                  = (int)Math.Log10(LtcDigitsMultiplier);

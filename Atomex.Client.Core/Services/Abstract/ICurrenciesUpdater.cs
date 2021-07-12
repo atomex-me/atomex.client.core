@@ -1,9 +1,9 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
 
-namespace Atomex.Subsystems.Abstract
+namespace Atomex.Services.Abstract
 {
-    public interface ISymbolsUpdater
+    public interface ICurrenciesUpdater
     {
         void Start();
         void Stop();

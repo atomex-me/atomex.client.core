@@ -8,14 +8,14 @@ using Serilog;
 using Atomex.Abstract;
 using Atomex.Common;
 using Atomex.Common.Configuration;
-using Atomex.Subsystems.Abstract;
+using Atomex.Services.Abstract;
 
-namespace Atomex.Subsystems
+namespace Atomex.Services
 {
     public class CurrenciesUpdater : ICurrenciesUpdater, IDisposable
     {
         private const string BaseUri = "https://atomex.me/";
-        private const string CurrenciesConfig = "coins.v2.json";
+        private const string CurrenciesConfig = "coins.v3.json";
 
         private readonly ICurrenciesProvider _currenciesProvider;
         private Task _updaterTask;
@@ -100,10 +100,12 @@ namespace Atomex.Subsystems
 
                 if (content != null)
                 {
+                    var stringConfig = _currenciesProvider.CreateNestedConfig(content);
+
                     var configuration = new ConfigurationBuilder()
-                        .AddJsonString(content)
+                        .AddJsonString(stringConfig)
                         .Build();
-                    
+
                     _currenciesProvider.Update(configuration);
                 }
             }

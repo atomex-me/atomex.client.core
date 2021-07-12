@@ -1,4 +1,4 @@
-﻿namespace Atomex.Subsystems
+﻿namespace Atomex.Services
 {
     public enum TerminalService
     {
