@@ -1,4 +1,8 @@
-﻿using System.Reflection;
+﻿using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+
 using Microsoft.Extensions.Configuration;
 
 namespace Atomex.Common.Configuration
@@ -8,20 +12,24 @@ namespace Atomex.Common.Configuration
         public static IConfigurationBuilder AddEmbeddedJsonFile(
             this IConfigurationBuilder cb,
             Assembly assembly,
-            string name,
-            bool optional = false)
+            string name)
         {
-            // reload on change is not supported, always pass in false
-            return cb.AddJsonFile(new EmbeddedFileProvider(assembly), name, optional, false);
+            var resourceNames = assembly.GetManifestResourceNames();
+
+            var fullFileName = resourceNames.FirstOrDefault(n => n.EndsWith(name));
+
+            var stream = assembly.GetManifestResourceStream(fullFileName);
+
+            return cb.AddJsonStream(stream);
         }
 
         public static IConfigurationBuilder AddJsonString(
             this IConfigurationBuilder cb,
-            string json,
-            string name,
-            bool optional = false)
+            string json)
         {
-            return cb.AddJsonFile(new StringProvider(json), name, optional, false);
+            var stream = new MemoryStream(Encoding.UTF8.GetBytes(json));
+
+            return cb.AddJsonStream(stream);
         }
     }
 }

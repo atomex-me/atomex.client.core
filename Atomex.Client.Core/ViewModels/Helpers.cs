@@ -8,7 +8,7 @@ using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Subsystems.Abstract;
+using Atomex.Services.Abstract;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.ViewModels

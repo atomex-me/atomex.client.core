@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Nethereum.Contracts;
 using Nethereum.Hex.HexConvertors.Extensions;
 using Nethereum.Hex.HexTypes;
@@ -182,9 +183,11 @@ namespace Atomex.Blockchain.Ethereum
 
         public async Task<Result<BigInteger>> GetTransactionCountAsync(
             string address,
+            bool pending = true,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = $"api?module=proxy&action=eth_getTransactionCount&address={address}&tag=latest&apikey={ApiKey}";
+            var tag = pending ? "pending" : "latest";
+            var requestUri = $"api?module=proxy&action=eth_getTransactionCount&address={address}&tag={tag}&apikey={ApiKey}";
 
             await RequestLimitControl
                 .Wait(cancellationToken)
@@ -207,11 +210,12 @@ namespace Atomex.Blockchain.Ethereum
 
         public async Task<Result<BigInteger>> TryGetTransactionCountAsync(
             string address,
+            bool pending = true,
             int attempts = 10,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
-            return await ResultHelper.TryDo((c) => GetTransactionCountAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
+            return await ResultHelper.TryDo((c) => GetTransactionCountAsync(address, pending, c), attempts, attemptsIntervalMs, cancellationToken)
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transaction count after {attempts} attempts");
         }
 

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Serilog;
 
 using Atomex.Abstract;
@@ -19,6 +20,22 @@ namespace Atomex.Wallet.Ethereum
 {
     public class EthereumAccount : CurrencyAccount
     {
+        private static ResourceLocker<string> _addressLocker;
+        public static ResourceLocker<string> AddressLocker
+        {
+            get {
+                var instance = _addressLocker;
+
+                if (instance == null)
+                {
+                    Interlocked.CompareExchange(ref _addressLocker, new ResourceLocker<string>(), null);
+                    instance = _addressLocker;
+                }
+
+                return instance;
+            }
+        }
+
         public EthereumAccount(
             string currency,
             ICurrencies currencies,
@@ -86,10 +103,15 @@ namespace Atomex.Wallet.Ethereum
 
             foreach (var selectedAddress in selectedAddresses)
             {
-                Log.Debug("Send {@amount} ETH from address {@address} with available balance {@balance}",
+                Log.Debug("Try to send {@amount} ETH from address {@address} with available balance {@balance}",
                     selectedAddress.UsedAmount,
                     selectedAddress.WalletAddress.Address,
                     selectedAddress.WalletAddress.AvailableBalance());
+
+                // lock address to prevent nonce races
+                using var addressLock = await AddressLocker
+                    .GetLockAsync(selectedAddress.WalletAddress.Address, cancellationToken)
+                    .ConfigureAwait(false);
 
                 var nonceAsyncResult = await EthereumNonceManager.Instance
                     .GetNonceAsync(eth, selectedAddress.WalletAddress.Address)

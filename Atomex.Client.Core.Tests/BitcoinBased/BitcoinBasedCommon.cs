@@ -41,7 +41,8 @@ namespace Atomex.Client.Core.Tests
             PubKey to,
             int amount,
             int fee,
-            DateTimeOffset lockTime)
+            DateTimeOffset lockTime,
+            params Script[] knownRedeems)
         {
             return currency.CreateP2PkhTx(
                 unspentOutputs: outputs,
@@ -49,7 +50,8 @@ namespace Atomex.Client.Core.Tests
                 changeAddress: from.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
                 amount: amount,
                 fee: fee,
-                lockTime: lockTime);
+                lockTime: lockTime,
+                knownRedeems: knownRedeems);
         }
     }
 }

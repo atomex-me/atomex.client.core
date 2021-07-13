@@ -5,11 +5,11 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NBitcoin;
-using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
@@ -24,9 +24,10 @@ namespace Atomex.Blockchain.BlockCypher
 
         private const int MinDelayBetweenRequestMs = 1000;
         private string BaseUri { get; }
+        private string ApiToken { get; }
 
         private static readonly RequestLimitControl RequestLimitControl
-            = new RequestLimitControl(MinDelayBetweenRequestMs);
+            = new(MinDelayBetweenRequestMs);
 
         public BitcoinBasedCurrency Currency { get; }
 
@@ -39,7 +40,8 @@ namespace Atomex.Blockchain.BlockCypher
         public BlockCypherApi(BitcoinBasedCurrency currency, IConfiguration configuration)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
-            BaseUri = configuration["BlockchainApiBaseUri"];
+            BaseUri  = configuration["BlockchainApiBaseUri"];
+            ApiToken = configuration["BlockchainApiToken"];
         }
 
         public override async Task<Result<string>> BroadcastAsync(
@@ -55,7 +57,7 @@ namespace Atomex.Blockchain.BlockCypher
 
             tx.State = BlockchainTransactionState.Pending;
 
-            const string requestUri = "/txs/push";
+            var requestUri = "/txs/push" + (ApiToken != null ? $"?token={ApiToken}" : "");
             using var requestContent = new StringContent(
                 content: $"{{\"tx\":\"{txHex}\"}}",
                 encoding: Encoding.UTF8,
@@ -88,7 +90,7 @@ namespace Atomex.Blockchain.BlockCypher
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            var requestUri = $"/addrs/{address}/balance";
+            var requestUri = $"/addrs/{address}/balance" + (ApiToken != null ? $"?token={ApiToken}" : "");
 
             return await HttpHelper.GetAsyncResult<decimal>(
                     baseUri: BaseUri,
@@ -138,7 +140,7 @@ namespace Atomex.Blockchain.BlockCypher
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            var requestUri = $"/addrs/{address}/full?txlimit=1000";
+            var requestUri = $"/addrs/{address}/full?txlimit=1000" + (ApiToken != null ? $"&token={ApiToken}" : "");
 
             return await HttpHelper.GetAsyncResult(
                 baseUri: BaseUri,
@@ -217,7 +219,7 @@ namespace Atomex.Blockchain.BlockCypher
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            var requestUri = $"/txs/{txId}?includeHex=true&instart=0&outstart=0&limit=1000";
+            var requestUri = $"/txs/{txId}?includeHex=true&instart=0&outstart=0&limit=1000" + (ApiToken != null ? $"&token={ApiToken}" : "");
 
             return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
                 baseUri: BaseUri,
@@ -280,7 +282,7 @@ namespace Atomex.Blockchain.BlockCypher
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            var requestUri = $"/txs/{txId}";
+            var requestUri = $"/txs/{txId}" + (ApiToken != null ? $"?token={ApiToken}" : "");
 
             var spentResult = await HttpHelper.GetAsyncResult<string>(
                 baseUri: BaseUri,

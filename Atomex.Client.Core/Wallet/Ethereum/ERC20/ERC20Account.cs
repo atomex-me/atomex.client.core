@@ -86,6 +86,10 @@ namespace Atomex.Wallet.Ethereum
                     selectedAddress.WalletAddress.Address,
                     selectedAddress.WalletAddress.AvailableBalance());
 
+                using var addressLock = await AddressLocker
+                    .GetLockAsync(selectedAddress.WalletAddress.Address, cancellationToken)
+                    .ConfigureAwait(false);
+
                 var nonceResult = await EthereumNonceManager.Instance
                     .GetNonceAsync(Eth, selectedAddress.WalletAddress.Address)
                     .ConfigureAwait(false);

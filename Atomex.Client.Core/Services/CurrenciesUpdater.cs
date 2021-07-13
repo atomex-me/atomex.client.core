@@ -1,22 +1,23 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Configuration;
 using Serilog;
 
 using Atomex.Abstract;
 using Atomex.Common;
 using Atomex.Common.Configuration;
-using Atomex.Subsystems.Abstract;
+using Atomex.Services.Abstract;
 
-namespace Atomex.Subsystems
+namespace Atomex.Services
 {
-    public class SymbolsUpdater : ISymbolsUpdater, IDisposable
+    public class CurrenciesUpdater : ICurrenciesUpdater, IDisposable
     {
         private const string BaseUri = "https://atomex.me/";
-        private const string SymbolsConfig = "symbols.json";
+        private const string CurrenciesConfig = "coins.v3.json";
 
-        private readonly ISymbolsProvider _symbolsProvider;
+        private readonly ICurrenciesProvider _currenciesProvider;
         private Task _updaterTask;
         private CancellationTokenSource _cts;
 
@@ -26,16 +27,16 @@ namespace Atomex.Subsystems
                                 !_updaterTask.IsCanceled &&
                                 !_updaterTask.IsFaulted;
 
-        public SymbolsUpdater(ISymbolsProvider symbolsProvider)
+        public CurrenciesUpdater(ICurrenciesProvider currenciesProvider)
         {
-            _symbolsProvider = symbolsProvider ?? throw new ArgumentNullException(nameof(symbolsProvider));
+            _currenciesProvider = currenciesProvider ?? throw new ArgumentNullException(nameof(currenciesProvider));
         }
 
         public void Start()
         {
             if (IsRunning)
             {
-                Log.Warning("Symbols update task already running");
+                Log.Warning("Currencies update task already running");
                 return;
             }
 
@@ -51,13 +52,13 @@ namespace Atomex.Subsystems
             }
             else
             {
-                Log.Warning("Symbols update task already finished");
+                Log.Warning("Currencies update task already finished");
             }
         }
 
         private async Task UpdateLoop()
         {
-            Log.Information("Run symbols update loop");
+            Log.Information("Run currencies update loop");
 
             while (!_cts.IsCancellationRequested)
             {
@@ -71,7 +72,7 @@ namespace Atomex.Subsystems
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("Symbols update task canceled");
+                    Log.Debug("Currencies update task canceled");
                 }
             }
 
@@ -84,7 +85,7 @@ namespace Atomex.Subsystems
             {
                 var content = await HttpHelper.GetAsync(
                         baseUri: BaseUri,
-                        requestUri: SymbolsConfig,
+                        requestUri: CurrenciesConfig,
                         responseHandler: response =>
                         {
                             if (!response.IsSuccessStatusCode)
@@ -99,16 +100,18 @@ namespace Atomex.Subsystems
 
                 if (content != null)
                 {
+                    var stringConfig = _currenciesProvider.CreateNestedConfig(content);
+
                     var configuration = new ConfigurationBuilder()
-                        .AddJsonString(content, "symbols.json")
+                        .AddJsonString(stringConfig)
                         .Build();
-                    
-                    _symbolsProvider.Update(configuration);
+
+                    _currenciesProvider.Update(configuration);
                 }
             }
             catch (Exception e)
             {
-                Log.Error(e, "Symbols update error");
+                Log.Error("Currencies update error");
             }
         }
 
