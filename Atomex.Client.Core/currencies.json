@@ -32,6 +32,7 @@
       "EstimatedRedeemGasLimit": 48000,
       "EstimatedRedeemWithRewardGasLimit": 66000,
       "GasPriceInGwei": 90,
+      "MaxGasPriceInGwei": 650,
       "Chain": "MainNet",
       "BlockchainApi": "EtherScan",
       "BlockchainApiBaseUri": "https://api.etherscan.io/",

@@ -39,6 +39,7 @@ namespace Atomex
         public decimal EstimatedRedeemGasLimit { get; protected set; }
         public decimal EstimatedRedeemWithRewardGasLimit { get; protected set; }
         public decimal GasPriceInGwei { get; protected set; }
+        public decimal MaxGasPriceInGwei { get; protected set; }
 
         public decimal InitiateFeeAmount(decimal gasPrice) =>
             InitiateGasLimit * gasPrice / GweiInEth;
@@ -108,6 +109,10 @@ namespace Atomex
             EstimatedRedeemGasLimit    = decimal.Parse(configuration["EstimatedRedeemGasLimit"], CultureInfo.InvariantCulture);
             EstimatedRedeemWithRewardGasLimit = decimal.Parse(configuration["EstimatedRedeemWithRewardGasLimit"], CultureInfo.InvariantCulture);
             GasPriceInGwei             = decimal.Parse(configuration["GasPriceInGwei"], CultureInfo.InvariantCulture);
+
+            MaxGasPriceInGwei = configuration[nameof(MaxGasPriceInGwei)] != null
+                ? decimal.Parse(configuration[nameof(MaxGasPriceInGwei)], CultureInfo.InvariantCulture)
+                : 650m;
 
             Chain                      = ResolveChain(configuration);
             SwapContractAddress        = configuration["SwapContract"];
@@ -274,7 +279,7 @@ namespace Atomex
                     Log.Error("Invalid gas price!" + ((gasPrice?.HasError ?? false) ? " " + gasPrice.Error.Description : ""));
 
                 return gasPrice != null && !gasPrice.HasError && gasPrice.Value != null
-                    ? Math.Min(gasPrice.Value.Average * 1.3m, gasPrice.Value.High)
+                    ? Math.Min(Math.Min(gasPrice.Value.Average * 1.3m, gasPrice.Value.High), MaxGasPriceInGwei)
                     : GasPriceInGwei;
             }
             catch (Exception e)
