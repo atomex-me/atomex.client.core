@@ -17,7 +17,7 @@ namespace Atomex.Blockchain.BitcoinBased
     {
         private const int DefaultConfirmations = 1;
 
-        private Transaction Tx { get; }
+        public Transaction Tx { get; }
 
         public string Id => Tx.GetHash().ToString();
         public string UniqueId => $"{Id}:{Currency.Name}";
@@ -365,6 +365,7 @@ namespace Atomex.Blockchain.BitcoinBased
         {
             var tx = currency.Network.CreateTransactionBuilder()
                 .SetDustPrevention(false)
+                .SetOptInRBF(true)
                 .AddCoins(coins)
                 .Send(destination, new Money(amount))
                 .SendFees(new Money(fee))
