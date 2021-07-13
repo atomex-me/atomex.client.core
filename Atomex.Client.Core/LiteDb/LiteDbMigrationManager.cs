@@ -49,11 +49,12 @@ namespace Atomex.LiteDb
 
                 if (currentVersion == LiteDbMigrations.Version4)
                     currentVersion = LiteDbMigrations.MigrateFrom_4_to_5(pathToDb, sessionPassword, network);
-                
+
                 if (currentVersion == LiteDbMigrations.Version5)
+                {
                     currentVersion = LiteDbMigrations.MigrateFrom_5_to_6(pathToDb, sessionPassword);
                     migrationComplete?.Invoke(MigrationActionType.XtzTransactionsDeleted);
-                    
+                }
             }
             catch (Exception e)
             {
