@@ -270,13 +270,12 @@ namespace Atomex.LiteDb
             var tezSymbols = new[] {"XTZ", "TZBTC", "KUSD"};
             
             var removedXtzTx = db.GetCollection("Transactions")
-                .Find(Query.Where(nameof(WalletAddress.Currency), x => tezSymbols.Contains(x.AsString)));
-            // .Delete());
+                .Delete(Query.Where(nameof(WalletAddress.Currency), x => tezSymbols.Contains(x.AsString)));
             
-            Log.Debug($"{removedXtzTx.Count()} XTZ and XTZ Tokens transactions removed by migration");
+            Log.Debug($"{removedXtzTx} XTZ and tez tokens transactions removed by migration");
 
             Shrink(db, sessionPassword);
-            // UpdateVersion(db: db, fromVersion: Version5, toVersion: Version6);
+            UpdateVersion(db: db, fromVersion: Version5, toVersion: Version6);
             
             return Version6;
         }
