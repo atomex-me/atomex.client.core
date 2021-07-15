@@ -129,6 +129,11 @@
       "Id": 26,
       "Name": "KUSD/USDT",
       "MinimumQty": 0.0001
+    },
+    {
+      "Id": 27,
+      "Name": "XTZ/LTC",
+      "MinimumQty": 0.0001
     }
   ],
   "TestNet": [
@@ -280,6 +285,11 @@
     {
       "Id": 30,
       "Name": "KUSD/USDT",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 31,
+      "Name": "XTZ/LTC",
       "MinimumQty": 0.0001
     }
   ]

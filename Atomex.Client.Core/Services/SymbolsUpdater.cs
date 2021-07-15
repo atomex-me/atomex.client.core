@@ -1,15 +1,16 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Configuration;
 using Serilog;
 
 using Atomex.Abstract;
 using Atomex.Common;
 using Atomex.Common.Configuration;
-using Atomex.Subsystems.Abstract;
+using Atomex.Services.Abstract;
 
-namespace Atomex.Subsystems
+namespace Atomex.Services
 {
     public class SymbolsUpdater : ISymbolsUpdater, IDisposable
     {
@@ -102,7 +103,7 @@ namespace Atomex.Subsystems
                     var configuration = new ConfigurationBuilder()
                         .AddJsonString(content)
                         .Build();
-                    
+
                     _symbolsProvider.Update(configuration);
                 }
             }

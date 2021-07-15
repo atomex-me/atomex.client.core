@@ -37,6 +37,7 @@ namespace Atomex.TezosTokens
             DustDigitsMultiplier    = long.Parse(configuration["DustDigitsMultiplier"]);
             Digits                  = (int)BigInteger.Log10(new BigInteger(DigitsMultiplier));
             Format                  = $"F{Digits}";
+            IsToken                 = bool.Parse(configuration["IsToken"]);
 
             FeeDigits               = Digits;
             FeeCode                 = "XTZ";

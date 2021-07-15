@@ -11,5 +11,6 @@ namespace Atomex.Abstract
 
         void Update(IConfiguration configuration);
         ICurrencies GetCurrencies(Network network);
+        string CreateNestedConfig(string content);
     }
 }

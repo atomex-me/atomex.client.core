@@ -62,8 +62,13 @@ namespace Atomex.Blockchain.Tezos.Internal
         public Task<JObject> GetHeader() =>
             QueryJ<JObject>($"chains/{_chain}/blocks/head/header");
 
-        public Task<JObject> GetHeader(int offset) =>
-            QueryJ<JObject>($"chains/{_chain}/blocks/head~{offset}/header");
+        public Task<JObject> GetHeader(int offset)
+        {
+            if (offset == 0)
+                return GetHeader();
+
+            return QueryJ<JObject>($"chains/{_chain}/blocks/head~{offset}/header");
+        }
 
         public Task<JObject> GetAccount(string address) =>
             GetAccountForBlock("head", address);

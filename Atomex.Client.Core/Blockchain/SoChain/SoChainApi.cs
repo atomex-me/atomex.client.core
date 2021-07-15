@@ -6,14 +6,15 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
 using NBitcoin;
 using Newtonsoft.Json;
+using Microsoft.Extensions.Configuration;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
-using Microsoft.Extensions.Configuration;
 
 namespace Atomex.Blockchain.SoChain
 {
@@ -23,10 +24,13 @@ namespace Atomex.Blockchain.SoChain
         {
             [JsonProperty(PropertyName = "tx_hex")]
             public string TxHex { get; }
+            [JsonProperty(PropertyName = "network")]
+            public string Network { get; }
 
-            public SendTx(string txHex)
+            public SendTx(string txHex, string network)
             {
-                TxHex = txHex;
+                TxHex   = txHex;
+                Network = network;
             }
         }
 
@@ -304,7 +308,7 @@ namespace Atomex.Blockchain.SoChain
         private const int MinDelayBetweenRequestMs = 1000;
 
         private static readonly RequestLimitControl RequestLimitControl
-            = new RequestLimitControl(MinDelayBetweenRequestMs);
+            = new(MinDelayBetweenRequestMs);
 
         private readonly bool _useProxy = false;
 
@@ -687,7 +691,7 @@ namespace Atomex.Blockchain.SoChain
                 .ConfigureAwait(false);
 
             using var requestContent = new StringContent(
-                content: JsonConvert.SerializeObject(new SendTx(txHex)),
+                content: JsonConvert.SerializeObject(new SendTx(txHex, NetworkAcronym)),
                 encoding: Encoding.UTF8,
                 mediaType: "application/json");
 

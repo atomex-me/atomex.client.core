@@ -33,7 +33,8 @@ namespace Atomex
         {
             Name                    = configuration["Name"];
             Description             = configuration["Description"];
-
+            IsToken                 = bool.Parse(configuration["IsToken"]);
+ 
             DigitsMultiplier        = BtcDigitsMultiplier;
             Digits                  = (int)Math.Log10(BtcDigitsMultiplier);
             Format                  = $"F{Digits}";

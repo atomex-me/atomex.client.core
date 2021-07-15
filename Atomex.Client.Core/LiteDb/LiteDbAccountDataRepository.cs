@@ -57,7 +57,8 @@ namespace Atomex.LiteDb
             string pathToDb,
             SecureString password,
             ICurrencies currencies,
-            Network network)
+            Network network,
+            Action<MigrationActionType> migrationComplete = null)
         {
             _pathToDb = pathToDb ??
                 throw new ArgumentNullException(nameof(pathToDb));
@@ -70,11 +71,12 @@ namespace Atomex.LiteDb
 
             _sessionPassword = SessionPasswordHelper.GetSessionPassword(password);
             _bsonMapper = CreateBsonMapper(currencies);
-
+            
             LiteDbMigrationManager.Migrate(
                 pathToDb: _pathToDb,
                 sessionPassword: _sessionPassword,
-                network: network);
+                network: network,
+                migrationComplete);
         }
 
         private BsonMapper CreateBsonMapper(ICurrencies currencies)
