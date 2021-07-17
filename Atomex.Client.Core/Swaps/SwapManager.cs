@@ -557,10 +557,10 @@ namespace Atomex.Swaps
                     .TryToFindPaymentAsync(swap, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (txResult == null || txResult.HasError)
-                    return; // can't get tx from blockchain
+                //if (txResult == null || txResult.HasError)
+                //    return; // can't get tx from blockchain
 
-                if (txResult.Value != null)
+                if (txResult != null && !txResult.HasError && txResult.Value != null)
                 {
                     swap.PaymentTx  = txResult.Value;
                     swap.PaymentTxId = txResult.Value.Id;
