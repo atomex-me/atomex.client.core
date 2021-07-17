@@ -19,10 +19,11 @@ namespace Atomex.LiteDb
         public const ushort Version3 = 3;
         public const ushort Version4 = 4;
         public const ushort Version5 = 5;
+        public const ushort Version6 = 6;
 
         public static ushort MigrateFrom_0_to_1(string pathToDb, string sessionPassword)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
             
             if (db.Engine.UserVersion != Version0)
                 throw new Exception("Invalid db version");
@@ -45,7 +46,7 @@ namespace Atomex.LiteDb
             string sessionPassword,
             Network network)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
             
             if (db.Engine.UserVersion != Version1)
                 throw new Exception("Invalid db version");
@@ -76,7 +77,7 @@ namespace Atomex.LiteDb
             string sessionPassword,
             Network network)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
             
             if (db.Engine.UserVersion != Version2)
                 throw new Exception("Invalid db version");
@@ -126,7 +127,7 @@ namespace Atomex.LiteDb
             string sessionPassword,
             Network network)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
 
             if (db.Engine.UserVersion != Version3)
                 throw new Exception("Invalid db version");
@@ -229,7 +230,7 @@ namespace Atomex.LiteDb
             string sessionPassword,
             Network network)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword}");
+            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
 
             if (db.Engine.UserVersion != Version4)
                 throw new Exception("Invalid db version");
@@ -253,6 +254,31 @@ namespace Atomex.LiteDb
 
             return Version5;
         }
+        
+        public static ushort MigrateFrom_5_to_6(string pathToDb, string sessionPassword)
+        {
+            var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
+            
+            using var db_ver = new LiteDatabase(connectionString);
+            if (db_ver.Engine.UserVersion != Version5)
+                throw new Exception("Invalid db version");
+            db_ver.Dispose();
+            Backup(pathToDb);
+
+            using var db = new LiteDatabase(connectionString);
+            
+            var tezSymbols = new[] {"XTZ", "TZBTC", "KUSD"};
+            
+            var removedXtzTx = db.GetCollection("Transactions")
+                .Delete(Query.Where(nameof(WalletAddress.Currency), x => tezSymbols.Contains(x.AsString)));
+            
+            Log.Debug($"{removedXtzTx} XTZ and tez tokens transactions removed by migration");
+
+            Shrink(db, sessionPassword);
+            UpdateVersion(db: db, fromVersion: Version5, toVersion: Version6);
+            
+            return Version6;
+        }
 
         private static void Backup(string pathToDb)
         {
@@ -268,7 +294,7 @@ namespace Atomex.LiteDb
 
         private static void Shrink(LiteDatabase db, string sessionPassword)
         {
-            db.Shrink(sessionPassword);
+            // db.Shrink(sessionPassword);
 
             Log.Debug("Db successfully shrinked");
         }

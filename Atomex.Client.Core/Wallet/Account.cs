@@ -16,6 +16,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.LiteDb;
 using Atomex.Wallet.Abstract;
+using Atomex.Cryptography;
 
 namespace Atomex.Wallet
 {
@@ -66,11 +67,13 @@ namespace Atomex.Wallet
             string pathToAccount,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ClientType clientType)
+            ClientType clientType,
+            Action<MigrationActionType> migrationCompleteCallback = null)
             : this(wallet: HdWallet.LoadFromFile(pathToAccount, password),
                    password: password,
                    currenciesProvider: currenciesProvider,
-                   clientType: clientType)
+                   clientType: clientType,
+                   migrationCompleteCallback: migrationCompleteCallback)
         {
         }
 
@@ -78,7 +81,8 @@ namespace Atomex.Wallet
             IHdWallet wallet,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ClientType clientType)
+            ClientType clientType,
+            Action<MigrationActionType> migrationCompleteCallback = null)
         {
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
 
@@ -88,7 +92,8 @@ namespace Atomex.Wallet
                 pathToDb: Path.Combine(Path.GetDirectoryName(Wallet.PathToWallet), DefaultDataFileName),
                 password: password,
                 currencies: Currencies,
-                network: wallet.Network);
+                network: wallet.Network,
+                migrationCompleteCallback);
 
             CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, DataRepository);
 
@@ -253,9 +258,10 @@ namespace Atomex.Wallet
             string pathToAccount,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ClientType clientType)
+            ClientType clientType,
+            Action<MigrationActionType> migrationCompleteCallback = null)
         {
-            return new Account(pathToAccount, password, currenciesProvider, clientType);
+            return new Account(pathToAccount, password, currenciesProvider, clientType, migrationCompleteCallback);
         }
 
         public ICurrencyAccount GetCurrencyAccount(string currency)
@@ -268,6 +274,14 @@ namespace Atomex.Wallet
 
         public T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount =>
             GetCurrencyAccount(currency) as T;
+
+        public string GetUserId(uint keyIndex = 0)
+        {
+            using var servicePublicKey = Wallet.GetServicePublicKey(keyIndex);
+            using var publicKey = servicePublicKey.ToUnsecuredBytes();
+
+            return Sha256.Compute(Sha256.Compute(publicKey)).ToHexString();
+        }
 
         #endregion Common
 

@@ -6,7 +6,7 @@ using Atomex.MarketData;
 using Atomex.Swaps;
 using Atomex.Wallet.Abstract;
 
-namespace Atomex.Subsystems.Abstract
+namespace Atomex.Services.Abstract
 {
     public interface IAtomexClient
     {

@@ -38,6 +38,7 @@ namespace Atomex.EthereumTokens
             DustDigitsMultiplier       = long.Parse(configuration["DustDigitsMultiplier"]);
             Digits                     = (int)BigInteger.Log10(new BigInteger(DigitsMultiplier));
             Format                     = $"F{(Digits < 9 ? Digits : 9)}";
+            IsToken                    = bool.Parse(configuration["IsToken"]);
 
             FeeDigits                  = Digits;
             FeeCode                    = "ETH";

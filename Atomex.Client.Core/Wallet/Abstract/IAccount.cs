@@ -145,6 +145,8 @@ namespace Atomex.Wallet.Abstract
 
         T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount;
 
+        string GetUserId(uint keyIndex = 0);
+
         #endregion
 
         #region Balances

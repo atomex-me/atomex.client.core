@@ -108,6 +108,10 @@ namespace Atomex.Swaps.Tezos
                         await BroadcastTxAsync(swap, paymentTx, cancellationToken)
                                 .ConfigureAwait(false);
                     }
+                    catch
+                    {
+                        throw;
+                    }
                     finally
                     {
                         _account.AddressLocker.Unlock(paymentTx.From);
@@ -319,6 +323,10 @@ namespace Atomex.Swaps.Tezos
                 await BroadcastTxAsync(swap, redeemTx, cancellationToken)
                     .ConfigureAwait(false);
             }
+            catch
+            {
+                throw;
+            }
             finally
             {
                 _account.AddressLocker.Unlock(redeemTx.From);
@@ -394,39 +402,32 @@ namespace Atomex.Swaps.Tezos
                 UseOfflineCounter   = true
             };
 
-            try
+            using var addressLock = await _account.AddressLocker
+                .GetLockAsync(redeemTx.From, cancellationToken)
+                .ConfigureAwait(false);
+
+            using var securePublicKey = _account.Wallet
+                .GetPublicKey(xtz, walletAddress.KeyIndex);
+
+            // fill operation
+            var fillResult = await redeemTx
+                .FillOperationsAsync(
+                    securePublicKey: securePublicKey,
+                    headOffset: Atomex.Tezos.HeadOffset,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!signResult)
             {
-                await _account.AddressLocker
-                    .LockAsync(redeemTx.From, cancellationToken)
-                    .ConfigureAwait(false);
-
-                using var securePublicKey = _account.Wallet
-                    .GetPublicKey(xtz, walletAddress.KeyIndex);
-
-                // fill operation
-                var fillResult = await redeemTx
-                    .FillOperationsAsync(
-                        securePublicKey: securePublicKey,
-                        headOffset: Atomex.Tezos.HeadOffset,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-                var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (!signResult)
-                {
-                    Log.Error("Transaction signing error");
-                    return;
-                }
-
-                await BroadcastTxAsync(swap, redeemTx, cancellationToken)
-                    .ConfigureAwait(false);
+                Log.Error("Transaction signing error");
+                return;
             }
-            finally
-            {
-                _account.AddressLocker.Unlock(redeemTx.From);
-            }
+
+            await BroadcastTxAsync(swap, redeemTx, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         public override async Task RefundAsync(
@@ -522,6 +523,10 @@ namespace Atomex.Swaps.Tezos
 
                 await BroadcastTxAsync(swap, refundTx, cancellationToken)
                     .ConfigureAwait(false);
+            }
+            catch
+            {
+                throw;
             }
             finally
             {

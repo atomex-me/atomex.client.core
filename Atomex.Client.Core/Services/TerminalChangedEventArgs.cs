@@ -1,7 +1,8 @@
 ﻿using System;
-using Atomex.Subsystems.Abstract;
 
-namespace Atomex.Subsystems
+using Atomex.Services.Abstract;
+
+namespace Atomex.Services
 {
     public class TerminalChangedEventArgs : EventArgs
     {
