@@ -54,7 +54,7 @@ namespace Atomex.Wallet
             return accounts;
         }
 
-        private static ICurrencyAccount CreateCurrencyAccount(
+        public static ICurrencyAccount CreateCurrencyAccount(
             string currency,
             IHdWallet wallet,
             IAccountDataRepository dataRepository,
@@ -83,7 +83,9 @@ namespace Atomex.Wallet
 
                 "TZBTC" or "KUSD" => new Fa12Account(
                     currency: currency,
-                    tokenContract: currencies.Get<Fa12Config>(currency).TokenContractAddress,
+                    tokenContract: currencies
+                        .Get<Fa12Config>(currency)
+                        .TokenContractAddress,
                     tokenId: 0,
                     currencies: currencies,
                     wallet: wallet,
@@ -96,6 +98,39 @@ namespace Atomex.Wallet
                     dataRepository),
 
                 _ => throw new NotSupportedException($"Not supported currency {currency}."),
+            };
+        }
+
+        public static ICurrencyAccount CreateTezosTokenAccount(
+            string tokenType,
+            string tokenContract,
+            decimal tokenId,
+            ICurrencies currencies,
+            IHdWallet wallet,
+            IAccountDataRepository dataRepository,
+            TezosAccount tezosAccount)
+        {
+            return tokenType switch
+            {
+                "FA12" => new Fa12Account(
+                    currency: tokenType,
+                    tokenContract: tokenContract,
+                    tokenId: tokenId,
+                    currencies: currencies,
+                    wallet: wallet,
+                    dataRepository: dataRepository,
+                    tezosAccount: tezosAccount),
+
+                "FA2" => new Fa2Account(
+                    currency: tokenType,
+                    tokenContract: tokenContract,
+                    tokenId: tokenId,
+                    currencies: currencies,
+                    wallet: wallet,
+                    dataRepository: dataRepository,
+                    tezosAccount: tezosAccount),
+
+                _ => throw new NotSupportedException($"Not supported token type {tokenType}."),
             };
         }
     }

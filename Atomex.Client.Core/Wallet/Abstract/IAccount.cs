@@ -73,7 +73,17 @@ namespace Atomex.Wallet.Abstract
 
         ICurrencyAccount GetCurrencyAccount(string currency);
 
+        ICurrencyAccount GetTezosTokenAccount(
+            string currency,
+            string tokenContract,
+            decimal tokenId);
+
         T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount;
+
+        T GetTezosTokenAccount<T>(
+            string currency,
+            string tokenContract,
+            decimal tokenId);
 
         string GetUserId(uint keyIndex = 0);
 

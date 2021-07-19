@@ -17,6 +17,7 @@ using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.LiteDb;
 using Atomex.Wallet.Abstract;
+using Atomex.Wallet.Tezos;
 
 namespace Atomex.Wallet
 {
@@ -146,62 +147,6 @@ namespace Atomex.Wallet
             return this;
         }
 
-        //public Task<Error> SendAsync(
-        //    string currency,
-        //    string to,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    bool useDefaultFee = false,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return GetCurrencyAccount(currency)
-        //        .SendAsync(
-        //            to: to,
-        //            amount: amount,
-        //            fee: fee,
-        //            feePrice: feePrice,
-        //            useDefaultFee: useDefaultFee,
-        //            cancellationToken: cancellationToken);
-        //}
-
-        //public Task<decimal?> EstimateFeeAsync(
-        //    string currency,
-        //    string to,
-        //    decimal amount,
-        //    BlockchainTransactionType type,
-        //    decimal fee = 0,
-        //    decimal feePrice = 0,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return GetCurrencyAccount(currency)
-        //        .EstimateFeeAsync(to, amount, type, fee, feePrice, cancellationToken);
-        //}
-
-        //public Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
-        //    string currency,
-        //    string to,
-        //    BlockchainTransactionType type,
-        //    decimal fee = 0,
-        //    decimal feePrice = 0, 
-        //    bool reserve = false,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return GetCurrencyAccount(currency)
-        //        .EstimateMaxAmountToSendAsync(to, type, fee, feePrice, reserve, cancellationToken);
-        //}
-
-        //public Task<decimal> EstimateMaxFeeAsync(
-        //    string currency,
-        //    string to,
-        //    decimal amount,
-        //    BlockchainTransactionType type,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return GetCurrencyAccount(currency)
-        //        .EstimateMaxFeeAsync(to, amount, type, cancellationToken);
-        //}
-
         public async Task<Auth> CreateAuthRequestAsync(AuthNonce nonce, uint keyIndex = 0)
         {
             if (IsLocked)
@@ -272,8 +217,34 @@ namespace Atomex.Wallet
             throw new NotSupportedException($"Not supported currency {currency}");
         }
 
+        public ICurrencyAccount GetTezosTokenAccount(
+            string currency,
+            string tokenContract,
+            decimal tokenId)
+        {
+            var uniqueId = $"{currency}:{tokenContract}:{tokenId}";
+
+            if (CurrencyAccounts.TryGetValue(uniqueId, out var account))
+                return account;
+
+            return CurrencyAccountCreator.CreateTezosTokenAccount(
+                currency,
+                tokenContract,
+                tokenId,
+                Currencies,
+                Wallet,
+                DataRepository,
+                CurrencyAccounts[TezosConfig.Xtz] as TezosAccount);
+        }
+
         public T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount =>
             GetCurrencyAccount(currency) as T;
+
+        public T GetTezosTokenAccount<T>(
+            string currency,
+            string tokenContract,
+            decimal tokenId) where T : class =>
+            GetTezosTokenAccount(currency, tokenContract, tokenId) as T;
 
         public string GetUserId(uint keyIndex = 0)
         {

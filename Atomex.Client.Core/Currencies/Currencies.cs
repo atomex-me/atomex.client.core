@@ -28,7 +28,7 @@ namespace Atomex
             "TBTC"
         };
 
-        private readonly object _sync = new object();
+        private readonly object _sync = new();
         private IDictionary<string, CurrencyConfig> _currencies;
 
         public Currencies(IConfiguration configuration)
