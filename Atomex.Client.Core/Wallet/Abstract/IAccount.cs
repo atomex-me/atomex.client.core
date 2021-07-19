@@ -83,7 +83,7 @@ namespace Atomex.Wallet.Abstract
         T GetTezosTokenAccount<T>(
             string currency,
             string tokenContract,
-            decimal tokenId);
+            decimal tokenId) where T : class;
 
         string GetUserId(uint keyIndex = 0);
 
