@@ -120,7 +120,7 @@ namespace Atomex.Wallet.BitcoinBased
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var walletAddress = await Account
-                        .DivideAddressAsync(param.Chain, index, cancellationToken)
+                        .DivideAddressAsync(param.Chain, index)
                         .ConfigureAwait(false);
 
                     if (walletAddress == null)

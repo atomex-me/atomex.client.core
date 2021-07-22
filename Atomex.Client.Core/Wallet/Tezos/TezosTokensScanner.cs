@@ -225,7 +225,7 @@ namespace Atomex.Wallet.Tezos
                 var bcdApi = new BcdApi(bcdSettings);
 
                 var contractType = contract
-                    ?.GetContractType() ?? "";
+                    ?.GetContractType() ?? "FA2";
 
                 var tokenBalancesResult = await bcdApi
                     .GetTokenBalancesAsync(

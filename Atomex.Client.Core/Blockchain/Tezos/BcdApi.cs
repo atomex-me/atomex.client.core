@@ -37,7 +37,7 @@ namespace Atomex.Blockchain.Tezos
         public string GetContractType()
         {
             if (Interfaces == null)
-                return "";
+                return "FA2";
 
             if (Interfaces.FirstOrDefault(i => i == "TZIP-7" || i == "TZIP-007" || i.StartsWith("TZIP-007")) != null)
                 return "FA12";
@@ -45,7 +45,7 @@ namespace Atomex.Blockchain.Tezos
             if (Interfaces.FirstOrDefault(i => i == "TZIP-12" || i == "TZIP-012" || i.StartsWith("TZIP-012")) != null)
                 return "FA2";
 
-            return "";
+            return "FA2";
         }
     }
 
@@ -57,10 +57,6 @@ namespace Atomex.Blockchain.Tezos
 
     public class TokenContractResponse : Dictionary<string, TokenContractWithMetadata>
     {
-        public string GetContractType(string contractAddress) =>
-            TryGetValue(contractAddress, out var tokenContract)
-                ? tokenContract.GetContractType()
-                : "";
     }
 
     public class TokenBalance
@@ -94,6 +90,9 @@ namespace Atomex.Blockchain.Tezos
 
         public decimal GetTokenBalance() =>
             decimal.Parse(Balance) / (decimal)BigInteger.Pow(10, Decimals);
+
+        public bool HasDescription =>
+            !string.IsNullOrEmpty(Description);
     }
 
     public class TokenBalanceResponse

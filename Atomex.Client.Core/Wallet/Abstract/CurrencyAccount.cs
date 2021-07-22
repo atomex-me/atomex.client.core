@@ -127,8 +127,7 @@ namespace Atomex.Wallet.Abstract
 
         public virtual async Task<WalletAddress> DivideAddressAsync(
             int chain,
-            uint index,
-            CancellationToken cancellationToken = default)
+            uint index)
         {
             var currency = Currencies.GetByName(Currency);
 
@@ -137,7 +136,8 @@ namespace Atomex.Wallet.Abstract
             if (walletAddress == null)
                 return null;
 
-            await DataRepository.TryInsertAddressAsync(walletAddress)
+            await DataRepository
+                .TryInsertAddressAsync(walletAddress)
                 .ConfigureAwait(false);
 
             return walletAddress;
@@ -179,8 +179,7 @@ namespace Atomex.Wallet.Abstract
 
             return await DivideAddressAsync(
                     chain: Bip44.Internal,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    cancellationToken: cancellationToken)
+                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0)
                 .ConfigureAwait(false);
         }
 
@@ -195,8 +194,7 @@ namespace Atomex.Wallet.Abstract
 
             return await DivideAddressAsync(
                     chain: Bip44.External,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    cancellationToken: cancellationToken)
+                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0)
                 .ConfigureAwait(false);
         }
 
