@@ -1,5 +1,6 @@
-﻿using Atomex.Blockchain.Ethereum;
-using LiteDB;
+﻿using LiteDB;
+
+using Atomex.Blockchain.Ethereum;
 
 namespace Atomex.Common.Bson
 {

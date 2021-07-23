@@ -10,12 +10,12 @@ namespace Atomex.Wallet.Tezos
 {
     public class TezosAllocationChecker
     {
-        private readonly Atomex.Tezos _tezos;
+        private readonly Atomex.TezosConfig _tezos;
         private readonly IDictionary<string, TezosAddressInfo> _addresses;
 
         public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromSeconds(60);
 
-        public TezosAllocationChecker(Atomex.Tezos tezos)
+        public TezosAllocationChecker(Atomex.TezosConfig tezos)
         {
             _tezos = tezos;
             _addresses = new Dictionary<string, TezosAddressInfo>();

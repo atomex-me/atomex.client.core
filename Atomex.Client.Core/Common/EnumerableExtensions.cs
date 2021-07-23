@@ -24,5 +24,13 @@ namespace Atomex.Common
 
             return maxElement;
         }
+
+        public static T MaxByOrDefault<T, TKey>(this IEnumerable<T> source, Func<T, TKey> selector)
+            where TKey : IComparable
+        {
+            return source.Any()
+                ? MaxBy(source, selector)
+                : default;
+        }
     }
 }

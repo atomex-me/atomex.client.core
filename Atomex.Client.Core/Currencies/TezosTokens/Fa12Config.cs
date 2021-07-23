@@ -2,6 +2,7 @@
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Configuration;
 
 using Atomex.Blockchain.Tezos;
@@ -10,7 +11,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.TezosTokens
 {
-    public class FA12 : Tezos
+    public class Fa12Config : TezosConfig
     {
         public decimal GetBalanceFee { get; private set; }
         public decimal GetBalanceGasLimit { get; private set; }
@@ -31,16 +32,12 @@ namespace Atomex.TezosTokens
 
         public string TokenContractAddress { get; private set; }
         public string ViewContractAddress { get; private set; }
-        public string BcdApi { get; private set; }
-        public string BcdNetwork { get; private set; }
 
-        public int BcdSizeLimit { get; private set; }
-
-        public FA12()
+        public Fa12Config()
         {
         }
 
-        public FA12(IConfiguration configuration)
+        public Fa12Config(IConfiguration configuration)
         {
             Update(configuration);
         }
@@ -151,7 +148,6 @@ namespace Atomex.TezosTokens
             ViewContractAddress     = configuration["ViewContract"];
             TransactionType         = typeof(TezosTransaction);
 
-            IsTransactionsAvailable = true;
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Tezos;
         }

@@ -22,7 +22,7 @@ namespace Atomex.Swaps.Helpers
                 .Currencies
                 .GetByName(walletAddress.Currency);
 
-            if (currency is BitcoinBasedCurrency)
+            if (currency is BitcoinBasedConfig)
                 return 0m;
 
             var feeCurrency = currency.FeeCurrencyName;
@@ -34,8 +34,8 @@ namespace Atomex.Swaps.Helpers
             if (feeCurrencyAddress == null)
             {
                 feeCurrencyAddress = await account
+                    .GetCurrencyAccount<ILegacyCurrencyAccount>(feeCurrency)
                     .DivideAddressAsync(
-                        currency: feeCurrency,
                         chain: walletAddress.KeyIndex.Chain,
                         index: walletAddress.KeyIndex.Index)
                     .ConfigureAwait(false);

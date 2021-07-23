@@ -10,9 +10,6 @@ namespace Atomex.Blockchain
         public DateTime? BlockTime { get; set; }
         public DateTime? FirstSeen { get; set; }
 
-        public object Clone()
-        {
-            return MemberwiseClone();
-        }
+        public object Clone() => MemberwiseClone();
     }
 }

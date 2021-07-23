@@ -40,7 +40,7 @@ namespace Atomex.Blockchain.Ethereum
         }
 
         public async Task<Result<BigInteger>> GetNonceAsync(
-            Atomex.Ethereum ethereum,
+            Atomex.EthereumConfig ethereum,
             string address,
             bool pending = true,
             CancellationToken cancellationToken = default)

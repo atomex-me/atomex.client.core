@@ -23,7 +23,7 @@ namespace Atomex.Client.Core.Tests
         [Theory]
         [MemberData(nameof(AddressTestData))]
         public async void GetBalanceTest(
-            BitcoinBasedCurrency currency,
+            BitcoinBasedConfig currency,
             string address)
         {
             var api = new BlockCypherApi(currency, BlockCypherApi.BitcoinMainNet);
@@ -47,7 +47,7 @@ namespace Atomex.Client.Core.Tests
         [Theory]
         [MemberData(nameof(InputTestData))]
         public async void GetInputTest(
-            BitcoinBasedCurrency currency,
+            BitcoinBasedConfig currency,
             string txId,
             uint inputIndex,
             string prevTxId,
@@ -68,7 +68,7 @@ namespace Atomex.Client.Core.Tests
         [Theory]
         [MemberData(nameof(AddressTestData))]
         public async void GetUnspentOutputsTest(
-            BitcoinBasedCurrency currency,
+            BitcoinBasedConfig currency,
             string address)
         {
             var api = new BlockCypherApi(currency, BlockCypherApi.BitcoinMainNet);
@@ -96,7 +96,7 @@ namespace Atomex.Client.Core.Tests
         [Theory]
         [MemberData(nameof(OutputsTestData))]
         public async void GetOutputsTest(
-            BitcoinBasedCurrency currency,
+            BitcoinBasedConfig currency,
             string address,
             string outputTxId,
             long outputAmount,
@@ -132,7 +132,7 @@ namespace Atomex.Client.Core.Tests
         [Theory]
         [MemberData(nameof(TransactionTestData))]
         public async void GetTransactionTest(
-            BitcoinBasedCurrency currency,
+            BitcoinBasedConfig currency,
             string txId,
             int inputsCount,
             int outputsCount,
@@ -169,7 +169,7 @@ namespace Atomex.Client.Core.Tests
         [Theory]
         [MemberData(nameof(IsTransactionOutputSpentTestData))]
         public async void IsTransactionOutputSpentTest(
-            BitcoinBasedCurrency currency,
+            BitcoinBasedConfig currency,
             string txId,
             uint outputNo,
             string spentTxId,

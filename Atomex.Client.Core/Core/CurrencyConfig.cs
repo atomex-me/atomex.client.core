@@ -8,7 +8,7 @@ using Atomex.Cryptography;
 
 namespace Atomex.Core
 {
-    public abstract class Currency
+    public abstract class CurrencyConfig
     {
         public const decimal MaxRewardForRedeemDeviation = 0.05m;
 
@@ -43,7 +43,6 @@ namespace Atomex.Core
         public string AddressExplorerUri { get; set; }
         public Type TransactionType { get; protected set; }
 
-        public bool IsTransactionsAvailable { get; protected set; }
         public bool IsSwapAvailable { get; protected set; }
         public uint Bip44Code { get; protected set; }
 

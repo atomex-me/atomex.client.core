@@ -1,25 +1,27 @@
 ﻿using System;
 using System.Collections.Generic;
+
+using NBitcoin;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
-using NBitcoin;
 
 namespace Atomex.Client.Core.Tests
 {
     public static class BitcoinBasedCommon
     {
-        public static IBitcoinBasedTransaction CreateFakeTx(BitcoinBasedCurrency currency, PubKey to, params long[] outputs)
+        public static IBitcoinBasedTransaction CreateFakeTx(BitcoinBasedConfig currency, PubKey to, params long[] outputs)
         {
             var tx = Transaction.Create(currency.Network);
 
             foreach (var output in outputs)
                 tx.Outputs.Add(new TxOut(new Money(output), to.Hash)); // p2pkh
 
-            return new BitcoinBasedTransaction(currency, tx);
+            return new BitcoinBasedTransaction(currency.Name, tx);
         }
 
         public static IBitcoinBasedTransaction CreateSegwitPaymentTx(
-            BitcoinBasedCurrency currency,
+            BitcoinBasedConfig currency,
             IEnumerable<ITxOutput> outputs,
             PubKey from,
             PubKey to,
@@ -35,7 +37,7 @@ namespace Atomex.Client.Core.Tests
         }
 
         public static IBitcoinBasedTransaction CreatePaymentTx(
-            BitcoinBasedCurrency currency,
+            BitcoinBasedConfig currency,
             IEnumerable<ITxOutput> outputs,
             PubKey from,
             PubKey to,

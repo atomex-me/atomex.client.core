@@ -18,10 +18,10 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
         public static async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             CancellationToken cancellationToken = default)
         {
-            var ethereum = currency as Atomex.Ethereum;
+            var ethereum = currency as Atomex.EthereumConfig;
 
             var api = ethereum.BlockchainApi as IEthereumBlockchainApi;
 
@@ -70,7 +70,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
         public static async Task<Result<bool>> IsInitiatedAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             long refundTimeStamp,
             CancellationToken cancellationToken = default)
         {
@@ -78,15 +78,15 @@ namespace Atomex.Swaps.Ethereum.Helpers
             {
                 Log.Debug("Ethereum: check initiated event");
 
-                var ethereum = (Atomex.Ethereum)currency;
+                var ethereum = (Atomex.EthereumConfig)currency;
 
                 var sideOpposite = swap.Symbol
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
                     .Opposite();
 
                 var requiredAmountInEth = AmountHelper.QtyToAmount(sideOpposite, swap.Qty, swap.Price, ethereum.DigitsMultiplier);
-                var requiredAmountInWei = Atomex.Ethereum.EthToWei(requiredAmountInEth);
-                var requiredRewardForRedeemInWei = Atomex.Ethereum.EthToWei(swap.RewardForRedeem);
+                var requiredAmountInWei = Atomex.EthereumConfig.EthToWei(requiredAmountInEth);
+                var requiredRewardForRedeemInWei = Atomex.EthereumConfig.EthToWei(swap.RewardForRedeem);
 
                 var api = new EtherScanApi(ethereum);
 
@@ -196,7 +196,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
         public static Task StartSwapInitiatedControlAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             long refundTimeStamp,
             TimeSpan interval,
             Func<Swap, CancellationToken, Task> initiatedHandler = null,

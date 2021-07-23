@@ -261,7 +261,8 @@ namespace Atomex.Swaps
             if (swap.ToAddress == null)
             {
                 toAddress = await _account
-                    .GetRedeemAddressAsync(swap.PurchasedCurrency, cancellationToken)
+                    .GetCurrencyAccount<ILegacyCurrencyAccount>(swap.PurchasedCurrency)
+                    .GetRedeemAddressAsync(cancellationToken)
                     .ConfigureAwait(false);
 
                 swap.ToAddress = toAddress.Address;
@@ -288,7 +289,7 @@ namespace Atomex.Swaps
                 .ConfigureAwait(false);
 
             // select refund address for bitcoin based currency
-            if (soldCurrency is BitcoinBasedCurrency && swap.RefundAddress == null)
+            if (soldCurrency is BitcoinBasedConfig && swap.RefundAddress == null)
             {
                 swap.RefundAddress = (await _account
                     .GetCurrencyAccount<BitcoinBasedAccount>(soldCurrency.Name)
@@ -399,7 +400,8 @@ namespace Atomex.Swaps
             if (swap.ToAddress == null)
             {
                 var walletAddress = await _account
-                    .GetRedeemAddressAsync(swap.PurchasedCurrency, cancellationToken)
+                    .GetCurrencyAccount<ILegacyCurrencyAccount>(swap.PurchasedCurrency)
+                    .GetRedeemAddressAsync(cancellationToken)
                     .ConfigureAwait(false);
 
                 swap.ToAddress = walletAddress.Address;
@@ -418,7 +420,7 @@ namespace Atomex.Swaps
             var soldCurrency = _account.Currencies.GetByName(swap.SoldCurrency);
 
             // select refund address for bitcoin based currency
-            if (soldCurrency is BitcoinBasedCurrency && swap.RefundAddress == null)
+            if (soldCurrency is BitcoinBasedConfig && swap.RefundAddress == null)
             {
                 swap.RefundAddress = (await _account
                     .GetCurrencyAccount<BitcoinBasedAccount>(soldCurrency.Name)
@@ -584,8 +586,12 @@ namespace Atomex.Swaps
                 if (!swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed) &&
                     DateTime.UtcNow > swap.TimeStamp.ToUniversalTime() + DefaultMaxPaymentTimeout)
                 {
-                    var result = await swap.PaymentTx
+                    var currency = _account.Currencies
+                        .GetByName(swap.PaymentTx.Currency);
+
+                    var result = await currency
                         .IsTransactionConfirmed(
+                            txId: swap.PaymentTx.Id,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 

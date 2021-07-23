@@ -179,7 +179,7 @@ namespace Atomex.Wallet
         }
 
         private IExtKey GetExtKey(
-            Currency currency,
+            CurrencyConfig currency,
             int purpose,
             int chain,
             uint index)
@@ -189,7 +189,7 @@ namespace Atomex.Wallet
             return masterKey.Derive(new KeyPath(path: $"m/{purpose}'/{currency.Bip44Code}'/0'/{chain}/{index}"));               
         }
 
-        private IKey GetNonHdKey(Currency currency, uint index)
+        private IKey GetNonHdKey(CurrencyConfig currency, uint index)
         {
             var nonHdKeys = NonHdKeys
                 .Where(s => s.CurrencyCode == currency.Bip44Code)
@@ -200,12 +200,12 @@ namespace Atomex.Wallet
                 : null;
         }
 
-        public SecureBytes GetPublicKey(Currency currency, KeyIndex keyIndex)
+        public SecureBytes GetPublicKey(CurrencyConfig currency, KeyIndex keyIndex)
         {
             return GetPublicKey(currency, keyIndex.Chain, keyIndex.Index);
         }
 
-        public SecureBytes GetPublicKey(Currency currency, int chain, uint index)
+        public SecureBytes GetPublicKey(CurrencyConfig currency, int chain, uint index)
         {
             if (chain == NonHdKeysChain)
                 return GetNonHdPublicKey(currency, index);
@@ -219,7 +219,7 @@ namespace Atomex.Wallet
             return extKey.GetPublicKey();
         }
 
-        private SecureBytes GetNonHdPublicKey(Currency currency, uint index)
+        private SecureBytes GetNonHdPublicKey(CurrencyConfig currency, uint index)
         {
             using var key = GetNonHdKey(currency, index);
 
@@ -231,7 +231,7 @@ namespace Atomex.Wallet
 
         public SecureBytes GetServicePublicKey(uint index)
         {
-            using var masterKey = BitcoinBasedCurrency
+            using var masterKey = BitcoinBasedConfig
                 .CreateExtKeyFromSeed(Seed);
 
             using var extKey = masterKey
@@ -240,7 +240,7 @@ namespace Atomex.Wallet
             return extKey.GetPublicKey();
         }
 
-        public SecureBytes GetPrivateKey(Currency currency, KeyIndex keyIndex)
+        public SecureBytes GetPrivateKey(CurrencyConfig currency, KeyIndex keyIndex)
         {
             if (keyIndex.Chain == NonHdKeysChain)
                 return GetNonHdPrivateKey(currency, keyIndex.Index);
@@ -254,7 +254,7 @@ namespace Atomex.Wallet
             return extKey.GetPrivateKey();
         }
 
-        private SecureBytes GetNonHdPrivateKey(Currency currency, uint index)
+        private SecureBytes GetNonHdPrivateKey(CurrencyConfig currency, uint index)
         {
             using var key = GetNonHdKey(currency, index);
 
@@ -264,7 +264,7 @@ namespace Atomex.Wallet
             return key.GetPrivateKey();
         }
 
-        public byte[] SignHash(Currency currency, byte[] hash, KeyIndex keyIndex)
+        public byte[] SignHash(CurrencyConfig currency, byte[] hash, KeyIndex keyIndex)
         {
             if (keyIndex.Chain == NonHdKeysChain)
             {
@@ -282,7 +282,7 @@ namespace Atomex.Wallet
             return extKey.SignHash(hash);
         }
 
-        public byte[] SignMessage(Currency currency, byte[] data, KeyIndex keyIndex)
+        public byte[] SignMessage(CurrencyConfig currency, byte[] data, KeyIndex keyIndex)
         {
             if (keyIndex.Chain == NonHdKeysChain)
             {
@@ -302,7 +302,7 @@ namespace Atomex.Wallet
 
         public byte[] SignMessageByServiceKey(byte[] data, int chain, uint index)
         {
-            using var masterKey = BitcoinBasedCurrency
+            using var masterKey = BitcoinBasedConfig
                 .CreateExtKeyFromSeed(Seed);
 
             using var derivedKey = masterKey
@@ -312,7 +312,7 @@ namespace Atomex.Wallet
         }
 
         public bool VerifyHash(
-            Currency currency,
+            CurrencyConfig currency,
             byte[] hash,
             byte[] signature,
             KeyIndex keyIndex)
@@ -334,7 +334,7 @@ namespace Atomex.Wallet
         }
 
         public bool VerifyMessage(
-            Currency currency,
+            CurrencyConfig currency,
             byte[] data,
             byte[] signature,
             KeyIndex keyIndex)
@@ -361,7 +361,7 @@ namespace Atomex.Wallet
             int chain,
             uint index)
         {
-            using var masterKey = BitcoinBasedCurrency
+            using var masterKey = BitcoinBasedConfig
                 .CreateExtKeyFromSeed(Seed);
 
             using var derivedKey = masterKey
@@ -370,7 +370,7 @@ namespace Atomex.Wallet
             return derivedKey.VerifyMessage(data, signature);
         }
 
-        public byte[] GetDeterministicSecret(Currency currency, DateTime timeStamp)
+        public byte[] GetDeterministicSecret(CurrencyConfig currency, DateTime timeStamp)
         {
             var utcTimeStamp = timeStamp.ToUniversalTime();
 
@@ -378,7 +378,7 @@ namespace Atomex.Wallet
             var secondsIndex = utcTimeStamp.Hour * 60 * 60 + utcTimeStamp.Minute * 60 + utcTimeStamp.Second;
             var msIndex = utcTimeStamp.Millisecond;
 
-            using var masterKey = BitcoinBasedCurrency
+            using var masterKey = BitcoinBasedConfig
                 .CreateExtKeyFromSeed(Seed);
 
             using var extKey = masterKey

@@ -15,14 +15,14 @@ namespace Atomex.Swaps.Ethereum.Helpers
     {
         public static async Task<Result<byte[]>> IsRedeemedAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 Log.Debug("Ethereum: check redeem event");
 
-                var ethereum = (Atomex.Ethereum)currency;
+                var ethereum = (Atomex.EthereumConfig)currency;
                   
                 var api = new EtherScanApi(ethereum);
 
@@ -63,7 +63,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
         public static async Task<Result<byte[]>> IsRedeemedAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             int attempts,
             int attemptIntervalInSec,
             CancellationToken cancellationToken = default)
@@ -95,7 +95,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
         public static Task StartSwapRedeemedControlAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             DateTime refundTimeUtc,
             TimeSpan interval,
             bool cancelOnlyIfRefundTimeReached, // = true,

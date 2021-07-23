@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Blockchain.Tezos;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using Serilog;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -19,14 +21,11 @@ namespace Atomex.Wallet.Tezos
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
         private TezosAccount Account { get; }
-        private TezosAccount TezosAccount { get; }
-        private Currency Currency => Account.Currencies.GetByName(Account.Currency);
+        private CurrencyConfig Currency => Account.Currencies.GetByName(Account.Currency);
 
-        public TezosWalletScanner(TezosAccount account, TezosAccount tezosAccount = null)
+        public TezosWalletScanner(TezosAccount account)
         {
             Account = account ?? throw new ArgumentNullException(nameof(account));
-            if (tezosAccount != null)
-                TezosAccount = tezosAccount;
         }
 
         public async Task ScanAsync(
@@ -74,20 +73,6 @@ namespace Atomex.Wallet.Tezos
 
                     if (addressTxs == null || !addressTxs.Any()) // address without activity
                     {
-                        if (TezosAccount != null) // check if address had XTZ activity to check tokens deeper
-                        {
-                            var tezosAddress = await TezosAccount
-                                .GetAddressAsync(walletAddress.Address, cancellationToken)
-                                .ConfigureAwait(false);
-
-                            if (tezosAddress != null && tezosAddress.HasActivity)
-                            {
-                                freeKeysCount = 0;
-                                index++;
-                                continue;
-                            }
-                        }
-
                         freeKeysCount++;
 
                         if (freeKeysCount >= param.LookAhead)

@@ -1,4 +1,6 @@
 ﻿using System;
+
+using Atomex.Blockchain.Tezos;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.Core
@@ -7,12 +9,14 @@ namespace Atomex.Core
     {
         public const int MaxNumberLength = 256;
 
-        public string UniqueId => $"{Address}:{Currency}";
+        public string UniqueId => Currency != "FA12" && Currency != "FA2"
+            ? $"{Address}:{Currency}"
+            : $"{Address}:{Currency}:{TokenBalance.Contract}:{TokenBalance.TokenId}";
+
         public long Id { get; set; }
         public string Currency { get; set; }
         public string Address { get; set; }
         public decimal Balance { get; set; }
-        public decimal AllocatedBalance { get; set; }
         public decimal UnconfirmedIncome { get; set; }
         public decimal UnconfirmedOutcome { get; set; }
         public KeyIndex KeyIndex { get; set; }
@@ -28,10 +32,9 @@ namespace Atomex.Core
         public string ProofOfPossession { get; set; }
         public string Nonce { get; set; }
 
-        public byte[] PublicKeyBytes()
-        {
-            return Convert.FromBase64String(PublicKey);
-        }
+        public TokenBalance TokenBalance { get; set; }
+
+        public byte[] PublicKeyBytes() => Convert.FromBase64String(PublicKey);
 
         public decimal AvailableBalance(bool includeUnconfirmedIncome = false)
         {

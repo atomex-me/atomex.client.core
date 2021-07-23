@@ -8,13 +8,8 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.TezosTokens
 {
-    public class FA2 : Tezos
+    public class Fa2Config : TezosConfig
     {
-        public decimal GetBalanceFee { get; private set; }
-        public decimal GetBalanceGasLimit { get; private set; }
-        public decimal GetBalanceStorageLimit { get; private set; }
-        public decimal GetBalanceSize { get; private set; }
-
         public decimal TransferFee { get; private set; }
         public decimal TransferGasLimit { get; private set; }
         public decimal TransferStorageLimit { get; private set; }
@@ -24,21 +19,12 @@ namespace Atomex.TezosTokens
         public decimal ApproveGasLimit { get; private set; }
         public decimal ApproveStorageLimit { get; private set; }
         public decimal ApproveSize { get; private set; }
-        public decimal RewardForRedeem { get; private set; }
 
-        public string TokenContractAddress { get; private set; }
-        public int TokenPointerBalance { get; private set; }
-        public int TokenPointerAllowance { get; private set; }
-        public string ViewContractAddress { get; private set; }
-        public string BcdApi { get; private set; }
-        public string BcdNetwork { get; private set; }
-        public long TokenID { get; private set; }
-
-        public FA2()
+        public Fa2Config()
         {
         }
 
-        public FA2(IConfiguration configuration)
+        public Fa2Config(IConfiguration configuration)
         {
             Update(configuration);
         }
@@ -59,10 +45,10 @@ namespace Atomex.TezosTokens
             HasFeePrice             = false;
             FeeCurrencyName         = "XTZ";
 
-            MaxRewardPercent        = configuration[nameof(MaxRewardPercent)] != null
+            MaxRewardPercent = configuration[nameof(MaxRewardPercent)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercent)], CultureInfo.InvariantCulture)
                 : 0m;
-            MaxRewardPercentInBase  = configuration[nameof(MaxRewardPercentInBase)] != null
+            MaxRewardPercentInBase = configuration[nameof(MaxRewardPercentInBase)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercentInBase)], CultureInfo.InvariantCulture)
                 : 0m;
             FeeCurrencyToBaseSymbol = configuration[nameof(FeeCurrencyToBaseSymbol)];
@@ -114,21 +100,20 @@ namespace Atomex.TezosTokens
             BaseUri                 = configuration["BlockchainApiBaseUri"];
             RpcNodeUri              = configuration["BlockchainRpcNodeUri"];
             BbApiUri                = configuration["BbApiUri"];
+
             BcdApi                  = configuration["BcdApi"];
             BcdNetwork              = configuration["BcdNetwork"];
-            TokenID                 = long.Parse(configuration["TokenID"], CultureInfo.InvariantCulture);
+            BcdSizeLimit = !string.IsNullOrEmpty(configuration["BcdSizeLimit"])
+                ? int.Parse(configuration["BcdSizeLimit"])
+                : 10;
 
             BlockchainApi           = ResolveBlockchainApi(configuration, this);
             TxExplorerUri           = configuration["TxExplorerUri"];
             AddressExplorerUri      = configuration["AddressExplorerUri"];
             SwapContractAddress     = configuration["SwapContract"];
-            TokenContractAddress    = configuration["TokenContract"];
-            TokenPointerBalance     = int.Parse(configuration["TokenPointerBalance"], CultureInfo.InvariantCulture);
-            TokenPointerAllowance   = int.Parse(configuration["TokenPointerAllowance"], CultureInfo.InvariantCulture);
             TransactionType         = typeof(TezosTransaction);
 
-            IsTransactionsAvailable = true;
-            IsSwapAvailable         = true;
+            IsSwapAvailable         = false;
             Bip44Code               = Bip44.Tezos; 
         }
 

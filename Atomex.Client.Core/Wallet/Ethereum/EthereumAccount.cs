@@ -13,12 +13,13 @@ using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.ERC20;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class EthereumAccount : CurrencyAccount
+    public class EthereumAccount : CurrencyAccount, ILegacyCurrencyAccount
     {
         private static ResourceLocker<string> _addressLocker;
         public static ResourceLocker<string> AddressLocker
@@ -47,10 +48,10 @@ namespace Atomex.Wallet.Ethereum
 
         #region Common
 
-        private Atomex.Ethereum Eth => Currencies.Get<Atomex.Ethereum>(Currency);
-        private EthereumTokens.ERC20 Erc20 => Currencies.Get<EthereumTokens.ERC20>("USDT");
+        private EthereumConfig EthConfig => Currencies.Get<EthereumConfig>(Currency);
+        private Erc20Config Erc20Config => Currencies.Get<Erc20Config>("USDT");
 
-        public override async Task<Error> SendAsync(
+        public async Task<Error> SendAsync(
             IEnumerable<WalletAddress> from,
             string to,
             decimal amount,
@@ -59,14 +60,14 @@ namespace Atomex.Wallet.Ethereum
             bool useDefaultFee = false,
             CancellationToken cancellationToken = default)
         {
-            var eth = Eth;
+            var ethConfig = EthConfig;
 
             var fromAddresses = from
                 .Where(w => w.Address != to)
                 .ToList();
 
             if (useDefaultFee)
-                feePrice = await eth
+                feePrice = await ethConfig
                     .GetGasPriceAsync(cancellationToken)
                     .ConfigureAwait(false);
 
@@ -90,12 +91,12 @@ namespace Atomex.Wallet.Ethereum
                     code: Errors.InsufficientFunds,
                     description: "Insufficient funds");
 
-            if (feePerTx < eth.GasLimit)
+            if (feePerTx < ethConfig.GasLimit)
                 return new Error(
                     code: Errors.InsufficientGas,
                     description: "Insufficient gas");
 
-            var feeAmount = eth.GetFeeAmount(feePerTx, feePrice);
+            var feeAmount = ethConfig.GetFeeAmount(feePerTx, feePrice);
 
             Log.Debug("Fee per transaction {@feePerTransaction}. Fee Amount {@feeAmount}",
                 feePerTx,
@@ -114,7 +115,7 @@ namespace Atomex.Wallet.Ethereum
                     .ConfigureAwait(false);
 
                 var nonceAsyncResult = await EthereumNonceManager.Instance
-                    .GetNonceAsync(eth, selectedAddress.WalletAddress.Address)
+                    .GetNonceAsync(ethConfig, selectedAddress.WalletAddress.Address)
                     .ConfigureAwait(false);
 
                 if (nonceAsyncResult.HasError)
@@ -122,18 +123,18 @@ namespace Atomex.Wallet.Ethereum
 
                 var tx = new EthereumTransaction
                 {
-                    Currency     = eth,
+                    Currency     = ethConfig.Name,
                     Type         = BlockchainTransactionType.Output,
                     CreationTime = DateTime.UtcNow,
                     To           = to.ToLowerInvariant(),
-                    Amount       = Atomex.Ethereum.EthToWei(selectedAddress.UsedAmount),
+                    Amount       = EthereumConfig.EthToWei(selectedAddress.UsedAmount),
                     Nonce        = nonceAsyncResult.Value,
-                    GasPrice     = new BigInteger(Atomex.Ethereum.GweiToWei(feePrice)),
+                    GasPrice     = new BigInteger(EthereumConfig.GweiToWei(feePrice)),
                     GasLimit     = new BigInteger(feePerTx),
                 };
 
                 var signResult = await Wallet
-                    .SignAsync(tx, selectedAddress.WalletAddress, cancellationToken)
+                    .SignAsync(tx, selectedAddress.WalletAddress, ethConfig, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!signResult)
@@ -141,12 +142,12 @@ namespace Atomex.Wallet.Ethereum
                         code: Errors.TransactionSigningError,
                         description: "Transaction signing error");
 
-                if (!tx.Verify())
+                if (!tx.Verify(ethConfig))
                     return new Error(
                         code: Errors.TransactionVerificationError,
                         description: "Transaction verification error");
 
-                var broadcastResult = await eth.BlockchainApi
+                var broadcastResult = await ethConfig.BlockchainApi
                     .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -176,7 +177,7 @@ namespace Atomex.Wallet.Ethereum
             return null;
         }
 
-        public override async Task<Error> SendAsync(
+        public async Task<Error> SendAsync(
             string to,
             decimal amount,
             decimal feePerTx,
@@ -200,7 +201,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
         }
 
-        public override async Task<decimal?> EstimateFeeAsync(
+        public async Task<decimal?> EstimateFeeAsync(
             string to,
             decimal amount,
             BlockchainTransactionType type,
@@ -230,7 +231,7 @@ namespace Atomex.Wallet.Ethereum
                     amount: amount,
                     fee: fee,
                     feePrice: feePrice == 0
-                        ? await Eth.GetGasPriceAsync(cancellationToken).ConfigureAwait(false)
+                        ? await EthConfig.GetGasPriceAsync(cancellationToken).ConfigureAwait(false)
                         : feePrice,
                     feeUsagePolicy: fee == 0 ? FeeUsagePolicy.EstimatedFee : FeeUsagePolicy.FeePerTransaction,
                     addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst,
@@ -245,7 +246,7 @@ namespace Atomex.Wallet.Ethereum
             return selectedAddresses.Sum(s => s.UsedFee);
         }
 
-        public override async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
+        public async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
             decimal feePerTx = 0,
@@ -253,7 +254,7 @@ namespace Atomex.Wallet.Ethereum
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
-            var eth = Eth;
+            var eth = EthConfig;
 
             var unspentAddresses = (await DataRepository
                 .GetUnspentAddressesAsync(Currency)
@@ -313,7 +314,7 @@ namespace Atomex.Wallet.Ethereum
 
         private decimal GasLimitByType(BlockchainTransactionType type, bool isFirstTx)
         {
-            var eth = Eth;
+            var eth = EthConfig;
 
             if (type.HasFlag(BlockchainTransactionType.SwapPayment) && isFirstTx)
                 return eth.InitiateWithRewardGasLimit;
@@ -329,26 +330,26 @@ namespace Atomex.Wallet.Ethereum
 
         private decimal ReserveFee(decimal gasPrice)
         {
-            var eth = Eth;
-            var erc20 = Erc20;
+            var ethConfig = EthConfig;
+            var erc20Config = Erc20Config;
 
             return Math.Max(
-                eth.GetFeeAmount(Math.Max(erc20.RefundGasLimit, erc20.RedeemGasLimit), gasPrice),
-                eth.GetFeeAmount(Math.Max(eth.RefundGasLimit, eth.RedeemGasLimit), gasPrice));
+                ethConfig.GetFeeAmount(Math.Max(erc20Config.RefundGasLimit, erc20Config.RedeemGasLimit), gasPrice),
+                ethConfig.GetFeeAmount(Math.Max(ethConfig.RefundGasLimit, ethConfig.RedeemGasLimit), gasPrice));
         }
 
         protected override async Task<bool> ResolveTransactionTypeAsync(
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            var eth = Eth;
+            var ethConfig = EthConfig;
 
             if (!(tx is EthereumTransaction ethTx))
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
             var oldTx = !ethTx.IsInternal
                 ? await DataRepository
-                    .GetTransactionByIdAsync(Currency, tx.Id, Eth.TransactionType)
+                    .GetTransactionByIdAsync(Currency, tx.Id, EthConfig.TransactionType)
                     .ConfigureAwait(false)
                 : null;
 
@@ -364,7 +365,7 @@ namespace Atomex.Wallet.Ethereum
             {
                 ethTx.Type |= BlockchainTransactionType.Output;
 
-                var isToSwapContract = ethTx.To == eth.SwapContractAddress;
+                var isToSwapContract = ethTx.To == ethConfig.SwapContractAddress;
 
                 if (isToSwapContract)
                 {
@@ -404,7 +405,7 @@ namespace Atomex.Wallet.Ethereum
             {
                 try
                 {
-                    var eth = Eth;
+                    var eth = EthConfig;
 
                     var txs = (await DataRepository
                         .GetTransactionsAsync(Currency, eth.TransactionType)
@@ -450,13 +451,13 @@ namespace Atomex.Wallet.Ethereum
                             var isFailed = tx.State == BlockchainTransactionState.Failed;
 
                             var income = isIncome && !isFailed
-                                ? Atomex.Ethereum.WeiToEth(tx.Amount)
+                                ? EthereumConfig.WeiToEth(tx.Amount)
                                 : 0;
 
                             var outcome = isOutcome
                                 ? (!isFailed
-                                    ? -Atomex.Ethereum.WeiToEth(tx.Amount + tx.GasPrice * (tx.GasUsed != 0 ? tx.GasUsed : tx.GasLimit))
-                                    : -Atomex.Ethereum.WeiToEth(tx.GasPrice * tx.GasUsed))
+                                    ? -EthereumConfig.WeiToEth(tx.Amount + tx.GasPrice * (tx.GasUsed != 0 ? tx.GasUsed : tx.GasLimit))
+                                    : -EthereumConfig.WeiToEth(tx.GasPrice * tx.GasUsed))
                                 : 0;
 
                             if (addressBalances.TryGetValue(address, out var walletAddress))
@@ -542,7 +543,7 @@ namespace Atomex.Wallet.Ethereum
             {
                 try
                 {
-                    var eth = Eth;
+                    var eth = EthConfig;
 
                     var walletAddress = await DataRepository
                         .GetWalletAddressAsync(Currency, address)
@@ -590,10 +591,10 @@ namespace Atomex.Wallet.Ethereum
                         var isFailed = utx.State == BlockchainTransactionState.Failed;
 
                         unconfirmedIncome += address == utx.To && !isFailed
-                            ? Atomex.Ethereum.WeiToEth(utx.Amount)
+                            ? EthereumConfig.WeiToEth(utx.Amount)
                             : 0;
                         unconfirmedOutcome += address == utx.From && !isFailed
-                            ? -Atomex.Ethereum.WeiToEth(utx.Amount + utx.GasPrice * (utx.GasUsed != 0 ? utx.GasUsed : utx.GasLimit))
+                            ? -EthereumConfig.WeiToEth(utx.Amount + utx.GasPrice * (utx.GasUsed != 0 ? utx.GasUsed : utx.GasLimit))
                             : 0;
                     }
 
@@ -636,7 +637,7 @@ namespace Atomex.Wallet.Ethereum
 
         #region Addresses
 
-        public override async Task<WalletAddress> GetRedeemAddressAsync(
+        public async Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = await DataRepository
@@ -658,11 +659,13 @@ namespace Atomex.Wallet.Ethereum
                     return ResolvePublicKey(lastActiveAddress);
             }
 
-            return await base.GetRedeemAddressAsync(cancellationToken)
+            var redeemAddress = await GetFreeExternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+            return ResolvePublicKey(redeemAddress);
         }
 
-        public override async Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+        public async Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             CancellationToken cancellationToken = default)
         {
             if (Currency == "ETH")
@@ -686,7 +689,7 @@ namespace Atomex.Wallet.Ethereum
             return usdtAddresses.Concat(tbtcAddresses).Concat(wbtcAddresses);
         }
 
-        public override async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+        public async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string toAddress,
             decimal amount,
             decimal fee,
@@ -726,7 +729,7 @@ namespace Atomex.Wallet.Ethereum
                 .ToList());
         }
 
-        public override Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
+        public Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
             IList<WalletAddress> from,
             string to,
             decimal amount,
@@ -737,7 +740,7 @@ namespace Atomex.Wallet.Ethereum
             BlockchainTransactionType transactionType,
             CancellationToken cancellationToken = default)
         {
-            var eth = Eth;
+            var eth = EthConfig;
 
             if (addressUsagePolicy == AddressUsagePolicy.UseMinimalBalanceFirst)
             {

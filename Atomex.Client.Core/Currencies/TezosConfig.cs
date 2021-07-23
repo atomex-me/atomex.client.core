@@ -2,8 +2,8 @@
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 
+using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
 
 using Atomex.Blockchain.Abstract;
@@ -17,8 +17,9 @@ using Atomex.Wallet.Tezos;
 
 namespace Atomex
 {
-    public class Tezos : Currency
+    public class TezosConfig : CurrencyConfig
     {
+        public const string Xtz = "XTZ";
         public const long XtzDigitsMultiplier = 1_000_000;
         public const int HeadOffset = 55;
 
@@ -71,11 +72,15 @@ namespace Atomex
         public string BbApiUri { get; protected set; }
         public string SwapContractAddress { get; protected set; }
 
-        public Tezos()
+        public string BcdApi { get; protected set; }
+        public string BcdNetwork { get; protected set; }
+        public int BcdSizeLimit { get; protected set; }
+
+        public TezosConfig()
         {
         }
 
-        public Tezos(IConfiguration configuration)
+        public TezosConfig(IConfiguration configuration)
         {
             Update(configuration);
         }
@@ -157,14 +162,20 @@ namespace Atomex
             SwapContractAddress     = configuration["SwapContract"];
             TransactionType         = typeof(TezosTransaction);
 
-            IsTransactionsAvailable = true;
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Tezos;
+
+            BcdApi     = configuration["BcdApi"];
+            BcdNetwork = configuration["BcdNetwork"];
+
+            BcdSizeLimit = !string.IsNullOrEmpty(configuration["BcdSizeLimit"])
+                ? int.Parse(configuration["BcdSizeLimit"])
+                : 10;
         }
 
         protected static IBlockchainApi ResolveBlockchainApi(
             IConfiguration configuration,
-            Tezos tezos)
+            TezosConfig tezos)
         {
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();
@@ -251,7 +262,7 @@ namespace Atomex
 
             return Task.FromResult(CalculateRewardForRedeem(
                 redeemFee: redeemFeeInXtz,
-                redeemFeeCurrency: "XTZ",
+                redeemFeeCurrency: Xtz,
                 redeemFeeDigitsMultiplier: XtzDigitsMultiplier,
                 maxRewardPercent: maxRewardPercent,
                 maxRewardPercentValue: maxRewardPercentInBase,
@@ -335,5 +346,12 @@ namespace Atomex
 
             throw new ArgumentException($"Either int or string are accepted: {michelineExpr}");
         }
+
+        public BcdApiSettings BcdApiSettings => new BcdApiSettings
+        {
+            Uri     = BcdApi,
+            Network = BcdNetwork,
+            MaxSize = BcdSizeLimit
+        };
     }
 }

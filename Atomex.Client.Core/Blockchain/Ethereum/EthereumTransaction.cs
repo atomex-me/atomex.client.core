@@ -4,14 +4,16 @@ using System.Numerics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain.Abstract;
-using Atomex.Common;
-using Atomex.Core;
-using Atomex.Wallet.Abstract;
+
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Web3;
 using Serilog;
 using Transaction = Nethereum.RPC.Eth.DTOs.Transaction;
+
+using Atomex.Blockchain.Abstract;
+using Atomex.Common;
+using Atomex.Core;
+using Atomex.Wallet.Abstract;
 
 namespace Atomex.Blockchain.Ethereum
 {
@@ -20,8 +22,8 @@ namespace Atomex.Blockchain.Ethereum
         private const int DefaultConfirmations = 1;
 
         public string Id { get; set; }
-        public string UniqueId => $"{Id}:{Currency.Name}";
-        public Currency Currency { get; set; }
+        public string UniqueId => $"{Id}:{Currency}";
+        public string Currency { get; set; }
         public BlockInfo BlockInfo { get; set; }
         public BlockchainTransactionState State { get; set; }
         public BlockchainTransactionType Type { get; set; }
@@ -47,31 +49,31 @@ namespace Atomex.Blockchain.Ethereum
         }
 
         public EthereumTransaction(
-            Currency currency,
+            string currency,
             Transaction tx,
             TransactionReceipt txReceipt,
             DateTime blockTimeStamp)
         {
             Currency = currency;
-            Id = tx.TransactionHash;
-            Type = BlockchainTransactionType.Unknown;
-            State = txReceipt.Status != null && txReceipt.Status.Value == BigInteger.One
+            Id       = tx.TransactionHash;
+            Type     = BlockchainTransactionType.Unknown;
+            State    = txReceipt.Status != null && txReceipt.Status.Value == BigInteger.One
                 ? BlockchainTransactionState.Confirmed
                 : (txReceipt.Status != null
                     ? BlockchainTransactionState.Failed
                     : BlockchainTransactionState.Unconfirmed);
             CreationTime = blockTimeStamp;
 
-            From = tx.From.ToLowerInvariant();
-            To = tx.To.ToLowerInvariant();
-            Input = tx.Input;
-            Amount = tx.Value;
-            Nonce = tx.Nonce;
-            GasPrice = tx.GasPrice;
-            GasLimit = tx.Gas;
-            GasUsed = txReceipt.GasUsed;
+            From          = tx.From.ToLowerInvariant();
+            To            = tx.To.ToLowerInvariant();
+            Input         = tx.Input;
+            Amount        = tx.Value;
+            Nonce         = tx.Nonce;
+            GasPrice      = tx.GasPrice;
+            GasLimit      = tx.Gas;
+            GasUsed       = txReceipt.GasUsed;
             ReceiptStatus = State == BlockchainTransactionState.Confirmed;
-            IsInternal = false;
+            IsInternal    = false;
             InternalIndex = 0;
 
             BlockInfo = new BlockInfo
@@ -79,70 +81,68 @@ namespace Atomex.Blockchain.Ethereum
                 Confirmations = txReceipt.Status != null
                     ? (int)txReceipt.Status.Value
                     : 0,
-                BlockHash = tx.BlockHash,
+                BlockHash   = tx.BlockHash,
                 BlockHeight = (long) tx.TransactionIndex.Value,
-                BlockTime = blockTimeStamp,
-                FirstSeen = blockTimeStamp
+                BlockTime   = blockTimeStamp,
+                FirstSeen   = blockTimeStamp
             };
         }
 
-        public EthereumTransaction(Currency currency, TransactionInput txInput)
+        public EthereumTransaction(string currency, TransactionInput txInput)
         {
-            Currency = currency;
-            Type = BlockchainTransactionType.Unknown;
-            State = BlockchainTransactionState.Unknown;
+            Currency     = currency;
+            Type         = BlockchainTransactionType.Unknown;
+            State        = BlockchainTransactionState.Unknown;
             CreationTime = DateTime.UtcNow;
 
-            From = txInput.From.ToLowerInvariant();
-            To = txInput.To.ToLowerInvariant();
-            Input = txInput.Data;
-            Amount = txInput.Value;
-            Nonce = txInput.Nonce;
-            GasPrice = txInput.GasPrice;
-            GasLimit = txInput.Gas;
+            From         = txInput.From.ToLowerInvariant();
+            To           = txInput.To.ToLowerInvariant();
+            Input        = txInput.Data;
+            Amount       = txInput.Value;
+            Nonce        = txInput.Nonce;
+            GasPrice     = txInput.GasPrice;
+            GasLimit     = txInput.Gas;
         }
 
         public EthereumTransaction Clone()
         {
             var resTx = new EthereumTransaction()
             {
-                Currency = this.Currency,
-                Id = this.Id,
-                Type = this.Type,
-                State = this.State,
-                CreationTime = this.CreationTime,
+                Currency      = Currency,
+                Id            = Id,
+                Type          = Type,
+                State         = State,
+                CreationTime  = CreationTime,
 
-                From = this.From,
-                To = this.To,
-                Input = this.Input,
-                Amount = this.Amount,
-                Nonce = this.Nonce,
-                GasPrice = this.GasPrice,
-                GasLimit = this.GasLimit,
-                GasUsed = this.GasUsed,
-                ReceiptStatus = this.ReceiptStatus,
-                IsInternal = this.IsInternal,
-                InternalIndex = this.InternalIndex,
-                InternalTxs = new List<EthereumTransaction>(),
+                From          = From,
+                To            = To,
+                Input         = Input,
+                Amount        = Amount,
+                Nonce         = Nonce,
+                GasPrice      = GasPrice,
+                GasLimit      = GasLimit,
+                GasUsed       = GasUsed,
+                ReceiptStatus = ReceiptStatus,
+                IsInternal    = IsInternal,
+                InternalIndex = InternalIndex,
+                InternalTxs   = new List<EthereumTransaction>(),
 
-                BlockInfo = (BlockInfo)(this.BlockInfo?.Clone() ?? null)
+                BlockInfo = (BlockInfo)(BlockInfo?.Clone() ?? null)
             };
 
-            if (this.InternalTxs != null)
-                foreach (var intTx in this.InternalTxs)
+            if (InternalTxs != null)
+                foreach (var intTx in InternalTxs)
                     resTx.InternalTxs.Add(intTx.Clone());
 
             return resTx;
         }
 
-        public bool Verify()
+        public bool Verify(EthereumConfig ethereumConfig)
         {
-            var currency = (Atomex.Ethereum)Currency;
-
             return Web3.OfflineTransactionSigner
                 .VerifyTransaction(
                     rlp: RlpEncodedTx,
-                    chain: currency.Chain);
+                    chain: ethereumConfig.Chain);
         }
 
         public byte[] ToBytes()
@@ -153,6 +153,7 @@ namespace Atomex.Blockchain.Ethereum
         public async Task<bool> SignAsync(
             IKeyStorage keyStorage,
             WalletAddress address,
+            CurrencyConfig currencyConfig,
             CancellationToken cancellationToken = default)
         {
             if (address.KeyIndex == null)
@@ -161,20 +162,23 @@ namespace Atomex.Blockchain.Ethereum
                 return false;
             }
 
-            using var privateKey = keyStorage.GetPrivateKey(Currency, address.KeyIndex);
+            using var privateKey = keyStorage
+                .GetPrivateKey(currencyConfig, address.KeyIndex);
 
-            return await SignAsync(privateKey)
+            return await SignAsync(privateKey, currencyConfig as EthereumConfig)
                 .ConfigureAwait(false);
         }
 
-        private Task<bool> SignAsync(SecureBytes privateKey)
+        private Task<bool> SignAsync(
+            SecureBytes privateKey,
+            EthereumConfig ethereumConfig)
         {
             if (privateKey == null)
                 throw new ArgumentNullException(nameof(privateKey));
 
             using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
 
-            var chain = ((Atomex.Ethereum) Currency).Chain;
+            var chain = ethereumConfig.Chain;
 
             RlpEncodedTx = Web3.OfflineTransactionSigner
                 .SignTransaction(

@@ -1,5 +1,6 @@
-﻿using Atomex.Blockchain.Tezos;
-using LiteDB;
+﻿using LiteDB;
+
+using Atomex.Blockchain.Tezos;
 
 namespace Atomex.Common.Bson
 {

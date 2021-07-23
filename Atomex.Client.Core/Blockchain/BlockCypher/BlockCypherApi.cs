@@ -29,15 +29,15 @@ namespace Atomex.Blockchain.BlockCypher
         private static readonly RequestLimitControl RequestLimitControl
             = new(MinDelayBetweenRequestMs);
 
-        public BitcoinBasedCurrency Currency { get; }
+        public BitcoinBasedConfig Currency { get; }
 
-        public BlockCypherApi(BitcoinBasedCurrency currency, string baseUri)
+        public BlockCypherApi(BitcoinBasedConfig currency, string baseUri)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
-            BaseUri = baseUri;
+            BaseUri  = baseUri;
         }
 
-        public BlockCypherApi(BitcoinBasedCurrency currency, IConfiguration configuration)
+        public BlockCypherApi(BitcoinBasedConfig currency, IConfiguration configuration)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
             BaseUri  = configuration["BlockchainApiBaseUri"];
@@ -239,7 +239,7 @@ namespace Atomex.Blockchain.BlockCypher
                         return new Error(Errors.InvalidResponse, "Invalid tx response.");
 
                     return new BitcoinBasedTransaction(
-                        currency: Currency,
+                        currency: Currency.Name,
                         tx: Transaction.Parse(txHex, Currency.Network),
                         blockInfo: new BlockInfo
                         {

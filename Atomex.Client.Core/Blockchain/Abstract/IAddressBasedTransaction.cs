@@ -1,5 +1,6 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 
@@ -10,6 +11,7 @@ namespace Atomex.Blockchain.Abstract
         Task<bool> SignAsync(
             IKeyStorage keyStorage,
             WalletAddress address,
+            CurrencyConfig currencyConfig,
             CancellationToken cancellationToken = default);
     }
 }

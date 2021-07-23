@@ -14,7 +14,7 @@ namespace Atomex.Swaps.BitcoinBased
     public class BitcoinBasedSwapTransactionFactory : IBitcoinBasedSwapTransactionFactory
     {
         public async Task<IBitcoinBasedTransaction> CreateSwapPaymentTxAsync(
-            BitcoinBasedCurrency currency,
+            BitcoinBasedConfig currency,
             long amount,
             IEnumerable<string> fromWallets,
             string refundAddress,
@@ -80,7 +80,7 @@ namespace Atomex.Swaps.BitcoinBased
                          fee: maxFeeInSatoshi,
                          redeemScript: out _);
 
-                var estimatedSigSize       = BitcoinBasedCurrency.EstimateSigSize(availableOutputs);
+                var estimatedSigSize       = BitcoinBasedConfig.EstimateSigSize(availableOutputs);
                 var estimatedTxVirtualSize = estimatedTx.VirtualSize();
                 var estimatedTxSize        = estimatedTxVirtualSize + estimatedSigSize;
                 var estimatedFeeRate       = maxFeeInSatoshi / estimatedTxSize;
@@ -109,7 +109,7 @@ namespace Atomex.Swaps.BitcoinBased
         }
 
         public static bool EstimateSelectedOutputs(
-            BitcoinBasedCurrency currency,
+            BitcoinBasedConfig currency,
             IEnumerable<ITxOutput> outputs,
             long amount,
             decimal feeRate,
@@ -127,7 +127,7 @@ namespace Atomex.Swaps.BitcoinBased
             if (selectedInSatoshi < amount) // insufficient funds
                 return false;
 
-            var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(outputs);
+            var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(outputs);
 
             var maxFeeInSatoshi = selectedInSatoshi - amount;
 
@@ -145,7 +145,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             var estimatedTxVirtualSize = estimatedTx.VirtualSize();
             var estimatedTxSize = estimatedTxVirtualSize + estimatedSigSize;
-            var estimatedTxSizeWithChange = estimatedTxVirtualSize + estimatedSigSize + BitcoinBasedCurrency.OutputSize;
+            var estimatedTxSizeWithChange = estimatedTxVirtualSize + estimatedSigSize + BitcoinBasedConfig.OutputSize;
 
             var estimatedFeeInSatoshi = (long)(estimatedTxSize * feeRate);
 
@@ -183,14 +183,13 @@ namespace Atomex.Swaps.BitcoinBased
         }
 
         public async Task<IBitcoinBasedTransaction> CreateSwapRefundTxAsync(
+            BitcoinBasedConfig currency,
             IBitcoinBasedTransaction paymentTx,
             long amount,
             string refundAddress,
             DateTimeOffset lockTime,
             byte[] redeemScript)
         {
-            var currency = (BitcoinBasedCurrency)paymentTx.Currency;
-
             var swapOutput = paymentTx.Outputs
                 .Cast<BitcoinBasedTxOutput>()
                 .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));
@@ -198,7 +197,7 @@ namespace Atomex.Swaps.BitcoinBased
             if (swapOutput == null)
                 throw new Exception("Can't find pay to script hash output");
 
-            var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(swapOutput, forRefund: true);
+            var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(swapOutput, forRefund: true);
 
             var tx = currency.CreateP2PkhTx(
                 unspentOutputs: new ITxOutput[] { swapOutput },
@@ -232,14 +231,13 @@ namespace Atomex.Swaps.BitcoinBased
         }
 
         public async Task<IBitcoinBasedTransaction> CreateSwapRedeemTxAsync(
+            BitcoinBasedConfig currency,
             IBitcoinBasedTransaction paymentTx,
             long amount,
             string redeemAddress,
             byte[] redeemScript,
             uint sequenceNumber = 0)
         {
-            var currency = (BitcoinBasedCurrency)paymentTx.Currency;
-
             var swapOutput = paymentTx.Outputs
                 .Cast<BitcoinBasedTxOutput>()
                 .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));
@@ -247,7 +245,7 @@ namespace Atomex.Swaps.BitcoinBased
             if (swapOutput == null)
                 throw new Exception("Can't find pay to script hash output");
 
-            var estimatedSigSize = BitcoinBasedCurrency.EstimateSigSize(swapOutput, forRedeem: true);
+            var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(swapOutput, forRedeem: true);
 
             var tx = currency.CreateP2PkhTx(
                 unspentOutputs: new ITxOutput[] { swapOutput },

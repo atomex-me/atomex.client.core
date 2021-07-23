@@ -12,7 +12,7 @@ namespace Atomex.Blockchain.BitcoinBased.Helpers
     public static class BitcoinBasedSpentPointHelper
     {
         public static async Task<Result<ITxPoint>> GetSpentPointAsync(
-            this Currency currency, 
+            this CurrencyConfig currency, 
             string hash,
             uint index,
             CancellationToken cancellationToken = default)

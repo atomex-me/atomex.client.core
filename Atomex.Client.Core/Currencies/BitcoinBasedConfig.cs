@@ -15,7 +15,7 @@ using Atomex.Wallet.BitcoinBased;
 
 namespace Atomex
 {
-    public abstract class BitcoinBasedCurrency : Currency
+    public abstract class BitcoinBasedConfig : CurrencyConfig
     {
         public const int P2PkhTxSize = 182;
         public const int P2PkhScriptSigSize = 139; //1 + 72 + 1 + 65;
@@ -37,7 +37,7 @@ namespace Atomex
         public decimal MinRelayTxFeeRate { get; set; }
         public NBitcoin.Network Network { get; protected set; }
 
-        protected BitcoinBasedCurrency()
+        protected BitcoinBasedConfig()
         {
             TransactionType = typeof(BitcoinBasedTransaction);
         }

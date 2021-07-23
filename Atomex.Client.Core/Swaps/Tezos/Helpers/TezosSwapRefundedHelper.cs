@@ -16,14 +16,14 @@ namespace Atomex.Swaps.Tezos.Helpers
     {
         public static async Task<Result<bool>> IsRefundedAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 Log.Debug("Tezos: check refund event");
 
-                var tezos = (Atomex.Tezos)currency;
+                var tezos = (Atomex.TezosConfig)currency;
 
                 var contractAddress = tezos.SwapContractAddress;
 
@@ -80,7 +80,7 @@ namespace Atomex.Swaps.Tezos.Helpers
 
         public static async Task<Result<bool>> IsRefundedAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             int attempts,
             int attemptIntervalInSec,
             CancellationToken cancellationToken = default)

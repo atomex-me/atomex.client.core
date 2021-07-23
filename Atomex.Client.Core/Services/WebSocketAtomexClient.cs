@@ -544,7 +544,7 @@ namespace Atomex.Services
         }
 
         private Task TrackTransactionAsync(
-            IBlockchainTransaction transaction,
+            IBlockchainTransaction tx,
             CancellationToken cancellationToken)
         {
             return Task.Run(async () =>
@@ -553,8 +553,12 @@ namespace Atomex.Services
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        var result = await transaction
+                        var currency = Account.Currencies
+                            .GetByName(tx.Currency);
+
+                        var result = await currency
                             .IsTransactionConfirmed(
+                                txId: tx.Id,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
@@ -568,17 +572,17 @@ namespace Atomex.Services
                         }
 
                         // mark old unconfirmed txs as failed
-                        if (transaction.CreationTime != null &&
-                            DateTime.UtcNow > transaction.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
-                            !Currencies.IsBitcoinBased(transaction.Currency.Name))
+                        if (tx.CreationTime != null &&
+                            DateTime.UtcNow > tx.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
+                            !Currencies.IsBitcoinBased(tx.Currency))
                         {
-                            transaction.State = BlockchainTransactionState.Failed;
+                            tx.State = BlockchainTransactionState.Failed;
 
-                            TransactionProcessedHandler(transaction, cancellationToken);
+                            TransactionProcessedHandler(tx, cancellationToken);
                             break;
                         }
 
-                        await Task.Delay(TransactionConfirmationCheckInterval(transaction?.Currency.Name), cancellationToken)
+                        await Task.Delay(TransactionConfirmationCheckInterval(tx?.Currency), cancellationToken)
                             .ConfigureAwait(false);
                     }
                 }
@@ -601,11 +605,12 @@ namespace Atomex.Services
             try
             {
                 await Account
+                    .GetCurrencyAccount<ILegacyCurrencyAccount>(tx.Currency)
                     .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 await Account
-                    .UpdateBalanceAsync(tx.Currency.Name, cancellationToken)
+                    .UpdateBalanceAsync(tx.Currency, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
