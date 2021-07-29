@@ -1,4 +1,5 @@
 ﻿using System;
+
 using Atomex.Abstract;
 using Atomex.MarketData.Abstract;
 using Atomex.Services;
@@ -9,7 +10,7 @@ namespace Atomex
 {
     public interface IAtomexApp
     {
-        event EventHandler<TerminalChangedEventArgs> TerminalChanged;
+        event EventHandler<AtomexClientChangedEventArgs> AtomexClientChanged;
 
         IAtomexClient Terminal { get; }
         IAccount Account { get; }
@@ -23,7 +24,7 @@ namespace Atomex
 
         IAtomexApp Start();
         IAtomexApp Stop();
-        IAtomexApp UseTerminal(IAtomexClient terminal, bool restart = false);
+        IAtomexApp UseAtomexClient(IAtomexClient atomexClient, bool restart = false);
         IAtomexApp UseCurrenciesProvider(ICurrenciesProvider currenciesProvider);
         IAtomexApp UseSymbolsProvider(ISymbolsProvider symbolsProvider);
         IAtomexApp UseCurrenciesUpdater(ICurrenciesUpdater currenciesUpdater);

@@ -130,5 +130,9 @@ namespace Atomex
             name == "KUSD" ||
             name == "FA2" ||
             name == "FA12";
+
+        public static bool HasTokens(string name) =>
+            name == "ETH" ||
+            name == "XTZ";
     }
 }

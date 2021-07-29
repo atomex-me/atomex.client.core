@@ -10,7 +10,7 @@ namespace Atomex
 {
     public class AtomexApp : IAtomexApp
     {
-        public event EventHandler<TerminalChangedEventArgs> TerminalChanged;
+        public event EventHandler<AtomexClientChangedEventArgs> AtomexClientChanged;
 
         public IAtomexClient Terminal { get; private set; }
         public IAccount Account => Terminal?.Account;
@@ -70,13 +70,13 @@ namespace Atomex
             _ = Terminal.StopAsync();
         }
 
-        public IAtomexApp UseTerminal(IAtomexClient terminal, bool restart = false)
+        public IAtomexApp UseAtomexClient(IAtomexClient terminal, bool restart = false)
         {
             if (HasTerminal)
                 StopTerminal();
 
             Terminal = terminal;
-            TerminalChanged?.Invoke(this, new TerminalChangedEventArgs(Terminal));
+            AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(Terminal));
 
             if (HasTerminal && restart)
                 StartTerminal();

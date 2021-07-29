@@ -847,8 +847,7 @@ namespace Atomex.Wallet.Ethereum
 
                 return await DivideAddressAsync(
                     chain: ethereumAddress.KeyIndex.Chain,
-                    index: ethereumAddress.KeyIndex.Index,
-                    cancellationToken: cancellationToken);
+                    index: ethereumAddress.KeyIndex.Index);
             }
 
             var lastActiveAddress = await DataRepository
@@ -859,8 +858,7 @@ namespace Atomex.Wallet.Ethereum
 
             return await DivideAddressAsync(
                     chain: Bip44.External,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    cancellationToken: cancellationToken)
+                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0)
                 .ConfigureAwait(false);
         }
 
@@ -884,8 +882,7 @@ namespace Atomex.Wallet.Ethereum
 
                 return await DivideAddressAsync(
                     chain: ethereumAddress.KeyIndex.Chain,
-                    index: ethereumAddress.KeyIndex.Index,
-                    cancellationToken: cancellationToken);
+                    index: ethereumAddress.KeyIndex.Index);
             }
 
             foreach (var chain in new[] { Bip44.Internal, Bip44.External })
