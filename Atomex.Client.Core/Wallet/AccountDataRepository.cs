@@ -126,21 +126,20 @@ namespace Atomex.Wallet
                             _bsonMapper.ToObject<Order>(
                                 BsonSerializer.Deserialize(Convert.FromBase64String(dbObj.data)));
                     }
-                    
+
                     else if (dbObj.type == AvailableDataType.TezosTokenAddress.ToString())
                     {
-                        _tezosTokensAddresses[dbObj.id] =
-                            _bsonMapper.ToObject<WalletAddress>(
-                                BsonSerializer.Deserialize(Convert.FromBase64String(dbObj.data)));
+                        _tezosTokensAddresses[dbObj.id] = _bsonMapper.ToObject<WalletAddress>(
+                            BsonSerializer.Deserialize(Convert.FromBase64String(dbObj.data)));
                     }
-                    
+
                     else if (dbObj.type == AvailableDataType.TezosTokenContract.ToString())
                     {
                         _tezosTokensContracts[dbObj.id] =
                             _bsonMapper.ToObject<TokenContract>(
                                 BsonSerializer.Deserialize(Convert.FromBase64String(dbObj.data)));
                     }
-                    
+
                     else if (dbObj.type == AvailableDataType.TezosTokenTransfer.ToString())
                     {
                         _tezosTokensTransfers[dbObj.id] =
@@ -159,7 +158,7 @@ namespace Atomex.Wallet
             {
                 var walletId = $"{walletAddress.Currency}:{walletAddress.Address}";
 
-                _addresses[walletId] = walletAddress; // todo: copy?
+                _addresses[walletId] = walletAddress.Copy();
 
                 var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(walletAddress)));
 
@@ -177,7 +176,7 @@ namespace Atomex.Wallet
                 {
                     var walletId = $"{walletAddress.Currency}:{walletAddress.Address}";
 
-                    _addresses[walletId] = walletAddress; // todo: copy?
+                    _addresses[walletId] = walletAddress.Copy();
 
                     var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(walletAddress)));
 
@@ -197,7 +196,7 @@ namespace Atomex.Wallet
                 if (_addresses.ContainsKey(walletId))
                     return Task.FromResult(false);
 
-                _addresses[walletId] = walletAddress; // todo: copy?
+                _addresses[walletId] = walletAddress.Copy();
 
                 var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(walletAddress)));
                 // _addressesBson[walletId] = data;
@@ -288,7 +287,10 @@ namespace Atomex.Wallet
         {
             lock (_sync)
             {
-                return Task.FromResult<IEnumerable<WalletAddress>>(_tezosTokensAddresses.Values);
+                return Task.FromResult<IEnumerable<WalletAddress>>(
+                    _tezosTokensAddresses
+                        .Values
+                        .Select(a => a.Copy()));
             }
         }
 
@@ -339,9 +341,9 @@ namespace Atomex.Wallet
                 foreach (var wa in walletAddresses)
                 {
                     var walletId = $"{wa.Currency}:{wa.TokenBalance.Contract}:{wa.TokenBalance.TokenId}:{wa.Address}";
-
-                    _tezosTokensAddresses[walletId] = wa; // todo: copy?
                     
+                    _tezosTokensAddresses[walletId] = wa.Copy();
+
                     var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(wa)));
                     SaveDataCallback?.Invoke(AvailableDataType.TezosTokenAddress, walletId, data);
                 }
@@ -376,12 +378,12 @@ namespace Atomex.Wallet
             {
                 var walletId =
                     $"{address.Currency}:{address.TokenBalance.Contract}:{address.TokenBalance.TokenId}:{address.Address}";
-
+                
                 if (_tezosTokensAddresses.ContainsKey(walletId))
                     return Task.FromResult(false);
 
-                _tezosTokensAddresses[walletId] = address; // todo: copy?
-                
+                _tezosTokensAddresses[walletId] = address.Copy();
+
                 var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(address)));
                 SaveDataCallback?.Invoke(AvailableDataType.TezosTokenAddress, walletId, data);
 
@@ -397,7 +399,7 @@ namespace Atomex.Wallet
                 foreach (var tokenTransfer in tokenTransfers)
                 {
                     _tezosTokensTransfers[tokenTransfer.Id] = tokenTransfer; // todo: copy ?
-                    
+
                     var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(tokenTransfer)));
                     SaveDataCallback?.Invoke(AvailableDataType.TezosTokenTransfer, tokenTransfer.Id, data);
                 }
@@ -432,7 +434,7 @@ namespace Atomex.Wallet
                 foreach (var tc in tokenContracts)
                 {
                     _tezosTokensContracts[tc.Id] = tc; // todo: copy?
-                    
+
                     var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(tc)));
                     SaveDataCallback?.Invoke(AvailableDataType.TezosTokenContract, tc.Id, data);
                 }
