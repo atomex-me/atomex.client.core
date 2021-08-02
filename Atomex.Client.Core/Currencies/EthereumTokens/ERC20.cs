@@ -69,6 +69,10 @@ namespace Atomex.EthereumTokens
             EstimatedRedeemWithRewardGasLimit = decimal.Parse(configuration["EstimatedRedeemWithRewardGasLimit"], CultureInfo.InvariantCulture);
             GasPriceInGwei             = decimal.Parse(configuration["GasPriceInGwei"], CultureInfo.InvariantCulture);
 
+            MaxGasPriceInGwei = configuration[nameof(MaxGasPriceInGwei)] != null
+                ? decimal.Parse(configuration[nameof(MaxGasPriceInGwei)], CultureInfo.InvariantCulture)
+                : 650m;
+
             Chain                      = ResolveChain(configuration);
 
             ERC20ContractAddress       = configuration["ERC20Contract"];
