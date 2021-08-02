@@ -27,14 +27,22 @@ namespace Atomex.Wallet.Tezos
         {
             return Task.Run(async () =>
             {
-                // addresses from local db
-                var localAddresses = await _tezosAccount.DataRepository
-                    .GetTezosTokenAddressesAsync()
-                    .ConfigureAwait(false);
-
                 // all tezos addresses
                 var xtzAddresses = await _tezosAccount.DataRepository
                     .GetAddressesAsync(TezosConfig.Xtz)
+                    .ConfigureAwait(false);
+
+                if (xtzAddresses.Count() <= 1)
+                {
+                    // firstly scan xtz
+                    await new TezosWalletScanner(_tezosAccount)
+                        .ScanAsync(cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                // addresses from local db
+                var localAddresses = await _tezosAccount.DataRepository
+                    .GetTezosTokenAddressesAsync()
                     .ConfigureAwait(false);
 
                 var addresses = localAddresses
@@ -62,7 +70,7 @@ namespace Atomex.Wallet.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            return Task.Run((async () =>
+            return Task.Run(async () =>
             {
                 var tezosConfig = _tezosAccount.Config;
 
@@ -120,7 +128,7 @@ namespace Atomex.Wallet.Tezos
                         .ConfigureAwait(false);
                 }
 
-            }), cancellationToken);
+            }, cancellationToken);
         }
 
         public Task ScanContractAsync(
