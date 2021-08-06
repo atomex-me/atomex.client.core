@@ -100,14 +100,8 @@ namespace Atomex.Wallet
                 "LTC" => new BitcoinBasedWalletScanner(
                     Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
 
-                "USDT" => new Erc20WalletScanner(
-                    Account.GetCurrencyAccount<Erc20Account>(currency),
-                    Account.GetCurrencyAccount<EthereumAccount>("ETH")),
-
-                "TBTC" => new Erc20WalletScanner(
-                    Account.GetCurrencyAccount<Erc20Account>(currency),
-                    Account.GetCurrencyAccount<EthereumAccount>("ETH")),
-
+                "USDT" or
+                "TBTC" or
                 "WBTC" => new Erc20WalletScanner(
                     Account.GetCurrencyAccount<Erc20Account>(currency),
                     Account.GetCurrencyAccount<EthereumAccount>("ETH")),
