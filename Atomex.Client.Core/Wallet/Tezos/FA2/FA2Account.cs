@@ -41,7 +41,7 @@ namespace Atomex.Wallet.Tezos
         public async Task<Error> SendAsync(
             string from,
             string to,
-            int amount,
+            decimal amount,
             string tokenContract,
             int tokenId,
             int fee,
@@ -55,12 +55,18 @@ namespace Atomex.Wallet.Tezos
                 .GetTezosTokenAddressAsync(Currency, _tokenContract, _tokenId, from)
                 .ConfigureAwait(false);
 
-            if (fromAddress.AvailableBalance() < amount) // devide available balance by DigitsMultiplier, calculated from Decimals
+            var digitsMultiplier = (decimal)Math.Pow(10, fromAddress.TokenBalance.Decimals);
+
+            var availableBalance = fromAddress.AvailableBalance() * digitsMultiplier;
+
+            if (availableBalance < amount)
                 return new Error(
                     code: Errors.InsufficientFunds,
                     description: $"Insufficient tokens. " +
                         $"Available: {fromAddress.AvailableBalance()}. " +
                         $"Required: {amount}.");
+
+            var amountString = string.Format("{0:0}", amount);
 
             var xtzAddress = await DataRepository
                 .GetWalletAddressAsync(xtzConfig.Name, from)
@@ -206,7 +212,7 @@ namespace Atomex.Wallet.Tezos
             int tokenId,
             string from,
             string to,
-            int amount)
+            decimal amount)
         {
             return JObject.FromObject(new
             {
@@ -244,8 +250,8 @@ namespace Atomex.Wallet.Tezos
                                                 },
                                                 new
                                                 {
-                                                    @int = amount.ToString()
-                                                }
+                                                    @int = string.Format("{0:0}", amount)
+        }
                                             }
                                         }
                                     }
