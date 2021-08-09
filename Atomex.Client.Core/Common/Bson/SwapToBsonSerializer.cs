@@ -1,42 +1,44 @@
 ﻿using System;
+
+using LiteDB;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Core;
-using LiteDB;
 
 namespace Atomex.Common.Bson
 {
     public class SwapToBsonSerializer : BsonSerializer<Swap>
     {
-        private const string StatusKey = nameof(Swap.Status);
-        private const string StateKey = nameof(Swap.StateFlags);
-        private const string TimeStampKey = nameof(Swap.TimeStamp);
-        private const string SymbolKey = nameof(Swap.Symbol);
-        private const string SideKey = nameof(Swap.Side);
-        private const string PriceKey = nameof(Swap.Price);
-        private const string QtyKey = nameof(Swap.Qty);
+        private const string StatusKey       = nameof(Swap.Status);
+        private const string StateKey        = nameof(Swap.StateFlags);
+        private const string TimeStampKey    = nameof(Swap.TimeStamp);
+        private const string SymbolKey       = nameof(Swap.Symbol);
+        private const string SideKey         = nameof(Swap.Side);
+        private const string PriceKey        = nameof(Swap.Price);
+        private const string QtyKey          = nameof(Swap.Qty);
         private const string IsInitiativeKey = nameof(Swap.IsInitiative);
 
-        private const string ToAddressKey = nameof(Swap.ToAddress);
+        private const string ToAddressKey       = nameof(Swap.ToAddress);
         private const string RewardForRedeemKey = nameof(Swap.RewardForRedeem);
-        private const string PaymentTxIdKey = nameof(Swap.PaymentTxId);
-        private const string RedeemScriptKey = nameof(Swap.RedeemScript);
-        private const string RefundAddressKey = nameof(Swap.RefundAddress);
+        private const string PaymentTxIdKey     = nameof(Swap.PaymentTxId);
+        private const string RedeemScriptKey    = nameof(Swap.RedeemScript);
+        private const string RefundAddressKey   = nameof(Swap.RefundAddress);
 
-        private const string PartyAddressKey = nameof(Swap.PartyAddress);
+        private const string PartyAddressKey         = nameof(Swap.PartyAddress);
         private const string PartyRewardForRedeemKey = nameof(Swap.PartyRewardForRedeem);
-        private const string PartyPaymentTxIdKey = nameof(Swap.PartyPaymentTxId);
-        private const string PartyRedeemScriptKey = nameof(Swap.PartyRedeemScript);
-        private const string PartyRefundAddressKey = nameof(Swap.PartyRefundAddress);
+        private const string PartyPaymentTxIdKey     = nameof(Swap.PartyPaymentTxId);
+        private const string PartyRedeemScriptKey    = nameof(Swap.PartyRedeemScript);
+        private const string PartyRefundAddressKey   = nameof(Swap.PartyRefundAddress);
 
-        private const string OrderIdKey = nameof(Swap.OrderId);
+        private const string OrderIdKey    = nameof(Swap.OrderId);
 
-        private const string SecretKey = nameof(Swap.Secret);
+        private const string SecretKey     = nameof(Swap.Secret);
         private const string SecretHashKey = nameof(Swap.SecretHash);
 
-        private const string PaymentTxKey = nameof(Swap.PaymentTx);
-        private const string RefundTxKey = nameof(Swap.RefundTx);
-        private const string RedeemTxKey = nameof(Swap.RedeemTx);
+        private const string PaymentTxKey      = nameof(Swap.PaymentTx);
+        private const string RefundTxKey       = nameof(Swap.RefundTx);
+        private const string RedeemTxKey       = nameof(Swap.RedeemTx);
         private const string PartyPaymentTxKey = nameof(Swap.PartyPaymentTx);
 
         private const string MakerNetworkFeeKey = nameof(Swap.MakerNetworkFee);

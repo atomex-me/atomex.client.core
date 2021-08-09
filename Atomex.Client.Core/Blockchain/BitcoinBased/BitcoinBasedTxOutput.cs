@@ -1,6 +1,6 @@
-﻿using Atomex.Blockchain.Abstract;
-using Atomex.Core;
-using NBitcoin;
+﻿using NBitcoin;
+
+using Atomex.Blockchain.Abstract;
 
 namespace Atomex.Blockchain.BitcoinBased
 {
@@ -49,10 +49,10 @@ namespace Atomex.Blockchain.BitcoinBased
             return IsP2Sh && new Script(redeemScript).PaymentScript.Equals(Coin.TxOut.ScriptPubKey);
         }
 
-        public string DestinationAddress(Currency currency)
+        public string DestinationAddress(BitcoinBasedConfig bitcoinBasedConfig)
         {
             return Coin.TxOut.ScriptPubKey
-                .GetDestinationAddress(((BitcoinBasedCurrency) currency).Network)
+                .GetDestinationAddress(bitcoinBasedConfig.Network)
                 .ToString();
         }
     }

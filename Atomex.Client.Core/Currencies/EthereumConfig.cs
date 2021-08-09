@@ -20,8 +20,9 @@ using Atomex.Wallet.Ethereum;
 
 namespace Atomex
 {
-    public class Ethereum : Currency
+    public class EthereumConfig : CurrencyConfig
     {
+        public const string Eth = "ETH";
         protected const long WeiInEth = 1000000000000000000;
         protected const long WeiInGwei = 1000000000;
         protected const long GweiInEth = 1000000000;
@@ -64,11 +65,11 @@ namespace Atomex
         public string SwapContractAddress { get; protected set; }
         public ulong SwapContractBlockNumber { get; protected set; }
 
-        public Ethereum()
+        public EthereumConfig()
         {
         }
 
-        public Ethereum(IConfiguration configuration)
+        public EthereumConfig(IConfiguration configuration)
         {
             Update(configuration);
         }
@@ -127,7 +128,6 @@ namespace Atomex
             AddressExplorerUri         = configuration["AddressExplorerUri"];
             TransactionType            = typeof(EthereumTransaction);
 
-            IsTransactionsAvailable    = true;
             IsSwapAvailable            = true;
             Bip44Code                  = Bip44.Ethereum;
         }
@@ -147,7 +147,7 @@ namespace Atomex
 
         protected static IBlockchainApi ResolveBlockchainApi(
             IConfiguration configuration,
-            Ethereum currency)
+            EthereumConfig currency)
         {
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();

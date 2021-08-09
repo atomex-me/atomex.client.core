@@ -14,9 +14,10 @@ using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.Cryptography;
 using Atomex.LiteDb;
 using Atomex.Wallet.Abstract;
-using Atomex.Cryptography;
+using Atomex.Wallet.Tezos;
 
 namespace Atomex.Wallet
 {
@@ -146,62 +147,6 @@ namespace Atomex.Wallet
             return this;
         }
 
-        public Task<Error> SendAsync(
-            string currency,
-            string to,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            bool useDefaultFee = false,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .SendAsync(
-                    to: to,
-                    amount: amount,
-                    fee: fee,
-                    feePrice: feePrice,
-                    useDefaultFee: useDefaultFee,
-                    cancellationToken: cancellationToken);
-        }
-
-        public Task<decimal?> EstimateFeeAsync(
-            string currency,
-            string to,
-            decimal amount,
-            BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .EstimateFeeAsync(to, amount, type, fee, feePrice, cancellationToken);
-        }
-
-        public Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
-            string currency,
-            string to,
-            BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0, 
-            bool reserve = false,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .EstimateMaxAmountToSendAsync(to, type, fee, feePrice, reserve, cancellationToken);
-        }
-
-        public Task<decimal> EstimateMaxFeeAsync(
-            string currency,
-            string to,
-            decimal amount,
-            BlockchainTransactionType type,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .EstimateMaxFeeAsync(to, amount, type, cancellationToken);
-        }
-
         public async Task<Auth> CreateAuthRequestAsync(AuthNonce nonce, uint keyIndex = 0)
         {
             if (IsLocked)
@@ -272,8 +217,34 @@ namespace Atomex.Wallet
             throw new NotSupportedException($"Not supported currency {currency}");
         }
 
+        public ICurrencyAccount GetTezosTokenAccount(
+            string currency,
+            string tokenContract,
+            decimal tokenId)
+        {
+            var uniqueId = $"{currency}:{tokenContract}:{tokenId}";
+
+            if (CurrencyAccounts.TryGetValue(uniqueId, out var account))
+                return account;
+
+            return CurrencyAccountCreator.CreateTezosTokenAccount(
+                currency,
+                tokenContract,
+                tokenId,
+                Currencies,
+                Wallet,
+                DataRepository,
+                CurrencyAccounts[TezosConfig.Xtz] as TezosAccount);
+        }
+
         public T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount =>
             GetCurrencyAccount(currency) as T;
+
+        public T GetTezosTokenAccount<T>(
+            string currency,
+            string tokenContract,
+            decimal tokenId) where T : class =>
+            GetTezosTokenAccount(currency, tokenContract, tokenId) as T;
 
         public string GetUserId(uint keyIndex = 0)
         {
@@ -324,15 +295,6 @@ namespace Atomex.Wallet
 
         #region Addresses
 
-        public Task<WalletAddress> DivideAddressAsync(
-            string currency,
-            int chain,
-            uint index)
-        {
-            return GetCurrencyAccount(currency)
-                .DivideAddressAsync(chain, index);
-        }
-
         public Task<WalletAddress> GetAddressAsync(
             string currency,
             string address,
@@ -350,45 +312,6 @@ namespace Atomex.Wallet
                 .GetUnspentAddressesAsync(cancellationToken);
         }
 
-        public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
-            string currency,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .GetUnspentTokenAddressesAsync(cancellationToken);
-        }
-
-        public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
-            string currency,
-            string toAddress,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            FeeUsagePolicy feeUsagePolicy,
-            AddressUsagePolicy addressUsagePolicy,
-            BlockchainTransactionType transactionType,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .GetUnspentAddressesAsync(
-                    toAddress: toAddress,
-                    amount: amount,
-                    fee: fee,
-                    feePrice: feePrice,
-                    feeUsagePolicy: feeUsagePolicy,
-                    addressUsagePolicy: addressUsagePolicy,
-                    transactionType: transactionType,
-                    cancellationToken: cancellationToken);
-        }
-
-        public Task<WalletAddress> GetFreeInternalAddressAsync(
-            string currency,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .GetFreeInternalAddressAsync(cancellationToken);
-        }
-
         public Task<WalletAddress> GetFreeExternalAddressAsync(
             string currency,
             CancellationToken cancellationToken = default)
@@ -397,33 +320,9 @@ namespace Atomex.Wallet
                 .GetFreeExternalAddressAsync(cancellationToken);
         }
 
-        public Task<WalletAddress> GetRedeemAddressAsync(   //todo: check if always returns the biggest address
-            string currency,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(currency)
-                .GetRedeemAddressAsync(cancellationToken);   
-        }
-
         #endregion Addresses
 
         #region Transactions
-
-        public Task UpsertTransactionAsync(
-            IBlockchainTransaction tx,
-            bool updateBalance = false,
-            bool notifyIfUnconfirmed = true,
-            bool notifyIfBalanceUpdated = true,
-            CancellationToken cancellationToken = default)
-        {
-            return GetCurrencyAccount(tx.Currency.Name)
-                .UpsertTransactionAsync(
-                    tx: tx,
-                    updateBalance: updateBalance,
-                    notifyIfUnconfirmed: notifyIfUnconfirmed,
-                    notifyIfBalanceUpdated: notifyIfBalanceUpdated,
-                    cancellationToken: cancellationToken);
-        }
 
         public Task<IBlockchainTransaction> GetTransactionByIdAsync(
             string currency,

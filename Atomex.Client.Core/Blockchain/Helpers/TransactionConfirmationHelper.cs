@@ -2,10 +2,12 @@
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
-using Serilog;
 
 namespace Atomex.Blockchain.Helpers
 {
@@ -25,18 +27,8 @@ namespace Atomex.Blockchain.Helpers
     {
         private const int NumberOfConfirmations = 1;
 
-        public static Task<Result<ConfirmationCheckResult>> IsTransactionConfirmed(
-            this IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default)
-        {
-            return IsTransactionConfirmed(
-                currency: tx.Currency,
-                txId: tx.Id,
-                cancellationToken: cancellationToken);
-        }
-
         public static async Task<Result<ConfirmationCheckResult>> IsTransactionConfirmed(
-            this Currency currency,
+            this CurrencyConfig currency,
             string txId,
             CancellationToken cancellationToken = default)
         {

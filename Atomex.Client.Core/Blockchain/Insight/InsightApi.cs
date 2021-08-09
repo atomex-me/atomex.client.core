@@ -165,15 +165,15 @@ namespace Atomex.Blockchain.Insight
         private static readonly RequestLimitControl RequestLimitControl
             = new RequestLimitControl(MinDelayBetweenRequestMs);
 
-        public BitcoinBasedCurrency Currency { get; }
+        public BitcoinBasedConfig Currency { get; }
 
-        public InsightApi(BitcoinBasedCurrency currency, IConfiguration configuration)
+        public InsightApi(BitcoinBasedConfig currency, IConfiguration configuration)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
             BaseUri = configuration["BlockchainApiBaseUri"];
         }
 
-        public InsightApi(BitcoinBasedCurrency currency, string baseUri)
+        public InsightApi(BitcoinBasedConfig currency, string baseUri)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
             BaseUri = baseUri ?? throw new ArgumentNullException(nameof(baseUri));
@@ -227,15 +227,15 @@ namespace Atomex.Blockchain.Insight
                         var tx = JsonConvert.DeserializeObject<Tx>(content);
 
                         return new BitcoinBasedTransaction(
-                            currency: Currency,
+                            currency: Currency.Name,
                             tx: Transaction.Parse(rawTxResult.Value, Currency.Network),
                             blockInfo: new BlockInfo
                             {
                                 Confirmations = tx.Confirmations,
-                                BlockHash = null,
-                                BlockHeight = tx.BlockHeight.GetValueOrDefault(0),
-                                BlockTime = tx.BlockTime.ToUtcDateTime(),
-                                FirstSeen = tx.Time.ToUtcDateTime()
+                                BlockHash     = null,
+                                BlockHeight   = tx.BlockHeight.GetValueOrDefault(0),
+                                BlockTime     = tx.BlockTime.ToUtcDateTime(),
+                                FirstSeen     = tx.Time.ToUtcDateTime()
                             },
                             fees: (long) (tx.Fees * Currency.DigitsMultiplier)
                         );

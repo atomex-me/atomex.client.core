@@ -3,19 +3,21 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain.Tezos;
+
 using Serilog;
+
+using Atomex.Blockchain.Tezos;
 
 namespace Atomex.Wallet.Tezos
 {
     public partial class TezosRevealChecker
     {
-        private readonly Atomex.Tezos _tezos;
+        private readonly TezosConfig _tezos;
         private readonly IDictionary<string, TezosAddressInfo> _addresses;
 
         public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromMinutes(30);
 
-        public TezosRevealChecker(Atomex.Tezos tezos)
+        public TezosRevealChecker(TezosConfig tezos)
         {
             _tezos = tezos;
             _addresses = new Dictionary<string, TezosAddressInfo>();

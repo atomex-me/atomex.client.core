@@ -1,30 +1,32 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+
+using LiteDB;
+using NBitcoin;
+
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Core;
-using LiteDB;
-using NBitcoin;
 
 namespace Atomex.Common.Bson
 {
     public class BitcoinBasedTransactionToBsonSerializer : BsonSerializer<BitcoinBasedTransaction>
     {
         private const string CreationTimeKey = nameof(IBlockchainTransaction.CreationTime);
-        private const string CurrencyKey = nameof(IBlockchainTransaction.Currency);
-        private const string TxKey = "Tx";
-        private const string TxIdKey = "TxId";
-        private const string BlockInfoKey = nameof(IBlockchainTransaction.BlockInfo);
-        private const string StateKey = nameof(IBlockchainTransaction.State);
-        private const string TypeKey = nameof(IBlockchainTransaction.Type);
-        private const string FeesKey = nameof(BitcoinBasedTransaction.Fees);
-        private const string AmountKey = nameof(BitcoinBasedTransaction.Amount);
+        private const string CurrencyKey     = nameof(IBlockchainTransaction.Currency);
+        private const string TxKey           = "Tx";
+        private const string TxIdKey         = "TxId";
+        private const string BlockInfoKey    = nameof(IBlockchainTransaction.BlockInfo);
+        private const string StateKey        = nameof(IBlockchainTransaction.State);
+        private const string TypeKey         = nameof(IBlockchainTransaction.Type);
+        private const string FeesKey         = nameof(BitcoinBasedTransaction.Fees);
+        private const string AmountKey       = nameof(BitcoinBasedTransaction.Amount);
 
-        private readonly IEnumerable<Currency> _currencies;
+        private readonly IEnumerable<CurrencyConfig> _currencies;
 
-        public BitcoinBasedTransactionToBsonSerializer(IEnumerable<Currency> currencies)
+        public BitcoinBasedTransactionToBsonSerializer(IEnumerable<CurrencyConfig> currencies)
         {
             _currencies = currencies;
         }
@@ -41,14 +43,14 @@ namespace Atomex.Common.Bson
 
             var currency = _currencies.FirstOrDefault(c => c.Name.Equals(currencyName));
 
-            if (currency is BitcoinBasedCurrency btcBaseCurrency)
+            if (currency is BitcoinBasedConfig btcBaseCurrency)
             {
                 var blockInfo = !bson[BlockInfoKey].IsNull
                     ? BsonMapper.ToObject<BlockInfo>(bson[BlockInfoKey].AsDocument)
                     : null;
 
                 return new BitcoinBasedTransaction(
-                    currency: btcBaseCurrency,
+                    currency: btcBaseCurrency.Name,
                     tx: Transaction.Parse(bson[TxKey].AsString, btcBaseCurrency.Network),
                     blockInfo: blockInfo,
                     fees: !bson[FeesKey].IsNull
@@ -84,18 +86,18 @@ namespace Atomex.Common.Bson
 
             return new BsonDocument
             {
-                [IdKey] = tx.UniqueId,
-                [TxIdKey] = tx.Id,
+                [IdKey]           = tx.UniqueId,
+                [TxIdKey]         = tx.Id,
                 [CreationTimeKey] = tx.CreationTime,
-                [CurrencyKey] = tx.Currency.Name,
-                [TxKey] = tx.ToBytes().ToHexString(),
-                [BlockInfoKey] = tx.BlockInfo != null
+                [CurrencyKey]     = tx.Currency,
+                [TxKey]           = tx.ToBytes().ToHexString(),
+                [BlockInfoKey]    = tx.BlockInfo != null
                     ? BsonMapper.ToDocument(tx.BlockInfo)
                     : null,
-                [FeesKey] = tx.Fees,
-                [StateKey] = tx.State.ToString(),
-                [TypeKey] = tx.Type.ToString(),
-                [AmountKey] = tx.Amount
+                [FeesKey]         = tx.Fees,
+                [StateKey]        = tx.State.ToString(),
+                [TypeKey]         = tx.Type.ToString(),
+                [AmountKey]       = tx.Amount
             };
         }
     }

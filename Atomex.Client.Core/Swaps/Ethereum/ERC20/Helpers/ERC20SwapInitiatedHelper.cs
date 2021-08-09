@@ -22,10 +22,10 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 
         public static async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             CancellationToken cancellationToken = default)
         {
-            var erc20 = currency as EthereumTokens.ERC20;
+            var erc20 = currency as EthereumTokens.Erc20Config;
 
             var api = erc20.BlockchainApi as IEthereumBlockchainApi;
 
@@ -74,7 +74,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 
         public static async Task<Result<bool>> IsInitiatedAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             long lockTimeInSec,
             CancellationToken cancellationToken = default)
         {
@@ -82,7 +82,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
             {
                 Log.Debug("Ethereum ERC20: check initiated event");
 
-                var erc20 = (EthereumTokens.ERC20)currency;
+                var erc20 = (EthereumTokens.Erc20Config)currency;
 
                 var side = swap.Symbol
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
@@ -273,7 +273,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
         }
 
         public static async Task<List<BigInteger>> GetTransferValuesAsync(
-            Currency currency,
+            CurrencyConfig currency,
             string from,
             string to,
             string blockNumber,
@@ -283,7 +283,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
             {
                 Log.Debug("Ethereum ERC20: check transfer event");
 
-                var erc20 = (EthereumTokens.ERC20)currency;
+                var erc20 = (EthereumTokens.Erc20Config)currency;
 
                 var api = new EtherScanApi(erc20);
 
@@ -321,7 +321,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 
         public static Task StartSwapInitiatedControlAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             long lockTimeInSec,
             TimeSpan interval,
             Func<Swap, CancellationToken, Task> initiatedHandler,

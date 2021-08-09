@@ -10,7 +10,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.EthereumTokens
 {
-    public class ERC20 : Ethereum
+    public class Erc20Config : EthereumConfig
     {
         public decimal TransferGasLimit { get; private set; }
         public decimal ApproveGasLimit { get; private set; }
@@ -21,11 +21,11 @@ namespace Atomex.EthereumTokens
         public string ERC20ContractAddress { get; private set; }
         public ulong ERC20ContractBlockNumber { get; private set; }
 
-        public ERC20()
+        public Erc20Config()
         {
         }
 
-        public ERC20(IConfiguration configuration)
+        public Erc20Config(IConfiguration configuration)
         {
             Update(configuration);
         }
@@ -90,7 +90,6 @@ namespace Atomex.EthereumTokens
             AddressExplorerUri         = configuration["AddressExplorerUri"];
             TransactionType            = typeof(EthereumTransaction);
 
-            IsTransactionsAvailable    = true;
             IsSwapAvailable            = true;
             Bip44Code                  = Bip44.Ethereum;  //TODO ?
         }

@@ -1,18 +1,19 @@
-﻿using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
-using LiteDB;
+﻿using LiteDB;
 using NBitcoin;
+
+using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.BitcoinBased;
 
 namespace Atomex.Common.Bson
 {
     public class BitcoinBasedTxOutputToBsonSerializer : BsonSerializer<BitcoinBasedTxOutput>
     {
-        private const string TxIdKey = nameof(BitcoinBasedTxOutput.TxId);
-        private const string IndexKey = nameof(BitcoinBasedTxOutput.Index);
-        private const string ValueKey = nameof(BitcoinBasedTxOutput.Value);
-        private const string SpentHashKey = "SpentHash";
+        private const string TxIdKey       = nameof(BitcoinBasedTxOutput.TxId);
+        private const string IndexKey      = nameof(BitcoinBasedTxOutput.Index);
+        private const string ValueKey      = nameof(BitcoinBasedTxOutput.Value);
+        private const string SpentHashKey  = "SpentHash";
         private const string SpentIndexKey = "SpentIndex";
-        private const string ScriptKey = "Script";
+        private const string ScriptKey     = "Script";
 
         public override BitcoinBasedTxOutput Deserialize(BsonValue output)
         {

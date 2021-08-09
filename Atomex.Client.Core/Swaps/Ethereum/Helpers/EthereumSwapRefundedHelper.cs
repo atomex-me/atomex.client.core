@@ -13,14 +13,14 @@ namespace Atomex.Swaps.Ethereum.Helpers
     {
         public static async Task<Result<bool>> IsRefundedAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 Log.Debug("Ethereum: check refund event");
 
-                var ethereum = (Atomex.Ethereum)currency;
+                var ethereum = (Atomex.EthereumConfig)currency;
 
                 var api = new EtherScanApi(ethereum);
 
@@ -59,7 +59,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
         public static async Task<Result<bool>> IsRefundedAsync(
             Swap swap,
-            Currency currency,
+            CurrencyConfig currency,
             int attempts,
             int attemptIntervalInSec,
             CancellationToken cancellationToken = default)

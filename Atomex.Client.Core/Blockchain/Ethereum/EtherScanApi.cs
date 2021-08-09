@@ -122,9 +122,9 @@ namespace Atomex.Blockchain.Ethereum
             }
         }
 
-        private Currency Currency { get; }
+        private CurrencyConfig Currency { get; }
 
-        public EtherScanApi(Atomex.Ethereum currency)
+        public EtherScanApi(Atomex.EthereumConfig currency)
         {
             Currency = currency;
             BaseUrl = currency.BlockchainApiBaseUri;
@@ -148,7 +148,7 @@ namespace Atomex.Blockchain.Ethereum
                        var json = JsonConvert.DeserializeObject<JObject>(content);
 
                        return json.ContainsKey("result")
-                           ? Atomex.Ethereum.WeiToEth(BigInteger.Parse(json["result"].ToString()))
+                           ? Atomex.EthereumConfig.WeiToEth(BigInteger.Parse(json["result"].ToString()))
                            : 0;
                    },
                    cancellationToken: cancellationToken)
@@ -231,7 +231,7 @@ namespace Atomex.Blockchain.Ethereum
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            var tx = await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
+            var txResult = await HttpHelper.GetAsyncResult<EthereumTransaction>(
                    baseUri: BaseUrl,
                    requestUri: requestUri,
                    responseHandler: (response, content) =>
@@ -244,7 +244,7 @@ namespace Atomex.Blockchain.Ethereum
                        return new EthereumTransaction
                        {
                            Id            = tx["hash"].Value<string>(),
-                           Currency      = Currency,
+                           Currency      = Currency.Name,
                            Type          = BlockchainTransactionType.Unknown,
                            //State = state,
                            //CreationTime = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
@@ -280,10 +280,10 @@ namespace Atomex.Blockchain.Ethereum
                    cancellationToken: cancellationToken)
                .ConfigureAwait(false);
 
-            if (tx.HasError)
-                return tx.Error;
+            if (txResult.HasError)
+                return txResult.Error;
 
-            var blockNumberHex = "0x" + tx.Value.BlockInfo.BlockHeight.ToString("X");
+            var blockNumberHex = "0x" + txResult.Value.BlockInfo.BlockHeight.ToString("X");
 
             var blockTime = await HttpHelper.GetAsyncResult<DateTime>(
                     baseUri: BaseUrl,
@@ -330,17 +330,17 @@ namespace Atomex.Blockchain.Ethereum
             if (txReceipt.HasError)
                 return txReceipt.Error;
 
-            tx.Value.State = txReceipt.Value == 0
+            txResult.Value.State = txReceipt.Value == 0
                 ? BlockchainTransactionState.Failed
                 : BlockchainTransactionState.Confirmed;
 
-            tx.Value.BlockInfo.Confirmations = tx.Value.State == BlockchainTransactionState.Confirmed
+            txResult.Value.BlockInfo.Confirmations = txResult.Value.State == BlockchainTransactionState.Confirmed
                 ? 1
                 : 0;
 
-            tx.Value.CreationTime = blockTime.Value;
-            tx.Value.BlockInfo.FirstSeen = blockTime.Value;
-            tx.Value.BlockInfo.BlockTime = blockTime.Value;
+            txResult.Value.CreationTime = blockTime.Value;
+            txResult.Value.BlockInfo.FirstSeen = blockTime.Value;
+            txResult.Value.BlockInfo.BlockTime = blockTime.Value;
 
             var internalTxsResult = await GetInternalTransactionsAsync(txId, cancellationToken)
                 .ConfigureAwait(false);
@@ -353,7 +353,7 @@ namespace Atomex.Blockchain.Ethereum
 
             if (internalTxsResult.Value.Any())
             {
-                var ethTx = tx.Value as EthereumTransaction;
+                var ethTx = txResult.Value;
 
                 ethTx.InternalTxs = internalTxsResult.Value
                     .Cast<EthereumTransaction>()
@@ -362,7 +362,7 @@ namespace Atomex.Blockchain.Ethereum
                             .ToList();
             }
 
-            return tx;
+            return txResult.Value;
         }
 
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetInternalTransactionsAsync(
@@ -664,7 +664,7 @@ namespace Atomex.Blockchain.Ethereum
                 result.Add(new EthereumTransaction
                 {
                     Id            = id,
-                    Currency      = Currency,
+                    Currency      = Currency.Name,
                     Type          = BlockchainTransactionType.Unknown,
                     State         = state,
                     CreationTime  = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
@@ -702,7 +702,7 @@ namespace Atomex.Blockchain.Ethereum
         }
 
         public async Task<Result<decimal>> GetERC20AllowanceAsync(
-            EthereumTokens.ERC20 erc20,
+            EthereumTokens.Erc20Config erc20,
             string tokenAddress,
             FunctionMessage allowanceMessage,
             CancellationToken cancellationToken = default)

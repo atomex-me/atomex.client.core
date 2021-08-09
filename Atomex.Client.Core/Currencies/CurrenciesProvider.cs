@@ -128,10 +128,10 @@ namespace Atomex
                     network[currency.Value<string>(nameof(ConfigKey.Name))] = clonedBasedOnCurr;
                 }
 
-                foreach (var abstractCurr in abstractCurrencies)
-                {
-                    network.Property(abstractCurr).Remove();
-                }
+                //foreach (var abstractCurr in abstractCurrencies)
+                //{
+                //    network.Property(abstractCurr).Remove();
+                //}
             }
 
             return jObjConfig.ToString();

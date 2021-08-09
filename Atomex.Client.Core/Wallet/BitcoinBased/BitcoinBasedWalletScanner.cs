@@ -18,7 +18,7 @@ namespace Atomex.Wallet.BitcoinBased
         private const int DefaultExternalLookAhead = 3;
 
         private BitcoinBasedAccount Account { get; }
-        private Currency Currency => Account.Currencies.GetByName(Account.Currency);
+        private CurrencyConfig Currency => Account.Currencies.GetByName(Account.Currency);
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
 
@@ -120,7 +120,7 @@ namespace Atomex.Wallet.BitcoinBased
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var walletAddress = await Account
-                        .DivideAddressAsync(param.Chain, index, cancellationToken)
+                        .DivideAddressAsync(param.Chain, index)
                         .ConfigureAwait(false);
 
                     if (walletAddress == null)
@@ -202,9 +202,6 @@ namespace Atomex.Wallet.BitcoinBased
         private async Task ScanTransactionsAsync(
             CancellationToken cancellationToken = default)
         {
-            if (!Currency.IsTransactionsAvailable)
-                return;
-
             var outputs = await Account
                 .GetOutputsAsync()
                 .ConfigureAwait(false);

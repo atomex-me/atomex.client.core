@@ -20,6 +20,8 @@ using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Web;
+using Atomex.Blockchain.Tezos;
+using Atomex.Wallet.Tezos;
 
 namespace Atomex.Services
 {
@@ -516,7 +518,7 @@ namespace Atomex.Services
         }
 
         private Task TrackTransactionAsync(
-            IBlockchainTransaction transaction,
+            IBlockchainTransaction tx,
             CancellationToken cancellationToken)
         {
             return Task.Run(async () =>
@@ -525,13 +527,22 @@ namespace Atomex.Services
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        var result = await transaction
+                        var currency = Account.Currencies
+                            .GetByName(tx.Currency);
+
+                        var result = await currency
                             .IsTransactionConfirmed(
+                                txId: tx.Id,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (result.HasError) // todo: additional reaction
-                            break;
+                        if (result.HasError)
+                        {
+                            await Task.Delay(TransactionConfirmationCheckInterval(tx?.Currency), cancellationToken)
+                                .ConfigureAwait(false);
+
+                            continue;
+                        }
 
                         if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed)
                         {
@@ -540,17 +551,17 @@ namespace Atomex.Services
                         }
 
                         // mark old unconfirmed txs as failed
-                        if (transaction.CreationTime != null &&
-                            DateTime.UtcNow > transaction.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
-                            !Currencies.IsBitcoinBased(transaction.Currency.Name))
+                        if (tx.CreationTime != null &&
+                            DateTime.UtcNow > tx.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
+                            !Currencies.IsBitcoinBased(tx.Currency))
                         {
-                            transaction.State = BlockchainTransactionState.Failed;
+                            tx.State = BlockchainTransactionState.Failed;
 
-                            TransactionProcessedHandler(transaction, cancellationToken);
+                            TransactionProcessedHandler(tx, cancellationToken);
                             break;
                         }
 
-                        await Task.Delay(TransactionConfirmationCheckInterval(transaction?.Currency.Name), cancellationToken)
+                        await Task.Delay(TransactionConfirmationCheckInterval(tx?.Currency), cancellationToken)
                             .ConfigureAwait(false);
                     }
                 }
@@ -573,12 +584,17 @@ namespace Atomex.Services
             try
             {
                 await Account
+                    .GetCurrencyAccount<ILegacyCurrencyAccount>(tx.Currency)
                     .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 await Account
-                    .UpdateBalanceAsync(tx.Currency.Name, cancellationToken)
+                    .UpdateBalanceAsync(tx.Currency, cancellationToken)
                     .ConfigureAwait(false);
+
+                if (Currencies.HasTokens(tx.Currency))
+                    await UpdateTokenBalanceAsync(tx, cancellationToken)
+                        .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -587,6 +603,38 @@ namespace Atomex.Services
             catch (Exception e)
             {
                 Log.Error(e, "Error in transaction processed handler.");
+            }
+        }
+
+        private async Task UpdateTokenBalanceAsync(
+            IBlockchainTransaction tx,
+            CancellationToken cancellationToken)
+        {
+            if (tx.Currency == EthereumConfig.Eth)
+            {
+                // 
+            }
+            else if (tx.Currency == TezosConfig.Xtz)
+            {
+                var tezosTx = tx as TezosTransaction;
+
+                if (tezosTx.Params == null)
+                    return;
+
+                var tezosAccount = Account
+                .GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz);
+
+                var tezosTokensScanner = new TezosTokensScanner(tezosAccount);
+
+                await tezosTokensScanner.ScanAsync(
+                    skipUsed: false,
+                    cancellationToken: cancellationToken);
+
+                // reload balances for all tezos tokens account
+                foreach (var currency in Account.Currencies)
+                    if (Currencies.IsTezosToken(currency.Name))
+                        Account.GetCurrencyAccount<TezosTokenAccount>(currency.Name)
+                            .ReloadBalances();
             }
         }
 

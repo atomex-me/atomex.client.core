@@ -2,11 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Serilog;
 
 namespace Atomex.Wallet
 {
@@ -17,6 +20,9 @@ namespace Atomex.Wallet
         private readonly Dictionary<string, OutputEntity> _outputs;
         private readonly Dictionary<long, Swap> _swaps;
         private readonly Dictionary<string, Order> _orders;
+        private readonly Dictionary<string, WalletAddress> _tezosTokensAddresses;
+        private readonly Dictionary<string, TokenTransfer> _tezosTokensTransfers;
+        private readonly Dictionary<string, TokenContract> _tezosTokensContracts;
 
         private readonly object _sync;
 
@@ -29,12 +35,15 @@ namespace Atomex.Wallet
 
         public AccountDataRepository()
         {
-            _addresses = new Dictionary<string, WalletAddress>();
-            _transactions = new Dictionary<string, IBlockchainTransaction>();
-            _outputs = new Dictionary<string, OutputEntity>();
-            _swaps = new Dictionary<long, Swap>();
-            _orders = new Dictionary<string, Order>();
-            _sync = new object();
+            _addresses            = new Dictionary<string, WalletAddress>();
+            _transactions         = new Dictionary<string, IBlockchainTransaction>();
+            _outputs              = new Dictionary<string, OutputEntity>();
+            _swaps                = new Dictionary<long, Swap>();
+            _orders               = new Dictionary<string, Order>();
+            _tezosTokensAddresses = new Dictionary<string, WalletAddress>();
+            _tezosTokensTransfers = new Dictionary<string, TokenTransfer>();
+            _tezosTokensContracts = new Dictionary<string, TokenContract>();
+            _sync                 = new object();
         }
 
         #region Addresses
@@ -99,7 +108,9 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var address = _addresses.Values
-                    .Where(w => w.Currency == currency && w.KeyIndex.Chain == chain && w.HasActivity)
+                    .Where(w => w.Currency == currency &&
+                                w.KeyIndex.Chain == chain &&
+                                w.HasActivity)
                     .OrderByDescending(w => w.KeyIndex.Index)
                     .FirstOrDefault();
 
@@ -117,7 +128,7 @@ namespace Atomex.Wallet
             {
                 var addresses = includeUnconfirmed
                     ? _addresses.Values
-                        .Where(w => w.Currency == currency && w.Balance != 0 && w.UnconfirmedIncome != 0 && w.UnconfirmedOutcome != 0)
+                        .Where(w => w.Currency == currency && (w.Balance != 0 || w.UnconfirmedIncome != 0 || w.UnconfirmedOutcome != 0))
                     : _addresses.Values
                         .Where(w => w.Currency == currency && w.Balance != 0);
 
@@ -138,6 +149,179 @@ namespace Atomex.Wallet
         }
 
         #endregion Addresses
+
+        #region TezosTokens
+
+        public Task<WalletAddress> GetTezosTokenAddressAsync(
+            string currency,
+            string tokenContract,
+            decimal tokenId,
+            string address)
+        {
+            lock (_sync)
+            {
+                var walletId = $"{currency}:{tokenContract}:{tokenId}:{address}";
+
+                if (_tezosTokensAddresses.TryGetValue(walletId, out var walletAddress))
+                    return Task.FromResult(walletAddress);
+
+                return Task.FromResult<WalletAddress>(null);
+            }
+        }
+
+        public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync()
+        {
+            lock (_sync)
+            {
+                return Task.FromResult<IEnumerable<WalletAddress>>(_tezosTokensAddresses.Values);
+            }
+        }
+
+        public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync(
+            string address)
+        {
+            lock (_sync)
+            {
+                var addresses = _tezosTokensAddresses.Values
+                    .Where(w => w.Address == address);
+
+                return Task.FromResult(addresses);
+            }
+        }
+
+        public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync(
+            string address,
+            string tokenContract)
+        {
+            lock (_sync)
+            {
+                var addresses = _tezosTokensAddresses.Values
+                    .Where(w => w.Address == address && w.TokenBalance.Contract == tokenContract)
+                    .ToList();
+
+                return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
+            }
+        }
+
+        public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesByContractAsync(
+            string tokenContract)
+        {
+            lock (_sync)
+            {
+                var addresses = _tezosTokensAddresses.Values
+                    .Where(w => w.TokenBalance.Contract == tokenContract)
+                    .ToList();
+
+                return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
+            }
+        }
+
+        public Task<int> UpsertTezosTokenAddressesAsync(
+            IEnumerable<WalletAddress> walletAddresses)
+        {
+            lock (_sync)
+            {
+                foreach (var wa in walletAddresses)
+                {
+                    var walletId = $"{wa.Currency}:{wa.TokenBalance.Contract}:{wa.TokenBalance.TokenId}:{wa.Address}";
+
+                    _tezosTokensAddresses[walletId] = wa; // todo: copy?
+                }
+
+                return Task.FromResult(walletAddresses.Count());
+            }
+        }
+
+        public Task<IEnumerable<WalletAddress>> GetUnspentTezosTokenAddressesAsync(
+            string currency,
+            string tokenContract,
+            decimal tokenId)
+        {
+            lock (_sync)
+            {
+                var addresses = _tezosTokensAddresses.Values
+                    .Where(w =>
+                        //w.Currency == currency && 
+                        w.TokenBalance.Contract == tokenContract &&
+                        w.TokenBalance.TokenId == tokenId &&
+                        (w.Balance != 0 || 
+                        w.UnconfirmedIncome != 0 || 
+                        w.UnconfirmedOutcome != 0));
+
+                return Task.FromResult(addresses);
+            }
+        }
+
+        public Task<bool> TryInsertTezosTokenAddressAsync(WalletAddress address)
+        {
+            lock (_sync)
+            {
+                var walletId = $"{address.Currency}:{address.TokenBalance.Contract}:{address.TokenBalance.TokenId}:{address.Address}";
+
+                if (_tezosTokensAddresses.ContainsKey(walletId))
+                    return Task.FromResult(false);
+
+                _tezosTokensAddresses[walletId] = address; // todo: copy?
+
+                return Task.FromResult(true);
+            }
+        }
+
+        public Task<int> UpsertTezosTokenTransfersAsync(
+            IEnumerable<TokenTransfer> tokenTransfers)
+        {
+            lock (_sync)
+            {
+                foreach (var tokenTransfer in tokenTransfers)
+                {
+                    _tezosTokensTransfers[tokenTransfer.Id] = tokenTransfer; // todo: copy ?
+                }
+
+                return Task.FromResult(tokenTransfers.Count());
+            }
+        }
+
+        public Task<IEnumerable<TokenTransfer>> GetTezosTokenTransfersAsync(
+            string contractAddress,
+            int offset = 0,
+            int limit = 20)
+        {
+            lock (_sync)
+            {
+                var txs = _tezosTokensTransfers.Values
+                    .Where(t => t.Contract == contractAddress)
+                    .ToList()
+                    .SortList((t1, t2) => t1.TimeStamp.CompareTo(t2.TimeStamp))
+                    .Skip(offset)
+                    .Take(limit);
+
+                return Task.FromResult(txs);
+            }
+        }
+
+        public Task<int> UpsertTezosTokenContractsAsync(
+            IEnumerable<TokenContract> tokenContracts)
+        {
+            lock (_sync)
+            {
+                foreach (var tc in tokenContracts)
+                {
+                    _tezosTokensContracts[tc.Id] = tc; // todo: copy?
+                }
+
+                return Task.FromResult(tokenContracts.Count());
+            }
+        }
+
+        public Task<IEnumerable<TokenContract>> GetTezosTokenContractsAsync()
+        {
+            lock (_sync)
+            {
+                return Task.FromResult<IEnumerable<TokenContract>>(_tezosTokensContracts.Values);
+            }
+        }
+
+        #endregion TezosTokens
 
         #region Transactions
 
@@ -172,7 +356,7 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var txs = _transactions.Values
-                    .Where(t => t.Currency.Name == currency);
+                    .Where(t => t.Currency == currency);
 
                 return Task.FromResult(txs);
             }
@@ -185,7 +369,7 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var txs = _transactions.Values
-                    .Where(t => t.Currency.Name == currency && !t.IsConfirmed);
+                    .Where(t => t.Currency == currency && !t.IsConfirmed);
 
                 return Task.FromResult(txs);
             }

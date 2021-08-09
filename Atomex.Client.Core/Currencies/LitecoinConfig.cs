@@ -1,30 +1,27 @@
 ﻿using System;
 using System.Globalization;
-using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
-using Atomex.Blockchain.BitCore;
 using Atomex.Blockchain.BlockCypher;
 using Atomex.Blockchain.Insight;
 using Atomex.Blockchain.SoChain;
 using Atomex.Wallet.Bip;
-using FeeRate = Atomex.Blockchain.BitcoinBased.FeeRate;
 
 namespace Atomex
 {
-    public class Bitcoin : BitcoinBasedCurrency
+    public class LitecoinConfig : BitcoinBasedConfig
     {
-        private const long BtcDigitsMultiplier = 100_000_000;
+        private const long LtcDigitsMultiplier = 100_000_000;
 
-        public Bitcoin()
+        public long DustThreshold { get; set; }
+
+        public LitecoinConfig()
         {
         }
 
-        public Bitcoin(IConfiguration configuration)
+        public LitecoinConfig(IConfiguration configuration)
         {
             Update(configuration);
         }
@@ -34,13 +31,15 @@ namespace Atomex
             Name                    = configuration["Name"];
             Description             = configuration["Description"];
             IsToken                 = bool.Parse(configuration["IsToken"]);
- 
-            DigitsMultiplier        = BtcDigitsMultiplier;
-            Digits                  = (int)Math.Log10(BtcDigitsMultiplier);
+
+            DigitsMultiplier        = LtcDigitsMultiplier;
+            Digits                  = (int)Math.Log10(LtcDigitsMultiplier);
             Format                  = $"F{Digits}";
 
             FeeRate                 = decimal.Parse(configuration["FeeRate"]);
             DustFeeRate             = decimal.Parse(configuration["DustFeeRate"]);
+            DustThreshold           = long.Parse(configuration["DustThreshold"]);
+
             MinTxFeeRate            = decimal.Parse(configuration["MinTxFeeRate"]);
             MinRelayTxFeeRate       = decimal.Parse(configuration["MinRelayTxFeeRate"]);
 
@@ -65,9 +64,13 @@ namespace Atomex
             TxExplorerUri           = configuration["TxExplorerUri"];
             AddressExplorerUri      = configuration["AddressExplorerUri"];
 
-            IsTransactionsAvailable = true;
             IsSwapAvailable         = true;
-            Bip44Code               = Bip44.Bitcoin;
+            Bip44Code               = Bip44.Litecoin;
+        }
+
+        public override long GetDust()
+        {
+            return DustThreshold;
         }
 
         private static Network ResolveNetwork(IConfiguration configuration)
@@ -77,8 +80,8 @@ namespace Atomex
 
             return chain switch
             {
-                "mainnet" => Network.Main,
-                "testnet" => Network.TestNet,
+                "mainnet" => NBitcoin.Altcoins.Litecoin.Instance.Mainnet,
+                "testnet" => NBitcoin.Altcoins.Litecoin.Instance.Testnet,
                 _ => throw new NotSupportedException($"Chain {chain} not supported")
             };
         }
@@ -90,48 +93,11 @@ namespace Atomex
 
             return blockchainApi switch
             {
-                "sochain"             => (IBlockchainApi) new SoChainApi(this, configuration),
-                "blockcypher"         => (IBlockchainApi) new BlockCypherApi(this, configuration),
-                "insight"             => (IBlockchainApi) new InsightApi(this, configuration),
-                "bitcore+blockcypher" => (IBlockchainApi) new BitCoreApi(this, configuration),
+                "sochain"     => (IBlockchainApi) new SoChainApi(this, configuration),
+                "blockcypher" => (IBlockchainApi) new BlockCypherApi(this, configuration),
+                "insight"     => (IBlockchainApi) new InsightApi(this, configuration),
                 _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
             };
-        }
-
-        private FeeRate _feeRate;
-        private DateTime _feeRateTimeStampUtc;
-
-        public override async Task<decimal> GetFeeRateAsync(
-            bool useCache = true,
-            CancellationToken cancellationToken = default)
-        {
-            if (Network != Network.Main)
-                return FeeRate;
-
-            if (useCache &&
-                _feeRate != null &&
-                DateTime.UtcNow - _feeRateTimeStampUtc < TimeSpan.FromMinutes(3))
-            {
-                return _feeRate.FastestFee;
-            }
-
-            try
-            {
-                var feeRateResult = await BitcoinFeesEarn
-                    .GetFeeRateAsync(cancellationToken)
-                    .ConfigureAwait(false);
-
-                _feeRate = feeRateResult?.Value;
-                _feeRateTimeStampUtc = DateTime.UtcNow;
-
-                return feeRateResult != null && !feeRateResult.HasError && feeRateResult.Value != null
-                    ? feeRateResult.Value.FastestFee
-                    : FeeRate;
-            }
-            catch
-            {
-                return FeeRate;
-            }
         }
     }
 }

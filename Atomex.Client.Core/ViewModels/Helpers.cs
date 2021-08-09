@@ -35,8 +35,8 @@ namespace Atomex.ViewModels
 
         public static Task<SwapPaymentParams> EstimateSwapPaymentParamsAsync(
             decimal amount,
-            Currency fromCurrency,
-            Currency toCurrency,
+            CurrencyConfig fromCurrency,
+            CurrencyConfig toCurrency,
             IAccount account,
             IAtomexClient atomexClient,
             ISymbolsProvider symbolsProvider,
@@ -56,10 +56,12 @@ namespace Atomex.ViewModels
                     };
                 }
 
+                var fromCurrencyAccount = account
+                    .GetCurrencyAccount<ILegacyCurrencyAccount>(fromCurrency.Name);
+
                 // estimate max payment amount and max fee
-                var (maxAmount, maxFee, _) = await account
+                var (maxAmount, maxFee, _) = await fromCurrencyAccount
                     .EstimateMaxAmountToSendAsync(
-                        currency: fromCurrency.Name,
                         to: null,
                         type: BlockchainTransactionType.SwapPayment,
                         fee: 0,
@@ -113,9 +115,8 @@ namespace Atomex.ViewModels
                     };
                 }
 
-                var estimatedPaymentFee = await account
+                var estimatedPaymentFee = await fromCurrencyAccount
                     .EstimateFeeAsync(
-                        currency: fromCurrency.Name,
                         to: null,
                         amount: amount,
                         type: BlockchainTransactionType.SwapPayment,
@@ -150,8 +151,8 @@ namespace Atomex.ViewModels
 
         public static Task<SwapPriceEstimation> EstimateSwapPriceAsync(
             decimal amount,
-            Currency fromCurrency,
-            Currency toCurrency,
+            CurrencyConfig fromCurrency,
+            CurrencyConfig toCurrency,
             IAccount account,
             IAtomexClient atomexClient,
             ISymbolsProvider symbolsProvider,
@@ -176,7 +177,8 @@ namespace Atomex.ViewModels
                     return null;
 
                 var walletAddress = await account
-                    .GetRedeemAddressAsync(toCurrency.FeeCurrencyName);
+                    .GetCurrencyAccount<ILegacyCurrencyAccount>(toCurrency.FeeCurrencyName)
+                    .GetRedeemAddressAsync();
 
                 var baseCurrency = account.Currencies.GetByName(symbol.Base);
 
@@ -210,7 +212,7 @@ namespace Atomex.ViewModels
 
         public static async Task<decimal> GetAmountReservedForSwapsAsync(
             IAccount account,
-            Currency currency)
+            CurrencyConfig currency)
         {
             var swaps = await account
                 .GetSwapsAsync()
@@ -224,8 +226,8 @@ namespace Atomex.ViewModels
         }
 
         public static async Task<decimal> EstimateMakerNetworkFeeAsync(
-            Currency fromCurrency,
-            Currency toCurrency,
+            CurrencyConfig fromCurrency,
+            CurrencyConfig toCurrency,
             IAccount account,
             IAtomexClient atomexClient,
             ISymbolsProvider symbolsProvider,

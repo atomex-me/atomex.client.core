@@ -16,7 +16,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class TezosAccount : CurrencyAccount
+    public class TezosAccount : CurrencyAccount, ILegacyCurrencyAccount
     {
         private readonly TezosRevealChecker _tezosRevealChecker;
         private readonly TezosAllocationChecker _tezosAllocationChecker;
@@ -24,13 +24,12 @@ namespace Atomex.Wallet.Tezos
         public readonly ResourceLocker<string> AddressLocker;
 
         public TezosAccount(
-            string currency,
             ICurrencies currencies,
             IHdWallet wallet,
             IAccountDataRepository dataRepository)
-                : base(currency, currencies, wallet, dataRepository)
+                : base(TezosConfig.Xtz, currencies, wallet, dataRepository)
         {
-            var xtz = Xtz;
+            var xtz = Config;
 
             _tezosRevealChecker = new TezosRevealChecker(xtz);
             _tezosAllocationChecker = new TezosAllocationChecker(xtz);
@@ -40,9 +39,9 @@ namespace Atomex.Wallet.Tezos
 
         #region Common
 
-        private Atomex.Tezos Xtz => Currencies.Get<Atomex.Tezos>(Currency);
+        public TezosConfig Config => Currencies.Get<TezosConfig>(Currency);
 
-        public override async Task<Error> SendAsync(
+        public async Task<Error> SendAsync(
             IEnumerable<WalletAddress> from,
             string to,
             decimal amount,
@@ -51,7 +50,7 @@ namespace Atomex.Wallet.Tezos
             bool useDefaultFee = true,
             CancellationToken cancellationToken = default)
         {
-            var xtz = Xtz;
+            var xtzConfig = Config;
 
             var fromAddresses = from
                 .Where(w => w.Address != to) // filter self address usage
@@ -62,7 +61,6 @@ namespace Atomex.Wallet.Tezos
                     to: to,
                     amount: amount,
                     fee: fee,
-                    feePrice: 0,
                     feeUsagePolicy: useDefaultFee ? FeeUsagePolicy.EstimatedFee : FeeUsagePolicy.FeeForAllTransactions,
                     addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst,
                     transactionType: BlockchainTransactionType.Output,
@@ -91,18 +89,18 @@ namespace Atomex.Wallet.Tezos
                     selectedAddress.WalletAddress.AvailableBalance());
 
                 var storageLimit = isActive || !isFirstTx
-                    ? Math.Max(xtz.StorageLimit - xtz.ActivationStorage, 0) // without activation storage fee
-                    : xtz.StorageLimit;
+                    ? Math.Max(xtzConfig.StorageLimit - xtzConfig.ActivationStorage, 0) // without activation storage fee
+                    : xtzConfig.StorageLimit;
 
                 var tx = new TezosTransaction
                 {
-                    Currency      = xtz,
+                    Currency      = xtzConfig.Name,
                     CreationTime  = DateTime.UtcNow,
                     From          = selectedAddress.WalletAddress.Address,
                     To            = to,
                     Amount        = Math.Round(addressAmountMtz, 0),
                     Fee           = selectedAddress.UsedFee.ToMicroTez(),
-                    GasLimit      = xtz.GasLimit,
+                    GasLimit      = xtzConfig.GasLimit,
                     StorageLimit  = storageLimit,
                     Type          = BlockchainTransactionType.Output,
 
@@ -120,18 +118,19 @@ namespace Atomex.Wallet.Tezos
                         .ConfigureAwait(false);
 
                     using var securePublicKey = Wallet
-                        .GetPublicKey(xtz, selectedAddress.WalletAddress.KeyIndex);
+                        .GetPublicKey(xtzConfig, selectedAddress.WalletAddress.KeyIndex);
 
                     // fill operation
                     var fillResult = await tx
                         .FillOperationsAsync(
                             securePublicKey: securePublicKey,
-                            headOffset: Atomex.Tezos.HeadOffset,
+                            tezosConfig: xtzConfig,
+                            headOffset: TezosConfig.HeadOffset,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
                     var signResult = await Wallet
-                        .SignAsync(tx, selectedAddress.WalletAddress, cancellationToken)
+                        .SignAsync(tx, selectedAddress.WalletAddress, xtzConfig, cancellationToken)
                         .ConfigureAwait(false);
 
                     if (!signResult)
@@ -139,7 +138,7 @@ namespace Atomex.Wallet.Tezos
                             code: Errors.TransactionSigningError,
                             description: "Transaction signing error");
 
-                    var broadcastResult = await xtz.BlockchainApi
+                    var broadcastResult = await xtzConfig.BlockchainApi
                         .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -188,8 +187,6 @@ namespace Atomex.Wallet.Tezos
                 }
             }
 
-            _ = UpdateBalanceAsync(cancellationToken);
-
             return null;
         }
 
@@ -205,7 +202,7 @@ namespace Atomex.Wallet.Tezos
                 await Task.Delay(TimeSpan.FromSeconds(30), cancellationToken)
                     .ConfigureAwait(false);
 
-                var tx = await Xtz.BlockchainApi
+                var tx = await Config.BlockchainApi
                     .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -216,7 +213,7 @@ namespace Atomex.Wallet.Tezos
             return false;
         }
 
-        public override async Task<Error> SendAsync(
+        public async Task<Error> SendAsync(
             string to,
             decimal amount,
             decimal fee,
@@ -240,7 +237,7 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
         }
 
-        public override async Task<decimal?> EstimateFeeAsync(
+        public async Task<decimal?> EstimateFeeAsync(
             string to,
             decimal amount,
             BlockchainTransactionType type,
@@ -269,7 +266,6 @@ namespace Atomex.Wallet.Tezos
                     to: to,
                     amount: amount,
                     fee: fee,
-                    feePrice: 0,
                     feeUsagePolicy: fee == 0 ? FeeUsagePolicy.EstimatedFee : FeeUsagePolicy.FeeForAllTransactions,
                     addressUsagePolicy: AddressUsagePolicy.UseMinimalBalanceFirst,
                     transactionType: type,
@@ -283,7 +279,7 @@ namespace Atomex.Wallet.Tezos
             return selectedAddresses.Sum(s => s.UsedFee);
         }
         
-        public override async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
+        public async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string to,
             BlockchainTransactionType type,
             decimal feeAmount = 0,
@@ -334,7 +330,7 @@ namespace Atomex.Wallet.Tezos
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                var usedAmountInTez = Math.Max(address.AvailableBalance() - feeInTez - storageFeeInTez - (reserve && address == unspentAddresses.Last() ? reserveFee : 0) - Xtz.MicroTezReserve.ToTez(), 0);
+                var usedAmountInTez = Math.Max(address.AvailableBalance() - feeInTez - storageFeeInTez - (reserve && address == unspentAddresses.Last() ? reserveFee : 0) - Config.MicroTezReserve.ToTez(), 0);
 
                 if (usedAmountInTez <= 0)
                     continue;
@@ -353,14 +349,14 @@ namespace Atomex.Wallet.Tezos
             IBlockchainTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            var xtz = Xtz;
+            var xtz = Config;
 
             if (!(tx is TezosTransaction xtzTx))
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
             var oldTx = !xtzTx.IsInternal
                 ? await DataRepository
-                    .GetTransactionByIdAsync(Currency, tx.Id, Xtz.TransactionType)
+                    .GetTransactionByIdAsync(Currency, tx.Id, Config.TransactionType)
                     .ConfigureAwait(false)
                 : null;
 
@@ -410,7 +406,7 @@ namespace Atomex.Wallet.Tezos
             return true;
         }
 
-        protected void ResolveTezosTxAlias(TezosTransaction tx)
+        public static void ResolveTezosTxAlias(TezosTransaction tx)
         {
             var ALIAS_DELIMETER = '/';
 
@@ -447,7 +443,7 @@ namespace Atomex.Wallet.Tezos
             bool isFirstTx,
             CancellationToken cancellationToken = default)
         {
-            var xtz = Xtz;
+            var xtz = Config;
 
             var isRevealed = await IsRevealedSourceAsync(from, cancellationToken)
                 .ConfigureAwait(false);
@@ -467,14 +463,14 @@ namespace Atomex.Wallet.Tezos
         private decimal ReserveFee()
         {
             //var fa12 = Fa12;
-            var xtz = Xtz;
+            var xtz = Config;
 
             return new[] {
                 //(fa12.RedeemFee + Math.Max((fa12.RedeemStorageLimit - fa12.ActivationStorage) / fa12.StorageFeeMultiplier, 0)).ToTez(),
                 //(fa12.RefundFee + Math.Max((fa12.RefundStorageLimit - fa12.ActivationStorage) / fa12.StorageFeeMultiplier, 0)).ToTez(),
                 (xtz.RedeemFee + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0)).ToTez(),
                 (xtz.RefundFee + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0)).ToTez()
-            }.Max() + xtz.RevealFee.ToTez() + Xtz.MicroTezReserve.ToTez();
+            }.Max() + xtz.RevealFee.ToTez() + Config.MicroTezReserve.ToTez();
         }
 
         private async Task<decimal> StorageFeeByTypeAsync(
@@ -483,7 +479,7 @@ namespace Atomex.Wallet.Tezos
             bool isFirstTx,
             CancellationToken cancellationToken = default)
         {
-            var xtz = Xtz;
+            var xtz = Config;
 
             var isActive = await IsAllocatedDestinationAsync(to, cancellationToken)
                 .ConfigureAwait(false);
@@ -538,7 +534,7 @@ namespace Atomex.Wallet.Tezos
             {
                 try
                 {
-                    var xtz = Xtz;
+                    var xtz = Config;
 
                     var txs = (await DataRepository
                         .GetTransactionsAsync(Currency, xtz.TransactionType)
@@ -586,11 +582,11 @@ namespace Atomex.Wallet.Tezos
                             var isFailed = tx.State == BlockchainTransactionState.Failed;
 
                             var income = isIncome && !isFailed
-                                ? Atomex.Tezos.MtzToTz(tx.Amount)
+                                ? TezosConfig.MtzToTz(tx.Amount)
                                 : 0;
 
                             var outcome = isOutcome && !isFailed
-                                ? -Atomex.Tezos.MtzToTz(tx.Amount + tx.Fee + tx.Burn)
+                                ? -TezosConfig.MtzToTz(tx.Amount + tx.Fee + tx.Burn)
                                 : 0;
 
                             if (addresses.TryGetValue(address, out var walletAddress))
@@ -675,7 +671,7 @@ namespace Atomex.Wallet.Tezos
             {
                 try
                 {
-                    var xtz = Xtz;
+                    var xtz = Config;
 
                     var walletAddress = await DataRepository
                         .GetWalletAddressAsync(Currency, address)
@@ -722,10 +718,10 @@ namespace Atomex.Wallet.Tezos
                         var isFailed = utx.State == BlockchainTransactionState.Failed;
 
                         unconfirmedIncome += address == utx.To && !isFailed
-                            ? Atomex.Tezos.MtzToTz(utx.Amount)
+                            ? TezosConfig.MtzToTz(utx.Amount)
                             : 0;
                         unconfirmedOutcome += address == utx.From && !isFailed
-                            ? -Atomex.Tezos.MtzToTz(utx.Amount + utx.Fee + utx.Burn)
+                            ? -TezosConfig.MtzToTz(utx.Amount + utx.Fee + utx.Burn)
                             : 0;
                     }
 
@@ -768,7 +764,7 @@ namespace Atomex.Wallet.Tezos
 
         #region Addresses
 
-        public override async Task<WalletAddress> GetRedeemAddressAsync(
+        public async Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = await GetUnspentAddressesAsync(cancellationToken)
@@ -789,31 +785,23 @@ namespace Atomex.Wallet.Tezos
                     return ResolvePublicKey(lastActiveAddress);
             }
 
-            return await base.GetRedeemAddressAsync(cancellationToken)
+            var redeemAddress = await GetFreeExternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+            return ResolvePublicKey(redeemAddress);
         }
 
-        public override async Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+        public async Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            if (Currency != "XTZ")
-                return await DataRepository
-                    .GetUnspentAddressesAsync(Currency)
-                    .ConfigureAwait(false);
-
-            // todo: refactoring
-            var tzBtcAddresses   = await DataRepository
-                .GetUnspentAddressesAsync("TZBTC")
-                .ConfigureAwait(false);
-
-            var kolibriAddresses = await DataRepository
-                .GetUnspentAddressesAsync("KUSD")
-                .ConfigureAwait(false);
-
-            return tzBtcAddresses.Concat(kolibriAddresses);
+            return (await DataRepository
+                .GetTezosTokenAddressesAsync()
+                .ConfigureAwait(false))
+                .Where(w => w.AvailableBalance() > 0)
+                .ToList();
         }
 
-        public override async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+        public async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string toAddress,
             decimal amount,
             decimal fee,
@@ -841,7 +829,6 @@ namespace Atomex.Wallet.Tezos
                     to: toAddress,
                     amount: amount,
                     fee: fee,
-                    feePrice: 0,
                     feeUsagePolicy: feeUsagePolicy,
                     addressUsagePolicy: addressUsagePolicy,
                     transactionType: transactionType,
@@ -853,18 +840,17 @@ namespace Atomex.Wallet.Tezos
                 .ToList());
         }
 
-        public override async Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
+        public async Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
             IList<WalletAddress> from,
             string to,
             decimal amount,
             decimal fee,
-            decimal feePrice,
             FeeUsagePolicy feeUsagePolicy,
             AddressUsagePolicy addressUsagePolicy,
             BlockchainTransactionType transactionType,
             CancellationToken cancellationToken = default)
         {
-            var xtz = Xtz;
+            var xtz = Config;
 
             if (addressUsagePolicy == AddressUsagePolicy.UseMinimalBalanceFirst)
             {

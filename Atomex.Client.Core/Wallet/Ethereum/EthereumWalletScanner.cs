@@ -19,7 +19,7 @@ namespace Atomex.Wallet.Ethereum
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
         private EthereumAccount Account { get; }
-        private Currency Currency => Account.Currencies.GetByName(Account.Currency);
+        private CurrencyConfig Currency => Account.Currencies.GetByName(Account.Currency);
 
 
         public EthereumWalletScanner(EthereumAccount account)

@@ -21,8 +21,8 @@ namespace Atomex.Blockchain.Tezos
         private const int DefaultConfirmations = 1;
 
         public string Id { get; set; }
-        public string UniqueId => $"{Id}:{Currency.Name}";
-        public Currency Currency { get; set; }
+        public string UniqueId => $"{Id}:{Currency}";
+        public string Currency { get; set; }
         public BlockInfo BlockInfo { get; set; }
         public BlockchainTransactionState State { get; set ; }
         public BlockchainTransactionType Type { get; set; }
@@ -94,6 +94,7 @@ namespace Atomex.Blockchain.Tezos
         public async Task<bool> SignAsync(
             IKeyStorage keyStorage,
             WalletAddress address,
+            CurrencyConfig currencyConfig,
             CancellationToken cancellationToken = default)
         {
             if (address.KeyIndex == null)
@@ -103,7 +104,7 @@ namespace Atomex.Blockchain.Tezos
             }
 
             using var securePrivateKey = keyStorage
-                .GetPrivateKey(Currency, address.KeyIndex);
+                .GetPrivateKey(currencyConfig, address.KeyIndex);
 
             if (securePrivateKey == null)
             {
@@ -113,7 +114,7 @@ namespace Atomex.Blockchain.Tezos
 
             using var privateKey = securePrivateKey.ToUnsecuredBytes();
 
-            var xtz = (Atomex.Tezos)Currency;
+            var xtz = currencyConfig as TezosConfig;
 
             var rpc = new Rpc(xtz.RpcNodeUri);
 
@@ -134,12 +135,11 @@ namespace Atomex.Blockchain.Tezos
 
         public async Task<bool> FillOperationsAsync(
             SecureBytes securePublicKey,
+            TezosConfig tezosConfig,
             int headOffset = 0,
             CancellationToken cancellationToken = default)
         {
             using var publicKey = securePublicKey.ToUnsecuredBytes();
-
-            var tezosConfig = (Atomex.Tezos)Currency;
 
             var rpc = new Rpc(tezosConfig.RpcNodeUri);
 

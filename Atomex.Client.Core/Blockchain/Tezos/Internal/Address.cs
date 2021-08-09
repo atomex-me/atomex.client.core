@@ -17,24 +17,16 @@ namespace Atomex.Blockchain.Tezos.Internal
             }
         }
 
-        public static bool CheckTz1Address(string address)
-        {
-            return CheckAddress(address, Prefix.Tz1);
-        }
+        public static bool CheckTz1Address(string address) =>
+            CheckAddress(address, Prefix.Tz1);
 
-        public static bool CheckTz2Address(string address)
-        {
-            return CheckAddress(address, Prefix.Tz2);
-        }
+        public static bool CheckTz2Address(string address) =>
+            CheckAddress(address, Prefix.Tz2);
 
-        public static bool CheckTz3Address(string address)
-        {
-            return CheckAddress(address, Prefix.Tz3);
-        }
+        public static bool CheckTz3Address(string address) =>
+            CheckAddress(address, Prefix.Tz3);
 
-        public static bool CheckKtAddress(string address)
-        {
-            return CheckAddress(address, Prefix.KT);
-        }
+        public static bool CheckKtAddress(string address) =>
+            CheckAddress(address, Prefix.KT);
     }
 }

@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Abstract;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Bip;
+using Serilog;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -20,7 +21,7 @@ namespace Atomex.Wallet.Abstract
         public string Currency { get; }
         public ICurrencies Currencies { get; }
         public IHdWallet Wallet { get; }
-        protected IAccountDataRepository DataRepository { get; }
+        public IAccountDataRepository DataRepository { get; }
         protected decimal Balance { get; set; }
         protected decimal UnconfirmedIncome { get; set; }
         protected decimal UnconfirmedOutcome { get; set; }
@@ -31,57 +32,15 @@ namespace Atomex.Wallet.Abstract
             IHdWallet wallet,
             IAccountDataRepository dataRepository)
         {
-            Currency = currency ?? throw new ArgumentNullException(nameof(currency));
-            Currencies = currencies ?? throw new ArgumentNullException(nameof(currencies));
-            Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
+            Currency       = currency ?? throw new ArgumentNullException(nameof(currency));
+            Currencies     = currencies ?? throw new ArgumentNullException(nameof(currencies));
+            Wallet         = wallet ?? throw new ArgumentNullException(nameof(wallet));
             DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
 
-            PreloadBalances();
+            LoadBalances();
         }
 
         #region Common
-
-        public abstract Task<Error> SendAsync(
-            IEnumerable<WalletAddress> from,
-            string to,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            bool useDefaultFee = false,
-            CancellationToken cancellationToken = default);
-
-        public abstract Task<Error> SendAsync(
-            string to,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            bool useDefaultFee = false,
-            CancellationToken cancellationToken = default);
-
-        public abstract Task<decimal?> EstimateFeeAsync(
-            string to,
-            decimal amount,
-            BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0,
-            CancellationToken cancellationToken = default);
-
-        public abstract Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
-            string to,
-            BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0,
-            bool reserve = false,
-            CancellationToken cancellationToken = default);
-
-        public virtual Task<decimal> EstimateMaxFeeAsync(
-            string to,
-            decimal amount,
-            BlockchainTransactionType type,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(0m);
-        }
 
         protected void RaiseBalanceUpdated(CurrencyEventArgs eventArgs)
         {
@@ -145,16 +104,20 @@ namespace Atomex.Wallet.Abstract
             string address,
             CancellationToken cancellationToken = default);
 
-        private void PreloadBalances()
+        protected void LoadBalances()
         {
+            Balance            = 0;
+            UnconfirmedIncome  = 0;
+            UnconfirmedOutcome = 0;
+
             var addresses = DataRepository
                 .GetUnspentAddressesAsync(Currency)
                 .WaitForResult();
 
             foreach (var address in addresses)
             {
-                Balance += address.Balance;
-                UnconfirmedIncome += address.UnconfirmedIncome;
+                Balance            += address.Balance;
+                UnconfirmedIncome  += address.UnconfirmedIncome;
                 UnconfirmedOutcome += address.UnconfirmedOutcome;
             }
         }
@@ -165,8 +128,7 @@ namespace Atomex.Wallet.Abstract
 
         public virtual async Task<WalletAddress> DivideAddressAsync(
             int chain,
-            uint index,
-            CancellationToken cancellationToken = default)
+            uint index)
         {
             var currency = Currencies.GetByName(Currency);
 
@@ -175,7 +137,8 @@ namespace Atomex.Wallet.Abstract
             if (walletAddress == null)
                 return null;
 
-            await DataRepository.TryInsertAddressAsync(walletAddress)
+            await DataRepository
+                .TryInsertAddressAsync(walletAddress)
                 .ConfigureAwait(false);
 
             return walletAddress;
@@ -189,16 +152,9 @@ namespace Atomex.Wallet.Abstract
                 .GetWalletAddressAsync(Currency, address)
                 .ConfigureAwait(false);
 
-            if (walletAddress != null)
-            {
-                var currency = Currencies.GetByName(Currency);
-
-                walletAddress.PublicKey = Wallet
-                    .GetAddress(currency, walletAddress.KeyIndex.Chain, walletAddress.KeyIndex.Index)
-                    .PublicKey;
-            }
-
-            return walletAddress;
+            return walletAddress != null
+                ? ResolvePublicKey(walletAddress)
+                : null;
         }
 
         public virtual Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
@@ -207,94 +163,11 @@ namespace Atomex.Wallet.Abstract
             return DataRepository.GetUnspentAddressesAsync(Currency);
         }
 
-        public virtual Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
-            CancellationToken cancellationToken = default)
-        {
-            return null;
-        }
+        protected WalletAddress ResolvePublicKey(WalletAddress address) =>
+            address.ResolvePublicKey(Currencies, Wallet);
 
-        public abstract Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
-            string toAddress,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            FeeUsagePolicy feeUsagePolicy,
-            AddressUsagePolicy addressUsagePolicy,
-            BlockchainTransactionType transactionType,
-            CancellationToken cancellationToken = default);
-
-        public abstract Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
-            IList<WalletAddress> from,
-            string to,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            FeeUsagePolicy feeUsagePolicy,
-            AddressUsagePolicy addressUsagePolicy,
-            BlockchainTransactionType transactionType,
-            CancellationToken cancellationToken = default);
-
-        protected WalletAddress ResolvePublicKey(WalletAddress address)
-        {
-            var currency = Currencies.GetByName(Currency);
-
-            address.PublicKey = Wallet.GetAddress(
-                    currency: currency,
-                    chain: address.KeyIndex.Chain,
-                    index: address.KeyIndex.Index)
-                .PublicKey;
-
-            return address;
-        }
-
-        protected IList<WalletAddress> ResolvePublicKeys(IList<WalletAddress> addresses)
-        {
-            foreach (var address in addresses)
-                ResolvePublicKey(address);
-
-            return addresses;
-        }
-
-        protected IEnumerable<WalletAddress> ApplyAddressUsagePolicy(
-            List<WalletAddress> addresses,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            AddressUsagePolicy addressUsagePolicy)
-        {
-            var currency = Currencies.GetByName(Currency);
-
-            switch (addressUsagePolicy) 
-            {
-                case AddressUsagePolicy.UseMinimalBalanceFirst:
-                    addresses = addresses.SortList(new AvailableBalanceAscending());
-                    break;
-                case AddressUsagePolicy.UseMaximumBalanceFirst:
-                    addresses = addresses.SortList(new AvailableBalanceDescending());
-                    break;
-                case AddressUsagePolicy.UseOnlyOneAddress:
-                    var walletAddress = addresses
-                        .FirstOrDefault(w => w.AvailableBalance() >= amount + currency.GetFeeAmount(fee, feePrice));
-
-                    return walletAddress != null
-                        ? new List<WalletAddress> { walletAddress }
-                        : Enumerable.Empty<WalletAddress>();
-
-                default:
-                    throw new Exception("Address usage policy not supported");
-            }
-
-            return addresses;
-        }
-
-        public virtual async Task<WalletAddress> GetRedeemAddressAsync(
-            CancellationToken cancellationToken = default)
-        {
-            var redeemAddress = await GetFreeExternalAddressAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            return ResolvePublicKey(redeemAddress);
-        }
+        protected IList<WalletAddress> ResolvePublicKeys(IList<WalletAddress> addresses) =>
+            addresses.ResolvePublicKeys(Currencies, Wallet);
 
         public virtual async Task<WalletAddress> GetFreeInternalAddressAsync(
             CancellationToken cancellationToken = default)
@@ -307,8 +180,7 @@ namespace Atomex.Wallet.Abstract
 
             return await DivideAddressAsync(
                     chain: Bip44.Internal,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    cancellationToken: cancellationToken)
+                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0)
                 .ConfigureAwait(false);
         }
 
@@ -323,8 +195,7 @@ namespace Atomex.Wallet.Abstract
 
             return await DivideAddressAsync(
                     chain: Bip44.External,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    cancellationToken: cancellationToken)
+                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0)
                 .ConfigureAwait(false);
         }
 
@@ -356,7 +227,10 @@ namespace Atomex.Wallet.Abstract
                 .ConfigureAwait(false);
 
             if (!result)
+            {
+                Log.Error("Tx upsert error.");
                 return; // todo: error or message?
+            }
 
             if (updateBalance)
                 await UpdateBalanceAsync(cancellationToken)
@@ -366,17 +240,7 @@ namespace Atomex.Wallet.Abstract
                 RaiseUnconfirmedTransactionAdded(new TransactionEventArgs(tx));
 
             if (updateBalance && notifyIfBalanceUpdated)
-                RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency.Name));
-        }
-
-        public Task<IBlockchainTransaction> GetTransactionByIdAsync(string txId)
-        {
-            var currency = Currencies.GetByName(Currency);
-
-            return DataRepository.GetTransactionByIdAsync(
-                currency: Currency,
-                txId: txId,
-                transactionType: currency.TransactionType);
+                RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
         }
 
         #endregion Transactions

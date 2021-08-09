@@ -24,14 +24,12 @@ namespace Atomex
             "USDT",
             "TZBTC",
             "KUSD",
-            "NYX",
-            "FA2",
             "WBTC",
             "TBTC"
         };
 
         private readonly object _sync = new();
-        private IDictionary<string, Currency> _currencies;
+        private IDictionary<string, CurrencyConfig> _currencies;
 
         public Currencies(IConfiguration configuration)
         {
@@ -42,13 +40,16 @@ namespace Atomex
         {
             lock (_sync)
             {
-                var currencies = new List<Currency>();
+                var currencies = new List<CurrencyConfig>();
 
                 foreach (var section in configuration.GetChildren())
                 {
                     try
                     {
-                        currencies.Add(GetFromSection(section));
+                        var currencyConfig = GetFromSection(section);
+
+                        if (currencyConfig != null)
+                            currencies.Add(currencyConfig);
                     }
                     catch (Exception e)
                     {
@@ -71,7 +72,7 @@ namespace Atomex
             }
         }
 
-        public Currency GetByName(string name)
+        public CurrencyConfig GetByName(string name)
         {
             lock (_sync)
             {
@@ -81,34 +82,34 @@ namespace Atomex
             }
         }
 
-        public T Get<T>(string name) where T : Currency =>
+        public T Get<T>(string name) where T : CurrencyConfig =>
             GetByName(name) as T;
 
-        private Currency GetFromSection(IConfigurationSection configurationSection)
+        private CurrencyConfig GetFromSection(IConfigurationSection configurationSection)
         {
             return configurationSection.Key switch
             {
-                "BTC"   => (Currency) new Bitcoin(configurationSection),
-                "LTC"   => new Litecoin(configurationSection),
-                "ETH"   => new Ethereum(configurationSection),
-                "XTZ"   => new Tezos(configurationSection),
-                "USDT"  => new ERC20(configurationSection),
-                "TBTC"  => new ERC20(configurationSection),
-                "WBTC"  => new ERC20(configurationSection),
-                "TZBTC" => new FA12(configurationSection),
-                "KUSD"  => new FA12(configurationSection),
-                "NYX"   => new NYX(configurationSection),
-                "FA2"   => new FA2(configurationSection),
-                "FA12"  => new FA12(configurationSection),
-                _ => throw new NotSupportedException($"{configurationSection.Key} not supported.")
+                "BTC"   => (CurrencyConfig) new BitcoinConfig(configurationSection),
+                "LTC"   => new LitecoinConfig(configurationSection),
+                "ETH"   => new EthereumConfig(configurationSection),
+                "XTZ"   => new TezosConfig(configurationSection),
+                "USDT"  => new Erc20Config(configurationSection),
+                "TBTC"  => new Erc20Config(configurationSection),
+                "WBTC"  => new Erc20Config(configurationSection),
+                "TZBTC" => new Fa12Config(configurationSection),
+                "KUSD"  => new Fa12Config(configurationSection),
+
+                "FA12"  => new Fa12Config(configurationSection),
+                "FA2"   => new Fa2Config(configurationSection),
+                _       => null
             };
         }
 
-        public IEnumerator<Currency> GetEnumerator()
+        public IEnumerator<CurrencyConfig> GetEnumerator()
         {
             lock (_sync)
             {
-                var result = new List<Currency>(_currencies.Values.Count);
+                var result = new List<CurrencyConfig>(_currencies.Values.Count);
 
                 foreach (var currencyByOrder in _currenciesOrder)
                     if (_currencies.TryGetValue(currencyByOrder, out var currency))
@@ -121,9 +122,17 @@ namespace Atomex
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public static bool IsBitcoinBased(string name) =>
-            name == "BTC" || name == "LTC";
+            name == "BTC" ||
+            name == "LTC";
 
         public static bool IsTezosToken(string name) =>
-            name == "TZBTC" || name == "KUSD" || name == "FA2" || name == "FA12" || name == "NYX";
+            name == "TZBTC" ||
+            name == "KUSD" ||
+            name == "FA2" ||
+            name == "FA12";
+
+        public static bool HasTokens(string name) =>
+            name == "ETH" ||
+            name == "XTZ";
     }
 }

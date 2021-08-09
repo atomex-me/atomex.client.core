@@ -7,8 +7,6 @@ using Atomex.Swaps.BitcoinBased;
 using Atomex.Swaps.Ethereum;
 using Atomex.Swaps.Tezos;
 using Atomex.Swaps.Tezos.FA12;
-using Atomex.Swaps.Tezos.NYX;
-using Atomex.Swaps.Tezos.FA2;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
@@ -20,37 +18,34 @@ namespace Atomex.Swaps
     public static class CurrencySwapCreator
     {
         public static ICurrencySwap Create(
-            Currency currency,
+            CurrencyConfig currency,
             IAccount account)
         {
             return currency switch
             {
-                BitcoinBasedCurrency _ => (ICurrencySwap)new BitcoinBasedSwap(
-                       account: account.GetCurrencyAccount<BitcoinBasedAccount>(currency.Name),
-                       currencies: account.Currencies),
-                ERC20 _ => (ICurrencySwap)new ERC20Swap(
-                        account: account.GetCurrencyAccount<ERC20Account>(currency.Name),
-                        ethereumAccount: account.GetCurrencyAccount<EthereumAccount>("ETH"),
-                        currencies: account.Currencies),
-                Atomex.Ethereum _ => (ICurrencySwap)new EthereumSwap(
-                        account: account.GetCurrencyAccount<EthereumAccount>(currency.Name),
-                        currencies: account.Currencies),
-                NYX _ => (ICurrencySwap)new NYXSwap(
-                        account: account.GetCurrencyAccount<NYXAccount>(currency.Name),
-                        tezosAccount: account.GetCurrencyAccount<TezosAccount>("XTZ"),
-                        currencies: account.Currencies),
-                FA2 _ => (ICurrencySwap)new FA2Swap(
-                        account: account.GetCurrencyAccount<FA2Account>(currency.Name),
-                        tezosAccount: account.GetCurrencyAccount<TezosAccount>("XTZ"),
-                        currencies: account.Currencies),
-                FA12 _ => (ICurrencySwap)new FA12Swap(
-                        account: account.GetCurrencyAccount<FA12Account>(currency.Name),
-                        tezosAccount: account.GetCurrencyAccount<TezosAccount>("XTZ"),
-                        currencies: account.Currencies),
-                Atomex.Tezos _ => (ICurrencySwap)new TezosSwap(
-                        account: account.GetCurrencyAccount<TezosAccount>(currency.Name),
-                        currencies: account.Currencies),
-                _ => throw new NotSupportedException($"Not supported currency {currency.Name}"),
+                BitcoinBasedConfig _ => new BitcoinBasedSwap(
+                    account: account.GetCurrencyAccount<BitcoinBasedAccount>(currency.Name),
+                    currencies: account.Currencies),
+
+                Erc20Config _ => new Erc20Swap(
+                    account: account.GetCurrencyAccount<Erc20Account>(currency.Name),
+                    ethereumAccount: account.GetCurrencyAccount<EthereumAccount>("ETH"),
+                    currencies: account.Currencies),
+
+                EthereumConfig _ => new EthereumSwap(
+                    account: account.GetCurrencyAccount<EthereumAccount>(currency.Name),
+                    currencies: account.Currencies),
+
+                Fa12Config _ => new Fa12Swap(
+                    account: account.GetCurrencyAccount<Fa12Account>(currency.Name),
+                    tezosAccount: account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz),
+                    currencies: account.Currencies),
+
+                TezosConfig _ => new TezosSwap(
+                    account:   account.GetCurrencyAccount<TezosAccount>(currency.Name),
+                    currencies: account.Currencies),
+
+                _ => throw new NotSupportedException($"Not supported currency {currency.Name}")
             };
         }
     }

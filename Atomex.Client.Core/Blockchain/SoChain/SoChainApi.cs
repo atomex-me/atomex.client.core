@@ -312,12 +312,12 @@ namespace Atomex.Blockchain.SoChain
 
         private readonly bool _useProxy = false;
 
-        public BitcoinBasedCurrency Currency { get; }
+        public BitcoinBasedConfig Currency { get; }
         public string NetworkAcronym { get; }
         public string BaseUrl { get; } = "https://sochain.com/";
         public string ProxyUrl { get; } = "https://test.atomex.me/";
 
-        public SoChainApi(BitcoinBasedCurrency currency, string baseUri)
+        public SoChainApi(BitcoinBasedConfig currency, string baseUri)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
 
@@ -330,7 +330,7 @@ namespace Atomex.Blockchain.SoChain
             BaseUrl = baseUri;
         }
 
-        public SoChainApi(BitcoinBasedCurrency currency, IConfiguration configuration)
+        public SoChainApi(BitcoinBasedConfig currency, IConfiguration configuration)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
 
@@ -606,15 +606,15 @@ namespace Atomex.Blockchain.SoChain
                         var tx = JsonConvert.DeserializeObject<Response<Tx>>(content);
 
                         return new BitcoinBasedTransaction(
-                            currency: Currency,
+                            currency: Currency.Name,
                             tx: Transaction.Parse(tx.Data.TxHex, Currency.Network),
                             blockInfo: new BlockInfo
                             {
                                 Confirmations = tx.Data.Confirmations,
-                                BlockHash = tx.Data.BlockHash,
-                                BlockHeight = tx.Data.BlockNo.GetValueOrDefault(0),
-                                BlockTime = tx.Data.Time.ToUtcDateTime(),
-                                FirstSeen = tx.Data.Time.ToUtcDateTime()
+                                BlockHash     = tx.Data.BlockHash,
+                                BlockHeight   = tx.Data.BlockNo.GetValueOrDefault(0),
+                                BlockTime     = tx.Data.Time.ToUtcDateTime(),
+                                FirstSeen     = tx.Data.Time.ToUtcDateTime()
                             },
                             fees: (long)(decimal.Parse(tx.Data.Fee, CultureInfo.InvariantCulture) * Satoshi)
                         );

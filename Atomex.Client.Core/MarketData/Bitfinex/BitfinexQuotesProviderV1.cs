@@ -26,7 +26,7 @@ namespace Atomex.MarketData.Bitfinex
             Quotes = symbols.ToDictionary(s => s, s => new Quote());
         }
 
-        public BitfinexQuotesProviderV1(IEnumerable<Currency> currencies, string baseCurrency)
+        public BitfinexQuotesProviderV1(IEnumerable<CurrencyConfig> currencies, string baseCurrency)
         {
             Quotes = currencies.ToDictionary(currency => $"{currency.Name}{baseCurrency}".ToUpper(), currency => new Quote());
         }

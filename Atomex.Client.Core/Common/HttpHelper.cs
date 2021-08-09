@@ -178,6 +178,12 @@ namespace Atomex.Common
             {
                 Log.Error("SendRequestAsync error: {@message}", e.Message);
             }
+            catch (OperationCanceledException)
+            {
+                Log.Warning("SendRequestAsync operation canceled.");
+
+                throw;
+            }
             catch (Exception e)
             {
                 Log.Error(e, "SendRequestAsync error");

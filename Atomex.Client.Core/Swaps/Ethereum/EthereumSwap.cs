@@ -25,13 +25,13 @@ namespace Atomex.Swaps.Ethereum
 {
     public class EthereumSwap : CurrencySwap
     {
-        protected const int MaxRedeemCheckAttempts = 2;
-        protected const int MaxRefundCheckAttempts = 2;
-        protected const int RedeemCheckAttemptIntervalInSec = 5;
-        protected const int RefundCheckAttemptIntervalInSec = 5;
-        protected static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(20);
-        protected static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(30);
-        private Atomex.Ethereum Eth => Currencies.Get<Atomex.Ethereum>(Currency);
+        public const int MaxRedeemCheckAttempts = 2;
+        public const int MaxRefundCheckAttempts = 2;
+        public const int RedeemCheckAttemptIntervalInSec = 5;
+        public const int RefundCheckAttemptIntervalInSec = 5;
+        public static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(20);
+        public static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(30);
+        private EthereumConfig EthConfig => Currencies.Get<EthereumConfig>(Currency);
         protected readonly EthereumAccount _account;
 
         public EthereumSwap(
@@ -67,7 +67,6 @@ namespace Atomex.Swaps.Ethereum
 
             try
             {
-
                 foreach (var paymentTx in paymentTxs)
                 {
                     try
@@ -77,7 +76,7 @@ namespace Atomex.Swaps.Ethereum
                             .ConfigureAwait(false);
 
                         var nonceResult = await EthereumNonceManager.Instance
-                            .GetNonceAsync(Eth, paymentTx.From)
+                            .GetNonceAsync(EthConfig, paymentTx.From)
                             .ConfigureAwait(false);
 
                         if (nonceResult.HasError)
@@ -168,7 +167,7 @@ namespace Atomex.Swaps.Ethereum
 
             _ = EthereumSwapInitiatedHelper.StartSwapInitiatedControlAsync(
                 swap: swap,
-                currency: Eth,
+                currency: EthConfig,
                 refundTimeStamp: refundTimeUtcInSec,
                 interval: ConfirmationCheckInterval,
                 initiatedHandler: initiatedHandler,
@@ -182,12 +181,12 @@ namespace Atomex.Swaps.Ethereum
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            var eth = Eth;
+            var ethConfig = EthConfig;
 
             var secretResult = await EthereumSwapRedeemedHelper
                 .IsRedeemedAsync(
                     swap: swap,
-                    currency: eth,
+                    currency: ethConfig,
                     attempts: MaxRedeemCheckAttempts,
                     attemptIntervalInSec: RedeemCheckAttemptIntervalInSec,
                     cancellationToken: cancellationToken)
@@ -209,7 +208,7 @@ namespace Atomex.Swaps.Ethereum
                 // redeem already broadcast
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
-                    currency: eth,
+                    currency: ethConfig,
                     txId: swap.RedeemTx.Id,
                     confirmationHandler: RedeemConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -230,7 +229,7 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create redeem for swap {@swapId}", swap.Id);
 
-            var gasPrice = await eth
+            var gasPrice = await ethConfig
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -262,7 +261,7 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
 
                 var nonceResult = await EthereumNonceManager.Instance
-                    .GetNonceAsync(eth, walletAddress.Address, pending: true, cancellationToken: cancellationToken)
+                    .GetNonceAsync(ethConfig, walletAddress.Address, pending: true, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (nonceResult.HasError)
@@ -280,15 +279,15 @@ namespace Atomex.Swaps.Ethereum
                     HashedSecret = swap.SecretHash,
                     Secret       = swap.Secret,
                     Nonce        = nonceResult.Value,
-                    GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
+                    GasPrice     = EthereumConfig.GweiToWei(gasPrice),
                 };
 
-                message.Gas = await EstimateGasAsync(message, new BigInteger(Eth.RedeemGasLimit))
+                message.Gas = await EstimateGasAsync(message, new BigInteger(ethConfig.RedeemGasLimit))
                     .ConfigureAwait(false);
 
-                var txInput = message.CreateTransactionInput(eth.SwapContractAddress);
+                var txInput = message.CreateTransactionInput(ethConfig.SwapContractAddress);
 
-                redeemTx = new EthereumTransaction(eth, txInput)
+                redeemTx = new EthereumTransaction(ethConfig.Name, txInput)
                 {
                     Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
                 };
@@ -328,7 +327,7 @@ namespace Atomex.Swaps.Ethereum
 
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
-                currency: eth,
+                currency: ethConfig,
                 txId: redeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -338,7 +337,7 @@ namespace Atomex.Swaps.Ethereum
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            var eth = Eth;
+            var ethConfig = EthConfig;
 
             if (swap.IsInitiator)
             {
@@ -353,7 +352,7 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create redeem for counterParty for swap {@swapId}", swap.Id);
 
-            var gasPrice = await eth
+            var gasPrice = await ethConfig
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -381,7 +380,7 @@ namespace Atomex.Swaps.Ethereum
                 .ConfigureAwait(false);
 
             var nonceResult = await EthereumNonceManager.Instance
-                .GetNonceAsync(eth, walletAddress.Address, pending: true, cancellationToken)
+                .GetNonceAsync(ethConfig, walletAddress.Address, pending: true, cancellationToken)
                 .ConfigureAwait(false);
 
             if (nonceResult.HasError)
@@ -399,15 +398,15 @@ namespace Atomex.Swaps.Ethereum
                 HashedSecret = swap.SecretHash,
                 Secret       = swap.Secret,
                 Nonce        = nonceResult.Value,
-                GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
+                GasPrice     = EthereumConfig.GweiToWei(gasPrice),
             };
 
-            message.Gas = await EstimateGasAsync(message, new BigInteger(eth.RedeemGasLimit))
+            message.Gas = await EstimateGasAsync(message, new BigInteger(ethConfig.RedeemGasLimit))
                 .ConfigureAwait(false);
 
-            var txInput = message.CreateTransactionInput(eth.SwapContractAddress);
+            var txInput = message.CreateTransactionInput(ethConfig.SwapContractAddress);
 
-            var redeemTx = new EthereumTransaction(eth, txInput)
+            var redeemTx = new EthereumTransaction(ethConfig.Name, txInput)
             {
                 Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
             };
@@ -429,7 +428,7 @@ namespace Atomex.Swaps.Ethereum
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            var eth = Eth;
+            var ethConfig = EthConfig;
 
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast) &&
                 swap.RefundTx != null &&
@@ -438,7 +437,7 @@ namespace Atomex.Swaps.Ethereum
             {
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
-                    currency: eth,
+                    currency: ethConfig,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -448,7 +447,7 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create refund for swap {@swap}", swap.Id);
 
-            var gasPrice = await eth
+            var gasPrice = await ethConfig
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -480,7 +479,7 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
 
                 var nonceResult = await EthereumNonceManager.Instance
-                    .GetNonceAsync(eth, walletAddress.Address, pending: true, cancellationToken)
+                    .GetNonceAsync(ethConfig, walletAddress.Address, pending: true, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (nonceResult.HasError)
@@ -494,18 +493,18 @@ namespace Atomex.Swaps.Ethereum
 
                 var message = new RefundFunctionMessage
                 {
-                    FromAddress = walletAddress.Address,
+                    FromAddress  = walletAddress.Address,
                     HashedSecret = swap.SecretHash,
-                    GasPrice = Atomex.Ethereum.GweiToWei(gasPrice),
-                    Nonce = nonceResult.Value,
+                    GasPrice     = EthereumConfig.GweiToWei(gasPrice),
+                    Nonce        = nonceResult.Value,
                 };
 
-                message.Gas = await EstimateGasAsync(message, new BigInteger(eth.RefundGasLimit))
+                message.Gas = await EstimateGasAsync(message, new BigInteger(ethConfig.RefundGasLimit))
                     .ConfigureAwait(false);
 
-                var txInput = message.CreateTransactionInput(eth.SwapContractAddress);
+                var txInput = message.CreateTransactionInput(ethConfig.SwapContractAddress);
 
-                refundTx = new EthereumTransaction(eth, txInput)
+                refundTx = new EthereumTransaction(ethConfig.Name, txInput)
                 {
                     Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
                 };
@@ -545,7 +544,7 @@ namespace Atomex.Swaps.Ethereum
 
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
-                currency: eth,
+                currency: ethConfig,
                 txId: refundTx.Id,
                 confirmationHandler: RefundConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -562,7 +561,7 @@ namespace Atomex.Swaps.Ethereum
             // start redeem control async
             _ = EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
                 swap: swap,
-                currency: Eth,
+                currency: EthConfig,
                 refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
                 interval: TimeSpan.FromSeconds(30),
                 cancelOnlyIfRefundTimeReached: true,
@@ -582,7 +581,7 @@ namespace Atomex.Swaps.Ethereum
             // start redeem control async
             _ = EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
                 swap: swap,
-                currency: Eth,
+                currency: EthConfig,
                 refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
                 interval: TimeSpan.FromSeconds(30),
                 cancelOnlyIfRefundTimeReached: true,
@@ -620,7 +619,7 @@ namespace Atomex.Swaps.Ethereum
             {
                 var isRefundedResult = await EthereumSwapRefundedHelper.IsRefundedAsync(
                         swap: swap,
-                        currency: Eth,
+                        currency: EthConfig,
                         attempts: MaxRefundCheckAttempts,
                         attemptIntervalInSec: RefundCheckAttemptIntervalInSec,
                         cancellationToken: cancellationToken)
@@ -685,7 +684,7 @@ namespace Atomex.Swaps.Ethereum
                             toAddress: swap.ToAddress,
                             amount: 0,
                             fee: 0,
-                            feePrice: await Eth
+                            feePrice: await EthConfig
                                 .GetGasPriceAsync(cancellationToken)
                                 .ConfigureAwait(false),
                             feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
@@ -723,15 +722,15 @@ namespace Atomex.Swaps.Ethereum
             int lockTimeInSeconds,
             CancellationToken cancellationToken = default)
         {
-            var eth = Eth;
+            var ethConfig = EthConfig;
 
             Log.Debug("Create payment transactions for swap {@swapId}", swap.Id);
 
-            var requiredAmountInEth = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, eth.DigitsMultiplier);
+            var requiredAmountInEth = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, ethConfig.DigitsMultiplier);
 
             // maker network fee
             if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInEth) // network fee size check
-                requiredAmountInEth += AmountHelper.RoundDown(swap.MakerNetworkFee, eth.DigitsMultiplier);
+                requiredAmountInEth += AmountHelper.RoundDown(swap.MakerNetworkFee, ethConfig.DigitsMultiplier);
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
             var isInitTx = true;
@@ -743,7 +742,7 @@ namespace Atomex.Swaps.Ethereum
                 .ToList()
                 .SortList(new AvailableBalanceAscending());
 
-            var gasPrice = await eth
+            var gasPrice = await ethConfig
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
@@ -764,9 +763,9 @@ namespace Atomex.Swaps.Ethereum
 
                 var feeAmountInEth = isInitTx
                     ? rewardForRedeemInEth == 0
-                        ? eth.InitiateFeeAmount(gasPrice)
-                        : eth.InitiateWithRewardFeeAmount(gasPrice)
-                    : eth.AddFeeAmount(gasPrice);
+                        ? ethConfig.InitiateFeeAmount(gasPrice)
+                        : ethConfig.InitiateWithRewardFeeAmount(gasPrice)
+                    : ethConfig.AddFeeAmount(gasPrice);
 
                 var amountInEth = Math.Min(balanceInEth - feeAmountInEth, requiredAmountInEth);
 
@@ -784,7 +783,7 @@ namespace Atomex.Swaps.Ethereum
 
                 requiredAmountInEth -= amountInEth;
 
-                var nonceResult = await ((IEthereumBlockchainApi)eth.BlockchainApi)
+                var nonceResult = await ((IEthereumBlockchainApi)ethConfig.BlockchainApi)
                     .GetTransactionCountAsync(walletAddress.Address, pending: false, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -803,40 +802,40 @@ namespace Atomex.Swaps.Ethereum
                         HashedSecret    = swap.SecretHash,
                         Participant     = swap.PartyAddress,
                         RefundTimestamp = refundTimeStampUtcInSec,
-                        AmountToSend    = Atomex.Ethereum.EthToWei(amountInEth),
+                        AmountToSend    = EthereumConfig.EthToWei(amountInEth),
                         FromAddress     = walletAddress.Address,
-                        GasPrice        = Atomex.Ethereum.GweiToWei(gasPrice),
+                        GasPrice        = EthereumConfig.GweiToWei(gasPrice),
                         Nonce           = nonceResult.Value,
-                        RedeemFee       = Atomex.Ethereum.EthToWei(rewardForRedeemInEth)
+                        RedeemFee       = EthereumConfig.EthToWei(rewardForRedeemInEth)
                     };
 
                     var initiateGasLimit = rewardForRedeemInEth == 0
-                        ? eth.InitiateGasLimit
-                        : eth.InitiateWithRewardGasLimit;
+                        ? ethConfig.InitiateGasLimit
+                        : ethConfig.InitiateWithRewardGasLimit;
 
                     message.Gas = await EstimateGasAsync(message, new BigInteger(initiateGasLimit))
                         .ConfigureAwait(false);
 
-                    txInput = message.CreateTransactionInput(eth.SwapContractAddress);
+                    txInput = message.CreateTransactionInput(ethConfig.SwapContractAddress);
                 }
                 else
                 {
                     var message = new AddFunctionMessage
                     {
                         HashedSecret = swap.SecretHash,
-                        AmountToSend = Atomex.Ethereum.EthToWei(amountInEth),
+                        AmountToSend = EthereumConfig.EthToWei(amountInEth),
                         FromAddress  = walletAddress.Address,
-                        GasPrice     = Atomex.Ethereum.GweiToWei(gasPrice),
+                        GasPrice     = EthereumConfig.GweiToWei(gasPrice),
                         Nonce        = nonceResult.Value,
                     };
 
-                    message.Gas = await EstimateGasAsync(message, new BigInteger(eth.AddGasLimit))
+                    message.Gas = await EstimateGasAsync(message, new BigInteger(ethConfig.AddGasLimit))
                         .ConfigureAwait(false);
 
-                    txInput = message.CreateTransactionInput(eth.SwapContractAddress);
+                    txInput = message.CreateTransactionInput(ethConfig.SwapContractAddress);
                 }
 
-                transactions.Add(new EthereumTransaction(eth, txInput)
+                transactions.Add(new EthereumTransaction(ethConfig.Name, txInput)
                 {
                     Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
                 });
@@ -871,6 +870,7 @@ namespace Atomex.Swaps.Ethereum
                 .SignAsync(
                     tx: tx,
                     address: walletAddress,
+                    currency: EthConfig,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -880,7 +880,7 @@ namespace Atomex.Swaps.Ethereum
             EthereumTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            var broadcastResult = await Eth.BlockchainApi
+            var broadcastResult = await EthConfig.BlockchainApi
                 .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -911,11 +911,11 @@ namespace Atomex.Swaps.Ethereum
         {
             try
             {
-                var web3 = new Web3(UriByChain(Eth.Chain));
+                var web3 = new Web3(UriByChain(EthConfig.Chain));
                 var txHandler = web3.Eth.GetContractTransactionHandler<TMessage>();
 
                 var estimatedGas = await txHandler
-                    .EstimateGasAsync(Eth.SwapContractAddress, message)
+                    .EstimateGasAsync(EthConfig.SwapContractAddress, message)
                     .ConfigureAwait(false);
 
                 Log.Debug("Estimated gas {@gas}", estimatedGas?.Value.ToString());
@@ -935,7 +935,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         // todo: use etherscan instead
-        protected static string UriByChain(Chain chain)
+        public static string UriByChain(Chain chain)
         {
             return chain switch
             {
@@ -958,7 +958,7 @@ namespace Atomex.Swaps.Ethereum
                 await Task.Delay(InitiationCheckInterval, cancellationToken)
                     .ConfigureAwait(false);
 
-                var tx = await Eth.BlockchainApi
+                var tx = await EthConfig.BlockchainApi
                     .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

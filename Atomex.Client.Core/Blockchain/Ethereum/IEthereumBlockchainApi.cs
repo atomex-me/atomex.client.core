@@ -13,7 +13,7 @@ namespace Atomex.Blockchain.Ethereum
     public interface IEthereumBlockchainApi
     {
         Task<Result<decimal>> GetERC20AllowanceAsync(
-            EthereumTokens.ERC20 erc20,
+            EthereumTokens.Erc20Config erc20,
             string tokenAddress,
             FunctionMessage allowanceMessage,
             CancellationToken cancellationToken = default);
