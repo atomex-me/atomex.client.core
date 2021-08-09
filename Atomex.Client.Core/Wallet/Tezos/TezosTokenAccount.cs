@@ -53,6 +53,10 @@ namespace Atomex.Wallet.Tezos
             ReloadBalances();
         }
 
+        public abstract Task<(decimal fee, bool isEnougth)> EstimateTransferFeeAsync(
+            string from,
+            CancellationToken cancellationToken = default);
+
         #region Balances
 
         public virtual async Task<Balance> GetAddressBalanceAsync(

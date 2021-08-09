@@ -170,6 +170,34 @@ namespace Atomex.Wallet.Tezos
             return null;
         }
 
+        public override async Task<(decimal fee, bool isEnougth)> EstimateTransferFeeAsync(
+            string from,
+            CancellationToken cancellationToken = default)
+        {
+            var fa2Config = Fa2Config;
+            var xtzConfig = XtzConfig;
+
+            var xtzAddress = await _tezosAccount
+                .GetAddressAsync(from, cancellationToken)
+                .ConfigureAwait(false);
+
+            var isRevealed = xtzAddress?.Address != null && await _tezosAccount
+                .IsRevealedSourceAsync(xtzAddress.Address, cancellationToken)
+                .ConfigureAwait(false);
+
+            var storageFeeInMtz = (fa2Config.TransferStorageLimit - fa2Config.ActivationStorage) * fa2Config.StorageFeeMultiplier;
+
+            var feeInMtz = fa2Config.TransferFee + (isRevealed ? 0 : fa2Config.RevealFee) + storageFeeInMtz + xtzConfig.MicroTezReserve;
+
+            var availableBalanceInTez = xtzAddress != null
+                ? xtzAddress.AvailableBalance()
+                : 0m;
+
+            return (
+                fee: feeInMtz.ToTez(),
+                isEnougth: availableBalanceInTez >= feeInMtz.ToTez());
+        }
+
         #endregion Common
 
         #region Helpers
