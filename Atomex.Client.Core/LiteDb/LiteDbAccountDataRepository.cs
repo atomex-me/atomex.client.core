@@ -464,9 +464,9 @@ namespace Atomex.LiteDb
                     var documents = walletAddresses.Select(_bsonMapper.ToDocument);
 
                     var addresses = db.GetCollection(TezosTokensAddresses);
-                    addresses.EnsureIndex(IndexKey);
-                    addresses.EnsureIndex(CurrencyKey);
-                    addresses.EnsureIndex(AddressKey);
+                    //addresses.EnsureIndex(IndexKey);
+                    //addresses.EnsureIndex(CurrencyKey);
+                    //addresses.EnsureIndex(AddressKey);
 
                     var result = addresses.Upsert(documents);
 
@@ -529,9 +529,9 @@ namespace Atomex.LiteDb
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
 
                     var addresses = db.GetCollection(TezosTokensAddresses);
-                    addresses.EnsureIndex(IndexKey);
-                    addresses.EnsureIndex(CurrencyKey);
-                    addresses.EnsureIndex(AddressKey);
+                    //addresses.EnsureIndex(IndexKey);
+                    //addresses.EnsureIndex(CurrencyKey);
+                    //addresses.EnsureIndex(AddressKey);
 
                     if (!addresses.Exists(Query.EQ(IdKey, address.UniqueId)))
                     {

@@ -9,6 +9,7 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Bip;
+using Serilog;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -226,7 +227,10 @@ namespace Atomex.Wallet.Abstract
                 .ConfigureAwait(false);
 
             if (!result)
+            {
+                Log.Error("Tx upsert error.");
                 return; // todo: error or message?
+            }
 
             if (updateBalance)
                 await UpdateBalanceAsync(cancellationToken)

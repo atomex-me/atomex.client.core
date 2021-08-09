@@ -240,7 +240,7 @@ namespace Atomex.Wallet.Tezos
                         address: address,
                         contractAddress: contractAddress,
                         offset: 0,
-                        count: 20,
+                        count: 1000, //20,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -275,6 +275,7 @@ namespace Atomex.Wallet.Tezos
                     if (tokenBalanceDict.TryGetValue(uniqueTokenId, out var tb))
                     {
                         localAddress.Balance = tb.GetTokenBalance();
+                        localAddress.TokenBalance = tb;
 
                         tokenBalanceDict.Remove(uniqueTokenId);
                     }
@@ -316,7 +317,7 @@ namespace Atomex.Wallet.Tezos
                             address: localAddress.Address,
                             contract: localAddress.TokenBalance.Contract,
                             tokenId: localAddress.TokenBalance.TokenId,
-                            count: 20,
+                            count: 60, //20,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
