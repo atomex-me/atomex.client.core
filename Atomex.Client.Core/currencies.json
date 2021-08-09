@@ -126,7 +126,7 @@
       "MicroTezReserve": 1,
       "GasReserve": 100,
       "Fee": 445,
-      "MaxFee": 1000000,
+      "MaxFee": 100000000,
       "GasLimit": 1600,
       "StorageLimit": 257,
       "RevealFee": 350,

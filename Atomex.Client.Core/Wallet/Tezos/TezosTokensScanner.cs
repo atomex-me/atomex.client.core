@@ -281,7 +281,7 @@ namespace Atomex.Wallet.Tezos
                     else
                     {
                         localAddress.Balance = 0;
-                        // todo: may be remove zero address from db?
+                        localAddress.TokenBalance.Balance = "0";
                     }
                 }
 
