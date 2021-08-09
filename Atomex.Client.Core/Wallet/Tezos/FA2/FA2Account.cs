@@ -55,7 +55,7 @@ namespace Atomex.Wallet.Tezos
                 .GetTezosTokenAddressAsync(Currency, _tokenContract, _tokenId, from)
                 .ConfigureAwait(false);
 
-            if (fromAddress.AvailableBalance() < amount)
+            if (fromAddress.AvailableBalance() < amount) // devide available balance by DigitsMultiplier, calculated from Decimals
                 return new Error(
                     code: Errors.InsufficientFunds,
                     description: $"Insufficient tokens. " +

@@ -33,9 +33,16 @@ namespace Atomex.TezosTokens
         {
             Name                    = configuration["Name"];
             Description             = configuration["Description"];
-            DigitsMultiplier        = decimal.Parse(configuration["DigitsMultiplier"]);
+
+            if (!string.IsNullOrEmpty(configuration["DigitsMultiplier"]))
+                DigitsMultiplier = decimal.Parse(configuration["DigitsMultiplier"]);
+
             DustDigitsMultiplier    = long.Parse(configuration["DustDigitsMultiplier"]);
-            Digits                  = (int)BigInteger.Log10(new BigInteger(DigitsMultiplier));
+
+            Digits = DigitsMultiplier != 0
+                ? (int)BigInteger.Log10(new BigInteger(DigitsMultiplier))
+                : 0;
+
             Format                  = $"F{Digits}";
             IsToken                 = bool.Parse(configuration["IsToken"]);
 
