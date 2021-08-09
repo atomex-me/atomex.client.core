@@ -27,6 +27,7 @@ namespace Atomex.Wallet.Tezos
             IAccountDataRepository dataRepository,
             TezosAccount tezosAccount)
             : base(currency,
+                  "FA2",
                   tokenContract,
                   tokenId,
                   currencies,
@@ -52,7 +53,7 @@ namespace Atomex.Wallet.Tezos
             var xtzConfig = XtzConfig;
 
             var fromAddress = await DataRepository
-                .GetTezosTokenAddressAsync(Currency, _tokenContract, _tokenId, from)
+                .GetTezosTokenAddressAsync(TokenType, _tokenContract, _tokenId, from)
                 .ConfigureAwait(false);
 
             var digitsMultiplier = (decimal)Math.Pow(10, fromAddress.TokenBalance.Decimals);

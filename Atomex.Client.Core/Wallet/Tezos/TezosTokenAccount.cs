@@ -23,6 +23,7 @@ namespace Atomex.Wallet.Tezos
         protected readonly TezosAccount _tezosAccount;
 
         public string Currency { get; }
+        public string TokenType { get; }
         public ICurrencies Currencies { get; }
         public IHdWallet Wallet { get; }
         public IAccountDataRepository DataRepository { get; }
@@ -32,8 +33,10 @@ namespace Atomex.Wallet.Tezos
         protected decimal UnconfirmedOutcome { get; set; }
         protected TezosConfig XtzConfig => Currencies.Get<TezosConfig>(TezosConfig.Xtz);
 
+
         public TezosTokenAccount(
             string currency,
+            string tokenType,
             string tokenContract,
             decimal tokenId,
             ICurrencies currencies,
@@ -42,6 +45,7 @@ namespace Atomex.Wallet.Tezos
             TezosAccount tezosAccount)
         {
             Currency       = currency ?? throw new ArgumentNullException(nameof(currency));
+            TokenType      = tokenType ?? throw new ArgumentNullException(nameof(tokenType));
             Currencies     = currencies ?? throw new ArgumentNullException(nameof(currencies));
             Wallet         = wallet ?? throw new ArgumentNullException(nameof(wallet));
             DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
@@ -64,7 +68,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await DataRepository
-                .GetTezosTokenAddressAsync(Currency, _tokenContract, _tokenId, address)
+                .GetTezosTokenAddressAsync(TokenType, _tokenContract, _tokenId, address)
                 .ConfigureAwait(false);
 
             return walletAddress != null
@@ -123,7 +127,7 @@ namespace Atomex.Wallet.Tezos
             UnconfirmedOutcome = 0;
 
             var addresses = DataRepository
-                .GetUnspentTezosTokenAddressesAsync(Currency, _tokenContract, _tokenId)
+                .GetUnspentTezosTokenAddressesAsync(TokenType, _tokenContract, _tokenId)
                 .WaitForResult();
 
             foreach (var address in addresses)
@@ -172,7 +176,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await DataRepository
-                .GetTezosTokenAddressAsync(Currency, _tokenContract, _tokenId, address)
+                .GetTezosTokenAddressAsync(TokenType, _tokenContract, _tokenId, address)
                 .ConfigureAwait(false);
 
             return walletAddress?.ResolvePublicKey(Currencies, Wallet);
@@ -189,7 +193,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             return DataRepository
-                .GetUnspentTezosTokenAddressesAsync(Currency, _tokenContract, _tokenId);
+                .GetUnspentTezosTokenAddressesAsync(TokenType, _tokenContract, _tokenId);
         }
 
         public async Task<WalletAddress> GetFreeExternalAddressAsync(
@@ -197,7 +201,7 @@ namespace Atomex.Wallet.Tezos
         {
             // 1. try to find address with tokens
             var unspentAddresses = await DataRepository
-                .GetUnspentTezosTokenAddressesAsync(Currency, _tokenContract, _tokenId)
+                .GetUnspentTezosTokenAddressesAsync(TokenType, _tokenContract, _tokenId)
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
@@ -216,7 +220,7 @@ namespace Atomex.Wallet.Tezos
 
                 var tokenAddress = await DataRepository
                     .GetTezosTokenAddressAsync(
-                        Currency,
+                        TokenType,
                         _tokenContract,
                         _tokenId,
                         xtzAddress.Address)
@@ -238,7 +242,7 @@ namespace Atomex.Wallet.Tezos
 
             var tokenRedeemAddress = await DataRepository
                 .GetTezosTokenAddressAsync(
-                    Currency,
+                    TokenType,
                     _tokenContract,
                     _tokenId,
                     xtzRedeemAddress.Address)

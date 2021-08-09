@@ -112,7 +112,7 @@ namespace Atomex.Wallet
         {
             return tokenType switch
             {
-                "FA12" => new Fa12Account(
+                "FA12" or "KUSD" or "TZBTC" => new Fa12Account(
                     currency: tokenType,
                     tokenContract: tokenContract,
                     tokenId: tokenId,

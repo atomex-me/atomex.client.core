@@ -30,6 +30,7 @@ namespace Atomex.Wallet.Tezos
             IAccountDataRepository dataRepository,
             TezosAccount tezosAccount)
             : base(currency,
+                  "FA12",
                   tokenContract,
                   tokenId,
                   currencies,
@@ -76,7 +77,11 @@ namespace Atomex.Wallet.Tezos
 
             foreach (var selectedAddress in selectedAddresses)
             {
-                var addressAmountInDigits = selectedAddress.UsedAmount.ToTokenDigits(fa12Config.DigitsMultiplier);
+                var digitsMultiplier = fa12Config.DigitsMultiplier != 0
+                    ? fa12Config.DigitsMultiplier
+                    : (decimal)Math.Pow(10, selectedAddress.WalletAddress.TokenBalance.Decimals);
+
+                var addressAmountInDigits = selectedAddress.UsedAmount.ToTokenDigits(digitsMultiplier);
 
                 Log.Debug("Send {@amount} tokens from address {@address} with available balance {@balance}",
                     addressAmountInDigits,
@@ -173,7 +178,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetUnspentTezosTokenAddressesAsync(Currency, _tokenContract, _tokenId)
+                .GetUnspentTezosTokenAddressesAsync(TokenType, _tokenContract, _tokenId)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -197,7 +202,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetUnspentTezosTokenAddressesAsync(Currency, _tokenContract, _tokenId)
+                .GetUnspentTezosTokenAddressesAsync(TokenType, _tokenContract, _tokenId)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -271,7 +276,7 @@ namespace Atomex.Wallet.Tezos
             var xtz = XtzConfig;
 
             var unspentAddresses = (await DataRepository
-                .GetUnspentTezosTokenAddressesAsync(Currency, _tokenContract, _tokenId)
+                .GetUnspentTezosTokenAddressesAsync(TokenType, _tokenContract, _tokenId)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -416,7 +421,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = (await DataRepository
-                .GetUnspentTezosTokenAddressesAsync(Currency, _tokenContract, _tokenId)
+                .GetUnspentTezosTokenAddressesAsync(TokenType, _tokenContract, _tokenId)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -637,7 +642,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             return DataRepository
-                .GetUnspentTezosTokenAddressesAsync(Currency, _tokenContract, _tokenId);
+                .GetUnspentTezosTokenAddressesAsync(TokenType, _tokenContract, _tokenId);
         }
 
         #endregion Addresses

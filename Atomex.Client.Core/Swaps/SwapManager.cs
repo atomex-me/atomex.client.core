@@ -61,7 +61,7 @@ namespace Atomex.Swaps
             _quotesProvider = quotesProvider;
             _marketDataRepository = marketDataRepository ?? throw new ArgumentNullException(nameof(marketDataRepository));
 
-            _currencySwaps = _account.Currencies
+            var currencySwaps = _account.Currencies
                 .Select(c =>
                 {
                     var currencySwap = CurrencySwapCreator.Create(
@@ -74,8 +74,9 @@ namespace Atomex.Swaps
                     currencySwap.SwapUpdated += SwapUpdatedHandler;
 
                     return currencySwap;
-                })
-                .ToDictionary(cs => cs.Currency);
+                });
+
+            _currencySwaps = currencySwaps.ToDictionary(cs => cs.Currency);
         }
 
         public void Clear()
