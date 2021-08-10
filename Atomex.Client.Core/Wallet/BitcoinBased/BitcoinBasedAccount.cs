@@ -549,7 +549,7 @@ namespace Atomex.Wallet.BitcoinBased
                     foreach (var o in outputs)
                     {
                         var address = o.DestinationAddress(currency);
-                        var amount = o.Value / (decimal)currency.DigitsMultiplier;
+                        var amount = o.Value / currency.DigitsMultiplier;
 
                         var isSpent = o.IsSpent;
 

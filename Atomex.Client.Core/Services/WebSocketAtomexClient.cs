@@ -21,6 +21,8 @@ using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Web;
 using Atomex.Wallet;
+using Atomex.Blockchain.Tezos;
+using Atomex.Wallet.Tezos;
 
 namespace Atomex.Services
 {
@@ -562,8 +564,13 @@ namespace Atomex.Services
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (result.HasError) // todo: additional reaction
-                            break;
+                        if (result.HasError)
+                        {
+                            await Task.Delay(TransactionConfirmationCheckInterval(tx?.Currency), cancellationToken)
+                                .ConfigureAwait(false);
+
+                            continue;
+                        }
 
                         if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed)
                         {
@@ -612,6 +619,10 @@ namespace Atomex.Services
                 await Account
                     .UpdateBalanceAsync(tx.Currency, cancellationToken)
                     .ConfigureAwait(false);
+
+                if (Currencies.HasTokens(tx.Currency))
+                    await UpdateTokenBalanceAsync(tx, cancellationToken)
+                        .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -620,6 +631,38 @@ namespace Atomex.Services
             catch (Exception e)
             {
                 Log.Error(e, "Error in transaction processed handler.");
+            }
+        }
+
+        private async Task UpdateTokenBalanceAsync(
+            IBlockchainTransaction tx,
+            CancellationToken cancellationToken)
+        {
+            if (tx.Currency == EthereumConfig.Eth)
+            {
+                // 
+            }
+            else if (tx.Currency == TezosConfig.Xtz)
+            {
+                var tezosTx = tx as TezosTransaction;
+
+                if (tezosTx.Params == null)
+                    return;
+
+                var tezosAccount = Account
+                .GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz);
+
+                var tezosTokensScanner = new TezosTokensScanner(tezosAccount);
+
+                await tezosTokensScanner.ScanAsync(
+                    skipUsed: false,
+                    cancellationToken: cancellationToken);
+
+                // reload balances for all tezos tokens account
+                foreach (var currency in Account.Currencies)
+                    if (Currencies.IsTezosToken(currency.Name))
+                        Account.GetCurrencyAccount<TezosTokenAccount>(currency.Name)
+                            .ReloadBalances();
             }
         }
 

@@ -1,13 +1,16 @@
 ﻿using System;
 using System.IO;
-using Atomex.Core;
+
 using LiteDB;
+
+using Atomex.Core;
 
 namespace Atomex.LiteDb
 {
     public enum MigrationActionType
     {
-        XtzTransactionsDeleted
+        XtzTransactionsDeleted,
+        XtzTokensDataDeleted
     }
 
     public static class LiteDbMigrationManager
@@ -44,15 +47,21 @@ namespace Atomex.LiteDb
                     currentVersion = LiteDbMigrations.MigrateFrom_2_to_3(pathToDb, sessionPassword, network);
 
                 if (currentVersion == LiteDbMigrations.Version3)
-                    currentVersion = LiteDbMigrations.MigrateFrom_3_to_4(pathToDb, sessionPassword, network);
+                    currentVersion = LiteDbMigrations.MigrateFrom_3_to_4(pathToDb, sessionPassword);
 
                 if (currentVersion == LiteDbMigrations.Version4)
-                    currentVersion = LiteDbMigrations.MigrateFrom_4_to_5(pathToDb, sessionPassword, network);
+                    currentVersion = LiteDbMigrations.MigrateFrom_4_to_5(pathToDb, sessionPassword);
 
                 if (currentVersion == LiteDbMigrations.Version5)
                 {
                     currentVersion = LiteDbMigrations.MigrateFrom_5_to_6(pathToDb, sessionPassword);
                     migrationComplete?.Invoke(MigrationActionType.XtzTransactionsDeleted);
+                }
+
+                if (currentVersion == LiteDbMigrations.Version6)
+                {
+                    currentVersion = LiteDbMigrations.MigrateFrom_6_to_7(pathToDb, sessionPassword);
+                    migrationComplete?.Invoke(MigrationActionType.XtzTokensDataDeleted);
                 }
             }
             catch (Exception e)

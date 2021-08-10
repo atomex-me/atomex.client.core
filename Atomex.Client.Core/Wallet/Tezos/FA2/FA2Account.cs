@@ -27,6 +27,7 @@ namespace Atomex.Wallet.Tezos
             IAccountDataRepository dataRepository,
             TezosAccount tezosAccount)
             : base(currency,
+                  "FA2",
                   tokenContract,
                   tokenId,
                   currencies,
@@ -41,7 +42,7 @@ namespace Atomex.Wallet.Tezos
         public async Task<Error> SendAsync(
             string from,
             string to,
-            int amount,
+            decimal amount,
             string tokenContract,
             int tokenId,
             int fee,
@@ -52,15 +53,21 @@ namespace Atomex.Wallet.Tezos
             var xtzConfig = XtzConfig;
 
             var fromAddress = await DataRepository
-                .GetTezosTokenAddressAsync(Currency, _tokenContract, _tokenId, from)
+                .GetTezosTokenAddressAsync(TokenType, _tokenContract, _tokenId, from)
                 .ConfigureAwait(false);
 
-            if (fromAddress.AvailableBalance() < amount)
+            var digitsMultiplier = (decimal)Math.Pow(10, fromAddress.TokenBalance.Decimals);
+
+            var availableBalance = fromAddress.AvailableBalance() * digitsMultiplier;
+
+            if (availableBalance < amount)
                 return new Error(
                     code: Errors.InsufficientFunds,
                     description: $"Insufficient tokens. " +
                         $"Available: {fromAddress.AvailableBalance()}. " +
                         $"Required: {amount}.");
+
+            var amountString = string.Format("{0:0}", amount);
 
             var xtzAddress = await DataRepository
                 .GetWalletAddressAsync(xtzConfig.Name, from)
@@ -170,6 +177,34 @@ namespace Atomex.Wallet.Tezos
             return null;
         }
 
+        public override async Task<(decimal fee, bool isEnougth)> EstimateTransferFeeAsync(
+            string from,
+            CancellationToken cancellationToken = default)
+        {
+            var fa2Config = Fa2Config;
+            var xtzConfig = XtzConfig;
+
+            var xtzAddress = await _tezosAccount
+                .GetAddressAsync(from, cancellationToken)
+                .ConfigureAwait(false);
+
+            var isRevealed = xtzAddress?.Address != null && await _tezosAccount
+                .IsRevealedSourceAsync(xtzAddress.Address, cancellationToken)
+                .ConfigureAwait(false);
+
+            var storageFeeInMtz = (fa2Config.TransferStorageLimit - fa2Config.ActivationStorage) * fa2Config.StorageFeeMultiplier;
+
+            var feeInMtz = fa2Config.TransferFee + (isRevealed ? 0 : fa2Config.RevealFee) + storageFeeInMtz + xtzConfig.MicroTezReserve;
+
+            var availableBalanceInTez = xtzAddress != null
+                ? xtzAddress.AvailableBalance()
+                : 0m;
+
+            return (
+                fee: feeInMtz.ToTez(),
+                isEnougth: availableBalanceInTez >= feeInMtz.ToTez());
+        }
+
         #endregion Common
 
         #region Helpers
@@ -178,7 +213,7 @@ namespace Atomex.Wallet.Tezos
             int tokenId,
             string from,
             string to,
-            int amount)
+            decimal amount)
         {
             return JObject.FromObject(new
             {
@@ -216,8 +251,8 @@ namespace Atomex.Wallet.Tezos
                                                 },
                                                 new
                                                 {
-                                                    @int = amount.ToString()
-                                                }
+                                                    @int = string.Format("{0:0}", amount)
+        }
                                             }
                                         }
                                     }

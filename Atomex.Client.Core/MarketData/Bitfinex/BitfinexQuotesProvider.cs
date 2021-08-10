@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Common;
-using Atomex.Core;
-using Atomex.MarketData.Abstract;
+
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
+
+using Atomex.Common;
+using Atomex.Core;
+using Atomex.MarketData.Abstract;
 
 namespace Atomex.MarketData.Bitfinex
 {
@@ -48,12 +50,16 @@ namespace Atomex.MarketData.Bitfinex
 
         public override Quote GetQuote(string currency, string baseCurrency)
         {
-            return Quotes.TryGetValue(QuoteSymbols[$"{currency}{baseCurrency}"], out var rate) ? rate : null;
+            if (QuoteSymbols.TryGetValue($"{currency}{baseCurrency}", out var symbol))
+                return Quotes.TryGetValue(symbol, out var rate) ? rate : null;
+            else return null;
         }
 
         public override Quote GetQuote(string symbol)
         {
-            return Quotes.TryGetValue(QuoteSymbols[symbol.Replace("/", "")], out var rate) ? rate : null;
+            if (QuoteSymbols.TryGetValue(symbol.Replace("/", ""), out var s))
+                return Quotes.TryGetValue(s, out var rate) ? rate : null;
+            else return null;
         }
 
         protected override async Task UpdateAsync(

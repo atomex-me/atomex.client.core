@@ -22,6 +22,7 @@ namespace Atomex
 {
     public class EthereumConfig : CurrencyConfig
     {
+        public const string Eth = "ETH";
         protected const long WeiInEth = 1000000000000000000;
         protected const long WeiInGwei = 1000000000;
         protected const long GweiInEth = 1000000000;
