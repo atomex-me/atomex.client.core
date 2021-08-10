@@ -5,6 +5,8 @@ using LiteDB;
 
 using Atomex.Core;
 
+using Atomex.Core;
+
 namespace Atomex.LiteDb
 {
     public enum MigrationActionType

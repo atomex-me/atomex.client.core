@@ -2,16 +2,19 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Abstract;
-using Atomex.Blockchain.Tezos;
 using Atomex.Common.Bson;
-using Serilog;
 using LiteDB;
 using Newtonsoft.Json;
+
 
 namespace Atomex.Wallet
 {
@@ -25,7 +28,7 @@ namespace Atomex.Wallet
         private readonly Dictionary<string, WalletAddress> _tezosTokensAddresses;
         private readonly Dictionary<string, TokenTransfer> _tezosTokensTransfers;
         private readonly Dictionary<string, TokenContract> _tezosTokensContracts;
-
+        
         private ICurrencies _currencies;
 
         private readonly object _sync;
@@ -56,15 +59,15 @@ namespace Atomex.Wallet
 
         public AccountDataRepository(ICurrencies currencies, string initialData = null)
         {
-            _addresses = new Dictionary<string, WalletAddress>();
-            _transactions = new Dictionary<string, IBlockchainTransaction>();
-            _outputs = new Dictionary<string, OutputEntity>();
-            _swaps = new Dictionary<long, Swap>();
-            _orders = new Dictionary<string, Order>();
+            _addresses            = new Dictionary<string, WalletAddress>();
+            _transactions         = new Dictionary<string, IBlockchainTransaction>();
+            _outputs              = new Dictionary<string, OutputEntity>();
+            _swaps                = new Dictionary<long, Swap>();
+            _orders               = new Dictionary<string, Order>();
             _tezosTokensAddresses = new Dictionary<string, WalletAddress>();
             _tezosTokensTransfers = new Dictionary<string, TokenTransfer>();
             _tezosTokensContracts = new Dictionary<string, TokenContract>();
-            _sync = new object();
+            _sync                 = new object();
 
             _bsonMapper = new BsonMapper()
                 .UseSerializer(new CurrencyToBsonSerializer(currencies))
@@ -224,7 +227,9 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var address = _addresses.Values
-                    .Where(w => w.Currency == currency && w.KeyIndex.Chain == chain && w.HasActivity)
+                    .Where(w => w.Currency == currency &&
+                                w.KeyIndex.Chain == chain &&
+                                w.HasActivity)
                     .OrderByDescending(w => w.KeyIndex.Index)
                     .FirstOrDefault();
 
@@ -242,8 +247,7 @@ namespace Atomex.Wallet
             {
                 var addresses = includeUnconfirmed
                     ? _addresses.Values
-                        .Where(w => w.Currency == currency &&
-                                    (w.Balance != 0 || w.UnconfirmedIncome != 0 || w.UnconfirmedOutcome != 0))
+                        .Where(w => w.Currency == currency && (w.Balance != 0 || w.UnconfirmedIncome != 0 || w.UnconfirmedOutcome != 0))
                     : _addresses.Values
                         .Where(w => w.Currency == currency && w.Balance != 0);
                 return Task.FromResult(addresses.Select(a => a.Copy()));
@@ -278,7 +282,7 @@ namespace Atomex.Wallet
 
                 if (_tezosTokensAddresses.TryGetValue(walletId, out var walletAddress))
                     return Task.FromResult(walletAddress.Copy());
-
+                
                 return Task.FromResult<WalletAddress>(null);
             }
         }
@@ -341,7 +345,7 @@ namespace Atomex.Wallet
                 foreach (var wa in walletAddresses)
                 {
                     var walletId = $"{wa.Currency}:{wa.TokenBalance.Contract}:{wa.TokenBalance.TokenId}:{wa.Address}";
-                    
+
                     _tezosTokensAddresses[walletId] = wa.Copy();
 
                     var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(wa)));
@@ -399,7 +403,7 @@ namespace Atomex.Wallet
                 foreach (var tokenTransfer in tokenTransfers)
                 {
                     _tezosTokensTransfers[tokenTransfer.Id] = tokenTransfer; // todo: copy ?
-
+                    
                     var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(tokenTransfer)));
                     SaveDataCallback?.Invoke(AvailableDataType.TezosTokenTransfer, tokenTransfer.Id, data);
                 }
