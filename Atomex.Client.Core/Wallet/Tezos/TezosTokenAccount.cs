@@ -146,14 +146,16 @@ namespace Atomex.Wallet.Tezos
 
         public async Task<WalletAddress> DivideAddressAsync(
             int chain,
-            uint index)
+            uint index,
+            int keyType)
         {
             var currency = Currencies.GetByName(Currency);
 
             var walletAddress = Wallet.GetAddress(
                 currency,
                 chain,
-                index);
+                index,
+                keyType);
 
             if (walletAddress == null)
                 return null;
@@ -231,7 +233,8 @@ namespace Atomex.Wallet.Tezos
 
                 return await DivideAddressAsync(
                         xtzAddress.KeyIndex.Chain,
-                        xtzAddress.KeyIndex.Index)
+                        xtzAddress.KeyIndex.Index,
+                        xtzAddress.KeyType)
                     .ConfigureAwait(false);
             }
 
@@ -253,7 +256,8 @@ namespace Atomex.Wallet.Tezos
 
             return await DivideAddressAsync(
                     xtzRedeemAddress.KeyIndex.Chain,
-                    xtzRedeemAddress.KeyIndex.Index)
+                    xtzRedeemAddress.KeyIndex.Index,
+                    xtzRedeemAddress.KeyType)
                 .ConfigureAwait(false);
         }
 

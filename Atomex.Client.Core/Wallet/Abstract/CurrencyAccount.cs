@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Bip;
-using Serilog;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -128,11 +129,16 @@ namespace Atomex.Wallet.Abstract
 
         public virtual async Task<WalletAddress> DivideAddressAsync(
             int chain,
-            uint index)
+            uint index,
+            int keyType)
         {
             var currency = Currencies.GetByName(Currency);
 
-            var walletAddress = Wallet.GetAddress(currency, chain, index);
+            var walletAddress = Wallet.GetAddress(
+                currency: currency,
+                chain: chain,
+                index: index,
+                keyType:keyType);
 
             if (walletAddress == null)
                 return null;
@@ -175,12 +181,14 @@ namespace Atomex.Wallet.Abstract
             var lastActiveAddress = await DataRepository
                 .GetLastActiveWalletAddressAsync(
                     currency: Currency,
-                    chain: Bip44.Internal)
+                    chain: Bip44.Internal,
+                    keyType: CurrencyConfig.ClassicKey)
                 .ConfigureAwait(false);
 
             return await DivideAddressAsync(
                     chain: Bip44.Internal,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0)
+                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
+                    keyType: CurrencyConfig.ClassicKey)
                 .ConfigureAwait(false);
         }
 
@@ -190,12 +198,14 @@ namespace Atomex.Wallet.Abstract
             var lastActiveAddress = await DataRepository
                 .GetLastActiveWalletAddressAsync(
                     currency: Currency,
-                    chain: Bip44.External)
+                    chain: Bip44.External,
+                    keyType: CurrencyConfig.ClassicKey)
                 .ConfigureAwait(false);
 
             return await DivideAddressAsync(
                     chain: Bip44.External,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0)
+                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
+                    keyType: CurrencyConfig.ClassicKey)
                 .ConfigureAwait(false);
         }
 

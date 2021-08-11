@@ -73,7 +73,6 @@ namespace Atomex.Wallet.Ethereum
 
             var selectedAddresses = (await SelectUnspentAddressesAsync(
                     from: fromAddresses,
-                    to: null,
                     amount: amount,
                     fee: feePerTx,
                     feePrice: feePrice,
@@ -227,7 +226,6 @@ namespace Atomex.Wallet.Ethereum
 
             var selectedAddresses = (await SelectUnspentAddressesAsync(
                     from: unspentAddresses,
-                    to: null,
                     amount: amount,
                     fee: fee,
                     feePrice: feePrice == 0
@@ -652,7 +650,8 @@ namespace Atomex.Wallet.Ethereum
                 var lastActiveAddress = await DataRepository
                     .GetLastActiveWalletAddressAsync(
                         currency: Currency,
-                        chain: chain)
+                        chain: chain,
+                        keyType: CurrencyConfig.ClassicKey)
                     .ConfigureAwait(false);
 
                 if (lastActiveAddress != null)
@@ -714,7 +713,6 @@ namespace Atomex.Wallet.Ethereum
 
             var selectedAddresses = await SelectUnspentAddressesAsync(
                     from: unspentAddresses,
-                    to: null,
                     amount: amount,
                     fee: fee,
                     feePrice: feePrice,
@@ -731,7 +729,6 @@ namespace Atomex.Wallet.Ethereum
 
         public Task<IEnumerable<SelectedWalletAddress>> SelectUnspentAddressesAsync(
             IList<WalletAddress> from,
-            string to,
             decimal amount,
             decimal fee,
             decimal feePrice,

@@ -27,7 +27,8 @@ namespace Atomex.Wallet.Abstract
 
         Task<WalletAddress> GetLastActiveWalletAddressAsync(
             string currency,
-            int chain);
+            int chain,
+            int keyType);
 
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string currency,
@@ -35,6 +36,10 @@ namespace Atomex.Wallet.Abstract
 
         Task<IEnumerable<WalletAddress>> GetAddressesAsync(
             string currency);
+
+        Task<bool> RemoveAddressAsync(
+            string currency,
+            string address);
 
         #endregion Addresses
 

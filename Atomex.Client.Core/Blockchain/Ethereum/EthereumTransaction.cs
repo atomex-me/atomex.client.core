@@ -162,8 +162,10 @@ namespace Atomex.Blockchain.Ethereum
                 return false;
             }
 
-            using var privateKey = keyStorage
-                .GetPrivateKey(currencyConfig, address.KeyIndex);
+            using var privateKey = keyStorage.GetPrivateKey(
+                currency: currencyConfig,
+                keyIndex: address.KeyIndex,
+                keyType: address.KeyType);
 
             return await SignAsync(privateKey, currencyConfig as EthereumConfig)
                 .ConfigureAwait(false);

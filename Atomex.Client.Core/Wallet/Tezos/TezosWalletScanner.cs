@@ -18,6 +18,8 @@ namespace Atomex.Wallet.Tezos
         private const int DefaultInternalLookAhead = 2;
         private const int DefaultExternalLookAhead = 2;
 
+        //private class Scan
+
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
         private TezosAccount Account { get; }
@@ -34,12 +36,32 @@ namespace Atomex.Wallet.Tezos
         {
             var currency = Currency;
 
-            var scanParams = new[]
-            {
-                new {Chain = HdKeyStorage.NonHdKeysChain, LookAhead = 0},
-                new {Chain = Bip44.Internal, LookAhead = InternalLookAhead},
-                new {Chain = Bip44.External, LookAhead = ExternalLookAhead},
-            };
+            var tezosAddresses = await Account.DataRepository
+                .GetAddressesAsync(currency.Name)
+                .ConfigureAwait(false);
+
+            var isFirstScan = !tezosAddresses.Any();
+
+            var scanBip32Ed25519 = isFirstScan || tezosAddresses
+                .FirstOrDefault(w => w.KeyType == TezosConfig.Bip32Ed25519Key &&
+                                     (w.HasActivity ||
+                                     w.Balance != 0 ||
+                                     w.UnconfirmedIncome != 0 ||
+                                     w.UnconfirmedOutcome != 0)) != null;
+
+            var scanParams = scanBip32Ed25519
+                ? new[]
+                {
+                    new {KeyType = TezosConfig.Bip32Ed25519Key, Chain = Bip44.Internal, LookAhead = InternalLookAhead},
+                    new {KeyType = TezosConfig.Bip32Ed25519Key, Chain = Bip44.External, LookAhead = ExternalLookAhead},
+                    new {KeyType = CurrencyConfig.ClassicKey, Chain = Bip44.Internal, LookAhead = InternalLookAhead},
+                    new {KeyType = CurrencyConfig.ClassicKey, Chain = Bip44.External, LookAhead = ExternalLookAhead},
+                }
+                : new[]
+                {
+                    new {KeyType = CurrencyConfig.ClassicKey, Chain = Bip44.Internal, LookAhead = InternalLookAhead},
+                    new {KeyType = CurrencyConfig.ClassicKey, Chain = Bip44.External, LookAhead = ExternalLookAhead},
+                };
 
             var txs = new List<TezosTransaction>();
             var txsById = new Dictionary<string, TezosTransaction>();
@@ -55,7 +77,10 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var walletAddress = await Account
-                        .DivideAddressAsync(param.Chain, index)
+                        .DivideAddressAsync(
+                            chain: param.Chain,
+                            index: index,
+                            keyType: param.KeyType)
                         .ConfigureAwait(false);
 
                     if (walletAddress == null)
@@ -95,6 +120,22 @@ namespace Atomex.Wallet.Tezos
                     }
 
                     index++;
+                }
+            }
+
+            if (isFirstScan && scanBip32Ed25519)
+            {
+                // remove bip32Ed25519 addresses if there is no activity on them
+                var addresses = (await Account.DataRepository
+                    .GetAddressesAsync(currency.Name)
+                    .ConfigureAwait(false))
+                    .Where(a => a.KeyType == TezosConfig.Bip32Ed25519Key);
+
+                foreach (var address in addresses)
+                {
+                    await Account.DataRepository
+                        .RemoveAddressAsync(address.Currency, address.Address)
+                        .ConfigureAwait(false);
                 }
             }
 

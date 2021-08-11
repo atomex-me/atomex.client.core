@@ -117,8 +117,10 @@ namespace Atomex.Wallet.Tezos
                         .LockAsync(selectedAddress.WalletAddress.Address, cancellationToken)
                         .ConfigureAwait(false);
 
-                    using var securePublicKey = Wallet
-                        .GetPublicKey(xtzConfig, selectedAddress.WalletAddress.KeyIndex);
+                    using var securePublicKey = Wallet.GetPublicKey(
+                        currency: xtzConfig,
+                        keyIndex: selectedAddress.WalletAddress.KeyIndex,
+                        keyType: selectedAddress.WalletAddress.KeyType);
 
                     // fill operation
                     var fillResult = await tx
@@ -778,7 +780,8 @@ namespace Atomex.Wallet.Tezos
                 var lastActiveAddress = await DataRepository
                     .GetLastActiveWalletAddressAsync(
                         currency: Currency,
-                        chain: chain)
+                        chain: chain,
+                        keyType: CurrencyConfig.ClassicKey)
                     .ConfigureAwait(false);
 
                 if (lastActiveAddress != null)

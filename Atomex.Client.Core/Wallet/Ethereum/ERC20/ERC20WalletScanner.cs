@@ -8,6 +8,7 @@ using Serilog;
 
 using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.ERC20;
+using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 using static Atomex.Blockchain.Ethereum.EtherScanApi;
@@ -80,7 +81,10 @@ namespace Atomex.Wallet.Ethereum
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var walletAddress = await Account
-                        .DivideAddressAsync(param.Chain, index)
+                        .DivideAddressAsync(
+                            chain: param.Chain,
+                            index: index,
+                            keyType: CurrencyConfig.ClassicKey)
                         .ConfigureAwait(false);
 
                     if (walletAddress == null)

@@ -1,85 +1,26 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Security;
 using System.Text;
 using System.Threading.Tasks;
+
+using NBitcoin;
+using Newtonsoft.Json;
+using Serilog;
+
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using NBitcoin;
-using Newtonsoft.Json;
-using Serilog;
 using Aes = Atomex.Cryptography.Aes;
 using Network = Atomex.Core.Network;
 
 namespace Atomex.Wallet
 {
-    public class NonHdKey
-    {
-        private const int AesKeySize = 256;
-        private const int AesSaltSize = 16;
-        private const int AesRfc2898Iterations = 1024;
-
-        public uint CurrencyCode { get; set; }
-        public string EncryptedSeed { get; set; }
-
-        [JsonIgnore]
-        public SecureBytes Seed { get; set; }
-
-        public void Lock()
-        {
-            Seed.Dispose();
-            Seed = null;
-        }
-
-        public void Unlock(SecureString password)
-        {
-            try
-            {
-                using var scopedSeed = new ScopedBytes(Aes.Decrypt(
-                    encryptedBytes: Hex.FromString(EncryptedSeed),
-                    password: password,
-                    keySize: AesKeySize,
-                    saltSize: AesSaltSize,
-                    iterations: AesRfc2898Iterations));
-
-                Seed = new SecureBytes(scopedSeed);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Unlock error");
-            }
-        }
-
-        public void Encrypt(SecureString password)
-        {
-            try
-            {
-                using var scopedSeed = Seed.ToUnsecuredBytes();
-
-                EncryptedSeed = Aes.Encrypt(
-                        plainBytes: scopedSeed,
-                        password: password,
-                        keySize: AesKeySize,
-                        saltSize: AesSaltSize,
-                        iterations: AesRfc2898Iterations)
-                    .ToHexString();
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Encrypt error");
-            }
-        }
-    }
-
     public class HdKeyStorage : IKeyStorage
     {
         public const string CurrentVersion = "1.0.0.0";
-        public const int NonHdKeysChain = -1;
         private const int ServicePurpose = 777;
         private const int MaxFileSizeInBytes = 100 * 1024 * 1024; // 100 Mb
 
@@ -90,7 +31,6 @@ namespace Atomex.Wallet
         public Network Network { get; set; }
         public string EncryptedSeed { get; set; }
         public string Version { get; set; }
-        public IList<NonHdKey> NonHdKeys { get; } = new List<NonHdKey>();
 
         [JsonIgnore]
         private SecureBytes Seed { get; set; }
@@ -121,9 +61,6 @@ namespace Atomex.Wallet
         {
             Seed.Dispose();
             Seed = null;
-
-            foreach (var singleKey in NonHdKeys)
-                singleKey.Lock();
         }
 
         public HdKeyStorage Unlock(SecureString password)
@@ -138,9 +75,6 @@ namespace Atomex.Wallet
                     iterations: AesRfc2898Iterations));
 
                 Seed = new SecureBytes(scopedSeed);
-
-                foreach (var singleKey in NonHdKeys)
-                    singleKey.Unlock(password);
             }
             catch (Exception e)
             {
@@ -163,9 +97,6 @@ namespace Atomex.Wallet
                         saltSize: AesSaltSize,
                         iterations: AesRfc2898Iterations)
                     .ToHexString();
-
-                foreach (var singleKey in NonHdKeys)
-                    singleKey.Encrypt(password);
             }
             catch (Exception e)
             {
@@ -182,51 +113,36 @@ namespace Atomex.Wallet
             CurrencyConfig currency,
             int purpose,
             int chain,
-            uint index)
+            uint index,
+            int keyType)
         {
-            using var masterKey = currency.CreateExtKey(Seed);
+            using var masterKey = currency.CreateExtKey(Seed, keyType);
             
             return masterKey.Derive(new KeyPath(path: $"m/{purpose}'/{currency.Bip44Code}'/0'/{chain}/{index}"));               
         }
 
-        private IKey GetNonHdKey(CurrencyConfig currency, uint index)
+        public SecureBytes GetPublicKey(
+            CurrencyConfig currency,
+            KeyIndex keyIndex,
+            int keyType)
         {
-            var nonHdKeys = NonHdKeys
-                .Where(s => s.CurrencyCode == currency.Bip44Code)
-                .ToList();
-
-            return index < nonHdKeys.Count
-                ? currency.CreateKey(nonHdKeys[(int)index].Seed)
-                : null;
+            return GetPublicKey(currency, keyIndex.Chain, keyIndex.Index, keyType);
         }
 
-        public SecureBytes GetPublicKey(CurrencyConfig currency, KeyIndex keyIndex)
+        public SecureBytes GetPublicKey(
+            CurrencyConfig currency,
+            int chain,
+            uint index,
+            int keyType)
         {
-            return GetPublicKey(currency, keyIndex.Chain, keyIndex.Index);
-        }
-
-        public SecureBytes GetPublicKey(CurrencyConfig currency, int chain, uint index)
-        {
-            if (chain == NonHdKeysChain)
-                return GetNonHdPublicKey(currency, index);
-
             using var extKey = GetExtKey(
                 currency: currency,
                 purpose: Bip44.Purpose,
                 chain: chain,
-                index: index);
+                index: index,
+                keyType: keyType);
 
             return extKey.GetPublicKey();
-        }
-
-        private SecureBytes GetNonHdPublicKey(CurrencyConfig currency, uint index)
-        {
-            using var key = GetNonHdKey(currency, index);
-
-            if (key == null)
-                return null;
-
-            return key.GetPublicKey();
         }
 
         public SecureBytes GetServicePublicKey(uint index)
@@ -240,62 +156,49 @@ namespace Atomex.Wallet
             return extKey.GetPublicKey();
         }
 
-        public SecureBytes GetPrivateKey(CurrencyConfig currency, KeyIndex keyIndex)
+        public SecureBytes GetPrivateKey(
+            CurrencyConfig currency,
+            KeyIndex keyIndex,
+            int keyType)
         {
-            if (keyIndex.Chain == NonHdKeysChain)
-                return GetNonHdPrivateKey(currency, keyIndex.Index);
-
             using var extKey = GetExtKey(
                 currency: currency,
                 purpose: Bip44.Purpose,
                 chain: keyIndex.Chain,
-                index: keyIndex.Index);
+                index: keyIndex.Index,
+                keyType: keyType);
 
             return extKey.GetPrivateKey();
         }
 
-        private SecureBytes GetNonHdPrivateKey(CurrencyConfig currency, uint index)
+        public byte[] SignHash(
+            CurrencyConfig currency,
+            byte[] hash,
+            KeyIndex keyIndex,
+            int keyType)
         {
-            using var key = GetNonHdKey(currency, index);
-
-            if (key == null)
-                return null;
-
-            return key.GetPrivateKey();
-        }
-
-        public byte[] SignHash(CurrencyConfig currency, byte[] hash, KeyIndex keyIndex)
-        {
-            if (keyIndex.Chain == NonHdKeysChain)
-            {
-                using var nonHdKey = GetNonHdKey(currency, keyIndex.Index);
-
-                return nonHdKey.SignHash(hash);
-            }
-
             using var extKey = GetExtKey(
                 currency: currency,
                 purpose: Bip44.Purpose,
                 chain: keyIndex.Chain,
-                index: keyIndex.Index);
+                index: keyIndex.Index,
+                keyType: keyType);
 
             return extKey.SignHash(hash);
         }
 
-        public byte[] SignMessage(CurrencyConfig currency, byte[] data, KeyIndex keyIndex)
+        public byte[] SignMessage(
+            CurrencyConfig currency,
+            byte[] data,
+            KeyIndex keyIndex,
+            int keyType)
         {
-            if (keyIndex.Chain == NonHdKeysChain)
-            {
-                using var nonHdKey = GetNonHdKey(currency, keyIndex.Index);
-
-                return nonHdKey.SignMessage(data);
-            }
-
             using var extKey = GetExtKey(
                 currency: currency,
                 purpose: Bip44.Purpose,
                 chain: keyIndex.Chain,
-                index: keyIndex.Index);
+                index: keyIndex.Index,
+                keyType: keyType);
 
             return extKey.SignMessage(data);
         }
@@ -315,20 +218,15 @@ namespace Atomex.Wallet
             CurrencyConfig currency,
             byte[] hash,
             byte[] signature,
-            KeyIndex keyIndex)
+            KeyIndex keyIndex,
+            int keyType)
         {
-            if (keyIndex.Chain == NonHdKeysChain)
-            {
-                using var nonHdKey = GetNonHdKey(currency, keyIndex.Index);
-
-                return nonHdKey.VerifyHash(hash, signature);
-            }
-
             using var extKey = GetExtKey(
                 currency: currency,
                 purpose: Bip44.Purpose,
                 chain: keyIndex.Chain,
-                index: keyIndex.Index);
+                index: keyIndex.Index,
+                keyType: keyType);
 
             return extKey.VerifyHash(hash, signature);
         }
@@ -337,20 +235,15 @@ namespace Atomex.Wallet
             CurrencyConfig currency,
             byte[] data,
             byte[] signature,
-            KeyIndex keyIndex)
+            KeyIndex keyIndex,
+            int keyType)
         {
-            if (keyIndex.Chain == NonHdKeysChain)
-            {
-                using var nonHdKey = GetNonHdKey(currency, keyIndex.Index);
-
-                return nonHdKey.VerifyMessage(data, signature);
-            }
-
             using var extKey = GetExtKey(
                 currency: currency,
                 purpose: Bip44.Purpose,
                 chain: keyIndex.Chain,
-                index: keyIndex.Index);
+                index: keyIndex.Index,
+                keyType: keyType);
 
             return extKey.VerifyMessage(data, signature);
         }

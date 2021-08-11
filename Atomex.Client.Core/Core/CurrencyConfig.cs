@@ -14,6 +14,7 @@ namespace Atomex.Core
 
         public const int MaxNameLength = 32;
         public const string CoinsDefaultFileName = "coins.default.json";
+        public const int ClassicKey = 0;
 
         public int Id { get; set; }
         public string Name { get; set; }
@@ -37,7 +38,6 @@ namespace Atomex.Core
         public string FeeCurrencyToBaseSymbol { get; set; }
         public string FeeCurrencySymbol { get; set; }
 
-
         public IBlockchainApi BlockchainApi { get; set; }
         public string TxExplorerUri { get; set; }
         public string AddressExplorerUri { get; set; }
@@ -46,7 +46,7 @@ namespace Atomex.Core
         public bool IsSwapAvailable { get; protected set; }
         public uint Bip44Code { get; protected set; }
 
-        public abstract IExtKey CreateExtKey(SecureBytes seed);
+        public abstract IExtKey CreateExtKey(SecureBytes seed, int keyType);
 
         public abstract IKey CreateKey(SecureBytes seed);
 

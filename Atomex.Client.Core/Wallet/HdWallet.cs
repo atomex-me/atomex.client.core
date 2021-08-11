@@ -55,27 +55,26 @@ namespace Atomex.Wallet
         {
         }
 
-        public void Lock()
-        {
+        public void Lock() =>
             KeyStorage.Lock();
-        }
 
-        public void Unlock(SecureString password)
-        {
+        public void Unlock(SecureString password) =>
             KeyStorage.Unlock(password);
-        }
 
-        public Task EncryptAsync(SecureString password)
-        {
-            return KeyStorage.EncryptAsync(password);
-        }
+        public Task EncryptAsync(SecureString password) =>
+            KeyStorage.EncryptAsync(password);
 
         public WalletAddress GetAddress(
             CurrencyConfig currency,
             int chain,
-            uint index)
+            uint index,
+            int keyType)
         {
-            using var securePublicKey = KeyStorage.GetPublicKey(currency, chain, index);
+            using var securePublicKey = KeyStorage.GetPublicKey(
+                currency: currency,
+                chain: chain,
+                index: index,
+                keyType: keyType);
 
             if (securePublicKey == null)
                 return null;
@@ -89,12 +88,16 @@ namespace Atomex.Wallet
                 Currency  = currency.Name,
                 Address   = address,
                 PublicKey = Convert.ToBase64String(publicKey),
-                KeyIndex  = new KeyIndex { Chain = chain, Index = index }
+                KeyIndex  = new KeyIndex { Chain = chain, Index = index },
+                KeyType   = keyType
             };
         }
 
-        public SecureBytes GetPublicKey(CurrencyConfig currency, KeyIndex keyIndex) =>
-            KeyStorage.GetPublicKey(currency, keyIndex);
+        public SecureBytes GetPublicKey(
+            CurrencyConfig currency,
+            KeyIndex keyIndex,
+            int keyType) =>
+            KeyStorage.GetPublicKey(currency, keyIndex, keyType);
 
         public SecureBytes GetServicePublicKey(uint index) =>
             KeyStorage.GetServicePublicKey(index);
@@ -127,12 +130,21 @@ namespace Atomex.Wallet
                 return Task.FromResult<byte[]>(null);
             }
 
-            var signature = KeyStorage.SignMessage(currency, data, address.KeyIndex);
+            var signature = KeyStorage.SignMessage(
+                currency: currency,
+                data: data,
+                keyIndex: address.KeyIndex,
+                keyType: address.KeyType);
 
             Log.Verbose("Data signature in base64: {@signature}",
                 Convert.ToBase64String(signature));
 
-            if (!KeyStorage.VerifyMessage(currency, data, signature, address.KeyIndex))
+            if (!KeyStorage.VerifyMessage(
+                currency: currency,
+                data: data,
+                signature: signature,
+                keyIndex: address.KeyIndex,
+                keyType: address.KeyType))
             {
                 Log.Error("Signature verify error");
                 return Task.FromResult<byte[]>(null);
@@ -233,11 +245,20 @@ namespace Atomex.Wallet
                 return Task.FromResult<byte[]>(null);
             }
 
-            var signature = KeyStorage.SignHash(currencyConfig, hash, address.KeyIndex);
+            var signature = KeyStorage.SignHash(
+                currency: currencyConfig,
+                hash: hash,
+                keyIndex: address.KeyIndex,
+                keyType: address.KeyType);
 
             Log.Verbose("Hash signature in base64: {@signature}", Convert.ToBase64String(signature));
 
-            if (!KeyStorage.VerifyHash(currencyConfig, hash, signature, address.KeyIndex))
+            if (!KeyStorage.VerifyHash(
+                currency: currencyConfig,
+                hash: hash,
+                signature: signature,
+                keyIndex: address.KeyIndex,
+                keyType: address.KeyType))
             {
                 Log.Error("Signature verify error");
                 return Task.FromResult<byte[]>(null);
@@ -284,15 +305,11 @@ namespace Atomex.Wallet
             return Task.FromResult(signature);
         }
 
-        public byte[] GetDeterministicSecret(CurrencyConfig currency, DateTime timeStamp)
-        {
-            return KeyStorage.GetDeterministicSecret(currency, timeStamp);
-        }
+        public byte[] GetDeterministicSecret(CurrencyConfig currency, DateTime timeStamp) =>
+            KeyStorage.GetDeterministicSecret(currency, timeStamp);
 
-        public static HdWallet LoadFromFile(string pathToWallet, SecureString password)
-        {
-            return new HdWallet(pathToWallet, password);
-        }
+        public static HdWallet LoadFromFile(string pathToWallet, SecureString password) =>
+            new HdWallet(pathToWallet, password);
 
         public void SaveToFile(string pathToWallet, SecureString password)
         {

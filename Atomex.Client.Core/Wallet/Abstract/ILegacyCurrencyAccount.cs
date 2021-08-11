@@ -50,7 +50,8 @@ namespace Atomex.Wallet.Abstract
 
         Task<WalletAddress> DivideAddressAsync(
             int chain,
-            uint index);
+            uint index,
+            int keyType);
 
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string toAddress,

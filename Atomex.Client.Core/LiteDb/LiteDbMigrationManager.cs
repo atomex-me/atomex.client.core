@@ -53,17 +53,18 @@ namespace Atomex.LiteDb
                 if (currentVersion == LiteDbMigrations.Version4)
                     currentVersion = LiteDbMigrations.MigrateFrom_4_to_5(pathToDb, sessionPassword);
 
-                if (currentVersion == LiteDbMigrations.Version5)
-                {
+                if (currentVersion == LiteDbMigrations.Version5) {
                     currentVersion = LiteDbMigrations.MigrateFrom_5_to_6(pathToDb, sessionPassword);
                     migrationComplete?.Invoke(MigrationActionType.XtzTransactionsDeleted);
                 }
 
-                if (currentVersion == LiteDbMigrations.Version6)
-                {
+                if (currentVersion == LiteDbMigrations.Version6) {
                     currentVersion = LiteDbMigrations.MigrateFrom_6_to_7(pathToDb, sessionPassword);
                     migrationComplete?.Invoke(MigrationActionType.XtzTokensDataDeleted);
                 }
+
+                if (currentVersion == LiteDbMigrations.Version7)
+                    currentVersion = LiteDbMigrations.MigrateFrom_7_to_8(pathToDb, sessionPassword);
             }
             catch (Exception e)
             {

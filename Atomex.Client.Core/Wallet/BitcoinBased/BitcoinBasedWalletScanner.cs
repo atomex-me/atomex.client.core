@@ -105,7 +105,6 @@ namespace Atomex.Wallet.BitcoinBased
 
             var scanParams = new[]
             {
-                //new {Chain = HdKeyStorage.NonHdKeysChain, LookAhead = 0},
                 new {Chain = Bip44.Internal, LookAhead = InternalLookAhead},
                 new {Chain = Bip44.External, LookAhead = ExternalLookAhead},
             };
@@ -120,7 +119,10 @@ namespace Atomex.Wallet.BitcoinBased
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var walletAddress = await Account
-                        .DivideAddressAsync(param.Chain, index)
+                        .DivideAddressAsync(
+                            chain: param.Chain,
+                            index: index,
+                            keyType: CurrencyConfig.ClassicKey)
                         .ConfigureAwait(false);
 
                     if (walletAddress == null)

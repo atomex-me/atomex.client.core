@@ -83,7 +83,7 @@ namespace Atomex.Swaps.Tezos.FA12
                                 .ConfigureAwait(false);
 
                             using var securePublicKey = TezosAccount.Wallet
-                                .GetPublicKey(XtzConfig, address.KeyIndex);
+                                .GetPublicKey(XtzConfig, address.KeyIndex, address.KeyType);
 
                             // fill operation
                             var fillResult = await tx
@@ -293,7 +293,7 @@ namespace Atomex.Swaps.Tezos.FA12
                     .ConfigureAwait(false);
 
                 using var securePublicKey = TezosAccount.Wallet
-                    .GetPublicKey(XtzConfig, walletAddress.KeyIndex);
+                    .GetPublicKey(XtzConfig, walletAddress.KeyIndex, walletAddress.KeyType);
 
                 // fill operation
                 var fillResult = await redeemTx
@@ -406,7 +406,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 .ConfigureAwait(false);
 
             using var securePublicKey = TezosAccount.Wallet
-                .GetPublicKey(XtzConfig, walletAddress.KeyIndex);
+                .GetPublicKey(XtzConfig, walletAddress.KeyIndex, walletAddress.KeyType);
 
             // fill operation
             var fillResult = await redeemTx
@@ -496,7 +496,7 @@ namespace Atomex.Swaps.Tezos.FA12
                     .ConfigureAwait(false);
 
                 using var securePublicKey = TezosAccount.Wallet
-                    .GetPublicKey(XtzConfig, walletAddress.KeyIndex);
+                    .GetPublicKey(XtzConfig, walletAddress.KeyIndex, walletAddress.KeyType);
 
                 // fill operation
                 var fillResult = await refundTx

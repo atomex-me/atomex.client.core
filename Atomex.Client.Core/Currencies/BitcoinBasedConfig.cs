@@ -42,7 +42,7 @@ namespace Atomex
             TransactionType = typeof(BitcoinBasedTransaction);
         }
 
-        public override IExtKey CreateExtKey(SecureBytes seed) => 
+        public override IExtKey CreateExtKey(SecureBytes seed, int keyType) => 
             CreateExtKeyFromSeed(seed);
 
         public static IExtKey CreateExtKeyFromSeed(SecureBytes seed) => 

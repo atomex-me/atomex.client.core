@@ -15,10 +15,12 @@ namespace Atomex.Common
         {
             var currency = currencies.GetByName(address.Currency);
 
-            address.PublicKey = wallet.GetAddress(
+            address.PublicKey = wallet
+                .GetAddress(
                     currency: currency,
                     chain: address.KeyIndex.Chain,
-                    index: address.KeyIndex.Index)
+                    index: address.KeyIndex.Index,
+                    keyType: address.KeyType)
                 .PublicKey;
 
             return address;

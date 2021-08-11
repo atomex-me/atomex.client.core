@@ -19,7 +19,7 @@ namespace Atomex.Client.Core.Tests
             var messageBytes = Encoding.UTF8.GetBytes(Message);
 
             using var seed = new SecureBytes(new Mnemonic(Mnemonic).DeriveSeed());
-            using var extKey = new TrustWalletTezosExtKey(seed);
+            using var extKey = new TezosExtKey(seed);
             using var childKey = extKey.Derive(new KeyPath("m/44'/1729'/0'/0'"));
             using var secureChildPublicKey = childKey.GetPublicKey();
             using var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
@@ -37,7 +37,7 @@ namespace Atomex.Client.Core.Tests
             var messageBytes = Encoding.UTF8.GetBytes(Message);
 
             using var seed = new SecureBytes(new Mnemonic(Mnemonic).DeriveSeed());
-            using var extKey = new TezosExtKey(seed);
+            using var extKey = new Bip32TezosExtKey(seed);
             using var childKey = extKey.Derive(new KeyPath("m/44'/1729'/0'/0'"));
             using var secureChildPublicKey = childKey.GetPublicKey();
             using var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
@@ -55,7 +55,7 @@ namespace Atomex.Client.Core.Tests
             var messageBytes = Encoding.UTF8.GetBytes(Message);
 
             using var seed = new SecureBytes(new Mnemonic(Mnemonic).DeriveSeed());
-            using var extKey = new TezosExtKey(seed);
+            using var extKey = new Bip32TezosExtKey(seed);
 
             for (var i = 0; i < 100; ++i)
             {
