@@ -105,7 +105,7 @@ namespace Atomex.Wallet
 
         public virtual Task<WalletAddress> GetLastActiveWalletAddressAsync(
             string currency,
-            int chain,
+            uint chain,
             int keyType)
         {
             lock (_sync)
@@ -116,6 +116,25 @@ namespace Atomex.Wallet
                                 w.KeyType == keyType &&
                                 w.HasActivity)
                     .OrderByDescending(w => w.KeyIndex.Index)
+                    .FirstOrDefault();
+
+                return address != null
+                    ? Task.FromResult(address)
+                    : Task.FromResult<WalletAddress>(null);
+            }
+        }
+
+        public Task<WalletAddress> GetLastActiveWalletAddressByAccountAsync(
+            string currency,
+            int keyType)
+        {
+            lock (_sync)
+            {
+                var address = _addresses.Values
+                    .Where(w => w.Currency == currency &&
+                                w.KeyType == keyType &&
+                                w.HasActivity)
+                    .OrderByDescending(w => w.KeyIndex.Account)
                     .FirstOrDefault();
 
                 return address != null

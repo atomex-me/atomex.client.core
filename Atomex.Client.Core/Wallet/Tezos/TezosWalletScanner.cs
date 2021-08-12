@@ -56,7 +56,6 @@ namespace Atomex.Wallet.Tezos
                 }
                 : new[]
                 {
-                    (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.Internal, LookAhead : InternalLookAhead),
                     (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : ExternalLookAhead),
                 };
 

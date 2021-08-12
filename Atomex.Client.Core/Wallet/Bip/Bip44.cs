@@ -10,10 +10,11 @@
     {
         public const int Purpose = 44;
 
-        public const int DefaultAccount = 0;
+        public const uint DefaultAccount = 0;
+        public const uint DefaultIndex = 0;
 
-        public const int External = 0;
-        public const int Internal = 1;
+        public const uint External = 0;
+        public const uint Internal = 1;
 
         public const uint Bitcoin = 0;
         public const uint Testnet = 1;

@@ -17,6 +17,7 @@ using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Swaps.Abstract;
 using Atomex.Swaps.BitcoinBased;
+using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.BitcoinBased
 {
@@ -693,6 +694,24 @@ namespace Atomex.Wallet.BitcoinBased
         #endregion Balances
 
         #region Addresses
+
+        public virtual async Task<WalletAddress> GetFreeInternalAddressAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var lastActiveAddress = await DataRepository
+                .GetLastActiveWalletAddressAsync(
+                    currency: Currency,
+                    chain: Bip44.Internal,
+                    keyType: CurrencyConfig.StandardKey)
+                .ConfigureAwait(false);
+
+            return await DivideAddressAsync(
+                    account: Bip44.DefaultAccount,
+                    chain: Bip44.Internal,
+                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
+                    keyType: CurrencyConfig.StandardKey)
+                .ConfigureAwait(false);
+        }
 
         public async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string toAddress,

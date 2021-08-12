@@ -188,26 +188,26 @@ namespace Atomex.Wallet.Abstract
         protected IList<WalletAddress> ResolvePublicKeys(IList<WalletAddress> addresses) =>
             addresses.ResolvePublicKeys(Currencies, Wallet);
 
-        public virtual async Task<WalletAddress> GetFreeInternalAddressAsync(
-            CancellationToken cancellationToken = default)
-        {
-            var lastActiveAddress = await DataRepository
-                .GetLastActiveWalletAddressAsync(
-                    currency: Currency,
-                    chain: Bip44.Internal,
-                    keyType: CurrencyConfig.StandardKey)
-                .ConfigureAwait(false);
-
-            return await DivideAddressAsync(
-                    chain: Bip44.Internal,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    keyType: CurrencyConfig.StandardKey)
-                .ConfigureAwait(false);
-        }
-
         public virtual async Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
+            // for tezos and tezos tokens with standard keys different account are used
+            if (Currency == TezosConfig.Xtz || Atomex.Currencies.IsTezosToken(Currency))
+            {
+                var lastActiveAccountAddress = await DataRepository
+                    .GetLastActiveWalletAddressByAccountAsync(
+                        currency: Currency,
+                        keyType: CurrencyConfig.StandardKey)
+                    .ConfigureAwait(false);
+
+                return await DivideAddressAsync(
+                        account: lastActiveAccountAddress?.KeyIndex.Account + 1 ?? Bip44.DefaultAccount,
+                        chain: Bip44.External,
+                        index: Bip44.DefaultIndex,
+                        keyType: CurrencyConfig.StandardKey)
+                    .ConfigureAwait(false);
+            }
+
             var lastActiveAddress = await DataRepository
                 .GetLastActiveWalletAddressAsync(
                     currency: Currency,
@@ -216,8 +216,9 @@ namespace Atomex.Wallet.Abstract
                 .ConfigureAwait(false);
 
             return await DivideAddressAsync(
+                    account: Bip44.DefaultAccount,
                     chain: Bip44.External,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
+                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? Bip44.DefaultIndex,
                     keyType: CurrencyConfig.StandardKey)
                 .ConfigureAwait(false);
         }

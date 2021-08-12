@@ -120,6 +120,7 @@ namespace Atomex.Wallet.BitcoinBased
 
                     var walletAddress = await Account
                         .DivideAddressAsync(
+                            account: Bip44.DefaultAccount,
                             chain: param.Chain,
                             index: index,
                             keyType: CurrencyConfig.StandardKey)

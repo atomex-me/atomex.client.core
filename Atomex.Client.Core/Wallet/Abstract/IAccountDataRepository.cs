@@ -27,7 +27,11 @@ namespace Atomex.Wallet.Abstract
 
         Task<WalletAddress> GetLastActiveWalletAddressAsync(
             string currency,
-            int chain,
+            uint chain,
+            int keyType);
+
+        Task<WalletAddress> GetLastActiveWalletAddressByAccountAsync(
+            string currency,
             int keyType);
 
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
