@@ -38,7 +38,7 @@ namespace Atomex.Wallet.Tezos
                 .GetAddressesAsync(currency.Name)
                 .ConfigureAwait(false);
 
-            var isFirstScan = !tezosAddresses.Any();
+            var isFirstScan = tezosAddresses.Count() <= 1;
 
             var scanBip32Ed25519 = isFirstScan || tezosAddresses
                 .FirstOrDefault(w => w.KeyType == TezosConfig.Bip32Ed25519Key &&
@@ -66,6 +66,7 @@ namespace Atomex.Wallet.Tezos
             foreach (var (keyType, chain, lookAhead) in scanParams)
             {
                 var freeKeysCount = 0;
+                var account = 0u;
                 var index = 0u;
 
                 while (true)
@@ -74,6 +75,7 @@ namespace Atomex.Wallet.Tezos
 
                     var walletAddress = await Account
                         .DivideAddressAsync(
+                            account: account,
                             chain: chain,
                             index: index,
                             keyType: keyType)
@@ -119,7 +121,14 @@ namespace Atomex.Wallet.Tezos
                         }
                     }
 
-                    index++;
+                    if (keyType == TezosConfig.Bip32Ed25519Key)
+                    {
+                        index++;
+                    }
+                    else
+                    {
+                        account++;
+                    }
                 }
             }
 

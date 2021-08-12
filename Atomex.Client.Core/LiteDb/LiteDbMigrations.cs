@@ -328,21 +328,25 @@ namespace Atomex.LiteDb
             using var db = new LiteDatabase(connectionString);
 
             var addressesCollection = db.GetCollection("Addresses");
-            var xtzAddresses = addressesCollection.Find(Query.EQ("Currency", "XTZ"));
+            var xtzAddresses = addressesCollection
+                .Find(Query.EQ("Currency", "XTZ"))
+                .ToList();
 
             foreach (var xtzAddress in xtzAddresses)
-                xtzAddress["KeyType"] = TezosConfig.Bip32Ed25519Key;
+                xtzAddress.Add("KeyType", TezosConfig.Bip32Ed25519Key);
 
             var upserted = addressesCollection.Upsert(xtzAddresses);
 
             var tezosTokensAddressesCollection = db.GetCollection("TezosTokensAddresses");
-            var tezosTokensAddresses = tezosTokensAddressesCollection.FindAll();
+            var tezosTokensAddresses = tezosTokensAddressesCollection
+                .FindAll()
+                .ToList();
 
             foreach (var tezosTokenAddress in tezosTokensAddresses)
-                tezosTokenAddress["KeyType"] = TezosConfig.Bip32Ed25519Key;
+                tezosTokenAddress.Add("KeyType", TezosConfig.Bip32Ed25519Key);
 
             upserted = tezosTokensAddressesCollection.Upsert(tezosTokensAddresses);
-
+           
             Shrink(db, sessionPassword);
             UpdateVersion(db: db, fromVersion: Version7, toVersion: Version8);
 
@@ -363,7 +367,7 @@ namespace Atomex.LiteDb
 
         private static void Shrink(LiteDatabase db, string sessionPassword)
         {
-            // db.Shrink(sessionPassword);
+            db.Shrink(sessionPassword);
 
             Log.Debug("Db successfully shrinked");
         }

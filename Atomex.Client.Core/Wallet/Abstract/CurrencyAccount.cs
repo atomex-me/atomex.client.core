@@ -192,7 +192,7 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default)
         {
             // for tezos and tezos tokens with standard keys different account are used
-            if (Currency == TezosConfig.Xtz || Atomex.Currencies.IsTezosToken(Currency))
+            if (Atomex.Currencies.IsTezosBased(Currency))
             {
                 var lastActiveAccountAddress = await DataRepository
                     .GetLastActiveWalletAddressByAccountAsync(

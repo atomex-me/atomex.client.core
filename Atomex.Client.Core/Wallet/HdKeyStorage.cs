@@ -119,8 +119,7 @@ namespace Atomex.Wallet
         {
             using var masterKey = currency.CreateExtKey(Seed, keyType);
 
-            if (keyType == CurrencyConfig.StandardKey &&
-                (currency.Name == TezosConfig.Xtz || Currencies.IsTezosToken(currency.Name)))
+            if (keyType == CurrencyConfig.StandardKey && Currencies.IsTezosBased(currency.Name))
             {
                 return masterKey.Derive(new KeyPath(path: $"m/{purpose}'/{currency.Bip44Code}'/{account}'/{chain}'"));
             }

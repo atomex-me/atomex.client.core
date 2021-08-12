@@ -553,152 +553,152 @@ namespace Atomex.Swaps
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentSigned) &&
-                !swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-            {
-                var txResult = await GetCurrencySwap(swap.SoldCurrency)
-                    .TryToFindPaymentAsync(swap, cancellationToken)
-                    .ConfigureAwait(false);
+            //if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentSigned) &&
+            //    !swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
+            //{
+            //    var txResult = await GetCurrencySwap(swap.SoldCurrency)
+            //        .TryToFindPaymentAsync(swap, cancellationToken)
+            //        .ConfigureAwait(false);
 
-                if (txResult == null || txResult.HasError)
-                    return; // can't get tx from blockchain
+            //    if (txResult == null || txResult.HasError)
+            //        return; // can't get tx from blockchain
 
-                if (txResult.Value != null)
-                {
-                    swap.PaymentTx  = txResult.Value;
-                    swap.PaymentTxId = txResult.Value.Id;
-                    swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
+            //    if (txResult.Value != null)
+            //    {
+            //        swap.PaymentTx  = txResult.Value;
+            //        swap.PaymentTxId = txResult.Value.Id;
+            //        swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
 
-                    await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentBroadcast, cancellationToken)
-                        .ConfigureAwait(false);
+            //        await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentBroadcast, cancellationToken)
+            //            .ConfigureAwait(false);
 
-                    if (txResult.Value.IsConfirmed)
-                        swap.StateFlags |= SwapStateFlags.IsPaymentConfirmed;
+            //        if (txResult.Value.IsConfirmed)
+            //            swap.StateFlags |= SwapStateFlags.IsPaymentConfirmed;
 
-                    await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentConfirmed, cancellationToken)
-                        .ConfigureAwait(false);
-                }
-            }
+            //        await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentConfirmed, cancellationToken)
+            //            .ConfigureAwait(false);
+            //    }
+            //}
 
-            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-            {
-                bool waitForRedeem = true;
+            //if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
+            //{
+            //    bool waitForRedeem = true;
 
-                if (!swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed) &&
-                    DateTime.UtcNow > swap.TimeStamp.ToUniversalTime() + DefaultMaxPaymentTimeout)
-                {
-                    var currency = _account.Currencies
-                        .GetByName(swap.PaymentTx.Currency);
+            //    if (!swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed) &&
+            //        DateTime.UtcNow > swap.TimeStamp.ToUniversalTime() + DefaultMaxPaymentTimeout)
+            //    {
+            //        var currency = _account.Currencies
+            //            .GetByName(swap.PaymentTx.Currency);
 
-                    var result = await currency
-                        .IsTransactionConfirmed(
-                            txId: swap.PaymentTx.Id,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
+            //        var result = await currency
+            //            .IsTransactionConfirmed(
+            //                txId: swap.PaymentTx.Id,
+            //                cancellationToken: cancellationToken)
+            //            .ConfigureAwait(false);
 
-                    if (result.HasError || !result.Value.IsConfirmed)
-                    {
-                        waitForRedeem = false;
+            //        if (result.HasError || !result.Value.IsConfirmed)
+            //        {
+            //            waitForRedeem = false;
 
-                        Log.Debug("Swap {@id} canceled in RestoreSwapAsync. Timeout reached.", swap.Id);
+            //            Log.Debug("Swap {@id} canceled in RestoreSwapAsync. Timeout reached.", swap.Id);
 
-                        swap.StateFlags |= SwapStateFlags.IsCanceled;
+            //            swap.StateFlags |= SwapStateFlags.IsCanceled;
 
-                        await UpdateSwapAsync(swap, SwapStateFlags.IsCanceled, cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                }
+            //            await UpdateSwapAsync(swap, SwapStateFlags.IsCanceled, cancellationToken)
+            //                .ConfigureAwait(false);
+            //        }
+            //    }
 
-                if (waitForRedeem)
-                {
-                    await GetCurrencySwap(swap.SoldCurrency)
-                        .StartWaitForRedeemAsync(swap, cancellationToken)
-                        .ConfigureAwait(false);
+            //    if (waitForRedeem)
+            //    {
+            //        await GetCurrencySwap(swap.SoldCurrency)
+            //            .StartWaitForRedeemAsync(swap, cancellationToken)
+            //            .ConfigureAwait(false);
 
-                    if (swap.IsInitiator)
-                    {
-                        // check acceptor payment confirmation
-                        await GetCurrencySwap(swap.PurchasedCurrency)
-                            .StartPartyPaymentControlAsync(swap, cancellationToken)
-                            .ConfigureAwait(false);
-                    }
+            //        if (swap.IsInitiator)
+            //        {
+            //            // check acceptor payment confirmation
+            //            await GetCurrencySwap(swap.PurchasedCurrency)
+            //                .StartPartyPaymentControlAsync(swap, cancellationToken)
+            //                .ConfigureAwait(false);
+            //        }
 
-                    if (swap.IsAcceptor && swap.RewardForRedeem > 0)
-                    {
-                        await GetCurrencySwap(swap.PurchasedCurrency)
-                            .StartWaitForRedeemBySomeoneAsync(swap, cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                }
-            }
-            else
-            {
-                if (IsPaymentDeadlineReached(swap))
-                {
-                    await CancelSwapByTimeoutAsync(swap, cancellationToken)
-                        .ConfigureAwait(false);
+            //        if (swap.IsAcceptor && swap.RewardForRedeem > 0)
+            //        {
+            //            await GetCurrencySwap(swap.PurchasedCurrency)
+            //                .StartWaitForRedeemBySomeoneAsync(swap, cancellationToken)
+            //                .ConfigureAwait(false);
+            //        }
+            //    }
+            //}
+            //else
+            //{
+            //    if (IsPaymentDeadlineReached(swap))
+            //    {
+            //        await CancelSwapByTimeoutAsync(swap, cancellationToken)
+            //            .ConfigureAwait(false);
 
-                    return;
-                }
+            //        return;
+            //    }
 
-                if (swap.IsAcceptor)
-                {
-                    if (!swap.Status.HasFlag(SwapStatus.Initiated)) // not initiated
-                    {
-                        // try to get actual swap status from server and accept swap
-                        _swapClient.SwapStatusAsync(new Request<Swap>() { Id = $"get_swap_{swap.Id}", Data = swap });
-                    }
-                    else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated but not accepted
-                            !swap.Status.HasFlag(SwapStatus.Accepted))
-                    {
-                        // try to get actual swap status from server and accept swap
-                        _swapClient.SwapStatusAsync(new Request<Swap>() { Id = $"get_swap_{swap.Id}", Data = swap });
-                    }
-                    else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated and accepted
-                             swap.Status.HasFlag(SwapStatus.Accepted))
-                    {
-                        // wait for initiator tx
-                        await GetCurrencySwap(swap.PurchasedCurrency)
-                            .StartPartyPaymentControlAsync(swap)
-                            .ConfigureAwait(false);
-                    }
-                }
-                else if (swap.IsInitiator)
-                {
-                    if (!swap.Status.HasFlag(SwapStatus.Initiated)) // not initiated
-                    {
-                        // initiate
-                        await InitiateSwapAsync(swap)
-                            .ConfigureAwait(false);
-                    }
-                    else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated but not accepted
-                            !swap.Status.HasFlag(SwapStatus.Accepted))
-                    {
-                        // try to get actual swap status from server
-                        _swapClient.SwapStatusAsync(new Request<Swap>() { Id = $"get_swap_{swap.Id}", Data = swap });
-                    }
-                    else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated and accepted
-                             swap.Status.HasFlag(SwapStatus.Accepted))
-                    {
-                        // broadcast initiator payment again
-                        await GetCurrencySwap(swap.SoldCurrency)
-                            .PayAsync(swap)
-                            .ConfigureAwait(false);
+            //    if (swap.IsAcceptor)
+            //    {
+            //        if (!swap.Status.HasFlag(SwapStatus.Initiated)) // not initiated
+            //        {
+            //            // try to get actual swap status from server and accept swap
+            //            _swapClient.SwapStatusAsync(new Request<Swap>() { Id = $"get_swap_{swap.Id}", Data = swap });
+            //        }
+            //        else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated but not accepted
+            //                !swap.Status.HasFlag(SwapStatus.Accepted))
+            //        {
+            //            // try to get actual swap status from server and accept swap
+            //            _swapClient.SwapStatusAsync(new Request<Swap>() { Id = $"get_swap_{swap.Id}", Data = swap });
+            //        }
+            //        else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated and accepted
+            //                 swap.Status.HasFlag(SwapStatus.Accepted))
+            //        {
+            //            // wait for initiator tx
+            //            await GetCurrencySwap(swap.PurchasedCurrency)
+            //                .StartPartyPaymentControlAsync(swap)
+            //                .ConfigureAwait(false);
+            //        }
+            //    }
+            //    else if (swap.IsInitiator)
+            //    {
+            //        if (!swap.Status.HasFlag(SwapStatus.Initiated)) // not initiated
+            //        {
+            //            // initiate
+            //            await InitiateSwapAsync(swap)
+            //                .ConfigureAwait(false);
+            //        }
+            //        else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated but not accepted
+            //                !swap.Status.HasFlag(SwapStatus.Accepted))
+            //        {
+            //            // try to get actual swap status from server
+            //            _swapClient.SwapStatusAsync(new Request<Swap>() { Id = $"get_swap_{swap.Id}", Data = swap });
+            //        }
+            //        else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated and accepted
+            //                 swap.Status.HasFlag(SwapStatus.Accepted))
+            //        {
+            //            // broadcast initiator payment again
+            //            await GetCurrencySwap(swap.SoldCurrency)
+            //                .PayAsync(swap)
+            //                .ConfigureAwait(false);
 
-                        if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-                        {
-                            // start redeem control async
-                            await GetCurrencySwap(swap.SoldCurrency)
-                                .StartWaitForRedeemAsync(swap)
-                                .ConfigureAwait(false);
-                        }
+            //            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
+            //            {
+            //                // start redeem control async
+            //                await GetCurrencySwap(swap.SoldCurrency)
+            //                    .StartWaitForRedeemAsync(swap)
+            //                    .ConfigureAwait(false);
+            //            }
 
-                        await GetCurrencySwap(swap.PurchasedCurrency)
-                            .StartPartyPaymentControlAsync(swap)
-                            .ConfigureAwait(false);
-                    }
-                }
-            }
+            //            await GetCurrencySwap(swap.PurchasedCurrency)
+            //                .StartPartyPaymentControlAsync(swap)
+            //                .ConfigureAwait(false);
+            //        }
+            //    }
+            //}
         }
 
         public Task SwapTimeoutControlAsync(
