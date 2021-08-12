@@ -830,6 +830,7 @@ namespace Atomex.Wallet.Ethereum
         public override async Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
+            // addresses with tokens
             var unspentAddresses = await DataRepository
                 .GetUnspentAddressesAsync(Currency)
                 .ConfigureAwait(false);
@@ -837,6 +838,7 @@ namespace Atomex.Wallet.Ethereum
             if (unspentAddresses.Any())
                 return unspentAddresses.MaxBy(a => a.AvailableBalance());
 
+            // addresses with eth
             var unspentEthereumAddresses = await DataRepository
                 .GetUnspentAddressesAsync("ETH")
                 .ConfigureAwait(false);
@@ -846,25 +848,30 @@ namespace Atomex.Wallet.Ethereum
                 var ethereumAddress = unspentEthereumAddresses.MaxBy(a => a.AvailableBalance());
 
                 return await DivideAddressAsync(
-                    chain: ethereumAddress.KeyIndex.Chain,
-                    index: ethereumAddress.KeyIndex.Index);
+                    keyIndex: ethereumAddress.KeyIndex,
+                    keyType: ethereumAddress.KeyType);
             }
 
+            // last active address
             var lastActiveAddress = await DataRepository
                 .GetLastActiveWalletAddressAsync(
                     currency: "ETH",
-                    chain: Bip44.External)
+                    chain: Bip44.External,
+                    keyType: CurrencyConfig.StandardKey)
                 .ConfigureAwait(false);
 
             return await DivideAddressAsync(
+                    account: Bip44.DefaultAccount,
                     chain: Bip44.External,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0)
+                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
+                    keyType: CurrencyConfig.StandardKey)
                 .ConfigureAwait(false);
         }
 
         public async Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default)
         {
+            // addresses with tokens
             var unspentAddresses = await DataRepository
                 .GetUnspentAddressesAsync(Currency)
                 .ConfigureAwait(false);
@@ -872,6 +879,7 @@ namespace Atomex.Wallet.Ethereum
             if (unspentAddresses.Any())
                 return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance()));
 
+            // addresses with eth
             var unspentEthereumAddresses = await DataRepository
                 .GetUnspentAddressesAsync("ETH")
                 .ConfigureAwait(false);
@@ -881,8 +889,8 @@ namespace Atomex.Wallet.Ethereum
                 var ethereumAddress = unspentEthereumAddresses.MaxBy(a => a.AvailableBalance());
 
                 return await DivideAddressAsync(
-                    chain: ethereumAddress.KeyIndex.Chain,
-                    index: ethereumAddress.KeyIndex.Index);
+                    keyIndex: ethereumAddress.KeyIndex,
+                    keyType: ethereumAddress.KeyType);
             }
 
             foreach (var chain in new[] { Bip44.Internal, Bip44.External })
@@ -890,7 +898,8 @@ namespace Atomex.Wallet.Ethereum
                 var lastActiveAddress = await DataRepository
                     .GetLastActiveWalletAddressAsync(
                         currency: Currency,
-                        chain: chain)
+                        chain: chain,
+                        keyType: CurrencyConfig.StandardKey)
                     .ConfigureAwait(false);
 
                 if (lastActiveAddress != null)

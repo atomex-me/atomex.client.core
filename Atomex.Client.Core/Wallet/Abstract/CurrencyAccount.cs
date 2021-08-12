@@ -3,13 +3,14 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Bip;
-using Serilog;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -126,18 +127,36 @@ namespace Atomex.Wallet.Abstract
 
         #region Addresses
 
+        public Task<WalletAddress> DivideAddressAsync(
+            KeyIndex keyIndex,
+            int keyType)
+        {
+            return DivideAddressAsync(
+                account: keyIndex.Account,
+                chain: keyIndex.Chain,
+                index: keyIndex.Index,
+                keyType: keyType);
+        }
+
         public virtual async Task<WalletAddress> DivideAddressAsync(
-            int chain,
-            uint index)
+            uint account,
+            uint chain,
+            uint index,
+            int keyType)
         {
             var currency = Currencies.GetByName(Currency);
 
-            var walletAddress = Wallet.GetAddress(currency, chain, index);
+            var walletAddress = Wallet.GetAddress(
+                currency: currency,
+                account: account,
+                chain: chain,
+                index: index,
+                keyType: keyType);
 
             if (walletAddress == null)
                 return null;
 
-            await DataRepository
+            _ = await DataRepository
                 .TryInsertAddressAsync(walletAddress)
                 .ConfigureAwait(false);
 
@@ -169,33 +188,38 @@ namespace Atomex.Wallet.Abstract
         protected IList<WalletAddress> ResolvePublicKeys(IList<WalletAddress> addresses) =>
             addresses.ResolvePublicKeys(Currencies, Wallet);
 
-        public virtual async Task<WalletAddress> GetFreeInternalAddressAsync(
-            CancellationToken cancellationToken = default)
-        {
-            var lastActiveAddress = await DataRepository
-                .GetLastActiveWalletAddressAsync(
-                    currency: Currency,
-                    chain: Bip44.Internal)
-                .ConfigureAwait(false);
-
-            return await DivideAddressAsync(
-                    chain: Bip44.Internal,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0)
-                .ConfigureAwait(false);
-        }
-
         public virtual async Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
+            // for tezos and tezos tokens with standard keys different account are used
+            if (Atomex.Currencies.IsTezosBased(Currency))
+            {
+                var lastActiveAccountAddress = await DataRepository
+                    .GetLastActiveWalletAddressByAccountAsync(
+                        currency: Currency,
+                        keyType: CurrencyConfig.StandardKey)
+                    .ConfigureAwait(false);
+
+                return await DivideAddressAsync(
+                        account: lastActiveAccountAddress?.KeyIndex.Account + 1 ?? Bip44.DefaultAccount,
+                        chain: Bip44.External,
+                        index: Bip44.DefaultIndex,
+                        keyType: CurrencyConfig.StandardKey)
+                    .ConfigureAwait(false);
+            }
+
             var lastActiveAddress = await DataRepository
                 .GetLastActiveWalletAddressAsync(
                     currency: Currency,
-                    chain: Bip44.External)
+                    chain: Bip44.External,
+                    keyType: CurrencyConfig.StandardKey)
                 .ConfigureAwait(false);
 
             return await DivideAddressAsync(
+                    account: Bip44.DefaultAccount,
                     chain: Bip44.External,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0)
+                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? Bip44.DefaultIndex,
+                    keyType: CurrencyConfig.StandardKey)
                 .ConfigureAwait(false);
         }
 

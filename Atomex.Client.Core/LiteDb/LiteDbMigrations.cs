@@ -21,6 +21,7 @@ namespace Atomex.LiteDb
         public const ushort Version5 = 5;
         public const ushort Version6 = 6;
         public const ushort Version7 = 7;
+        public const ushort Version8 = 8;
 
         public static ushort MigrateFrom_0_to_1(string pathToDb, string sessionPassword)
         {
@@ -309,7 +310,47 @@ namespace Atomex.LiteDb
             Shrink(db, sessionPassword);
             UpdateVersion(db: db, fromVersion: Version6, toVersion: Version7);
 
-            return Version6;
+            return Version7;
+        }
+
+        public static ushort MigrateFrom_7_to_8(string pathToDb, string sessionPassword)
+        {
+            var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
+
+            using (var db_ver = new LiteDatabase(connectionString))
+            {
+                if (db_ver.Engine.UserVersion != Version7)
+                    throw new Exception("Invalid db version");
+            }
+
+            Backup(pathToDb);
+
+            using var db = new LiteDatabase(connectionString);
+
+            var addressesCollection = db.GetCollection("Addresses");
+            var xtzAddresses = addressesCollection
+                .Find(Query.EQ("Currency", "XTZ"))
+                .ToList();
+
+            foreach (var xtzAddress in xtzAddresses)
+                xtzAddress.Add("KeyType", TezosConfig.Bip32Ed25519Key);
+
+            var upserted = addressesCollection.Upsert(xtzAddresses);
+
+            var tezosTokensAddressesCollection = db.GetCollection("TezosTokensAddresses");
+            var tezosTokensAddresses = tezosTokensAddressesCollection
+                .FindAll()
+                .ToList();
+
+            foreach (var tezosTokenAddress in tezosTokensAddresses)
+                tezosTokenAddress.Add("KeyType", TezosConfig.Bip32Ed25519Key);
+
+            upserted = tezosTokensAddressesCollection.Upsert(tezosTokensAddresses);
+           
+            Shrink(db, sessionPassword);
+            UpdateVersion(db: db, fromVersion: Version7, toVersion: Version8);
+
+            return Version8;
         }
 
         private static void Backup(string pathToDb)
@@ -326,7 +367,7 @@ namespace Atomex.LiteDb
 
         private static void Shrink(LiteDatabase db, string sessionPassword)
         {
-            // db.Shrink(sessionPassword);
+            db.Shrink(sessionPassword);
 
             Log.Debug("Db successfully shrinked");
         }

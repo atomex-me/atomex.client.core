@@ -125,6 +125,9 @@ namespace Atomex
             name == "BTC" ||
             name == "LTC";
 
+        public static bool IsTezosBased(string name) =>
+            name == "XTZ" || IsTezosToken(name);
+
         public static bool IsTezosToken(string name) =>
             name == "TZBTC" ||
             name == "KUSD" ||

@@ -46,7 +46,12 @@ namespace Atomex.Client.Core.Tests
             apiSetup?.Invoke(apiMock);
 
             var wallet = new HdWallet(Network.TestNet);
-            var fromAddress = wallet.GetAddress(currency, 0, 0);
+            var fromAddress = wallet.GetAddress(
+                currency: currency,
+                account: 0,
+                chain: 0,
+                index: 0,
+                keyType: CurrencyConfig.StandardKey);
             var fromOutputs = GetOutputs(fromAddress.Address, NBitcoin.Network.TestNet, currency.CoinToSatoshi(available)).ToList();
 
             var repositoryMock = new Mock<IAccountDataRepository>();

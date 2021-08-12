@@ -35,7 +35,6 @@ namespace Atomex.Wallet.Ethereum
 
             var scanParams = new[]
             {
-                new {Chain = HdKeyStorage.NonHdKeysChain, LookAhead = 0},
                 new {Chain = Bip44.Internal, LookAhead = InternalLookAhead},
                 new {Chain = Bip44.External, LookAhead = ExternalLookAhead},
             };
@@ -54,7 +53,11 @@ namespace Atomex.Wallet.Ethereum
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var walletAddress = await Account
-                        .DivideAddressAsync(param.Chain, index)
+                        .DivideAddressAsync(
+                            account: Bip44.DefaultAccount,
+                            chain: param.Chain,
+                            index: index,
+                            keyType: CurrencyConfig.StandardKey)
                         .ConfigureAwait(false);
 
                     if (walletAddress == null)

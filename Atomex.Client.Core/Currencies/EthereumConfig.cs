@@ -159,7 +159,7 @@ namespace Atomex
             };
         }
 
-        public override IExtKey CreateExtKey(SecureBytes seed) =>
+        public override IExtKey CreateExtKey(SecureBytes seed, int keyType) =>
             new EthereumExtKey(seed);
 
         public override IKey CreateKey(SecureBytes seed) =>

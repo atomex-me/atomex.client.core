@@ -41,6 +41,8 @@ namespace Atomex.LiteDb
         private const string TokenContractKey      = nameof(TokenBalance) + "." + nameof(TokenBalance.Contract);
         private const string TokenIdKey            = nameof(TokenBalance) + "." + nameof(TokenBalance.TokenId);
         private const string TransferContract      = nameof(TokenTransfer.Contract);
+        private const string KeyTypeKey            = nameof(WalletAddress.KeyType);
+        private const string AccountKey            = nameof(KeyIndex) + "." + nameof(KeyIndex.Account);
 
         private readonly string _pathToDb;
         private readonly string _sessionPassword;
@@ -216,7 +218,8 @@ namespace Atomex.LiteDb
 
         public Task<WalletAddress> GetLastActiveWalletAddressAsync(
             string currency,
-            int chain)
+            uint chain,
+            int keyType)
         {
             try
             {
@@ -229,7 +232,41 @@ namespace Atomex.LiteDb
                         Query.And(
                             Query.All(IndexKey, Query.Descending),
                             Query.EQ(CurrencyKey, currency),
-                            Query.EQ(ChainKey, chain),
+                            Query.EQ(ChainKey, (int)chain),
+                            Query.EQ(KeyTypeKey, keyType),
+                            Query.EQ(HasActivityKey, true)));
+
+                    var walletAddress = document != null
+                        ? _bsonMapper.ToObject<WalletAddress>(document)
+                        : null;
+
+                    return Task.FromResult(walletAddress);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error getting last active wallet address");
+            }
+
+            return Task.FromResult<WalletAddress>(null);
+        }
+
+        public Task<WalletAddress> GetLastActiveWalletAddressByAccountAsync(
+            string currency,
+            int keyType)
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    var addresses = db.GetCollection(AddressesCollectionName);
+
+                    var document = addresses.FindOne(
+                        Query.And(
+                            Query.All(AccountKey, Query.Descending),
+                            Query.EQ(CurrencyKey, currency),
+                            Query.EQ(KeyTypeKey, keyType),
                             Query.EQ(HasActivityKey, true)));
 
                     var walletAddress = document != null
@@ -310,6 +347,28 @@ namespace Atomex.LiteDb
             }
 
             return Task.FromResult(Enumerable.Empty<WalletAddress>());
+        }
+
+        public Task<bool> RemoveAddressAsync(
+            string currency,
+            string address)
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                    var addresses = db.GetCollection(AddressesCollectionName);
+
+                    return Task.FromResult(addresses.Delete($"{address}:{currency}"));
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error getting wallet addresses");
+            }
+
+            return Task.FromResult(false);
         }
 
         #endregion Addresses

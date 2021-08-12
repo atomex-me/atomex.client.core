@@ -21,6 +21,7 @@ namespace Atomex.Core
         public decimal UnconfirmedOutcome { get; set; }
         public KeyIndex KeyIndex { get; set; }
         public bool HasActivity { get; set; }
+        public int KeyType { get; set; }
 
         /// <summary>
         /// Public key in base64
@@ -34,18 +35,15 @@ namespace Atomex.Core
 
         public TokenBalance TokenBalance { get; set; }
 
-        public byte[] PublicKeyBytes() => Convert.FromBase64String(PublicKey);
+        public byte[] PublicKeyBytes() =>
+            Convert.FromBase64String(PublicKey);
 
-        public decimal AvailableBalance(bool includeUnconfirmedIncome = false)
-        {
-            return includeUnconfirmedIncome
+        public decimal AvailableBalance(bool includeUnconfirmedIncome = false) =>
+            includeUnconfirmedIncome
                 ? Balance + UnconfirmedIncome + UnconfirmedOutcome
                 : Balance + UnconfirmedOutcome;
-        }
 
-        public override string ToString()
-        {
-            return $"{Address};{Balance};{UnconfirmedIncome};{UnconfirmedOutcome}";
-        }
+        public override string ToString() =>
+            $"{Address};{Balance};{UnconfirmedIncome};{UnconfirmedOutcome}";
     }
 }

@@ -305,6 +305,7 @@ namespace Atomex.Wallet.Tezos
                         Balance      = tb.GetTokenBalance(),
                         Currency     = contractType,
                         KeyIndex     = xtzAddress.KeyIndex,
+                        KeyType      = xtzAddress.KeyType,
                         HasActivity  = true,
                         TokenBalance = tb
                     });

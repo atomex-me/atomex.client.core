@@ -36,8 +36,8 @@ namespace Atomex.Swaps.Helpers
                 feeCurrencyAddress = await account
                     .GetCurrencyAccount<ILegacyCurrencyAccount>(feeCurrency)
                     .DivideAddressAsync(
-                        chain: walletAddress.KeyIndex.Chain,
-                        index: walletAddress.KeyIndex.Index)
+                        keyIndex: walletAddress.KeyIndex,
+                        keyType: walletAddress.KeyType)
                     .ConfigureAwait(false);
 
                 if (feeCurrencyAddress == null)
