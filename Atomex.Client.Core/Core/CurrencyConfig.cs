@@ -14,7 +14,7 @@ namespace Atomex.Core
 
         public const int MaxNameLength = 32;
         public const string CoinsDefaultFileName = "coins.default.json";
-        public const int ClassicKey = 0;
+        public const int StandardKey = 0;
 
         public int Id { get; set; }
         public string Name { get; set; }

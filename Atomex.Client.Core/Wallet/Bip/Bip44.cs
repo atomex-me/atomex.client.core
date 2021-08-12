@@ -10,6 +10,8 @@
     {
         public const int Purpose = 44;
 
+        public const int DefaultAccount = 0;
+
         public const int External = 0;
         public const int Internal = 1;
 

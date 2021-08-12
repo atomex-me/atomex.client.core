@@ -18,8 +18,6 @@ namespace Atomex.Wallet.Tezos
         private const int DefaultInternalLookAhead = 2;
         private const int DefaultExternalLookAhead = 2;
 
-        //private class Scan
-
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
         private TezosAccount Account { get; }
@@ -52,22 +50,21 @@ namespace Atomex.Wallet.Tezos
             var scanParams = scanBip32Ed25519
                 ? new[]
                 {
-                    new {KeyType = TezosConfig.Bip32Ed25519Key, Chain = Bip44.Internal, LookAhead = InternalLookAhead},
-                    new {KeyType = TezosConfig.Bip32Ed25519Key, Chain = Bip44.External, LookAhead = ExternalLookAhead},
-                    new {KeyType = CurrencyConfig.ClassicKey, Chain = Bip44.Internal, LookAhead = InternalLookAhead},
-                    new {KeyType = CurrencyConfig.ClassicKey, Chain = Bip44.External, LookAhead = ExternalLookAhead},
+                    (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.Internal, LookAhead : InternalLookAhead),
+                    (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.External, LookAhead : ExternalLookAhead),
+                    (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : InternalLookAhead)
                 }
                 : new[]
                 {
-                    new {KeyType = CurrencyConfig.ClassicKey, Chain = Bip44.Internal, LookAhead = InternalLookAhead},
-                    new {KeyType = CurrencyConfig.ClassicKey, Chain = Bip44.External, LookAhead = ExternalLookAhead},
+                    (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.Internal, LookAhead : InternalLookAhead),
+                    (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : ExternalLookAhead),
                 };
 
             var txs = new List<TezosTransaction>();
             var txsById = new Dictionary<string, TezosTransaction>();
             var internalTxs = new List<TezosTransaction>();
 
-            foreach (var param in scanParams)
+            foreach (var (keyType, chain, lookAhead) in scanParams)
             {
                 var freeKeysCount = 0;
                 var index = 0u;
@@ -78,9 +75,9 @@ namespace Atomex.Wallet.Tezos
 
                     var walletAddress = await Account
                         .DivideAddressAsync(
-                            chain: param.Chain,
+                            chain: chain,
                             index: index,
-                            keyType: param.KeyType)
+                            keyType: keyType)
                         .ConfigureAwait(false);
 
                     if (walletAddress == null)
@@ -89,7 +86,7 @@ namespace Atomex.Wallet.Tezos
                     Log.Debug(
                         "Scan transactions for {@name} address {@chain}:{@index}:{@address}",
                         currency.Name,
-                        param.Chain,
+                        chain,
                         index,
                         walletAddress.Address);
 
@@ -100,9 +97,9 @@ namespace Atomex.Wallet.Tezos
                     {
                         freeKeysCount++;
 
-                        if (freeKeysCount >= param.LookAhead)
+                        if (freeKeysCount >= lookAhead)
                         {
-                            Log.Debug("{@lookAhead} free keys found. Chain scan completed", param.LookAhead);
+                            Log.Debug("{@lookAhead} free keys found. Chain scan completed", lookAhead);
                             break;
                         }
                     }
@@ -113,29 +110,17 @@ namespace Atomex.Wallet.Tezos
                         foreach (var tx in addressTxs)
                         {
                             if (tx.IsInternal)
+                            {
                                 internalTxs.Add(tx);
+                            }
                             else if (!txsById.ContainsKey(tx.Id))
+                            {
                                 txsById.Add(tx.Id, tx);
+                            }
                         }
                     }
 
                     index++;
-                }
-            }
-
-            if (isFirstScan && scanBip32Ed25519)
-            {
-                // remove bip32Ed25519 addresses if there is no activity on them
-                var addresses = (await Account.DataRepository
-                    .GetAddressesAsync(currency.Name)
-                    .ConfigureAwait(false))
-                    .Where(a => a.KeyType == TezosConfig.Bip32Ed25519Key);
-
-                foreach (var address in addresses)
-                {
-                    await Account.DataRepository
-                        .RemoveAddressAsync(address.Currency, address.Address)
-                        .ConfigureAwait(false);
                 }
             }
 
@@ -149,18 +134,45 @@ namespace Atomex.Wallet.Tezos
 
                     tx.InternalTxs.Add(internalTx);
                 }
-                else txs.Add(internalTx);
+                else
+                {
+                    txs.Add(internalTx);
+                }
             }
 
             txs.AddRange(txsById.Values);
 
             if (txs.Any())
+            {
                 await UpsertTransactionsAsync(txs)
                     .ConfigureAwait(false);
+            }
 
             await Account
                 .UpdateBalanceAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+            var needToCheckBip32Ed25519 = isFirstScan && scanBip32Ed25519;
+
+            if (!needToCheckBip32Ed25519)
+                return;
+
+            var addresses = (await Account.DataRepository
+                .GetAddressesAsync(currency.Name)
+                .ConfigureAwait(false))
+                .Where(a => a.KeyType == TezosConfig.Bip32Ed25519Key);
+
+            // if there is at least one address with activity => leave bip32ed25519 addresses in db
+            if (addresses.Any(w => w.HasActivity || w.Balance > 0 || w.UnconfirmedIncome > 0 || w.UnconfirmedOutcome > 0))
+                return;
+
+            // remove bip32Ed25519 addresses if there is no activity on them
+            foreach (var address in addresses)
+            {
+                _ = await Account.DataRepository
+                    .RemoveAddressAsync(address.Currency, address.Address)
+                    .ConfigureAwait(false);
+            }
         }
 
         public async Task ScanAsync(
@@ -182,9 +194,13 @@ namespace Atomex.Wallet.Tezos
             foreach (var tx in addressTxs)
             {
                 if (tx.IsInternal)
+                {
                     internalTxs.Add(tx);
+                }
                 else if (!txsById.ContainsKey(tx.Id))
+                {
                     txsById.Add(tx.Id, tx);
+                }
             }
 
             // distribute internal txs
@@ -197,14 +213,19 @@ namespace Atomex.Wallet.Tezos
 
                     tx.InternalTxs.Add(internalTx);
                 }
-                else txs.Add(internalTx);             
+                else
+                {
+                    txs.Add(internalTx);
+                }
             }
 
             txs.AddRange(txsById.Values);
 
             if (txs.Any())
+            {
                 await UpsertTransactionsAsync(txs)
                     .ConfigureAwait(false);
+            }
 
             await Account
                 .UpdateBalanceAsync(address, cancellationToken)

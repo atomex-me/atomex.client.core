@@ -66,12 +66,27 @@ namespace Atomex.Wallet
 
         public WalletAddress GetAddress(
             CurrencyConfig currency,
-            int chain,
+            KeyIndex keyIndex,
+            int keyType)
+        {
+            return GetAddress(
+                currency: currency,
+                account: keyIndex.Account,
+                chain: keyIndex.Chain,
+                index: keyIndex.Index,
+                keyType: keyType);
+        }
+
+        public WalletAddress GetAddress(
+            CurrencyConfig currency,
+            uint account,
+            uint chain,
             uint index,
             int keyType)
         {
             using var securePublicKey = KeyStorage.GetPublicKey(
                 currency: currency,
+                account: account,
                 chain: chain,
                 index: index,
                 keyType: keyType);
@@ -88,7 +103,7 @@ namespace Atomex.Wallet
                 Currency  = currency.Name,
                 Address   = address,
                 PublicKey = Convert.ToBase64String(publicKey),
-                KeyIndex  = new KeyIndex { Chain = chain, Index = index },
+                KeyIndex  = new KeyIndex { Account = account, Chain = chain, Index = index },
                 KeyType   = keyType
             };
         }

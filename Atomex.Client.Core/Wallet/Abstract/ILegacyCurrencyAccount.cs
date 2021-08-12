@@ -49,7 +49,12 @@ namespace Atomex.Wallet.Abstract
         #region Addresses
 
         Task<WalletAddress> DivideAddressAsync(
-            int chain,
+            KeyIndex keyIndex,
+            int keyType);
+
+        Task<WalletAddress> DivideAddressAsync(
+            uint account,
+            uint chain,
             uint index,
             int keyType);
 

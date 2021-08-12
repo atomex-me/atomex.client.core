@@ -45,17 +45,24 @@ namespace Atomex.Wallet.Abstract
         /// <returns>Encryption task</returns>
         Task EncryptAsync(SecureString password);
 
+        WalletAddress GetAddress(
+            CurrencyConfig currency,
+            KeyIndex keyIndex,
+            int keyType);
+
         /// <summary>
         /// Gets address for <paramref name="currency"/>, <paramref name="chain"/> and key <paramref name="index"/>
         /// </summary>
         /// <param name="currency">Currency</param>
+        /// <param name="account">Account</param>
         /// <param name="chain">Chain</param>
         /// <param name="index">Key index</param>
         /// <param name="keyType">Key type</param>
         /// <returns>Address</returns>
         WalletAddress GetAddress(
             CurrencyConfig currency,
-            int chain,
+            uint account,
+            uint chain,
             uint index,
             int keyType);
 

@@ -848,8 +848,7 @@ namespace Atomex.Wallet.Ethereum
                 var ethereumAddress = unspentEthereumAddresses.MaxBy(a => a.AvailableBalance());
 
                 return await DivideAddressAsync(
-                    chain: ethereumAddress.KeyIndex.Chain,
-                    index: ethereumAddress.KeyIndex.Index,
+                    keyIndex: ethereumAddress.KeyIndex,
                     keyType: ethereumAddress.KeyType);
             }
 
@@ -858,13 +857,14 @@ namespace Atomex.Wallet.Ethereum
                 .GetLastActiveWalletAddressAsync(
                     currency: "ETH",
                     chain: Bip44.External,
-                    keyType: CurrencyConfig.ClassicKey)
+                    keyType: CurrencyConfig.StandardKey)
                 .ConfigureAwait(false);
 
             return await DivideAddressAsync(
+                    account: Bip44.DefaultAccount,
                     chain: Bip44.External,
                     index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    keyType: CurrencyConfig.ClassicKey)
+                    keyType: CurrencyConfig.StandardKey)
                 .ConfigureAwait(false);
         }
 
@@ -889,8 +889,7 @@ namespace Atomex.Wallet.Ethereum
                 var ethereumAddress = unspentEthereumAddresses.MaxBy(a => a.AvailableBalance());
 
                 return await DivideAddressAsync(
-                    chain: ethereumAddress.KeyIndex.Chain,
-                    index: ethereumAddress.KeyIndex.Index,
+                    keyIndex: ethereumAddress.KeyIndex,
                     keyType: ethereumAddress.KeyType);
             }
 
@@ -900,7 +899,7 @@ namespace Atomex.Wallet.Ethereum
                     .GetLastActiveWalletAddressAsync(
                         currency: Currency,
                         chain: chain,
-                        keyType: CurrencyConfig.ClassicKey)
+                        keyType: CurrencyConfig.StandardKey)
                     .ConfigureAwait(false);
 
                 if (lastActiveAddress != null)

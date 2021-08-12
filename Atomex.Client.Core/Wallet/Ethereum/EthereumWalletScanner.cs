@@ -56,7 +56,7 @@ namespace Atomex.Wallet.Ethereum
                         .DivideAddressAsync(
                             chain: param.Chain,
                             index: index,
-                            keyType: CurrencyConfig.ClassicKey)
+                            keyType: CurrencyConfig.StandardKey)
                         .ConfigureAwait(false);
 
                     if (walletAddress == null)

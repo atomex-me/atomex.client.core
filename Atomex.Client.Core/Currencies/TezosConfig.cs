@@ -193,7 +193,7 @@ namespace Atomex
         public override IExtKey CreateExtKey(SecureBytes seed, int keyType) =>
             keyType switch
             {
-                ClassicKey      => new TezosExtKey(seed),
+                StandardKey      => new TezosExtKey(seed),
                 Bip32Ed25519Key => new Bip32TezosExtKey(seed),
                 _               => new TezosExtKey(seed)
             };

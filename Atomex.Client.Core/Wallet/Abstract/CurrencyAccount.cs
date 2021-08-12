@@ -127,8 +127,20 @@ namespace Atomex.Wallet.Abstract
 
         #region Addresses
 
+        public Task<WalletAddress> DivideAddressAsync(
+            KeyIndex keyIndex,
+            int keyType)
+        {
+            return DivideAddressAsync(
+                account: keyIndex.Account,
+                chain: keyIndex.Chain,
+                index: keyIndex.Index,
+                keyType: keyType);
+        }
+
         public virtual async Task<WalletAddress> DivideAddressAsync(
-            int chain,
+            uint account,
+            uint chain,
             uint index,
             int keyType)
         {
@@ -136,14 +148,15 @@ namespace Atomex.Wallet.Abstract
 
             var walletAddress = Wallet.GetAddress(
                 currency: currency,
+                account: account,
                 chain: chain,
                 index: index,
-                keyType:keyType);
+                keyType: keyType);
 
             if (walletAddress == null)
                 return null;
 
-            await DataRepository
+            _ = await DataRepository
                 .TryInsertAddressAsync(walletAddress)
                 .ConfigureAwait(false);
 
@@ -182,13 +195,13 @@ namespace Atomex.Wallet.Abstract
                 .GetLastActiveWalletAddressAsync(
                     currency: Currency,
                     chain: Bip44.Internal,
-                    keyType: CurrencyConfig.ClassicKey)
+                    keyType: CurrencyConfig.StandardKey)
                 .ConfigureAwait(false);
 
             return await DivideAddressAsync(
                     chain: Bip44.Internal,
                     index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    keyType: CurrencyConfig.ClassicKey)
+                    keyType: CurrencyConfig.StandardKey)
                 .ConfigureAwait(false);
         }
 
@@ -199,13 +212,13 @@ namespace Atomex.Wallet.Abstract
                 .GetLastActiveWalletAddressAsync(
                     currency: Currency,
                     chain: Bip44.External,
-                    keyType: CurrencyConfig.ClassicKey)
+                    keyType: CurrencyConfig.StandardKey)
                 .ConfigureAwait(false);
 
             return await DivideAddressAsync(
                     chain: Bip44.External,
                     index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    keyType: CurrencyConfig.ClassicKey)
+                    keyType: CurrencyConfig.StandardKey)
                 .ConfigureAwait(false);
         }
 

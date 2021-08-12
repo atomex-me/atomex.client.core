@@ -651,7 +651,7 @@ namespace Atomex.Wallet.Ethereum
                     .GetLastActiveWalletAddressAsync(
                         currency: Currency,
                         chain: chain,
-                        keyType: CurrencyConfig.ClassicKey)
+                        keyType: CurrencyConfig.StandardKey)
                     .ConfigureAwait(false);
 
                 if (lastActiveAddress != null)

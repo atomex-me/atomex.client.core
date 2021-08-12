@@ -144,18 +144,31 @@ namespace Atomex.Wallet.Tezos
 
         #region Addresses
 
+        public Task<WalletAddress> DivideAddressAsync(
+            KeyIndex keyIndex,
+            int keyType)
+        {
+            return DivideAddressAsync(
+                account: keyIndex.Account,
+                chain: keyIndex.Chain,
+                index: keyIndex.Index,
+                keyType: keyType);
+        }
+
         public async Task<WalletAddress> DivideAddressAsync(
-            int chain,
+            uint account,
+            uint chain,
             uint index,
             int keyType)
         {
             var currency = Currencies.GetByName(Currency);
 
             var walletAddress = Wallet.GetAddress(
-                currency,
-                chain,
-                index,
-                keyType);
+                currency: currency,
+                account: account,
+                chain: chain,
+                index: index,
+                keyType: keyType);
 
             if (walletAddress == null)
                 return null;
@@ -222,19 +235,18 @@ namespace Atomex.Wallet.Tezos
 
                 var tokenAddress = await DataRepository
                     .GetTezosTokenAddressAsync(
-                        TokenType,
-                        _tokenContract,
-                        _tokenId,
-                        xtzAddress.Address)
+                        currency: TokenType,
+                        tokenContract: _tokenContract,
+                        tokenId: _tokenId,
+                        address: xtzAddress.Address)
                     .ConfigureAwait(false);
 
                 if (tokenAddress != null)
                     return tokenAddress.ResolvePublicKey(Currencies, Wallet);
 
                 return await DivideAddressAsync(
-                        xtzAddress.KeyIndex.Chain,
-                        xtzAddress.KeyIndex.Index,
-                        xtzAddress.KeyType)
+                        keyIndex: xtzAddress.KeyIndex,
+                        keyType: xtzAddress.KeyType)
                     .ConfigureAwait(false);
             }
 
@@ -245,19 +257,18 @@ namespace Atomex.Wallet.Tezos
 
             var tokenRedeemAddress = await DataRepository
                 .GetTezosTokenAddressAsync(
-                    TokenType,
-                    _tokenContract,
-                    _tokenId,
-                    xtzRedeemAddress.Address)
+                    currency: TokenType,
+                    tokenContract: _tokenContract,
+                    tokenId: _tokenId,
+                    address: xtzRedeemAddress.Address)
                 .ConfigureAwait(false);
 
             if (tokenRedeemAddress != null)
                 return tokenRedeemAddress.ResolvePublicKey(Currencies, Wallet);
 
             return await DivideAddressAsync(
-                    xtzRedeemAddress.KeyIndex.Chain,
-                    xtzRedeemAddress.KeyIndex.Index,
-                    xtzRedeemAddress.KeyType)
+                    keyIndex: xtzRedeemAddress.KeyIndex,
+                    keyType: xtzRedeemAddress.KeyType)
                 .ConfigureAwait(false);
         }
 

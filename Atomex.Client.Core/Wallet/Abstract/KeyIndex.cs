@@ -2,7 +2,8 @@
 {
     public class KeyIndex
     {
-        public int Chain { get; set; }
+        public uint Account { get; set; }
+        public uint Chain { get; set; }
         public uint Index { get; set; }
     }
 }

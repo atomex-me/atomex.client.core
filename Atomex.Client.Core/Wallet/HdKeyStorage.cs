@@ -112,13 +112,35 @@ namespace Atomex.Wallet
         private IExtKey GetExtKey(
             CurrencyConfig currency,
             int purpose,
-            int chain,
+            uint account,
+            uint chain,
             uint index,
             int keyType)
         {
             using var masterKey = currency.CreateExtKey(Seed, keyType);
-            
-            return masterKey.Derive(new KeyPath(path: $"m/{purpose}'/{currency.Bip44Code}'/0'/{chain}/{index}"));               
+
+            if (keyType == CurrencyConfig.StandardKey &&
+                (currency.Name == TezosConfig.Xtz || Currencies.IsTezosToken(currency.Name)))
+            {
+                return masterKey.Derive(new KeyPath(path: $"m/{purpose}'/{currency.Bip44Code}'/{account}'/{chain}'"));
+            }
+
+            return masterKey.Derive(new KeyPath(path: $"m/{purpose}'/{currency.Bip44Code}'/{account}'/{chain}/{index}"));
+        }
+
+        private IExtKey GetExtKey(
+            CurrencyConfig currency,
+            int purpose,
+            KeyIndex keyIndex,
+            int keyType)
+        {
+            return GetExtKey(
+                currency: currency,
+                purpose: purpose,
+                account: keyIndex.Account,
+                chain: keyIndex.Chain,
+                index: keyIndex.Index,
+                keyType: keyType);
         }
 
         public SecureBytes GetPublicKey(
@@ -126,18 +148,25 @@ namespace Atomex.Wallet
             KeyIndex keyIndex,
             int keyType)
         {
-            return GetPublicKey(currency, keyIndex.Chain, keyIndex.Index, keyType);
+            return GetPublicKey(
+                currency: currency,
+                account: keyIndex.Account,
+                chain: keyIndex.Chain,
+                index: keyIndex.Index,
+                keyType: keyType);
         }
 
         public SecureBytes GetPublicKey(
             CurrencyConfig currency,
-            int chain,
+            uint account,
+            uint chain,
             uint index,
             int keyType)
         {
             using var extKey = GetExtKey(
                 currency: currency,
                 purpose: Bip44.Purpose,
+                account: account,
                 chain: chain,
                 index: index,
                 keyType: keyType);
@@ -164,8 +193,7 @@ namespace Atomex.Wallet
             using var extKey = GetExtKey(
                 currency: currency,
                 purpose: Bip44.Purpose,
-                chain: keyIndex.Chain,
-                index: keyIndex.Index,
+                keyIndex: keyIndex,
                 keyType: keyType);
 
             return extKey.GetPrivateKey();
@@ -180,8 +208,7 @@ namespace Atomex.Wallet
             using var extKey = GetExtKey(
                 currency: currency,
                 purpose: Bip44.Purpose,
-                chain: keyIndex.Chain,
-                index: keyIndex.Index,
+                keyIndex: keyIndex,
                 keyType: keyType);
 
             return extKey.SignHash(hash);
@@ -196,8 +223,7 @@ namespace Atomex.Wallet
             using var extKey = GetExtKey(
                 currency: currency,
                 purpose: Bip44.Purpose,
-                chain: keyIndex.Chain,
-                index: keyIndex.Index,
+                keyIndex: keyIndex,
                 keyType: keyType);
 
             return extKey.SignMessage(data);
@@ -224,8 +250,7 @@ namespace Atomex.Wallet
             using var extKey = GetExtKey(
                 currency: currency,
                 purpose: Bip44.Purpose,
-                chain: keyIndex.Chain,
-                index: keyIndex.Index,
+                keyIndex: keyIndex,
                 keyType: keyType);
 
             return extKey.VerifyHash(hash, signature);
@@ -241,8 +266,7 @@ namespace Atomex.Wallet
             using var extKey = GetExtKey(
                 currency: currency,
                 purpose: Bip44.Purpose,
-                chain: keyIndex.Chain,
-                index: keyIndex.Index,
+                keyIndex: keyIndex,
                 keyType: keyType);
 
             return extKey.VerifyMessage(data, signature);
@@ -268,7 +292,7 @@ namespace Atomex.Wallet
             var utcTimeStamp = timeStamp.ToUniversalTime();
 
             var daysIndex = (int)(utcTimeStamp.Date - DateTime.MinValue).TotalDays;
-            var secondsIndex = utcTimeStamp.Hour * 60 * 60 + utcTimeStamp.Minute * 60 + utcTimeStamp.Second;
+            var secondsIndex = (utcTimeStamp.Hour * 60 * 60) + (utcTimeStamp.Minute * 60) + utcTimeStamp.Second;
             var msIndex = utcTimeStamp.Millisecond;
 
             using var masterKey = BitcoinBasedConfig
