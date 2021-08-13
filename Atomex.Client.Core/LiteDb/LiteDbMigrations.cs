@@ -11,7 +11,7 @@ namespace Atomex.LiteDb
 {
     public static class LiteDbMigrations
     {
-        public const ushort LastVersion = Version5;
+        public const ushort LastVersion = Version8;
 
         public const ushort Version0 = 0;
         public const ushort Version1 = 1;
