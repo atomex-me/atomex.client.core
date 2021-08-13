@@ -40,6 +40,7 @@ namespace Atomex.Wallet
         public enum AvailableDataType
         {
             WalletAddress,
+            RemoveWalletAddress,
             Transaction,
             RemoveTransaction,
             Output,
@@ -298,6 +299,8 @@ namespace Atomex.Wallet
                 lock (_sync)
                 {
                     var walletId = $"{currency}:{address}";
+                    
+                    SaveDataCallback?.Invoke(AvailableDataType.RemoveWalletAddress, walletId, null);
 
                     return Task.FromResult(_addresses.Remove(walletId));
                 }
