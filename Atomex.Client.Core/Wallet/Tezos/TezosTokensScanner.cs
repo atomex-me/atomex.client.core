@@ -38,6 +38,10 @@ namespace Atomex.Wallet.Tezos
                     await new TezosWalletScanner(_tezosAccount)
                         .ScanAsync(cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
+
+                    xtzAddresses = await _tezosAccount.DataRepository
+                        .GetAddressesAsync(TezosConfig.Xtz)
+                        .ConfigureAwait(false);
                 }
 
                 // addresses from local db
@@ -152,6 +156,10 @@ namespace Atomex.Wallet.Tezos
                     // firstly scan xtz
                     await new TezosWalletScanner(_tezosAccount)
                         .ScanAsync(cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    xtzAddresses = await _tezosAccount.DataRepository
+                        .GetAddressesAsync(TezosConfig.Xtz)
                         .ConfigureAwait(false);
                 }
 
@@ -342,13 +350,42 @@ namespace Atomex.Wallet.Tezos
                         return;
                     }
 
+
                     // todo: fix 'self' transfers
-                    transfersResult.Value.ForEach(t => {
+                    //transfersResult.Value.ForEach(t =>
+                    //{
+                    foreach (var t in transfersResult.Value)
+                    {
                         t.Currency = contractType;
-                        t.Type |= localAddress.Address == t.From
-                            ? BlockchainTransactionType.Output
-                            : BlockchainTransactionType.Input;
-                    });
+
+                        if (localAddress.Address == t.From)
+                        {
+                            t.Type |= BlockchainTransactionType.Output;
+                        }
+                        else
+                        {
+                            var fromAddress = await _tezosAccount
+                                .GetAddressAsync(t.From, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            if (fromAddress != null)
+                                t.Type |= BlockchainTransactionType.Output;
+                        }
+
+                        if (localAddress.Address == t.To)
+                        {
+                            t.Type |= BlockchainTransactionType.Input;
+                        }
+                        else
+                        {
+                            var toAddress = await _tezosAccount
+                                .GetAddressAsync(t.To, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            if (toAddress != null)
+                                t.Type |= BlockchainTransactionType.Input;
+                        }
+                    }
 
                     if (transfersResult?.Value?.Any() ?? false)
                         await _tezosAccount.DataRepository
