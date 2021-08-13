@@ -45,5 +45,10 @@ namespace Atomex.Core
         
         public override string ToString() =>
             $"{Address};{Balance};{UnconfirmedIncome};{UnconfirmedOutcome}";
+        
+        public WalletAddress Copy()
+        {
+            return (WalletAddress)MemberwiseClone();
+        }
     }
 }
