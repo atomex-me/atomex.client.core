@@ -135,7 +135,7 @@ namespace Atomex.Blockchain.Tezos
             return SignedMessage != null;
         }
 
-        public async Task<bool> FillOperationsAsync(
+        public async Task<(bool result, bool isRunSuccess)> FillOperationsAsync(
             SecureBytes securePublicKey,
             TezosConfig tezosConfig,
             int headOffset = 0,
@@ -225,6 +225,8 @@ namespace Atomex.Blockchain.Tezos
             if (Params != null)
                 operation["parameters"] = Params;
 
+            var isRunSuccess = false;
+
             if (UseRun)
             {
                 var fill = await rpc
@@ -238,10 +240,11 @@ namespace Atomex.Blockchain.Tezos
                 else
                 {
                     Fee = Operations.Last["fee"].Value<decimal>().ToTez();
+                    isRunSuccess = true;
                 }
             }
 
-            return true;
+            return (result: true, isRunSuccess);
         }
 
         public void RollbackOfflineCounterIfNeed()

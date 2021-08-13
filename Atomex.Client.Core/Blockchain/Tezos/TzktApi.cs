@@ -483,7 +483,7 @@ namespace Atomex.Blockchain.Tezos
                     UseOfflineCounter = false
                 };
 
-                await tx
+                _ = await tx
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
                         tezosConfig: tokenConfig,
