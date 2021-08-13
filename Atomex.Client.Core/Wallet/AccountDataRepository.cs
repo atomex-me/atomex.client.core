@@ -284,7 +284,8 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var addresses = _addresses.Values
-                    .Where(w => w.Currency == currency);
+                    .Where(w => w.Currency == currency)
+                    .Select(w => w.Copy());
 
                 return Task.FromResult(addresses);
             }
