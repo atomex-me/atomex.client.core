@@ -122,8 +122,10 @@ namespace Atomex.Wallet.Tezos
                     .LockAsync(from, cancellationToken)
                     .ConfigureAwait(false);
 
-                using var securePublicKey = Wallet
-                    .GetPublicKey(xtzConfig, fromAddress.KeyIndex);
+                using var securePublicKey = Wallet.GetPublicKey(
+                    currency: xtzConfig,
+                    keyIndex: fromAddress.KeyIndex,
+                    keyType: fromAddress.KeyType);
 
                 // fill operation
                 var fillResult = await tx

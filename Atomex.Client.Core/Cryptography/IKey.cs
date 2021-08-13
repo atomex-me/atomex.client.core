@@ -1,5 +1,6 @@
-﻿using Atomex.Common;
-using System;
+﻿using System;
+
+using Atomex.Common;
 
 namespace Atomex.Cryptography
 {

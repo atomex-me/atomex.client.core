@@ -103,8 +103,10 @@ namespace Atomex.Blockchain.Tezos
                 return false;
             }
 
-            using var securePrivateKey = keyStorage
-                .GetPrivateKey(currencyConfig, address.KeyIndex);
+            using var securePrivateKey = keyStorage.GetPrivateKey(
+                currency: currencyConfig,
+                keyIndex: address.KeyIndex,
+                keyType: address.KeyType);
 
             if (securePrivateKey == null)
             {

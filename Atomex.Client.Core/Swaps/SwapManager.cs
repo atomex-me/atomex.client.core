@@ -565,7 +565,7 @@ namespace Atomex.Swaps
 
                 if (txResult != null && !txResult.HasError && txResult.Value != null)
                 {
-                    swap.PaymentTx  = txResult.Value;
+                    swap.PaymentTx = txResult.Value;
                     swap.PaymentTxId = txResult.Value.Id;
                     swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
 

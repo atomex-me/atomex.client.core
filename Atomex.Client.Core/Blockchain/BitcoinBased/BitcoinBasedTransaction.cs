@@ -120,8 +120,10 @@ namespace Atomex.Blockchain.BitcoinBased
                     return false;
                 }
 
-                using var securePrivateKey = keyStorage
-                    .GetPrivateKey(btcBasedConfig, walletAddress.KeyIndex);
+                using var securePrivateKey = keyStorage.GetPrivateKey(
+                    currency: btcBasedConfig,
+                    keyIndex: walletAddress.KeyIndex,
+                    keyType: walletAddress.KeyType);
 
                 Sign(securePrivateKey, spentOutput, btcBasedConfig);
             }

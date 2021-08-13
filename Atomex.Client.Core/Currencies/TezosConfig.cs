@@ -23,6 +23,9 @@ namespace Atomex
         public const long XtzDigitsMultiplier = 1_000_000;
         public const int HeadOffset = 55;
 
+        // ext key types
+        public const int Bip32Ed25519Key = 1;
+
         protected const int PkHashSize = 20 * 8;
 
         public decimal MinimalFee { get; protected set; }
@@ -187,8 +190,13 @@ namespace Atomex
             };
         }
 
-        public override IExtKey CreateExtKey(SecureBytes seed) =>
-            new TezosExtKey(seed);
+        public override IExtKey CreateExtKey(SecureBytes seed, int keyType) =>
+            keyType switch
+            {
+                StandardKey      => new TezosExtKey(seed),
+                Bip32Ed25519Key => new Bip32TezosExtKey(seed),
+                _               => new TezosExtKey(seed)
+            };
 
         public override IKey CreateKey(SecureBytes seed) =>
             new TezosKey(seed);

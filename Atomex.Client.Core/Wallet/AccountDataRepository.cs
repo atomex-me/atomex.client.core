@@ -222,19 +222,42 @@ namespace Atomex.Wallet
             }
         }
 
-        public virtual Task<WalletAddress> GetLastActiveWalletAddressAsync(string currency, int chain)
+        public virtual Task<WalletAddress> GetLastActiveWalletAddressAsync(
+            string currency,
+            uint chain,
+            int keyType)
         {
             lock (_sync)
             {
                 var address = _addresses.Values
                     .Where(w => w.Currency == currency &&
                                 w.KeyIndex.Chain == chain &&
+                                w.KeyType == keyType &&
                                 w.HasActivity)
                     .OrderByDescending(w => w.KeyIndex.Index)
                     .FirstOrDefault();
 
                 return address != null
                     ? Task.FromResult(address.Copy())
+                    : Task.FromResult<WalletAddress>(null);
+            }
+        }
+
+        public Task<WalletAddress> GetLastActiveWalletAddressByAccountAsync(
+            string currency,
+            int keyType)
+        {
+            lock (_sync)
+            {
+                var address = _addresses.Values
+                    .Where(w => w.Currency == currency &&
+                                w.KeyType == keyType &&
+                                w.HasActivity)
+                    .OrderByDescending(w => w.KeyIndex.Account)
+                    .FirstOrDefault();
+
+                return address != null
+                    ? Task.FromResult(address)
                     : Task.FromResult<WalletAddress>(null);
             }
         }
@@ -264,6 +287,27 @@ namespace Atomex.Wallet
 
                 return Task.FromResult(addresses);
             }
+        }
+
+        public Task<bool> RemoveAddressAsync(
+            string currency,
+            string address)
+        {
+            try
+            {
+                lock (_sync)
+                {
+                    var walletId = $"{currency}:{address}";
+
+                    return Task.FromResult(_addresses.Remove(walletId));
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error getting wallet addresses");
+            }
+
+            return Task.FromResult(false);
         }
 
         #endregion Addresses
