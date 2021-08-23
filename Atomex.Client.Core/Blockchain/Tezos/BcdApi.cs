@@ -203,6 +203,7 @@ namespace Atomex.Blockchain.Tezos
         public string Uri { get; set; }
         public string Network { get; set; }
         public int MaxSize { get; set; }
+        public int MaxTokensSize { get; set; }
     }
 
     public class BcdApi
@@ -241,7 +242,7 @@ namespace Atomex.Blockchain.Tezos
 
             while (hasPages && tokenBalances.Count < count)
             {
-                var size = Math.Min(count - tokenBalances.Count, _config.MaxSize);
+                var size = Math.Min(count - tokenBalances.Count, _config.MaxTokensSize);
 
                 var requestUri = $"account/{_config.Network}/{address}/token_balances?" +
                     $"size={size}" +
@@ -270,8 +271,8 @@ namespace Atomex.Blockchain.Tezos
                 tokenBalances.AddRange(balances.Value.Balances);
 
                 hasPages = tokenBalances.Count < balances.Value.Total;
-                    
-                offset++;
+
+                offset += size;
             }
 
             return tokenBalances;

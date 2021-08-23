@@ -114,6 +114,10 @@ namespace Atomex.TezosTokens
                 ? int.Parse(configuration["BcdSizeLimit"])
                 : 10;
 
+            BcdTokensSizeLimit = !string.IsNullOrEmpty(configuration["BcdTokensSizeLimit"])
+                ? int.Parse(configuration["BcdTokensSizeLimit"])
+                : 50;
+
             BlockchainApi           = ResolveBlockchainApi(configuration, this);
             TxExplorerUri           = configuration["TxExplorerUri"];
             AddressExplorerUri      = configuration["AddressExplorerUri"];
