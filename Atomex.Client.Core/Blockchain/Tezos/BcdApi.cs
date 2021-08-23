@@ -100,7 +100,9 @@ namespace Atomex.Blockchain.Tezos
         public string Balance { get; set; }
 
         public decimal GetTokenBalance() =>
-            decimal.Parse(Balance) / (decimal)BigInteger.Pow(10, Decimals);
+            Balance.TryParseWithRound(Decimals, out var result)
+                ? result
+                : 0;
 
         public bool HasDescription =>
             !string.IsNullOrEmpty(Description);
@@ -204,6 +206,8 @@ namespace Atomex.Blockchain.Tezos
         public string Network { get; set; }
         public int MaxSize { get; set; }
         public int MaxTokensSize { get; set; }
+        public int MaxTokensPerUpdate { get; set; }
+        public int MaxTransfersPerUpdate { get; set; }
     }
 
     public class BcdApi
