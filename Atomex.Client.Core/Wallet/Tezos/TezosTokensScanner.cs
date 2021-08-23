@@ -256,7 +256,7 @@ namespace Atomex.Wallet.Tezos
                         address: address,
                         contractAddress: contractAddress,
                         offset: 0,
-                        count: 1000, //20,
+                        count: bcdSettings.MaxTokensPerUpdate,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -335,7 +335,7 @@ namespace Atomex.Wallet.Tezos
                             address: localAddress.Address,
                             contract: localAddress.TokenBalance.Contract,
                             tokenId: localAddress.TokenBalance.TokenId,
-                            count: 60, //20,
+                            count: bcdSettings.MaxTransfersPerUpdate,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 

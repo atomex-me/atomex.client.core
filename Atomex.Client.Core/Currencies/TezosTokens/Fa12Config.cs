@@ -151,6 +151,14 @@ namespace Atomex.TezosTokens
                 ? int.Parse(configuration["BcdTokensSizeLimit"])
                 : 50;
 
+            BcdMaxTokensPerUpdate = !string.IsNullOrEmpty(configuration["BcdMaxTokensPerUpdate"])
+                ? int.Parse(configuration["BcdMaxTokensPerUpdate"])
+                : 1000;
+
+            BcdMaxTransfersPerUpdate = !string.IsNullOrEmpty(configuration["BcdMaxTransfersPerUpdate"])
+                ? int.Parse(configuration["BcdMaxTransfersPerUpdate"])
+                : 30;
+
             BlockchainApi           = ResolveBlockchainApi(configuration, this);
             TxExplorerUri           = configuration["TxExplorerUri"];
             AddressExplorerUri      = configuration["AddressExplorerUri"];
