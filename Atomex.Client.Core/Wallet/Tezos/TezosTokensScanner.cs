@@ -277,9 +277,10 @@ namespace Atomex.Wallet.Tezos
                     .ToList();
 
                 var tokenBalanceDict = tokenBalancesResult.Value
+                    .GroupBy(tb => UniqueTokenId(contractType, tb.Contract, tb.TokenId))
                     .ToDictionary(
-                        tb => UniqueTokenId(contractType, tb.Contract, tb.TokenId),
-                        tb => tb);
+                        g => g.Key,
+                        g => g.First());
 
                 foreach (var localAddress in localTokenAddresses)
                 {
@@ -394,24 +395,6 @@ namespace Atomex.Wallet.Tezos
                 }
 
             }, cancellationToken);
-        }
-
-        public Task LoadBalancesAsync(
-            string contractAddress,
-            int offset = 0,
-            int count = 20,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        public Task LoadTransfersAsync(
-            string contractAddress,
-            int offset = 0,
-            int count = 0,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
         }
 
         private static string UniqueTokenId(string type, string contract, decimal tokenId) =>

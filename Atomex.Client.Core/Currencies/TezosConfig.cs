@@ -78,6 +78,7 @@ namespace Atomex
         public string BcdApi { get; protected set; }
         public string BcdNetwork { get; protected set; }
         public int BcdSizeLimit { get; protected set; }
+        public int BcdTokensSizeLimit { get; protected set; }
 
         public TezosConfig()
         {
@@ -174,6 +175,10 @@ namespace Atomex
             BcdSizeLimit = !string.IsNullOrEmpty(configuration["BcdSizeLimit"])
                 ? int.Parse(configuration["BcdSizeLimit"])
                 : 10;
+
+            BcdTokensSizeLimit = !string.IsNullOrEmpty(configuration["BcdTokensSizeLimit"])
+                ? int.Parse(configuration["BcdTokensSizeLimit"])
+                : 50;
         }
 
         protected static IBlockchainApi ResolveBlockchainApi(
@@ -357,9 +362,10 @@ namespace Atomex
 
         public BcdApiSettings BcdApiSettings => new BcdApiSettings
         {
-            Uri     = BcdApi,
-            Network = BcdNetwork,
-            MaxSize = BcdSizeLimit
+            Uri           = BcdApi,
+            Network       = BcdNetwork,
+            MaxSize       = BcdSizeLimit,
+            MaxTokensSize = BcdTokensSizeLimit
         };
     }
 }
