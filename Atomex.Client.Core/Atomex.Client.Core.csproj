@@ -41,7 +41,7 @@
     <PackageReference Include="Portable.BouncyCastle" Version="1.8.10" />
     <PackageReference Include="protobuf-net" Version="2.4.4" />
     <PackageReference Include="Serilog" Version="2.10.0" />
-    <PackageReference Include="websocketsharp.core" Version="1.0.0" />
+    <PackageReference Include="Websocket.Client" Version="4.3.36" />
 
   </ItemGroup>
 
