@@ -8,7 +8,7 @@ using Atomex.Api.Proto;
 
 namespace Atomex.Web
 {
-    public class BinaryWebSocketClient : NewWebSocketClient
+    public class BinaryWebSocketClient : WebSocketClient
     {
         private const int MaxHandlersCount = 32;
         private Action<MemoryStream>[] Handlers { get; } = new Action<MemoryStream>[MaxHandlersCount];
