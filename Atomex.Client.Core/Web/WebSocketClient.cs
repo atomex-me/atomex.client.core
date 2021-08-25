@@ -15,13 +15,14 @@ namespace Atomex.Web
         
         public event EventHandler Connected;
         public event EventHandler Disconnected;
+        public event EventHandler<ResponseMessage> OnMessage;
         public bool IsConnected => _ws.IsRunning;
         private IWebsocketClient _ws { get; set; }
         private Timer debounceDisconnected;
         private DateTime lastReconnectTime;
         private bool shouldReconnect;
 
-        protected WebSocketClient(string url)
+        public WebSocketClient(string url)
         {
             var factory = new Func<ClientWebSocket>(() =>
             {
@@ -79,6 +80,8 @@ namespace Atomex.Web
                 {
                     throw new NotSupportedException("Unsupported web socket message type");
                 }
+
+                OnMessage?.Invoke(this, msg);
             });
             
             debounceDisconnected = new Timer(RECONNECT_TIMEOUT_SECONDS * 1000);
@@ -116,6 +119,10 @@ namespace Atomex.Web
             return _ws.Stop(WebSocketCloseStatus.NormalClosure, string.Empty);
         }
 
+        public void Send(string data)
+        {
+            _ws.Send(data);
+        }
 
         protected void SendAsync(byte[] data)
         {
