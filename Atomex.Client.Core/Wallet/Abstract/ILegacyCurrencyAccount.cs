@@ -12,15 +12,7 @@ namespace Atomex.Wallet.Abstract
         #region Common
 
         Task<Error> SendAsync(
-            IEnumerable<WalletAddress> from,
-            string to,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            bool useDefaultFee = false,
-            CancellationToken cancellationToken = default);
-
-        Task<Error> SendAsync(
+            string from,
             string to,
             decimal amount,
             decimal fee,
@@ -29,6 +21,7 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default);
 
         Task<decimal?> EstimateFeeAsync(
+            string from,
             string to,
             decimal amount,
             BlockchainTransactionType type,
@@ -37,6 +30,7 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default);
 
         Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
+            string from,
             string to,
             BlockchainTransactionType type,
             decimal fee = 0,
@@ -57,16 +51,6 @@ namespace Atomex.Wallet.Abstract
             uint chain,
             uint index,
             int keyType);
-
-        Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
-            string toAddress,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            FeeUsagePolicy feeUsagePolicy,
-            AddressUsagePolicy addressUsagePolicy,
-            BlockchainTransactionType transactionType,
-            CancellationToken cancellationToken = default);
 
         Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default);

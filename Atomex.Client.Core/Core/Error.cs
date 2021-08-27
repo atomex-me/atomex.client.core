@@ -69,6 +69,7 @@
         public const int InsufficientFee = 2006;
         public const int InsufficientAmount = 2007;
         public const int InsufficientChainFunds = 2008;
+        public const int SendingAndReceivingAddressesAreSame = 2009;
 
         public const int SwapError = 3000;
         public const int SwapNotFound = 3001;
