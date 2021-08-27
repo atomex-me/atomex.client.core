@@ -8,7 +8,7 @@ using Atomex.Api.Proto;
 
 namespace Atomex.Web
 {
-    public class BinaryWebSocketClient : WebSocketClient
+    public class BinaryWebSocketClient : WebSocketNetClient
     {
         private const int MaxHandlersCount = 32;
         private Action<MemoryStream>[] Handlers { get; } = new Action<MemoryStream>[MaxHandlersCount];
@@ -38,9 +38,9 @@ namespace Atomex.Web
             AddHandler(Schemes.HeartBeat.MessageId, HeartBeatHandler);
         }
 
-        protected override void OnBinaryMessage(byte[] data)
+        protected override void OnBinaryMessage(object sender, byte[] RawData)
         {
-            using var stream = new MemoryStream(data);
+            using var stream = new MemoryStream(RawData);
 
             while (stream.Position < stream.Length)
             {
