@@ -106,65 +106,56 @@ namespace Atomex.Wallet.Tezos
                 UseOfflineCounter   = true
             };
 
-            string txId;
+            using var addressLock = await AddressLocker
+                .GetLockAsync(addressFeeUsage.WalletAddress.Address, cancellationToken)
+                .ConfigureAwait(false);
 
-            try
-            {
-                await AddressLocker
-                    .LockAsync(addressFeeUsage.WalletAddress.Address, cancellationToken)
-                    .ConfigureAwait(false);
+            using var securePublicKey = Wallet.GetPublicKey(
+                currency: xtzConfig,
+                keyIndex: addressFeeUsage.WalletAddress.KeyIndex,
+                keyType: addressFeeUsage.WalletAddress.KeyType);
 
-                using var securePublicKey = Wallet.GetPublicKey(
-                    currency: xtzConfig,
-                    keyIndex: addressFeeUsage.WalletAddress.KeyIndex,
-                    keyType: addressFeeUsage.WalletAddress.KeyType);
+            // fill operation
+            var (fillResult, isRunSuccess) = await tx
+                .FillOperationsAsync(
+                    securePublicKey: securePublicKey,
+                    tezosConfig: xtzConfig,
+                    headOffset: TezosConfig.HeadOffset,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
-                // fill operation
-                var fillResult = await tx
-                    .FillOperationsAsync(
-                        securePublicKey: securePublicKey,
-                        tezosConfig: xtzConfig,
-                        headOffset: TezosConfig.HeadOffset,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
+            var signResult = await Wallet
+                .SignAsync(tx, addressFeeUsage.WalletAddress, xtzConfig, cancellationToken)
+                .ConfigureAwait(false);
 
-                var signResult = await Wallet
-                    .SignAsync(tx, addressFeeUsage.WalletAddress, xtzConfig, cancellationToken)
-                    .ConfigureAwait(false);
+            if (!signResult)
+                return new Error(
+                    code: Errors.TransactionSigningError,
+                    description: "Transaction signing error");
 
-                if (!signResult)
-                    return new Error(
-                        code: Errors.TransactionSigningError,
-                        description: "Transaction signing error");
+            var broadcastResult = await xtzConfig.BlockchainApi
+                .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
-                var broadcastResult = await xtzConfig.BlockchainApi
-                    .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
+            if (broadcastResult.HasError)
+                return broadcastResult.Error;
 
-                if (broadcastResult.HasError)
-                    return broadcastResult.Error;
+            var txId = broadcastResult.Value;
 
-                txId = broadcastResult.Value;
+            if (txId == null)
+                return new Error(
+                    code: Errors.TransactionBroadcastError,
+                    description: "Transaction Id is null");
 
-                if (txId == null)
-                    return new Error(
-                        code: Errors.TransactionBroadcastError,
-                        description: "Transaction Id is null");
+            Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
-                Log.Debug("Transaction successfully sent with txId: {@id}", txId);
-
-                await UpsertTransactionAsync(
-                        tx: tx,
-                        updateBalance: false,
-                        notifyIfUnconfirmed: true,
-                        notifyIfBalanceUpdated: false,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            finally
-            {
-                AddressLocker.Unlock(addressFeeUsage.WalletAddress.Address);
-            }
+            await UpsertTransactionAsync(
+                    tx: tx,
+                    updateBalance: false,
+                    notifyIfUnconfirmed: true,
+                    notifyIfBalanceUpdated: false,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
             return null;
         }
@@ -178,7 +169,7 @@ namespace Atomex.Wallet.Tezos
             decimal feePrice = 0,
             CancellationToken cancellationToken = default)
         {
-            if (from == to)
+            if (from == to || string.IsNullOrEmpty(from))
                 return null;
 
             var addressFeeUsage = await EstimateAddressFeeUsageAsync(
@@ -211,14 +202,14 @@ namespace Atomex.Wallet.Tezos
             if (from == to || string.IsNullOrEmpty(from))
                 return (0m, 0m, 0m);
 
-            var address = await GetAddressAsync(from, cancellationToken)
+            var fromAddress = await GetAddressAsync(from, cancellationToken)
                 .ConfigureAwait(false);
 
             var reserveFee = ReserveFee();
 
             var feeInTez = await FeeByType(
                     type: type,
-                    from: address.Address,
+                    from: fromAddress.Address,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -228,7 +219,7 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var usedAmountInTez = address.AvailableBalance() -
+            var usedAmountInTez = fromAddress.AvailableBalance() -
                 feeInTez -
                 storageFeeInTez -
                 (reserve ? reserveFee : 0) -
@@ -246,7 +237,7 @@ namespace Atomex.Wallet.Tezos
         {
             var xtz = Config;
 
-            if (!(tx is TezosTransaction xtzTx))
+            if (tx is not TezosTransaction xtzTx)
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
             var oldTx = !xtzTx.IsInternal
