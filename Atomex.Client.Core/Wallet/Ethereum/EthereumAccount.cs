@@ -76,7 +76,7 @@ namespace Atomex.Wallet.Ethereum
                     .ConfigureAwait(false);
             }
 
-            var addressFeeUsage = await EstimateAddressFeeUsageAsync(
+            var addressFeeUsage = await CalculateFundsUsageAsync(
                     from: from,
                     amount: amount,
                     fee: feePerTx,
@@ -179,7 +179,7 @@ namespace Atomex.Wallet.Ethereum
             if (from == to || string.IsNullOrEmpty(from))
                 return null;
 
-            var addressFeeUsage = await EstimateAddressFeeUsageAsync(
+            var addressFeeUsage = await CalculateFundsUsageAsync(
                     from: from,
                     amount: amount,
                     fee: fee == 0
@@ -211,7 +211,7 @@ namespace Atomex.Wallet.Ethereum
             var eth = EthConfig;
 
             if (from == to || string.IsNullOrEmpty(from))
-                return (0m, 0m, 0m);
+                return (0m, 0m, 0m); // invalid addresses
 
             var fromAddress = await GetAddressAsync(from, cancellationToken)
                 .ConfigureAwait(false);
@@ -230,14 +230,14 @@ namespace Atomex.Wallet.Ethereum
 
             var reserveFeeInEth = ReserveFee(gasPrice);
 
-            var usedAmountInEth = fromAddress.AvailableBalance() -
+            var restAmountInEth = fromAddress.AvailableBalance() -
                 feeInEth -
                 (reserve ? reserveFeeInEth : 0);
 
-            if (usedAmountInEth <= 0)
-                return (0m, 0m, 0m);
+            if (restAmountInEth < 0)
+                return (0m, 0m, 0m); // insufficient funds
 
-            return (usedAmountInEth, feeInEth, reserveFeeInEth);
+            return (restAmountInEth, feeInEth, reserveFeeInEth);
         }
 
         private decimal GasLimitByType(BlockchainTransactionType type)
@@ -620,7 +620,7 @@ namespace Atomex.Wallet.Ethereum
                 .Concat(wbtcAddresses);
         }
 
-        private async Task<SelectedWalletAddress> EstimateAddressFeeUsageAsync(
+        private async Task<SelectedWalletAddress> CalculateFundsUsageAsync(
             string from,
             decimal amount,
             decimal fee,
@@ -632,14 +632,17 @@ namespace Atomex.Wallet.Ethereum
             var fromAddress = await GetAddressAsync(from, cancellationToken)
                 .ConfigureAwait(false);
 
+            if (fromAddress == null)
+                return null; // invalid address
+
             var feeInEth = eth.GetFeeAmount(fee, feePrice);
 
-            var netAvailableBalanceInEth = fromAddress.AvailableBalance() -
+            var restBalanceInEth = fromAddress.AvailableBalance() -
                amount -
                feeInEth;
 
-            if (netAvailableBalanceInEth <= 0)
-                return null;
+            if (restBalanceInEth < 0)
+                return null; // insufficient funds
 
             return new SelectedWalletAddress
             {

@@ -57,7 +57,7 @@ namespace Atomex.Wallet.Tezos
 
             var xtzConfig = Config;
 
-            var addressFeeUsage = await EstimateAddressFeeUsageAsync(
+            var addressFeeUsage = await CalculateFundsUsageAsync(
                     from: from,
                     to: to,
                     amount: amount,
@@ -172,7 +172,7 @@ namespace Atomex.Wallet.Tezos
             if (from == to || string.IsNullOrEmpty(from))
                 return null;
 
-            var addressFeeUsage = await EstimateAddressFeeUsageAsync(
+            var addressFeeUsage = await CalculateFundsUsageAsync(
                     from: from,
                     to: to,
                     amount: amount,
@@ -200,7 +200,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             if (from == to || string.IsNullOrEmpty(from))
-                return (0m, 0m, 0m);
+                return (0m, 0m, 0m); // invalid addresses
 
             var fromAddress = await GetAddressAsync(from, cancellationToken)
                 .ConfigureAwait(false);
@@ -219,16 +219,16 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var usedAmountInTez = fromAddress.AvailableBalance() -
+            var restAmountInTez = fromAddress.AvailableBalance() -
                 feeInTez -
                 storageFeeInTez -
                 (reserve ? reserveFee : 0) -
                 Config.MicroTezReserve.ToTez();
 
-            if (usedAmountInTez <= 0)
-                return (0m, 0m, 0m);
+            if (restAmountInTez < 0)
+                return (0m, 0m, 0m); // insufficient funds
 
-            return (usedAmountInTez, feeInTez, reserveFee);
+            return (restAmountInTez, feeInTez, reserveFee);
         }
 
         protected override async Task<bool> ResolveTransactionTypeAsync(
@@ -689,7 +689,7 @@ namespace Atomex.Wallet.Tezos
                 .ToList();
         }
 
-        public async Task<SelectedWalletAddress> EstimateAddressFeeUsageAsync(
+        public async Task<SelectedWalletAddress> CalculateFundsUsageAsync(
             string from,
             string to,
             decimal amount,
@@ -703,7 +703,8 @@ namespace Atomex.Wallet.Tezos
             var fromAddress = await GetAddressAsync(from, cancellationToken)
                 .ConfigureAwait(false);
 
-            var availableBalanceInTez = fromAddress.AvailableBalance();
+            if (fromAddress == null)
+                return null; // invalid address
 
             var txFeeInTez = feeUsagePolicy == FeeUsagePolicy.EstimatedFee
                 ? await FeeByType(
@@ -719,14 +720,14 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var netAvailableBalanceInTez = availableBalanceInTez -
+            var restBalanceInTez = fromAddress.AvailableBalance() -
                 amount -
                 txFeeInTez -
                 storageFeeInTez -
                 xtz.MicroTezReserve.ToTez();
 
-            if (netAvailableBalanceInTez <= 0)
-                return null;
+            if (restBalanceInTez < 0)
+                return null; // insufficient funds
 
             return new SelectedWalletAddress
             {
