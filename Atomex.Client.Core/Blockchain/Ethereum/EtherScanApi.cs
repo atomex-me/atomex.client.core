@@ -146,11 +146,10 @@ namespace Atomex.Blockchain.Ethereum
                    responseHandler: (response, content) =>
                    {
                        var json = JsonConvert.DeserializeObject<JObject>(content);
-                                               
+
                        return json.ContainsKey("result")
                            ? Atomex.EthereumConfig.WeiToEth(BigInteger.Parse(json["result"].ToString()))
                            : 0;
-
                    },
                    cancellationToken: cancellationToken)
                .ConfigureAwait(false);
@@ -314,10 +313,6 @@ namespace Atomex.Blockchain.Ethereum
                         var result = JsonConvert.DeserializeObject<JObject>(content);
 
                         var status = result?["result"]?["status"]?.Value<string>();
-                        if (status == "") {
-                            //status = result?["status"].Value<string>();
-                            return null;
-                        }
 
                         if (status == "")
                             return null;

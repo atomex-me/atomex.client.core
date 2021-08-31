@@ -78,7 +78,7 @@ namespace Atomex.Swaps.Tezos.Helpers
             }
             catch (Exception e)
             {
-                Log.Error("Tezos redeem control task error");
+                Log.Error(e, "Tezos redeem control task error");
 
                 return new Error(Errors.InternalError, e.Message);
             }

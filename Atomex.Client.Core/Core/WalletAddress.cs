@@ -42,7 +42,7 @@ namespace Atomex.Core
             includeUnconfirmedIncome
                 ? Balance + UnconfirmedIncome + UnconfirmedOutcome
                 : Balance + UnconfirmedOutcome;
-        
+
         public override string ToString() =>
             $"{Address};{Balance};{UnconfirmedIncome};{UnconfirmedOutcome}";
         

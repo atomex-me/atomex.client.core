@@ -150,7 +150,7 @@ namespace Atomex.Wallet.Tezos
                 var xtzAddresses = await _tezosAccount.DataRepository
                     .GetAddressesAsync(TezosConfig.Xtz)
                     .ConfigureAwait(false);
-                
+
                 if (xtzAddresses.Count() <= 1)
                 {
                     // firstly scan xtz
@@ -162,7 +162,7 @@ namespace Atomex.Wallet.Tezos
                         .GetAddressesAsync(TezosConfig.Xtz)
                         .ConfigureAwait(false);
                 }
-                
+
                 var addresses = localAddresses
                     .Select(a => a.Address)
                     .ToList();

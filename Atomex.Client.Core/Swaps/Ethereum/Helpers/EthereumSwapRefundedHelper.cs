@@ -51,7 +51,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
             }
             catch (Exception e)
             {
-                Log.Error("Ethereum refund control task error");
+                Log.Error(e, "Ethereum refund control task error");
 
                 return new Error(Errors.InternalError, e.Message);
             }

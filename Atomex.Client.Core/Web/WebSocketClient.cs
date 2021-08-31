@@ -1,10 +1,8 @@
 using System;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
-using System.Timers;
 using Serilog;
 using Websocket.Client;
-using Timer = System.Timers.Timer;
 
 namespace Atomex.Web
 {
@@ -15,13 +13,12 @@ namespace Atomex.Web
         
         public event EventHandler Connected;
         public event EventHandler Disconnected;
+        public event EventHandler<ResponseMessage> OnMessage;
         public bool IsConnected => _ws.IsRunning;
-        private IWebsocketClient _ws { get; set; }
-        private Timer debounceDisconnected;
-        private DateTime lastReconnectTime;
-        private bool shouldReconnect;
+        private IWebsocketClient _ws { get; }
 
-        protected WebSocketClient(string url)
+        
+        public WebSocketClient(string url)
         {
             var factory = new Func<ClientWebSocket>(() =>
             {
@@ -39,13 +36,10 @@ namespace Atomex.Web
             _ws.Name = url;
             _ws.ReconnectTimeout = TimeSpan.FromSeconds(RECONNECT_TIMEOUT_SECONDS);
             _ws.ErrorReconnectTimeout = TimeSpan.FromSeconds(ERROR_RECONNECT_TIMEOUT_SECONDS);
-            lastReconnectTime = DateTime.UtcNow;
 
             _ws.ReconnectionHappened.Subscribe(type =>
                 {
                     Log.Debug($"WebSocket {_ws.Url} opened.");
-                    lastReconnectTime = DateTime.UtcNow;
-                    shouldReconnect = false;
                     Connected?.Invoke(this, null);
                 }
             );
@@ -53,14 +47,6 @@ namespace Atomex.Web
             _ws.DisconnectionHappened.Subscribe(info =>
                 {
                     Log.Debug($"WebSocket {_ws.Url } closed.");
-                    if (!shouldReconnect && info.Type != DisconnectionType.ByUser)
-                    {
-                        debounceDisconnected.Stop();
-                        debounceDisconnected.Start();
-                    }
-                    
-                    shouldReconnect = true;
-                    if (info.Type == DisconnectionType.Error) lastReconnectTime = DateTime.UtcNow;
                     Disconnected?.Invoke(this, null);
                 }
             );
@@ -79,21 +65,9 @@ namespace Atomex.Web
                 {
                     throw new NotSupportedException("Unsupported web socket message type");
                 }
-            });
-            
-            debounceDisconnected = new Timer(RECONNECT_TIMEOUT_SECONDS * 1000);
-            debounceDisconnected.Elapsed += DebouncedDisconnectEvent;
-            debounceDisconnected.AutoReset = false;
-        }
 
-        private void DebouncedDisconnectEvent(object sender, ElapsedEventArgs e)
-        {
-            var lastReconnectSecondsDelta = (int)(DateTime.UtcNow - lastReconnectTime).TotalSeconds;
-            
-            if (lastReconnectSecondsDelta > RECONNECT_TIMEOUT_SECONDS && shouldReconnect)
-            {
-                _ws.Reconnect();
-            }
+                OnMessage?.Invoke(this, msg);
+            });
         }
 
         private void OnTextMessage(string data)
@@ -104,18 +78,20 @@ namespace Atomex.Web
         {
         }
 
-
         public Task ConnectAsync()
         {
             return _ws.Start();
         }
-
 
         public Task CloseAsync()
         {
             return _ws.Stop(WebSocketCloseStatus.NormalClosure, string.Empty);
         }
 
+        public void Send(string data)
+        {
+            _ws.Send(data);
+        }
 
         protected void SendAsync(byte[] data)
         {

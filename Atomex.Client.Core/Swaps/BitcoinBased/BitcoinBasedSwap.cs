@@ -753,7 +753,7 @@ namespace Atomex.Swaps.BitcoinBased
             }
             catch (Exception e)
             {
-                Log.Error("Error while handle payment tx confirmed event");
+                Log.Error(e, "Error while handle payment tx confirmed event");
             }
 
             if (swap.IsInitiator)
@@ -777,7 +777,7 @@ namespace Atomex.Swaps.BitcoinBased
             }
             catch (Exception e)
             {
-                Log.Error("Refund time reached handler error");
+                Log.Error(e, "Refund time reached handler error");
             }
         }
 
@@ -810,7 +810,7 @@ namespace Atomex.Swaps.BitcoinBased
             }
             catch (Exception e)
             {
-                Log.Error("Refund broadcast handler error");
+                Log.Error(e, "Refund broadcast handler error");
             }
         }
 
@@ -886,7 +886,7 @@ namespace Atomex.Swaps.BitcoinBased
             }
             catch (Exception e)
             {
-                Log.Error("Error while handle payment tx spent event");
+                Log.Error(e, "Error while handle payment tx spent event");
             }
         }
     }

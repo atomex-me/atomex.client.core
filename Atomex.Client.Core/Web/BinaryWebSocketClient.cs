@@ -1,14 +1,13 @@
 ﻿using System;
 using System.IO;
 using Serilog;
-using WebSocketSharp;
 
 using Atomex.Api;
 using Atomex.Api.Proto;
 
 namespace Atomex.Web
 {
-    public class BinaryWebSocketClient : WebSocketNetClient
+    public class BinaryWebSocketClient : WebSocketClient
     {
         private const int MaxHandlersCount = 32;
         private Action<MemoryStream>[] Handlers { get; } = new Action<MemoryStream>[MaxHandlersCount];
@@ -38,9 +37,9 @@ namespace Atomex.Web
             AddHandler(Schemes.HeartBeat.MessageId, HeartBeatHandler);
         }
 
-        protected override void OnBinaryMessage(object sender, byte[] RawData)
+        protected override void OnBinaryMessage(byte[] data)
         {
-            using var stream = new MemoryStream(RawData);
+            using var stream = new MemoryStream(data);
 
             while (stream.Position < stream.Length)
             {
@@ -54,18 +53,21 @@ namespace Atomex.Web
         private void AuthNonceHandler(MemoryStream stream)
         {
             Nonce = Schemes.AuthNonce.DeserializeWithLengthPrefix(stream);
+
             AuthNonce?.Invoke(this, EventArgs.Empty);
         }
 
         private void AuthOkHandler(MemoryStream stream)
         {
             var authOk = Schemes.AuthOk.DeserializeWithLengthPrefix(stream);
+
             AuthOk?.Invoke(this, EventArgs.Empty);
         }
 
         private void ErrorHandler(MemoryStream stream)
         {
             var error = Schemes.Error.DeserializeWithLengthPrefix(stream);
+
             Error?.Invoke(this, new Core.ErrorEventArgs(error));
         }
 

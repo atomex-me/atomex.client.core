@@ -329,7 +329,7 @@ namespace Atomex.Swaps
             }
             catch (Exception e)
             {
-                Log.Error("Existing swap handle error");
+                Log.Error(e, "Existing swap handle error");
             }
 
             // update swap status
@@ -560,10 +560,10 @@ namespace Atomex.Swaps
                     .TryToFindPaymentAsync(swap, cancellationToken)
                     .ConfigureAwait(false);
 
-                //if (txResult == null || txResult.HasError)
-                //    return; // can't get tx from blockchain
+                if (txResult == null || txResult.HasError)
+                    return; // can't get tx from blockchain
 
-                if (txResult != null && !txResult.HasError && txResult.Value != null)
+                if (txResult.Value != null)
                 {
                     swap.PaymentTx = txResult.Value;
                     swap.PaymentTxId = txResult.Value.Id;
@@ -793,7 +793,7 @@ namespace Atomex.Swaps
             }
             catch (Exception e)
             {
-                Log.Error("Swap update error");
+                Log.Error(e, "Swap update error");
             }
         }
 
@@ -833,7 +833,7 @@ namespace Atomex.Swaps
             }
             catch (Exception e)
             {
-                Log.Error($"Initiator payment confirmed handler error {e.ToString()}");
+                Log.Error(e, "Initiator payment confirmed handler error");
             }
         }
 
@@ -860,7 +860,7 @@ namespace Atomex.Swaps
             }
             catch (Exception e)
             {
-                Log.Error("Acceptor payment confirmed handler error");
+                Log.Error(e, "Acceptor payment confirmed handler error");
             }
         }
 
@@ -887,7 +887,7 @@ namespace Atomex.Swaps
             }
             catch (Exception e)
             {
-                Log.Error("Acceptor payment spent handler error");
+                Log.Error(e, "Acceptor payment spent handler error");
             }
         }
 

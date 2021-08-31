@@ -67,13 +67,9 @@ namespace Atomex
 
                 if (networkConfiguration != null && _currencies.TryGetValue(network, out var currencies))
                     currencies.Update(networkConfiguration); 
-                
-                if (network == Network.MainNet) {
-                    Updated?.Invoke(this, EventArgs.Empty);
-                }
             }
 
-            Updated?.Invoke(this, EventArgs.Empty); // this does not execute.
+            Updated?.Invoke(this, EventArgs.Empty);
         }
 
         public ICurrencies GetCurrencies(Network network)

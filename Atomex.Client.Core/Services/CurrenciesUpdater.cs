@@ -111,7 +111,7 @@ namespace Atomex.Services
             }
             catch (Exception e)
             {
-                Log.Error("Currencies update error");
+                Log.Error(e, "Currencies update error");
             }
         }
 

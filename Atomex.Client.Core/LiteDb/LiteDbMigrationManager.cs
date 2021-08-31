@@ -2,8 +2,7 @@
 using System.IO;
 
 using LiteDB;
-
-using Atomex.Core;
+using Serilog;
 
 using Atomex.Core;
 
@@ -69,7 +68,7 @@ namespace Atomex.LiteDb
             }
             catch (Exception e)
             {
-                Console.WriteLine("LiteDb migration error");
+                Log.Error(e, "LiteDb migration error");
             }
         }
 
