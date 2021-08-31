@@ -365,11 +365,17 @@ namespace Atomex.LiteDb
             File.Copy(Path.GetFullPath(pathToDb), Path.GetFullPath(pathToBackup));
         }
 
-        private static void Shrink(LiteDatabase db, string sessionPassword)
+        public static void Shrink(LiteDatabase db, string sessionPassword)
         {
-            db.Shrink(sessionPassword);
-
-            Log.Debug("Db successfully shrinked");
+            try
+            {
+                db.Shrink(sessionPassword);
+                Log.Debug("Db successfully shrinked");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, $"Db shrink error: {e}");
+            }
         }
 
         private static void UpdateVersion(LiteDatabase db, ushort fromVersion, ushort toVersion)
