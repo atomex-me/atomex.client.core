@@ -16,7 +16,7 @@ using Newtonsoft.Json;
 
 namespace Atomex.Wallet
 {
-    public class AccountDataRepository : IAccountDataRepository
+    public class WebAccountDataRepository : IAccountDataRepository
     {
         private readonly Dictionary<string, WalletAddress> _addresses;
         private readonly Dictionary<string, IBlockchainTransaction> _transactions;
@@ -56,7 +56,7 @@ namespace Atomex.Wallet
             public string Address { get; set; }
         }
 
-        public AccountDataRepository(ICurrencies currencies)
+        public WebAccountDataRepository(ICurrencies currencies)
         {
             _addresses            = new Dictionary<string, WalletAddress>();
             _transactions         = new Dictionary<string, IBlockchainTransaction>();
