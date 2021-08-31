@@ -14,9 +14,9 @@ using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
 using Atomex.Common.Bson;
 using Atomex.Core;
-using Atomex.Wallet.Abstract;
 using Atomex.Swaps.Abstract;
 using Atomex.Swaps.BitcoinBased;
+using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.BitcoinBased
@@ -37,7 +37,7 @@ namespace Atomex.Wallet.BitcoinBased
         #region Common
 
         public async Task<Error> SendAsync(
-            IEnumerable<WalletAddress> from,
+            string from,
             string to,
             decimal amount,
             decimal fee,
@@ -50,7 +50,7 @@ namespace Atomex.Wallet.BitcoinBased
             var unspentOutputs = (await DataRepository
                 .GetAvailableOutputsAsync(Currency, config.OutputType(), config.TransactionType)
                 .ConfigureAwait(false))
-                .Where(o => from.FirstOrDefault(w => w.Address == o.DestinationAddress(config)) != null)
+                .Where(o => from == o.DestinationAddress(config))
                 .ToList();
 
             return await SendAsync(
@@ -63,30 +63,30 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public async Task<Error> SendAsync(
-            string to,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            bool useDefaultFee = false,
-            CancellationToken cancellationToken = default)
-        {
-            var currency = Config;
+        //public async Task<Error> SendAsync(
+        //    string to,
+        //    decimal amount,
+        //    decimal fee,
+        //    decimal feePrice,
+        //    bool useDefaultFee = false,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    var currency = Config;
 
-            var unspentOutputs = (await DataRepository
-                .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
-                .ConfigureAwait(false))
-                .ToList();
+        //    var unspentOutputs = (await DataRepository
+        //        .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
+        //        .ConfigureAwait(false))
+        //        .ToList();
 
-            return await SendAsync(
-                    outputs: unspentOutputs,
-                    to: to,
-                    amount: amount,
-                    fee: fee,
-                    dustUsagePolicy: DustUsagePolicy.Warning,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
+        //    return await SendAsync(
+        //            outputs: unspentOutputs,
+        //            to: to,
+        //            amount: amount,
+        //            fee: fee,
+        //            dustUsagePolicy: DustUsagePolicy.Warning,
+        //            cancellationToken: cancellationToken)
+        //        .ConfigureAwait(false);
+        //}
 
         public async Task<Error> SendAsync(
             List<ITxOutput> outputs,
@@ -202,6 +202,7 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         public async Task<decimal?> EstimateFeeAsync(
+            string from,
             string to,
             decimal amount,
             BlockchainTransactionType type,
@@ -385,6 +386,7 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         public async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
+            string from,
             string to,
             BlockchainTransactionType type,
             decimal fee = 0,
@@ -713,67 +715,67 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
-            string toAddress,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            FeeUsagePolicy feeUsagePolicy,
-            AddressUsagePolicy addressUsagePolicy,
-            BlockchainTransactionType transactionType,
-            CancellationToken cancellationToken = default)
-        {
-            if (feeUsagePolicy == FeeUsagePolicy.EstimatedFee)
-            {
-                var estimatedFee = await EstimateFeeAsync(
-                        to: toAddress,
-                        amount: amount,
-                        type: transactionType,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
+        //public async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+        //    string toAddress,
+        //    decimal amount,
+        //    decimal fee,
+        //    decimal feePrice,
+        //    FeeUsagePolicy feeUsagePolicy,
+        //    AddressUsagePolicy addressUsagePolicy,
+        //    BlockchainTransactionType transactionType,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    if (feeUsagePolicy == FeeUsagePolicy.EstimatedFee)
+        //    {
+        //        var estimatedFee = await EstimateFeeAsync(
+        //                to: toAddress,
+        //                amount: amount,
+        //                type: transactionType,
+        //                cancellationToken: cancellationToken)
+        //            .ConfigureAwait(false);
 
-                if (estimatedFee == null)
-                    return Enumerable.Empty<WalletAddress>();
+        //        if (estimatedFee == null)
+        //            return Enumerable.Empty<WalletAddress>();
 
-                fee = estimatedFee.Value;
-            }
+        //        fee = estimatedFee.Value;
+        //    }
 
-            var unspentAddresses = (await DataRepository
-                .GetUnspentAddressesAsync(Currency)
-                .ConfigureAwait(false))
-                .ToList();
+        //    var unspentAddresses = (await DataRepository
+        //        .GetUnspentAddressesAsync(Currency)
+        //        .ConfigureAwait(false))
+        //        .ToList();
 
-            unspentAddresses = ApplyAddressUsagePolicy(
-                    addresses: unspentAddresses,
-                    amount: amount,
-                    fee: fee,
-                    feePrice: feePrice,
-                    addressUsagePolicy: addressUsagePolicy)
-                .ToList();
+        //    unspentAddresses = ApplyAddressUsagePolicy(
+        //            addresses: unspentAddresses,
+        //            amount: amount,
+        //            fee: fee,
+        //            feePrice: feePrice,
+        //            addressUsagePolicy: addressUsagePolicy)
+        //        .ToList();
 
-            if (unspentAddresses.Count == 0)
-                return unspentAddresses;
+        //    if (unspentAddresses.Count == 0)
+        //        return unspentAddresses;
 
-            var requiredAmount = amount + fee;
+        //    var requiredAmount = amount + fee;
 
-            var usedAddresses = new List<WalletAddress>();
-            var usedAmount = 0m;
+        //    var usedAddresses = new List<WalletAddress>();
+        //    var usedAmount = 0m;
 
-            foreach (var walletAddress in unspentAddresses)
-            {
-                if (usedAmount >= requiredAmount)
-                    break;
+        //    foreach (var walletAddress in unspentAddresses)
+        //    {
+        //        if (usedAmount >= requiredAmount)
+        //            break;
 
-                usedAddresses.Add(walletAddress);
+        //        usedAddresses.Add(walletAddress);
 
-                usedAmount += walletAddress.AvailableBalance();
-            }
+        //        usedAmount += walletAddress.AvailableBalance();
+        //    }
 
-            if (requiredAmount > 0 && usedAmount < requiredAmount)
-                return Enumerable.Empty<WalletAddress>();
+        //    if (requiredAmount > 0 && usedAmount < requiredAmount)
+        //        return Enumerable.Empty<WalletAddress>();
 
-            return ResolvePublicKeys(usedAddresses);
-        }
+        //    return ResolvePublicKeys(usedAddresses);
+        //}
 
         public async Task<WalletAddress> GetRefundAddressAsync(
             CancellationToken cancellationToken = default)
@@ -810,7 +812,7 @@ namespace Atomex.Wallet.BitcoinBased
             bool notifyIfBalanceUpdated = true,
             CancellationToken cancellationToken = default)
         {
-            if (!(tx is IBitcoinBasedTransaction btcBasedTx))
+            if (tx is not IBitcoinBasedTransaction btcBasedTx)
                 throw new NotSupportedException("Transaction has incorrect type");
 
             await UpsertOutputsAsync(
@@ -994,36 +996,36 @@ namespace Atomex.Wallet.BitcoinBased
 
         #endregion AddressResolver
 
-        protected IEnumerable<WalletAddress> ApplyAddressUsagePolicy(
-            List<WalletAddress> addresses,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            AddressUsagePolicy addressUsagePolicy)
-        {
-            var currency = Currencies.GetByName(Currency);
+        //protected IEnumerable<WalletAddress> ApplyAddressUsagePolicy(
+        //    List<WalletAddress> addresses,
+        //    decimal amount,
+        //    decimal fee,
+        //    decimal feePrice,
+        //    AddressUsagePolicy addressUsagePolicy)
+        //{
+        //    var currency = Currencies.GetByName(Currency);
 
-            switch (addressUsagePolicy)
-            {
-                case AddressUsagePolicy.UseMinimalBalanceFirst:
-                    addresses = addresses.SortList(new AvailableBalanceAscending());
-                    break;
-                case AddressUsagePolicy.UseMaximumBalanceFirst:
-                    addresses = addresses.SortList(new AvailableBalanceDescending());
-                    break;
-                case AddressUsagePolicy.UseOnlyOneAddress:
-                    var walletAddress = addresses
-                        .FirstOrDefault(w => w.AvailableBalance() >= amount + currency.GetFeeAmount(fee, feePrice));
+        //    switch (addressUsagePolicy)
+        //    {
+        //        case AddressUsagePolicy.UseMinimalBalanceFirst:
+        //            addresses = addresses.SortList(new AvailableBalanceAscending());
+        //            break;
+        //        case AddressUsagePolicy.UseMaximumBalanceFirst:
+        //            addresses = addresses.SortList(new AvailableBalanceDescending());
+        //            break;
+        //        case AddressUsagePolicy.UseOnlyOneAddress:
+        //            var walletAddress = addresses
+        //                .FirstOrDefault(w => w.AvailableBalance() >= amount + currency.GetFeeAmount(fee, feePrice));
 
-                    return walletAddress != null
-                        ? new List<WalletAddress> { walletAddress }
-                        : Enumerable.Empty<WalletAddress>();
+        //            return walletAddress != null
+        //                ? new List<WalletAddress> { walletAddress }
+        //                : Enumerable.Empty<WalletAddress>();
 
-                default:
-                    throw new Exception("Address usage policy not supported");
-            }
+        //        default:
+        //            throw new Exception("Address usage policy not supported");
+        //    }
 
-            return addresses;
-        }
+        //    return addresses;
+        //}
     }
 }
