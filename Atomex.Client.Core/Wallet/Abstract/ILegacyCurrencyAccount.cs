@@ -25,8 +25,6 @@ namespace Atomex.Wallet.Abstract
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0,
             CancellationToken cancellationToken = default);
 
         Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
@@ -41,16 +39,6 @@ namespace Atomex.Wallet.Abstract
         #endregion Common
 
         #region Addresses
-
-        Task<WalletAddress> DivideAddressAsync(
-            KeyIndex keyIndex,
-            int keyType);
-
-        Task<WalletAddress> DivideAddressAsync(
-            uint account,
-            uint chain,
-            uint index,
-            int keyType);
 
         Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default);

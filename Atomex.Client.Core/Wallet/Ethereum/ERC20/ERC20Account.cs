@@ -186,8 +186,6 @@ namespace Atomex.Wallet.Ethereum
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0,
             CancellationToken cancellationToken = default)
         {
             var erc20 = Erc20Config;
@@ -198,14 +196,10 @@ namespace Atomex.Wallet.Ethereum
             var addressFeeUsage = await SelectUnspentAddressesAsync(
                     from: from,
                     amount: amount,
-                    fee: fee == 0
-                        ? GasLimitByType(type)
-                        : fee,
-                    feePrice: feePrice == 0
-                        ? await erc20
-                            .GetGasPriceAsync(cancellationToken)
-                            .ConfigureAwait(false)
-                        : feePrice,
+                    fee: GasLimitByType(type),
+                    feePrice: await erc20
+                        .GetGasPriceAsync(cancellationToken)
+                        .ConfigureAwait(false),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 

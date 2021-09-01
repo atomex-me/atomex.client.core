@@ -68,7 +68,7 @@ namespace Atomex.Client.Core.Tests
 
             return account
                 .SendAsync(
-                    outputs: fromOutputs,
+                    from: fromOutputs,
                     to: currency.TestAddress(),
                     amount: amount,
                     fee: fee,

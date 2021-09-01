@@ -165,8 +165,6 @@ namespace Atomex.Wallet.Tezos
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0,
             CancellationToken cancellationToken = default)
         {
             if (from == to || string.IsNullOrEmpty(from))
@@ -176,10 +174,8 @@ namespace Atomex.Wallet.Tezos
                     from: from,
                     to: to,
                     amount: amount,
-                    fee: fee,
-                    feeUsagePolicy: fee == 0
-                        ? FeeUsagePolicy.EstimatedFee
-                        : FeeUsagePolicy.FeePerTransaction,
+                    fee: 0,
+                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
                     transactionType: type,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

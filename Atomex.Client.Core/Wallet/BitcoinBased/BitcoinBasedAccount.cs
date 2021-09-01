@@ -21,7 +21,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.BitcoinBased
 {
-    public class BitcoinBasedAccount : CurrencyAccount, IAddressResolver, ILegacyCurrencyAccount
+    public class BitcoinBasedAccount : CurrencyAccount, IAddressResolver
     {
         public BitcoinBasedConfig Config => Currencies.Get<BitcoinBasedConfig>(Currency);
 
@@ -37,59 +37,7 @@ namespace Atomex.Wallet.BitcoinBased
         #region Common
 
         public async Task<Error> SendAsync(
-            string from,
-            string to,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
-            bool useDafaultFee = false,
-            CancellationToken cancellationToken = default)
-        {
-            var config = Config;
-
-            var unspentOutputs = (await DataRepository
-                .GetAvailableOutputsAsync(Currency, config.OutputType(), config.TransactionType)
-                .ConfigureAwait(false))
-                .Where(o => from == o.DestinationAddress(config))
-                .ToList();
-
-            return await SendAsync(
-                    outputs: unspentOutputs,
-                    to: to,
-                    amount: amount,
-                    fee: fee,
-                    dustUsagePolicy: DustUsagePolicy.Warning,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        //public async Task<Error> SendAsync(
-        //    string to,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    bool useDefaultFee = false,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var currency = Config;
-
-        //    var unspentOutputs = (await DataRepository
-        //        .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
-        //        .ConfigureAwait(false))
-        //        .ToList();
-
-        //    return await SendAsync(
-        //            outputs: unspentOutputs,
-        //            to: to,
-        //            amount: amount,
-        //            fee: fee,
-        //            dustUsagePolicy: DustUsagePolicy.Warning,
-        //            cancellationToken: cancellationToken)
-        //        .ConfigureAwait(false);
-        //}
-
-        public async Task<Error> SendAsync(
-            List<ITxOutput> outputs,
+            List<ITxOutput> from,
             string to,
             decimal amount,
             decimal fee,
@@ -108,13 +56,13 @@ namespace Atomex.Wallet.BitcoinBased
                     code: Errors.InsufficientAmount,
                     description: $"Insufficient amount to send. Min non-dust amount {config.GetDust()}, actual {amountInSatoshi}");
 
-            outputs = outputs
+            from = from
                 .SelectOutputsForAmount(requiredInSatoshi)
                 .ToList();
 
-            var availableInSatoshi = outputs.Sum(o => o.Value);
+            var availableInSatoshi = from.Sum(o => o.Value);
 
-            if (!outputs.Any())
+            if (!from.Any())
                 return new Error(
                     code: Errors.InsufficientFunds,
                     description: $"Insufficient funds. Required {requiredInSatoshi}, available {availableInSatoshi}");
@@ -146,7 +94,7 @@ namespace Atomex.Wallet.BitcoinBased
             }
 
             var tx = config.CreatePaymentTx(
-                unspentOutputs: outputs,
+                unspentOutputs: from,
                 destinationAddress: to,
                 changeAddress: changeAddress.Address,
                 amount: amountInSatoshi,
@@ -156,7 +104,7 @@ namespace Atomex.Wallet.BitcoinBased
             var signResult = await Wallet
                 .SignAsync(
                     tx: tx,
-                    spentOutputs: outputs,
+                    spentOutputs: from,
                     addressResolver: this,
                     currencyConfig: config,
                     cancellationToken: cancellationToken)
@@ -167,7 +115,7 @@ namespace Atomex.Wallet.BitcoinBased
                     code: Errors.TransactionSigningError,
                     description: "Transaction signing error");
 
-            if (!tx.Verify(outputs, out var errors, config))
+            if (!tx.Verify(from, out var errors, config))
                 return new Error(
                     code: Errors.TransactionVerificationError,
                     description: $"Transaction verification error: {string.Join(", ", errors.Select(e => e.Description))}");
@@ -202,12 +150,10 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         public async Task<decimal?> EstimateFeeAsync(
-            string from,
+            List<ITxOutput> from,
             string to,
             decimal amount,
             BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0,
             CancellationToken cancellationToken = default)
         {
             if (type == BlockchainTransactionType.SwapPayment)
@@ -284,48 +230,48 @@ namespace Atomex.Wallet.BitcoinBased
             return null; // insufficient funds
         }
 
-        public async Task<decimal?> EstimateSwapPaymentFeeAsync(decimal amount)
-        {
-            var currency = Config;
+        //public async Task<decimal?> EstimateSwapPaymentFeeAsync(decimal amount)
+        //{
+        //    var currency = Config;
 
-            var amountInSatoshi = currency.CoinToSatoshi(amount);
+        //    var amountInSatoshi = currency.CoinToSatoshi(amount);
 
-            var availableOutputs = (await DataRepository
-                .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
-                .ConfigureAwait(false))
-                .ToList();
+        //    var availableOutputs = (await DataRepository
+        //        .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
+        //        .ConfigureAwait(false))
+        //        .ToList();
 
-            if (!availableOutputs.Any())
-                return null; // insufficient funds
+        //    if (!availableOutputs.Any())
+        //        return null; // insufficient funds
 
-            var feeRate = await currency
-                .GetFeeRateAsync()
-                .ConfigureAwait(false);
+        //    var feeRate = await currency
+        //        .GetFeeRateAsync()
+        //        .ConfigureAwait(false);
 
-            foreach (var outputs in availableOutputs.SelectOutputs())
-            {
-                if (BitcoinBasedSwapTransactionFactory.EstimateSelectedOutputs(
-                    currency: currency,
-                    outputs: outputs,
-                    amount: amountInSatoshi,
-                    feeRate: feeRate,
-                    refundAddress: new Key().PubKey
-                        .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
-                        .ToString(),
-                    toAddress: new Key().PubKey
-                        .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
-                        .ToString(),
-                    lockTime: DateTimeOffset.UtcNow.AddHours(5),
-                    secretHash: new byte[CurrencySwap.DefaultSecretHashSize],
-                    secretSize: CurrencySwap.DefaultSecretHashSize,
-                    out var feeInSatoshi))
-                {
-                    return currency.SatoshiToCoin(feeInSatoshi);
-                }
-            }
+        //    foreach (var outputs in availableOutputs.SelectOutputs())
+        //    {
+        //        if (BitcoinBasedSwapTransactionFactory.EstimateSelectedOutputs(
+        //            currency: currency,
+        //            outputs: outputs,
+        //            amount: amountInSatoshi,
+        //            feeRate: feeRate,
+        //            refundAddress: new Key().PubKey
+        //                .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
+        //                .ToString(),
+        //            toAddress: new Key().PubKey
+        //                .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
+        //                .ToString(),
+        //            lockTime: DateTimeOffset.UtcNow.AddHours(5),
+        //            secretHash: new byte[CurrencySwap.DefaultSecretHashSize],
+        //            secretSize: CurrencySwap.DefaultSecretHashSize,
+        //            out var feeInSatoshi))
+        //        {
+        //            return currency.SatoshiToCoin(feeInSatoshi);
+        //        }
+        //    }
 
-            return null; // insufficient funds
-        }
+        //    return null; // insufficient funds
+        //}
 
         public async Task<int?> EstimateTxSizeAsync(
             decimal amount,
@@ -386,12 +332,10 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         public async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
-            string from,
+            List<ITxOutput> from,
             string to,
             BlockchainTransactionType type,
             decimal fee = 0,
-            decimal feePrice = 0,
-            bool reserve = false,
             CancellationToken cancellationToken = default)
         {
             if (type == BlockchainTransactionType.SwapPayment)
@@ -715,68 +659,6 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        //public async Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
-        //    string toAddress,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    FeeUsagePolicy feeUsagePolicy,
-        //    AddressUsagePolicy addressUsagePolicy,
-        //    BlockchainTransactionType transactionType,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    if (feeUsagePolicy == FeeUsagePolicy.EstimatedFee)
-        //    {
-        //        var estimatedFee = await EstimateFeeAsync(
-        //                to: toAddress,
-        //                amount: amount,
-        //                type: transactionType,
-        //                cancellationToken: cancellationToken)
-        //            .ConfigureAwait(false);
-
-        //        if (estimatedFee == null)
-        //            return Enumerable.Empty<WalletAddress>();
-
-        //        fee = estimatedFee.Value;
-        //    }
-
-        //    var unspentAddresses = (await DataRepository
-        //        .GetUnspentAddressesAsync(Currency)
-        //        .ConfigureAwait(false))
-        //        .ToList();
-
-        //    unspentAddresses = ApplyAddressUsagePolicy(
-        //            addresses: unspentAddresses,
-        //            amount: amount,
-        //            fee: fee,
-        //            feePrice: feePrice,
-        //            addressUsagePolicy: addressUsagePolicy)
-        //        .ToList();
-
-        //    if (unspentAddresses.Count == 0)
-        //        return unspentAddresses;
-
-        //    var requiredAmount = amount + fee;
-
-        //    var usedAddresses = new List<WalletAddress>();
-        //    var usedAmount = 0m;
-
-        //    foreach (var walletAddress in unspentAddresses)
-        //    {
-        //        if (usedAmount >= requiredAmount)
-        //            break;
-
-        //        usedAddresses.Add(walletAddress);
-
-        //        usedAmount += walletAddress.AvailableBalance();
-        //    }
-
-        //    if (requiredAmount > 0 && usedAmount < requiredAmount)
-        //        return Enumerable.Empty<WalletAddress>();
-
-        //    return ResolvePublicKeys(usedAddresses);
-        //}
-
         public async Task<WalletAddress> GetRefundAddressAsync(
             CancellationToken cancellationToken = default)
         {
@@ -793,12 +675,6 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
 
             return ResolvePublicKey(redeemAddress);
-        }
-
-        public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
         }
 
         #endregion Addresses
@@ -995,37 +871,5 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         #endregion AddressResolver
-
-        //protected IEnumerable<WalletAddress> ApplyAddressUsagePolicy(
-        //    List<WalletAddress> addresses,
-        //    decimal amount,
-        //    decimal fee,
-        //    decimal feePrice,
-        //    AddressUsagePolicy addressUsagePolicy)
-        //{
-        //    var currency = Currencies.GetByName(Currency);
-
-        //    switch (addressUsagePolicy)
-        //    {
-        //        case AddressUsagePolicy.UseMinimalBalanceFirst:
-        //            addresses = addresses.SortList(new AvailableBalanceAscending());
-        //            break;
-        //        case AddressUsagePolicy.UseMaximumBalanceFirst:
-        //            addresses = addresses.SortList(new AvailableBalanceDescending());
-        //            break;
-        //        case AddressUsagePolicy.UseOnlyOneAddress:
-        //            var walletAddress = addresses
-        //                .FirstOrDefault(w => w.AvailableBalance() >= amount + currency.GetFeeAmount(fee, feePrice));
-
-        //            return walletAddress != null
-        //                ? new List<WalletAddress> { walletAddress }
-        //                : Enumerable.Empty<WalletAddress>();
-
-        //        default:
-        //            throw new Exception("Address usage policy not supported");
-        //    }
-
-        //    return addresses;
-        //}
     }
 }
