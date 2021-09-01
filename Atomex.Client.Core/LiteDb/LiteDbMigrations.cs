@@ -372,9 +372,9 @@ namespace Atomex.LiteDb
                 db.Shrink(sessionPassword);
                 Log.Debug("Db successfully shrinked");
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                Log.Error(e, $"Db shrink error: {e}");
+                Log.Error("Db shrink error");
             }
         }
 
