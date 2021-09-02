@@ -150,84 +150,84 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         public async Task<decimal?> EstimateFeeAsync(
-            List<ITxOutput> from,
+            List<BitcoinBasedTxOutput> from,
             string to,
             decimal amount,
-            BlockchainTransactionType type,
+            decimal feeRate,
             CancellationToken cancellationToken = default)
         {
-            if (type == BlockchainTransactionType.SwapPayment)
-                return await EstimateSwapPaymentFeeAsync(amount)
-                    .ConfigureAwait(false);
+            //if (type == BlockchainTransactionType.SwapPayment)
+            //    return await EstimateSwapPaymentFeeAsync(amount)
+            //        .ConfigureAwait(false);
 
-            var currency = Config;
+            //var currency = Config;
 
-            var amountInSatoshi = currency.CoinToSatoshi(amount);
+            //var amountInSatoshi = currency.CoinToSatoshi(amount);
 
-            var availableOutputs = (await DataRepository
-                .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
-                .ConfigureAwait(false))
-                .ToList();
+            //var availableOutputs = (await DataRepository
+            //    .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
+            //    .ConfigureAwait(false))
+            //    .ToList();
 
-            if (!availableOutputs.Any())
-                return null; // insufficient funds
+            //if (!availableOutputs.Any())
+            //    return null; // insufficient funds
 
-            var feeRate = await currency
-                .GetFeeRateAsync()
-                .ConfigureAwait(false);
+            //var feeRate = await currency
+            //    .GetFeeRateAsync()
+            //    .ConfigureAwait(false);
 
-            foreach (var selectedOutputs in availableOutputs.SelectOutputs())
-            {
-                var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(selectedOutputs);
+            //foreach (var selectedOutputs in availableOutputs.SelectOutputs())
+            //{
+            //    var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(selectedOutputs);
 
-                var selectedInSatoshi = selectedOutputs.Sum(o => o.Value);
+            //    var selectedInSatoshi = selectedOutputs.Sum(o => o.Value);
 
-                if (selectedInSatoshi < amountInSatoshi) // insufficient funds
-                    continue;
+            //    if (selectedInSatoshi < amountInSatoshi) // insufficient funds
+            //        continue;
 
-                var maxFeeInSatoshi = selectedInSatoshi - amountInSatoshi;
+            //    var maxFeeInSatoshi = selectedInSatoshi - amountInSatoshi;
 
-                var estimatedTx = currency
-                    .CreatePaymentTx(
-                        unspentOutputs: selectedOutputs,
-                        destinationAddress: currency.TestAddress(),
-                        changeAddress: currency.TestAddress(),
-                        amount: amountInSatoshi,
-                        fee: maxFeeInSatoshi,
-                        lockTime: DateTimeOffset.MinValue);
+            //    var estimatedTx = currency
+            //        .CreatePaymentTx(
+            //            unspentOutputs: selectedOutputs,
+            //            destinationAddress: currency.TestAddress(),
+            //            changeAddress: currency.TestAddress(),
+            //            amount: amountInSatoshi,
+            //            fee: maxFeeInSatoshi,
+            //            lockTime: DateTimeOffset.MinValue);
                 
-                var estimatedTxVirtualSize = estimatedTx.VirtualSize();
-                var estimatedTxSize = estimatedTxVirtualSize + estimatedSigSize;
-                var estimatedTxSizeWithChange = estimatedTxVirtualSize + estimatedSigSize + BitcoinBasedConfig.OutputSize;
+            //    var estimatedTxVirtualSize = estimatedTx.VirtualSize();
+            //    var estimatedTxSize = estimatedTxVirtualSize + estimatedSigSize;
+            //    var estimatedTxSizeWithChange = estimatedTxVirtualSize + estimatedSigSize + BitcoinBasedConfig.OutputSize;
 
-                var estimatedFeeInSatoshi = (long)(estimatedTxSize * feeRate);
+            //    var estimatedFeeInSatoshi = (long)(estimatedTxSize * feeRate);
 
-                if (estimatedFeeInSatoshi > maxFeeInSatoshi) // insufficient funds
-                    continue;
+            //    if (estimatedFeeInSatoshi > maxFeeInSatoshi) // insufficient funds
+            //        continue;
 
-                var estimatedChangeInSatoshi = selectedInSatoshi - amountInSatoshi - estimatedFeeInSatoshi;
+            //    var estimatedChangeInSatoshi = selectedInSatoshi - amountInSatoshi - estimatedFeeInSatoshi;
 
-                // if estimated change is dust
-                if (estimatedChangeInSatoshi >= 0 && estimatedChangeInSatoshi < currency.GetDust())
-                    return currency.SatoshiToCoin(estimatedFeeInSatoshi + estimatedChangeInSatoshi);
+            //    // if estimated change is dust
+            //    if (estimatedChangeInSatoshi >= 0 && estimatedChangeInSatoshi < currency.GetDust())
+            //        return currency.SatoshiToCoin(estimatedFeeInSatoshi + estimatedChangeInSatoshi);
 
-                // if estimated change > dust
-                var estimatedFeeWithChangeInSatoshi = (long)(estimatedTxSizeWithChange * feeRate);
+            //    // if estimated change > dust
+            //    var estimatedFeeWithChangeInSatoshi = (long)(estimatedTxSizeWithChange * feeRate);
 
-                if (estimatedFeeWithChangeInSatoshi > maxFeeInSatoshi) // insufficient funds
-                    continue;
+            //    if (estimatedFeeWithChangeInSatoshi > maxFeeInSatoshi) // insufficient funds
+            //        continue;
 
-                var esitmatedNewChangeInSatoshi = selectedInSatoshi - amountInSatoshi - estimatedFeeWithChangeInSatoshi;
+            //    var esitmatedNewChangeInSatoshi = selectedInSatoshi - amountInSatoshi - estimatedFeeWithChangeInSatoshi;
 
-                // if new estimated change is dust
-                if (esitmatedNewChangeInSatoshi >= 0 && esitmatedNewChangeInSatoshi < currency.GetDust())
-                    return currency.SatoshiToCoin(estimatedFeeWithChangeInSatoshi + esitmatedNewChangeInSatoshi);
+            //    // if new estimated change is dust
+            //    if (esitmatedNewChangeInSatoshi >= 0 && esitmatedNewChangeInSatoshi < currency.GetDust())
+            //        return currency.SatoshiToCoin(estimatedFeeWithChangeInSatoshi + esitmatedNewChangeInSatoshi);
 
-                // if new estimated change > dust
-                return currency.SatoshiToCoin(estimatedFeeWithChangeInSatoshi);
-            }
+            //    // if new estimated change > dust
+            //    return currency.SatoshiToCoin(estimatedFeeWithChangeInSatoshi);
+            //}
 
-            return null; // insufficient funds
+            //return null; // insufficient funds
         }
 
         //public async Task<decimal?> EstimateSwapPaymentFeeAsync(decimal amount)
@@ -273,148 +273,355 @@ namespace Atomex.Wallet.BitcoinBased
         //    return null; // insufficient funds
         //}
 
-        public async Task<int?> EstimateTxSizeAsync(
-            decimal amount,
-            decimal fee,
+        //public async Task<int?> EstimateTxSizeAsync(
+        //    decimal amount,
+        //    decimal fee,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    var currency = Config;
+
+        //    var amountInSatoshi = currency.CoinToSatoshi(amount);
+        //    var feeInSatoshi = currency.CoinToSatoshi(fee);
+
+        //    var availableOutputs = (await DataRepository
+        //        .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
+        //        .ConfigureAwait(false))
+        //        .ToList();
+
+        //    if (!availableOutputs.Any())
+        //        return null; // insufficient funds
+
+        //    foreach (var selectedOutputs in availableOutputs.SelectOutputs())
+        //    {
+        //        var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(selectedOutputs);
+
+        //        var selectedInSatoshi = selectedOutputs.Sum(o => o.Value);
+
+        //        if (selectedInSatoshi < amountInSatoshi) // insufficient funds
+        //            continue;
+
+        //        var maxFeeInSatoshi = selectedInSatoshi - amountInSatoshi;
+
+        //        if (maxFeeInSatoshi < fee)
+        //            continue; // insufficient funds
+
+        //        //var changeInSatoshi = selectedInSatoshi - amountInSatoshi - feeInSatoshi;
+
+        //        try
+        //        {
+        //            var estimatedTx = currency
+        //                .CreatePaymentTx(
+        //                    unspentOutputs: selectedOutputs,
+        //                    destinationAddress: currency.TestAddress(),
+        //                    changeAddress: currency.TestAddress(),
+        //                    amount: amountInSatoshi,
+        //                    fee: feeInSatoshi,
+        //                    lockTime: DateTimeOffset.MinValue);
+
+        //            var estimatedTxVirtualSize = estimatedTx.VirtualSize();
+
+        //            return estimatedTxVirtualSize + estimatedSigSize;
+        //        }
+        //        catch (Exception)
+        //        {
+        //            continue;
+        //        }
+        //    }
+
+        //    return null; // insufficient funds
+        //}
+
+        //public async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
+        //    List<ITxOutput> from,
+        //    string to,
+        //    BlockchainTransactionType type,
+        //    decimal fee = 0,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    if (type == BlockchainTransactionType.SwapPayment)
+        //        return await EstimateMaxSwapPaymentAmountAsync(cancellationToken)
+        //            .ConfigureAwait(false);
+
+        //    var currency = Config;
+
+        //    var unspentOutputs = (await DataRepository
+        //        .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
+        //        .ConfigureAwait(false))
+        //        .ToList();
+
+        //    if (!unspentOutputs.Any())
+        //        return (0m, 0m, 0m);
+
+        //    var availableAmountInSatoshi = unspentOutputs.Sum(o => o.Value);
+        //    var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(unspentOutputs);
+
+        //    var testTx = currency
+        //        .CreatePaymentTx(
+        //            unspentOutputs: unspentOutputs,
+        //            destinationAddress: currency.TestAddress(),
+        //            changeAddress: currency.TestAddress(),
+        //            amount: availableAmountInSatoshi,
+        //            fee: 0,
+        //            lockTime: DateTimeOffset.MinValue);
+
+        //    var feeRate = await currency
+        //        .GetFeeRateAsync()
+        //        .ConfigureAwait(false);
+
+        //    // requiredFee = txSize * feeRate without dust, because all coins must be send to one address
+        //    var requiredFeeInSatoshi = (long)((testTx.VirtualSize() + estimatedSigSize) * feeRate);
+
+        //    var amount = currency.SatoshiToCoin(Math.Max(availableAmountInSatoshi - requiredFeeInSatoshi, 0));
+        //    fee = currency.SatoshiToCoin(requiredFeeInSatoshi);
+
+        //    return (amount, fee, 0m);
+        //}
+
+        //public async Task<(decimal, decimal, decimal)> EstimateMaxSwapPaymentAmountAsync(
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    var currency = Config;
+
+        //    var unspentOutputs = (await DataRepository
+        //        .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
+        //        .ConfigureAwait(false))
+        //        .ToList();
+
+        //    var availableAmountInSatoshi = unspentOutputs.Sum(o => o.Value);
+        //    var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(unspentOutputs);
+
+        //    var estimatedTx = currency
+        //        .CreateHtlcP2PkhScriptSwapPaymentTx(
+        //            unspentOutputs: unspentOutputs,
+        //            aliceRefundAddress: new Key().PubKey
+        //                .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
+        //                .ToString(),
+        //            bobAddress: new Key().PubKey
+        //                .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
+        //                .ToString(),
+        //            lockTime: DateTimeOffset.UtcNow.AddHours(5),
+        //            secretHash: new byte[CurrencySwap.DefaultSecretHashSize],
+        //            secretSize: CurrencySwap.DefaultSecretHashSize,
+        //            amount: availableAmountInSatoshi,
+        //            fee: 0,
+        //            redeemScript: out _);
+
+        //    var feeRate = await currency
+        //        .GetFeeRateAsync()
+        //        .ConfigureAwait(false);
+
+        //    var requiredFeeInSatoshi = (long)((estimatedTx.VirtualSize() + estimatedSigSize) * feeRate);
+        //    var amount = currency.SatoshiToCoin(Math.Max(availableAmountInSatoshi - requiredFeeInSatoshi, 0));
+        //    var fee = currency.SatoshiToCoin(requiredFeeInSatoshi);
+
+        //    return (amount, fee, 0m);
+        //}
+
+        public Task<BitcoinTransactionParams> SelectTransactionParamsAsync(
+            IEnumerable<BitcoinInputToSign> availableInputs,
+            IEnumerable<BitcoinDestination> destinations,
+            string changeAddress,
+            decimal feeRate,
             CancellationToken cancellationToken = default)
         {
-            var currency = Config;
-
-            var amountInSatoshi = currency.CoinToSatoshi(amount);
-            var feeInSatoshi = currency.CoinToSatoshi(fee);
-
-            var availableOutputs = (await DataRepository
-                .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
-                .ConfigureAwait(false))
-                .ToList();
-
-            if (!availableOutputs.Any())
-                return null; // insufficient funds
-
-            foreach (var selectedOutputs in availableOutputs.SelectOutputs())
+            return Task.Run(() =>
             {
-                var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(selectedOutputs);
+                if (!availableInputs.Any())
+                    return Task.FromResult<BitcoinTransactionParams>(null); // not enough funds
 
-                var selectedInSatoshi = selectedOutputs.Sum(o => o.Value);
+                var currencyConfig = Config;
 
-                if (selectedInSatoshi < amountInSatoshi) // insufficient funds
-                    continue;
+                // sort available outputs ascending
+                var sortedInputs = availableInputs
+                    .ToList()
+                    .SortList((i1, i2) => i1.Output.Value.CompareTo(i2.Output.Value));
 
-                var maxFeeInSatoshi = selectedInSatoshi - amountInSatoshi;
+                var requiredInSatoshi = destinations.Sum(d => d.AmountInSatoshi);
+                var outputsSize       = destinations.Sum(d => d.Size());
+                var changeOutputSize  = CalculateChangeOutputSize(changeAddress);
+                var feeInSatoshi      = 0m;
 
-                if (maxFeeInSatoshi < fee)
-                    continue; // insufficient funds
-
-                //var changeInSatoshi = selectedInSatoshi - amountInSatoshi - feeInSatoshi;
-
-                try
+                // try to use one input
+                if (sortedInputs.Last().Output.Value >= requiredInSatoshi)
                 {
-                    var estimatedTx = currency
-                        .CreatePaymentTx(
-                            unspentOutputs: selectedOutputs,
-                            destinationAddress: currency.TestAddress(),
-                            changeAddress: currency.TestAddress(),
-                            amount: amountInSatoshi,
-                            fee: feeInSatoshi,
-                            lockTime: DateTimeOffset.MinValue);
+                    foreach (var input in sortedInputs)
+                    {
+                        // skip small inputs
+                        if (input.Output.Value < requiredInSatoshi)
+                            continue;
 
-                    var estimatedTxVirtualSize = estimatedTx.VirtualSize();
+                        feeInSatoshi = CalculateFee(
+                            inputsCount: 1,
+                            inputsSize: input.SizeWithSignature(),
+                            inputsInSatoshi: input.Output.Value,
+                            outputsCount: destinations.Count(),
+                            outputsSize: outputsSize,
+                            witnessCount: input.Output.IsSegWit ? 1 : 0,
+                            requiredInSatoshi: requiredInSatoshi,
+                            requiredFeeRate: feeRate,
+                            changeOutputSize: changeOutputSize,
+                            dustInSatoshi: currencyConfig.GetDust());
 
-                    return estimatedTxVirtualSize + estimatedSigSize;
+                        if (feeInSatoshi <= 0)
+                            continue;
+
+                        return Task.FromResult(new BitcoinTransactionParams
+                        {
+                            InputsToSign  = new BitcoinInputToSign[] { input },
+                            Destinations  = destinations,
+                            FeeInSatoshi  = feeInSatoshi,
+                            FeeRate       = feeRate,
+                            ChangeAddress = changeAddress
+                        });
+                    }
                 }
-                catch (Exception)
+
+                var usedInputs     = new LinkedList<BitcoinInputToSign>();
+                var usedInSatoshi  = 0m;
+                var usedInputsSize = 0;
+                var witnessCount   = 0;
+
+                // try to use several inputs
+                for (var i = 0; i < sortedInputs.Count; ++i)
                 {
-                    continue;
-                }
-            }
+                    var input = sortedInputs[i];
 
-            return null; // insufficient funds
+                    usedInputs.AddLast(input);
+                    usedInSatoshi += input.Output.Value;
+                    usedInputsSize += input.SizeWithSignature();
+
+                    if (input.Output.IsSegWit)
+                        witnessCount++;
+
+                    feeInSatoshi = CalculateFee(
+                        inputsCount: usedInputs.Count(),
+                        inputsSize: usedInputsSize,
+                        inputsInSatoshi: usedInSatoshi,
+                        outputsCount: destinations.Count(),
+                        outputsSize: outputsSize,
+                        witnessCount: witnessCount,
+                        requiredInSatoshi: requiredInSatoshi,
+                        requiredFeeRate: feeRate,
+                        changeOutputSize: changeOutputSize,
+                        dustInSatoshi: currencyConfig.GetDust());
+
+                    if (feeInSatoshi <= 0)
+                        continue;
+
+                    break;
+                }
+
+                // insufficient funds
+                if (feeInSatoshi <= 0)
+                    return Task.FromResult<BitcoinTransactionParams>(null);
+
+                var skip = 0;
+
+                // try to reduce inputs count
+                for (var i = 0; i < usedInputs.Count - 1; ++i)
+                {
+                    var input = sortedInputs[i];
+
+                    usedInSatoshi -= input.Output.Value;
+                    usedInputsSize -= input.SizeWithSignature();
+
+                    if (input.Output.IsSegWit)
+                        witnessCount--;
+
+                    var reducedFeeInSatoshi = CalculateFee(
+                        inputsCount: usedInputs.Count() - i - 1,
+                        inputsSize: usedInputsSize,
+                        inputsInSatoshi: usedInSatoshi,
+                        outputsCount: destinations.Count(),
+                        outputsSize: outputsSize,
+                        witnessCount: witnessCount,
+                        requiredInSatoshi: requiredInSatoshi,
+                        requiredFeeRate: feeRate,
+                        changeOutputSize: changeOutputSize,
+                        dustInSatoshi: currencyConfig.GetDust());
+
+                    if (reducedFeeInSatoshi <= 0)
+                        break;
+
+                    feeInSatoshi = reducedFeeInSatoshi;
+                    skip = i + 1;
+                }
+
+                return Task.FromResult(new BitcoinTransactionParams
+                {
+                    InputsToSign  = usedInputs.Skip(skip),
+                    Destinations  = destinations,
+                    FeeInSatoshi  = feeInSatoshi,
+                    FeeRate       = feeRate,
+                    ChangeAddress = changeAddress
+                });
+
+            }, cancellationToken);
         }
 
-        public async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
-            List<ITxOutput> from,
-            string to,
-            BlockchainTransactionType type,
-            decimal fee = 0,
-            CancellationToken cancellationToken = default)
+        public static decimal CalculateFee(
+            int inputsCount,
+            decimal inputsSize,
+            decimal inputsInSatoshi,
+            int outputsCount,
+            decimal outputsSize,
+            int witnessCount,
+            decimal requiredInSatoshi,
+            decimal requiredFeeRate,
+            int changeOutputSize,
+            decimal dustInSatoshi)
         {
-            if (type == BlockchainTransactionType.SwapPayment)
-                return await EstimateMaxSwapPaymentAmountAsync(cancellationToken)
-                    .ConfigureAwait(false);
+            // inputs amount are insufficient for required amount
+            if (inputsInSatoshi < requiredInSatoshi)
+                return 0;
 
-            var currency = Config;
+            // estimate tx size and fee
+            var size = 4                           // version
+                + inputsCount.CompactSize()        // inputs count compact size
+                + outputsCount.CompactSize()       // outputs count compact size (without change output)
+                + 4                                // nlockTime
+                + ((witnessCount > 0)              // segwit marker + witness count compact size
+                    ? 0.5m + witnessCount.CompactSize() / 4
+                    : 0)
+                + inputsSize                       // tx inputs size
+                + outputsSize;                     // tx outputs size
 
-            var unspentOutputs = (await DataRepository
-                .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
-                .ConfigureAwait(false))
-                .ToList();
+            var feeInSatoshi = size * requiredFeeRate;
 
-            if (!unspentOutputs.Any())
-                return (0m, 0m, 0m);
+            // inputs amount are insufficient for required amount + fee
+            if (inputsInSatoshi < requiredInSatoshi + feeInSatoshi)
+                return 0;
 
-            var availableAmountInSatoshi = unspentOutputs.Sum(o => o.Value);
-            var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(unspentOutputs);
+            var changeInSatoshi = inputsInSatoshi - requiredInSatoshi - feeInSatoshi;
 
-            var testTx = currency
-                .CreatePaymentTx(
-                    unspentOutputs: unspentOutputs,
-                    destinationAddress: currency.TestAddress(),
-                    changeAddress: currency.TestAddress(),
-                    amount: availableAmountInSatoshi,
-                    fee: 0,
-                    lockTime: DateTimeOffset.MinValue);
+            if (changeInSatoshi == 0)
+                return feeInSatoshi;
 
-            var feeRate = await currency
-                .GetFeeRateAsync()
-                .ConfigureAwait(false);
+            var outputCountChangeDiff = (outputsCount + 1).CompactSize() - outputsCount.CompactSize();
+            var sizeWithChange = size + changeOutputSize + outputCountChangeDiff;
+            var feeWithChangeInSatoshi = sizeWithChange * requiredFeeRate;
 
-            // requiredFee = txSize * feeRate without dust, because all coins must be send to one address
-            var requiredFeeInSatoshi = (long)((testTx.VirtualSize() + estimatedSigSize) * feeRate);
+            // inputs amount are insufficient for required amount + fee
+            if (inputsInSatoshi < requiredInSatoshi + feeWithChangeInSatoshi)
+                return 0;
 
-            var amount = currency.SatoshiToCoin(Math.Max(availableAmountInSatoshi - requiredFeeInSatoshi, 0));
-            fee = currency.SatoshiToCoin(requiredFeeInSatoshi);
+            changeInSatoshi = inputsInSatoshi - requiredInSatoshi - feeWithChangeInSatoshi;
 
-            return (amount, fee, 0m);
+            if (changeInSatoshi < dustInSatoshi)
+                return feeWithChangeInSatoshi + changeInSatoshi;
+
+            return feeWithChangeInSatoshi;
         }
-        
-        public async Task<(decimal, decimal, decimal)> EstimateMaxSwapPaymentAmountAsync(
-            CancellationToken cancellationToken = default)
+
+        private int CalculateChangeOutputSize(string changeAddress)
         {
-            var currency = Config;
+            var changeOutputSize = BitcoinAddress
+                .Create(changeAddress, Config.Network)
+                .ScriptPubKey
+                .ToBytes()
+                .Length;
 
-            var unspentOutputs = (await DataRepository
-                .GetAvailableOutputsAsync(Currency, currency.OutputType(), currency.TransactionType)
-                .ConfigureAwait(false))
-                .ToList();
-
-            var availableAmountInSatoshi = unspentOutputs.Sum(o => o.Value);
-            var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(unspentOutputs);
-
-            var estimatedTx = currency
-                .CreateHtlcP2PkhScriptSwapPaymentTx(
-                    unspentOutputs: unspentOutputs,
-                    aliceRefundAddress: new Key().PubKey
-                        .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
-                        .ToString(),
-                    bobAddress: new Key().PubKey
-                        .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
-                        .ToString(),
-                    lockTime: DateTimeOffset.UtcNow.AddHours(5),
-                    secretHash: new byte[CurrencySwap.DefaultSecretHashSize],
-                    secretSize: CurrencySwap.DefaultSecretHashSize,
-                    amount: availableAmountInSatoshi,
-                    fee: 0,
-                    redeemScript: out _);
-
-            var feeRate = await currency
-                .GetFeeRateAsync()
-                .ConfigureAwait(false);
-
-            var requiredFeeInSatoshi = (long)((estimatedTx.VirtualSize() + estimatedSigSize) * feeRate);
-            var amount = currency.SatoshiToCoin(Math.Max(availableAmountInSatoshi - requiredFeeInSatoshi, 0));
-            var fee = currency.SatoshiToCoin(requiredFeeInSatoshi);
-
-            return (amount, fee, 0m);
+            return changeOutputSize + changeOutputSize.CompactSize();
         }
 
         protected override async Task<bool> ResolveTransactionTypeAsync(
@@ -495,7 +702,7 @@ namespace Atomex.Wallet.BitcoinBased
 
                     foreach (var o in outputs)
                     {
-                        var address = o.DestinationAddress(currency);
+                        var address = o.DestinationAddress(currency.Network);
                         var amount = o.Value / currency.DigitsMultiplier;
 
                         var isSpent = o.IsSpent;
@@ -762,7 +969,7 @@ namespace Atomex.Wallet.BitcoinBased
 
                 try
                 {
-                    address = output.DestinationAddress(Config);
+                    address = output.DestinationAddress(Config.Network);
                 }
                 catch (Exception)
                 {
@@ -794,7 +1001,7 @@ namespace Atomex.Wallet.BitcoinBased
 
                 selfInput.SpentTxPoint = new TxPoint(i, tx.Id);
 
-                await UpsertOutputAsync(Config, selfInput, selfInput.DestinationAddress(Config))
+                await UpsertOutputAsync(Config, selfInput, selfInput.DestinationAddress(Config.Network))
                     .ConfigureAwait(false);
             }
         }
