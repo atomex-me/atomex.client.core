@@ -750,7 +750,7 @@ namespace Atomex.Swaps.Ethereum
 
         #region Helpers
 
-        private decimal RequiredAmountInTokens(Swap swap, EthereumTokens.Erc20Config erc20)
+        private decimal RequiredAmountInTokens(Swap swap, Erc20Config erc20)
         {
             var requiredAmountInERC20 = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
 

@@ -17,6 +17,7 @@ using Atomex.Blockchain.Ethereum.Abstract;
 using Atomex.Blockchain.Ethereum.ERC20;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.EthereumTokens;
 
 namespace Atomex.Blockchain.Ethereum
 {
@@ -124,7 +125,7 @@ namespace Atomex.Blockchain.Ethereum
 
         private CurrencyConfig Currency { get; }
 
-        public EtherScanApi(Atomex.EthereumConfig currency)
+        public EtherScanApi(EthereumConfig currency)
         {
             Currency = currency;
             BaseUrl = currency.BlockchainApiBaseUri;
@@ -148,11 +149,56 @@ namespace Atomex.Blockchain.Ethereum
                        var json = JsonConvert.DeserializeObject<JObject>(content);
 
                        return json.ContainsKey("result")
-                           ? Atomex.EthereumConfig.WeiToEth(BigInteger.Parse(json["result"].ToString()))
+                           ? EthereumConfig.WeiToEth(BigInteger.Parse(json["result"].ToString()))
                            : 0;
                    },
                    cancellationToken: cancellationToken)
                .ConfigureAwait(false);
+        }
+
+        public async Task<Result<BigInteger>> GetErc20BalanceAsync(
+            string address,
+            string contractAddress,
+            CancellationToken cancellationToken = default)
+        {
+            var requestUri = $"api?module=account" +
+                $"&action=tokenbalance" +
+                $"&address={address}" +
+                $"&contractaddress={contractAddress}" +
+                "&tag=latest" +
+                $"&apikey={ApiKey}";
+
+            await RequestLimitControl
+                .Wait(cancellationToken)
+                .ConfigureAwait(false);
+
+            return await HttpHelper.GetAsyncResult<BigInteger>(
+                   baseUri: BaseUrl,
+                   requestUri: requestUri,
+                   responseHandler: (response, content) =>
+                   {
+                       var json = JsonConvert.DeserializeObject<JObject>(content);
+
+                       if (json.ContainsKey("status") && json["status"].ToString() != "1")
+                           return new Error(Errors.InvalidResponse, "Status is NOTOK");
+
+                       return json.ContainsKey("result")
+                           ? BigInteger.Parse(json["result"].ToString())
+                           : 0;
+                   },
+                   cancellationToken: cancellationToken)
+               .ConfigureAwait(false);
+        }
+
+        public async Task<Result<BigInteger>> TryGetErc20BalanceAsync(
+            string address,
+            string contractAddress,
+            int attempts = 3,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResultHelper.TryDo((c) => GetErc20BalanceAsync(address, contractAddress, c), attempts, attemptsIntervalMs, cancellationToken)
+                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting erc20 balance after {attempts} attempts");
         }
 
         public async Task<Result<long>> GetBlockNumber(
@@ -702,7 +748,7 @@ namespace Atomex.Blockchain.Ethereum
         }
 
         public async Task<Result<decimal>> GetERC20AllowanceAsync(
-            EthereumTokens.Erc20Config erc20,
+            Erc20Config erc20,
             string tokenAddress,
             FunctionMessage allowanceMessage,
             CancellationToken cancellationToken = default)
