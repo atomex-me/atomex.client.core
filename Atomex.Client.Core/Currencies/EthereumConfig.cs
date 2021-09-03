@@ -79,7 +79,7 @@ namespace Atomex
             Name                       = configuration["Name"];
             Description                = configuration["Description"];
             DigitsMultiplier           = EthDigitsMultiplier;
-            Digits                     = (int)Math.Log10(EthDigitsMultiplier);
+            Digits                     = (int)Math.Round(Math.Log10(EthDigitsMultiplier));
             Format                     = $"F{Digits}";
             IsToken                    = bool.Parse(configuration["IsToken"]);
 

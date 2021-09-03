@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Atomex.Wallet.Bip;
+using System;
 
 namespace Atomex.EthereumTokens
 {
@@ -36,7 +37,7 @@ namespace Atomex.EthereumTokens
             Description                = configuration["Description"];
             DigitsMultiplier           = decimal.Parse(configuration["DigitsMultiplier"]);
             DustDigitsMultiplier       = long.Parse(configuration["DustDigitsMultiplier"]);
-            Digits                     = (int)BigInteger.Log10(new BigInteger(DigitsMultiplier));
+            Digits                     = (int)Math.Round(BigInteger.Log10(new BigInteger(DigitsMultiplier)));
             Format                     = $"F{(Digits < 9 ? Digits : 9)}";
             IsToken                    = bool.Parse(configuration["IsToken"]);
 
