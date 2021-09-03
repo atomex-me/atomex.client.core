@@ -2,10 +2,12 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Atomex.Core;
-using Serilog;
 
 namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 {
@@ -20,7 +22,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
             {
                 Log.Debug("Ethereum: check refund event");
 
-                var ethereum = (Atomex.EthereumConfig)currency;
+                var ethereum = (EthereumConfig)currency;
 
                 var api = new EtherScanApi(ethereum);
 
