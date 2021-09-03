@@ -452,6 +452,29 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
+            // check swap initiation
+            try
+            {
+                var txResult = await ERC20SwapInitiatedHelper
+                    .TryToFindPaymentAsync(swap, erc20Config, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!txResult.HasError && txResult.Value == null)
+                {
+                    // swap not initiated and must be canceled
+                    swap.StateFlags |= SwapStateFlags.IsCanceled;
+
+                    await UpdateSwapAsync(swap, SwapStateFlags.IsCanceled, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    return;
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, $"Can't check {swap.Id} swap initiation for {EthConfig.Name}");
+            }
+
             Log.Debug("Create refund for swap {@swap}", swap.Id);
 
             var gasPrice = await EthConfig
