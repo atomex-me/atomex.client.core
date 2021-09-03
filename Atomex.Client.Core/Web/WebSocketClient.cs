@@ -8,7 +8,7 @@ namespace Atomex.Web
 {
     public class WebSocketClient
     {
-        private readonly int RECONNECT_TIMEOUT_SECONDS = 15;
+        private readonly int RECONNECT_TIMEOUT_SECONDS = 18;
         private readonly int ERROR_RECONNECT_TIMEOUT_SECONDS = 15;
         
         public event EventHandler Connected;
