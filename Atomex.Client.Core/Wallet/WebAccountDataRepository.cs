@@ -194,17 +194,29 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var walletId = $"{walletAddress.Currency}:{walletAddress.Address}";
+                WalletAddress existsAddress;
+                
+                if (!_addresses.TryGetValue(walletId, out existsAddress))
+                {
+                    _addresses[walletId] = walletAddress.Copy();
+                    var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(walletAddress)));
+                    SaveDataCallback?.Invoke(AvailableDataType.WalletAddress, walletId, data);
+                    return Task.FromResult(true);
+                }
+                
+                if (existsAddress.KeyType != walletAddress.KeyType)
+                {
+                    existsAddress.KeyType          = walletAddress.KeyType;
+                    existsAddress.KeyIndex.Chain   = walletAddress.KeyIndex.Chain;
+                    existsAddress.KeyIndex.Index   = walletAddress.KeyIndex.Index;
+                    existsAddress.KeyIndex.Account = walletAddress.KeyIndex.Account;
+                    
+                    var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(existsAddress)));
+                    SaveDataCallback?.Invoke(AvailableDataType.WalletAddress, walletId, data);
+                    return Task.FromResult(true);
+                }
 
-                if (_addresses.ContainsKey(walletId))
-                    return Task.FromResult(false);
-
-                _addresses[walletId] = walletAddress.Copy();
-
-                var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(walletAddress)));
-                // _addressesBson[walletId] = data;
-                SaveDataCallback?.Invoke(AvailableDataType.WalletAddress, walletId, data);
-
-                return Task.FromResult(true);
+                return Task.FromResult(false);
             }
         }
 
