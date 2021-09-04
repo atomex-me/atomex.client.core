@@ -199,6 +199,7 @@ namespace Atomex.Wallet
                 if (!_addresses.TryGetValue(walletId, out existsAddress))
                 {
                     _addresses[walletId] = walletAddress.Copy();
+                    
                     var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(walletAddress)));
                     SaveDataCallback?.Invoke(AvailableDataType.WalletAddress, walletId, data);
                     return Task.FromResult(true);
@@ -210,6 +211,7 @@ namespace Atomex.Wallet
                     existsAddress.KeyIndex.Chain   = walletAddress.KeyIndex.Chain;
                     existsAddress.KeyIndex.Index   = walletAddress.KeyIndex.Index;
                     existsAddress.KeyIndex.Account = walletAddress.KeyIndex.Account;
+                    _addresses[walletId] = existsAddress.Copy();
                     
                     var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(existsAddress)));
                     SaveDataCallback?.Invoke(AvailableDataType.WalletAddress, walletId, data);
