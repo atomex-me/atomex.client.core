@@ -1,4 +1,5 @@
-﻿using System.Globalization;
+﻿using System;
+using System.Globalization;
 using System.Numerics;
 
 using Microsoft.Extensions.Configuration;
@@ -40,7 +41,7 @@ namespace Atomex.TezosTokens
             DustDigitsMultiplier    = long.Parse(configuration["DustDigitsMultiplier"]);
 
             Digits = DigitsMultiplier != 0
-                ? (int)BigInteger.Log10(new BigInteger(DigitsMultiplier))
+                ? (int)Math.Round(BigInteger.Log10(new BigInteger(DigitsMultiplier)))
                 : 0;
 
             Format                  = $"F{Digits}";

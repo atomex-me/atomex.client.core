@@ -137,5 +137,10 @@ namespace Atomex
         public static bool HasTokens(string name) =>
             name == "ETH" ||
             name == "XTZ";
+
+        public static bool IsEthereumToken(string name) =>
+            name == "USDT" ||
+            name == "WBTC" ||
+            name == "TBTC";
     }
 }

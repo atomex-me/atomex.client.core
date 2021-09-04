@@ -351,7 +351,6 @@ namespace Atomex.Wallet.Tezos
                         return;
                     }
 
-
                     // todo: fix 'self' transfers
                     //transfersResult.Value.ForEach(t =>
                     //{

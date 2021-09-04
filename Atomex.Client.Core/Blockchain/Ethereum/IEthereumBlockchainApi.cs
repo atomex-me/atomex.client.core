@@ -7,13 +7,26 @@ using Nethereum.Contracts;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
+using Atomex.EthereumTokens;
 
 namespace Atomex.Blockchain.Ethereum
 {
     public interface IEthereumBlockchainApi
     {
+        Task<Result<BigInteger>> GetErc20BalanceAsync(
+            string address,
+            string contractAddress,
+            CancellationToken cancellationToken = default);
+
+        Task<Result<BigInteger>> TryGetErc20BalanceAsync(
+            string address,
+            string contractAddress,
+            int attempts = 3,
+            int attemptsIntervalMs = 1000,
+            CancellationToken cancellationToken = default);
+
         Task<Result<decimal>> GetERC20AllowanceAsync(
-            EthereumTokens.Erc20Config erc20,
+            Erc20Config erc20,
             string tokenAddress,
             FunctionMessage allowanceMessage,
             CancellationToken cancellationToken = default);

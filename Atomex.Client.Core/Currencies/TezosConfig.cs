@@ -96,7 +96,7 @@ namespace Atomex
             Name                    = configuration["Name"];
             Description             = configuration["Description"];
             DigitsMultiplier        = XtzDigitsMultiplier;
-            Digits                  = (int)Math.Log10(XtzDigitsMultiplier);
+            Digits                  = (int)Math.Round(Math.Log10(XtzDigitsMultiplier));
             Format                  = $"F{Digits}";
             IsToken                 = bool.Parse(configuration["IsToken"]);
 

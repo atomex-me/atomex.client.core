@@ -33,7 +33,7 @@ namespace Atomex
             IsToken                 = bool.Parse(configuration["IsToken"]);
 
             DigitsMultiplier        = LtcDigitsMultiplier;
-            Digits                  = (int)Math.Log10(LtcDigitsMultiplier);
+            Digits                  = (int)Math.Round(Math.Log10(LtcDigitsMultiplier));
             Format                  = $"F{Digits}";
 
             FeeRate                 = decimal.Parse(configuration["FeeRate"]);

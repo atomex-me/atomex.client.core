@@ -358,7 +358,9 @@ namespace Atomex.Blockchain.SoChain
             if (utxoResult.Value == null)
                 return 0;
 
-            return utxoResult.Value.Sum(o => o.Value);
+            var balanceInSatoshi = utxoResult.Value.Sum(o => o.Value);
+
+            return Currency.SatoshiToCoin(balanceInSatoshi);
         }
 
         public override async Task<Result<ITxPoint>> GetInputAsync(

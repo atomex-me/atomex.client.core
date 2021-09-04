@@ -102,7 +102,9 @@ namespace Atomex.Blockchain.BlockCypher
                         if (balanceResponse == null && !balanceResponse.ContainsKey("final_balance"))
                             return new Error(Errors.InvalidResponse, "Balance getting error. Invalid response format.");
 
-                        return balanceResponse.Value<long>("final_balance");
+                        var balanceInSatoshi = balanceResponse.Value<long>("final_balance");
+
+                        return Currency.SatoshiToCoin(balanceInSatoshi);
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

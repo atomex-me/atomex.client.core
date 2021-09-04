@@ -168,13 +168,25 @@ namespace Atomex.LiteDb
                     addresses.EnsureIndex(CurrencyKey);
                     addresses.EnsureIndex(AddressKey);
 
-                    if (!addresses.Exists(Query.EQ(IdKey, walletAddress.UniqueId)))
+                    var existsAddress = addresses.FindById(walletAddress.UniqueId);
+
+                    if (existsAddress == null)
                     {
                         var document = _bsonMapper.ToDocument(walletAddress);
 
                         var id = addresses.Insert(document);
 
                         return Task.FromResult(id != null);
+                    }
+                    else if (existsAddress.ContainsKey(KeyTypeKey) &&
+                             existsAddress[KeyTypeKey].AsInt32 != walletAddress.KeyType)
+                    {
+                        existsAddress[KeyTypeKey]                       = walletAddress.KeyType;
+                        existsAddress["KeyIndex"].AsDocument["Chain"]   = (int)walletAddress.KeyIndex.Chain;
+                        existsAddress["KeyIndex"].AsDocument["Index"]   = (int)walletAddress.KeyIndex.Index;
+                        existsAddress["KeyIndex"].AsDocument["Account"] = (int)walletAddress.KeyIndex.Account;
+
+                        return Task.FromResult(addresses.Update(existsAddress));
                     }
 
                     return Task.FromResult(false);
