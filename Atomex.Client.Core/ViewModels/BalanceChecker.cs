@@ -137,7 +137,7 @@ namespace Atomex.ViewModels
                             actualBalance = balanceResult.Value;
                         }
 
-                        if (address.AvailableBalance() < actualBalance)
+                        if (actualBalance < address.AvailableBalance())
                         {
                             errors.Add(new BalanceError
                             {
@@ -147,7 +147,7 @@ namespace Atomex.ViewModels
                                 ActualBalance = actualBalance
                             });
                         }
-                        else if (address.AvailableBalance() > actualBalance &&
+                        else if (actualBalance > address.AvailableBalance() &&
                                  Currencies.IsBitcoinBased(address.Currency))
                         {
                             errors.Add(new BalanceError
