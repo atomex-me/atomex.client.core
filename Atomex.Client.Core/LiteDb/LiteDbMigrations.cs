@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Atomex.Common;
 using Atomex.Core;
 using LiteDB;
@@ -369,6 +370,7 @@ namespace Atomex.LiteDb
         {
             try
             {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return;
                 db.Shrink(sessionPassword);
                 Log.Debug("Db successfully shrinked");
             }
