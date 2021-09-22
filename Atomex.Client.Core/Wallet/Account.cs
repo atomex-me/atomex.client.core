@@ -127,6 +127,14 @@ namespace Atomex.Wallet
 
         #region Common
 
+        public void ChangePassword(SecureString newPassword)
+        {
+            var pathToWallet = $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}";
+
+            UserSettings.SaveToFile(pathToWallet, newPassword);
+            DataRepository.ChangePassword(newPassword);
+        }
+
         public void Lock()
         {
             Wallet.Lock();

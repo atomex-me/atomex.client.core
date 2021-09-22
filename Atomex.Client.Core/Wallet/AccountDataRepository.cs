@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Security;
 
 using Serilog;
 
@@ -711,5 +712,10 @@ namespace Atomex.Wallet
         }
 
         #endregion Swaps
+
+        public void ChangePassword(SecureString newPassword)
+        {
+            throw new NotImplementedException();
+        }
     }
 }
