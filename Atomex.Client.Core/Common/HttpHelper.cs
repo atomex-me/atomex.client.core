@@ -142,6 +142,32 @@ namespace Atomex.Common
                 },
                 cancellationToken: cancellationToken);
         }
+        
+        public static Task<Result<T>> PostAsyncResult<T>(
+            string baseUri,
+            string requestUri,
+            HttpContent content,
+            HttpRequestHeaders headers,
+            Func<HttpResponseMessage, string, Result<T>> responseHandler,
+            CancellationToken cancellationToken = default)
+        {
+            return PostAsync(
+                baseUri: baseUri,
+                requestUri: requestUri,
+                content: content,
+                headers: headers,
+                responseHandler: response =>
+                {
+                    var responseContent = response.Content
+                        .ReadAsStringAsync()
+                        .WaitForResult();
+
+                    return !response.IsSuccessStatusCode
+                        ? new Error((int)response.StatusCode, responseContent)
+                        : responseHandler(response, responseContent);
+                },
+                cancellationToken: cancellationToken);
+        }
 
         private static async Task<T> SendRequestAsync<T>(
             string baseUri,
