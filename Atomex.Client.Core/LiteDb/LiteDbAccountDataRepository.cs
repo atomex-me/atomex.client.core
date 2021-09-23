@@ -45,7 +45,7 @@ namespace Atomex.LiteDb
         private const string AccountKey            = nameof(KeyIndex) + "." + nameof(KeyIndex.Account);
 
         private readonly string _pathToDb;
-        private readonly string _sessionPassword;
+        private string _sessionPassword;
         private readonly BsonMapper _bsonMapper;
 
         private readonly ConcurrentDictionary<long, Swap> _swapById = new();
@@ -79,6 +79,17 @@ namespace Atomex.LiteDb
                 sessionPassword: _sessionPassword,
                 network: network,
                 migrationComplete);
+        }
+
+        public void ChangePassword(SecureString newPassword)
+        {
+            var newSessionPassword = SessionPasswordHelper.GetSessionPassword(newPassword);
+
+            using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+
+            db.Shrink(newSessionPassword);
+
+            _sessionPassword = newSessionPassword;
         }
 
         private BsonMapper CreateBsonMapper(ICurrencies currencies)
