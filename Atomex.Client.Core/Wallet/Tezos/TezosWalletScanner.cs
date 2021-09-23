@@ -175,7 +175,7 @@ namespace Atomex.Wallet.Tezos
                 return;
 
             // remove bip32Ed25519 addresses if there is no activity on them
-            foreach (var address in addresses)
+            foreach (var address in addresses.ToList())
             {
                 _ = await Account.DataRepository
                     .RemoveAddressAsync(address.Currency, address.Address)

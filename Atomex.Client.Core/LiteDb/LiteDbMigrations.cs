@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Atomex.Common;
 using Atomex.Core;
 using LiteDB;
@@ -393,11 +394,18 @@ namespace Atomex.LiteDb
             File.Copy(fullPathToDb, fullPathToBackup);
         }
 
-        private static void Shrink(LiteDatabase db, string sessionPassword)
+        public static void Shrink(LiteDatabase db, string sessionPassword)
         {
-            db.Shrink(sessionPassword);
-
-            Log.Debug("Db successfully shrinked");
+            try
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return;
+                db.Shrink(sessionPassword);
+                Log.Debug("Db successfully shrinked");
+            }
+            catch (Exception)
+            {
+                Log.Error("Db shrink error");
+            }
         }
 
         private static void UpdateVersion(LiteDatabase db, ushort fromVersion, ushort toVersion)

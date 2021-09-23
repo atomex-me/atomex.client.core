@@ -82,7 +82,7 @@ namespace Atomex.LiteDb
 
             var removedOrders = db.DropCollection("Orders");
 
-             db.Shrink();
+            LiteDbMigrations.Shrink(db, sessionPassword);
         }
 
         private static ushort GetDataBaseVersion(

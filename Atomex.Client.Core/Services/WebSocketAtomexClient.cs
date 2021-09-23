@@ -20,6 +20,7 @@ using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Web;
+using Atomex.Wallet;
 using Atomex.Blockchain.Tezos;
 using Atomex.Wallet.Tezos;
 
@@ -493,6 +494,33 @@ namespace Atomex.Services
         }
 
         #endregion
+
+        private Task BalanceUpdateLoopAsync(CancellationToken cancellationToken)
+        {
+           return Task.Run(async () =>
+           {
+               try
+               {
+                   while (!cancellationToken.IsCancellationRequested)
+                   {
+                       await new HdWalletScanner(Account)
+                           .ScanFreeAddressesAsync(cancellationToken)
+                           .ConfigureAwait(false);
+
+                       await Task.Delay(TimeSpan.FromSeconds(Account.UserSettings.BalanceUpdateIntervalInSec), cancellationToken)
+                           .ConfigureAwait(false);
+                   }
+               }
+               catch (OperationCanceledException)
+               {
+                   Log.Debug("Balance autoupdate task canceled.");
+               }
+               catch (Exception e)
+               {
+                   Log.Error(e, "Balance autoupdate task error");
+               }
+           });
+        }
 
         private async Task TrackUnconfirmedTransactionsAsync(
             CancellationToken cancellationToken)
