@@ -131,6 +131,11 @@ namespace Atomex.Wallet
         {
             var pathToWallet = $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}";
 
+            var hdWallet = Wallet as HdWallet;
+
+            hdWallet.KeyStorage.Encrypt(newPassword);
+            hdWallet.SaveToFile(Wallet.PathToWallet, newPassword);
+
             UserSettings.SaveToFile(pathToWallet, newPassword);
             DataRepository.ChangePassword(newPassword);
         }
