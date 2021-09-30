@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.BitcoinBased;
 
 namespace Atomex.Core
 {
@@ -72,6 +74,10 @@ namespace Atomex.Core
         public string PartyRedeemScript { get; set; }
         public string PartyRefundAddress { get; set; }
         public decimal MakerNetworkFee { get; set; }
+
+        public string FromAddress { get; set; }
+        public List<BitcoinBasedTxOutput> FromOutputs { get; set; }
+        public string RedeemFromAddress { get; set; }
 
         public string SoldCurrency =>
             Side == Side.Buy
