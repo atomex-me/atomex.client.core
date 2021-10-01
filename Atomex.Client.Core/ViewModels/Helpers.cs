@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading;
@@ -23,6 +25,19 @@ namespace Atomex.ViewModels
             public decimal ReservedForSwaps { get; set; }
             public Error Error { get; set; }
         }
+        
+        
+        public enum SwapDetailingStatus {
+            Initialization,
+            Exchanging,
+            Completion
+        }
+
+        public class SwapDetailingInfo
+        {
+            public SwapDetailingStatus Status;
+            public string Description;
+        }
 
         public class SwapPriceEstimation
         {
@@ -31,6 +46,44 @@ namespace Atomex.ViewModels
             public decimal Price { get; set; }
             public decimal MaxAmount { get; set; }
             public bool IsNoLiquidity { get; set; }
+        }
+
+
+        public static IEnumerable GetSwapDetailingInfo(Swap swap)
+        {
+            IList<SwapDetailingInfo> result = new List<SwapDetailingInfo>();
+
+            result.Add(new SwapDetailingInfo()
+            {
+                Status = SwapDetailingStatus.Initialization,
+                Description = "Completed successfully."
+            });
+            
+            result.Add(new SwapDetailingInfo()
+            {
+                Status = SwapDetailingStatus.Exchanging,
+                Description = "Ethereum payment transaction completed."
+            });
+            
+            result.Add(new SwapDetailingInfo()
+            {
+                Status = SwapDetailingStatus.Exchanging,
+                Description = "Tezos payment transaction completed."
+            });
+            
+            result.Add(new SwapDetailingInfo()
+            {
+                Status = SwapDetailingStatus.Completion,
+                Description = "Ethereum redeem transaction completed."
+            });
+            
+            result.Add(new SwapDetailingInfo()
+            {
+                Status = SwapDetailingStatus.Completion,
+                Description = "Tezos redeem transaction completed."
+            });
+
+            return result;
         }
 
         public static Task<SwapPaymentParams> EstimateSwapPaymentParamsAsync(

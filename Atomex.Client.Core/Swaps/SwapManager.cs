@@ -166,6 +166,8 @@ namespace Atomex.Swaps
 
         private async Task<Swap> AddSwapAsync(Swap receivedSwap)
         {
+            Log.Fatal($"Received SWAP with order ID {receivedSwap.OrderId}");
+            
             var order = await GetOrderAsync(receivedSwap)
                 .ConfigureAwait(false);
 
@@ -217,8 +219,13 @@ namespace Atomex.Swaps
                     var order = _account.GetOrderById(receivedSwap.OrderId);
 
                     if (order != null)
-                        return order;
-
+                    {
+                        Log.Fatal($"Order finded in GetOrderAsync {order}");
+                        return order;   
+                    }
+                    
+                    Log.Error($"No order finded");
+                        
                     await Task.Delay(attemptIntervalMs)
                         .ConfigureAwait(false);
                 }
@@ -314,6 +321,7 @@ namespace Atomex.Swaps
 
             try
             {
+                Log.Fatal($"Handling existing swap: IsAcceptor {swap.IsAcceptor}; IsInitiate {IsInitiate(swap, receivedSwap)}; IsAccept {IsAccept(swap, receivedSwap)}");
                 if (swap.IsAcceptor && IsInitiate(swap, receivedSwap))
                 {
                     // handle initiate by acceptor
