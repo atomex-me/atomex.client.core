@@ -49,7 +49,7 @@ namespace Atomex.ViewModels
         }
 
 
-        public static IEnumerable GetSwapDetailingInfo(Swap swap)
+        public static IEnumerable<SwapDetailingInfo> GetSwapDetailingInfo(Swap swap)
         {
             IList<SwapDetailingInfo> result = new List<SwapDetailingInfo>();
 
