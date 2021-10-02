@@ -35,6 +35,7 @@ namespace Atomex.ViewModels
 
         public class SwapDetailingInfo
         {
+            public bool IsCompleted;
             public SwapDetailingStatus Status;
             public string Description;
         }
@@ -53,37 +54,114 @@ namespace Atomex.ViewModels
         {
             IList<SwapDetailingInfo> result = new List<SwapDetailingInfo>();
 
-            result.Add(new SwapDetailingInfo()
+            if (swap.StateFlags.HasFlag(SwapStateFlags.HasSecretHash) &&
+                swap.Status.HasFlag(SwapStatus.Initiated) &&
+                swap.Status.HasFlag(SwapStatus.Accepted))
             {
-                Status = SwapDetailingStatus.Initialization,
-                Description = "Completed successfully."
-            });
-            
-            result.Add(new SwapDetailingInfo()
+                result.Add(new SwapDetailingInfo
+                {
+                    Status      = SwapDetailingStatus.Initialization,
+                    IsCompleted = true,
+                    Description = "Completed successfully."
+                });
+                
+            }
+            else
             {
-                Status = SwapDetailingStatus.Exchanging,
-                Description = "Ethereum payment transaction completed."
-            });
-            
-            result.Add(new SwapDetailingInfo()
-            {
-                Status = SwapDetailingStatus.Exchanging,
-                Description = "Tezos payment transaction completed."
-            });
-            
-            result.Add(new SwapDetailingInfo()
-            {
-                Status = SwapDetailingStatus.Completion,
-                Description = "Ethereum redeem transaction completed."
-            });
-            
-            result.Add(new SwapDetailingInfo()
-            {
-                Status = SwapDetailingStatus.Completion,
-                Description = "Tezos redeem transaction completed."
-            });
+                result.Add(new SwapDetailingInfo
+                {
+                    Status      = SwapDetailingStatus.Initialization,
+                    IsCompleted = false,
+                    Description = "Waiting while orders are matched and credentials exchanged."
+                });
 
-            return result;
+                return result;
+            }
+            
+            if (swap.StateFlags.HasFlag(SwapStateFlags.HasPartyPayment) &&
+                swap.StateFlags.HasFlag(SwapStateFlags.IsPartyPaymentConfirmed))
+            {
+                result.Add(new SwapDetailingInfo
+                {
+                    Status      = SwapDetailingStatus.Exchanging,
+                    IsCompleted = false,
+                    Description = $"{swap.PurchasedCurrency} counter party payment transaction confirmed."
+                });
+            }
+            else
+            {
+                result.Add(new SwapDetailingInfo
+                {
+                    Status      = SwapDetailingStatus.Exchanging,
+                    IsCompleted = false,
+                    Description = $"Waiting for confirming counter party {swap.PurchasedCurrency} transaction."
+                });
+
+                return result;
+            }
+
+            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed))
+            {
+                result.Add(new SwapDetailingInfo
+                {
+                    Status      = SwapDetailingStatus.Exchanging,
+                    IsCompleted = true,
+                    Description = $"Your {swap.SoldCurrency} payment transaction confirmed."
+                });
+            }
+            else
+            {
+                if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
+                {
+                    result.Add(new SwapDetailingInfo
+                    {
+                        Status      = SwapDetailingStatus.Exchanging,
+                        IsCompleted = false,
+                        Description = $"Waiting for confirming your {swap.SoldCurrency} payment transaction."
+                    });
+
+                    return result;
+                }
+                else
+                {
+                    result.Add(new SwapDetailingInfo
+                    {
+                        Status      = SwapDetailingStatus.Exchanging,
+                        IsCompleted = false,
+                        Description = $"Creating your {swap.SoldCurrency} payment transaction."
+                    });
+
+                    return result;
+                }
+            }
+            // return result;
+            //
+            // result.Add(new SwapDetailingInfo()
+            // {
+            //     Status = SwapDetailingStatus.Exchanging,
+            //     Description = "Ethereum payment transaction completed."
+            // });
+            //
+            // result.Add(new SwapDetailingInfo()
+            // {
+            //     Status = SwapDetailingStatus.Exchanging,
+            //     IsCompleted = true,
+            //     Description = "Tezos payment transaction completed."
+            // });
+            //
+            // result.Add(new SwapDetailingInfo()
+            // {
+            //     Status = SwapDetailingStatus.Completion,
+            //     Description = "Ethereum redeem transaction completed."
+            // });
+            //
+            // result.Add(new SwapDetailingInfo()
+            // {
+            //     Status = SwapDetailingStatus.Completion,
+            //     Description = "Tezos redeem transaction completed."
+            // });
+            //
+            // return result;
         }
 
         public static Task<SwapPaymentParams> EstimateSwapPaymentParamsAsync(
