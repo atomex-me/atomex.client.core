@@ -107,7 +107,7 @@ namespace Atomex.Swaps.Tezos
                         }
 
                         await BroadcastTxAsync(swap, paymentTx, cancellationToken)
-                                .ConfigureAwait(false);
+                            .ConfigureAwait(false);
                     }
                     catch
                     {
@@ -129,19 +129,23 @@ namespace Atomex.Swaps.Tezos
                         isInitiateTx = false;
 
                         // check initiate payment tx confirmation
-                        if (paymentTxs.Count > 1)
-                        {
-                            var isInitiated = await WaitPaymentConfirmationAsync(paymentTx.Id, InitiationTimeout, cancellationToken)
+                        var isInitiated =
+                            await WaitPaymentConfirmationAsync(paymentTx.Id, InitiationTimeout, cancellationToken)
                                 .ConfigureAwait(false);
-
-                            if (!isInitiated)
-                            {
-                                Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
-                                return;
-                            }
+                        
+                        Log.Fatal($"TezosIsInitiated {isInitiated}");
+                        if (!isInitiated)
+                        {
+                            Log.Error("Initiation payment tx not confirmed after timeout {@timeout}",
+                                InitiationTimeout.Minutes);
+                            return;
                         }
                     }
                 }
+                
+                swap.StateFlags |= SwapStateFlags.IsPaymentConfirmed;
+                await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentConfirmed, cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (Exception e)
             {

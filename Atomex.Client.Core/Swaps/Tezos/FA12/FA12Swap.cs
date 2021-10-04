@@ -26,6 +26,8 @@ namespace Atomex.Swaps.Tezos.FA12
         private TezosAccount TezosAccount { get; }
         private Fa12Config Fa12Config => Currencies.Get<Fa12Config>(Currency);
         private TezosConfig XtzConfig => Currencies.Get<TezosConfig>(TezosAccount.Currency);
+        public static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(10);
+        public static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(15);
 
         public Fa12Swap(
             Fa12Account account,
@@ -136,7 +138,22 @@ namespace Atomex.Swaps.Tezos.FA12
 
                     await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentBroadcast, cancellationToken)
                         .ConfigureAwait(false);
+
+                    //todo: this is temporary until WaitPaymentConfirmationAsync implemented.
+                    await Task.Delay(InitiationCheckInterval, cancellationToken);
+
+                    var isInitiated = true;
+                    
+                    if (!isInitiated)
+                    {
+                        Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
+                        return;
+                    }
                 }
+                
+                swap.StateFlags |= SwapStateFlags.IsPaymentConfirmed;
+                await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentConfirmed, cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (Exception e)
             {

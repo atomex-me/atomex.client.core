@@ -145,22 +145,23 @@ namespace Atomex.Swaps.Ethereum
                         await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentBroadcast, cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (paymentTxs.Count > 1)
-                        {
-                            var isInitiateConfirmed = await WaitPaymentConfirmationAsync(
+                        var isInitiateConfirmed = await WaitPaymentConfirmationAsync(
                                     txId: paymentTx.Id,
                                     timeout: EthereumSwap.InitiationTimeout,
                                     cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
 
-                            if (!isInitiateConfirmed)
-                            {
-                                Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", EthereumSwap.InitiationTimeout.Minutes);
-                                return;
-                            }
+                        if (!isInitiateConfirmed)
+                        {
+                            Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", EthereumSwap.InitiationTimeout.Minutes);
+                            return;
                         }
                     }
                 }
+                
+                swap.StateFlags |= SwapStateFlags.IsPaymentConfirmed;
+                await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentConfirmed, cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (Exception e)
             {
