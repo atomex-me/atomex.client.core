@@ -170,12 +170,33 @@ namespace Atomex.ViewModels
 
             else
             {
-                result.Add(new SwapDetailingInfo
+                if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundConfirmed))
                 {
-                    Status      = SwapDetailingStatus.Completion,
-                    IsCompleted = false,
-                    Description = $"Waiting your {swap.PurchasedCurrency} redeem transaction confirmation"
-                });
+                    result.Add(new SwapDetailingInfo
+                    {
+                        Status      = SwapDetailingStatus.Completion,
+                        IsCompleted = true,
+                        Description = $"Your {swap.SoldCurrency} refunded."
+                    });
+                }
+                else if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast))
+                {
+                    result.Add(new SwapDetailingInfo
+                    {
+                        Status      = SwapDetailingStatus.Completion,
+                        IsCompleted = true,
+                        Description = $"Waiting while your {swap.SoldCurrency} refund transaction confirmed."
+                    });
+                }
+                else
+                {
+                    result.Add(new SwapDetailingInfo
+                    {
+                        Status      = SwapDetailingStatus.Completion,
+                        IsCompleted = false,
+                        Description = $"Waiting your {swap.PurchasedCurrency} redeem transaction confirmation"
+                    });   
+                }
             }
 
             return result;
