@@ -454,6 +454,15 @@ namespace Atomex.Swaps.Tezos
                 return;
             }
 
+            var lockTimeInSeconds = swap.IsInitiator
+                ? DefaultInitiatorLockTimeInSeconds
+                : DefaultAcceptorLockTimeInSeconds;
+
+            var lockTime = swap.TimeStamp.ToUniversalTime() + TimeSpan.FromSeconds(lockTimeInSeconds);
+
+            await RefundTimeDelayAsync(lockTime, cancellationToken)
+                .ConfigureAwait(false);
+
             Log.Debug("Create refund for swap {@swap}", swap.Id);
 
             var walletAddress = (await _account

@@ -375,7 +375,10 @@ namespace Atomex.Swaps.BitcoinBased
                 ? DefaultInitiatorLockTimeInSeconds
                 : DefaultAcceptorLockTimeInSeconds;
 
-            DateTimeOffset lockTime = swap.TimeStamp.ToUniversalTime() + TimeSpan.FromSeconds(lockTimeInSeconds);
+            var lockTime = swap.TimeStamp.ToUniversalTime() + TimeSpan.FromSeconds(lockTimeInSeconds);
+
+            await RefundTimeDelayAsync(lockTime, cancellationToken)
+                .ConfigureAwait(false);
 
             var refundAddress = await _account
                 .GetAddressAsync(swap.RefundAddress)

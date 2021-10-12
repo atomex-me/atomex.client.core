@@ -29,6 +29,7 @@ namespace Atomex.Swaps.Abstract
         public static TimeSpan RedeemTimeReserve = TimeSpan.FromMinutes(90);
         protected static TimeSpan PartyRedeemTimeReserve = TimeSpan.FromMinutes(95);
         public static TimeSpan PaymentTimeReserve = TimeSpan.FromMinutes(60);
+        protected static TimeSpan RefundDelay = TimeSpan.FromSeconds(30);
 
         public OnSwapUpdatedAsyncDelegate InitiatorPaymentConfirmed { get; set; }
         public OnSwapUpdatedAsyncDelegate AcceptorPaymentConfirmed { get; set; }
@@ -333,5 +334,23 @@ namespace Atomex.Swaps.Abstract
         protected abstract Task RefundTimeReachedHandler(
             Swap swap,
             CancellationToken cancellationToken = default);
+
+        protected async Task<bool> RefundTimeDelayAsync(
+            DateTime refundTimeUtc,
+            CancellationToken cancellationToken = default)
+        {
+            // if refund time has not come
+            if (DateTime.UtcNow < refundTimeUtc)
+                return false;
+
+            var timeDiff = DateTime.UtcNow - refundTimeUtc;
+
+            // if refund time came less than RefundDelay seconds ago
+            if (timeDiff < RefundDelay)
+                await Task.Delay(RefundDelay - timeDiff, cancellationToken)
+                    .ConfigureAwait(false);
+
+            return true;
+        }
     }
 }

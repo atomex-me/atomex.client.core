@@ -445,6 +445,15 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
+            var lockTimeInSeconds = swap.IsInitiator
+                ? DefaultInitiatorLockTimeInSeconds
+                : DefaultAcceptorLockTimeInSeconds;
+
+            var lockTime = swap.TimeStamp.ToUniversalTime() + TimeSpan.FromSeconds(lockTimeInSeconds);
+
+            await RefundTimeDelayAsync(lockTime, cancellationToken)
+                .ConfigureAwait(false);
+
             // check swap initiation
             try
             {
