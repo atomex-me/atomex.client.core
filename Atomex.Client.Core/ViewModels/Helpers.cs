@@ -101,7 +101,8 @@ namespace Atomex.ViewModels
                 return result;
             }
 
-            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed))
+            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed) || swap.IsCanceled || swap.IsComplete ||
+                swap.IsUnsettled)
             {
                 // your payment confirmed.
                 result.Add(new SwapDetailingInfo
