@@ -191,7 +191,7 @@ namespace Atomex.Blockchain.SoChain
             [JsonProperty(PropertyName = "inputs")]
             public List<InputDisplayData> Inputs { get; set; }
             [JsonProperty(PropertyName = "req_sigs")]
-            public int ReqSigs { get; set; }
+            public int? ReqSigs { get; set; }
             [JsonProperty(PropertyName = "script_asm")]
             public string ScriptAsm { get; set; }
             [JsonProperty(PropertyName = "script_hex")]

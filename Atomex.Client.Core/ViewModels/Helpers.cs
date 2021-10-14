@@ -106,7 +106,8 @@ namespace Atomex.ViewModels
                 {
                     Status = SwapDetailingStatus.Exchanging,
                     IsCompleted = false,
-                    Description = $"Waiting for confirmation {swap.PurchasedCurrency} counter party payment transaction.",
+                    Description =
+                        $"Waiting for confirmation counter party {swap.PurchasedCurrency} payment transaction.",
                     ExplorerLink = purchaseCurrencyConfig switch
                     {
                         EthereumConfig ethereumConfig =>
@@ -151,13 +152,14 @@ namespace Atomex.ViewModels
                     {
                         Status = SwapDetailingStatus.Exchanging,
                         IsCompleted = false,
-                        Description = $"Waiting for confirming your {swap.SoldCurrency} payment transaction.",
+                        Description = $"Waiting for confirmation your {swap.SoldCurrency} payment transaction.",
                         ExplorerLink = soldCurrencyConfig switch
                         {
                             EthereumConfig ethereumConfig =>
                                 $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                            TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                            TezosConfig tezosConfig =>
+                                $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                             _ => null
                         }
                     };
@@ -203,7 +205,7 @@ namespace Atomex.ViewModels
                 {
                     Status = SwapDetailingStatus.Completion,
                     IsCompleted = false,
-                    Description = $"Waiting counter party {swap.SoldCurrency} redeem.",
+                    Description = $"Waiting for counter party {swap.SoldCurrency} redeem.",
                     ExplorerLink = soldCurrencyConfig switch
                     {
                         EthereumConfig ethereumConfig =>
@@ -253,7 +255,8 @@ namespace Atomex.ViewModels
                             EthereumConfig ethereumConfig =>
                                 $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                            TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                            TezosConfig tezosConfig =>
+                                $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                             _ => null
                         }
                     };
@@ -266,13 +269,14 @@ namespace Atomex.ViewModels
                     {
                         Status = SwapDetailingStatus.Completion,
                         IsCompleted = true,
-                        Description = $"Waiting while your {swap.SoldCurrency} refund transaction confirmed.",
+                        Description = $"Waiting for confirmation your {swap.SoldCurrency} refund transaction.",
                         ExplorerLink = soldCurrencyConfig switch
                         {
                             EthereumConfig ethereumConfig =>
                                 $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                            TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                            TezosConfig tezosConfig =>
+                                $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                             _ => null
                         }
                     };
@@ -285,13 +289,14 @@ namespace Atomex.ViewModels
                     {
                         Status = SwapDetailingStatus.Completion,
                         IsCompleted = false,
-                        Description = $"Waiting your {swap.PurchasedCurrency} redeem transaction confirmation",
+                        Description = $"Waiting for confirmation your {swap.PurchasedCurrency} redeem transaction.",
                         ExplorerLink = purchaseCurrencyConfig switch
                         {
                             EthereumConfig ethereumConfig =>
                                 $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                            TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                            TezosConfig tezosConfig =>
+                                $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                             _ => null
                         }
                     };
