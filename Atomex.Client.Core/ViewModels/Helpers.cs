@@ -87,16 +87,15 @@ namespace Atomex.ViewModels
                 {
                     Status = SwapDetailingStatus.Exchanging,
                     IsCompleted = false,
-                    Description = $"{swap.PurchasedCurrency} counter party payment transaction confirmed."
-                };
+                    Description = $"{swap.PurchasedCurrency} counter party payment transaction confirmed.",
+                    ExplorerLink = purchaseCurrencyConfig switch
+                    {
+                        EthereumConfig ethereumConfig =>
+                            $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                swapDetailingStep.ExplorerLink = purchaseCurrencyConfig switch
-                {
-                    EthereumConfig ethereumConfig =>
-                        $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
-
-                    TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
-                    _ => swapDetailingStep.ExplorerLink
+                        TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                        _ => null
+                    }
                 };
 
                 result.Add(swapDetailingStep);
@@ -107,16 +106,15 @@ namespace Atomex.ViewModels
                 {
                     Status = SwapDetailingStatus.Exchanging,
                     IsCompleted = false,
-                    Description = $"Waiting for confirming {swap.PurchasedCurrency} counter party payment transaction."
-                };
+                    Description = $"Waiting for confirmation {swap.PurchasedCurrency} counter party payment transaction.",
+                    ExplorerLink = purchaseCurrencyConfig switch
+                    {
+                        EthereumConfig ethereumConfig =>
+                            $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                swapDetailingStep.ExplorerLink = purchaseCurrencyConfig switch
-                {
-                    EthereumConfig ethereumConfig =>
-                        $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
-
-                    TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
-                    _ => swapDetailingStep.ExplorerLink
+                        TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                        _ => null
+                    }
                 };
 
                 result.Add(swapDetailingStep);
@@ -131,16 +129,15 @@ namespace Atomex.ViewModels
                 {
                     Status = SwapDetailingStatus.Exchanging,
                     IsCompleted = true,
-                    Description = $"Your {swap.SoldCurrency} payment transaction confirmed."
-                };
+                    Description = $"Your {swap.SoldCurrency} payment transaction confirmed.",
+                    ExplorerLink = soldCurrencyConfig switch
+                    {
+                        EthereumConfig ethereumConfig =>
+                            $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                swapDetailingStep.ExplorerLink = soldCurrencyConfig switch
-                {
-                    EthereumConfig ethereumConfig =>
-                        $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
-
-                    TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
-                    _ => swapDetailingStep.ExplorerLink
+                        TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                        _ => null
+                    }
                 };
 
                 result.Add(swapDetailingStep);
@@ -154,16 +151,15 @@ namespace Atomex.ViewModels
                     {
                         Status = SwapDetailingStatus.Exchanging,
                         IsCompleted = false,
-                        Description = $"Waiting for confirming your {swap.SoldCurrency} payment transaction."
-                    };
+                        Description = $"Waiting for confirming your {swap.SoldCurrency} payment transaction.",
+                        ExplorerLink = soldCurrencyConfig switch
+                        {
+                            EthereumConfig ethereumConfig =>
+                                $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                    swapDetailingStep.ExplorerLink = soldCurrencyConfig switch
-                    {
-                        EthereumConfig ethereumConfig =>
-                            $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
-
-                        TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
-                        _ => swapDetailingStep.ExplorerLink
+                            TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                            _ => null
+                        }
                     };
 
                     result.Add(swapDetailingStep);
@@ -188,16 +184,15 @@ namespace Atomex.ViewModels
                 {
                     Status = SwapDetailingStatus.Completion,
                     IsCompleted = false,
-                    Description = $"Counter party {swap.SoldCurrency} redeem completed."
-                };
+                    Description = $"Counter party {swap.SoldCurrency} redeem completed.",
+                    ExplorerLink = soldCurrencyConfig switch
+                    {
+                        EthereumConfig ethereumConfig =>
+                            $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                swapDetailingStep.ExplorerLink = soldCurrencyConfig switch
-                {
-                    EthereumConfig ethereumConfig =>
-                        $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
-
-                    TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
-                    _ => swapDetailingStep.ExplorerLink
+                        TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                        _ => null
+                    }
                 };
 
                 result.Add(swapDetailingStep);
@@ -208,16 +203,15 @@ namespace Atomex.ViewModels
                 {
                     Status = SwapDetailingStatus.Completion,
                     IsCompleted = false,
-                    Description = $"Waiting counter party {swap.SoldCurrency} redeem."
-                };
+                    Description = $"Waiting counter party {swap.SoldCurrency} redeem.",
+                    ExplorerLink = soldCurrencyConfig switch
+                    {
+                        EthereumConfig ethereumConfig =>
+                            $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                swapDetailingStep.ExplorerLink = soldCurrencyConfig switch
-                {
-                    EthereumConfig ethereumConfig =>
-                        $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
-
-                    TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
-                    _ => swapDetailingStep.ExplorerLink
+                        TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                        _ => null
+                    }
                 };
 
                 result.Add(swapDetailingStep);
@@ -231,16 +225,15 @@ namespace Atomex.ViewModels
                 {
                     Status = SwapDetailingStatus.Completion,
                     IsCompleted = true,
-                    Description = $"Your {swap.PurchasedCurrency} redeem completed."
-                };
+                    Description = $"Your {swap.PurchasedCurrency} redeem completed.",
+                    ExplorerLink = purchaseCurrencyConfig switch
+                    {
+                        EthereumConfig ethereumConfig =>
+                            $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                swapDetailingStep.ExplorerLink = purchaseCurrencyConfig switch
-                {
-                    EthereumConfig ethereumConfig =>
-                        $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
-
-                    TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
-                    _ => swapDetailingStep.ExplorerLink
+                        TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                        _ => null
+                    }
                 };
 
                 result.Add(swapDetailingStep);
@@ -254,16 +247,15 @@ namespace Atomex.ViewModels
                     {
                         Status = SwapDetailingStatus.Completion,
                         IsCompleted = true,
-                        Description = $"Your {swap.SoldCurrency} refunded."
-                    };
+                        Description = $"Your {swap.SoldCurrency} refunded.",
+                        ExplorerLink = soldCurrencyConfig switch
+                        {
+                            EthereumConfig ethereumConfig =>
+                                $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                    swapDetailingStep.ExplorerLink = soldCurrencyConfig switch
-                    {
-                        EthereumConfig ethereumConfig =>
-                            $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
-
-                        TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
-                        _ => swapDetailingStep.ExplorerLink
+                            TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                            _ => null
+                        }
                     };
 
                     result.Add(swapDetailingStep);
@@ -274,16 +266,15 @@ namespace Atomex.ViewModels
                     {
                         Status = SwapDetailingStatus.Completion,
                         IsCompleted = true,
-                        Description = $"Waiting while your {swap.SoldCurrency} refund transaction confirmed."
-                    };
+                        Description = $"Waiting while your {swap.SoldCurrency} refund transaction confirmed.",
+                        ExplorerLink = soldCurrencyConfig switch
+                        {
+                            EthereumConfig ethereumConfig =>
+                                $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                    swapDetailingStep.ExplorerLink = soldCurrencyConfig switch
-                    {
-                        EthereumConfig ethereumConfig =>
-                            $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
-
-                        TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
-                        _ => swapDetailingStep.ExplorerLink
+                            TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                            _ => null
+                        }
                     };
 
                     result.Add(swapDetailingStep);
@@ -294,16 +285,15 @@ namespace Atomex.ViewModels
                     {
                         Status = SwapDetailingStatus.Completion,
                         IsCompleted = false,
-                        Description = $"Waiting your {swap.PurchasedCurrency} redeem transaction confirmation"
-                    };
+                        Description = $"Waiting your {swap.PurchasedCurrency} redeem transaction confirmation",
+                        ExplorerLink = purchaseCurrencyConfig switch
+                        {
+                            EthereumConfig ethereumConfig =>
+                                $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                    swapDetailingStep.ExplorerLink = purchaseCurrencyConfig switch
-                    {
-                        EthereumConfig ethereumConfig =>
-                            $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
-
-                        TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
-                        _ => swapDetailingStep.ExplorerLink
+                            TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                            _ => null
+                        }
                     };
 
                     result.Add(swapDetailingStep);
