@@ -36,7 +36,7 @@ namespace Atomex.ViewModels
         public class SwapDetailingInfo
         {
             public bool IsCompleted;
-            public string ExplorerLink => string.Empty;
+            public string ExplorerLink => "https://granadanet.tzkt.io/ooNE1stR6Y1Xuu8cpBJKL1wEesApEmWtgw3cs6d7fQL1tTj5ZSU";
             public SwapDetailingStatus Status;
             public string Description;
         }
