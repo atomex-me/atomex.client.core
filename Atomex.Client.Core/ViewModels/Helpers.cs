@@ -5,7 +5,6 @@ using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
@@ -25,9 +24,10 @@ namespace Atomex.ViewModels
             public decimal ReservedForSwaps { get; set; }
             public Error Error { get; set; }
         }
-        
-        
-        public enum SwapDetailingStatus {
+
+
+        public enum SwapDetailingStatus
+        {
             Initialization,
             Exchanging,
             Completion
@@ -36,7 +36,7 @@ namespace Atomex.ViewModels
         public class SwapDetailingInfo
         {
             public bool IsCompleted;
-            public string ExplorerLink => "https://granadanet.tzkt.io/ooNE1stR6Y1Xuu8cpBJKL1wEesApEmWtgw3cs6d7fQL1tTj5ZSU";
+            public string ExplorerLink;
             public SwapDetailingStatus Status;
             public string Description;
         }
@@ -51,8 +51,10 @@ namespace Atomex.ViewModels
         }
 
 
-        public static IEnumerable<SwapDetailingInfo> GetSwapDetailingInfo(Swap swap)
+        public static IEnumerable<SwapDetailingInfo> GetSwapDetailingInfo(Swap swap, IAccount account)
         {
+            var soldCurrencyConfig = account.Currencies.GetByName(swap.SoldCurrency);
+            var purchaseCurrencyConfig = account.Currencies.GetByName(swap.PurchasedCurrency);
             IList<SwapDetailingInfo> result = new List<SwapDetailingInfo>();
 
             if (swap.StateFlags.HasFlag(SwapStateFlags.HasSecretHash) &&
@@ -61,42 +63,63 @@ namespace Atomex.ViewModels
             {
                 result.Add(new SwapDetailingInfo
                 {
-                    Status      = SwapDetailingStatus.Initialization,
+                    Status = SwapDetailingStatus.Initialization,
                     IsCompleted = true,
                     Description = "Completed successfully."
                 });
-                
             }
             else
             {
                 result.Add(new SwapDetailingInfo
                 {
-                    Status      = SwapDetailingStatus.Initialization,
+                    Status = SwapDetailingStatus.Initialization,
                     IsCompleted = false,
                     Description = "Waiting while orders are matched and credentials exchanged."
                 });
 
                 return result;
             }
-            
+
             if (swap.StateFlags.HasFlag(SwapStateFlags.HasPartyPayment) &&
                 swap.StateFlags.HasFlag(SwapStateFlags.IsPartyPaymentConfirmed))
             {
-                result.Add(new SwapDetailingInfo
+                var swapDetailingStep = new SwapDetailingInfo
                 {
-                    Status      = SwapDetailingStatus.Exchanging,
+                    Status = SwapDetailingStatus.Exchanging,
                     IsCompleted = false,
                     Description = $"{swap.PurchasedCurrency} counter party payment transaction confirmed."
-                });
+                };
+
+                swapDetailingStep.ExplorerLink = purchaseCurrencyConfig switch
+                {
+                    EthereumConfig ethereumConfig =>
+                        $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
+
+                    TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                    _ => swapDetailingStep.ExplorerLink
+                };
+
+                result.Add(swapDetailingStep);
             }
             else
             {
-                result.Add(new SwapDetailingInfo
+                var swapDetailingStep = new SwapDetailingInfo
                 {
-                    Status      = SwapDetailingStatus.Exchanging,
+                    Status = SwapDetailingStatus.Exchanging,
                     IsCompleted = false,
-                    Description = $"Waiting for confirming counter party {swap.PurchasedCurrency} transaction."
-                });
+                    Description = $"Waiting for confirming {swap.PurchasedCurrency} counter party payment transaction."
+                };
+
+                swapDetailingStep.ExplorerLink = purchaseCurrencyConfig switch
+                {
+                    EthereumConfig ethereumConfig =>
+                        $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
+
+                    TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                    _ => swapDetailingStep.ExplorerLink
+                };
+
+                result.Add(swapDetailingStep);
 
                 return result;
             }
@@ -104,25 +127,46 @@ namespace Atomex.ViewModels
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed) || swap.IsCanceled || swap.IsComplete ||
                 swap.IsUnsettled)
             {
-                // your payment confirmed.
-                result.Add(new SwapDetailingInfo
+                var swapDetailingStep = new SwapDetailingInfo
                 {
-                    Status      = SwapDetailingStatus.Exchanging,
+                    Status = SwapDetailingStatus.Exchanging,
                     IsCompleted = true,
                     Description = $"Your {swap.SoldCurrency} payment transaction confirmed."
-                });
+                };
+
+                swapDetailingStep.ExplorerLink = soldCurrencyConfig switch
+                {
+                    EthereumConfig ethereumConfig =>
+                        $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
+
+                    TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                    _ => swapDetailingStep.ExplorerLink
+                };
+
+                result.Add(swapDetailingStep);
             }
             else
             {
                 // your payment broadcasted but not confirmed.
                 if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
                 {
-                    result.Add(new SwapDetailingInfo
+                    var swapDetailingStep = new SwapDetailingInfo
                     {
-                        Status      = SwapDetailingStatus.Exchanging,
+                        Status = SwapDetailingStatus.Exchanging,
                         IsCompleted = false,
                         Description = $"Waiting for confirming your {swap.SoldCurrency} payment transaction."
-                    });
+                    };
+
+                    swapDetailingStep.ExplorerLink = soldCurrencyConfig switch
+                    {
+                        EthereumConfig ethereumConfig =>
+                            $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
+
+                        TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                        _ => swapDetailingStep.ExplorerLink
+                    };
+
+                    result.Add(swapDetailingStep);
 
                     return result;
                 }
@@ -130,73 +174,139 @@ namespace Atomex.ViewModels
                 // your payment not yet created.
                 result.Add(new SwapDetailingInfo
                 {
-                    Status      = SwapDetailingStatus.Exchanging,
+                    Status = SwapDetailingStatus.Exchanging,
                     IsCompleted = false,
                     Description = $"Creating your {swap.SoldCurrency} payment transaction."
                 });
 
                 return result;
-                
             }
 
             if (swap.StateFlags.HasFlag(SwapStateFlags.HasSecret))
             {
-                result.Add(new SwapDetailingInfo
+                var swapDetailingStep = new SwapDetailingInfo
                 {
-                    Status      = SwapDetailingStatus.Completion,
+                    Status = SwapDetailingStatus.Completion,
                     IsCompleted = false,
                     Description = $"Counter party {swap.SoldCurrency} redeem completed."
-                });
+                };
+
+                swapDetailingStep.ExplorerLink = soldCurrencyConfig switch
+                {
+                    EthereumConfig ethereumConfig =>
+                        $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
+
+                    TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                    _ => swapDetailingStep.ExplorerLink
+                };
+
+                result.Add(swapDetailingStep);
             }
             else
             {
-                result.Add(new SwapDetailingInfo
+                var swapDetailingStep = new SwapDetailingInfo
                 {
-                    Status      = SwapDetailingStatus.Completion,
+                    Status = SwapDetailingStatus.Completion,
                     IsCompleted = false,
                     Description = $"Waiting counter party {swap.SoldCurrency} redeem."
-                });
+                };
+
+                swapDetailingStep.ExplorerLink = soldCurrencyConfig switch
+                {
+                    EthereumConfig ethereumConfig =>
+                        $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
+
+                    TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                    _ => swapDetailingStep.ExplorerLink
+                };
+
+                result.Add(swapDetailingStep);
+
                 return result;
             }
 
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemConfirmed))
             {
-                result.Add(new SwapDetailingInfo
+                var swapDetailingStep = new SwapDetailingInfo
                 {
-                    Status     = SwapDetailingStatus.Completion,
+                    Status = SwapDetailingStatus.Completion,
                     IsCompleted = true,
                     Description = $"Your {swap.PurchasedCurrency} redeem completed."
-                });
+                };
+
+                swapDetailingStep.ExplorerLink = purchaseCurrencyConfig switch
+                {
+                    EthereumConfig ethereumConfig =>
+                        $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
+
+                    TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                    _ => swapDetailingStep.ExplorerLink
+                };
+
+                result.Add(swapDetailingStep);
             }
 
             else
             {
                 if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundConfirmed))
                 {
-                    result.Add(new SwapDetailingInfo
+                    var swapDetailingStep = new SwapDetailingInfo
                     {
-                        Status      = SwapDetailingStatus.Completion,
+                        Status = SwapDetailingStatus.Completion,
                         IsCompleted = true,
                         Description = $"Your {swap.SoldCurrency} refunded."
-                    });
+                    };
+
+                    swapDetailingStep.ExplorerLink = soldCurrencyConfig switch
+                    {
+                        EthereumConfig ethereumConfig =>
+                            $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
+
+                        TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                        _ => swapDetailingStep.ExplorerLink
+                    };
+
+                    result.Add(swapDetailingStep);
                 }
                 else if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast))
                 {
-                    result.Add(new SwapDetailingInfo
+                    var swapDetailingStep = new SwapDetailingInfo
                     {
-                        Status      = SwapDetailingStatus.Completion,
+                        Status = SwapDetailingStatus.Completion,
                         IsCompleted = true,
                         Description = $"Waiting while your {swap.SoldCurrency} refund transaction confirmed."
-                    });
+                    };
+
+                    swapDetailingStep.ExplorerLink = soldCurrencyConfig switch
+                    {
+                        EthereumConfig ethereumConfig =>
+                            $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
+
+                        TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                        _ => swapDetailingStep.ExplorerLink
+                    };
+
+                    result.Add(swapDetailingStep);
                 }
                 else
                 {
-                    result.Add(new SwapDetailingInfo
+                    var swapDetailingStep = new SwapDetailingInfo
                     {
-                        Status      = SwapDetailingStatus.Completion,
+                        Status = SwapDetailingStatus.Completion,
                         IsCompleted = false,
                         Description = $"Waiting your {swap.PurchasedCurrency} redeem transaction confirmation"
-                    });   
+                    };
+
+                    swapDetailingStep.ExplorerLink = purchaseCurrencyConfig switch
+                    {
+                        EthereumConfig ethereumConfig =>
+                            $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
+
+                        TezosConfig tezosConfig => $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                        _ => swapDetailingStep.ExplorerLink
+                    };
+
+                    result.Add(swapDetailingStep);
                 }
             }
 
@@ -218,11 +328,11 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount           = 0,
-                        PaymentFee       = 0,
-                        MakerNetworkFee  = 0,
+                        Amount = 0,
+                        PaymentFee = 0,
+                        MakerNetworkFee = 0,
                         ReservedForSwaps = 0,
-                        Error            = null
+                        Error = null
                     };
                 }
 
@@ -263,13 +373,15 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount           = 0m,
-                        PaymentFee       = 0m,
-                        MakerNetworkFee  = 0m,
+                        Amount = 0m,
+                        PaymentFee = 0m,
+                        MakerNetworkFee = 0m,
                         ReservedForSwaps = 0m,
                         Error = hasSameChainForFees
                             ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
-                            : new Error(Errors.InsufficientChainFunds, string.Format(CultureInfo.InvariantCulture, "Insufficient {0} to cover token transfer fee", fromCurrency.FeeCurrencyName))
+                            : new Error(Errors.InsufficientChainFunds,
+                                string.Format(CultureInfo.InvariantCulture,
+                                    "Insufficient {0} to cover token transfer fee", fromCurrency.FeeCurrencyName))
                     };
                 }
 
@@ -277,11 +389,11 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount           = Math.Max(maxNetAmount, 0m),
-                        PaymentFee       = maxFee,
-                        MakerNetworkFee  = estimatedMakerNetworkFee,
+                        Amount = Math.Max(maxNetAmount, 0m),
+                        PaymentFee = maxFee,
+                        MakerNetworkFee = estimatedMakerNetworkFee,
                         ReservedForSwaps = reservedForSwapsAmount,
-                        Error            = null
+                        Error = null
                     };
                 }
 
@@ -297,25 +409,26 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount           = 0m,
-                        PaymentFee       = 0m,
-                        MakerNetworkFee  = 0m,
+                        Amount = 0m,
+                        PaymentFee = 0m,
+                        MakerNetworkFee = 0m,
                         ReservedForSwaps = 0m,
                         Error = hasSameChainForFees
                             ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
-                            : new Error(Errors.InsufficientChainFunds, string.Format(CultureInfo.InvariantCulture, "Insufficient {0} to cover token transfer fee", fromCurrency.FeeCurrencyName))
+                            : new Error(Errors.InsufficientChainFunds,
+                                string.Format(CultureInfo.InvariantCulture,
+                                    "Insufficient {0} to cover token transfer fee", fromCurrency.FeeCurrencyName))
                     };
                 }
 
                 return new SwapPaymentParams
                 {
-                    Amount           = amount,
-                    PaymentFee       = estimatedPaymentFee.Value,
-                    MakerNetworkFee  = estimatedMakerNetworkFee,
+                    Amount = amount,
+                    PaymentFee = estimatedPaymentFee.Value,
+                    MakerNetworkFee = estimatedMakerNetworkFee,
                     ReservedForSwaps = reservedForSwapsAmount,
-                    Error            = null
+                    Error = null
                 };
-
             }, cancellationToken);
         }
 
@@ -370,13 +483,12 @@ namespace Atomex.ViewModels
 
                 return new SwapPriceEstimation
                 {
-                    TargetAmount  = targetAmount,
-                    OrderPrice    = estimatedOrderPrice,
-                    Price         = estimatedPrice,
-                    MaxAmount     = estimatedMaxAmount,
+                    TargetAmount = targetAmount,
+                    OrderPrice = estimatedOrderPrice,
+                    Price = estimatedPrice,
+                    MaxAmount = estimatedMaxAmount,
                     IsNoLiquidity = isNoLiquidity
                 };
-
             }, cancellationToken);
         }
 
@@ -388,9 +500,11 @@ namespace Atomex.ViewModels
                 .GetSwapsAsync()
                 .ConfigureAwait(false);
 
-            var reservedAmount = swaps.Sum(s => (s.IsActive && s.SoldCurrency == currency.Name && !s.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-                ? (s.Symbol.IsBaseCurrency(currency.Name) ? s.Qty : s.Qty * s.Price) + s.MakerNetworkFee
-                : 0);
+            var reservedAmount = swaps.Sum(s =>
+                (s.IsActive && s.SoldCurrency == currency.Name &&
+                 !s.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
+                    ? (s.Symbol.IsBaseCurrency(currency.Name) ? s.Qty : s.Qty * s.Price) + s.MakerNetworkFee
+                    : 0);
 
             return AmountHelper.RoundDown(reservedAmount, currency.DigitsMultiplier);
         }
