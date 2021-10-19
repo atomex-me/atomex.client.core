@@ -219,8 +219,6 @@ namespace Atomex.Swaps
                     if (order != null)
                         return order;
 
-                    Log.Error($"No order finded");
-                        
                     await Task.Delay(attemptIntervalMs)
                         .ConfigureAwait(false);
                 }
