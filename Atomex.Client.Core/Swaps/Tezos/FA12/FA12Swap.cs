@@ -139,12 +139,13 @@ namespace Atomex.Swaps.Tezos.FA12
                     await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentBroadcast, cancellationToken)
                         .ConfigureAwait(false);
 
-                    //todo: this is temporary until WaitPaymentConfirmationAsync implemented.
-                    await Task.Delay(InitiationCheckInterval, cancellationToken);
-
-                    var isInitiated = true;
+                    var isInitiateConfirmed = await WaitPaymentConfirmationAsync(
+                            txId: paymentTx.Id,
+                            timeout: Fa12Swap.InitiationTimeout,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
                     
-                    if (!isInitiated)
+                    if (!isInitiateConfirmed)
                     {
                         Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
                         return;
@@ -158,7 +159,6 @@ namespace Atomex.Swaps.Tezos.FA12
             catch (Exception e)
             {
                 Log.Error(e, "Swap payment error for swap {@swapId}", swap.Id);
-                return;
             }
         }
 
@@ -225,6 +225,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: fa12,
+                    dataRepository: Fa12Account.DataRepository,
                     txId: swap.RedeemTx.Id,
                     confirmationHandler: RedeemConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -357,6 +358,7 @@ namespace Atomex.Swaps.Tezos.FA12
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
                 currency: XtzConfig,
+                dataRepository: Fa12Account.DataRepository,
                 txId: redeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -461,6 +463,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: XtzConfig,
+                    dataRepository: Fa12Account.DataRepository,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -569,6 +572,7 @@ namespace Atomex.Swaps.Tezos.FA12
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
                 currency: XtzConfig,
+                dataRepository: Fa12Account.DataRepository,
                 txId: refundTx.Id,
                 confirmationHandler: RefundConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -741,6 +745,31 @@ namespace Atomex.Swaps.Tezos.FA12
         #endregion Event Handlers
 
         #region Helpers
+        
+        private async Task<bool> WaitPaymentConfirmationAsync(
+            string txId,
+            TimeSpan timeout,
+            CancellationToken cancellationToken = default)
+        {
+            var timeStamp = DateTime.UtcNow;
+
+            while (DateTime.UtcNow < timeStamp + timeout)
+            {
+                await Task.Delay(Fa12Swap.InitiationCheckInterval, cancellationToken)
+                    .ConfigureAwait(false);
+
+                var tx = await Fa12Account
+                    .DataRepository
+                    .GetTransactionByIdAsync(XtzConfig.Name, txId, XtzConfig.TransactionType)
+                    .ConfigureAwait(false);
+
+                if (tx is not { IsConfirmed: true }) continue;
+
+                return tx.IsConfirmed;
+            }
+
+            return false;
+        }
 
         private decimal RequiredAmountInTokens(Swap swap, Fa12Config fa12)
         {

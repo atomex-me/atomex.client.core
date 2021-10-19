@@ -210,6 +210,7 @@ namespace Atomex.Swaps.Ethereum
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: ethConfig,
+                    dataRepository: _account.DataRepository,
                     txId: swap.RedeemTx.Id,
                     confirmationHandler: RedeemConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -329,6 +330,7 @@ namespace Atomex.Swaps.Ethereum
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
                 currency: ethConfig,
+                dataRepository: _account.DataRepository,
                 txId: redeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -439,6 +441,7 @@ namespace Atomex.Swaps.Ethereum
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: ethConfig,
+                    dataRepository: _account.DataRepository,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -578,6 +581,7 @@ namespace Atomex.Swaps.Ethereum
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
                 currency: ethConfig,
+                dataRepository: _account.DataRepository,
                 txId: refundTx.Id,
                 confirmationHandler: RefundConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -990,13 +994,15 @@ namespace Atomex.Swaps.Ethereum
             {
                 await Task.Delay(InitiationCheckInterval, cancellationToken)
                     .ConfigureAwait(false);
-
-                var tx = await EthConfig.BlockchainApi
-                    .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
+                
+                var tx = await _account
+                    .DataRepository
+                    .GetTransactionByIdAsync(EthConfig.Name, txId, EthConfig.TransactionType)
                     .ConfigureAwait(false);
 
-                if (tx != null && !tx.HasError && tx.Value != null && tx.Value.State == BlockchainTransactionState.Confirmed)
-                    return true;
+                if (tx is not { IsConfirmed: true }) continue;
+
+                return tx.IsConfirmed;
             }
 
             return false;

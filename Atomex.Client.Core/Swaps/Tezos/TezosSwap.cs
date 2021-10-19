@@ -214,6 +214,7 @@ namespace Atomex.Swaps.Tezos
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: xtzConfig,
+                    dataRepository: _account.DataRepository,
                     txId: swap.RedeemTx.Id,
                     confirmationHandler: RedeemConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -346,6 +347,7 @@ namespace Atomex.Swaps.Tezos
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
                 currency: xtzConfig,
+                dataRepository: _account.DataRepository,
                 txId: redeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -450,6 +452,7 @@ namespace Atomex.Swaps.Tezos
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: xtzConfig,
+                    dataRepository: _account.DataRepository,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -558,6 +561,7 @@ namespace Atomex.Swaps.Tezos
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
                 currency: xtzConfig,
+                dataRepository: _account.DataRepository,
                 txId: refundTx.Id,
                 confirmationHandler: RefundConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -925,18 +929,20 @@ namespace Atomex.Swaps.Tezos
             CancellationToken cancellationToken = default)
         {
             var timeStamp = DateTime.UtcNow;
-
+            
             while (DateTime.UtcNow < timeStamp + timeout)
             {
                 await Task.Delay(InitiationCheckInterval, cancellationToken)
                     .ConfigureAwait(false);
 
-                var tx = await XtzConfig.BlockchainApi
-                    .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
+                var tx = await _account
+                    .DataRepository
+                    .GetTransactionByIdAsync(XtzConfig.Name, txId, XtzConfig.TransactionType)
                     .ConfigureAwait(false);
 
-                if (tx != null && !tx.HasError && tx.Value != null && tx.Value.State == BlockchainTransactionState.Confirmed)
-                    return true;
+                if (tx is not { IsConfirmed: true }) continue;
+
+                return tx.IsConfirmed;
             }
 
             return false;

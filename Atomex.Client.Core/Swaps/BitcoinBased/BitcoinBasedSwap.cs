@@ -226,6 +226,7 @@ namespace Atomex.Swaps.BitcoinBased
                     _ = TrackTransactionConfirmationAsync(
                         swap: swap,
                         currency: currency,
+                        dataRepository: _account.DataRepository,
                         txId: swap.RedeemTx.Id,
                         confirmationHandler: RedeemConfirmedEventHandler,
                         cancellationToken: cancellationToken);
@@ -342,6 +343,7 @@ namespace Atomex.Swaps.BitcoinBased
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
                 currency: currency,
+                dataRepository: _account.DataRepository,
                 txId: swap.RedeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -364,6 +366,7 @@ namespace Atomex.Swaps.BitcoinBased
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: Currencies.GetByName(swap.SoldCurrency),
+                    dataRepository: _account.DataRepository,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -448,6 +451,7 @@ namespace Atomex.Swaps.BitcoinBased
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: currency,
+                    dataRepository: _account.DataRepository,
                     txId: swap.PaymentTxId,
                     confirmationHandler: PaymentConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -807,6 +811,7 @@ namespace Atomex.Swaps.BitcoinBased
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: Currencies.GetByName(swap.SoldCurrency),
+                    dataRepository: _account.DataRepository,
                     txId: txId,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);

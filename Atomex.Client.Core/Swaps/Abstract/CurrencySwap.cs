@@ -9,6 +9,7 @@ using Atomex.Blockchain.Helpers;
 using Atomex.Core;
 using Atomex.Common;
 using Atomex.Cryptography;
+using Atomex.Wallet.Abstract;
 
 namespace Atomex.Swaps.Abstract
 {
@@ -109,6 +110,7 @@ namespace Atomex.Swaps.Abstract
         protected Task TrackTransactionConfirmationAsync(
             Swap swap,
             CurrencyConfig currency,
+            IAccountDataRepository dataRepository,
             string txId,
             Func<Swap, IBlockchainTransaction, CancellationToken, Task> confirmationHandler,
             CancellationToken cancellationToken = default)
@@ -119,16 +121,16 @@ namespace Atomex.Swaps.Abstract
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        var result = await currency
-                            .IsTransactionConfirmed(txId, cancellationToken)
+                        var tx = await dataRepository
+                            .GetTransactionByIdAsync(currency.Name, txId, currency.TransactionType)
                             .ConfigureAwait(false);
 
-                        if (result.HasError)
+                        if (tx == null)
                             break;
 
-                        if (result.Value.IsConfirmed)
+                        if (tx.IsConfirmed)
                         {
-                            await confirmationHandler.Invoke(swap, result.Value.Transaction, cancellationToken)
+                            await confirmationHandler.Invoke(swap, tx, cancellationToken)
                                 .ConfigureAwait(false);
 
                             break;

@@ -228,6 +228,7 @@ namespace Atomex.Swaps.Ethereum
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: erc20Config,
+                    dataRepository: Erc20Account.DataRepository,
                     txId: swap.RedeemTx.Id,
                     confirmationHandler: RedeemConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -347,6 +348,7 @@ namespace Atomex.Swaps.Ethereum
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
                 currency: erc20Config,
+                dataRepository: Erc20Account.DataRepository,
                 txId: redeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -446,6 +448,7 @@ namespace Atomex.Swaps.Ethereum
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: erc20Config,
+                    dataRepository: Erc20Account.DataRepository,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -585,6 +588,7 @@ namespace Atomex.Swaps.Ethereum
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
                 currency: erc20Config,
+                dataRepository: Erc20Account.DataRepository,
                 txId: refundTx.Id,
                 confirmationHandler: RefundConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -1146,17 +1150,14 @@ namespace Atomex.Swaps.Ethereum
                 await Task.Delay(EthereumSwap.InitiationCheckInterval, cancellationToken)
                     .ConfigureAwait(false);
 
-                var tx = await EthConfig.BlockchainApi
-                    .GetTransactionAsync(txId, cancellationToken)
+                var tx = await Erc20Account
+                    .DataRepository
+                    .GetTransactionByIdAsync(Erc20Config.Name, txId, Erc20Config.TransactionType)
                     .ConfigureAwait(false);
 
-                if (tx != null && !tx.HasError && tx.Value != null)
-                {
-                    if (tx.Value.State == BlockchainTransactionState.Confirmed)
-                        return true;
-                    if (tx.Value.State == BlockchainTransactionState.Failed)
-                        return false;
-                }
+                if (tx is not { IsConfirmed: true }) continue;
+
+                return tx.IsConfirmed;
             }
 
             return false;
