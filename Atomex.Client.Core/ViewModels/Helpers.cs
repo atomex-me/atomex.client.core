@@ -123,8 +123,10 @@ namespace Atomex.ViewModels
                 return result;
             }
 
-            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed) || swap.IsCanceled || swap.IsComplete ||
-                swap.IsUnsettled)
+            if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed) || swap.IsComplete ||
+                swap.IsCanceled && swap.StateFlags.HasFlag(SwapStateFlags.HasSecret) ||
+                swap.IsRefunded && swap.StateFlags.HasFlag(SwapStateFlags.HasSecret) ||
+                swap.IsUnsettled && swap.StateFlags.HasFlag(SwapStateFlags.HasSecret))
             {
                 var swapDetailingStep = new SwapDetailingInfo
                 {
