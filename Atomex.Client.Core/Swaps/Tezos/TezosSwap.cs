@@ -133,7 +133,6 @@ namespace Atomex.Swaps.Tezos
                             await WaitPaymentConfirmationAsync(paymentTx.Id, InitiationTimeout, cancellationToken)
                                 .ConfigureAwait(false);
                         
-                        Log.Fatal($"TezosIsInitiated {isInitiated}");
                         if (!isInitiated)
                         {
                             Log.Error("Initiation payment tx not confirmed after timeout {@timeout}",
