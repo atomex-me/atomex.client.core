@@ -877,8 +877,13 @@ namespace Atomex.Swaps.BitcoinBased
                 }
                 else if (spentTxInput.IsRefund())
                 {
-                    await RefundConfirmedEventHandler(swap, null, cancellationToken)
-                        .ConfigureAwait(false);
+                    var spentTx = await soldCurrency.BlockchainApi
+                         .TryGetTransactionAsync(spentPoint.Hash)
+                         .ConfigureAwait(false);
+
+                    if (spentTx != null && spentTx.Error == null && spentTx.Value.IsConfirmed)
+                        await RefundConfirmedEventHandler(swap, spentTx.Value, cancellationToken)
+                            .ConfigureAwait(false);
                 }
                 else
                 {
