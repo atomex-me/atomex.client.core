@@ -306,12 +306,16 @@ namespace Atomex.Blockchain.Tezos
 
                         if (type == "user")
                         {
+                            var delegationTime = accountInfo["delegationTime"]?.ToString() ?? null;
+
                             return new Account
                             {
                                 Address         = address,
-                                DelegateAddress = accountInfo["delegate"]["address"].ToString(),
-                                DelegationTime  = DateTimeOffset.Parse(accountInfo["delegationTime"].ToString()).DateTime,
-                                DelegationLevel = accountInfo["delegationLevel"].Value<decimal>()
+                                DelegateAddress = accountInfo["delegate"]?["address"]?.ToString() ?? null,
+                                DelegationTime  = delegationTime != null
+                                    ? DateTimeOffset.Parse(delegationTime).DateTime
+                                    : DateTime.MinValue,
+                                DelegationLevel = accountInfo["delegationLevel"]?.Value<decimal>() ?? 0
                             };
                         }
 
