@@ -223,9 +223,18 @@ namespace Atomex.ViewModels
                     };
 
                     result.Add(swapDetailingStep);
-
                     return result;
                 }
+
+                // your payment not yet created.
+                result.Add(new SwapDetailingInfo
+                {
+                    Status = SwapDetailingStatus.Exchanging,
+                    IsCompleted = false,
+                    Description = $"Creating your {swap.SoldCurrency} payment transaction."
+                });
+
+                return result;
             }
 
             if (swap.StateFlags.HasFlag(SwapStateFlags.HasSecret))
@@ -357,23 +366,46 @@ namespace Atomex.ViewModels
                 }
                 else
                 {
-                    var swapDetailingStep = new SwapDetailingInfo
+                    if (swap.IsCanceled)
                     {
-                        Status = SwapDetailingStatus.Completion,
-                        IsCompleted = false,
-                        Description = $"Waiting for confirmation your {swap.PurchasedCurrency} redeem transaction",
-                        ExplorerLink = purchaseCurrencyConfig switch
+                        var swapDetailingStep = new SwapDetailingInfo
                         {
-                            EthereumConfig ethereumConfig =>
-                                $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
+                            Status = SwapDetailingStatus.Completion,
+                            IsCompleted = false,
+                            Description = $"Your {swap.PurchasedCurrency} redeem transaction failed",
+                            ExplorerLink = purchaseCurrencyConfig switch
+                            {
+                                EthereumConfig ethereumConfig =>
+                                    $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                            TezosConfig tezosConfig =>
-                                $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
-                            _ => null
-                        }
-                    };
+                                TezosConfig tezosConfig =>
+                                    $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                                _ => null
+                            }
+                        };
 
-                    result.Add(swapDetailingStep);
+                        result.Add(swapDetailingStep);
+                    }
+                    else
+                    {
+                        var swapDetailingStep = new SwapDetailingInfo
+                        {
+                            Status = SwapDetailingStatus.Completion,
+                            IsCompleted = false,
+                            Description = $"Waiting for confirmation your {swap.PurchasedCurrency} redeem transaction",
+                            ExplorerLink = purchaseCurrencyConfig switch
+                            {
+                                EthereumConfig ethereumConfig =>
+                                    $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
+
+                                TezosConfig tezosConfig =>
+                                    $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
+                                _ => null
+                            }
+                        };
+
+                        result.Add(swapDetailingStep);
+                    }
                 }
             }
 
