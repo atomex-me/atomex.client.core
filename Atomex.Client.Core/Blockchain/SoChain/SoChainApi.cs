@@ -403,7 +403,7 @@ namespace Atomex.Blockchain.SoChain
                 .ConfigureAwait(false);
         }
 
-        private Script ParseScript(string scriptOperands)
+        public static Script ParseScript(string scriptOperands)
         {
             var ops = new List<Op>();
 
@@ -415,7 +415,11 @@ namespace Atomex.Blockchain.SoChain
 
                 if (opBytes.Length == 1)
                 {
-                    ops.Add((OpcodeType)opBytes[0]);
+                    var opcodeType = opBytes[0] == 1
+                        ? OpcodeType.OP_1
+                        : (OpcodeType)opBytes[0];
+
+                    ops.Add(opcodeType);
                 }
                 else
                 {
