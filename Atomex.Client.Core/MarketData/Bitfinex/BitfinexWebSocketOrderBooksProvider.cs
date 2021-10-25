@@ -87,6 +87,8 @@ namespace Atomex.MarketData.Bitfinex
             }
         }
 
+        public string Name => "Bitfinex WebSockets";
+
         public BitfinexWebSocketOrderBooksProvider(params string[] symbols)
         {
             _channels = new Dictionary<int, string>();
