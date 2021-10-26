@@ -32,10 +32,12 @@ namespace Atomex.Web
                 return client;
             });
 
-            _ws = new WebsocketClient(new Uri(url), factory);
-            _ws.Name = url;
-            _ws.ReconnectTimeout = TimeSpan.FromSeconds(RECONNECT_TIMEOUT_SECONDS);
-            _ws.ErrorReconnectTimeout = TimeSpan.FromSeconds(ERROR_RECONNECT_TIMEOUT_SECONDS);
+            _ws = new WebsocketClient(new Uri(url), factory)
+            {
+                Name = url,
+                ReconnectTimeout = TimeSpan.FromSeconds(RECONNECT_TIMEOUT_SECONDS),
+                ErrorReconnectTimeout = TimeSpan.FromSeconds(ERROR_RECONNECT_TIMEOUT_SECONDS)
+            };
 
             _ws.ReconnectionHappened.Subscribe(type =>
                 {

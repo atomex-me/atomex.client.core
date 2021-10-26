@@ -3,13 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.WebSockets;
 
-using Atomex.Core;
-using Atomex.MarketData.Abstract;
 using Newtonsoft.Json.Linq;
 using Serilog;
 using Websocket.Client;
-using WebsocketClient = Atomex.Web.WebSocketClient;
 
+using Atomex.Core;
+using Atomex.MarketData.Abstract;
+using WebsocketClient = Atomex.Web.WebSocketClient;
 
 namespace Atomex.MarketData.Bitfinex
 {
