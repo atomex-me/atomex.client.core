@@ -66,7 +66,6 @@ namespace Atomex.MarketData.Binance
                 AvailabilityChanged?.Invoke(this, EventArgs.Empty);
             }
         }
-        public bool IsRestart => throw new NotImplementedException();
 
         public event EventHandler<OrderBookEventArgs> OrderBookUpdated;
         public event EventHandler AvailabilityChanged;
