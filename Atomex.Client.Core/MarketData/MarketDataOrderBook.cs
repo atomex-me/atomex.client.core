@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+
 using Atomex.Common;
 using Atomex.Core;
 
@@ -16,7 +17,7 @@ namespace Atomex.MarketData
         public readonly SortedDictionary<decimal, Entry> Sells;
 
         public bool IsReady { get; set; }
-        public object SyncRoot { get; } = new object();
+        private object _syncRoot = new object();
 
         public MarketDataOrderBook(string symbol)
         {
@@ -41,51 +42,67 @@ namespace Atomex.MarketData
 
         public Quote TopOfBook()
         {
-            var quote = new Quote
+            lock (_syncRoot)
             {
-                Symbol = _symbol,
-                TimeStamp = DateTime.UtcNow, // todo: change to last update time
-                Bid = Buys.Count != 0 ? Buys.First().Key : 0,
-                Ask = Sells.Count != 0 ? Sells.First().Key : decimal.MaxValue
-            };
-            return quote;
+                var quote = new Quote
+                {
+                    Symbol    = _symbol,
+                    TimeStamp = DateTime.UtcNow, // todo: change to last update time
+                    Bid       = Buys.Count != 0 ? Buys.First().Key : 0,
+                    Ask       = Sells.Count != 0 ? Sells.First().Key : decimal.MaxValue
+                };
+
+                return quote;
+            }
         }
 
         public bool IsValid()
         {
-            var quote = TopOfBook();
-            return quote.Bid != 0 && quote.Ask != 0 && quote.Ask != decimal.MaxValue;
+            lock (_syncRoot)
+            {
+                var quote = TopOfBook();
+                return quote.Bid != 0 && quote.Ask != 0 && quote.Ask != decimal.MaxValue;
+            }
         }
 
         public void ApplySnapshot(Snapshot snapshot)
         {
-            Buys.Clear();
-            Sells.Clear();
+            lock (_syncRoot)
+            {
+                Buys.Clear();
+                Sells.Clear();
 
-            foreach (var entry in snapshot.Entries)
-                ApplyEntry(entry);
+                foreach (var entry in snapshot.Entries)
+                    ApplyEntry(entry);
 
-            _lastTransactionId = snapshot.LastTransactionId;
+                _lastTransactionId = snapshot.LastTransactionId;
+            }
         }
 
         public void ApplyEntry(Entry entry, bool checkTransactionId = false)
         {
-            if (checkTransactionId && entry.TransactionId <= _lastTransactionId)
-                return;
+            lock (_syncRoot)
+            {
+                if (checkTransactionId && entry.TransactionId <= _lastTransactionId)
+                    return;
 
-            var book = entry.Side == Side.Buy ? Buys : Sells;
+                var book = entry.Side == Side.Buy ? Buys : Sells;
 
-            if (entry.Qty() > 0) {
-                book[entry.Price] = entry;
-            } else {
-                book.Remove(entry.Price);
+                if (entry.Qty() > 0) {
+                    book[entry.Price] = entry;
+                } else {
+                    book.Remove(entry.Price);
+                }
             }
         }
 
         public void Clear()
         {
-            Buys.Clear();
-            Sells.Clear();
+            lock (_syncRoot)
+            {
+                Buys.Clear();
+                Sells.Clear();
+            }
         }
 
         public (decimal, decimal) EstimateOrderPrices(
@@ -96,7 +113,7 @@ namespace Atomex.MarketData
         {
             var requiredAmount = amount;
 
-            lock (SyncRoot)
+            lock (_syncRoot)
             {
                 var book = side == Side.Buy
                     ? Sells
@@ -137,7 +154,7 @@ namespace Atomex.MarketData
         {
             var qtyToFill = qty;
 
-            lock (SyncRoot)
+            lock (_syncRoot)
             {
                 var book = side == Side.Buy
                     ? Sells
@@ -168,7 +185,7 @@ namespace Atomex.MarketData
         {
             var baseQtyToFill = baseQty;
 
-            lock (SyncRoot)
+            lock (_syncRoot)
             {
                 var book = side == Side.Buy
                     ? Sells
@@ -199,7 +216,7 @@ namespace Atomex.MarketData
         {
             var amount = 0m;
 
-            lock (SyncRoot)
+            lock (_syncRoot)
             {
                 var book = side == Side.Buy
                     ? Sells
