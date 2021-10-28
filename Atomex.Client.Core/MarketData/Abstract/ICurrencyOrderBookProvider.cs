@@ -19,7 +19,6 @@ namespace Atomex.MarketData.Abstract
 
         DateTime LastUpdateTime { get; }
         bool IsAvailable { get; }
-        bool IsRestart { get; }
         string Name { get; }
 
         void Start();

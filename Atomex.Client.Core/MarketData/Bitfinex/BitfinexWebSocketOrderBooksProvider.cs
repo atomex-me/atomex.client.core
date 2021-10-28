@@ -69,7 +69,6 @@ namespace Atomex.MarketData.Bitfinex
 
         public DateTime LastUpdateTime { get; private set; }
         public int BookDepth { get; set; } = 100;
-        public bool IsRestart { get; private set; }
 
         private bool _isAvailable;
         public bool IsAvailable
@@ -202,8 +201,8 @@ namespace Atomex.MarketData.Bitfinex
                     if (code == 20051)
                     {
                         // please reconnect
-                        IsRestart = true;
                         Stop();
+                        Start();
                     }
                     else if (code == 20060)
                     {
