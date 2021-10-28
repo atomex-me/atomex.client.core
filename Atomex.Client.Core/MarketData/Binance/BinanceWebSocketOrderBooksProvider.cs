@@ -5,7 +5,7 @@ using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
 using Serilog;
 using Websocket.Client;
 
@@ -16,56 +16,88 @@ using WebSocketClient = Atomex.Web.WebSocketClient;
 
 namespace Atomex.MarketData.Binance
 {
+    public enum BinanceOrderBookDepth
+    {
+        Five = 5,
+        Ten = 10,
+        Twenty = 20
+    }
+
+    public enum BinanceUpdateSpeed
+    {
+        Ms100 = 100,
+        Ms1000 = 1000
+    }
+
     public class BinanceWebSocketOrderBooksProvider : ICurrencyOrderBookProvider
     {
+        private class Payload<T>
+        {
+            [JsonProperty("stream")]
+            public string Stream { get; set; }
+            [JsonProperty("data")]
+            public T Data { get; set; }
+        }
+
+        private class OrderBookUpdate
+        {
+            [JsonProperty("lastUpdateId")]
+            public long LastUpdateId { get; set; }
+            [JsonProperty("bids")]
+            public List<List<string>> Bids { get; set; }
+            [JsonProperty("asks")]
+            public List<List<string>> Asks { get; set; }
+        }
+
         private readonly Dictionary<string, string> Symbols = new()
         {
-            { "ETHBTC", "ETHBTC" },
-            { "LTCBTC", "LTCBTC" },
-            { "XTZBTC", "XTZBTC" },
-            { "XTZETH", "XTZETH" },
+            { "ETH/BTC", "ethbtc" },
+            { "LTC/BTC", "ltcbtc" },
+            { "XTZ/BTC", "xtzbtc" },
+            //{ "XTZ/ETH", "XTZETH" },
 
-            { "BTCUSDT", "BTCUST" },
-            { "ETHUSDT", "ETHUST" },
-            { "LTCUSDT", "LTCUST" },
-            { "XTZUSDT", "XTZUST" },
+            { "BTC/USDT", "btcusdt" },
+            { "ETH/USDT", "ethusdt" },
+            { "LTC/USDT", "ltcusdt" },
+            { "XTZ/USDT", "xtzusdt" },
 
-            { "ETHNYX", "ETHBTC" },
-            { "XTZNYX", "XTZBTC" },
+            { "ETH/TZBTC", "ethbtc" },
+            { "XTZ/TZBTC", "xtzbtc" },
+            { "TZBTC/USDT", "btcusdt" },
 
-            { "FA2ETH", "XTZETH" },
-            { "FA2BTC", "XTZBTC" },
+            { "ETH/TBTC", "ethbtc" },
+            { "XTZ/TBTC", "xtzbtc" },
+            { "TBTC/USDT", "btcusdt" },
 
-            { "ETHTZBTC", "ETHBTC" },
-            { "XTZTZBTC", "XTZBTC" },
-            { "TZBTCUSDT", "BTCUST" },
+            { "ETH/WBTC", "ethbtc" },
+            { "XTZ/WBTC", "xtzbtc" },
+            { "WBTC/USDT", "btcusdt" },
 
-            { "ETHTBTC", "ETHBTC" },
-            { "XTZTBTC", "XTZBTC" },
-            { "TBTCUSDT", "BTCUST" },
-
-            { "ETHWBTC", "ETHBTC" },
-            { "XTZWBTC", "XTZBTC" },
-            { "WBTCUSDT", "BTCUST" },
-
-            { "BTCKUSD", "BTCUST" },
-            { "ETHKUSD", "ETHUST" },
-            { "LTCKUSD", "LTCUST" },
-            { "XTZKUSD", "XTZUST" },
-            { "TZBTCKUSD", "BTCUST" },
+            { "BTC/KUSD", "btcusdt" },
+            { "ETH/KUSD", "ethusdt" },
+            { "LTC/KUSD", "ltcusdt" },
+            { "XTZ/KUSD", "xtzusdt" },
+            { "TZBTC/KUSD", "btcusdt" },
         };
 
-        private const string BaseUrl = "wss://stream.binance.com:9443";
+        private enum State
+        {
+            Sync,
+            Ready
+        }
 
-        private readonly Dictionary<string, MarketDataOrderBook> _orderbooks;
+        private const string BaseUrl = "wss://stream.binance.com:9443/stream";
+
+        private readonly Dictionary<string, MarketDataOrderBook> _orderBooks;
+        private readonly BinanceOrderBookDepth _depth;
+        private readonly BinanceUpdateSpeed _updateSpeed;
         private WebSocketClient _ws;
+        private State _state;
 
         public event EventHandler<OrderBookEventArgs> OrderBookUpdated;
         public event EventHandler AvailabilityChanged;
 
         public DateTime LastUpdateTime { get; private set; }
-        public int BookDepth { get; set; } = 100;
-        public bool IsRestart { get; private set; }
 
         private bool _isAvailable;
         public bool IsAvailable
@@ -80,10 +112,16 @@ namespace Atomex.MarketData.Binance
 
         public string Name => "Binance WebSockets";
 
-        public BinanceWebSocketOrderBooksProvider(params string[] symbols)
+        public BinanceWebSocketOrderBooksProvider(
+            BinanceOrderBookDepth depth,
+            BinanceUpdateSpeed updateSpeed,
+            params string[] symbols)
         {
-            _orderbooks = symbols
-                .Select(s => Symbols[s.Replace("/", "")])
+            _depth = depth;
+            _updateSpeed = updateSpeed;
+
+            _orderBooks = symbols
+                .Select(s => Symbols[s])
                 .Distinct()
                 .ToDictionary(s => s, s => new MarketDataOrderBook(s));
         }
@@ -114,11 +152,31 @@ namespace Atomex.MarketData.Binance
             return _ws.CloseAsync();
         }
 
+        private void SubscribeToStreams(string[] streams)
+        {
+            var request = new
+            {
+                method  = "SUBSCRIBE",
+                @params = streams,
+                id      = 1
+            };
+
+            var requestJson = JsonConvert.SerializeObject(request);
+
+            _ws.Send(requestJson);
+        }
+
         private void OnConnectedEventHandler(object sender, EventArgs args)
         {
+            _state = State.Sync;
+
             IsAvailable = true;
 
-            SubscribeToTickers();
+            var streams = _orderBooks.Keys
+               .Select(s => $"{s}@depth{(int)_depth}@{(int)_updateSpeed}ms")
+               .ToArray();
+
+            SubscribeToStreams(streams);
         }
 
         private void OnDisconnectedEventHandler(object sender, EventArgs e)
@@ -128,14 +186,14 @@ namespace Atomex.MarketData.Binance
 
         public MarketDataOrderBook GetOrderBook(string currency, string quoteCurrency)
         {
-            var symbol = Symbols.Keys.Contains($"{currency}{quoteCurrency}") ?
-                Symbols[$"{currency}{quoteCurrency}"] :
+            var symbol = Symbols.Keys.Contains($"{currency}/{quoteCurrency}") ?
+                Symbols[$"{currency}/{quoteCurrency}"] :
                 null;
 
             if (symbol == null)
                 return null;
 
-            return _orderbooks.TryGetValue(symbol, out var orderbook) ? orderbook : null;
+            return _orderBooks.TryGetValue(symbol, out var orderbook) ? orderbook : null;
         }
 
         private void OnMessageEventHandler(object sender, ResponseMessage msg)
@@ -146,31 +204,32 @@ namespace Atomex.MarketData.Binance
                 {
                     try
                     {
-                        var responseJson = JToken.Parse(msg.Text);
+                        Console.WriteLine(msg.Text);
+                        //var responseJson = JToken.Parse(msg.Text);
 
-                        if (responseJson is JObject responseEvent)
-                        {
-                            HandleEvent(responseEvent);
-                        }
-                        else if (responseJson is JArray responseData)
-                        {
-                            HandleData(responseData);
-                        }
+                        //if (responseJson is JObject responseEvent)
+                        //{
+                        //    HandleEvent(responseEvent);
+                        //}
+                        //else if (responseJson is JArray responseData)
+                        //{
+                        //    HandleData(responseData);
+                        //}
                     }
                     catch (Exception e)
                     {
-                        Log.Error(e, "Bitfinex response handle error");
+                        Log.Error(e, "Binance text message handle error");
                     }
                 }
             }
             catch (Exception e)
             {
-                Log.Error(e, "Bitfinex response handle error");
+                Log.Error(e, "Binance response handle error");
             }
         }
 
-        private void HandleEvent(JObject response)
-        {
+        //private void HandleEvent(JObject response)
+        //{
             //if (!response.ContainsKey("event"))
             //{
             //    Log.Warning("Unknown response type");
@@ -217,10 +276,10 @@ namespace Atomex.MarketData.Binance
             //{
             //    Log.Error($"Bitfinex error with code: {response["code"].Value<int>()} and message \"{response["msg"].Value<string>()}\"");
             //}
-        }
+        //}
 
-        private void HandleData(JArray response)
-        {
+        //private void HandleData(JArray response)
+        //{
             //var chanId = response[0].Value<int>();
 
             //if (_channels.TryGetValue(chanId, out var symbol))
@@ -287,24 +346,6 @@ namespace Atomex.MarketData.Binance
             //{
             //    Log.Warning($"Unknown channel id {chanId}");
             //}
-        }
-
-        private void SubscribeToTickers()
-        {
-            try
-            {
-                foreach (var symbol in _orderbooks.Keys)
-                {
-                    var message =
-                        $"{{ \"event\": \"subscribe\", \"channel\": \"book\", \"pair\":\"{symbol}\", \"prec\": \"P0\", \"freq\": \"F0\", \"len\": \"{BookDepth}\"}}";
-
-                    _ws.Send(message);
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Subscribe to tickers error");
-            }
-        }
+        //}
     }
 }
