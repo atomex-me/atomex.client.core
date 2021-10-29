@@ -1,16 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Serilog;
 using Websocket.Client;
 
-using Atomex.Common;
 using Atomex.Core;
+using Atomex.Common;
 using Atomex.MarketData.Abstract;
 using WebSocketClient = Atomex.Web.WebSocketClient;
 
@@ -34,12 +36,12 @@ namespace Atomex.MarketData.Binance
         private class Payload<T>
         {
             [JsonProperty("stream")]
-            public string Stream { get; set; }
+            public string StreamId { get; set; }
             [JsonProperty("data")]
             public T Data { get; set; }
         }
 
-        private class OrderBookUpdate
+        private class OrderBookUpdates
         {
             [JsonProperty("lastUpdateId")]
             public long LastUpdateId { get; set; }
@@ -86,13 +88,30 @@ namespace Atomex.MarketData.Binance
             Ready
         }
 
-        private const string BaseUrl = "wss://stream.binance.com:9443/stream";
+        private class OrderBookStream
+        {
+            public MarketDataOrderBook OrderBook { get; set; }
+            public List<Entry> Entries { get; set; }
+            public State State { get; set; }
+            public SemaphoreSlim Semaphore { get; set; }
 
-        private readonly Dictionary<string, MarketDataOrderBook> _orderBooks;
+            public OrderBookStream(string s)
+            {
+                OrderBook = new MarketDataOrderBook(s);
+                Entries = new List<Entry>();
+                State = State.Sync;
+                Semaphore = new SemaphoreSlim(1, 1);
+            }
+        }
+
+        private const string WsBaseUrl = "wss://stream.binance.com:9443/stream";
+        private const string BaseUrl = "https://api.binance.com/api/v3/";
+
+        private readonly Dictionary<string, OrderBookStream> _streams;
+        private readonly string[] _symbols;
         private readonly BinanceOrderBookDepth _depth;
         private readonly BinanceUpdateSpeed _updateSpeed;
         private WebSocketClient _ws;
-        private State _state;
 
         public event EventHandler<OrderBookEventArgs> OrderBookUpdated;
         public event EventHandler AvailabilityChanged;
@@ -119,11 +138,14 @@ namespace Atomex.MarketData.Binance
         {
             _depth = depth;
             _updateSpeed = updateSpeed;
-
-            _orderBooks = symbols
+            _symbols = symbols
                 .Select(s => Symbols[s])
                 .Distinct()
-                .ToDictionary(s => s, s => new MarketDataOrderBook(s));
+                .ToArray();
+            _streams = _symbols
+                .ToDictionary(
+                    s => StreamBySymbol(s, (int)_depth, (int)_updateSpeed),
+                    s => new OrderBookStream(s));
         }
 
         public void Start()
@@ -133,7 +155,7 @@ namespace Atomex.MarketData.Binance
 
         public Task StartAsync()
         {
-            _ws = new WebSocketClient(BaseUrl);
+            _ws = new WebSocketClient(WsBaseUrl);
 
             _ws.Connected += OnConnectedEventHandler;
             _ws.Disconnected += OnDisconnectedEventHandler;
@@ -156,9 +178,9 @@ namespace Atomex.MarketData.Binance
         {
             var request = new
             {
-                method  = "SUBSCRIBE",
+                method = "SUBSCRIBE",
                 @params = streams,
-                id      = 1
+                id = 1
             };
 
             var requestJson = JsonConvert.SerializeObject(request);
@@ -166,17 +188,88 @@ namespace Atomex.MarketData.Binance
             _ws.Send(requestJson);
         }
 
+        private async Task UpdateSnapshotsAsync(string[] symbols, int depth, int updateSpeed)
+        {
+            foreach (var symbol in symbols)
+                await UpdateSnapshotAsync(symbol, depth, updateSpeed)
+                    .ConfigureAwait(false);
+        }
+
+        private async Task UpdateSnapshotAsync(string symbol, int depth, int updateSpeed)
+        {
+            var snapshot = await HttpHelper.GetAsync(
+                baseUri: BaseUrl,
+                requestUri: $"depth?symbol={symbol.ToUpper()}&limit={depth}",
+                responseHandler: (response) =>
+                {
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Log.Error($"Invalid status code: {response.StatusCode}");
+                        return null;
+                    }
+
+                    var responseContent = response.Content
+                        .ReadAsStringAsync()
+                        .WaitForResult();
+
+                    return JsonConvert.DeserializeObject<OrderBookUpdates>(responseContent);
+                });
+
+            if (snapshot == null)
+            {
+                Log.Error($"Null snapshot recevided for {symbol}");
+                return;
+            }
+
+            var streamId = StreamBySymbol(symbol, depth, updateSpeed);
+
+            if (!_streams.TryGetValue(streamId, out var orderBookStream))
+            {
+                Log.Error($"Can't find stream {streamId}");
+                return;
+            }
+
+            try
+            {
+                await orderBookStream.Semaphore
+                    .WaitAsync()
+                    .ConfigureAwait(false);
+
+                var entries = GetEntries(snapshot);
+
+                orderBookStream.OrderBook.ApplySnapshot(new Snapshot
+                {
+                    Entries = entries,
+                    Symbol = symbol,
+                    LastTransactionId = snapshot.LastUpdateId
+                });
+
+                foreach (var entry in orderBookStream.Entries)
+                    if (entry.TransactionId > snapshot.LastUpdateId)
+                        orderBookStream.OrderBook.ApplyEntry(entry);
+
+                orderBookStream.State = State.Ready;
+            }
+            finally
+            {
+                orderBookStream.Semaphore.Release();
+            }
+        }
+
+        public static string StreamBySymbol(string symbol, int depth, int updateSpeed) =>
+            $"{symbol}@depth{depth}@{updateSpeed}ms";
+
         private void OnConnectedEventHandler(object sender, EventArgs args)
         {
-            _state = State.Sync;
-
             IsAvailable = true;
 
-            var streams = _orderBooks.Keys
-               .Select(s => $"{s}@depth{(int)_depth}@{(int)_updateSpeed}ms")
-               .ToArray();
+            var streamIds = _streams
+                .Keys
+                .ToArray();
 
-            SubscribeToStreams(streams);
+            SubscribeToStreams(streamIds);
+
+            _ = UpdateSnapshotsAsync(_symbols, (int)_depth, (int)_updateSpeed);
         }
 
         private void OnDisconnectedEventHandler(object sender, EventArgs e)
@@ -193,7 +286,11 @@ namespace Atomex.MarketData.Binance
             if (symbol == null)
                 return null;
 
-            return _orderBooks.TryGetValue(symbol, out var orderbook) ? orderbook : null;
+            var streamId = StreamBySymbol(symbol, (int)_depth, (int)_updateSpeed);
+
+            return _streams.TryGetValue(streamId, out var stream)
+                ? stream.OrderBook
+                : null;
         }
 
         private void OnMessageEventHandler(object sender, ResponseMessage msg)
@@ -204,17 +301,53 @@ namespace Atomex.MarketData.Binance
                 {
                     try
                     {
-                        Console.WriteLine(msg.Text);
-                        //var responseJson = JToken.Parse(msg.Text);
+                        var message = JsonConvert.DeserializeObject<JObject>(msg.Text);
 
-                        //if (responseJson is JObject responseEvent)
-                        //{
-                        //    HandleEvent(responseEvent);
-                        //}
-                        //else if (responseJson is JArray responseData)
-                        //{
-                        //    HandleData(responseData);
-                        //}
+                        if (message.ContainsKey("stream"))
+                        {
+                            var streamMessage = message.ToObject<Payload<OrderBookUpdates>>();
+
+                            if (!_streams.TryGetValue(streamMessage.StreamId, out var orderBookStream))
+                            {
+                                Log.Debug($"Unknown stream {streamMessage.StreamId}");
+                                return;
+                            }
+
+                            var entries = GetEntries(streamMessage.Data);
+
+                            try
+                            {
+                                orderBookStream.Semaphore.Wait();
+
+                                if (orderBookStream.State == State.Ready)
+                                {
+                                    // apply updates
+                                    foreach (var entry in entries)
+                                        orderBookStream.OrderBook.ApplyEntry(entry);
+
+                                    orderBookStream.OrderBook.AdjustDepth((int)_depth);
+
+                                    OrderBookUpdated?.Invoke(this, new OrderBookEventArgs(orderBookStream.OrderBook));
+                                }
+                                else
+                                {
+                                    // buffer all entries
+                                    orderBookStream.Entries.AddRange(entries);
+                                }
+                            }
+                            finally
+                            {
+                                orderBookStream.Semaphore.Release();
+                            }
+                        }
+                        else if (message.ContainsKey("result"))
+                        {
+                            Log.Debug(msg.Text);
+                        }
+                        else if (message.ContainsKey("code"))
+                        {
+                            Log.Debug(msg.Text);
+                        }
                     }
                     catch (Exception e)
                     {
@@ -228,124 +361,34 @@ namespace Atomex.MarketData.Binance
             }
         }
 
-        //private void HandleEvent(JObject response)
-        //{
-            //if (!response.ContainsKey("event"))
-            //{
-            //    Log.Warning("Unknown response type");
-            //    return;
-            //}
+        private List<Entry> GetEntries(OrderBookUpdates updates)
+        {
+            var bids = updates.Bids
+                .Select(pl => new Entry
+                {
+                    Price = decimal.Parse(pl[0], CultureInfo.InvariantCulture),
+                    QtyProfile = new List<decimal>
+                    {
+                        decimal.Parse(pl[1], CultureInfo.InvariantCulture)
+                    },
+                    Side = Side.Buy,
+                    TransactionId = updates.LastUpdateId
+                });
 
-            //var @event = response["event"].Value<string>();
+            var asks = updates.Asks
+                .Select(pl => new Entry
+                {
+                    Price = decimal.Parse(pl[0], CultureInfo.InvariantCulture),
+                    QtyProfile = new List<decimal> {
+                        decimal.Parse(pl[1], CultureInfo.InvariantCulture)
+                    },
+                    Side = Side.Sell,
+                    TransactionId = updates.LastUpdateId
+                });
 
-            //if (@event == "subscribed")
-            //{
-            //    _channels[response["chanId"].Value<int>()] = response["pair"].Value<string>();
-            //}
-            //else if (@event == "info")
-            //{
-            //    if (response.ContainsKey("code"))
-            //    {
-            //        var code = response["code"].Value<int>();
-
-            //        if (code == 20051)
-            //        {
-            //            // please reconnect
-            //            IsRestart = true;
-            //            Stop();
-            //        }
-            //        else if (code == 20060)
-            //        {
-            //            // technical service started
-            //            IsAvailable = false;
-            //        }
-            //        else if (code == 20061)
-            //        {
-            //            // technical service stopped
-            //            IsAvailable = true;
-
-            //            SubscribeToTickers();
-            //        }
-            //    }
-            //}
-            //else if (@event == "pong")
-            //{
-            //    // nothing todo
-            //}
-            //else if (@event == "error")
-            //{
-            //    Log.Error($"Bitfinex error with code: {response["code"].Value<int>()} and message \"{response["msg"].Value<string>()}\"");
-            //}
-        //}
-
-        //private void HandleData(JArray response)
-        //{
-            //var chanId = response[0].Value<int>();
-
-            //if (_channels.TryGetValue(chanId, out var symbol))
-            //{
-            //    if (response[1] is JArray items)
-            //    {
-            //        var timeStamp = DateTime.Now;
-            //        var orderBook = _orderbooks[symbol];
-
-            //        if (items[0] is JArray)
-            //        {
-            //            orderBook.Clear();
-
-            //            foreach (var item in items) //it's a snapshot
-            //            {
-            //                try
-            //                {
-            //                    var entry = new Entry
-            //                    {
-            //                        Side = item[2].Value<decimal>() > 0 ? Side.Buy : Side.Sell,
-            //                        Price = item[0].Value<decimal>()
-            //                    };
-
-            //                    entry.QtyProfile.Add(item[1].Value<int>() > 0
-            //                        ? Math.Abs(item[2].Value<decimal>())
-            //                        : 0);
-
-            //                    orderBook.ApplyEntry(entry);
-            //                }
-            //                catch (Exception ex)
-            //                {
-            //                    Log.Error(ex, "Snapshot apply error");
-            //                }
-            //            }
-            //        }
-            //        else
-            //        {
-            //            try
-            //            {
-            //                var entry = new Entry
-            //                {
-            //                    Side = items[2].Value<decimal>() > 0 ? Side.Buy : Side.Sell,
-            //                    Price = items[0].Value<decimal>()
-            //                };
-
-            //                entry.QtyProfile.Add(items[1].Value<int>() > 0
-            //                    ? Math.Abs(items[2].Value<decimal>())
-            //                    : 0);
-
-            //                orderBook.ApplyEntry(entry);
-            //            }
-            //            catch (Exception ex)
-            //            {
-            //                Log.Error(ex, "Orderbook update apply error");
-            //            }
-            //        }
-
-            //        LastUpdateTime = timeStamp;
-
-            //        OrderBookUpdated?.Invoke(this, new OrderBookEventArgs(orderBook));
-            //    }
-            //}
-            //else
-            //{
-            //    Log.Warning($"Unknown channel id {chanId}");
-            //}
-        //}
+            return bids
+                .Concat(asks)
+                .ToList();
+        }
     }
 }

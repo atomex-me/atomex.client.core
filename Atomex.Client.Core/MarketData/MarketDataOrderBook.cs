@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 using Atomex.Common;
 using Atomex.Core;
@@ -17,7 +18,7 @@ namespace Atomex.MarketData
         public readonly SortedDictionary<decimal, Entry> Sells;
 
         public bool IsReady { get; set; }
-        private object _syncRoot = new object();
+        private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
 
         public MarketDataOrderBook(string symbol)
         {
@@ -42,8 +43,10 @@ namespace Atomex.MarketData
 
         public Quote TopOfBook()
         {
-            lock (_syncRoot)
+            try
             {
+                _semaphoreSlim.Wait();
+
                 var quote = new Quote
                 {
                     Symbol    = _symbol,
@@ -54,21 +57,33 @@ namespace Atomex.MarketData
 
                 return quote;
             }
+            finally
+            {
+                _semaphoreSlim.Release();
+            }
         }
 
         public bool IsValid()
         {
-            lock (_syncRoot)
+            try
             {
+                _semaphoreSlim.Wait();
+
                 var quote = TopOfBook();
                 return quote.Bid != 0 && quote.Ask != 0 && quote.Ask != decimal.MaxValue;
+            }
+            finally
+            {
+                _semaphoreSlim.Release();
             }
         }
 
         public void ApplySnapshot(Snapshot snapshot)
         {
-            lock (_syncRoot)
+            try
             {
+                _semaphoreSlim.Wait();
+
                 Buys.Clear();
                 Sells.Clear();
 
@@ -77,12 +92,18 @@ namespace Atomex.MarketData
 
                 _lastTransactionId = snapshot.LastTransactionId;
             }
+            finally
+            {
+                _semaphoreSlim.Release();
+            }
         }
 
         public void ApplyEntry(Entry entry, bool checkTransactionId = false)
         {
-            lock (_syncRoot)
+            try
             {
+                _semaphoreSlim.Wait();
+
                 if (checkTransactionId && entry.TransactionId <= _lastTransactionId)
                     return;
 
@@ -94,14 +115,42 @@ namespace Atomex.MarketData
                     book.Remove(entry.Price);
                 }
             }
+            finally
+            {
+                _semaphoreSlim.Release();
+            }
+        }
+
+        public void AdjustDepth(int depth)
+        {
+            try
+            {
+                _semaphoreSlim.Wait();
+
+                while (Buys.Count > depth)
+                    Buys.Remove(Buys.Last().Key);
+
+                while (Sells.Count > depth)
+                    Sells.Remove(Sells.Last().Key);
+            }
+            finally
+            {
+                _semaphoreSlim.Release();
+            }
         }
 
         public void Clear()
         {
-            lock (_syncRoot)
+            try
             {
+                _semaphoreSlim.Wait();
+
                 Buys.Clear();
                 Sells.Clear();
+            }
+            finally
+            {
+                _semaphoreSlim.Release();
             }
         }
 
@@ -111,10 +160,12 @@ namespace Atomex.MarketData
             decimal amountDigitsMultiplier,
             decimal qtyDigitsMultiplier)
         {
-            var requiredAmount = amount;
-
-            lock (_syncRoot)
+            try
             {
+                _semaphoreSlim.Wait();
+
+                var requiredAmount = amount;
+
                 var book = side == Side.Buy
                     ? Sells
                     : Buys;
@@ -145,17 +196,23 @@ namespace Atomex.MarketData
                     if (requiredAmount <= 0)
                         return (price, totalUsedQuoteAmount / totalUsedQty);
                 }
-            }
 
-            return (0m, 0m);
+                return (0m, 0m);
+            }
+            finally
+            {
+                _semaphoreSlim.Release();
+            }
         }
 
         public decimal AverageDealBasePrice(Side side, decimal qty)
         {
-            var qtyToFill = qty;
-
-            lock (_syncRoot)
+            try
             {
+                _semaphoreSlim.Wait();
+
+                var qtyToFill = qty;
+
                 var book = side == Side.Buy
                     ? Sells
                     : Buys;
@@ -176,17 +233,23 @@ namespace Atomex.MarketData
 
                     qtyToFill -= availiableQty;
                 }
-            }
 
-            return 0m;
+                return 0m;
+            }
+            finally
+            {
+                _semaphoreSlim.Release();
+            }
         }
 
         public decimal AverageDealQuotePrice(Side side, decimal baseQty)
         {
-            var baseQtyToFill = baseQty;
-
-            lock (_syncRoot)
+            try
             {
+                _semaphoreSlim.Wait();
+
+                var baseQtyToFill = baseQty;
+
                 var book = side == Side.Buy
                     ? Sells
                     : Buys;
@@ -207,17 +270,23 @@ namespace Atomex.MarketData
 
                     baseQtyToFill -= availiableQuoteQty;
                 }
-            }
 
-            return 0m;
+                return 0m;
+            }
+            finally
+            {
+                _semaphoreSlim.Release();
+            }
         }
 
         public decimal EstimateMaxAmount(Side side, decimal digitsMultiplier)
         {
-            var amount = 0m;
-
-            lock (_syncRoot)
+            try
             {
+                _semaphoreSlim.Wait();
+
+                var amount = 0m;
+
                 var book = side == Side.Buy
                     ? Sells
                     : Buys;
@@ -226,9 +295,13 @@ namespace Atomex.MarketData
                 {
                     amount += AmountHelper.QtyToAmount(side, entryPair.Value.Qty(), entryPair.Key, digitsMultiplier);
                 }
-            }
 
-            return amount;
+                return amount;
+            }
+            finally
+            {
+                _semaphoreSlim.Release();
+            }
         }
     }
 }
