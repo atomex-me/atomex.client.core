@@ -65,17 +65,8 @@ namespace Atomex.MarketData
 
         public bool IsValid()
         {
-            try
-            {
-                _semaphoreSlim.Wait();
-
-                var quote = TopOfBook();
-                return quote.Bid != 0 && quote.Ask != 0 && quote.Ask != decimal.MaxValue;
-            }
-            finally
-            {
-                _semaphoreSlim.Release();
-            }
+            var quote = TopOfBook();
+            return quote.Bid != 0 && quote.Ask != 0 && quote.Ask != decimal.MaxValue;
         }
 
         public void ApplySnapshot(Snapshot snapshot)
@@ -88,7 +79,7 @@ namespace Atomex.MarketData
                 Sells.Clear();
 
                 foreach (var entry in snapshot.Entries)
-                    ApplyEntry(entry);
+                    ApplyEntryUnsync(entry);
 
                 _lastTransactionId = snapshot.LastTransactionId;
             }
@@ -98,40 +89,27 @@ namespace Atomex.MarketData
             }
         }
 
+        private void ApplyEntryUnsync(Entry entry, bool checkTransactionId = false)
+        {
+            if (checkTransactionId && entry.TransactionId <= _lastTransactionId)
+                return;
+
+            var book = entry.Side == Side.Buy ? Buys : Sells;
+
+            if (entry.Qty() > 0) {
+                book[entry.Price] = entry;
+            } else {
+                book.Remove(entry.Price);
+            }
+        }
+
         public void ApplyEntry(Entry entry, bool checkTransactionId = false)
         {
             try
             {
                 _semaphoreSlim.Wait();
 
-                if (checkTransactionId && entry.TransactionId <= _lastTransactionId)
-                    return;
-
-                var book = entry.Side == Side.Buy ? Buys : Sells;
-
-                if (entry.Qty() > 0) {
-                    book[entry.Price] = entry;
-                } else {
-                    book.Remove(entry.Price);
-                }
-            }
-            finally
-            {
-                _semaphoreSlim.Release();
-            }
-        }
-
-        public void AdjustDepth(int depth)
-        {
-            try
-            {
-                _semaphoreSlim.Wait();
-
-                while (Buys.Count > depth)
-                    Buys.Remove(Buys.Last().Key);
-
-                while (Sells.Count > depth)
-                    Sells.Remove(Sells.Last().Key);
+                ApplyEntryUnsync(entry, checkTransactionId);
             }
             finally
             {
