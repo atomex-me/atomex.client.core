@@ -35,16 +35,16 @@ namespace Atomex.ViewModels
 
         public class DetailsLink
         {
-            public string Text;
-            public string Url;
+            public string Text { get; set; }
+            public string Url { get; set; }
         }
 
         public class SwapDetailingInfo
         {
-            public bool IsCompleted;
-            public DetailsLink ExplorerLink;
-            public SwapDetailingStatus Status;
-            public string Description;
+            public bool IsCompleted { get; set; }
+            public DetailsLink ExplorerLink { get; set; }
+            public SwapDetailingStatus Status { get; set; }
+            public string Description { get; set; }
         }
 
         public class SwapPriceEstimation
@@ -71,7 +71,14 @@ namespace Atomex.ViewModels
                 {
                     Status = SwapDetailingStatus.Initialization,
                     IsCompleted = true,
-                    Description = "Completed successfully"
+                    Description = "Orders matched"
+                });
+
+                result.Add(new SwapDetailingInfo
+                {
+                    Status = SwapDetailingStatus.Initialization,
+                    IsCompleted = true,
+                    Description = "Credentials exchanged"
                 });
             }
             else
