@@ -68,7 +68,7 @@ namespace Atomex.MarketData.Bitfinex
         public event EventHandler AvailabilityChanged;
 
         public DateTime LastUpdateTime { get; private set; }
-        public int BookDepth { get; set; } = 100;
+        private readonly int _bookDepth = 25;
 
         private bool _isAvailable;
         public bool IsAvailable
@@ -305,7 +305,7 @@ namespace Atomex.MarketData.Bitfinex
                 foreach (var symbol in _orderBooks.Keys)
                 {
                     var message =
-                        $"{{ \"event\": \"subscribe\", \"channel\": \"book\", \"pair\":\"{symbol}\", \"prec\": \"P0\", \"freq\": \"F0\", \"len\": \"{BookDepth}\"}}";
+                        $"{{ \"event\": \"subscribe\", \"channel\": \"book\", \"pair\":\"{symbol}\", \"prec\": \"P0\", \"freq\": \"F0\", \"len\": \"{_bookDepth}\"}}";
 
                     _ws.Send(message);
                 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Net.WebSockets;
 using System.Threading;
@@ -11,76 +10,15 @@ using Newtonsoft.Json.Linq;
 using Serilog;
 using Websocket.Client;
 
-using Atomex.Core;
 using Atomex.Common;
 using Atomex.MarketData.Abstract;
 using WebSocketClient = Atomex.Web.WebSocketClient;
 
 namespace Atomex.MarketData.Binance
 {
-    public enum BinanceOrderBookDepth
-    {
-        Five = 5,
-        Ten = 10,
-        Twenty = 20
-    }
-
-    public enum BinanceUpdateSpeed
-    {
-        Ms100 = 100,
-        Ms1000 = 1000
-    }
-
     public class BinanceWebSocketOrderBooksProvider : ICurrencyOrderBookProvider
     {
-        private class Payload<T>
-        {
-            [JsonProperty("stream")]
-            public string StreamId { get; set; }
-            [JsonProperty("data")]
-            public T Data { get; set; }
-        }
-
-        private class OrderBookUpdates
-        {
-            [JsonProperty("lastUpdateId")]
-            public long LastUpdateId { get; set; }
-            [JsonProperty("bids")]
-            public List<List<string>> Bids { get; set; }
-            [JsonProperty("asks")]
-            public List<List<string>> Asks { get; set; }
-        }
-
-        private readonly Dictionary<string, string> Symbols = new()
-        {
-            { "ETH/BTC", "ethbtc" },
-            { "LTC/BTC", "ltcbtc" },
-            { "XTZ/BTC", "xtzbtc" },
-            //{ "XTZ/ETH", "XTZETH" },
-
-            { "BTC/USDT", "btcusdt" },
-            { "ETH/USDT", "ethusdt" },
-            { "LTC/USDT", "ltcusdt" },
-            { "XTZ/USDT", "xtzusdt" },
-
-            { "ETH/TZBTC", "ethbtc" },
-            { "XTZ/TZBTC", "xtzbtc" },
-            { "TZBTC/USDT", "btcusdt" },
-
-            { "ETH/TBTC", "ethbtc" },
-            { "XTZ/TBTC", "xtzbtc" },
-            { "TBTC/USDT", "btcusdt" },
-
-            { "ETH/WBTC", "ethbtc" },
-            { "XTZ/WBTC", "xtzbtc" },
-            { "WBTC/USDT", "btcusdt" },
-
-            { "BTC/KUSD", "btcusdt" },
-            { "ETH/KUSD", "ethusdt" },
-            { "LTC/KUSD", "ltcusdt" },
-            { "XTZ/KUSD", "xtzusdt" },
-            { "TZBTC/KUSD", "btcusdt" },
-        };
+        private const int SnapshotLimit = 1000;
 
         private enum State
         {
@@ -91,14 +29,14 @@ namespace Atomex.MarketData.Binance
         private class OrderBookStream
         {
             public MarketDataOrderBook OrderBook { get; set; }
-            public List<Entry> Entries { get; set; }
+            public List<BinanceOrderBookUpdates> Updates { get; set; }
             public State State { get; set; }
             public SemaphoreSlim Semaphore { get; set; }
 
             public OrderBookStream(string s)
             {
                 OrderBook = new MarketDataOrderBook(s);
-                Entries = new List<Entry>();
+                Updates = new List<BinanceOrderBookUpdates>();
                 State = State.Sync;
                 Semaphore = new SemaphoreSlim(1, 1);
             }
@@ -109,7 +47,6 @@ namespace Atomex.MarketData.Binance
 
         private readonly Dictionary<string, OrderBookStream> _streams;
         private readonly string[] _symbols;
-        private readonly BinanceOrderBookDepth _depth;
         private readonly BinanceUpdateSpeed _updateSpeed;
         private WebSocketClient _ws;
 
@@ -132,19 +69,17 @@ namespace Atomex.MarketData.Binance
         public string Name => "Binance WebSockets";
 
         public BinanceWebSocketOrderBooksProvider(
-            BinanceOrderBookDepth depth,
             BinanceUpdateSpeed updateSpeed,
             params string[] symbols)
         {
-            _depth = depth;
             _updateSpeed = updateSpeed;
             _symbols = symbols
-                .Select(s => Symbols[s])
+                .Select(s => BinanceCommon.Symbols[s])
                 .Distinct()
                 .ToArray();
             _streams = _symbols
                 .ToDictionary(
-                    s => StreamBySymbol(s, (int)_depth, (int)_updateSpeed),
+                    s => StreamBySymbol(s, (int)_updateSpeed),
                     s => new OrderBookStream(s));
         }
 
@@ -188,18 +123,18 @@ namespace Atomex.MarketData.Binance
             _ws.Send(requestJson);
         }
 
-        private async Task UpdateSnapshotsAsync(string[] symbols, int depth, int updateSpeed)
+        private async Task UpdateSnapshotsAsync(string[] symbols, int updateSpeed)
         {
             foreach (var symbol in symbols)
-                await UpdateSnapshotAsync(symbol, depth, updateSpeed)
+                await UpdateSnapshotAsync(symbol, updateSpeed)
                     .ConfigureAwait(false);
         }
 
-        private async Task UpdateSnapshotAsync(string symbol, int depth, int updateSpeed)
+        private async Task UpdateSnapshotAsync(string symbol, int updateSpeed)
         {
             var snapshot = await HttpHelper.GetAsync(
                 baseUri: BaseUrl,
-                requestUri: $"depth?symbol={symbol.ToUpper()}&limit={depth}",
+                requestUri: $"depth?symbol={symbol.ToUpper()}&limit={SnapshotLimit}",
                 responseHandler: (response) =>
                 {
                     if (!response.IsSuccessStatusCode)
@@ -212,7 +147,7 @@ namespace Atomex.MarketData.Binance
                         .ReadAsStringAsync()
                         .WaitForResult();
 
-                    return JsonConvert.DeserializeObject<OrderBookUpdates>(responseContent);
+                    return JsonConvert.DeserializeObject<BinancePartialOrderBookUpdates>(responseContent);
                 });
 
             if (snapshot == null)
@@ -221,7 +156,7 @@ namespace Atomex.MarketData.Binance
                 return;
             }
 
-            var streamId = StreamBySymbol(symbol, depth, updateSpeed);
+            var streamId = StreamBySymbol(symbol, updateSpeed);
 
             if (!_streams.TryGetValue(streamId, out var orderBookStream))
             {
@@ -235,19 +170,36 @@ namespace Atomex.MarketData.Binance
                     .WaitAsync()
                     .ConfigureAwait(false);
 
-                var entries = GetEntries(snapshot);
+                var snapshotEntries = snapshot.GetEntries();
 
                 orderBookStream.OrderBook.ApplySnapshot(new Snapshot
                 {
-                    Entries = entries,
+                    Entries = snapshotEntries,
                     Symbol = symbol,
                     LastTransactionId = snapshot.LastUpdateId
                 });
 
-                foreach (var entry in orderBookStream.Entries)
-                    if (entry.TransactionId > snapshot.LastUpdateId)
-                        orderBookStream.OrderBook.ApplyEntry(entry);
+                foreach (var update in orderBookStream.Updates)
+                {
+                    if (update.FinalUpdateId <= snapshot.LastUpdateId)
+                    {
+                        continue;
+                    }
+                    else if (update.FirstUpdateId <= snapshot.LastUpdateId + 1 &&
+                             update.FinalUpdateId >= snapshot.LastUpdateId + 1)
+                    {
+                        var entries = update.GetEntries();
 
+                        foreach (var entry in entries)
+                            orderBookStream.OrderBook.ApplyEntry(entry);
+                    }
+                    else
+                    {
+                        Log.Warning("Something wrong!");
+                    }
+                }
+
+                orderBookStream.Updates.Clear();
                 orderBookStream.State = State.Ready;
             }
             finally
@@ -256,8 +208,8 @@ namespace Atomex.MarketData.Binance
             }
         }
 
-        public static string StreamBySymbol(string symbol, int depth, int updateSpeed) =>
-            $"{symbol}@depth{depth}@{updateSpeed}ms";
+        public static string StreamBySymbol(string symbol, int updateSpeed) =>
+            $"{symbol}@depth@{updateSpeed}ms";
 
         private void OnConnectedEventHandler(object sender, EventArgs args)
         {
@@ -269,7 +221,7 @@ namespace Atomex.MarketData.Binance
 
             SubscribeToStreams(streamIds);
 
-            _ = UpdateSnapshotsAsync(_symbols, (int)_depth, (int)_updateSpeed);
+            _ = UpdateSnapshotsAsync(_symbols, (int)_updateSpeed);
         }
 
         private void OnDisconnectedEventHandler(object sender, EventArgs e)
@@ -279,14 +231,14 @@ namespace Atomex.MarketData.Binance
 
         public MarketDataOrderBook GetOrderBook(string currency, string quoteCurrency)
         {
-            var symbol = Symbols.Keys.Contains($"{currency}/{quoteCurrency}") ?
-                Symbols[$"{currency}/{quoteCurrency}"] :
+            var symbol = BinanceCommon.Symbols.Keys.Contains($"{currency}/{quoteCurrency}") ?
+                BinanceCommon.Symbols[$"{currency}/{quoteCurrency}"] :
                 null;
 
             if (symbol == null)
                 return null;
 
-            var streamId = StreamBySymbol(symbol, (int)_depth, (int)_updateSpeed);
+            var streamId = StreamBySymbol(symbol, (int)_updateSpeed);
 
             return _streams.TryGetValue(streamId, out var stream)
                 ? stream.OrderBook
@@ -305,7 +257,7 @@ namespace Atomex.MarketData.Binance
 
                         if (message.ContainsKey("stream"))
                         {
-                            var streamMessage = message.ToObject<Payload<OrderBookUpdates>>();
+                            var streamMessage = message.ToObject<BinancePayload<BinanceOrderBookUpdates>>();
 
                             if (!_streams.TryGetValue(streamMessage.StreamId, out var orderBookStream))
                             {
@@ -313,26 +265,22 @@ namespace Atomex.MarketData.Binance
                                 return;
                             }
 
-                            var entries = GetEntries(streamMessage.Data);
-
                             try
                             {
                                 orderBookStream.Semaphore.Wait();
 
-                                if (orderBookStream.State == State.Ready)
+                                if (orderBookStream.State == State.Ready) // apply updates
                                 {
-                                    // apply updates
+                                    var entries = streamMessage.Data.GetEntries();
+
                                     foreach (var entry in entries)
                                         orderBookStream.OrderBook.ApplyEntry(entry);
 
-                                    orderBookStream.OrderBook.AdjustDepth((int)_depth);
-
                                     OrderBookUpdated?.Invoke(this, new OrderBookEventArgs(orderBookStream.OrderBook));
                                 }
-                                else
+                                else // otherwise save update to buffer
                                 {
-                                    // buffer all entries
-                                    orderBookStream.Entries.AddRange(entries);
+                                    orderBookStream.Updates.Add(streamMessage.Data);
                                 }
                             }
                             finally
@@ -359,36 +307,6 @@ namespace Atomex.MarketData.Binance
             {
                 Log.Error(e, "Binance response handle error");
             }
-        }
-
-        private List<Entry> GetEntries(OrderBookUpdates updates)
-        {
-            var bids = updates.Bids
-                .Select(pl => new Entry
-                {
-                    Price = decimal.Parse(pl[0], CultureInfo.InvariantCulture),
-                    QtyProfile = new List<decimal>
-                    {
-                        decimal.Parse(pl[1], CultureInfo.InvariantCulture)
-                    },
-                    Side = Side.Buy,
-                    TransactionId = updates.LastUpdateId
-                });
-
-            var asks = updates.Asks
-                .Select(pl => new Entry
-                {
-                    Price = decimal.Parse(pl[0], CultureInfo.InvariantCulture),
-                    QtyProfile = new List<decimal> {
-                        decimal.Parse(pl[1], CultureInfo.InvariantCulture)
-                    },
-                    Side = Side.Sell,
-                    TransactionId = updates.LastUpdateId
-                });
-
-            return bids
-                .Concat(asks)
-                .ToList();
         }
     }
 }
