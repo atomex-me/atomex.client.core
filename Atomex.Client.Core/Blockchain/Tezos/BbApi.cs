@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Common;
-using Atomex.Core;
+
 using Newtonsoft.Json;
 using Serilog;
+
+using Atomex.Common;
+using Atomex.Core;
 
 namespace Atomex.Blockchain.Tezos
 {
@@ -43,7 +45,26 @@ namespace Atomex.Blockchain.Tezos
             return await HttpHelper.GetAsync(
                     baseUri: _apiBaseUrl,
                     requestUri: $"v2/bakers/{address}",
-                    responseHandler: response => ParseBakerToViewModel(JsonConvert.DeserializeObject<Baker>(response.Content.ReadAsStringAsync().WaitForResult())),
+                    responseHandler: response =>
+                    {
+                        var responseContent = response.Content
+                            .ReadAsStringAsync()
+                            .WaitForResult();
+
+                        try
+                        {
+                            var baker = JsonConvert.DeserializeObject<Baker>(responseContent);
+
+                            if (baker == null)
+                                return null;
+
+                            return ParseBakerToViewModel(baker);
+                        }
+                        catch
+                        {
+                            return null;
+                        }
+                    },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -52,19 +73,19 @@ namespace Atomex.Blockchain.Tezos
         {
             var result = bakers
                 .Where(x => x.payoutAccuracy != "suspicious" && x.payoutTiming != "suspicious" 
-                                && x.serviceHealth == "active" && x.openForDelegation && x.serviceType != "exchange")
+                         && x.serviceHealth == "active" && x.openForDelegation && x.serviceType != "exchange")
                 .OrderBy(x => x.IsFull)
                 .ThenByDescending(x => x.insuranceCoverage)
                 .ThenByDescending(y => y.estimatedRoi)
                 .Select(x => new BakerData
                 {
-                    Address = x.address,
-                    Logo = x.logo,
-                    Name = x.name,
-                    Fee = x.fee,
-                    MinDelegation = x.minDelegation,
+                    Address          = x.address,
+                    Logo             = x.logo,
+                    Name             = x.name,
+                    Fee              = x.fee,
+                    MinDelegation    = x.minDelegation,
                     StakingAvailable = Math.Round(x.freeSpace, 6),
-                    EstimatedRoi = x.estimatedRoi
+                    EstimatedRoi     = x.estimatedRoi
                 });
 
             return result;
@@ -74,13 +95,13 @@ namespace Atomex.Blockchain.Tezos
         {
             var result = new BakerData
             {
-                Address = baker.address,
-                Logo = baker.logo,
-                Name = baker.name,
-                Fee = baker.fee,
-                MinDelegation = baker.minDelegation,
+                Address          = baker.address,
+                Logo             = baker.logo,
+                Name             = baker.name,
+                Fee              = baker.fee,
+                MinDelegation    = baker.minDelegation,
                 StakingAvailable = Math.Round(baker.freeSpace, 6),
-                EstimatedRoi = baker.estimatedRoi
+                EstimatedRoi     = baker.estimatedRoi
             };
 
             return result;
@@ -102,7 +123,6 @@ namespace Atomex.Blockchain.Tezos
             public string payoutAccuracy { get; set; }
             public decimal insuranceCoverage { get; set; }
             public bool IsFull => freeSpace <= 0;
-
         }
     }
 }

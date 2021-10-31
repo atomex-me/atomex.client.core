@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
@@ -12,7 +13,7 @@ using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.ERC20;
 using Atomex.Common;
 using Atomex.Core;
-using System.Collections.Generic;
+using Atomex.EthereumTokens;
 
 namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 {
@@ -25,7 +26,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
             CurrencyConfig currency,
             CancellationToken cancellationToken = default)
         {
-            var erc20 = currency as EthereumTokens.Erc20Config;
+            var erc20 = currency as Erc20Config;
 
             var api = erc20.BlockchainApi as IEthereumBlockchainApi;
 
@@ -82,7 +83,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
             {
                 Log.Debug("Ethereum ERC20: check initiated event");
 
-                var erc20 = (EthereumTokens.Erc20Config)currency;
+                var erc20 = (Erc20Config)currency;
 
                 var side = swap.Symbol
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)

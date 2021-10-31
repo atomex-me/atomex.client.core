@@ -145,22 +145,23 @@ namespace Atomex.Swaps.Ethereum
                         await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentBroadcast, cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (paymentTxs.Count > 1)
-                        {
-                            var isInitiateConfirmed = await WaitPaymentConfirmationAsync(
+                        var isInitiateConfirmed = await WaitPaymentConfirmationAsync(
                                     txId: paymentTx.Id,
                                     timeout: EthereumSwap.InitiationTimeout,
                                     cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
 
-                            if (!isInitiateConfirmed)
-                            {
-                                Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", EthereumSwap.InitiationTimeout.Minutes);
-                                return;
-                            }
+                        if (!isInitiateConfirmed)
+                        {
+                            Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", EthereumSwap.InitiationTimeout.Minutes);
+                            return;
                         }
                     }
                 }
+                
+                swap.StateFlags |= SwapStateFlags.IsPaymentConfirmed;
+                await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentConfirmed, cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -227,6 +228,7 @@ namespace Atomex.Swaps.Ethereum
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: erc20Config,
+                    dataRepository: Erc20Account.DataRepository,
                     txId: swap.RedeemTx.Id,
                     confirmationHandler: RedeemConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -346,6 +348,7 @@ namespace Atomex.Swaps.Ethereum
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
                 currency: erc20Config,
+                dataRepository: Erc20Account.DataRepository,
                 txId: redeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -445,11 +448,44 @@ namespace Atomex.Swaps.Ethereum
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: erc20Config,
+                    dataRepository: Erc20Account.DataRepository,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
 
                 return;
+            }
+
+            var lockTimeInSeconds = swap.IsInitiator
+                ? DefaultInitiatorLockTimeInSeconds
+                : DefaultAcceptorLockTimeInSeconds;
+
+            var lockTime = swap.TimeStamp.ToUniversalTime() + TimeSpan.FromSeconds(lockTimeInSeconds);
+
+            await RefundTimeDelayAsync(lockTime, cancellationToken)
+                .ConfigureAwait(false);
+
+            // check swap initiation
+            try
+            {
+                var txResult = await ERC20SwapInitiatedHelper
+                    .TryToFindPaymentAsync(swap, erc20Config, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!txResult.HasError && txResult.Value == null)
+                {
+                    // swap not initiated and must be canceled
+                    swap.StateFlags |= SwapStateFlags.IsCanceled;
+
+                    await UpdateSwapAsync(swap, SwapStateFlags.IsCanceled, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    return;
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, $"Can't check {swap.Id} swap initiation for {EthConfig.Name}");
             }
 
             Log.Debug("Create refund for swap {@swap}", swap.Id);
@@ -552,6 +588,7 @@ namespace Atomex.Swaps.Ethereum
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
                 currency: erc20Config,
+                dataRepository: Erc20Account.DataRepository,
                 txId: refundTx.Id,
                 confirmationHandler: RefundConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -727,7 +764,7 @@ namespace Atomex.Swaps.Ethereum
 
         #region Helpers
 
-        private decimal RequiredAmountInTokens(Swap swap, EthereumTokens.Erc20Config erc20)
+        private decimal RequiredAmountInTokens(Swap swap, Erc20Config erc20)
         {
             var requiredAmountInERC20 = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
 
@@ -1113,17 +1150,14 @@ namespace Atomex.Swaps.Ethereum
                 await Task.Delay(EthereumSwap.InitiationCheckInterval, cancellationToken)
                     .ConfigureAwait(false);
 
-                var tx = await EthConfig.BlockchainApi
-                    .GetTransactionAsync(txId, cancellationToken)
+                var tx = await Erc20Account
+                    .DataRepository
+                    .GetTransactionByIdAsync(Erc20Config.Name, txId, Erc20Config.TransactionType)
                     .ConfigureAwait(false);
 
-                if (tx != null && !tx.HasError && tx.Value != null)
-                {
-                    if (tx.Value.State == BlockchainTransactionState.Confirmed)
-                        return true;
-                    if (tx.Value.State == BlockchainTransactionState.Failed)
-                        return false;
-                }
+                if (tx is not { IsConfirmed: true }) continue;
+
+                return tx.IsConfirmed;
             }
 
             return false;

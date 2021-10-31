@@ -5,13 +5,15 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Microsoft.Extensions.Configuration;
+using NBitcoin;
+using Newtonsoft.Json;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
 using Atomex.Core;
-using Microsoft.Extensions.Configuration;
-using NBitcoin;
-using Newtonsoft.Json;
 
 namespace Atomex.Blockchain.Insight
 {
@@ -192,7 +194,7 @@ namespace Atomex.Blockchain.Insight
             return await HttpHelper.GetAsyncResult<decimal>(
                     baseUri: BaseUri,
                     requestUri: requestUri,
-                    responseHandler: (response, content) => long.Parse(content, CultureInfo.InvariantCulture) / (decimal) Currency.DigitsMultiplier,
+                    responseHandler: (response, content) => Currency.SatoshiToCoin(long.Parse(content, CultureInfo.InvariantCulture)),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }

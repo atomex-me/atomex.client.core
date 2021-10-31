@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
+
+using Serilog;
+
 using Atomex.Core;
 using Atomex.MarketData.Abstract;
-using Serilog;
 
 namespace Atomex.MarketData
 {
@@ -44,7 +46,7 @@ namespace Atomex.MarketData
                     continue;
                 }
 
-                lock (orderBook.SyncRoot)
+                lock (orderBook)
                 {
                     if (orderBook.IsReady) {
                         orderBook.ApplyEntry(entry, true);
@@ -65,7 +67,7 @@ namespace Atomex.MarketData
                 return;
             }
 
-            lock (orderBook.SyncRoot)
+            lock (orderBook)
             {
                 orderBook.ApplySnapshot(snapshot);
 

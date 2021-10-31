@@ -9,6 +9,7 @@ using Atomex.Blockchain.Helpers;
 using Atomex.Core;
 using Atomex.Common;
 using Atomex.Cryptography;
+using Atomex.Wallet.Abstract;
 
 namespace Atomex.Swaps.Abstract
 {
@@ -29,6 +30,7 @@ namespace Atomex.Swaps.Abstract
         public static TimeSpan RedeemTimeReserve = TimeSpan.FromMinutes(90);
         protected static TimeSpan PartyRedeemTimeReserve = TimeSpan.FromMinutes(95);
         public static TimeSpan PaymentTimeReserve = TimeSpan.FromMinutes(60);
+        protected static TimeSpan RefundDelay = TimeSpan.FromSeconds(30);
 
         public OnSwapUpdatedAsyncDelegate InitiatorPaymentConfirmed { get; set; }
         public OnSwapUpdatedAsyncDelegate AcceptorPaymentConfirmed { get; set; }
@@ -108,6 +110,7 @@ namespace Atomex.Swaps.Abstract
         protected Task TrackTransactionConfirmationAsync(
             Swap swap,
             CurrencyConfig currency,
+            IAccountDataRepository dataRepository,
             string txId,
             Func<Swap, IBlockchainTransaction, CancellationToken, Task> confirmationHandler,
             CancellationToken cancellationToken = default)
@@ -118,16 +121,16 @@ namespace Atomex.Swaps.Abstract
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        var result = await currency
-                            .IsTransactionConfirmed(txId, cancellationToken)
+                        var tx = await dataRepository
+                            .GetTransactionByIdAsync(currency.Name, txId, currency.TransactionType)
                             .ConfigureAwait(false);
 
-                        if (result.HasError)
+                        if (tx == null)
                             break;
 
-                        if (result.Value.IsConfirmed)
+                        if (tx.IsConfirmed)
                         {
-                            await confirmationHandler.Invoke(swap, result.Value.Transaction, cancellationToken)
+                            await confirmationHandler.Invoke(swap, tx, cancellationToken)
                                 .ConfigureAwait(false);
 
                             break;
@@ -333,5 +336,23 @@ namespace Atomex.Swaps.Abstract
         protected abstract Task RefundTimeReachedHandler(
             Swap swap,
             CancellationToken cancellationToken = default);
+
+        protected async Task<bool> RefundTimeDelayAsync(
+            DateTime refundTimeUtc,
+            CancellationToken cancellationToken = default)
+        {
+            // if refund time has not come
+            if (DateTime.UtcNow < refundTimeUtc)
+                return false;
+
+            var timeDiff = DateTime.UtcNow - refundTimeUtc;
+
+            // if refund time came less than RefundDelay seconds ago
+            if (timeDiff < RefundDelay)
+                await Task.Delay(RefundDelay - timeDiff, cancellationToken)
+                    .ConfigureAwait(false);
+
+            return true;
+        }
     }
 }

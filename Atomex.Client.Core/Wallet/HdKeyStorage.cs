@@ -286,6 +286,23 @@ namespace Atomex.Wallet
             return derivedKey.VerifyMessage(data, signature);
         }
 
+        private static object _secretCounterSync = new();
+        private static int _secretCounter = 0;
+        private static long _secretTimeStampMs = 0;
+        public static int SecretCounter(long timeStamp)
+        {
+            lock (_secretCounterSync)
+            {
+                if (_secretTimeStampMs != timeStamp)
+                {
+                    _secretCounter = 0;
+                    _secretTimeStampMs = timeStamp;
+                }
+
+                return _secretCounter++;
+            }
+        }
+
         public byte[] GetDeterministicSecret(CurrencyConfig currency, DateTime timeStamp)
         {
             var utcTimeStamp = timeStamp.ToUniversalTime();
@@ -294,11 +311,14 @@ namespace Atomex.Wallet
             var secondsIndex = (utcTimeStamp.Hour * 60 * 60) + (utcTimeStamp.Minute * 60) + utcTimeStamp.Second;
             var msIndex = utcTimeStamp.Millisecond;
 
+            var unixTimeMs = utcTimeStamp.ToUnixTimeMs();
+            var counter = SecretCounter(unixTimeMs);
+
             using var masterKey = BitcoinBasedConfig
                 .CreateExtKeyFromSeed(Seed);
 
             using var extKey = masterKey
-                .Derive(new KeyPath(path: $"m/{ServicePurpose}'/{currency.Bip44Code}'/0'/{daysIndex}/{secondsIndex}/{msIndex}"));
+                .Derive(new KeyPath(path: $"m/{ServicePurpose}'/{currency.Bip44Code}'/0'/{daysIndex}/{secondsIndex}/{msIndex}/{counter}"));
 
             using var securePublicKey = extKey.GetPublicKey();
             using var publicKey = securePublicKey.ToUnsecuredBytes();

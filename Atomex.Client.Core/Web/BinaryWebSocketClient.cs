@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using Serilog;
-using WebSocketSharp;
 
 using Atomex.Api;
 using Atomex.Api.Proto;
@@ -38,9 +37,9 @@ namespace Atomex.Web
             AddHandler(Schemes.HeartBeat.MessageId, HeartBeatHandler);
         }
 
-        protected override void OnBinaryMessage(object sender, MessageEventArgs args)
+        protected override void OnBinaryMessage(byte[] data)
         {
-            using var stream = new MemoryStream(args.RawData);
+            using var stream = new MemoryStream(data);
 
             while (stream.Position < stream.Length)
             {

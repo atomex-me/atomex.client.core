@@ -191,7 +191,7 @@ namespace Atomex.Blockchain.SoChain
             [JsonProperty(PropertyName = "inputs")]
             public List<InputDisplayData> Inputs { get; set; }
             [JsonProperty(PropertyName = "req_sigs")]
-            public int ReqSigs { get; set; }
+            public int? ReqSigs { get; set; }
             [JsonProperty(PropertyName = "script_asm")]
             public string ScriptAsm { get; set; }
             [JsonProperty(PropertyName = "script_hex")]
@@ -358,7 +358,9 @@ namespace Atomex.Blockchain.SoChain
             if (utxoResult.Value == null)
                 return 0;
 
-            return utxoResult.Value.Sum(o => o.Value);
+            var balanceInSatoshi = utxoResult.Value.Sum(o => o.Value);
+
+            return Currency.SatoshiToCoin(balanceInSatoshi);
         }
 
         public override async Task<Result<ITxPoint>> GetInputAsync(
@@ -401,7 +403,7 @@ namespace Atomex.Blockchain.SoChain
                 .ConfigureAwait(false);
         }
 
-        private Script ParseScript(string scriptOperands)
+        public static Script ParseScript(string scriptOperands)
         {
             var ops = new List<Op>();
 
@@ -413,7 +415,11 @@ namespace Atomex.Blockchain.SoChain
 
                 if (opBytes.Length == 1)
                 {
-                    ops.Add((OpcodeType)opBytes[0]);
+                    var opcodeType = opBytes[0] == 1
+                        ? OpcodeType.OP_1
+                        : (OpcodeType)opBytes[0];
+
+                    ops.Add(opcodeType);
                 }
                 else
                 {

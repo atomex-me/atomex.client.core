@@ -36,7 +36,7 @@ namespace Atomex
             IsToken                 = bool.Parse(configuration["IsToken"]);
  
             DigitsMultiplier        = BtcDigitsMultiplier;
-            Digits                  = (int)Math.Log10(BtcDigitsMultiplier);
+            Digits                  = (int)Math.Round(Math.Log10(BtcDigitsMultiplier));
             Format                  = $"F{Digits}";
 
             FeeRate                 = decimal.Parse(configuration["FeeRate"]);

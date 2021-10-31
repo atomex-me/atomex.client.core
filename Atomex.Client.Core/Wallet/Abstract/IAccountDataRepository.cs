@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Security;
 using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
@@ -10,6 +11,8 @@ namespace Atomex.Wallet.Abstract
 {
     public interface IAccountDataRepository
     {
+        void ChangePassword(SecureString newPassword);
+
         #region Addresses
 
         Task<bool> UpsertAddressAsync(

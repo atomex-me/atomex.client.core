@@ -127,19 +127,20 @@ namespace Atomex.Swaps.Ethereum
                         isInitiateTx = false;
 
                         // check initiate payment tx confirmation
-                        if (paymentTxs.Count > 1)
-                        {
-                            var isInitiated = await WaitPaymentConfirmationAsync(paymentTx.Id, InitiationTimeout, cancellationToken)
+                        var isInitiated = await WaitPaymentConfirmationAsync(paymentTx.Id, InitiationTimeout, cancellationToken)
                                 .ConfigureAwait(false);
 
-                            if (!isInitiated)
-                            {
-                                Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
-                                return;
-                            }
+                        if (!isInitiated)
+                        {
+                            Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", InitiationTimeout.Minutes);
+                            return;
                         }
                     }
                 }
+                
+                swap.StateFlags |= SwapStateFlags.IsPaymentConfirmed;
+                await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentConfirmed, cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -209,6 +210,7 @@ namespace Atomex.Swaps.Ethereum
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: ethConfig,
+                    dataRepository: _account.DataRepository,
                     txId: swap.RedeemTx.Id,
                     confirmationHandler: RedeemConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -328,6 +330,7 @@ namespace Atomex.Swaps.Ethereum
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
                 currency: ethConfig,
+                dataRepository: _account.DataRepository,
                 txId: redeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -438,11 +441,44 @@ namespace Atomex.Swaps.Ethereum
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: ethConfig,
+                    dataRepository: _account.DataRepository,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
 
                 return;
+            }
+
+            var lockTimeInSeconds = swap.IsInitiator
+                ? DefaultInitiatorLockTimeInSeconds
+                : DefaultAcceptorLockTimeInSeconds;
+
+            var lockTime = swap.TimeStamp.ToUniversalTime() + TimeSpan.FromSeconds(lockTimeInSeconds);
+
+            await RefundTimeDelayAsync(lockTime, cancellationToken)
+                .ConfigureAwait(false);
+
+            // check swap initiation
+            try
+            {
+                var txResult = await EthereumSwapInitiatedHelper
+                    .TryToFindPaymentAsync(swap, ethConfig, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!txResult.HasError && txResult.Value == null)
+                {
+                    // swap not initiated and must be canceled
+                    swap.StateFlags |= SwapStateFlags.IsCanceled;
+
+                    await UpdateSwapAsync(swap, SwapStateFlags.IsCanceled, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    return;
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, $"Can't check {swap.Id} swap initiation for ETH");
             }
 
             Log.Debug("Create refund for swap {@swap}", swap.Id);
@@ -545,6 +581,7 @@ namespace Atomex.Swaps.Ethereum
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
                 currency: ethConfig,
+                dataRepository: _account.DataRepository,
                 txId: refundTx.Id,
                 confirmationHandler: RefundConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -957,13 +994,15 @@ namespace Atomex.Swaps.Ethereum
             {
                 await Task.Delay(InitiationCheckInterval, cancellationToken)
                     .ConfigureAwait(false);
-
-                var tx = await EthConfig.BlockchainApi
-                    .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
+                
+                var tx = await _account
+                    .DataRepository
+                    .GetTransactionByIdAsync(EthConfig.Name, txId, EthConfig.TransactionType)
                     .ConfigureAwait(false);
 
-                if (tx != null && !tx.HasError && tx.Value != null && tx.Value.State == BlockchainTransactionState.Confirmed)
-                    return true;
+                if (tx is not { IsConfirmed: true }) continue;
+
+                return tx.IsConfirmed;
             }
 
             return false;

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using Atomex.Common;
 using Atomex.Core;
 using LiteDB;
@@ -25,12 +26,17 @@ namespace Atomex.LiteDb
 
         public static ushort MigrateFrom_0_to_1(string pathToDb, string sessionPassword)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
-            
-            if (db.Engine.UserVersion != Version0)
-                throw new Exception("Invalid db version");
+            var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
+
+            using (var dbVer = new LiteDatabase(connectionString))
+            {
+                if (dbVer.Engine.UserVersion != Version0)
+                    throw new Exception("Invalid db version");
+            }
 
             Backup(pathToDb);
+
+            using var db = new LiteDatabase(connectionString);
 
             // first "raw" version, simply reload all transaction from blockchain
             var removed = db.GetCollection("Transactions").Delete(Query.All());
@@ -48,18 +54,23 @@ namespace Atomex.LiteDb
             string sessionPassword,
             Network network)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
-            
-            if (db.Engine.UserVersion != Version1)
-                throw new Exception("Invalid db version");
+            var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
 
-            if (network != Network.TestNet)
+            using (var dbVer = new LiteDatabase(connectionString))
             {
-                UpdateVersion(db: db, fromVersion: Version1, toVersion: Version2);
-                return Version2;
+                if (dbVer.Engine.UserVersion != Version1)
+                    throw new Exception("Invalid db version");
+
+                if (network != Network.TestNet)
+                {
+                    UpdateVersion(db: dbVer, fromVersion: Version1, toVersion: Version2);
+                    return Version2;
+                }
             }
 
             Backup(pathToDb);
+
+            using var db = new LiteDatabase(connectionString);
 
             // remove all tezos transactions
             db.GetCollection("Transactions").Delete(Query.EQ("Currency", "XTZ"));
@@ -78,12 +89,17 @@ namespace Atomex.LiteDb
             string sessionPassword,
             Network network)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
-            
-            if (db.Engine.UserVersion != Version2)
-                throw new Exception("Invalid db version");
+            var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
+
+            using (var dbVer = new LiteDatabase(connectionString))
+            {
+                if (dbVer.Engine.UserVersion != Version2)
+                    throw new Exception("Invalid db version");
+            }
 
             Backup(pathToDb);
+
+            using var db = new LiteDatabase(connectionString);
 
             // update wallet addresses
             var addressesCollection = db.GetCollection("Addresses");
@@ -127,12 +143,17 @@ namespace Atomex.LiteDb
             string pathToDb,
             string sessionPassword)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
+            var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
 
-            if (db.Engine.UserVersion != Version3)
-                throw new Exception("Invalid db version");
+            using (var dbVer = new LiteDatabase(connectionString))
+            {
+                if (dbVer.Engine.UserVersion != Version3)
+                    throw new Exception("Invalid db version");
+            }
 
             Backup(pathToDb);
+
+            using var db = new LiteDatabase(connectionString);
 
             var currencies = new []{ "BTC", "LTC", "ETH", "XTZ", "USDT", "FA12" };
 
@@ -229,12 +250,17 @@ namespace Atomex.LiteDb
             string pathToDb,
             string sessionPassword)
         {
-            using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
+            var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
 
-            if (db.Engine.UserVersion != Version4)
-                throw new Exception("Invalid db version");
+            using (var db_ver = new LiteDatabase(connectionString))
+            {
+                if (db_ver.Engine.UserVersion != Version4)
+                    throw new Exception("Invalid db version");
+            }
 
             Backup(pathToDb);
+
+            using var db = new LiteDatabase(connectionString);
 
             // fix outputs
             var outputsCollection = db.GetCollection("Outputs");
@@ -362,14 +388,24 @@ namespace Atomex.LiteDb
                 Directory.CreateDirectory(pathToBackups);
 
             var pathToBackup = $"{pathToBackups}/data_{DateTime.Now:ddMMyyyy_HHmmss_fff}";
-            File.Copy(Path.GetFullPath(pathToDb), Path.GetFullPath(pathToBackup));
+            var fullPathToDb = Path.GetFullPath(pathToDb);
+            var fullPathToBackup = Path.GetFullPath(pathToBackup);
+
+            File.Copy(fullPathToDb, fullPathToBackup);
         }
 
-        private static void Shrink(LiteDatabase db, string sessionPassword)
+        public static void Shrink(LiteDatabase db, string sessionPassword)
         {
-            db.Shrink(sessionPassword);
-
-            Log.Debug("Db successfully shrinked");
+            try
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return;
+                db.Shrink(sessionPassword);
+                Log.Debug("Db successfully shrinked");
+            }
+            catch (Exception)
+            {
+                Log.Error("Db shrink error");
+            }
         }
 
         private static void UpdateVersion(LiteDatabase db, ushort fromVersion, ushort toVersion)

@@ -226,6 +226,7 @@ namespace Atomex.Swaps.BitcoinBased
                     _ = TrackTransactionConfirmationAsync(
                         swap: swap,
                         currency: currency,
+                        dataRepository: _account.DataRepository,
                         txId: swap.RedeemTx.Id,
                         confirmationHandler: RedeemConfirmedEventHandler,
                         cancellationToken: cancellationToken);
@@ -342,6 +343,7 @@ namespace Atomex.Swaps.BitcoinBased
             _ = TrackTransactionConfirmationAsync(
                 swap: swap,
                 currency: currency,
+                dataRepository: _account.DataRepository,
                 txId: swap.RedeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -364,6 +366,7 @@ namespace Atomex.Swaps.BitcoinBased
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: Currencies.GetByName(swap.SoldCurrency),
+                    dataRepository: _account.DataRepository,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -375,7 +378,10 @@ namespace Atomex.Swaps.BitcoinBased
                 ? DefaultInitiatorLockTimeInSeconds
                 : DefaultAcceptorLockTimeInSeconds;
 
-            DateTimeOffset lockTime = swap.TimeStamp.ToUniversalTime() + TimeSpan.FromSeconds(lockTimeInSeconds);
+            var lockTime = swap.TimeStamp.ToUniversalTime() + TimeSpan.FromSeconds(lockTimeInSeconds);
+
+            await RefundTimeDelayAsync(lockTime, cancellationToken)
+                .ConfigureAwait(false);
 
             var refundAddress = await _account
                 .GetAddressAsync(swap.RefundAddress)
@@ -445,6 +451,7 @@ namespace Atomex.Swaps.BitcoinBased
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: currency,
+                    dataRepository: _account.DataRepository,
                     txId: swap.PaymentTxId,
                     confirmationHandler: PaymentConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -804,6 +811,7 @@ namespace Atomex.Swaps.BitcoinBased
                 _ = TrackTransactionConfirmationAsync(
                     swap: swap,
                     currency: Currencies.GetByName(swap.SoldCurrency),
+                    dataRepository: _account.DataRepository,
                     txId: txId,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -874,8 +882,13 @@ namespace Atomex.Swaps.BitcoinBased
                 }
                 else if (spentTxInput.IsRefund())
                 {
-                    await RefundConfirmedEventHandler(swap, null, cancellationToken)
-                        .ConfigureAwait(false);
+                    var spentTx = await soldCurrency.BlockchainApi
+                         .TryGetTransactionAsync(spentPoint.Hash)
+                         .ConfigureAwait(false);
+
+                    if (spentTx != null && spentTx.Error == null && spentTx.Value.IsConfirmed)
+                        await RefundConfirmedEventHandler(swap, spentTx.Value, cancellationToken)
+                            .ConfigureAwait(false);
                 }
                 else
                 {

@@ -45,7 +45,7 @@ namespace Atomex.LiteDb
         private const string AccountKey            = nameof(KeyIndex) + "." + nameof(KeyIndex.Account);
 
         private readonly string _pathToDb;
-        private readonly string _sessionPassword;
+        private string _sessionPassword;
         private readonly BsonMapper _bsonMapper;
 
         private readonly ConcurrentDictionary<long, Swap> _swapById = new();
@@ -79,6 +79,17 @@ namespace Atomex.LiteDb
                 sessionPassword: _sessionPassword,
                 network: network,
                 migrationComplete);
+        }
+
+        public void ChangePassword(SecureString newPassword)
+        {
+            var newSessionPassword = SessionPasswordHelper.GetSessionPassword(newPassword);
+
+            using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+
+            db.Shrink(newSessionPassword);
+
+            _sessionPassword = newSessionPassword;
         }
 
         private BsonMapper CreateBsonMapper(ICurrencies currencies)
@@ -168,13 +179,25 @@ namespace Atomex.LiteDb
                     addresses.EnsureIndex(CurrencyKey);
                     addresses.EnsureIndex(AddressKey);
 
-                    if (!addresses.Exists(Query.EQ(IdKey, walletAddress.UniqueId)))
+                    var existsAddress = addresses.FindById(walletAddress.UniqueId);
+
+                    if (existsAddress == null)
                     {
                         var document = _bsonMapper.ToDocument(walletAddress);
 
                         var id = addresses.Insert(document);
 
                         return Task.FromResult(id != null);
+                    }
+                    else if (existsAddress.ContainsKey(KeyTypeKey) &&
+                             existsAddress[KeyTypeKey].AsInt32 != walletAddress.KeyType)
+                    {
+                        existsAddress[KeyTypeKey]                       = walletAddress.KeyType;
+                        existsAddress["KeyIndex"].AsDocument["Chain"]   = (int)walletAddress.KeyIndex.Chain;
+                        existsAddress["KeyIndex"].AsDocument["Index"]   = (int)walletAddress.KeyIndex.Index;
+                        existsAddress["KeyIndex"].AsDocument["Account"] = (int)walletAddress.KeyIndex.Account;
+
+                        return Task.FromResult(addresses.Update(existsAddress));
                     }
 
                     return Task.FromResult(false);

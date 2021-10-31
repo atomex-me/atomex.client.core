@@ -17,6 +17,7 @@ namespace Atomex.Wallet.Tezos
     {
         private const int DefaultInternalLookAhead = 2;
         private const int DefaultExternalLookAhead = 2;
+        private const int OldLookAhead = 3;
 
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
@@ -50,8 +51,8 @@ namespace Atomex.Wallet.Tezos
             var scanParams = scanBip32Ed25519
                 ? new[]
                 {
-                    (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.Internal, LookAhead : InternalLookAhead),
-                    (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.External, LookAhead : ExternalLookAhead),
+                    (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.Internal, LookAhead : OldLookAhead),
+                    (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.External, LookAhead : OldLookAhead),
                     (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : InternalLookAhead)
                 }
                 : new[]
@@ -175,7 +176,7 @@ namespace Atomex.Wallet.Tezos
                 return;
 
             // remove bip32Ed25519 addresses if there is no activity on them
-            foreach (var address in addresses)
+            foreach (var address in addresses.ToList())
             {
                 _ = await Account.DataRepository
                     .RemoveAddressAsync(address.Currency, address.Address)
