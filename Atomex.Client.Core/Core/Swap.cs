@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
+using Atomex.Common;
 
 namespace Atomex.Core
 {
@@ -79,15 +80,8 @@ namespace Atomex.Core
         public List<BitcoinBasedTxOutput> FromOutputs { get; set; }
         public string RedeemFromAddress { get; set; }
 
-        public string SoldCurrency =>
-            Side == Side.Buy
-                ? Symbol.Substring(Symbol.IndexOf('/') + 1)
-                : Symbol.Substring(0, Symbol.IndexOf('/'));
-
-        public string PurchasedCurrency =>
-            Side == Side.Buy
-                ? Symbol.Substring(0, Symbol.IndexOf('/'))
-                : Symbol.Substring(Symbol.IndexOf('/') + 1);
+        public string SoldCurrency => Symbol.SoldCurrency(Side);
+        public string PurchasedCurrency => Symbol.PurchasedCurrency(Side);
 
         public bool IsSoldCurrency(string currency) => SoldCurrency == currency;
         public bool IsPurchasedCurrency(string currency) => PurchasedCurrency == currency;
