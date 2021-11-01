@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -46,25 +47,14 @@ namespace Atomex.Blockchain.Tezos
                     baseUri: _apiBaseUrl,
                     requestUri: $"v2/bakers/{address}",
                     responseHandler: response =>
-                    {
-                        var responseContent = response.Content
-                            .ReadAsStringAsync()
-                            .WaitForResult();
-
-                        try
-                        {
-                            var baker = JsonConvert.DeserializeObject<Baker>(responseContent);
-
-                            if (baker == null)
-                                return null;
-
-                            return ParseBakerToViewModel(baker);
-                        }
-                        catch
-                        {
-                            return null;
-                        }
-                    },
+                        response.StatusCode == HttpStatusCode.OK ?
+                            ParseBakerToViewModel(
+                                JsonConvert.DeserializeObject<Baker>(
+                                    response
+                                    .Content
+                                    .ReadAsStringAsync()
+                                    .WaitForResult())) :
+                            new BakerData(),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }

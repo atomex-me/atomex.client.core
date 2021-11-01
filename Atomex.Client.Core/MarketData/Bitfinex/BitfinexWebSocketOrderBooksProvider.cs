@@ -20,45 +20,45 @@ namespace Atomex.MarketData.Bitfinex
     {
         private readonly Dictionary<string, string> Symbols = new ()
         {
-            { "ETHBTC", "ETHBTC" },
-            { "LTCBTC", "LTCBTC" },
-            { "XTZBTC", "XTZBTC" },
-            { "XTZETH", "XTZETH" },
+            { "ETH/BTC", "ETHBTC" },
+            { "LTC/BTC", "LTCBTC" },
+            { "XTZ/BTC", "XTZBTC" },
+            { "XTZ/ETH", "XTZETH" },
 
-            { "BTCUSDT", "BTCUST" },
-            { "ETHUSDT", "ETHUST" },
-            { "LTCUSDT", "LTCUST" },
-            { "XTZUSDT", "XTZUST" },
+            { "BTC/USDT", "BTCUST" },
+            { "ETH/USDT", "ETHUST" },
+            { "LTC/USDT", "LTCUST" },
+            { "XTZ/USDT", "XTZUST" },
 
-            { "ETHNYX", "ETHBTC" },
-            { "XTZNYX", "XTZBTC" },
+            { "ETH/NYX", "ETHBTC" },
+            { "XTZ/NYX", "XTZBTC" },
 
-            { "FA2ETH", "XTZETH" },
-            { "FA2BTC", "XTZBTC" },
+            { "FA2/ETH", "XTZETH" },
+            { "FA2/BTC", "XTZBTC" },
 
-            { "ETHTZBTC", "ETHBTC" },
-            { "XTZTZBTC", "XTZBTC" },
-            { "TZBTCUSDT", "BTCUST" },
+            { "ETH/TZBTC", "ETHBTC" },
+            { "XTZ/TZBTC", "XTZBTC" },
+            { "TZBTC/USDT", "BTCUST" },
 
-            { "ETHTBTC", "ETHBTC" },
-            { "XTZTBTC", "XTZBTC" },
-            { "TBTCUSDT", "BTCUST" },
+            { "ETH/TBTC", "ETHBTC" },
+            { "XTZ/TBTC", "XTZBTC" },
+            { "TBTC/USDT", "BTCUST" },
 
-            { "ETHWBTC", "ETHBTC" },
-            { "XTZWBTC", "XTZBTC" },
-            { "WBTCUSDT", "BTCUST" },
+            { "ETH/WBTC", "ETHBTC" },
+            { "XTZW/BTC", "XTZBTC" },
+            { "WBTC/USDT", "BTCUST" },
 
-            { "BTCKUSD", "BTCUST" },
-            { "ETHKUSD", "ETHUST" },
-            { "LTCKUSD", "LTCUST" },
-            { "XTZKUSD", "XTZUST" },
-            { "TZBTCKUSD", "BTCUST" },
+            { "BTC/KUSD", "BTCUST" },
+            { "ETH/KUSD", "ETHUST" },
+            { "LTC/KUSD", "LTCUST" },
+            { "XTZ/KUSD", "XTZUST" },
+            { "TZBTC/KUSD", "BTCUST" },
         };
 
         private const string BaseUrl = "wss://api-pub.bitfinex.com/ws/2";
 
         private readonly Dictionary<int, string> _channels;
-        private readonly Dictionary<string, MarketDataOrderBook> _orderbooks;
+        private readonly Dictionary<string, MarketDataOrderBook> _orderBooks;
         private WebSocketClient _ws;
 
         private CancellationTokenSource _pingCts;
@@ -68,7 +68,7 @@ namespace Atomex.MarketData.Bitfinex
         public event EventHandler AvailabilityChanged;
 
         public DateTime LastUpdateTime { get; private set; }
-        public int BookDepth { get; set; } = 100;
+        private readonly int _bookDepth = 25;
 
         private bool _isAvailable;
         public bool IsAvailable
@@ -87,8 +87,8 @@ namespace Atomex.MarketData.Bitfinex
         {
             _channels = new Dictionary<int, string>();
 
-            _orderbooks = symbols
-                .Select(s => Symbols[s.Replace("/", "")])
+            _orderBooks = symbols
+                .Select(s => Symbols[s])
                 .Distinct()
                 .ToDictionary(s => s, s => new MarketDataOrderBook(s));
         }
@@ -137,14 +137,14 @@ namespace Atomex.MarketData.Bitfinex
 
         public MarketDataOrderBook GetOrderBook(string currency, string quoteCurrency)
         {
-            var symbol = Symbols.Keys.Contains($"{currency}{quoteCurrency}") ?
-                Symbols[$"{currency}{quoteCurrency}"] :
+            var symbol = Symbols.Keys.Contains($"{currency}/{quoteCurrency}") ?
+                Symbols[$"{currency}/{quoteCurrency}"] :
                 null;
 
             if (symbol == null)
                 return null;
 
-            return _orderbooks.TryGetValue(symbol, out var orderbook) ? orderbook : null;
+            return _orderBooks.TryGetValue(symbol, out var orderbook) ? orderbook : null;
         }
 
         private void OnMessageEventHandler(object sender, ResponseMessage msg)
@@ -237,7 +237,7 @@ namespace Atomex.MarketData.Bitfinex
                 if (response[1] is JArray items)
                 {
                     var timeStamp = DateTime.Now;
-                    var orderBook = _orderbooks[symbol];
+                    var orderBook = _orderBooks[symbol];
 
                     if (items[0] is JArray)
                     {
@@ -302,10 +302,10 @@ namespace Atomex.MarketData.Bitfinex
         {
             try
             {
-                foreach (var symbol in _orderbooks.Keys)
+                foreach (var symbol in _orderBooks.Keys)
                 {
                     var message =
-                        $"{{ \"event\": \"subscribe\", \"channel\": \"book\", \"pair\":\"{symbol}\", \"prec\": \"P0\", \"freq\": \"F0\", \"len\": \"{BookDepth}\"}}";
+                        $"{{ \"event\": \"subscribe\", \"channel\": \"book\", \"pair\":\"{symbol}\", \"prec\": \"P0\", \"freq\": \"F0\", \"len\": \"{_bookDepth}\"}}";
 
                     _ws.Send(message);
                 }
