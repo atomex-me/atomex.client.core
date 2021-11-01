@@ -257,6 +257,7 @@ namespace Atomex.Swaps.Tezos
             if (walletAddress.Balance.ToMicroTez() < feeAmountInMtz + storageLimitInMtz)
             {
                 Log.Error("Insufficient funds for redeem");
+                return;
             }
 
             var redeemTx = new TezosTransaction
