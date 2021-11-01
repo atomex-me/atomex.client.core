@@ -52,111 +52,100 @@ namespace Atomex.Swaps.Ethereum
                 ? DefaultInitiatorLockTimeInSeconds
                 : DefaultAcceptorLockTimeInSeconds;
 
-            var paymentTxs = (await CreatePaymentTxsAsync(swap, lockTimeInSeconds, cancellationToken)
-                .ConfigureAwait(false))
-                .ToList();
+            var paymentTx = await CreatePaymentTxAsync(swap, lockTimeInSeconds, cancellationToken)
+                .ConfigureAwait(false);
 
-            if (paymentTxs.Count == 0)
+            if (paymentTx == null)
             {
                 Log.Error("Can't create payment transactions");
                 return;
             }
 
-            var isInitiated = false;
-
             try
             {
-                foreach (var paymentTx in paymentTxs)
+                try
                 {
-                    try
+                    await EthereumAccount.AddressLocker
+                        .LockAsync(paymentTx.From, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    var txsToBroadcast = await CreateApproveTxsAsync(swap, paymentTx, cancellationToken)
+                        .ConfigureAwait(false) ?? throw new Exception($"Can't get allowance for {paymentTx.From}");
+
+                    txsToBroadcast.Add(paymentTx);
+
+                    foreach (var tx in txsToBroadcast)
                     {
-                        await EthereumAccount.AddressLocker
-                            .LockAsync(paymentTx.From, cancellationToken)
+                        var isInitiateTx = tx.Type.HasFlag(BlockchainTransactionType.SwapPayment);
+
+                        var nonceResult = await EthereumNonceManager.Instance
+                            .GetNonceAsync(Erc20Config, tx.From, pending: true, cancellationToken)
                             .ConfigureAwait(false);
 
-                        var txsToBroadcast = await CreateApproveTxsAsync(swap, paymentTx, cancellationToken)
-                            .ConfigureAwait(false) ?? throw new Exception($"Can't get allowance for {paymentTx.From}");
-
-                        txsToBroadcast.Add(paymentTx);
-
-                        foreach (var tx in txsToBroadcast)
+                        if (nonceResult.HasError)
                         {
-                            var isInitiateTx = tx.Type.HasFlag(BlockchainTransactionType.SwapPayment);
+                            Log.Error("Nonce getting error with code {@code} and description {@description}",
+                                nonceResult.Error.Code,
+                                nonceResult.Error.Description);
 
-                            var nonceResult = await EthereumNonceManager.Instance
-                                .GetNonceAsync(Erc20Config, tx.From, pending: true, cancellationToken)
-                                .ConfigureAwait(false);
-
-                            if (nonceResult.HasError)
-                            {
-                                Log.Error("Nonce getting error with code {@code} and description {@description}",
-                                    nonceResult.Error.Code,
-                                    nonceResult.Error.Description);
-
-                                return;
-                            }
-
-                            tx.Nonce = nonceResult.Value;
-
-                            var signResult = await SignTransactionAsync(tx, cancellationToken)
-                                .ConfigureAwait(false);
-
-                            if (!signResult)
-                            {
-                                Log.Error("Transaction signing error");
-                                return;
-                            }
-
-                            if (isInitiateTx)
-                            {
-                                swap.PaymentTx = tx;
-                                swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
-
-                                await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentSigned, cancellationToken)
-                                    .ConfigureAwait(false);
-                            }
-
-                            await BroadcastTxAsync(
-                                    swap: swap,
-                                    tx: tx,
-                                    updateBalance: isInitiateTx,
-                                    notifyIfUnconfirmed: true,
-                                    notifyIfBalanceUpdated: isInitiateTx,
-                                    cancellationToken: cancellationToken)
-                                .ConfigureAwait(false);
-                        }
-                    }
-                    catch
-                    {
-                        throw;
-                    }
-                    finally
-                    {
-                        EthereumAccount.AddressLocker.Unlock(paymentTx.From);
-                    }
-
-                    if (!isInitiated)
-                    {
-                        isInitiated = true;
-
-                        swap.PaymentTx = paymentTx;
-                        swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
-
-                        await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentBroadcast, cancellationToken)
-                            .ConfigureAwait(false);
-
-                        var isInitiateConfirmed = await WaitPaymentConfirmationAsync(
-                                    txId: paymentTx.Id,
-                                    timeout: EthereumSwap.InitiationTimeout,
-                                    cancellationToken: cancellationToken)
-                                .ConfigureAwait(false);
-
-                        if (!isInitiateConfirmed)
-                        {
-                            Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", EthereumSwap.InitiationTimeout.Minutes);
                             return;
                         }
+
+                        tx.Nonce = nonceResult.Value;
+
+                        var signResult = await SignTransactionAsync(tx, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (!signResult)
+                        {
+                            Log.Error("Transaction signing error");
+                            return;
+                        }
+
+                        if (isInitiateTx)
+                        {
+                            swap.PaymentTx = tx;
+                            swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
+
+                            await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentSigned, cancellationToken)
+                                .ConfigureAwait(false);
+                        }
+
+                        await BroadcastTxAsync(
+                                swap: swap,
+                                tx: tx,
+                                updateBalance: isInitiateTx,
+                                notifyIfUnconfirmed: true,
+                                notifyIfBalanceUpdated: isInitiateTx,
+                                cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
                     }
+                }
+                catch
+                {
+                    throw;
+                }
+                finally
+                {
+                    EthereumAccount.AddressLocker.Unlock(paymentTx.From);
+                }
+
+                swap.PaymentTx = paymentTx;
+                swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
+
+                await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentBroadcast, cancellationToken)
+                    .ConfigureAwait(false);
+
+                var isInitiateConfirmed = await WaitPaymentConfirmationAsync(
+                            txId: paymentTx.Id,
+                            timeout: EthereumSwap.InitiationTimeout,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                if (!isInitiateConfirmed)
+                {
+                    Log.Error("Initiation payment tx not confirmed after timeout {@timeout}", EthereumSwap.InitiationTimeout.Minutes);
+                    return;
                 }
                 
                 swap.StateFlags |= SwapStateFlags.IsPaymentConfirmed;
@@ -253,20 +242,19 @@ namespace Atomex.Swaps.Ethereum
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var walletAddress = (await Erc20Account
-                .GetUnspentAddressesAsync(
-                    toAddress: swap.ToAddress,
-                    amount: 0,
-                    fee: 0,
-                    feePrice: gasPrice,
-                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
-                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
-                    transactionType: BlockchainTransactionType.SwapRedeem,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false))
-                .FirstOrDefault();
+            var walletAddress = await EthereumAccount
+                .GetAddressAsync(swap.RedeemFromAddress, cancellationToken)
+                .ConfigureAwait(false);
 
             if (walletAddress == null)
+            {
+                Log.Error("Can't get address {@address} for redeem from local db", swap.RedeemFromAddress);
+                return;
+            }
+
+            var feeInEth = EthConfig.GetFeeAmount(erc20Config.RedeemGasLimit, gasPrice);
+
+            if (walletAddress.Balance < feeInEth)
             {
                 Log.Error("Insufficient funds for redeem");
                 return;
@@ -302,7 +290,7 @@ namespace Atomex.Swaps.Ethereum
                     GasPrice     = EthereumConfig.GweiToWei(gasPrice),
                 };
 
-                message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.RedeemGasLimit), cancellationToken)
+                message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.RedeemGasLimit))
                     .ConfigureAwait(false);
 
                 var txInput = message.CreateTransactionInput(erc20Config.SwapContractAddress);
@@ -366,22 +354,21 @@ namespace Atomex.Swaps.Ethereum
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var walletAddress = (await Erc20Account
-                .GetUnspentAddressesAsync(
-                    toAddress: null, // todo: get participant address
-                    amount: 0,
-                    fee: 0,
-                    feePrice: gasPrice,
-                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
-                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
-                    transactionType: BlockchainTransactionType.SwapRedeem,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false))
-                .FirstOrDefault();
+            var walletAddress = await EthereumAccount
+                .GetAddressAsync(swap.FromAddress, cancellationToken)
+                .ConfigureAwait(false);
 
             if (walletAddress == null)
             {
-                Log.Error("Insufficient balance for party redeem. Cannot find the address containing the required amount of funds.");
+                Log.Error("Can't get address {@address} for redeem for party from local db", swap.FromAddress);
+                return;
+            }
+
+            var feeInEth = EthConfig.GetFeeAmount(erc20Config.RedeemGasLimit, gasPrice);
+
+            if (walletAddress.Balance < feeInEth)
+            {
+                Log.Error("Insufficient funds for redeem for party");
                 return;
             }
 
@@ -411,7 +398,7 @@ namespace Atomex.Swaps.Ethereum
                 GasPrice     = EthereumConfig.GweiToWei(gasPrice),
             };
 
-            message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.RedeemGasLimit), cancellationToken)
+            message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.RedeemGasLimit))
                 .ConfigureAwait(false);
 
             var txInput = message.CreateTransactionInput(erc20Config.SwapContractAddress);
@@ -494,20 +481,19 @@ namespace Atomex.Swaps.Ethereum
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var walletAddress = (await Erc20Account
-                .GetUnspentAddressesAsync(
-                    toAddress: null, // get refund address
-                    amount: 0,
-                    fee: 0,
-                    feePrice: gasPrice,
-                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
-                    addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
-                    transactionType: BlockchainTransactionType.SwapRefund,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false))
-                .FirstOrDefault();
+            var walletAddress = await EthereumAccount
+                .GetAddressAsync(swap.FromAddress, cancellationToken)
+                .ConfigureAwait(false);
 
             if (walletAddress == null)
+            {
+                Log.Error("Can't get address {@address} for refund from local db", swap.FromAddress);
+                return;
+            }
+
+            var feeInEth = EthConfig.GetFeeAmount(erc20Config.RefundGasLimit, gasPrice);
+
+            if (walletAddress.Balance < feeInEth)
             {
                 Log.Error("Insufficient funds for refund");
                 return;
@@ -542,7 +528,7 @@ namespace Atomex.Swaps.Ethereum
                     Nonce        = nonceResult.Value,
                 };
 
-                message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.RefundGasLimit), cancellationToken)
+                message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.RefundGasLimit))
                     .ConfigureAwait(false);
 
                 var txInput = message.CreateTransactionInput(erc20Config.SwapContractAddress);
@@ -726,30 +712,6 @@ namespace Atomex.Swaps.Ethereum
             {
                 if (swap.Secret?.Length > 0)
                 {
-                    var walletAddress = (await Erc20Account
-                        .GetUnspentAddressesAsync(
-                            toAddress: swap.ToAddress,
-                            amount: 0,
-                            fee: 0,
-                            feePrice: await EthConfig
-                                .GetGasPriceAsync(cancellationToken)
-                                .ConfigureAwait(false),
-                            feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
-                            addressUsagePolicy: AddressUsagePolicy.UseOnlyOneAddress,
-                            transactionType: BlockchainTransactionType.SwapRedeem,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false))
-                        .FirstOrDefault();
-
-                    if (walletAddress == null) //todo: make some panic here
-                    {
-                        Log.Error(
-                            "Counter counterParty redeem need to be made for swap {@swapId}, using secret {@Secret}",
-                            swap.Id,
-                            Convert.ToBase64String(swap.Secret));
-                        return;
-                    }
-
                     await RedeemAsync(swap, cancellationToken)
                         .ConfigureAwait(false);
                 }
@@ -775,152 +737,108 @@ namespace Atomex.Swaps.Ethereum
             return requiredAmountInERC20;
         }
 
-        protected async Task<IEnumerable<EthereumTransaction>> CreatePaymentTxsAsync(
+        protected async Task<EthereumTransaction> CreatePaymentTxAsync(
             Swap swap,
             int lockTimeInSeconds,
             CancellationToken cancellationToken = default)
         {
             var erc20Config = Erc20Config;
 
-            Log.Debug("Create payment transactions for swap {@swapId}", swap.Id);
+            Log.Debug("Create payment transaction from address {@adderss} for swap {@swapId}", swap.FromAddress, swap.Id);
 
             var requiredAmountInERC20 = RequiredAmountInTokens(swap, erc20Config);
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
-            var isInitTx = true;
+
             var rewardForRedeemInERC20 = swap.PartyRewardForRedeem;
 
-            var unspentAddresses = (await Erc20Account
-                .GetUnspentAddressesAsync(cancellationToken)
-                .ConfigureAwait(false))
-                .ToList()
-                .SortList((a, b) => a.AvailableBalance().CompareTo(b.AvailableBalance()));
+            var walletAddress = await Erc20Account
+                .GetAddressAsync(swap.FromAddress, cancellationToken)
+                .ConfigureAwait(false);
 
             var gasPrice = await EthConfig
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var transactions = new List<EthereumTransaction>();
+            var balanceInEth = (await EthereumAccount
+                .GetAddressBalanceAsync(
+                    address: walletAddress.Address,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false))
+                .Available;
 
-            foreach (var walletAddress in unspentAddresses)
+            var feeAmountInEth = rewardForRedeemInERC20 == 0
+                ? erc20Config.InitiateFeeAmount(gasPrice)
+                : erc20Config.InitiateWithRewardFeeAmount(gasPrice);
+
+            if (balanceInEth - feeAmountInEth <= 0)
             {
-                Log.Debug("Create swap payment tx from address {@address} for swap {@swapId}", walletAddress.Address, swap.Id);
+                Log.Error(
+                    "Insufficient funds at {@address} for fee. Balance: {@balance}, feeAmount: {@feeAmount}, result: {@result}.",
+                    walletAddress.Address,
+                    balanceInEth,
+                    feeAmountInEth,
+                    balanceInEth - feeAmountInEth);
 
-                var balanceInEth = (await EthereumAccount
-                    .GetAddressBalanceAsync(
-                        address: walletAddress.Address,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false))
-                    .Available;
-
-                var balanceInERC20 = (await Erc20Account
-                    .GetAddressBalanceAsync(
-                        address: walletAddress.Address,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false))
-                    .Available;
-
-                Log.Debug("Available balance: {@balance}", balanceInERC20);
-
-                var feeAmountInEth = isInitTx
-                    ? rewardForRedeemInERC20 == 0
-                        ? erc20Config.InitiateFeeAmount(gasPrice)
-                        : erc20Config.InitiateWithRewardFeeAmount(gasPrice)
-                    : erc20Config.AddFeeAmount(gasPrice) + erc20Config.ApproveFeeAmount(gasPrice);
-
-                if (balanceInEth - feeAmountInEth <= 0)
-                {
-                    Log.Warning(
-                        "Insufficient funds at {@address}. Balance: {@balance}, feeAmount: {@feeAmount}, result: {@result}.",
-                        walletAddress.Address,
-                        balanceInEth,
-                        feeAmountInEth,
-                        balanceInEth - feeAmountInEth);
-
-                    continue;
-                }
-
-                var amountInERC20 = requiredAmountInERC20 > 0
-                    ? AmountHelper.DustProofMin(balanceInERC20, requiredAmountInERC20, erc20Config.DigitsMultiplier, erc20Config.DustDigitsMultiplier)
-                    : 0;
-
-                requiredAmountInERC20 -= amountInERC20;
-
-                var nonceResult = await ((IEthereumBlockchainApi)erc20Config.BlockchainApi)
-                    .GetTransactionCountAsync(walletAddress.Address, pending: false, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (nonceResult.HasError)
-                {
-                    Log.Error($"Getting nonce error: {nonceResult.Error.Description}");
-                    return Enumerable.Empty<EthereumTransaction>();
-                }
-
-                TransactionInput txInput;
-
-                //actual transfer              
-                if (isInitTx)
-                {
-                    var initMessage = new ERC20InitiateFunctionMessage
-                    {
-                        HashedSecret    = swap.SecretHash,
-                        ERC20Contract   = erc20Config.ERC20ContractAddress,
-                        Participant     = swap.PartyAddress,
-                        RefundTimestamp = refundTimeStampUtcInSec,
-                        Countdown       = lockTimeInSeconds,
-                        Value           = erc20Config.TokensToTokenDigits(amountInERC20),
-                        RedeemFee       = erc20Config.TokensToTokenDigits(rewardForRedeemInERC20),
-                        Active          = true,
-                        FromAddress     = walletAddress.Address,
-                        GasPrice        = EthereumConfig.GweiToWei(gasPrice),
-                        Nonce           = nonceResult.Value
-                    };
-
-                    var initiateGasLimit = rewardForRedeemInERC20 == 0
-                        ? erc20Config.InitiateGasLimit
-                        : erc20Config.InitiateWithRewardGasLimit;
-
-                    initMessage.Gas = await EstimateGasAsync(initMessage, new BigInteger(initiateGasLimit), cancellationToken)
-                        .ConfigureAwait(false);
-
-                    txInput = initMessage.CreateTransactionInput(erc20Config.SwapContractAddress);
-                }
-                else
-                {
-                    var addMessage = new ERC20AddFunctionMessage
-                    {
-                        HashedSecret = swap.SecretHash,
-                        Value        = erc20Config.TokensToTokenDigits(amountInERC20),
-                        FromAddress  = walletAddress.Address,
-                        GasPrice     = EthereumConfig.GweiToWei(gasPrice),
-                        Nonce        = nonceResult.Value
-                    };
-
-                    addMessage.Gas = await EstimateGasAsync(addMessage, new BigInteger(erc20Config.AddGasLimit), cancellationToken)
-                        .ConfigureAwait(false);
-
-                    txInput = addMessage.CreateTransactionInput(erc20Config.SwapContractAddress);
-                }
-
-                transactions.Add(new EthereumTransaction(erc20Config.Name, txInput)
-                {
-                    Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
-                });
-
-                if (isInitTx)
-                    isInitTx = false;
-
-                if (requiredAmountInERC20 <= 0)
-                    break;
+                return null;
             }
 
-            if (requiredAmountInERC20 > 0)
+            var balanceInErc20 = walletAddress.Balance;
+
+            Log.Debug("Available balance: {@balance}", balanceInErc20);
+
+            if (balanceInErc20 < requiredAmountInERC20)
             {
-                Log.Warning("Insufficient ERC20 or Eth funds (left {@requiredAmount}).", requiredAmountInERC20);
-                return Enumerable.Empty<EthereumTransaction>();
+                Log.Error(
+                    "Insufficient funds at {@address}. Balance: {@balance}, required: {@result}, missing: {@missing}.",
+                    walletAddress.Address,
+                    balanceInErc20,
+                    requiredAmountInERC20,
+                    balanceInErc20 - requiredAmountInERC20);
+
+                return null;
             }
 
-            return transactions;
+            var nonceResult = await ((IEthereumBlockchainApi)erc20Config.BlockchainApi)
+                .GetTransactionCountAsync(walletAddress.Address, pending: false, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (nonceResult.HasError)
+            {
+                Log.Error($"Getting nonce error: {nonceResult.Error.Description}");
+                return null;
+            }
+
+            TransactionInput txInput;
+
+            var initMessage = new ERC20InitiateFunctionMessage
+            {
+                HashedSecret    = swap.SecretHash,
+                ERC20Contract   = erc20Config.ERC20ContractAddress,
+                Participant     = swap.PartyAddress,
+                RefundTimestamp = refundTimeStampUtcInSec,
+                Countdown       = lockTimeInSeconds,
+                Value           = erc20Config.TokensToTokenDigits(requiredAmountInERC20),
+                RedeemFee       = erc20Config.TokensToTokenDigits(rewardForRedeemInERC20),
+                Active          = true,
+                FromAddress     = walletAddress.Address,
+                GasPrice        = EthereumConfig.GweiToWei(gasPrice),
+                Nonce           = nonceResult.Value
+            };
+
+            var initiateGasLimit = rewardForRedeemInERC20 == 0
+                ? erc20Config.InitiateGasLimit
+                : erc20Config.InitiateWithRewardGasLimit;
+
+            initMessage.Gas = await EstimateGasAsync(initMessage, new BigInteger(initiateGasLimit))
+                .ConfigureAwait(false);
+
+            txInput = initMessage.CreateTransactionInput(erc20Config.SwapContractAddress);
+
+            return new EthereumTransaction(erc20Config.Name, txInput)
+            {
+                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
+            };
         }
 
         private async Task<IList<EthereumTransaction>> CreateApproveTxsAsync(
@@ -973,8 +891,7 @@ namespace Atomex.Swaps.Ethereum
                         walletAddress: walletAddress,
                         nonce: nonceResult.Value,
                         value: 0,
-                        gasPrice: gasPrice,
-                        cancellationToken: cancellationToken)
+                        gasPrice: gasPrice)
                     .ConfigureAwait(false);
 
                 transactions.Add(tx);
@@ -982,23 +899,11 @@ namespace Atomex.Swaps.Ethereum
 
             var requiredAmountInERC20 = RequiredAmountInTokens(swap, erc20);
 
-            var balanceInERC20 = (await Erc20Account
-                .GetAddressBalanceAsync(
-                    address: walletAddress.Address,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false))
-                .Available;
-
-            var amountInERC20 = requiredAmountInERC20 > 0
-                ? AmountHelper.DustProofMin(balanceInERC20, requiredAmountInERC20, erc20.DigitsMultiplier, erc20.DustDigitsMultiplier)
-                : 0;
-
             var approveTx = await CreateApproveTx(
                     walletAddress: walletAddress,
                     nonce: nonceResult.Value,
-                    value: erc20.TokensToTokenDigits(amountInERC20),
-                    gasPrice: gasPrice,
-                    cancellationToken: cancellationToken)
+                    value: erc20.TokensToTokenDigits(requiredAmountInERC20),
+                    gasPrice: gasPrice)
                 .ConfigureAwait(false);
 
             transactions.Add(approveTx);
@@ -1010,8 +915,7 @@ namespace Atomex.Swaps.Ethereum
             WalletAddress walletAddress,
             BigInteger nonce,
             BigInteger value,
-            decimal gasPrice,
-            CancellationToken cancellationToken = default)
+            decimal gasPrice)
         {
             var erc20Config = Erc20Config;
 
@@ -1024,7 +928,7 @@ namespace Atomex.Swaps.Ethereum
                 Nonce       = nonce,
             };
 
-            message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.ApproveGasLimit), cancellationToken)
+            message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.ApproveGasLimit))
                 .ConfigureAwait(false);
 
             var txInput = message.CreateTransactionInput(erc20Config.ERC20ContractAddress);
@@ -1110,8 +1014,7 @@ namespace Atomex.Swaps.Ethereum
 
         private async Task<BigInteger> EstimateGasAsync<TMessage>(
             TMessage message,
-            BigInteger defaultGas,
-            CancellationToken cancellationToken = default) where TMessage : FunctionMessage, new()
+            BigInteger defaultGas) where TMessage : FunctionMessage, new()
         {
             try
             {
