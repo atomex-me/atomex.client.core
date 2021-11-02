@@ -323,20 +323,20 @@ namespace Atomex.Swaps.Ethereum
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            var ethConfig = EthConfig;
-
             if (swap.IsInitiator)
             {
                 var partyRedeemDeadline = swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds) - PartyRedeemTimeReserve;
 
                 if (DateTime.UtcNow > partyRedeemDeadline)
                 {
-                    Log.Error("Party redeem dedline reached for swap {@swap}", swap.Id);
+                    Log.Error("Party redeem deadline reached for swap {@swap}", swap.Id);
                     return;
                 }
             }
 
             Log.Debug("Create redeem for counterParty for swap {@swapId}", swap.Id);
+
+            var ethConfig = EthConfig;
 
             var gasPrice = await ethConfig
                 .GetGasPriceAsync(cancellationToken)
