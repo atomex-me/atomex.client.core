@@ -31,24 +31,11 @@ namespace Atomex.Swaps.Helpers
                 .GetAddressAsync(feeCurrency, walletAddress.Address, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (feeCurrencyAddress == null)
-            {
-                feeCurrencyAddress = await account
-                    .GetCurrencyAccount<ILegacyCurrencyAccount>(feeCurrency)
-                    .DivideAddressAsync(
-                        keyIndex: walletAddress.KeyIndex,
-                        keyType: walletAddress.KeyType)
-                    .ConfigureAwait(false);
-
-                if (feeCurrencyAddress == null)
-                    throw new Exception($"Can't get/devide {currency.Name} address {walletAddress.Address} for {feeCurrency}");
-            }
-
             var redeemFee = await currency
                 .GetRedeemFeeAsync(walletAddress, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (feeCurrencyAddress.AvailableBalance() >= redeemFee)
+            if (feeCurrencyAddress != null && feeCurrencyAddress.AvailableBalance() >= redeemFee)
                 return 0m;
 
             var feeCurrencyToBaseQuote = currency.FeeCurrencyToBaseSymbol != null
