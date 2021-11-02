@@ -358,6 +358,17 @@ namespace Atomex.Swaps.Ethereum
             Swap swap,
             CancellationToken cancellationToken = default)
         {
+            if (swap.IsInitiator)
+            {
+                var partyRedeemDeadline = swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds) - PartyRedeemTimeReserve;
+
+                if (DateTime.UtcNow > partyRedeemDeadline)
+                {
+                    Log.Error("Party redeem deadline reached for swap {@swap}", swap.Id);
+                    return;
+                }
+            }
+
             Log.Debug("Create redeem for counterParty for swap {@swapId}", swap.Id);
 
             var erc20Config = Erc20Config;
