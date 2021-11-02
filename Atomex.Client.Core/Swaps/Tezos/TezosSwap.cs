@@ -711,7 +711,10 @@ namespace Atomex.Swaps.Tezos
         {
             var xtzConfig = XtzConfig;
 
-            Log.Debug("Create {@currency} payment transaction for swap {@swapId}", Currency, swap.Id);
+            Log.Debug("Create {@currency} payment transaction from address {@address} for swap {@swapId}",
+                Currency,
+                swap.FromAddress,
+                swap.Id);
 
             var requiredAmountInMtz = AmountHelper
                 .QtyToAmount(swap.Side, swap.Qty, swap.Price, xtzConfig.DigitsMultiplier)
@@ -736,32 +739,20 @@ namespace Atomex.Swaps.Tezos
                 .GetAddressAsync(swap.FromAddress, cancellationToken)
                 .ConfigureAwait(false);
 
-            Log.Debug("Create swap payment tx from address {@address} for swap {@swapId}",
-                walletAddress.Address,
-                swap.Id);
+            Log.Debug("Available balance: {@balance}", walletAddress.Balance);
 
-            var balanceInTz = (await _account
-                .GetAddressBalanceAsync(
-                    address: walletAddress.Address,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false))
-                .Available;
-
-            Log.Debug("Available balance: {@balance}", balanceInTz);
-
-            var balanceInMtz = balanceInTz.ToMicroTez();
+            var balanceInMtz = walletAddress.Balance.ToMicroTez();
 
             var isRevealed = await _account
                 .IsRevealedSourceAsync(walletAddress.Address, cancellationToken)
                 .ConfigureAwait(false);
 
             var feeAmountInMtz = xtzConfig.InitiateFee + (isRevealed ? 0 : xtzConfig.RevealFee);
-
             var storageLimitInMtz = xtzConfig.InitiateStorageLimit * xtzConfig.StorageFeeMultiplier;
 
             if (balanceInMtz < feeAmountInMtz + storageLimitInMtz + requiredAmountInMtz)
             {
-                Log.Warning(
+                Log.Error(
                     "Insufficient funds at {@address}. Balance: {@balance}, required: {@required}, " +
                     "feeAmount: {@feeAmount}, storageLimit: {@storageLimit}, missing: {@result}.",
                     walletAddress.Address,

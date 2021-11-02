@@ -57,7 +57,7 @@ namespace Atomex.Swaps.Ethereum
 
             if (paymentTx == null)
             {
-                Log.Error("Can't create payment transactions");
+                Log.Error("Can't create payment transaction");
                 return;
             }
 
@@ -782,7 +782,7 @@ namespace Atomex.Swaps.Ethereum
                 ? erc20Config.InitiateFeeAmount(gasPrice)
                 : erc20Config.InitiateWithRewardFeeAmount(gasPrice);
 
-            if (balanceInEth - feeAmountInEth <= 0)
+            if (balanceInEth < feeAmountInEth)
             {
                 Log.Error(
                     "Insufficient funds at {@address} for fee. Balance: {@balance}, feeAmount: {@feeAmount}, result: {@result}.",
@@ -810,6 +810,12 @@ namespace Atomex.Swaps.Ethereum
                 return null;
             }
 
+            var amountInErc20 = AmountHelper.DustProofMin(
+                balanceInErc20,
+                requiredAmountInERC20,
+                erc20Config.DigitsMultiplier,
+                erc20Config.DustDigitsMultiplier);
+
             var nonceResult = await ((IEthereumBlockchainApi)erc20Config.BlockchainApi)
                 .GetTransactionCountAsync(walletAddress.Address, pending: false, cancellationToken)
                 .ConfigureAwait(false);
@@ -829,7 +835,7 @@ namespace Atomex.Swaps.Ethereum
                 Participant     = swap.PartyAddress,
                 RefundTimestamp = refundTimeStampUtcInSec,
                 Countdown       = lockTimeInSeconds,
-                Value           = erc20Config.TokensToTokenDigits(requiredAmountInERC20),
+                Value           = erc20Config.TokensToTokenDigits(amountInErc20),
                 RedeemFee       = erc20Config.TokensToTokenDigits(rewardForRedeemInERC20),
                 Active          = true,
                 FromAddress     = walletAddress.Address,
@@ -899,7 +905,7 @@ namespace Atomex.Swaps.Ethereum
             if (allowance.Value > 0)
             {
                 var tx = await CreateApproveTx(
-                        walletAddress: walletAddress,
+                        walletAddress: walletAddress.Address,
                         nonce: nonceResult.Value,
                         value: 0,
                         gasPrice: gasPrice)
@@ -908,12 +914,18 @@ namespace Atomex.Swaps.Ethereum
                 transactions.Add(tx);
             }
 
-            var requiredAmountInERC20 = RequiredAmountInTokens(swap, erc20);
+            var requiredAmountInErc20 = RequiredAmountInTokens(swap, erc20);
+
+            var amountInErc20 = AmountHelper.DustProofMin(
+                walletAddress.Balance,
+                requiredAmountInErc20,
+                erc20.DigitsMultiplier,
+                erc20.DustDigitsMultiplier);
 
             var approveTx = await CreateApproveTx(
-                    walletAddress: walletAddress,
+                    walletAddress: walletAddress.Address,
                     nonce: nonceResult.Value,
-                    value: erc20.TokensToTokenDigits(requiredAmountInERC20),
+                    value: erc20.TokensToTokenDigits(amountInErc20),
                     gasPrice: gasPrice)
                 .ConfigureAwait(false);
 
@@ -923,7 +935,7 @@ namespace Atomex.Swaps.Ethereum
         }
 
         private async Task<EthereumTransaction> CreateApproveTx(
-            WalletAddress walletAddress,
+            string walletAddress,
             BigInteger nonce,
             BigInteger value,
             decimal gasPrice)
@@ -934,7 +946,7 @@ namespace Atomex.Swaps.Ethereum
             {
                 Spender     = erc20Config.SwapContractAddress,
                 Value       = value,
-                FromAddress = walletAddress.Address,
+                FromAddress = walletAddress,
                 GasPrice    = EthereumConfig.GweiToWei(gasPrice),
                 Nonce       = nonce,
             };
