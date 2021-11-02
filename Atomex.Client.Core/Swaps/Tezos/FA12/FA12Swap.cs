@@ -368,20 +368,20 @@ namespace Atomex.Swaps.Tezos.FA12
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            var fa12 = Fa12Config;
-
             if (swap.IsInitiator)
             {
                 var partyRedeemDeadline = swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds) - PartyRedeemTimeReserve;
 
                 if (DateTime.UtcNow > partyRedeemDeadline)
                 {
-                    Log.Error("Party redeem dedline reached for swap {@swap}", swap.Id);
+                    Log.Error("Party redeem deadline reached for swap {@swap}", swap.Id);
                     return;
                 }
             }
 
             Log.Debug("Create redeem for acceptor for swap {@swapId}", swap.Id);
+
+            var fa12 = Fa12Config;
 
             var walletAddress = (await Fa12Account
                 .GetUnspentAddressesAsync(
