@@ -21,7 +21,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class Erc20Account : CurrencyAccount, ILegacyCurrencyAccount
+    public class Erc20Account : CurrencyAccount
     {
         public Erc20Account(
             string currency,

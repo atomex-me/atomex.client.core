@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NBitcoin;
-using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
@@ -267,45 +266,6 @@ namespace Atomex
                 amount: amount,
                 fee: fee);
         }
-
-        //public static int EstimateSigSize(
-        //    ITxOutput output,
-        //    bool forRefund = false,
-        //    bool forRedeem = false)
-        //{
-        //    if (!(output is BitcoinBasedTxOutput btcBasedOutput))
-        //        return 0;
-
-        //    var sigSize = 0;
-
-        //    if (btcBasedOutput.IsP2Pkh)
-        //        sigSize += P2PkhScriptSigSize; // use compressed?
-        //    else if (btcBasedOutput.IsSegwitP2Pkh)
-        //        sigSize += P2WPkhScriptSigSize;
-        //    else if (btcBasedOutput.IsP2PkhSwapPayment || btcBasedOutput.IsHtlcP2PkhSwapPayment)
-        //        sigSize += forRefund
-        //            ? P2PkhSwapRefundSigSize
-        //            : P2PkhSwapRedeemSigSize;
-        //    else if (btcBasedOutput.IsP2Sh)
-        //        sigSize += forRefund
-        //            ? P2PShSwapRefundScriptSigSize
-        //            : (forRedeem
-        //                ? P2PShSwapRedeemScriptSigSize
-        //                : P2PkhScriptSigSize); // todo: probably incorrect
-        //    else
-        //        Log.Warning("Unknown output type, estimated fee may be wrong");
-
-        //    return sigSize;
-        //}
-
-        //public static int EstimateSigSize(
-        //    IEnumerable<ITxOutput> outputs,
-        //    bool forRefund = false)
-        //{
-        //    return outputs
-        //        .ToList()
-        //        .Sum(output => EstimateSigSize(output, forRefund));
-        //}
 
         public virtual Task<decimal> GetFeeRateAsync(
             bool useCache = true,

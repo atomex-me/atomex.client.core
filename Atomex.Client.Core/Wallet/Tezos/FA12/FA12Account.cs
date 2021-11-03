@@ -16,7 +16,7 @@ using Atomex.Wallet.Abstract;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class Fa12Account : TezosTokenAccount, ILegacyCurrencyAccount
+    public class Fa12Account : TezosTokenAccount
     {
         private Fa12Config Fa12Config => Currencies.Get<Fa12Config>(Currency);
 
@@ -46,7 +46,6 @@ namespace Atomex.Wallet.Tezos
             string to,
             decimal amount,
             decimal fee,
-            decimal feePrice,
             bool useDefaultFee = true,
             CancellationToken cancellationToken = default)
         {
@@ -60,7 +59,6 @@ namespace Atomex.Wallet.Tezos
 
             var addressFeeUsage = await CalculateFundsUsageAsync(
                     from: from,
-                    to: to,
                     amount: amount,
                     fee: fee,
                     feeUsagePolicy: useDefaultFee
@@ -172,7 +170,6 @@ namespace Atomex.Wallet.Tezos
 
             var addressFeeUsage = await CalculateFundsUsageAsync(
                     from: from,
-                    to: to,
                     amount: amount,
                     fee: 0,
                     feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
@@ -218,8 +215,6 @@ namespace Atomex.Wallet.Tezos
             string from,
             string to,
             BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -343,7 +338,6 @@ namespace Atomex.Wallet.Tezos
 
         private async Task<SelectedWalletAddress> CalculateFundsUsageAsync(
             string from,
-            string to,
             decimal amount,
             decimal fee,
             FeeUsagePolicy feeUsagePolicy,
@@ -411,20 +405,6 @@ namespace Atomex.Wallet.Tezos
         }
 
         #endregion Addresses
-
-        #region Transactions
-
-        public Task UpsertTransactionAsync(
-            IBlockchainTransaction tx,
-            bool updateBalance = false,
-            bool notifyIfUnconfirmed = true,
-            bool notifyIfBalanceUpdated = true,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        #endregion Transactions
 
         #region Helpers
 

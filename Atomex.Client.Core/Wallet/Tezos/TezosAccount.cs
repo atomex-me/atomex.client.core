@@ -16,7 +16,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class TezosAccount : CurrencyAccount, ILegacyCurrencyAccount
+    public class TezosAccount : CurrencyAccount
     {
         private readonly TezosRevealChecker _tezosRevealChecker;
         private readonly TezosAllocationChecker _tezosAllocationChecker;

@@ -256,27 +256,10 @@ namespace Atomex.Swaps
                     .ConfigureAwait(false);
             }
 
-            WalletAddress toAddress;
-
-            // select self address for purchased currency
-            if (swap.ToAddress == null)
-            {
-                toAddress = await _account
-                    .GetCurrencyAccount<ILegacyCurrencyAccount>(swap.PurchasedCurrency)
-                    .GetRedeemAddressAsync(cancellationToken)
-                    .ConfigureAwait(false);
-
-                swap.ToAddress = toAddress.Address;
-
-                await UpdateSwapAsync(swap, SwapStateFlags.Empty, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                toAddress = await _account
-                    .GetAddressAsync(swap.PurchasedCurrency, swap.ToAddress, cancellationToken)
-                    .ConfigureAwait(false);
-            }
+            // self address for purchased currency
+            var toAddress = await _account
+                .GetAddressAsync(swap.PurchasedCurrency, swap.ToAddress, cancellationToken)
+                .ConfigureAwait(false);
 
             swap.RewardForRedeem = await RewardForRedeemHelper
                 .EstimateAsync(
@@ -398,25 +381,20 @@ namespace Atomex.Swaps
                 swap.PartyRefundAddress = receivedSwap.PartyRefundAddress;
 
             // create self requisites
-            if (swap.ToAddress == null)
-            {
-                var walletAddress = await _account
-                    .GetCurrencyAccount<ILegacyCurrencyAccount>(swap.PurchasedCurrency)
-                    .GetRedeemAddressAsync(cancellationToken)
-                    .ConfigureAwait(false);
+            var toAddress = await _account
+                .GetAddressAsync(swap.PurchasedCurrency, swap.ToAddress, cancellationToken)
+                .ConfigureAwait(false);
 
-                swap.ToAddress = walletAddress.Address;
-                swap.RewardForRedeem = await RewardForRedeemHelper
-                    .EstimateAsync(
-                        account: _account,
-                        quotesProvider: _quotesProvider,
-                        feeCurrencyQuotesProvider: symbol => _marketDataRepository
-                            ?.OrderBookBySymbol(symbol)
-                            ?.TopOfBook(),
-                        walletAddress: walletAddress,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-            }
+            swap.RewardForRedeem = await RewardForRedeemHelper
+                .EstimateAsync(
+                    account: _account,
+                    quotesProvider: _quotesProvider,
+                    feeCurrencyQuotesProvider: symbol => _marketDataRepository
+                        ?.OrderBookBySymbol(symbol)
+                        ?.TopOfBook(),
+                    walletAddress: toAddress,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
             var soldCurrency = _account.Currencies.GetByName(swap.SoldCurrency);
 

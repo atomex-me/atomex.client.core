@@ -19,7 +19,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class EthereumAccount : CurrencyAccount, ILegacyCurrencyAccount
+    public class EthereumAccount : CurrencyAccount
     {
         private static ResourceLocker<string> _addressLocker;
         public static ResourceLocker<string> AddressLocker

@@ -611,8 +611,13 @@ namespace Atomex.Services
         {
             try
             {
-                await Account
-                    .GetCurrencyAccount<ILegacyCurrencyAccount>(tx.Currency)
+                if (Account.GetCurrencyAccount(tx.Currency) is not ITransactionalAccount account)
+                {
+                    Log.Error("Transaction for {@currency} received.", tx.Currency);
+                    return;
+                }
+
+                await account
                     .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

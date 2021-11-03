@@ -614,7 +614,7 @@ namespace Atomex.ViewModels
             ISymbolsProvider symbolsProvider,
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(async () =>
+            return Task.Run(() =>
             {
                 if (toCurrency == null)
                     return null;
@@ -631,10 +631,6 @@ namespace Atomex.ViewModels
 
                 if (orderBook == null)
                     return null;
-
-                var walletAddress = await account
-                    .GetCurrencyAccount<ILegacyCurrencyAccount>(toCurrency.FeeCurrencyName)
-                    .GetRedeemAddressAsync();
 
                 var baseCurrency = account.Currencies.GetByName(symbol.Base);
 

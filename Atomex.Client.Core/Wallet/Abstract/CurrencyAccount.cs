@@ -14,7 +14,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Abstract
 {
-    public abstract class CurrencyAccount : ICurrencyAccount
+    public abstract class CurrencyAccount : ICurrencyAccount, ITransactionalAccount
     {
         public event EventHandler<CurrencyEventArgs> BalanceUpdated;
         public event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded;
