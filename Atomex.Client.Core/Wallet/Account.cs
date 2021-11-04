@@ -31,24 +31,30 @@ namespace Atomex.Wallet
 
         public event EventHandler<CurrencyEventArgs> BalanceUpdated
         {
-            add {
+            add
+            {
                 foreach (var currencyAccount in CurrencyAccounts)
                     currencyAccount.Value.BalanceUpdated += value;
             }
-            remove {
+            remove
+            {
                 foreach (var currencyAccount in CurrencyAccounts)
                     currencyAccount.Value.BalanceUpdated -= value;
             }
         }
         public event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded
         {
-            add {
-                foreach (var currencyAccount in CurrencyAccounts)
-                    currencyAccount.Value.UnconfirmedTransactionAdded += value;
+            add
+            {
+                foreach (var currencyAccount in CurrencyAccounts.Values)
+                    if (currencyAccount is ITransactionalAccount account)
+                        account.UnconfirmedTransactionAdded += value;
             }
-            remove {
-                foreach (var currencyAccount in CurrencyAccounts)
-                    currencyAccount.Value.UnconfirmedTransactionAdded -= value;
+            remove
+            {
+                foreach (var currencyAccount in CurrencyAccounts.Values)
+                    if (currencyAccount is ITransactionalAccount account)
+                        account.UnconfirmedTransactionAdded -= value;
             }
         }
         public event EventHandler Locked;

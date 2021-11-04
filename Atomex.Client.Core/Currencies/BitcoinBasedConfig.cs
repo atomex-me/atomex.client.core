@@ -17,18 +17,8 @@ namespace Atomex
     public abstract class BitcoinBasedConfig : CurrencyConfig
     {
         public const int P2PkhTxSize = 182;
-        public const int P2PkhScriptSigSize = 139; //1 + 72 + 1 + 65;
-        public const int P2PkhCompressedScriptSigSize = 107; // 1 + 72 + 1 + 33
-        public const int P2PkhSwapRefundSigSize = 146; //1 + 72 + 72 + 1
-        public const int P2PkhSwapRedeemSigSize = 82; //65 + 16 + 1;
-        public const int P2WPkhScriptSigSize = P2PkhScriptSigSize / 4;
-
-        public const int P2PShSwapRefundScriptSigSize = 208;
-        public const int P2PShSwapRedeemScriptSigSize = 241;
-
         public const int DefaultPaymentTxSize = 372; // 2 inputs and 2 outputs
         public const int DefaultRedeemTxSize = 300;
-        public const int OutputSize = 34;
 
         public decimal FeeRate { get; set; }
         public decimal DustFeeRate { get; set; }

@@ -47,16 +47,5 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default);
 
         #endregion Addresses
-
-        #region Transactions
-
-        Task UpsertTransactionAsync(
-            IBlockchainTransaction tx,
-            bool updateBalance = false,
-            bool notifyIfUnconfirmed = true,
-            bool notifyIfBalanceUpdated = true,
-            CancellationToken cancellationToken = default);
-
-        #endregion Transactions
     }
 }
