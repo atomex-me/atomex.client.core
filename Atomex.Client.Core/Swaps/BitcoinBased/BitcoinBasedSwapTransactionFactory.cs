@@ -14,6 +14,8 @@ namespace Atomex.Swaps.BitcoinBased
 {
     public class BitcoinBasedSwapTransactionFactory : IBitcoinBasedSwapTransactionFactory
     {
+        public const decimal MaxFeeRateChangePercent = 0.1m;
+
         public async Task<IBitcoinBasedTransaction> CreateSwapPaymentTxAsync(
             IEnumerable<BitcoinBasedTxOutput> fromOutputs,
             long amount,
@@ -42,77 +44,68 @@ namespace Atomex.Swaps.BitcoinBased
                 secretSize: secretSize,
                 expectedNetwork: currencyConfig.Network);
 
-            //var feeInSatoshi = 0L;
+            var feeInSatoshi = 0L;
+
+            var inputsToSign = fromOutputs
+                .Select(o => new BitcoinInputToSign { Output = o });
+
+            var destinations = new BitcoinDestination[]
+            {
+                new BitcoinDestination
+                {
+                    Script = lockScript.PaymentScript,
+                    AmountInSatoshi = amount
+                }
+            };
 
             var txParams = await BitcoinTransactionParams.SelectTransactionParamsAsync(
-                    availableInputs: fromOutputs.Select(o => new BitcoinInputToSign
-                    {
-                        Output = o
-                    }),
-                    destinations: new BitcoinDestination[]
-                    {
-                        new BitcoinDestination
-                        {
-                            Script = lockScript.PaymentScript,
-                            AmountInSatoshi = amount
-                        }
-                    },
+                    availableInputs: inputsToSign,
+                    destinations: destinations,
                     changeAddress: refundAddress,
                     feeRate: feeRate,
                     currencyConfig: currencyConfig,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (txParams == null)
+            if (txParams == null) // can't create tx with required feeRate => let's try to change feeRate and try again
             {
-                //Log.Error
+                var maxFeeInSatoshi = availableAmountInSatoshi - amount;
+
+                var (txSize, txSizeWithChange) = BitcoinTransactionParams.CalculateTxSize(
+                    inputsCount: fromOutputs.Count(),
+                    inputsSize: inputsToSign.Sum(i => i.SizeWithSignature()),
+                    outputsCount: destinations.Length,
+                    outputsSize: destinations.Sum(d => d.Size()),
+                    witnessCount: fromOutputs.Sum(o => o.IsSegWit ? 1 : 0),
+                    changeOutputSize: BitcoinTransactionParams.CalculateChangeOutputSize(
+                        changeAddress: refundAddress,
+                        network: currencyConfig.Network));
+
+                var estimatedFeeRate = maxFeeInSatoshi / txSizeWithChange;
+
+                if (Math.Abs(feeRate - estimatedFeeRate) / feeRate > MaxFeeRateChangePercent)
+                    throw new Exception($"Insufficient funds. Available {fromOutputs.Sum(o => o.Value)}, required: {amount}. Probably feeRate has changed a lot.");
+
+                feeInSatoshi = maxFeeInSatoshi;
+            }
+            else
+            {
+                feeInSatoshi = (long)txParams.FeeInSatoshi;
             }
 
-            //var tx = currencyConfig
-            //    .CreateHtlcP2PkhScriptSwapPaymentTx(
-            //        unspentOutputs: txParams.InputsToSign.Select(i => i.Output),
-            //        aliceRefundAddress: refundAddress,
-            //        bobAddress: toAddress,
-            //        lockTime: lockTime,
-            //        secretHash: secretHash,
-            //        secretSize: secretSize,
-            //        amount: amount,
-            //        fee: feeInSatoshi,
-            //        redeemScript: out _);
+            var tx = currencyConfig
+                .CreateHtlcP2PkhScriptSwapPaymentTx(
+                    unspentOutputs: txParams.InputsToSign.Select(i => i.Output),
+                    aliceRefundAddress: refundAddress,
+                    bobAddress: toAddress,
+                    lockTime: lockTime,
+                    secretHash: secretHash,
+                    secretSize: secretSize,
+                    amount: amount,
+                    fee: feeInSatoshi,
+                    redeemScript: out _);
 
-            //return tx;
-
-
-
-            //if (selectedOutputs == null || feeInSatoshi == 0L)
-            //{
-            //    // available outputs are not enough to send tx, let's try to change feeRate and try again
-            //    var maxFeeInSatoshi = availableAmountInSatoshi - amount;
-
-            //    var estimatedTx = currency
-            //         .CreateHtlcP2PkhScriptSwapPaymentTx(
-            //             unspentOutputs: availableOutputs,
-            //             aliceRefundAddress: refundAddress,
-            //             bobAddress: toAddress,
-            //             lockTime: lockTime,
-            //             secretHash: secretHash,
-            //             secretSize: secretSize,
-            //             amount: amount,
-            //             fee: maxFeeInSatoshi,
-            //             redeemScript: out _);
-
-            //    var estimatedSigSize       = BitcoinBasedConfig.EstimateSigSize(availableOutputs);
-            //    var estimatedTxVirtualSize = estimatedTx.VirtualSize();
-            //    var estimatedTxSize        = estimatedTxVirtualSize + estimatedSigSize;
-            //    var estimatedFeeRate       = maxFeeInSatoshi / estimatedTxSize;
-
-            //    if (Math.Abs(feeRate - estimatedFeeRate) / feeRate > 0.1m)
-            //        throw new Exception($"Insufficient funds. Available {availableOutputs.Sum(o => o.Value)}, required: {amount}. Probably feeRate has changed a lot.");
-
-            //    // sent tx with estimatedFeeRate without change
-            //    selectedOutputs = availableOutputs;
-            //    feeInSatoshi = maxFeeInSatoshi;
-            //}
+            return tx;
         }
 
         public async Task<IBitcoinBasedTransaction> CreateSwapRefundTxAsync(
@@ -134,59 +127,41 @@ namespace Atomex.Swaps.BitcoinBased
                 .GetFeeRateAsync()
                 .ConfigureAwait(false);
 
-            //var txParams = await BitcoinTransactionParams.SelectTransactionParamsAsync(
-            //    availableInputs: new BitcoinInputToSign[] {
-            //        new BitcoinInputToSign
-            //        {
-            //            Output = swapOutput,
-            //            //Signer = new 
-            //        }
-            //    },
-            //    destinations: new BitcoinDestination[]
-            //    {
-            //        new BitcoinDestination
-            //        {
-            //            Script = BitcoinAddress.Create(refundAddress, currencyConfig.Network).ScriptPubKey,
-            //            AmountInSatoshi = amount
-            //        }
-            //    },
-            //    changeAddress: refundAddress,
-            //    feeRate: feeRate,
-            //    currencyConfig: currencyConfig,
-            //    cancellationToken: cancellationToken)
-            //.ConfigureAwait(false);
+            var inputSize = new BitcoinInputToSign
+            {
+                Output = swapOutput,
+                Signer = null // TODO: use refund tx signer
 
-            //var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(swapOutput, forRefund: true);
+            }.SizeWithSignature();
 
-            //var tx = currencyConfig.CreateP2PkhTx(
-            //    unspentOutputs: new ITxOutput[] { swapOutput },
-            //    destinationAddress: refundAddress,
-            //    changeAddress: refundAddress,
-            //    amount: amount,
-            //    fee: 0,
-            //    lockTime: lockTime,
-            //    knownRedeems: new Script(redeemScript));
+            var outputSize = new BitcoinDestination
+            {
+                AmountInSatoshi = amount,
+                Script = BitcoinAddress.Create(refundAddress, currencyConfig.Network).ScriptPubKey
 
-            //var feeRate = await currencyConfig
-            //    .GetFeeRateAsync()
-            //    .ConfigureAwait(false);
+            }.Size();
 
-            //// fee = txSize * feeRate without dust, because all coins will be send to one address
-            //var fee = (long) ((tx.VirtualSize() + estimatedSigSize) * feeRate);
+            var (txSize, _) = BitcoinTransactionParams.CalculateTxSize(
+                    inputsCount: 1,
+                    inputsSize: inputSize,
+                    outputsCount: 1,
+                    outputsSize: outputSize,
+                    witnessCount: swapOutput.IsSegWit ? 1 : 0,
+                    changeOutputSize: 0);
 
-            //if (amount - fee < 0)
-            //    throw new Exception($"Insufficient funds for fee. Available {amount}, required {fee}");
+            var feeInSatoshi = (long)(txSize * feeRate);
 
-            //tx = currencyConfig.CreateP2PkhTx(
-            //    unspentOutputs: new ITxOutput[] { swapOutput },
-            //    destinationAddress: refundAddress,
-            //    changeAddress: refundAddress,
-            //    amount: amount - fee,
-            //    fee: fee,
-            //    lockTime: lockTime,
-            //    knownRedeems: new Script(redeemScript));
+            if (amount - feeInSatoshi < 0)
+                throw new Exception($"Insufficient funds for fee. Available {amount}, required {feeInSatoshi}");
 
-            //return tx;
+            return currencyConfig.CreateP2PkhTx(
+                unspentOutputs: new ITxOutput[] { swapOutput },
+                destinationAddress: refundAddress,
+                changeAddress: refundAddress,
+                amount: amount - feeInSatoshi,
+                fee: feeInSatoshi,
+                lockTime: lockTime,
+                knownRedeems: new Script(redeemScript));
         }
 
         public async Task<IBitcoinBasedTransaction> CreateSwapRedeemTxAsync(
@@ -208,40 +183,46 @@ namespace Atomex.Swaps.BitcoinBased
                 .GetFeeRateAsync()
                 .ConfigureAwait(false);
 
-            //var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(swapOutput, forRedeem: true);
+            var inputSize = new BitcoinInputToSign
+            {
+                Output = swapOutput,
+                Signer = null // TODO: use redeem transaction signer
 
-            //var tx = currencyConfig.CreateP2PkhTx(
-            //    unspentOutputs: new ITxOutput[] { swapOutput },
-            //    destinationAddress: redeemAddress,
-            //    changeAddress: redeemAddress,
-            //    amount: amount,
-            //    fee: 0,
-            //    lockTime: DateTimeOffset.MinValue,
-            //    knownRedeems: new Script(redeemScript));
+            }.SizeWithSignature();
 
-            //var feeRate = await currencyConfig
-            //    .GetFeeRateAsync()
-            //    .ConfigureAwait(false);
+            var outputSize = new BitcoinDestination
+            {
+                AmountInSatoshi = amount,
+                Script = BitcoinAddress.Create(redeemAddress, currencyConfig.Network).ScriptPubKey
 
-            //// fee = txSize * feeRate without dust, because all coins will be send to one address
-            //var fee = (long) ((tx.VirtualSize() + estimatedSigSize) * feeRate);
+            }.Size();
 
-            //if (amount - fee < 0)
-            //    throw new Exception($"Insufficient funds for fee. Available {amount}, required {fee}");
+            var (txSize, _) = BitcoinTransactionParams.CalculateTxSize(
+                    inputsCount: 1,
+                    inputsSize: inputSize,
+                    outputsCount: 1,
+                    outputsSize: outputSize,
+                    witnessCount: swapOutput.IsSegWit ? 1 : 0,
+                    changeOutputSize: 0);
 
-            //tx = currencyConfig.CreateP2PkhTx(
-            //    unspentOutputs: new ITxOutput[] { swapOutput },
-            //    destinationAddress: redeemAddress,
-            //    changeAddress: redeemAddress,
-            //    amount: amount - fee,
-            //    fee: fee,
-            //    lockTime: DateTimeOffset.MinValue,
-            //    knownRedeems: new Script(redeemScript));
+            var feeInSatoshi = (long)(txSize * feeRate);
 
-            //if (sequenceNumber > 0)
-            //    tx.SetSequenceNumber(sequenceNumber);
+            if (amount - feeInSatoshi < 0)
+                throw new Exception($"Insufficient funds for fee. Available {amount}, required {feeInSatoshi}");
 
-            //return tx;
+            var tx = currencyConfig.CreateP2PkhTx(
+                unspentOutputs: new ITxOutput[] { swapOutput },
+                destinationAddress: redeemAddress,
+                changeAddress: redeemAddress,
+                amount: amount - feeInSatoshi,
+                fee: feeInSatoshi,
+                lockTime: DateTimeOffset.MinValue,
+                knownRedeems: new Script(redeemScript));
+
+            if (sequenceNumber > 0)
+                tx.SetSequenceNumber(sequenceNumber);
+
+            return tx;
         }
     }
 }

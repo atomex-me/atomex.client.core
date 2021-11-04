@@ -159,6 +159,30 @@ namespace Atomex.Blockchain.BitcoinBased
         }
 
 
+        public static (decimal size, decimal sizeWithChange) CalculateTxSize(
+            int inputsCount,
+            decimal inputsSize,
+            int outputsCount,
+            decimal outputsSize,
+            int witnessCount,
+            int changeOutputSize)
+        {
+            var size = 4                           // version
+                + inputsCount.CompactSize()        // inputs count compact size
+                + outputsCount.CompactSize()       // outputs count compact size (without change output)
+                + 4                                // nlockTime
+                + ((witnessCount > 0)              // segwit marker + witness count compact size
+                    ? 0.5m + witnessCount.CompactSize() / 4
+                    : 0)
+                + inputsSize                       // tx inputs size
+                + outputsSize;                     // tx outputs size
+
+            var outputCountChangeDiff = (outputsCount + 1).CompactSize() - outputsCount.CompactSize();
+            var sizeWithChange = size + changeOutputSize + outputCountChangeDiff;
+
+            return (size, sizeWithChange);
+        }
+
         public static decimal CalculateFee(
             int inputsCount,
             decimal inputsSize,
@@ -175,16 +199,14 @@ namespace Atomex.Blockchain.BitcoinBased
             if (inputsInSatoshi < requiredInSatoshi)
                 return 0;
 
-            // estimate tx size and fee
-            var size = 4                           // version
-                + inputsCount.CompactSize()        // inputs count compact size
-                + outputsCount.CompactSize()       // outputs count compact size (without change output)
-                + 4                                // nlockTime
-                + ((witnessCount > 0)              // segwit marker + witness count compact size
-                    ? 0.5m + witnessCount.CompactSize() / 4
-                    : 0)
-                + inputsSize                       // tx inputs size
-                + outputsSize;                     // tx outputs size
+            // estimate tx size
+            var (size, sizeWithChange) = CalculateTxSize(
+                inputsCount: inputsCount,
+                inputsSize: inputsSize,
+                outputsCount: outputsCount,
+                outputsSize: outputsSize,
+                witnessCount: witnessCount,
+                changeOutputSize: changeOutputSize);
 
             var feeInSatoshi = size * requiredFeeRate;
 
@@ -197,8 +219,6 @@ namespace Atomex.Blockchain.BitcoinBased
             if (changeInSatoshi == 0)
                 return feeInSatoshi;
 
-            var outputCountChangeDiff = (outputsCount + 1).CompactSize() - outputsCount.CompactSize();
-            var sizeWithChange = size + changeOutputSize + outputCountChangeDiff;
             var feeWithChangeInSatoshi = sizeWithChange * requiredFeeRate;
 
             // inputs amount are insufficient for required amount + fee
