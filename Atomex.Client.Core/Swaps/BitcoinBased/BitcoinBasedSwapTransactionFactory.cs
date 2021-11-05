@@ -130,7 +130,7 @@ namespace Atomex.Swaps.BitcoinBased
             var inputSize = new BitcoinInputToSign
             {
                 Output = swapOutput,
-                Signer = null // TODO: use refund tx signer
+                Signer = new BitcoinRefundSigner()
 
             }.SizeWithSignature();
 
@@ -186,7 +186,7 @@ namespace Atomex.Swaps.BitcoinBased
             var inputSize = new BitcoinInputToSign
             {
                 Output = swapOutput,
-                Signer = null // TODO: use redeem transaction signer
+                Signer = new BitcoinRedeemSigner(secret: null)
 
             }.SizeWithSignature();
 
