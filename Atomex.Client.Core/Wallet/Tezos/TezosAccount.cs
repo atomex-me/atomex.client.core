@@ -46,7 +46,6 @@ namespace Atomex.Wallet.Tezos
             string to,
             decimal amount,
             decimal fee,
-            decimal feePrice,
             bool useDefaultFee = true,
             CancellationToken cancellationToken = default)
         {
@@ -190,8 +189,6 @@ namespace Atomex.Wallet.Tezos
             string from,
             string to,
             BlockchainTransactionType type,
-            decimal feeAmount = 0,
-            decimal feePrice = 0,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
