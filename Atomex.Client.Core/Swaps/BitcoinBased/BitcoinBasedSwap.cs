@@ -120,7 +120,7 @@ namespace Atomex.Swaps.BitcoinBased
                 .UpsertTransactionAsync(
                     tx: swap.PaymentTx,
                     updateBalance: true,
-                    notifyIfUnconfirmed: false,
+                    notifyIfUnconfirmed: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
