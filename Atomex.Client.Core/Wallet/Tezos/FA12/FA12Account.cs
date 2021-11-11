@@ -16,7 +16,7 @@ using Atomex.Wallet.Abstract;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class Fa12Account : TezosTokenAccount
+    public class Fa12Account : TezosTokenAccount, IEstimatable
     {
         private Fa12Config Fa12Config => Currencies.Get<Fa12Config>(Currency);
 
@@ -183,6 +183,23 @@ namespace Atomex.Wallet.Tezos
             return addressFeeUsage.UsedFee;
         }
 
+        public Task<decimal?> EstimateFeeAsync(
+            IFromSource from,
+            string to,
+            decimal amount,
+            BlockchainTransactionType type,
+            CancellationToken cancellationToken = default)
+        {
+            var fromAddress = (from as FromAddress)?.Address;
+
+            return EstimateFeeAsync(
+                from: fromAddress,
+                to: to,
+                amount: amount,
+                type: type,
+                cancellationToken: cancellationToken);
+        }
+
         public override async Task<(decimal fee, bool isEnougth)> EstimateTransferFeeAsync(
             string from,
             CancellationToken cancellationToken = default)
@@ -259,6 +276,25 @@ namespace Atomex.Wallet.Tezos
                 return (0m, 0m, 0m); // insufficient funds
 
             return (fromAddress.AvailableBalance(), feeInTez, reserveFee);
+        }
+
+        public Task<(decimal amount, decimal fee, decimal reserved)> EstimateMaxAmountToSendAsync(
+            IFromSource from,
+            string to,
+            BlockchainTransactionType type,
+            decimal fee = 0,
+            decimal feePrice = 0,
+            bool reserve = false,
+            CancellationToken cancellationToken = default)
+        {
+            var fromAddress = (from as FromAddress)?.Address;
+
+            return EstimateMaxAmountToSendAsync(
+                from: fromAddress,
+                to: to,
+                type: type,
+                reserve: reserve,
+                cancellationToken: cancellationToken);
         }
 
         private async Task<decimal> FeeByType(

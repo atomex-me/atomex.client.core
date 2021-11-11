@@ -19,7 +19,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class EthereumAccount : CurrencyAccount
+    public class EthereumAccount : CurrencyAccount, IEstimatable
     {
         private static ResourceLocker<string> _addressLocker;
         public static ResourceLocker<string> AddressLocker
@@ -193,6 +193,23 @@ namespace Atomex.Wallet.Ethereum
             return addressFeeUsage.UsedFee;
         }
 
+        public Task<decimal?> EstimateFeeAsync(
+            IFromSource from,
+            string to,
+            decimal amount,
+            BlockchainTransactionType type,
+            CancellationToken cancellationToken = default)
+        {
+            var fromAddress = (from as FromAddress)?.Address;
+
+            return EstimateFeeAsync(
+                from: fromAddress,
+                to: to,
+                amount: amount,
+                type: type,
+                cancellationToken: cancellationToken);
+        }
+
         public async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string from,
             string to,
@@ -232,6 +249,27 @@ namespace Atomex.Wallet.Ethereum
                 return (0m, 0m, 0m); // insufficient funds
 
             return (restAmountInEth, feeInEth, reserveFeeInEth);
+        }
+
+        public Task<(decimal amount, decimal fee, decimal reserved)> EstimateMaxAmountToSendAsync(
+            IFromSource from,
+            string to,
+            BlockchainTransactionType type,
+            decimal fee = 0,
+            decimal feePrice = 0,
+            bool reserve = false,
+            CancellationToken cancellationToken = default)
+        {
+            var fromAddress = (from as FromAddress)?.Address;
+
+            return EstimateMaxAmountToSendAsync(
+                from: fromAddress,
+                to: to,
+                type: type,
+                gasLimit: fee,
+                gasPrice: feePrice,
+                reserve: reserve,
+                cancellationToken: cancellationToken);
         }
 
         private decimal GasLimitByType(BlockchainTransactionType type)

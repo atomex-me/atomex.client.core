@@ -19,7 +19,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.BitcoinBased
 {
-    public class BitcoinBasedAccount : CurrencyAccount, IAddressResolver
+    public class BitcoinBasedAccount : CurrencyAccount, IAddressResolver, IEstimatable
     {
         public BitcoinBasedConfig Config => Currencies.Get<BitcoinBasedConfig>(Currency);
 
@@ -173,6 +173,100 @@ namespace Atomex.Wallet.BitcoinBased
             return txParams != null
                 ? Config.SatoshiToCoin((long)txParams.FeeInSatoshi)
                 : 0;
+        }
+
+        public async Task<decimal?> EstimateFeeAsync(
+            IFromSource from,
+            string to,
+            decimal amount,
+            BlockchainTransactionType type,
+            CancellationToken cancellationToken = default)
+        {
+            var outputs = (from as FromOutputs)?.Outputs;
+
+            if (outputs == null)
+                return null;
+
+            var feeRate = await Config
+                .GetFeeRateAsync(cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            var changeAddress = await GetFreeInternalAddressAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            return await EstimateFeeAsync(
+                    from: outputs.Select(o => new BitcoinInputToSign { Output = o }),
+                    to: to,
+                    changeTo: changeAddress.Address,
+                    amount: amount,
+                    feeRate: feeRate,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        public async Task<(decimal amount, decimal fee, decimal reserved)> EstimateMaxAmountToSendAsync(
+            IFromSource from,
+            string to,
+            BlockchainTransactionType type,
+            decimal fee = 0,
+            decimal feePrice = 0,
+            bool reserve = false,
+            CancellationToken cancellationToken = default)
+        {
+            if (fee != 0 && feePrice != 0)
+                throw new ArgumentException("Parameters Fee and FeePrice cannot be used at the same time");
+
+            var outputs = (from as FromOutputs)?.Outputs;
+
+            if (outputs == null)
+                return (amount: 0, fee: 0, reserved: 0);
+
+            var availableInSatoshi = outputs.Sum(o => o.Value);
+
+            if (fee != 0)
+            {
+                var feeInSatoshi = Config.CoinToSatoshi(fee);
+
+                return (
+                    amount: Config.SatoshiToCoin(Math.Max(availableInSatoshi - feeInSatoshi, 0)),
+                    fee: Config.SatoshiToCoin(feeInSatoshi),
+                    reserved: 0
+                );
+            }
+
+            var inputsToSign = outputs.Select(o => new BitcoinInputToSign { Output = o });
+            var inputsSize = inputsToSign.Sum(i => i.SizeWithSignature());
+            var witnessCount = outputs.Sum(o => o.IsSegWit ? 1 : 0);
+
+            var destination = new BitcoinDestination
+            {
+                Script = BitcoinAddress.Create(to, Config.Network).ScriptPubKey,
+            };
+
+            var changeAddress = await GetFreeInternalAddressAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            var (size, sizeWithChange) = BitcoinTransactionParams.CalculateTxSize(
+                inputsCount: outputs.Count(),
+                inputsSize: inputsSize,
+                outputsCount: 1,
+                outputsSize: destination.Size(),
+                witnessCount: witnessCount,
+                changeOutputSize: BitcoinTransactionParams.CalculateChangeOutputSize(changeAddress.Address, Config.Network));
+
+            if (fee != 0 && feePrice == 0)
+            {
+                
+            }
+            else if (fee == 0 && feePrice != 0)
+            {
+
+            }
+            else if (fee == 0 && feePrice == 0)
+            {
+
+            }
+
         }
 
         protected override async Task<bool> ResolveTransactionTypeAsync(

@@ -16,7 +16,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class TezosAccount : CurrencyAccount
+    public class TezosAccount : CurrencyAccount, IEstimatable
     {
         private readonly TezosRevealChecker _tezosRevealChecker;
         private readonly TezosAllocationChecker _tezosAllocationChecker;
@@ -184,7 +184,24 @@ namespace Atomex.Wallet.Tezos
 
             return addressFeeUsage.UsedFee;
         }
-        
+
+        public Task<decimal?> EstimateFeeAsync(
+            IFromSource from,
+            string to,
+            decimal amount,
+            BlockchainTransactionType type,
+            CancellationToken cancellationToken = default)
+        {
+            var fromAddress = (from as FromAddress)?.Address;
+
+            return EstimateFeeAsync(
+                from: fromAddress,
+                to: to,
+                amount: amount,
+                type: type,
+                cancellationToken: cancellationToken);
+        }
+
         public async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
             string from,
             string to,
@@ -222,6 +239,25 @@ namespace Atomex.Wallet.Tezos
                 return (0m, 0m, 0m); // insufficient funds
 
             return (restAmountInTez, feeInTez, reserveFee);
+        }
+
+        public Task<(decimal amount, decimal fee, decimal reserved)> EstimateMaxAmountToSendAsync(
+            IFromSource from,
+            string to,
+            BlockchainTransactionType type,
+            decimal fee = 0,
+            decimal feePrice = 0,
+            bool reserve = false,
+            CancellationToken cancellationToken = default)
+        {
+            var fromAddress = (from as FromAddress)?.Address;
+
+            return EstimateMaxAmountToSendAsync(
+                from: fromAddress,
+                to: to,
+                type: type,
+                reserve: reserve,
+                cancellationToken: cancellationToken);
         }
 
         protected override async Task<bool> ResolveTransactionTypeAsync(

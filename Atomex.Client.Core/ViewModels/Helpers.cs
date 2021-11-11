@@ -487,6 +487,8 @@ namespace Atomex.ViewModels
         }
 
         public static Task<SwapPaymentParams> EstimateSwapPaymentParamsAsync(
+            IFromSource from,
+            string to,
             decimal amount,
             CurrencyConfig fromCurrency,
             CurrencyConfig toCurrency,
@@ -510,17 +512,17 @@ namespace Atomex.ViewModels
                 }
 
                 var fromCurrencyAccount = account
-                    .GetCurrencyAccount<ILegacyCurrencyAccount>(fromCurrency.Name);
+                    .GetCurrencyAccount(fromCurrency.Name) as IEstimatable;
 
-                // estimate max payment amount and max fee
-                var (maxAmount, maxFee, _) = await fromCurrencyAccount
-                    .EstimateMaxAmountToSendAsync(
-                        to: null,
-                        type: BlockchainTransactionType.SwapPayment,
-                        fee: 0,
-                        feePrice: 0,
-                        reserve: true)
-                    .ConfigureAwait(false);
+                var (maxAmount, maxFee, _) = await fromCurrencyAccount.EstimateMaxAmountToSendAsync(
+                    from: from,
+                    to: to,
+                    type: BlockchainTransactionType.SwapPayment,
+                    fee: 0,
+                    feePrice: 0,
+                    reserve: true,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
                 // get amount reserved for active swaps
                 var reservedForSwapsAmount = await GetAmountReservedForSwapsAsync(
@@ -572,7 +574,8 @@ namespace Atomex.ViewModels
 
                 var estimatedPaymentFee = await fromCurrencyAccount
                     .EstimateFeeAsync(
-                        to: null,
+                        from: from,
+                        to: to,
                         amount: amount,
                         type: BlockchainTransactionType.SwapPayment,
                         cancellationToken: cancellationToken)
