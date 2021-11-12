@@ -514,15 +514,16 @@ namespace Atomex.ViewModels
                 var fromCurrencyAccount = account
                     .GetCurrencyAccount(fromCurrency.Name) as IEstimatable;
 
-                var (maxAmount, maxFee, _) = await fromCurrencyAccount.EstimateMaxAmountToSendAsync(
-                    from: from,
-                    to: to,
-                    type: BlockchainTransactionType.SwapPayment,
-                    fee: 0,
-                    feePrice: 0,
-                    reserve: true,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+                var (maxAmount, maxFee, _) = await fromCurrencyAccount
+                    .EstimateMaxAmountToSendAsync(
+                        from: from,
+                        to: to,
+                        type: BlockchainTransactionType.SwapPayment,
+                        fee: 0,
+                        feePrice: 0,
+                        reserve: true,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
 
                 // get amount reserved for active swaps
                 var reservedForSwapsAmount = await GetAmountReservedForSwapsAsync(
