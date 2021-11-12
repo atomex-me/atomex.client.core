@@ -219,7 +219,7 @@ namespace Atomex.Wallet.BitcoinBased
             var outputs = (from as FromOutputs)?.Outputs;
 
             if (outputs == null)
-                return (amount: 0, fee: 0, reserved: 0);
+                return (amount: 0, fee: 0, reserved: 0); // insufficient funds
 
             var availableInSatoshi = outputs.Sum(o => o.Value);
 
@@ -254,19 +254,23 @@ namespace Atomex.Wallet.BitcoinBased
                 witnessCount: witnessCount,
                 changeOutputSize: BitcoinTransactionParams.CalculateChangeOutputSize(changeAddress.Address, Config.Network));
 
-            if (fee != 0 && feePrice == 0)
+            if (feePrice == 0)
             {
-                
-            }
-            else if (fee == 0 && feePrice != 0)
-            {
-
-            }
-            else if (fee == 0 && feePrice == 0)
-            {
-
+                feePrice = await Config
+                    .GetFeeRateAsync(cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
             }
 
+            var estimatedFeeInSatoshi = feePrice * size;
+
+            if (availableInSatoshi < estimatedFeeInSatoshi) // not enough funds for a tx with one output
+                return (amount: 0, fee: 0, reserved: 0);
+
+            return (
+                amount: availableInSatoshi - estimatedFeeInSatoshi,
+                fee: estimatedFeeInSatoshi,
+                reserved: 0
+            );
         }
 
         protected override async Task<bool> ResolveTransactionTypeAsync(
