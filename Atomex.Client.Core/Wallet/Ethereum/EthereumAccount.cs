@@ -19,7 +19,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class EthereumAccount : CurrencyAccount, IEstimatable
+    public class EthereumAccount : CurrencyAccount, IEstimatable, IHasTokens
     {
         private static ResourceLocker<string> _addressLocker;
         public static ResourceLocker<string> AddressLocker
@@ -629,11 +629,6 @@ namespace Atomex.Wallet.Ethereum
         public async Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            if (Currency == "ETH")
-                return await DataRepository
-                    .GetUnspentAddressesAsync(Currency)
-                    .ConfigureAwait(false);
-
             // todo: refactoring
             var usdtAddresses = await DataRepository
                 .GetUnspentAddressesAsync("USDT")

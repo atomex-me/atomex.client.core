@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -431,13 +430,6 @@ namespace Atomex.Wallet.Tezos
                 UsedFee        = txFeeInTez,
                 UsedStorageFee = storageFeeInTez
             };
-        }
-
-        public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
-            CancellationToken cancellationToken = default)
-        {
-            return DataRepository
-                .GetUnspentTezosTokenAddressesAsync(TokenType, _tokenContract, _tokenId);
         }
 
         #endregion Addresses
