@@ -128,15 +128,15 @@ namespace Atomex
         public static bool IsTezosBased(string name) =>
             name == "XTZ" || IsTezosToken(name);
 
-        public static bool IsTezosToken(string name) => TezosTokens.Contains(name);
+        public static bool IsTezosToken(string name) => XtzTokens.Contains(name);
 
         public static bool HasTokens(string name) =>
             name == "ETH" ||
             name == "XTZ";
 
-        public static bool IsEthereumToken(string name) => EthereumTokens.Contains(name);
+        public static bool IsEthereumToken(string name) => EthTokens.Contains(name);
 
-        public static string[] EthereumTokens = { "USDT", "WBTC", "TBTC" };
-        public static string[] TezosTokens = { "TZBTC", "KUSD", "FA2", "FA12" };
+        public static string[] EthTokens = { "USDT", "WBTC", "TBTC" };
+        public static string[] XtzTokens = { "TZBTC", "KUSD", "FA2", "FA12" };
     }
 }

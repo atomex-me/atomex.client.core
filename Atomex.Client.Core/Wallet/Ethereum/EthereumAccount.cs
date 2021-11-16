@@ -629,22 +629,18 @@ namespace Atomex.Wallet.Ethereum
         public async Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            // todo: refactoring
-            var usdtAddresses = await DataRepository
-                .GetUnspentAddressesAsync("USDT")
-                .ConfigureAwait(false);
+            var result = new List<WalletAddress>();
 
-            var tbtcAddresses = await DataRepository
-                .GetUnspentAddressesAsync("TBTC")
-                .ConfigureAwait(false);
+            foreach (var token in Atomex.Currencies.EthTokens)
+            {
+                var addresses = await DataRepository
+                    .GetUnspentAddressesAsync(token)
+                    .ConfigureAwait(false);
 
-            var wbtcAddresses = await DataRepository
-                .GetUnspentAddressesAsync("WBTC")
-                .ConfigureAwait(false);
+                result.AddRange(addresses);
+            }
 
-            return usdtAddresses
-                .Concat(tbtcAddresses)
-                .Concat(wbtcAddresses);
+            return result;
         }
 
         private async Task<SelectedWalletAddress> CalculateFundsUsageAsync(
