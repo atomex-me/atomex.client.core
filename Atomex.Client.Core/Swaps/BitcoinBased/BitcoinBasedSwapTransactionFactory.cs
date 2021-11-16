@@ -58,7 +58,7 @@ namespace Atomex.Swaps.BitcoinBased
                 }
             };
 
-            var txParams = await BitcoinTransactionParams.SelectTransactionParamsAsync(
+            var txParams = await BitcoinTransactionParams.SelectTransactionParamsByFeeRateAsync(
                     availableInputs: inputsToSign,
                     destinations: destinations,
                     changeAddress: refundAddress,

@@ -155,7 +155,7 @@ namespace Atomex.Wallet.BitcoinBased
             decimal feeRate,
             CancellationToken cancellationToken = default)
         {
-            var txParams = await BitcoinTransactionParams.SelectTransactionParamsAsync(
+            var txParams = await BitcoinTransactionParams.SelectTransactionParamsByFeeRateAsync(
                     availableInputs: from,
                     destinations: new BitcoinDestination[] {
                         new BitcoinDestination
