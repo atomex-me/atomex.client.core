@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using NBitcoin;
 
 using Atomex.Common;
+using Atomex.Wallet.BitcoinBased;
 
 namespace Atomex.Blockchain.BitcoinBased
 {
@@ -22,6 +23,37 @@ namespace Atomex.Blockchain.BitcoinBased
 
         public decimal InputInSatoshi => InputsToSign.Sum(i => i.Output.Value);
         public decimal ChangeInSatoshi => InputInSatoshi - FeeInSatoshi;
+
+        public static async Task<BitcoinTransactionParams> SelectTransactionParamsByFeeRateAsync(
+            IEnumerable<BitcoinBasedTxOutput> availableOutputs,
+            string to,
+            decimal amount,
+            decimal feeRate,
+            BitcoinBasedAccount account,
+            CancellationToken cancellationToken = default)
+        {
+            var config = account.Config;
+
+            var freeInternalAddress = await account
+                .GetFreeInternalAddressAsync()
+                .ConfigureAwait(false);
+
+            return await SelectTransactionParamsByFeeRateAsync(
+                    availableInputs: availableOutputs.Select(o => new BitcoinInputToSign { Output = o }),
+                    destinations: new BitcoinDestination[]
+                    {
+                        new BitcoinDestination
+                        {
+                            AmountInSatoshi = config.CoinToSatoshi(amount),
+                            Script = BitcoinAddress.Create(to, config.Network).ScriptPubKey,
+                        }
+                    },
+                    changeAddress: freeInternalAddress.Address,
+                    feeRate: feeRate,
+                    currencyConfig: config,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
 
         public static Task<BitcoinTransactionParams> SelectTransactionParamsByFeeRateAsync(
             IEnumerable<BitcoinInputToSign> availableInputs,
@@ -197,6 +229,37 @@ namespace Atomex.Blockchain.BitcoinBased
                 });
 
             }, cancellationToken);
+        }
+
+        public static async Task<BitcoinTransactionParams> SelectTransactionParamsByFeeAsync(
+            IEnumerable<BitcoinBasedTxOutput> availableOutputs,
+            string to,
+            decimal amount,
+            decimal fee,
+            BitcoinBasedAccount account,
+            CancellationToken cancellationToken = default)
+        {
+            var config = account.Config;
+
+            var freeInternalAddress = await account
+                .GetFreeInternalAddressAsync()
+                .ConfigureAwait(false);
+
+            return await SelectTransactionParamsByFeeAsync(
+                    availableInputs: availableOutputs.Select(o => new BitcoinInputToSign { Output = o }),
+                    destinations: new BitcoinDestination[]
+                    {
+                        new BitcoinDestination
+                        {
+                            AmountInSatoshi = config.CoinToSatoshi(amount),
+                            Script = BitcoinAddress.Create(to, config.Network).ScriptPubKey,
+                        }
+                    },
+                    changeAddress: freeInternalAddress.Address,
+                    feeInSatoshi: config.CoinToSatoshi(fee),
+                    currencyConfig: config,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
 
         public static Task<BitcoinTransactionParams> SelectTransactionParamsByFeeAsync(
