@@ -35,7 +35,7 @@ namespace Atomex.Wallet.BitcoinBased
         #region Common
 
         public async Task<Error> SendAsync(
-            List<ITxOutput> from,
+            IEnumerable<BitcoinBasedTxOutput> from,
             string to,
             decimal amount,
             decimal fee,
