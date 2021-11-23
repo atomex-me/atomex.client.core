@@ -398,7 +398,9 @@ namespace Atomex.LiteDb
         {
             try
             {
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return;
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                    return;
+                
                 db.Shrink(sessionPassword);
                 Log.Debug("Db successfully shrinked");
             }

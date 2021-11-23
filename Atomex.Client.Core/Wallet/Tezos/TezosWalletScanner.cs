@@ -17,7 +17,7 @@ namespace Atomex.Wallet.Tezos
     {
         private const int DefaultInternalLookAhead = 2;
         private const int DefaultExternalLookAhead = 2;
-        private const int OldLookAhead = 3;
+        private const int OldLookAhead = 4;
 
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
