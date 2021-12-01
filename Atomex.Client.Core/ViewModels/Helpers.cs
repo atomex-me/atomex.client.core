@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,8 +10,10 @@ using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.Cryptography;
 using Atomex.Services.Abstract;
 using Atomex.Wallet.Abstract;
+using Newtonsoft.Json;
 
 namespace Atomex.ViewModels
 {
@@ -23,6 +26,15 @@ namespace Atomex.ViewModels
             public decimal MakerNetworkFee { get; set; }
             public decimal ReservedForSwaps { get; set; }
             public Error Error { get; set; }
+        }
+
+
+        public class UserMessage
+        {
+            public int Id { get; set; }
+            public string UserId { get; set; }
+            public string Message { get; set; }
+            public bool IsReaded { get; set; }
         }
 
 
@@ -762,6 +774,39 @@ namespace Atomex.ViewModels
             return symbol.IsBaseCurrency(from)
                 ? AmountHelper.RoundDown(amount * middlePrice, toCurrency.DigitsMultiplier)
                 : AmountHelper.RoundDown(amount / middlePrice, toCurrency.DigitsMultiplier);
+        }
+
+        public static string GetUserId(IAccount account)
+        {
+            using var servicePublicKey =
+                account.Wallet.GetServicePublicKey(account.UserSettings.AuthenticationKeyIndex);
+            using var publicKey = servicePublicKey.ToUnsecuredBytes();
+            return Sha256.Compute(Sha256.Compute(publicKey)).ToHexString();
+        }
+
+        public static async Task<List<UserMessage>> GetUserMessages(string userId,
+            CancellationToken cancellationToken = default)
+        {
+            return await HttpHelper.GetAsync(
+                    baseUri: "https://test.atomex.me/",
+                    requestUri: $"usermessages/get_user_messages/?uid={userId}&format=json",
+                    responseHandler: response =>
+                        JsonConvert.DeserializeObject<List<UserMessage>>(response.Content.ReadAsStringAsync()
+                            .WaitForResult()),
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        public static async Task<HttpResponseMessage> MarkUserMessageReaded(int messageId,
+            CancellationToken cancellationToken = default)
+        {
+            return await HttpHelper.PostAsync(
+                    baseUri: "https://test.atomex.me/",
+                    content: null,
+                    requestUri: $"usermessages/get_user_messages/{messageId}/mark_read/",
+                    responseHandler: response => response,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 }
