@@ -6,6 +6,8 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Newtonsoft.Json;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
@@ -13,7 +15,8 @@ using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Services.Abstract;
 using Atomex.Wallet.Abstract;
-using Newtonsoft.Json;
+using Atomex.Swaps.Helpers;
+using Atomex.MarketData.Abstract;
 
 namespace Atomex.ViewModels
 {
@@ -23,9 +26,13 @@ namespace Atomex.ViewModels
         {
             public decimal Amount { get; set; }
             public decimal PaymentFee { get; set; }
+            public decimal RedeemFee { get; set; }
+            public decimal RewardForRedeem { get; set; }
             public decimal MakerNetworkFee { get; set; }
             public decimal ReservedForSwaps { get; set; }
             public Error Error { get; set; }
+
+            public bool HasRewardForRedeem => RewardForRedeem != 0;
         }
 
 
@@ -502,26 +509,30 @@ namespace Atomex.ViewModels
             IFromSource from,
             string to,
             decimal amount,
+            string redeemFromAddress,
             CurrencyConfig fromCurrency,
             CurrencyConfig toCurrency,
             IAccount account,
             IAtomexClient atomexClient,
             ISymbolsProvider symbolsProvider,
+            ICurrencyQuotesProvider quotesProvider,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
             {
-                if (amount == 0)
-                {
-                    return new SwapPaymentParams
-                    {
-                        Amount = 0,
-                        PaymentFee = 0,
-                        MakerNetworkFee = 0,
-                        ReservedForSwaps = 0,
-                        Error = null
-                    };
-                }
+                var redeemFromWalletAddress = await account
+                    .GetAddressAsync(toCurrency.Name, redeemFromAddress, cancellationToken)
+                    .ConfigureAwait(false);
+
+                var estimatedRedeemFee = await toCurrency
+                    .GetEstimatedRedeemFeeAsync(redeemFromWalletAddress, withRewardForRedeem: false)
+                    .ConfigureAwait(false);
+
+                var rewardForRedeem = await RewardForRedeemHelper.EstimateAsync(
+                    account: account,
+                    quotesProvider: quotesProvider,
+                    feeCurrencyQuotesProvider: symbol => atomexClient?.GetOrderBook(symbol)?.TopOfBook(),
+                    walletAddress: redeemFromWalletAddress);
 
                 var fromCurrencyAccount = account
                     .GetCurrencyAccount(fromCurrency.Name) as IEstimatable;
@@ -561,10 +572,12 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount = 0m,
-                        PaymentFee = 0m,
-                        MakerNetworkFee = 0m,
-                        ReservedForSwaps = 0m,
+                        Amount           = 0m,
+                        PaymentFee       = 0m, // TODO
+                        RedeemFee        = estimatedRedeemFee,
+                        RewardForRedeem  = rewardForRedeem,
+                        MakerNetworkFee  = estimatedMakerNetworkFee,
+                        ReservedForSwaps = reservedForSwapsAmount,
                         Error = hasSameChainForFees
                             ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
                             : new Error(Errors.InsufficientChainFunds,
@@ -577,11 +590,13 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount = Math.Max(maxNetAmount, 0m),
-                        PaymentFee = maxFee,
-                        MakerNetworkFee = estimatedMakerNetworkFee,
+                        Amount           = Math.Max(maxNetAmount, 0m),
+                        PaymentFee       = maxFee,
+                        RedeemFee        = estimatedRedeemFee,
+                        RewardForRedeem  = rewardForRedeem,
+                        MakerNetworkFee  = estimatedMakerNetworkFee,
                         ReservedForSwaps = reservedForSwapsAmount,
-                        Error = null
+                        Error            = null
                     };
                 }
 
@@ -598,10 +613,12 @@ namespace Atomex.ViewModels
                 {
                     return new SwapPaymentParams
                     {
-                        Amount = 0m,
-                        PaymentFee = 0m,
-                        MakerNetworkFee = 0m,
-                        ReservedForSwaps = 0m,
+                        Amount           = 0m,
+                        PaymentFee       = 0m, // TODO
+                        RedeemFee        = estimatedRedeemFee,
+                        RewardForRedeem  = rewardForRedeem,
+                        MakerNetworkFee  = estimatedMakerNetworkFee,
+                        ReservedForSwaps = reservedForSwapsAmount,
                         Error = hasSameChainForFees
                             ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
                             : new Error(Errors.InsufficientChainFunds,
@@ -612,12 +629,15 @@ namespace Atomex.ViewModels
 
                 return new SwapPaymentParams
                 {
-                    Amount = amount,
-                    PaymentFee = estimatedPaymentFee.Value,
-                    MakerNetworkFee = estimatedMakerNetworkFee,
+                    Amount           = amount,
+                    PaymentFee       = estimatedPaymentFee.Value,
+                    RedeemFee        = estimatedRedeemFee,
+                    RewardForRedeem  = rewardForRedeem,
+                    MakerNetworkFee  = estimatedMakerNetworkFee,
                     ReservedForSwaps = reservedForSwapsAmount,
-                    Error = null
+                    Error            = null
                 };
+
             }, cancellationToken);
         }
 
@@ -651,10 +671,10 @@ namespace Atomex.ViewModels
                 var baseCurrency = account.Currencies.GetByName(symbol.Base);
 
                 var (estimatedOrderPrice, estimatedPrice) = orderBook.EstimateOrderPrices(
-                    side,
-                    amount,
-                    fromCurrency.DigitsMultiplier,
-                    baseCurrency.DigitsMultiplier);
+                    side: side,
+                    amount: amount,
+                    amountDigitsMultiplier: fromCurrency.DigitsMultiplier,
+                    qtyDigitsMultiplier: baseCurrency.DigitsMultiplier);
 
                 var estimatedMaxAmount = orderBook.EstimateMaxAmount(side, fromCurrency.DigitsMultiplier);
 
@@ -668,10 +688,10 @@ namespace Atomex.ViewModels
 
                 return new SwapPriceEstimation
                 {
-                    TargetAmount = targetAmount,
-                    OrderPrice = estimatedOrderPrice,
-                    Price = estimatedPrice,
-                    MaxAmount = estimatedMaxAmount,
+                    TargetAmount  = targetAmount,
+                    OrderPrice    = estimatedOrderPrice,
+                    Price         = estimatedPrice,
+                    MaxAmount     = estimatedMaxAmount,
                     IsNoLiquidity = isNoLiquidity
                 };
             }, cancellationToken);
