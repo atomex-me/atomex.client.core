@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
+using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -32,9 +33,17 @@ namespace Atomex.Wallet.Abstract
         }
     }
 
+    public class MaxAmountEstimation
+    {
+        public decimal Amount { get; set; }
+        public decimal Fee { get; set; }
+        public decimal Reserved { get; set; }
+        public Error Error { get; set; }
+    }
+
     public interface IEstimatable
     {
-        Task<(decimal amount, decimal fee, decimal reserved)> EstimateMaxAmountToSendAsync(
+        Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             IFromSource from,
             string to,
             BlockchainTransactionType type,

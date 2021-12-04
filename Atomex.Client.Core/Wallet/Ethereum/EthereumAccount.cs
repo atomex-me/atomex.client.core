@@ -210,7 +210,7 @@ namespace Atomex.Wallet.Ethereum
                 cancellationToken: cancellationToken);
         }
 
-        public async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
+        public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             string from,
             string to,
             BlockchainTransactionType type,
@@ -222,7 +222,10 @@ namespace Atomex.Wallet.Ethereum
             var eth = EthConfig;
 
             if (from == to || string.IsNullOrEmpty(from))
-                return (0m, 0m, 0m); // invalid addresses
+                return new MaxAmountEstimation
+                {
+                    Error = new Error(Errors.SendingAndReceivingAddressesAreSame, "Sending and receiving addresses are same")
+                };
 
             var fromAddress = await GetAddressAsync(from, cancellationToken)
                 .ConfigureAwait(false);
@@ -246,12 +249,19 @@ namespace Atomex.Wallet.Ethereum
                 (reserve ? reserveFeeInEth : 0);
 
             if (restAmountInEth < 0)
-                return (0m, 0m, 0m); // insufficient funds
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                };
 
-            return (restAmountInEth, feeInEth, reserveFeeInEth);
+            return new MaxAmountEstimation
+            {
+                Amount   = restAmountInEth,
+                Fee      = feeInEth,
+                Reserved = reserveFeeInEth
+            };
         }
 
-        public Task<(decimal amount, decimal fee, decimal reserved)> EstimateMaxAmountToSendAsync(
+        public Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             IFromSource from,
             string to,
             BlockchainTransactionType type,

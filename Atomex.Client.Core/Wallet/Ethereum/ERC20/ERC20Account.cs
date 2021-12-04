@@ -18,6 +18,7 @@ using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
+using System.Globalization;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -226,7 +227,7 @@ namespace Atomex.Wallet.Ethereum
                 cancellationToken: cancellationToken);
         }
 
-        public async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
+        public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             string from,
             string to,
             BlockchainTransactionType type,
@@ -236,7 +237,9 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             if (from == to || string.IsNullOrEmpty(from))
-                return (0m, 0m, 0m); // invalid addresses
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.SendingAndReceivingAddressesAreSame, "Sending and receiving addresses are same")
+                };
 
             var eth = EthConfig;
 
@@ -244,7 +247,9 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (fromAddress == null)
-                return (0m, 0m, 0m); // invalid address
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.AddressNotFound, "Address not found")
+                };
 
             var estimatedGasPrice = await eth.GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -256,7 +261,10 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (ethAddress == null)
-                return (0m, 0m, 0m); // insufficient funds
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.InsufficientChainFunds, string.Format(CultureInfo.InvariantCulture,
+                        "Insufficient {0} to cover token transfer fee", Erc20Config.FeeCurrencyName))
+                };
 
             var feeInEth = eth.GetFeeAmount(
                 gasLimit == 0
@@ -271,15 +279,25 @@ namespace Atomex.Wallet.Ethereum
                 (reserve ? reserveFeeInEth : 0);
 
             if (restBalanceInEth < 0)
-                return (0m, 0m, 0m); // insufficient funds
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.InsufficientChainFunds, string.Format(CultureInfo.InvariantCulture,
+                        "Insufficient {0} to cover token transfer fee", Erc20Config.FeeCurrencyName))
+                };
 
             if (fromAddress.AvailableBalance() <= 0)
-                return (0m, 0m, 0m); // insufficient funds
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                };
 
-            return (fromAddress.AvailableBalance(), feeInEth, reserveFeeInEth);
+            return new MaxAmountEstimation
+            {
+                Amount   = fromAddress.AvailableBalance(),
+                Fee      = feeInEth,
+                Reserved = reserveFeeInEth
+            };
         }
 
-        public Task<(decimal amount, decimal fee, decimal reserved)> EstimateMaxAmountToSendAsync(
+        public Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             IFromSource from,
             string to,
             BlockchainTransactionType type,

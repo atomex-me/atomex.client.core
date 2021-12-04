@@ -12,6 +12,7 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
+using System.Globalization;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -227,7 +228,7 @@ namespace Atomex.Wallet.Tezos
                 isEnougth: availableBalanceInTez >= requiredFeeInTez);
         }
 
-        public async Task<(decimal, decimal, decimal)> EstimateMaxAmountToSendAsync(
+        public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             string from,
             string to,
             BlockchainTransactionType type,
@@ -235,7 +236,9 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             if (from == to || string.IsNullOrEmpty(from))
-                return (0m, 0m, 0m); // invalid addresses
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.SendingAndReceivingAddressesAreSame, "Sending and receiving addresses are same")
+                };
 
             var xtz = XtzConfig;
 
@@ -243,7 +246,9 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (fromAddress == null)
-                return (0m, 0m, 0m); // invalid address
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.AddressNotFound, "Address not found")
+                };
 
             var reserveFee = ReserveFee();
 
@@ -252,7 +257,10 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (xtzAddress == null)
-                return (0m, 0m, 0m); // insufficient funds
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.InsufficientChainFunds, string.Format(CultureInfo.InvariantCulture,
+                        "Insufficient {0} to cover token transfer fee", Fa12Config.FeeCurrencyName))
+                };
 
             var feeInTez = await FeeByType(
                     type: type,
@@ -269,15 +277,25 @@ namespace Atomex.Wallet.Tezos
                 xtz.MicroTezReserve.ToTez();
 
             if (restBalanceInTez < 0)
-                return (0m, 0m, 0m); // insufficient funds
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.InsufficientChainFunds, string.Format(CultureInfo.InvariantCulture,
+                        "Insufficient {0} to cover token transfer fee", Fa12Config.FeeCurrencyName))
+                };
 
             if (fromAddress.AvailableBalance() <= 0)
-                return (0m, 0m, 0m); // insufficient funds
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                };
 
-            return (fromAddress.AvailableBalance(), feeInTez, reserveFee);
+            return new MaxAmountEstimation
+            {
+                Amount   = fromAddress.AvailableBalance(),
+                Fee      = feeInTez,
+                Reserved = reserveFee
+            };
         }
 
-        public Task<(decimal amount, decimal fee, decimal reserved)> EstimateMaxAmountToSendAsync(
+        public Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             IFromSource from,
             string to,
             BlockchainTransactionType type,

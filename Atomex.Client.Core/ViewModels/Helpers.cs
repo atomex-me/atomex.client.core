@@ -22,7 +22,7 @@ namespace Atomex.ViewModels
 {
     public static class Helpers
     {
-        public class SwapPaymentParams
+        public class SwapParams
         {
             public decimal Amount { get; set; }
             public decimal PaymentFee { get; set; }
@@ -505,7 +505,7 @@ namespace Atomex.ViewModels
             return result;
         }
 
-        public static Task<SwapPaymentParams> EstimateSwapPaymentParamsAsync(
+        public static Task<SwapParams> EstimateSwapParamsAsync(
             IFromSource from,
             decimal amount,
             string redeemFromAddress,
@@ -519,33 +519,25 @@ namespace Atomex.ViewModels
         {
             return Task.Run(async () =>
             {
-                var redeemFromWalletAddress = await account
-                    .GetAddressAsync(toCurrency.Name, redeemFromAddress, cancellationToken)
-                    .ConfigureAwait(false);
+                var redeemFromWalletAddress = redeemFromAddress != null
+                    ? await account
+                        .GetAddressAsync(toCurrency.Name, redeemFromAddress, cancellationToken)
+                        .ConfigureAwait(false)
+                    : null;
 
+                // estimate redeem fee
                 var estimatedRedeemFee = await toCurrency
                     .GetEstimatedRedeemFeeAsync(redeemFromWalletAddress, withRewardForRedeem: false)
                     .ConfigureAwait(false);
 
+                // estimate reward for redeem
                 var rewardForRedeem = await RewardForRedeemHelper.EstimateAsync(
                     account: account,
                     quotesProvider: quotesProvider,
                     feeCurrencyQuotesProvider: symbol => atomexClient?.GetOrderBook(symbol)?.TopOfBook(),
-                    walletAddress: redeemFromWalletAddress);
-
-                var fromCurrencyAccount = account
-                    .GetCurrencyAccount(fromCurrency.Name) as IEstimatable;
-
-                var (maxAmount, maxFee, _) = await fromCurrencyAccount
-                    .EstimateMaxAmountToSendAsync(
-                        from: from,
-                        to: null,
-                        type: BlockchainTransactionType.SwapPayment,
-                        fee: 0,
-                        feePrice: 0,
-                        reserve: true,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
+                    redeemableCurrency: toCurrency,
+                    redeemFromAddress: redeemFromWalletAddress,
+                    cancellationToken: cancellationToken);
 
                 // get amount reserved for active swaps
                 var reservedForSwapsAmount = await GetAmountReservedForSwapsAsync(
@@ -563,42 +555,10 @@ namespace Atomex.ViewModels
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                var hasSameChainForFees = fromCurrency.FeeCurrencyName == fromCurrency.Name;
+                var fromCurrencyAccount = account
+                    .GetCurrencyAccount(fromCurrency.Name) as IEstimatable;
 
-                var maxNetAmount = Math.Max(maxAmount - reservedForSwapsAmount - estimatedMakerNetworkFee, 0m);
-
-                if (maxNetAmount == 0m)
-                {
-                    return new SwapPaymentParams
-                    {
-                        Amount           = 0m,
-                        PaymentFee       = 0m, // TODO
-                        RedeemFee        = estimatedRedeemFee,
-                        RewardForRedeem  = rewardForRedeem,
-                        MakerNetworkFee  = estimatedMakerNetworkFee,
-                        ReservedForSwaps = reservedForSwapsAmount,
-                        Error = hasSameChainForFees
-                            ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
-                            : new Error(Errors.InsufficientChainFunds,
-                                string.Format(CultureInfo.InvariantCulture,
-                                    "Insufficient {0} to cover token transfer fee", fromCurrency.FeeCurrencyName))
-                    };
-                }
-
-                if (amount > maxNetAmount) // amount greater than max net amount
-                {
-                    return new SwapPaymentParams
-                    {
-                        Amount           = Math.Max(maxNetAmount, 0m),
-                        PaymentFee       = maxFee,
-                        RedeemFee        = estimatedRedeemFee,
-                        RewardForRedeem  = rewardForRedeem,
-                        MakerNetworkFee  = estimatedMakerNetworkFee,
-                        ReservedForSwaps = reservedForSwapsAmount,
-                        Error            = null
-                    };
-                }
-
+                // estimate payment fee
                 var estimatedPaymentFee = await fromCurrencyAccount
                     .EstimateFeeAsync(
                         from: from,
@@ -608,25 +568,68 @@ namespace Atomex.ViewModels
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                //if (estimatedPaymentFee == null) // wtf? max amount is not null, but estimated fee is null Oo
-                //{
-                //    return new SwapPaymentParams
-                //    {
-                //        Amount           = 0m,
-                //        PaymentFee       = 0m, // TODO
-                //        RedeemFee        = estimatedRedeemFee,
-                //        RewardForRedeem  = rewardForRedeem,
-                //        MakerNetworkFee  = estimatedMakerNetworkFee,
-                //        ReservedForSwaps = reservedForSwapsAmount,
-                //        Error = hasSameChainForFees
-                //            ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
-                //            : new Error(Errors.InsufficientChainFunds,
-                //                string.Format(CultureInfo.InvariantCulture,
-                //                    "Insufficient {0} to cover token transfer fee", fromCurrency.FeeCurrencyName))
-                //    };
-                //}
+                // estimate max amount and max fee
+                var maxAmountEstimation = await fromCurrencyAccount
+                    .EstimateMaxAmountToSendAsync(
+                        from: from,
+                        to: null,
+                        type: BlockchainTransactionType.SwapPayment,
+                        fee: 0,
+                        feePrice: 0,
+                        reserve: true,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+ 
+                if (maxAmountEstimation.Error != null)
+                {
+                    return new SwapParams
+                    {
+                        Amount           = 0m,
+                        PaymentFee       = estimatedPaymentFee.Value,
+                        RedeemFee        = estimatedRedeemFee,
+                        RewardForRedeem  = rewardForRedeem,
+                        MakerNetworkFee  = estimatedMakerNetworkFee,
+                        ReservedForSwaps = reservedForSwapsAmount,
+                        Error            = maxAmountEstimation.Error
+                        //Error = hasSameChainForFees
+                        //    ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
+                        //    : new Error(Errors.InsufficientChainFunds,
+                        //        string.Format(CultureInfo.InvariantCulture,
+                        //            "Insufficient {0} to cover token transfer fee", fromCurrency.FeeCurrencyName))
+                    };
+                }
 
-                return new SwapPaymentParams
+                var maxNetAmount = Math.Max(maxAmountEstimation.Amount - reservedForSwapsAmount - estimatedMakerNetworkFee, 0m);
+
+                if (maxNetAmount == 0m) // insufficient funds
+                {
+                    return new SwapParams
+                    {
+                        Amount           = 0m,
+                        PaymentFee       = maxAmountEstimation.Fee,
+                        RedeemFee        = estimatedRedeemFee,
+                        RewardForRedeem  = rewardForRedeem,
+                        MakerNetworkFee  = estimatedMakerNetworkFee,
+                        ReservedForSwaps = reservedForSwapsAmount,
+                        Error            = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                    };
+                }
+
+                if (amount > maxNetAmount) // amount greater than max net amount => use max amount params
+                {
+                    return new SwapParams
+                    {
+                        Amount           = Math.Max(maxNetAmount, 0m),
+                        PaymentFee       = maxAmountEstimation.Fee,
+                        RedeemFee        = estimatedRedeemFee,
+                        RewardForRedeem  = rewardForRedeem,
+                        MakerNetworkFee  = estimatedMakerNetworkFee,
+                        ReservedForSwaps = reservedForSwapsAmount,
+                        Error            = null
+                    };
+                }
+
+                return new SwapParams
                 {
                     Amount           = amount,
                     PaymentFee       = estimatedPaymentFee.Value,

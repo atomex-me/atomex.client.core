@@ -204,7 +204,7 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public async Task<(decimal amount, decimal fee, decimal reserved)> EstimateMaxAmountToSendAsync(
+        public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             IFromSource from,
             string to,
             BlockchainTransactionType type,
@@ -219,7 +219,10 @@ namespace Atomex.Wallet.BitcoinBased
             var outputs = (from as FromOutputs)?.Outputs;
 
             if (outputs == null)
-                return (amount: 0, fee: 0, reserved: 0); // insufficient funds
+                return new MaxAmountEstimation
+                {
+                    Error = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                };
 
             var availableInSatoshi = outputs.Sum(o => o.Value);
 
@@ -227,11 +230,11 @@ namespace Atomex.Wallet.BitcoinBased
             {
                 var feeInSatoshi = Config.CoinToSatoshi(fee);
 
-                return (
-                    amount: Config.SatoshiToCoin(Math.Max(availableInSatoshi - feeInSatoshi, 0)),
-                    fee: Config.SatoshiToCoin(feeInSatoshi),
-                    reserved: 0
-                );
+                return new MaxAmountEstimation
+                {
+                    Amount = Config.SatoshiToCoin(Math.Max(availableInSatoshi - feeInSatoshi, 0)),
+                    Fee = Config.SatoshiToCoin(feeInSatoshi)
+                };
             }
 
             var inputsToSign = outputs.Select(o => new BitcoinInputToSign { Output = o });
@@ -261,16 +264,19 @@ namespace Atomex.Wallet.BitcoinBased
                     .ConfigureAwait(false);
             }
 
-            var estimatedFeeInSatoshi = feePrice * size;
+            var estimatedFeeInSatoshi = (long)(feePrice * size);
 
             if (availableInSatoshi < estimatedFeeInSatoshi) // not enough funds for a tx with one output
-                return (amount: 0, fee: 0, reserved: 0);
+                return new MaxAmountEstimation
+                {
+                    Error = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                };
 
-            return (
-                amount: availableInSatoshi - estimatedFeeInSatoshi,
-                fee: estimatedFeeInSatoshi,
-                reserved: 0
-            );
+            return new MaxAmountEstimation
+            {
+                Amount = Config.SatoshiToCoin(availableInSatoshi - estimatedFeeInSatoshi),
+                Fee = Config.SatoshiToCoin(estimatedFeeInSatoshi)
+            };
         }
 
         protected override async Task<bool> ResolveTransactionTypeAsync(

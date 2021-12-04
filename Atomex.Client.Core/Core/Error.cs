@@ -93,5 +93,6 @@
         public const int NullTxId = 5003;
         public const int NullOperation = 5004;
         public const int RpcResponseError = 5005;
+        public const int AddressNotFound = 5006;
     }
 }

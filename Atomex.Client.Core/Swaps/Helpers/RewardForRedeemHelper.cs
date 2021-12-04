@@ -15,52 +15,51 @@ namespace Atomex.Swaps.Helpers
             IAccount account,
             ICurrencyQuotesProvider quotesProvider,
             Func<string, Quote> feeCurrencyQuotesProvider,
-            WalletAddress walletAddress,
+            CurrencyConfig redeemableCurrency,
+            WalletAddress redeemFromAddress = null,
             CancellationToken cancellationToken = default)
         {
-            var currency = account
-                .Currencies
-                .GetByName(walletAddress.Currency);
-
-            if (currency is BitcoinBasedConfig)
+            if (redeemableCurrency is BitcoinBasedConfig)
                 return 0m;
 
-            var feeCurrency = currency.FeeCurrencyName;
+            var feeCurrency = redeemableCurrency.FeeCurrencyName;
 
-            var feeCurrencyAddress = await account
-                .GetAddressAsync(feeCurrency, walletAddress.Address, cancellationToken)
-                .ConfigureAwait(false);
+            var feeCurrencyAddress = redeemFromAddress != null
+                ? await account
+                    .GetAddressAsync(feeCurrency, redeemFromAddress.Address, cancellationToken)
+                    .ConfigureAwait(false)
+                : null;
 
-            var redeemFee = await currency
-                .GetRedeemFeeAsync(walletAddress, cancellationToken)
+            var redeemFee = await redeemableCurrency
+                .GetRedeemFeeAsync(redeemFromAddress, cancellationToken)
                 .ConfigureAwait(false);
 
             if (feeCurrencyAddress != null && feeCurrencyAddress.AvailableBalance() >= redeemFee)
                 return 0m;
 
-            var feeCurrencyToBaseQuote = currency.FeeCurrencyToBaseSymbol != null
-                ? quotesProvider?.GetQuote(currency.FeeCurrencyToBaseSymbol)
+            var feeCurrencyToBaseQuote = redeemableCurrency.FeeCurrencyToBaseSymbol != null
+                ? quotesProvider?.GetQuote(redeemableCurrency.FeeCurrencyToBaseSymbol)
                 : null;
 
             var feeCurrencyToBasePrice = feeCurrencyToBaseQuote != null
                 ? feeCurrencyToBaseQuote.GetMiddlePrice()
                 : 0m;
 
-            var feeCurrencyQuote = currency.FeeCurrencySymbol != null
-                ? feeCurrencyQuotesProvider.Invoke(currency.FeeCurrencySymbol)
+            var feeCurrencyQuote = redeemableCurrency.FeeCurrencySymbol != null
+                ? feeCurrencyQuotesProvider.Invoke(redeemableCurrency.FeeCurrencySymbol)
                 : null;
 
             var feeCurrencyPrice = feeCurrencyQuote != null
                 ? feeCurrencyQuote.GetMiddlePrice()
                 : 0m;
 
-            return await currency
+            return await redeemableCurrency
                 .GetRewardForRedeemAsync(
-                    maxRewardPercent: currency.MaxRewardPercent,
-                    maxRewardPercentInBase: currency.MaxRewardPercentInBase,
-                    feeCurrencyToBaseSymbol: currency.FeeCurrencyToBaseSymbol,
+                    maxRewardPercent: redeemableCurrency.MaxRewardPercent,
+                    maxRewardPercentInBase: redeemableCurrency.MaxRewardPercentInBase,
+                    feeCurrencyToBaseSymbol: redeemableCurrency.FeeCurrencyToBaseSymbol,
                     feeCurrencyToBasePrice: feeCurrencyToBasePrice,
-                    feeCurrencySymbol: currency.FeeCurrencySymbol,
+                    feeCurrencySymbol: redeemableCurrency.FeeCurrencySymbol,
                     feeCurrencyPrice: feeCurrencyPrice,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
