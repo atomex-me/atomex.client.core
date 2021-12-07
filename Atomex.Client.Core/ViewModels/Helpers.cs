@@ -519,6 +519,12 @@ namespace Atomex.ViewModels
         {
             return Task.Run(async () =>
             {
+                if (fromCurrency == null)
+                    return null;
+
+                if (toCurrency == null)
+                    return null;
+
                 var redeemFromWalletAddress = redeemFromAddress != null
                     ? await account
                         .GetAddressAsync(toCurrency.Name, redeemFromAddress, cancellationToken)
@@ -649,6 +655,9 @@ namespace Atomex.ViewModels
         {
             return Task.Run(() =>
             {
+                if (fromCurrency == null)
+                    return null;
+
                 if (toCurrency == null)
                     return null;
 
