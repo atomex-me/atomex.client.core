@@ -182,14 +182,14 @@ namespace Atomex.Wallet.BitcoinBased
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
         {
-            var outputs = (from as FromOutputs)?.Outputs;
-
-            if (outputs == null)
-                return null;
-
             var feeRate = await Config
                 .GetFeeRateAsync(cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            var outputs = (from as FromOutputs)?.Outputs;
+
+            if (outputs == null)
+                return Config.SatoshiToCoin((long)(feeRate * BitcoinBasedConfig.OneInputTwoOutputTxSize));
 
             var changeAddress = await GetFreeInternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);

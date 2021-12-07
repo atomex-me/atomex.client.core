@@ -591,11 +591,6 @@ namespace Atomex.ViewModels
                         MakerNetworkFee  = estimatedMakerNetworkFee,
                         ReservedForSwaps = reservedForSwapsAmount,
                         Error            = maxAmountEstimation.Error
-                        //Error = hasSameChainForFees
-                        //    ? new Error(Errors.InsufficientFunds, "Insufficient funds to cover fees")
-                        //    : new Error(Errors.InsufficientChainFunds,
-                        //        string.Format(CultureInfo.InvariantCulture,
-                        //            "Insufficient {0} to cover token transfer fee", fromCurrency.FeeCurrencyName))
                     };
                 }
 

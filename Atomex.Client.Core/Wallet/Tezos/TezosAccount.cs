@@ -159,33 +159,28 @@ namespace Atomex.Wallet.Tezos
             return null;
         }
 
-        public async Task<decimal?> EstimateFeeAsync(
+        public async Task<decimal> EstimateFeeAsync(
             string from,
             string to,
-            decimal amount,
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
         {
-            if (from == to || string.IsNullOrEmpty(from))
-                return null;
-
-            var addressFeeUsage = await CalculateFundsUsageAsync(
+            var txFeeInTez = await FeeByType(
+                    type: type,
                     from: from,
-                    to: to,
-                    amount: amount,
-                    fee: 0,
-                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
-                    transactionType: type,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (addressFeeUsage == null)
-                return null; // insufficient funds
+            var storageFeeInTez = await StorageFeeByTypeAsync(
+                    type: type,
+                    to: to,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
-            return addressFeeUsage.UsedFee;
+            return txFeeInTez + storageFeeInTez;
         }
 
-        public Task<decimal?> EstimateFeeAsync(
+        public async Task<decimal?> EstimateFeeAsync(
             IFromSource from,
             string to,
             decimal amount,
@@ -194,12 +189,12 @@ namespace Atomex.Wallet.Tezos
         {
             var fromAddress = (from as FromAddress)?.Address;
 
-            return EstimateFeeAsync(
-                from: fromAddress,
-                to: to,
-                amount: amount,
-                type: type,
-                cancellationToken: cancellationToken);
+            return await EstimateFeeAsync(
+                    from: fromAddress,
+                    to: to,
+                    type: type,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
 
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(

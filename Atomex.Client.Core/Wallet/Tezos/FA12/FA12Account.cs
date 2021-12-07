@@ -158,32 +158,23 @@ namespace Atomex.Wallet.Tezos
             return null;
         }
 
-        public async Task<decimal?> EstimateFeeAsync(
+        public async Task<decimal> EstimateFeeAsync(
             string from,
-            string to,
-            decimal amount,
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
         {
-            if (from == to || string.IsNullOrEmpty(from))
-                return null;
-
-            var addressFeeUsage = await CalculateFundsUsageAsync(
+            var txFeeInTez = await FeeByType(
+                    type: type,
                     from: from,
-                    amount: amount,
-                    fee: 0,
-                    feeUsagePolicy: FeeUsagePolicy.EstimatedFee,
-                    transactionType: type,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (addressFeeUsage == null)
-                return null; // insufficient funds
+            var storageFeeInTez = StorageFeeByType(type);
 
-            return addressFeeUsage.UsedFee;
+            return txFeeInTez + storageFeeInTez;
         }
 
-        public Task<decimal?> EstimateFeeAsync(
+        public async Task<decimal?> EstimateFeeAsync(
             IFromSource from,
             string to,
             decimal amount,
@@ -192,12 +183,11 @@ namespace Atomex.Wallet.Tezos
         {
             var fromAddress = (from as FromAddress)?.Address;
 
-            return EstimateFeeAsync(
-                from: fromAddress,
-                to: to,
-                amount: amount,
-                type: type,
-                cancellationToken: cancellationToken);
+            return await EstimateFeeAsync(
+                    from: fromAddress,
+                    type: type,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
 
         public override async Task<(decimal fee, bool isEnougth)> EstimateTransferFeeAsync(
@@ -214,7 +204,7 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var storageFeeInTez = StorageFeeByTypeAsync(
+            var storageFeeInTez = StorageFeeByType(
                 type: BlockchainTransactionType.Output);
 
             var requiredFeeInTez = txFeeInTez + storageFeeInTez + XtzConfig.MicroTezReserve.ToTez();
@@ -268,7 +258,7 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var storageFeeInTez = StorageFeeByTypeAsync(type);
+            var storageFeeInTez = StorageFeeByType(type);
 
             var restBalanceInTez = xtzAddress.AvailableBalance() -
                 feeInTez -
@@ -359,8 +349,7 @@ namespace Atomex.Wallet.Tezos
             }.Max() + fa12.RevealFee.ToTez() + XtzConfig.MicroTezReserve.ToTez();
         }
 
-        private decimal StorageFeeByTypeAsync(
-            BlockchainTransactionType type)
+        private decimal StorageFeeByType(BlockchainTransactionType type)
         {
             var fa12 = Fa12Config;
 
@@ -419,7 +408,7 @@ namespace Atomex.Wallet.Tezos
                     .ConfigureAwait(false)
                 : fee;
 
-            var storageFeeInTez = StorageFeeByTypeAsync(transactionType);
+            var storageFeeInTez = StorageFeeByType(transactionType);
 
             var restBalanceInTez = availableBalanceInTez -
                 txFeeInTez -

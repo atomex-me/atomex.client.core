@@ -167,47 +167,28 @@ namespace Atomex.Wallet.Ethereum
             return null;
         }
 
-        public async Task<decimal?> EstimateFeeAsync(
-            string from,
-            string to,
-            decimal amount,
+        public async Task<decimal> EstimateFeeAsync(
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
         {
-            if (from == to || string.IsNullOrEmpty(from))
-                return null;
-
-            var addressFeeUsage = await CalculateFundsUsageAsync(
-                    from: from,
-                    amount: amount,
-                    fee: GasLimitByType(type),
-                    feePrice: await EthConfig
-                        .GetGasPriceAsync(cancellationToken)
-                        .ConfigureAwait(false),
-                    cancellationToken: cancellationToken)
+            var gasPrice = await EthConfig
+                .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            if (addressFeeUsage == null)
-                return null; // insufficient funds
-
-            return addressFeeUsage.UsedFee;
+            return EthConfig.GetFeeAmount(GasLimitByType(type), gasPrice);
         }
 
-        public Task<decimal?> EstimateFeeAsync(
+        public async Task<decimal?> EstimateFeeAsync(
             IFromSource from,
             string to,
             decimal amount,
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
         {
-            var fromAddress = (from as FromAddress)?.Address;
-
-            return EstimateFeeAsync(
-                from: fromAddress,
-                to: to,
-                amount: amount,
-                type: type,
-                cancellationToken: cancellationToken);
+            return await EstimateFeeAsync(
+                    type: type,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
 
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(

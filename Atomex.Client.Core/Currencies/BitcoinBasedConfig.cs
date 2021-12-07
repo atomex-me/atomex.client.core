@@ -19,6 +19,7 @@ namespace Atomex
         public const int P2PkhTxSize = 182;
         public const int DefaultPaymentTxSize = 372; // 2 inputs and 2 outputs
         public const int DefaultRedeemTxSize = 300;
+        public const int OneInputTwoOutputTxSize = 226; // size for legacy transaction with one P2PKH input and two P2PKH outputs
 
         public decimal FeeRate { get; set; }
         public decimal DustFeeRate { get; set; }
