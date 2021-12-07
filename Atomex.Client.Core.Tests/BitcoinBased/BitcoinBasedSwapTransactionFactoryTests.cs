@@ -72,17 +72,20 @@ namespace Atomex.Client.Core.Tests
 
             var amountInSatoshi = bitcoin.CoinToSatoshi(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, bitcoin.DigitsMultiplier));
 
+            var outputs = (await new BlockchainTxOutputSource(bitcoin)
+                .GetAvailableOutputsAsync(new[] { aliceBtcAddress }))
+                .Cast<BitcoinBasedTxOutput>();
+
             var tx = await new BitcoinBasedSwapTransactionFactory()
                 .CreateSwapPaymentTxAsync(
-                    currency: bitcoin,
+                    fromOutputs: outputs,
                     amount: amountInSatoshi,
-                    fromWallets: new []{ aliceBtcAddress },
                     refundAddress: aliceBtcAddress,
                     toAddress: bobBtcAddress,
                     lockTime: DateTimeOffset.UtcNow.AddHours(1),
                     secretHash: Common.SecretHash,
                     secretSize: Common.Secret.Length,
-                    outputsSource: new BlockchainTxOutputSource(bitcoin))
+                    currencyConfig: bitcoin)
                 .ConfigureAwait(false);
 
             Assert.NotNull(tx);

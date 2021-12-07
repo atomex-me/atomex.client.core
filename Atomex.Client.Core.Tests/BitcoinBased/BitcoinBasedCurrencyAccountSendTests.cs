@@ -19,7 +19,7 @@ namespace Atomex.Client.Core.Tests
 {
     public class BitcoinBasedCurrencyAccountSendTests
     {
-        private IEnumerable<ITxOutput> GetOutputs(string address, NBitcoin.Network network, params long[] values)
+        private IEnumerable<BitcoinBasedTxOutput> GetOutputs(string address, NBitcoin.Network network, params long[] values)
         {
             var bitcoinAddress = BitcoinAddress.Create(address, network);
 
