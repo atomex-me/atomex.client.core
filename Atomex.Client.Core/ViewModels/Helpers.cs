@@ -734,7 +734,7 @@ namespace Atomex.ViewModels
 
             // if toCurrency.Name is not equal toCurrency.FeeCurrencyName convert makerPaymentFee from toCurrency.FeeCurrencyName to toCurrency.Name
             if (toCurrency.Name != toCurrency.FeeCurrencyName)
-                makerPaymentFee = ConvertAmount(
+                makerPaymentFee = TryConvertAmount(
                     amount: makerPaymentFee,
                     from: toCurrency.FeeCurrencyName,
                     to: toCurrency.Name,
@@ -751,7 +751,7 @@ namespace Atomex.ViewModels
 
             // if fromCurrency.Name is not equal fromCurrency.FeeCurrencyName convert makerRedeemFee from fromCurrency.FeeCurrencyName to fromCurrency.Name
             if (fromCurrency.Name != fromCurrency.FeeCurrencyName)
-                makerRedeemFee = ConvertAmount(
+                makerRedeemFee = TryConvertAmount(
                     amount: makerRedeemFee,
                     from: fromCurrency.FeeCurrencyName,
                     to: fromCurrency.Name,
@@ -760,7 +760,7 @@ namespace Atomex.ViewModels
                     symbolsProvider: symbolsProvider) ?? 0;
 
             // convert makerPaymentFee from toCurrency to fromCurrency
-            makerPaymentFee = ConvertAmount(
+            makerPaymentFee = TryConvertAmount(
                 amount: makerPaymentFee,
                 from: toCurrency.Name,
                 to: fromCurrency.Name,
@@ -785,8 +785,8 @@ namespace Atomex.ViewModels
 
             var toCurrency = account.Currencies.GetByName(to);
 
-            if (symbol == null)
-                throw new Exception($"Can't find symbol for {from} and {to}");
+            if (symbol == null || toCurrency == null)
+                return null;
 
             var quote = atomexClient
                 .GetOrderBook(symbol)
@@ -797,9 +797,43 @@ namespace Atomex.ViewModels
 
             var middlePrice = quote.GetMiddlePrice();
 
+            if (middlePrice == 0)
+                return null;
+
             return symbol.IsBaseCurrency(from)
                 ? AmountHelper.RoundDown(amount * middlePrice, toCurrency.DigitsMultiplier)
                 : AmountHelper.RoundDown(amount / middlePrice, toCurrency.DigitsMultiplier);
+        }
+
+        public static decimal? TryConvertAmount(
+            decimal amount,
+            string from,
+            string to,
+            IAccount account,
+            IAtomexClient atomexClient,
+            ISymbolsProvider symbolsProvider)
+        {
+            // firstly try direct conversion first
+            var result = ConvertAmount(amount, from, to, account, atomexClient, symbolsProvider);
+
+            if (result != null)
+                return result;
+
+            // try to use intermediate currency (BTC and ETH)
+            foreach (var currency in new string[]{ "BTC", "ETH "})
+            {
+                var amountInCurrency = ConvertAmount(amount, from, currency, account, atomexClient, symbolsProvider);
+
+                if (amountInCurrency == null)
+                    continue;
+
+                result = ConvertAmount(amountInCurrency.Value, currency, to, account, atomexClient, symbolsProvider);
+
+                if (result != null)
+                    return result;
+            }
+
+            return null;
         }
 
         public static string GetUserId(IAccount account)
