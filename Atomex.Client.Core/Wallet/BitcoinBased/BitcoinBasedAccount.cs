@@ -219,8 +219,7 @@ namespace Atomex.Wallet.BitcoinBased
             var outputs = (from as FromOutputs)?.Outputs;
 
             if (outputs == null)
-                return new MaxAmountEstimation
-                {
+                return new MaxAmountEstimation {
                     Error = new Error(Errors.InsufficientFunds, "Insufficient funds")
                 };
 
@@ -230,8 +229,7 @@ namespace Atomex.Wallet.BitcoinBased
             {
                 var feeInSatoshi = Config.CoinToSatoshi(fee);
 
-                return new MaxAmountEstimation
-                {
+                return new MaxAmountEstimation {
                     Amount = Config.SatoshiToCoin(Math.Max(availableInSatoshi - feeInSatoshi, 0)),
                     Fee = Config.SatoshiToCoin(feeInSatoshi)
                 };
@@ -267,8 +265,7 @@ namespace Atomex.Wallet.BitcoinBased
             var estimatedFeeInSatoshi = (long)(feePrice * size);
 
             if (availableInSatoshi < estimatedFeeInSatoshi) // not enough funds for a tx with one output
-                return new MaxAmountEstimation
-                {
+                return new MaxAmountEstimation {
                     Error = new Error(Errors.InsufficientFunds, "Insufficient funds")
                 };
 

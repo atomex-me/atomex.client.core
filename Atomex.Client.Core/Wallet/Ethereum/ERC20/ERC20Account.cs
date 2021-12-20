@@ -215,12 +215,15 @@ namespace Atomex.Wallet.Ethereum
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
-            if (from == to || string.IsNullOrEmpty(from))
+            if (string.IsNullOrEmpty(from))
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.FromAddressIsNullOrEmpty, "\"From\" address is null or empty")
+                };
+
+            if (from == to)
                 return new MaxAmountEstimation {
                     Error = new Error(Errors.SendingAndReceivingAddressesAreSame, "Sending and receiving addresses are same")
                 };
-
-            var eth = EthConfig;
 
             var fromAddress = await GetAddressAsync(from, cancellationToken)
                 .ConfigureAwait(false);
@@ -229,6 +232,8 @@ namespace Atomex.Wallet.Ethereum
                 return new MaxAmountEstimation {
                     Error = new Error(Errors.AddressNotFound, "Address not found")
                 };
+
+            var eth = EthConfig;
 
             var estimatedGasPrice = await eth.GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -241,8 +246,11 @@ namespace Atomex.Wallet.Ethereum
 
             if (ethAddress == null)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.InsufficientChainFunds, string.Format(CultureInfo.InvariantCulture,
-                        "Insufficient {0} to cover token transfer fee", Erc20Config.FeeCurrencyName))
+                    Error = new Error(
+                        Errors.InsufficientChainFunds,
+                        string.Format(CultureInfo.CurrentCulture,
+                        "Insufficient {0} to cover token transfer fee",
+                        Erc20Config.FeeCurrencyName))
                 };
 
             var feeInEth = eth.GetFeeAmount(
@@ -259,8 +267,11 @@ namespace Atomex.Wallet.Ethereum
 
             if (restBalanceInEth < 0)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.InsufficientChainFunds, string.Format(CultureInfo.InvariantCulture,
-                        "Insufficient {0} to cover token transfer fee", Erc20Config.FeeCurrencyName))
+                    Error = new Error(
+                        Errors.InsufficientChainFunds,
+                        string.Format(CultureInfo.CurrentCulture,
+                        "Insufficient {0} to cover token transfer fee",
+                        Erc20Config.FeeCurrencyName))
                 };
 
             if (fromAddress.AvailableBalance() <= 0)

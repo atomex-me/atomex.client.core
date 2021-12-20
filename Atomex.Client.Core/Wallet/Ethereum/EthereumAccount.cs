@@ -200,16 +200,25 @@ namespace Atomex.Wallet.Ethereum
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
-            var eth = EthConfig;
+            if (string.IsNullOrEmpty(from))
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.FromAddressIsNullOrEmpty, "\"From\" address is null or empty")
+                };
 
-            if (from == to || string.IsNullOrEmpty(from))
-                return new MaxAmountEstimation
-                {
+            if (from == to)
+                return new MaxAmountEstimation {
                     Error = new Error(Errors.SendingAndReceivingAddressesAreSame, "Sending and receiving addresses are same")
                 };
 
+            var eth = EthConfig;
+
             var fromAddress = await GetAddressAsync(from, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (fromAddress == null)
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.AddressNotFound, "Address not found")
+                };
 
             var estimatedGasPrice = await eth
                 .GetGasPriceAsync(cancellationToken)

@@ -204,13 +204,23 @@ namespace Atomex.Wallet.Tezos
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
-            if (from == to || string.IsNullOrEmpty(from))
+            if (string.IsNullOrEmpty(from))
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.FromAddressIsNullOrEmpty, "\"From\" address is null or empty")
+                };
+
+            if (from == to)
                 return new MaxAmountEstimation {
                     Error = new Error(Errors.SendingAndReceivingAddressesAreSame, "Sending and receiving addresses are same")
                 };
 
             var fromAddress = await GetAddressAsync(from, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (fromAddress == null)
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.AddressNotFound, "Address not found")
+                };
 
             var reserveFee = ReserveFee();
 

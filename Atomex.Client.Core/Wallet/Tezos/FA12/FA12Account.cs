@@ -225,12 +225,15 @@ namespace Atomex.Wallet.Tezos
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
-            if (from == to || string.IsNullOrEmpty(from))
+            if (string.IsNullOrEmpty(from))
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.FromAddressIsNullOrEmpty, "\"From\" address is null or empty")
+                };
+
+            if (from == to)
                 return new MaxAmountEstimation {
                     Error = new Error(Errors.SendingAndReceivingAddressesAreSame, "Sending and receiving addresses are same")
                 };
-
-            var xtz = XtzConfig;
 
             var fromAddress = await GetAddressAsync(from, cancellationToken)
                 .ConfigureAwait(false);
@@ -242,14 +245,19 @@ namespace Atomex.Wallet.Tezos
 
             var reserveFee = ReserveFee();
 
+            var xtz = XtzConfig;
+
             var xtzAddress = await DataRepository
                 .GetWalletAddressAsync(xtz.Name, fromAddress.Address)
                 .ConfigureAwait(false);
 
             if (xtzAddress == null)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.InsufficientChainFunds, string.Format(CultureInfo.InvariantCulture,
-                        "Insufficient {0} to cover token transfer fee", Fa12Config.FeeCurrencyName))
+                    Error = new Error(
+                        Errors.InsufficientChainFunds,
+                        string.Format(CultureInfo.InvariantCulture,
+                        "Insufficient {0} to cover token transfer fee",
+                        Fa12Config.FeeCurrencyName))
                 };
 
             var feeInTez = await FeeByType(
@@ -268,8 +276,11 @@ namespace Atomex.Wallet.Tezos
 
             if (restBalanceInTez < 0)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.InsufficientChainFunds, string.Format(CultureInfo.InvariantCulture,
-                        "Insufficient {0} to cover token transfer fee", Fa12Config.FeeCurrencyName))
+                    Error = new Error(
+                        Errors.InsufficientChainFunds,
+                        string.Format(CultureInfo.InvariantCulture,
+                        "Insufficient {0} to cover token transfer fee",
+                        Fa12Config.FeeCurrencyName))
                 };
 
             if (fromAddress.AvailableBalance() <= 0)
