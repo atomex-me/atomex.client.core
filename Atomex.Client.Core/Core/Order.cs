@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+
 using Newtonsoft.Json;
+
+using Atomex.Blockchain.BitcoinBased;
 
 namespace Atomex.Core
 {
@@ -47,14 +50,12 @@ namespace Atomex.Core
         public IList<WalletAddress> FromWallets { get; set; }
         public decimal MakerNetworkFee { get; set; }
 
-        public override string ToString()
-        {
-            return JsonConvert.SerializeObject(this);
-        }
+        public string FromAddress { get; set; }
+        public List<BitcoinBasedTxOutput> FromOutputs { get; set; }
+        public string ToAddress { get; set; }
+        public string RedeemFromAddress { get; set; }
 
-        public Order Clone()
-        {
-            return (Order)MemberwiseClone();
-        }
+        public override string ToString() => JsonConvert.SerializeObject(this);
+        public Order Clone() => (Order)MemberwiseClone();
     }
 }

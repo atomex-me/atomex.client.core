@@ -49,7 +49,6 @@ namespace Atomex.Swaps
             }
         }
 
-
         public SwapManager(
             IAccount account,
             ISwapClient swapClient,
@@ -177,16 +176,21 @@ namespace Atomex.Swaps
 
             var swap = new Swap
             {
-                Id              = receivedSwap.Id,
-                OrderId         = receivedSwap.OrderId,
-                Status          = receivedSwap.Status,
-                TimeStamp       = receivedSwap.TimeStamp,
-                Symbol          = receivedSwap.Symbol,
-                Side            = receivedSwap.Side,
-                Price           = receivedSwap.Price,
-                Qty             = receivedSwap.Qty,
-                IsInitiative    = receivedSwap.IsInitiative,
-                MakerNetworkFee = order.MakerNetworkFee
+                Id                = receivedSwap.Id,
+                OrderId           = receivedSwap.OrderId,
+                Status            = receivedSwap.Status,
+                TimeStamp         = receivedSwap.TimeStamp,
+                Symbol            = receivedSwap.Symbol,
+                Side              = receivedSwap.Side,
+                Price             = receivedSwap.Price,
+                Qty               = receivedSwap.Qty,
+                IsInitiative      = receivedSwap.IsInitiative,
+                MakerNetworkFee   = order.MakerNetworkFee,
+
+                FromAddress       = order.FromAddress,
+                FromOutputs       = order.FromOutputs,
+                ToAddress         = order.ToAddress,
+                RedeemFromAddress = order.RedeemFromAddress
             };
 
             var result = await _account
