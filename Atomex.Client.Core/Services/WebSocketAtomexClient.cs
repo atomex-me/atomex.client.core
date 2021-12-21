@@ -470,6 +470,13 @@ namespace Atomex.Services
             Log.Verbose("Snapshot: {@snapshot}", args.Snapshot);
 
             MarketDataRepository.ApplySnapshot(args.Snapshot);
+
+            var symbol = SymbolsProvider
+                .GetSymbols(Account.Network)
+                .GetByName(args.Snapshot.Symbol);
+
+            if (symbol != null)
+                QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));
         }
 
         #endregion
