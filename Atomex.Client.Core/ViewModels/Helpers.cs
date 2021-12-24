@@ -76,10 +76,10 @@ namespace Atomex.ViewModels
         }
 
 
-        public static IEnumerable<SwapDetailingInfo> GetSwapDetailingInfo(Swap swap, IAccount account)
+        public static IEnumerable<SwapDetailingInfo> GetSwapDetailingInfo(Swap swap, ICurrencies currencies)
         {
-            var soldCurrencyConfig = account.Currencies.GetByName(swap.SoldCurrency);
-            var purchaseCurrencyConfig = account.Currencies.GetByName(swap.PurchasedCurrency);
+            var soldCurrencyConfig = currencies.GetByName(swap.SoldCurrency);
+            var purchaseCurrencyConfig = currencies.GetByName(swap.PurchasedCurrency);
             IList<SwapDetailingInfo> result = new List<SwapDetailingInfo>();
 
             if (swap.StateFlags.HasFlag(SwapStateFlags.HasSecretHash) &&
