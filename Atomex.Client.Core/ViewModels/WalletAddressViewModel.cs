@@ -1,7 +1,10 @@
-﻿namespace Atomex.ViewModels
+﻿using Atomex.Core;
+
+namespace Atomex.ViewModels
 {
     public class WalletAddressViewModel
     {
+        public WalletAddress WalletAddress { get; set; }
         public string Address { get; set; }
         public bool HasActivity { get; set; }
         public decimal AvailableBalance { get; set; }

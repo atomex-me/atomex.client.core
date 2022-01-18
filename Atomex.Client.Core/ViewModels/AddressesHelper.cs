@@ -12,7 +12,8 @@ namespace Atomex.ViewModels
         public static async Task<IEnumerable<WalletAddressViewModel>> GetReceivingAddressesAsync(
             IAccount account,
             CurrencyConfig currency,
-            string tokenContract = null)
+            string tokenContract = null,
+            string tokenType = null)
         {
             // get all addresses with tokens (if exists)
             var tokenAddresses = Currencies.HasTokens(currency.Name)
@@ -23,7 +24,7 @@ namespace Atomex.ViewModels
                     : new List<WalletAddress>())
                 : new List<WalletAddress>();
 
-            // get all active addresses
+            // get all nonzero addresses
             var activeAddresses = (await account
                 .GetUnspentAddressesAsync(currency.Name)
                 .ConfigureAwait(false))
@@ -67,8 +68,27 @@ namespace Atomex.ViewModels
                         ? "TOKENS"
                         : tokenAddress?.TokenBalance?.Symbol ?? "";
 
+                    var walletAddress = tokenContract == null
+                        ? address
+                        : tokenAddress ?? new WalletAddress
+                        {
+                            Address  = g.Key,
+                            KeyIndex = g.First().KeyIndex,
+                            KeyType  = g.First().KeyType,
+                            Balance  = 0m,
+                            Currency = tokenType,
+                            TokenBalance = new Blockchain.Tezos.TokenBalance
+                            {
+                                Contract = tokenContract,
+                                Balance  = "0",
+                                Decimals = 1
+                            },
+                            HasActivity = address?.HasActivity ?? hasTokens
+                        };
+
                     return new WalletAddressViewModel
                     {
+                        WalletAddress    = walletAddress,
                         Address          = g.Key,
                         HasActivity      = address?.HasActivity ?? hasTokens,
                         AvailableBalance = address?.AvailableBalance() ?? 0m,
