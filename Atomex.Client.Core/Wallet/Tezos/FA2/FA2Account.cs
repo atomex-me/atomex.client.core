@@ -67,8 +67,6 @@ namespace Atomex.Wallet.Tezos
                         $"Available: {fromAddress.AvailableBalance()}. " +
                         $"Required: {amount}.");
 
-            var amountString = string.Format("{0:0}", amount);
-
             var xtzAddress = await DataRepository
                 .GetWalletAddressAsync(xtzConfig.Name, from)
                 .ConfigureAwait(false);
@@ -124,11 +122,11 @@ namespace Atomex.Wallet.Tezos
 
                 using var securePublicKey = Wallet.GetPublicKey(
                     currency: xtzConfig,
-                    keyIndex: fromAddress.KeyIndex,
-                    keyType: fromAddress.KeyType);
+                    keyIndex: xtzAddress.KeyIndex,
+                    keyType: xtzAddress.KeyType);
 
                 // fill operation
-                var fillResult = await tx
+                var (fillResult, isRunSuccess) = await tx
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
                         tezosConfig: xtzConfig,
@@ -137,7 +135,7 @@ namespace Atomex.Wallet.Tezos
                     .ConfigureAwait(false);
 
                 var signResult = await Wallet
-                    .SignAsync(tx, fromAddress, xtzConfig, cancellationToken)
+                    .SignAsync(tx, xtzAddress, xtzConfig, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!signResult)
