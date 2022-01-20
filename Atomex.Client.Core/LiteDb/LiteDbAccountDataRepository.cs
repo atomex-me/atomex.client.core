@@ -285,12 +285,14 @@ namespace Atomex.LiteDb
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
                     var addresses = db.GetCollection(AddressesCollectionName);
 
-                    var document = addresses.FindOne(
-                        Query.And(
-                            Query.All(AccountKey, Query.Descending),
-                            Query.EQ(CurrencyKey, currency),
-                            Query.EQ(KeyTypeKey, keyType),
-                            Query.EQ(HasActivityKey, true)));
+                    var documents = addresses.Find(Query.And(
+                        Query.EQ(CurrencyKey, currency),
+                        Query.EQ(KeyTypeKey, keyType),
+                        Query.EQ(HasActivityKey, true)));
+
+                    var document = documents
+                        .OrderByDescending(d => d["KeyIndex"].AsDocument["Account"].AsInt32)
+                        .FirstOrDefault();
 
                     var walletAddress = document != null
                         ? _bsonMapper.ToObject<WalletAddress>(document)
