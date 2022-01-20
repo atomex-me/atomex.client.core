@@ -236,15 +236,19 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var restAmountInTez = fromAddress.AvailableBalance() -
-                feeInTez -
-                storageFeeInTez -
-                (reserve ? reserveFee : 0) -
+            var requiredFeeInTez = feeInTez +
+                storageFeeInTez +
+                (reserve ? reserveFee : 0) +
                 Config.MicroTezReserve.ToTez();
+
+            var restAmountInTez = fromAddress.AvailableBalance() - requiredFeeInTez;
 
             if (restAmountInTez < 0)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                    Amount   = restAmountInTez,
+                    Fee      = requiredFeeInTez,
+                    Reserved = reserveFee,
+                    Error    = new Error(Errors.InsufficientFunds, "Insufficient funds")
                 };
 
             return new MaxAmountEstimation

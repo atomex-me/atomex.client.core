@@ -235,23 +235,11 @@ namespace Atomex.Wallet.Ethereum
 
             var eth = EthConfig;
 
-            var estimatedGasPrice = await eth.GetGasPriceAsync(cancellationToken)
+            var estimatedGasPrice = await eth
+                .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var reserveFeeInEth = ReserveFee(estimatedGasPrice);
-
-            var ethAddress = await DataRepository
-                .GetWalletAddressAsync(eth.Name, fromAddress.Address)
-                .ConfigureAwait(false);
-
-            if (ethAddress == null)
-                return new MaxAmountEstimation {
-                    Error = new Error(
-                        Errors.InsufficientChainFunds,
-                        string.Format(CultureInfo.CurrentCulture,
-                        "Insufficient {0} to cover token transfer fee",
-                        Erc20Config.FeeCurrencyName))
-                };
 
             var feeInEth = eth.GetFeeAmount(
                 gasLimit == 0
@@ -261,13 +249,31 @@ namespace Atomex.Wallet.Ethereum
                     ? estimatedGasPrice
                     : gasPrice);
 
-            var restBalanceInEth = ethAddress.AvailableBalance() -
-                feeInEth -
-                (reserve ? reserveFeeInEth : 0);
+            var requiredFeeInEth = feeInEth + (reserve ? reserveFeeInEth : 0);
+
+            var ethAddress = await DataRepository
+                .GetWalletAddressAsync(eth.Name, fromAddress.Address)
+                .ConfigureAwait(false);
+
+            if (ethAddress == null)
+                return new MaxAmountEstimation
+                {
+                    Fee      = requiredFeeInEth,
+                    Reserved = reserveFeeInEth,
+                    Error    = new Error(
+                        Errors.InsufficientChainFunds,
+                        string.Format(CultureInfo.CurrentCulture,
+                        "Insufficient {0} to cover token transfer fee",
+                        Erc20Config.FeeCurrencyName))
+                };
+
+            var restBalanceInEth = ethAddress.AvailableBalance() - requiredFeeInEth;
 
             if (restBalanceInEth < 0)
                 return new MaxAmountEstimation {
-                    Error = new Error(
+                    Fee      = requiredFeeInEth,
+                    Reserved = reserveFeeInEth,
+                    Error    = new Error(
                         Errors.InsufficientChainFunds,
                         string.Format(CultureInfo.CurrentCulture,
                         "Insufficient {0} to cover token transfer fee",
@@ -276,7 +282,9 @@ namespace Atomex.Wallet.Ethereum
 
             if (fromAddress.AvailableBalance() <= 0)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                    Fee      = requiredFeeInEth,
+                    Reserved = reserveFeeInEth,
+                    Error    = new Error(Errors.InsufficientFunds, "Insufficient funds")
                 };
 
             return new MaxAmountEstimation

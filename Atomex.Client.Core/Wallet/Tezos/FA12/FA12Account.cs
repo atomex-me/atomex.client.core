@@ -247,19 +247,6 @@ namespace Atomex.Wallet.Tezos
 
             var xtz = XtzConfig;
 
-            var xtzAddress = await DataRepository
-                .GetWalletAddressAsync(xtz.Name, fromAddress.Address)
-                .ConfigureAwait(false);
-
-            if (xtzAddress == null)
-                return new MaxAmountEstimation {
-                    Error = new Error(
-                        Errors.InsufficientChainFunds,
-                        string.Format(CultureInfo.InvariantCulture,
-                        "Insufficient {0} to cover token transfer fee",
-                        Fa12Config.FeeCurrencyName))
-                };
-
             var feeInTez = await FeeByType(
                     type: type,
                     from: fromAddress.Address,
@@ -268,15 +255,34 @@ namespace Atomex.Wallet.Tezos
 
             var storageFeeInTez = StorageFeeByType(type);
 
-            var restBalanceInTez = xtzAddress.AvailableBalance() -
-                feeInTez -
-                storageFeeInTez -
-                (reserve ? reserveFee : 0) -
+            var requiredFeeInTez = feeInTez +
+                storageFeeInTez +
+                (reserve ? reserveFee : 0) +
                 xtz.MicroTezReserve.ToTez();
+
+            var xtzAddress = await DataRepository
+                .GetWalletAddressAsync(xtz.Name, fromAddress.Address)
+                .ConfigureAwait(false);
+
+            if (xtzAddress == null)
+                return new MaxAmountEstimation
+                {
+                    Fee      = requiredFeeInTez,
+                    Reserved = reserveFee,
+                    Error    = new Error(
+                        Errors.InsufficientChainFunds,
+                        string.Format(CultureInfo.InvariantCulture,
+                        "Insufficient {0} to cover token transfer fee",
+                        Fa12Config.FeeCurrencyName))
+                };
+
+            var restBalanceInTez = xtzAddress.AvailableBalance() - requiredFeeInTez;
 
             if (restBalanceInTez < 0)
                 return new MaxAmountEstimation {
-                    Error = new Error(
+                    Fee      = requiredFeeInTez,
+                    Reserved = reserveFee,
+                    Error    = new Error(
                         Errors.InsufficientChainFunds,
                         string.Format(CultureInfo.InvariantCulture,
                         "Insufficient {0} to cover token transfer fee",
@@ -285,7 +291,9 @@ namespace Atomex.Wallet.Tezos
 
             if (fromAddress.AvailableBalance() <= 0)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                    Fee      = requiredFeeInTez,
+                    Reserved = reserveFee,
+                    Error    = new Error(Errors.InsufficientFunds, "Insufficient funds")
                 };
 
             return new MaxAmountEstimation

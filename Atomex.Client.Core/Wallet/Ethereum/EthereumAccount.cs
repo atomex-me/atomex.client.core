@@ -234,13 +234,16 @@ namespace Atomex.Wallet.Ethereum
 
             var reserveFeeInEth = ReserveFee(estimatedGasPrice);
 
-            var restAmountInEth = fromAddress.AvailableBalance() -
-                feeInEth -
-                (reserve ? reserveFeeInEth : 0);
+            var requiredFeeInEth = feeInEth + (reserve ? reserveFeeInEth : 0);
+
+            var restAmountInEth = fromAddress.AvailableBalance() - requiredFeeInEth;
 
             if (restAmountInEth < 0)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                    Amount   = restAmountInEth,
+                    Fee      = requiredFeeInEth,
+                    Reserved = reserveFeeInEth,
+                    Error    = new Error(Errors.InsufficientFunds, "Insufficient funds")
                 };
 
             return new MaxAmountEstimation
