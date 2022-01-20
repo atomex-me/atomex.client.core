@@ -220,7 +220,6 @@ namespace Atomex.Wallet.Tezos
 
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             string from,
-            string to,
             BlockchainTransactionType type,
             bool reserve = false,
             CancellationToken cancellationToken = default)
@@ -230,10 +229,10 @@ namespace Atomex.Wallet.Tezos
                     Error = new Error(Errors.FromAddressIsNullOrEmpty, "\"From\" address is null or empty")
                 };
 
-            if (from == to)
-                return new MaxAmountEstimation {
-                    Error = new Error(Errors.SendingAndReceivingAddressesAreSame, "Sending and receiving addresses are same")
-                };
+            //if (from == to)
+            //    return new MaxAmountEstimation {
+            //        Error = new Error(Errors.SendingAndReceivingAddressesAreSame, "Sending and receiving addresses are same")
+            //    };
 
             var fromAddress = await GetAddressAsync(from, cancellationToken)
                 .ConfigureAwait(false);
@@ -317,7 +316,6 @@ namespace Atomex.Wallet.Tezos
 
             return EstimateMaxAmountToSendAsync(
                 from: fromAddress,
-                to: to,
                 type: type,
                 reserve: reserve,
                 cancellationToken: cancellationToken);

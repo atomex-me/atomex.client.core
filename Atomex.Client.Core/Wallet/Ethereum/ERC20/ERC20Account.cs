@@ -208,7 +208,6 @@ namespace Atomex.Wallet.Ethereum
 
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             string from,
-            string to,
             BlockchainTransactionType type,
             decimal gasLimit = 0,
             decimal gasPrice = 0,
@@ -220,10 +219,10 @@ namespace Atomex.Wallet.Ethereum
                     Error = new Error(Errors.FromAddressIsNullOrEmpty, "\"From\" address is null or empty")
                 };
 
-            if (from == to)
-                return new MaxAmountEstimation {
-                    Error = new Error(Errors.SendingAndReceivingAddressesAreSame, "Sending and receiving addresses are same")
-                };
+            //if (from == to)
+            //    return new MaxAmountEstimation {
+            //        Error = new Error(Errors.SendingAndReceivingAddressesAreSame, "Sending and receiving addresses are same")
+            //    };
 
             var fromAddress = await GetAddressAsync(from, cancellationToken)
                 .ConfigureAwait(false);
@@ -308,7 +307,6 @@ namespace Atomex.Wallet.Ethereum
 
             return EstimateMaxAmountToSendAsync(
                 from: fromAddress,
-                to: to,
                 type: type,
                 gasLimit: fee,
                 gasPrice: feePrice,
