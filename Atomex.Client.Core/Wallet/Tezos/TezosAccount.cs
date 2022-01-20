@@ -49,10 +49,10 @@ namespace Atomex.Wallet.Tezos
             bool useDefaultFee = true,
             CancellationToken cancellationToken = default)
         {
-            if (from == to)
-                return new Error(
-                    code: Errors.SendingAndReceivingAddressesAreSame,
-                    description: "Sending and receiving addresses are the same.");
+            //if (from == to)
+            //    return new Error(
+            //        code: Errors.SendingAndReceivingAddressesAreSame,
+            //        description: "Sending and receiving addresses are the same.");
 
             var xtzConfig = Config;
 
