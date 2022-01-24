@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Atomex.Core;
+using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.ViewModels
@@ -15,14 +16,34 @@ namespace Atomex.ViewModels
             string tokenContract = null,
             string tokenType = null)
         {
+            var isTezosToken = Currencies.IsTezosToken(currency.Name) || (tokenContract != null && tokenType != null);
+
+            if (isTezosToken)
+            {
+                if (currency is Fa12Config fa12Config)
+                {
+                    if (tokenContract == null)
+                        tokenContract = fa12Config.TokenContractAddress;
+
+                    if (tokenType == null)
+                        tokenType = "FA12";
+
+                    currency = account.Currencies.Get<TezosConfig>("XTZ");
+                }
+            }
+
             // get all addresses with tokens (if exists)
-            var tokenAddresses = Currencies.HasTokens(currency.Name)
+            var addressesWithTokens = Currencies.HasTokens(currency.Name)
                 ? (account.GetCurrencyAccount(currency.Name) is IHasTokens accountWithTokens
                     ? await accountWithTokens
                         .GetUnspentTokenAddressesAsync()
                         .ConfigureAwait(false) ?? new List<WalletAddress>()
                     : new List<WalletAddress>())
                 : new List<WalletAddress>();
+
+            var tokenSymbol = tokenContract != null
+                ? addressesWithTokens.FirstOrDefault(a => a.TokenBalance?.Contract == tokenContract && a.TokenBalance?.Symbol != null)?.TokenBalance.Symbol
+                : null;
 
             // get all nonzero addresses
             var activeAddresses = (await account
@@ -36,7 +57,7 @@ namespace Atomex.ViewModels
                 .ConfigureAwait(false);
 
             return activeAddresses
-                .Concat(tokenAddresses)
+                .Concat(addressesWithTokens)
                 .Concat(new WalletAddress[] { freeAddress })
                 .GroupBy(w => w.Address)
                 .Select(g =>
@@ -46,27 +67,27 @@ namespace Atomex.ViewModels
 
                     var isFreeAddress = address?.Address == freeAddress.Address;
 
-                    var hasTokens = g.Any(w => w.Currency != currency.Name);
+                    var hasAddressesWithTokens = g.Any(w => w.Currency != currency.Name);
 
-                    var tokenAddresses = tokenContract != null
+                    var tokenContractAddresses = tokenContract != null
                         ? g.Where(w => w.TokenBalance?.Contract == tokenContract)
                         : Enumerable.Empty<WalletAddress>();
 
-                    var hasSeveralTokens = tokenAddresses.Count() > 1;
+                    var isMultiTokenContract = tokenContractAddresses.Count() > 1;
 
-                    var tokenAddress = tokenAddresses.FirstOrDefault();
+                    var tokenAddress = tokenContractAddresses.FirstOrDefault();
 
-                    var tokenBalance = hasSeveralTokens
-                        ? tokenAddresses.Count()
+                    var tokenBalance = isMultiTokenContract
+                        ? tokenContractAddresses.Count() // for multi token contract balance is count of tokens
                         : tokenAddress?.Balance ?? 0m;
 
-                    var showTokenBalance = hasSeveralTokens
+                    var showTokenBalance = isMultiTokenContract
                         ? tokenBalance != 0
                         : tokenContract != null && tokenAddress?.TokenBalance?.Symbol != null;
 
-                    var tokenCode = hasSeveralTokens
+                    var tokenCode = isMultiTokenContract
                         ? "TOKENS"
-                        : tokenAddress?.TokenBalance?.Symbol ?? "";
+                        : tokenAddress?.TokenBalance?.Symbol ?? tokenSymbol;
 
                     var walletAddress = tokenContract == null
                         ? address
@@ -81,16 +102,16 @@ namespace Atomex.ViewModels
                             {
                                 Contract = tokenContract,
                                 Balance  = "0",
-                                Decimals = 1
+                                Decimals = 1,
                             },
-                            HasActivity = address?.HasActivity ?? hasTokens
+                            HasActivity = address?.HasActivity ?? hasAddressesWithTokens
                         };
 
                     return new WalletAddressViewModel
                     {
                         WalletAddress    = walletAddress,
                         Address          = g.Key,
-                        HasActivity      = address?.HasActivity ?? hasTokens,
+                        HasActivity      = address?.HasActivity ?? hasAddressesWithTokens,
                         AvailableBalance = address?.AvailableBalance() ?? 0m,
                         CurrencyFormat   = currency.Format,
                         CurrencyCode     = currency.Name,
@@ -98,7 +119,8 @@ namespace Atomex.ViewModels
                         ShowTokenBalance = showTokenBalance,
                         TokenBalance     = tokenBalance,
                         TokenFormat      = "F8",
-                        TokenCode        = tokenCode
+                        TokenCode        = tokenCode,
+                        IsTezosToken     = isTezosToken
                     };
                 });
         }

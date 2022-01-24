@@ -15,5 +15,10 @@ namespace Atomex.ViewModels
         public decimal TokenBalance { get; set; }
         public string TokenFormat { get; set; }
         public string TokenCode { get; set; }
+        public bool IsTezosToken { get; set; }
+
+        public decimal Balance => IsTezosToken ? TokenBalance : AvailableBalance;
+        public string BalanceFormat => IsTezosToken ? TokenFormat : CurrencyFormat;
+        public string BalanceCode => IsTezosToken ? TokenCode : CurrencyCode;
     }
 }
