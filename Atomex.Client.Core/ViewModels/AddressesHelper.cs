@@ -58,14 +58,14 @@ namespace Atomex.ViewModels
 
             return activeAddresses
                 .Concat(addressesWithTokens)
-                .Concat(new WalletAddress[] { freeAddress })
+                .Concat(new [] { freeAddress })
                 .GroupBy(w => w.Address)
                 .Select(g =>
                 {
                     // main address
                     var address = g.FirstOrDefault(w => w.Currency == currency.Name);
 
-                    var isFreeAddress = address?.Address == freeAddress.Address;
+                    var isFreeAddress = address?.Address == freeAddress.Address && freeAddress.Balance == 0;
 
                     var hasAddressesWithTokens = g.Any(w => w.Currency != currency.Name);
 
