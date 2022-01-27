@@ -71,9 +71,9 @@ namespace Atomex.Wallet.Ethereum
             {
                 gasLimit = GasLimitByType(BlockchainTransactionType.Output);
 
-                gasPrice = await ethConfig
+                gasPrice = Math.Floor(await ethConfig
                     .GetGasPriceAsync(cancellationToken)
-                    .ConfigureAwait(false);
+                    .ConfigureAwait(false));
             }
 
             var addressFeeUsage = await CalculateFundsUsageAsync(
@@ -171,9 +171,9 @@ namespace Atomex.Wallet.Ethereum
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
         {
-            var gasPrice = await EthConfig
+            var gasPrice = Math.Floor(await EthConfig
                 .GetGasPriceAsync(cancellationToken)
-                .ConfigureAwait(false);
+                .ConfigureAwait(false));
 
             return EthConfig.GetFeeAmount(GasLimitByType(type), gasPrice);
         }
@@ -219,9 +219,9 @@ namespace Atomex.Wallet.Ethereum
                     Error = new Error(Errors.AddressNotFound, "Address not found")
                 };
 
-            var estimatedGasPrice = await eth
+            var estimatedGasPrice = Math.Floor(await eth
                 .GetGasPriceAsync(cancellationToken)
-                .ConfigureAwait(false);
+                .ConfigureAwait(false));
 
             var feeInEth = eth.GetFeeAmount(
                 gasLimit == 0
