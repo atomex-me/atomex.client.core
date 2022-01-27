@@ -580,8 +580,8 @@ namespace Atomex.ViewModels
                         from: from,
                         to: null,
                         type: BlockchainTransactionType.SwapPayment,
-                        fee: 0,
-                        feePrice: 0,
+                        fee: null,
+                        feePrice: null,
                         reserve: true,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
