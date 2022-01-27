@@ -291,7 +291,7 @@ namespace Atomex
         }
 
         public static BigInteger EthToWei(decimal eth) =>
-            new BigInteger(eth * WeiInEth);
+            new(eth * WeiInEth);
 
         public static long GweiToWei(decimal gwei) =>
             (long)(gwei * WeiInGwei);

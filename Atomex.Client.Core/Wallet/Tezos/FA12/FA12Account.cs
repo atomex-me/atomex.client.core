@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,7 +13,6 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
-using System.Globalization;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -307,8 +307,8 @@ namespace Atomex.Wallet.Tezos
             IFromSource from,
             string to,
             BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0,
+            decimal? fee,
+            decimal? feePrice,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {

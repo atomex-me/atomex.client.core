@@ -208,12 +208,12 @@ namespace Atomex.Wallet.BitcoinBased
             IFromSource from,
             string to,
             BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0,
+            decimal? fee,
+            decimal? feePrice,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
-            if (fee != 0 && feePrice != 0)
+            if (fee != null && feePrice != null)
                 throw new ArgumentException("Parameters Fee and FeePrice cannot be used at the same time");
 
             var outputs = (from as FromOutputs)?.Outputs;
@@ -225,9 +225,9 @@ namespace Atomex.Wallet.BitcoinBased
 
             var availableInSatoshi = outputs.Sum(o => o.Value);
 
-            if (fee != 0)
+            if (fee != null)
             {
-                var feeInSatoshi = Config.CoinToSatoshi(fee);
+                var feeInSatoshi = Config.CoinToSatoshi(fee.Value);
 
                 return new MaxAmountEstimation {
                     Amount = Config.SatoshiToCoin(Math.Max(availableInSatoshi - feeInSatoshi, 0)),
@@ -255,7 +255,7 @@ namespace Atomex.Wallet.BitcoinBased
                 witnessCount: witnessCount,
                 changeOutputSize: BitcoinTransactionParams.CalculateChangeOutputSize(changeAddress.Address, Config.Network));
 
-            if (feePrice == 0)
+            if (feePrice == null)
             {
                 feePrice = await Config
                     .GetFeeRateAsync(cancellationToken: cancellationToken)

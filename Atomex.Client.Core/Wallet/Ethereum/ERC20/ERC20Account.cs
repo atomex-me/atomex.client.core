@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
@@ -18,7 +19,6 @@ using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using System.Globalization;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -209,8 +209,8 @@ namespace Atomex.Wallet.Ethereum
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             string from,
             BlockchainTransactionType type,
-            decimal gasLimit = 0,
-            decimal gasPrice = 0,
+            decimal? gasLimit,
+            decimal? gasPrice,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -241,12 +241,12 @@ namespace Atomex.Wallet.Ethereum
             var reserveFeeInEth = ReserveFee(estimatedGasPrice);
 
             var feeInEth = eth.GetFeeAmount(
-                gasLimit == 0
+                gasLimit == null
                     ? GasLimitByType(type)
-                    : gasLimit,
-                gasPrice == 0
+                    : gasLimit.Value,
+                gasPrice == null
                     ? estimatedGasPrice
-                    : gasPrice);
+                    : gasPrice.Value);
 
             var requiredFeeInEth = feeInEth + (reserve ? reserveFeeInEth : 0);
 
@@ -298,8 +298,8 @@ namespace Atomex.Wallet.Ethereum
             IFromSource from,
             string to,
             BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0,
+            decimal? fee,
+            decimal? feePrice,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {

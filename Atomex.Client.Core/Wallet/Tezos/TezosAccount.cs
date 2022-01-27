@@ -263,8 +263,8 @@ namespace Atomex.Wallet.Tezos
             IFromSource from,
             string to,
             BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0,
+            decimal? fee,
+            decimal? feePrice,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {

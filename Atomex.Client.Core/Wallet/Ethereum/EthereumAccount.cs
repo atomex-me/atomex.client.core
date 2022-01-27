@@ -194,8 +194,8 @@ namespace Atomex.Wallet.Ethereum
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             string from,
             BlockchainTransactionType type,
-            decimal gasLimit = 0,
-            decimal gasPrice = 0,
+            decimal? gasLimit,
+            decimal? gasPrice,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -224,12 +224,17 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false));
 
             var feeInEth = eth.GetFeeAmount(
-                gasLimit == 0
+                gasLimit == null
                     ? GasLimitByType(type)
-                    : gasLimit,
-                gasPrice == 0
+                    : gasLimit.Value,
+                gasPrice == null
                     ? estimatedGasPrice
-                    : gasPrice);
+                    : gasPrice.Value);
+
+            if (feeInEth == 0)
+                return new MaxAmountEstimation {
+                    Error = new Error(Errors.InsufficientFee, "Too low fees")
+                };
 
             var reserveFeeInEth = ReserveFee(estimatedGasPrice);
 
@@ -257,8 +262,8 @@ namespace Atomex.Wallet.Ethereum
             IFromSource from,
             string to,
             BlockchainTransactionType type,
-            decimal fee = 0,
-            decimal feePrice = 0,
+            decimal? fee,
+            decimal? feePrice,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
