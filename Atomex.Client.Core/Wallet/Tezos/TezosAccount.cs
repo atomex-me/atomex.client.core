@@ -254,7 +254,7 @@ namespace Atomex.Wallet.Tezos
             return new MaxAmountEstimation
             {
                 Amount   = restAmountInTez,
-                Fee      = feeInTez,
+                Fee      = requiredFeeInTez,
                 Reserved = reserveFee
             };
         }
