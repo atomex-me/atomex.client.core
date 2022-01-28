@@ -176,7 +176,6 @@ namespace Atomex.Wallet.Tezos
 
         public async Task<decimal?> EstimateFeeAsync(
             IFromSource from,
-            string to,
             decimal amount,
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
@@ -271,8 +270,9 @@ namespace Atomex.Wallet.Tezos
                     Error    = new Error(
                         Errors.InsufficientChainFunds,
                         string.Format(CultureInfo.InvariantCulture,
-                        "Insufficient {0} to cover token transfer fee",
-                        Fa12Config.FeeCurrencyName))
+                            "Insufficient {0} to cover token transfer fee. Required {1} XTZ. Available 0 XTZ",
+                            Fa12Config.FeeCurrencyName,
+                            requiredFeeInTez))
                 };
 
             var restBalanceInTez = xtzAddress.AvailableBalance() - requiredFeeInTez;
@@ -284,8 +284,10 @@ namespace Atomex.Wallet.Tezos
                     Error    = new Error(
                         Errors.InsufficientChainFunds,
                         string.Format(CultureInfo.InvariantCulture,
-                        "Insufficient {0} to cover token transfer fee",
-                        Fa12Config.FeeCurrencyName))
+                            "Insufficient {0} to cover token transfer fee. Required {1} XTZ. Available {2} XTZ",
+                            Fa12Config.FeeCurrencyName,
+                            requiredFeeInTez,
+                            xtzAddress.AvailableBalance()))
                 };
 
             if (fromAddress.AvailableBalance() <= 0)
@@ -298,17 +300,14 @@ namespace Atomex.Wallet.Tezos
             return new MaxAmountEstimation
             {
                 Amount   = fromAddress.AvailableBalance(),
-                Fee      = feeInTez,
+                Fee      = requiredFeeInTez,
                 Reserved = reserveFee
             };
         }
 
         public Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             IFromSource from,
-            string to,
             BlockchainTransactionType type,
-            decimal? fee,
-            decimal? feePrice,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {

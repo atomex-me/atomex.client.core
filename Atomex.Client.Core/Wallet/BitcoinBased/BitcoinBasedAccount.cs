@@ -177,7 +177,6 @@ namespace Atomex.Wallet.BitcoinBased
 
         public async Task<decimal?> EstimateFeeAsync(
             IFromSource from,
-            string to,
             decimal amount,
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
@@ -196,7 +195,7 @@ namespace Atomex.Wallet.BitcoinBased
 
             return await EstimateFeeAsync(
                     from: outputs.Select(o => new BitcoinInputToSign { Output = o }),
-                    to: to,
+                    to: null,
                     changeTo: changeAddress.Address,
                     amount: amount,
                     feeRate: feeRate,
@@ -204,19 +203,31 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
+        public Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             IFromSource from,
-            string to,
             BlockchainTransactionType type,
-            decimal? fee,
-            decimal? feePrice,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
-            if (fee != null && feePrice != null)
-                throw new ArgumentException("Parameters Fee and FeePrice cannot be used at the same time");
-
             var outputs = (from as FromOutputs)?.Outputs;
+
+            return EstimateMaxAmountToSendAsync(
+                outputs: outputs,
+                to: null,
+                fee: null,
+                feeRate: null,
+                cancellationToken: cancellationToken);
+        }
+
+        public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
+            IEnumerable<BitcoinBasedTxOutput> outputs,
+            string to,
+            decimal? fee,
+            decimal? feeRate,
+            CancellationToken cancellationToken = default)
+        {
+            if (fee != null && feeRate != null)
+                throw new ArgumentException("Parameters Fee and FeePrice cannot be used at the same time");
 
             if (outputs == null)
                 return new MaxAmountEstimation {
@@ -255,14 +266,14 @@ namespace Atomex.Wallet.BitcoinBased
                 witnessCount: witnessCount,
                 changeOutputSize: BitcoinTransactionParams.CalculateChangeOutputSize(changeAddress.Address, Config.Network));
 
-            if (feePrice == null)
+            if (feeRate == null)
             {
-                feePrice = await Config
+                feeRate = await Config
                     .GetFeeRateAsync(cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
 
-            var estimatedFeeInSatoshi = (long)(feePrice * size);
+            var estimatedFeeInSatoshi = (long)(feeRate * size);
 
             if (availableInSatoshi < estimatedFeeInSatoshi) // not enough funds for a tx with one output
                 return new MaxAmountEstimation {

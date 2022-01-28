@@ -182,7 +182,6 @@ namespace Atomex.Wallet.Tezos
 
         public async Task<decimal?> EstimateFeeAsync(
             IFromSource from,
-            string to,
             decimal amount,
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
@@ -191,7 +190,7 @@ namespace Atomex.Wallet.Tezos
 
             return await EstimateFeeAsync(
                     from: fromAddress,
-                    to: to,
+                    to: null,
                     type: type,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -261,10 +260,7 @@ namespace Atomex.Wallet.Tezos
 
         public Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             IFromSource from,
-            string to,
             BlockchainTransactionType type,
-            decimal? fee,
-            decimal? feePrice,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -272,7 +268,7 @@ namespace Atomex.Wallet.Tezos
 
             return EstimateMaxAmountToSendAsync(
                 from: fromAddress,
-                to: to,
+                to: null,
                 type: type,
                 reserve: reserve,
                 cancellationToken: cancellationToken);

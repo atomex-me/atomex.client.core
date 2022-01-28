@@ -45,16 +45,12 @@ namespace Atomex.Wallet.Abstract
     {
         Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             IFromSource from,
-            string to,
             BlockchainTransactionType type,
-            decimal? fee,
-            decimal? feePrice,
             bool reserve = false,
             CancellationToken cancellationToken = default);
 
         Task<decimal?> EstimateFeeAsync(
             IFromSource from,
-            string to,
             decimal amount,
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default);

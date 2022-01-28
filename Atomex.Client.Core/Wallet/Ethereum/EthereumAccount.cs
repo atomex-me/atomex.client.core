@@ -180,7 +180,6 @@ namespace Atomex.Wallet.Ethereum
 
         public async Task<decimal?> EstimateFeeAsync(
             IFromSource from,
-            string to,
             decimal amount,
             BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
@@ -260,10 +259,7 @@ namespace Atomex.Wallet.Ethereum
 
         public Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             IFromSource from,
-            string to,
             BlockchainTransactionType type,
-            decimal? fee,
-            decimal? feePrice,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -272,8 +268,8 @@ namespace Atomex.Wallet.Ethereum
             return EstimateMaxAmountToSendAsync(
                 from: fromAddress,
                 type: type,
-                gasLimit: fee,
-                gasPrice: feePrice,
+                gasLimit: null,
+                gasPrice: null,
                 reserve: reserve,
                 cancellationToken: cancellationToken);
         }
