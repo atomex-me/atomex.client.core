@@ -187,7 +187,7 @@ namespace Atomex.Wallet.BitcoinBased
 
             var outputs = (from as FromOutputs)?.Outputs;
 
-            if (outputs == null)
+            if (outputs == null || !outputs.Any())
                 return Config.SatoshiToCoin((long)(feeRate * BitcoinBasedConfig.OneInputTwoOutputTxSize));
 
             var changeAddress = await GetFreeInternalAddressAsync(cancellationToken)
@@ -229,7 +229,7 @@ namespace Atomex.Wallet.BitcoinBased
             if (fee != null && feeRate != null)
                 throw new ArgumentException("Parameters Fee and FeePrice cannot be used at the same time");
 
-            if (outputs == null)
+            if (outputs == null || !outputs.Any())
                 return new MaxAmountEstimation {
                     Error = new Error(Errors.InsufficientFunds, "Insufficient funds")
                 };
