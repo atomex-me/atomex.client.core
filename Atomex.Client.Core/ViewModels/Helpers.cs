@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -13,10 +12,10 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography;
-using Atomex.Services.Abstract;
-using Atomex.Wallet.Abstract;
-using Atomex.Swaps.Helpers;
 using Atomex.MarketData.Abstract;
+using Atomex.Services.Abstract;
+using Atomex.Swaps.Helpers;
+using Atomex.Wallet.Abstract;
 
 namespace Atomex.ViewModels
 {
@@ -68,10 +67,12 @@ namespace Atomex.ViewModels
 
         public class SwapPriceEstimation
         {
-            public decimal TargetAmount { get; set; }
+            public decimal FromAmount { get; set; }
+            public decimal ToAmount { get; set; }
             public decimal OrderPrice { get; set; }
             public decimal Price { get; set; }
-            public decimal MaxAmount { get; set; }
+            public decimal MaxFromAmount { get; set; }
+            public decimal MaxToAmount { get; set; }
             public bool IsNoLiquidity { get; set; }
         }
 
@@ -507,7 +508,7 @@ namespace Atomex.ViewModels
 
         public static Task<SwapParams> EstimateSwapParamsAsync(
             IFromSource from,
-            decimal amount,
+            decimal fromAmount,
             string redeemFromAddress,
             CurrencyConfig fromCurrency,
             CurrencyConfig toCurrency,
@@ -568,7 +569,7 @@ namespace Atomex.ViewModels
                 var estimatedPaymentFee = await fromCurrencyAccount
                     .EstimateFeeAsync(
                         from: from,
-                        amount: amount,
+                        amount: fromAmount,
                         type: BlockchainTransactionType.SwapPayment,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
@@ -612,7 +613,7 @@ namespace Atomex.ViewModels
                     };
                 }
 
-                if (amount > maxNetAmount) // amount greater than max net amount => use max amount params
+                if (fromAmount > maxNetAmount) // amount greater than max net amount => use max amount params
                 {
                     return new SwapParams
                     {
@@ -628,7 +629,7 @@ namespace Atomex.ViewModels
 
                 return new SwapParams
                 {
-                    Amount           = amount,
+                    Amount           = fromAmount,
                     PaymentFee       = estimatedPaymentFee.Value,
                     RedeemFee        = estimatedRedeemFee,
                     RewardForRedeem  = rewardForRedeem,
@@ -642,6 +643,7 @@ namespace Atomex.ViewModels
 
         public static Task<SwapPriceEstimation> EstimateSwapPriceAsync(
             decimal amount,
+            AmountType amountType, 
             CurrencyConfig fromCurrency,
             CurrencyConfig toCurrency,
             IAccount account,
@@ -672,28 +674,41 @@ namespace Atomex.ViewModels
 
                 var baseCurrency = account.Currencies.GetByName(symbol.Base);
 
+                var isSoldAmount = amountType == AmountType.Sold;
+
                 var (estimatedOrderPrice, estimatedPrice) = orderBook.EstimateOrderPrices(
                     side: side,
                     amount: amount,
-                    amountDigitsMultiplier: fromCurrency.DigitsMultiplier,
-                    qtyDigitsMultiplier: baseCurrency.DigitsMultiplier);
+                    amountDigitsMultiplier: isSoldAmount
+                        ? fromCurrency.DigitsMultiplier
+                        : toCurrency.DigitsMultiplier,
+                    qtyDigitsMultiplier: baseCurrency.DigitsMultiplier,
+                    amountType: amountType);
 
-                var estimatedMaxAmount = orderBook.EstimateMaxAmount(side, fromCurrency.DigitsMultiplier);
+                var (estimatedMaxFromAmount, estimatedMaxToAmount) = orderBook.EstimateMaxAmount(side, fromCurrency.DigitsMultiplier);
 
                 var isNoLiquidity = amount != 0 && estimatedOrderPrice == 0;
 
-                var targetAmount = symbol.IsBaseCurrency(toCurrency.Name)
-                    ? estimatedPrice != 0
-                        ? AmountHelper.RoundDown(amount / estimatedPrice, toCurrency.DigitsMultiplier)
-                        : 0m
-                    : AmountHelper.RoundDown(amount * estimatedPrice, toCurrency.DigitsMultiplier);
+                var oppositeAmount = isSoldAmount
+                    ? symbol.IsBaseCurrency(toCurrency.Name)
+                        ? estimatedPrice != 0
+                            ? AmountHelper.RoundDown(amount / estimatedPrice, toCurrency.DigitsMultiplier)
+                            : 0m
+                        : AmountHelper.RoundDown(amount * estimatedPrice, toCurrency.DigitsMultiplier)
+                    : symbol.IsBaseCurrency(toCurrency.Name)
+                        ? AmountHelper.RoundDown(amount * estimatedPrice, fromCurrency.DigitsMultiplier)
+                        : estimatedPrice != 0
+                            ? AmountHelper.RoundDown(amount / estimatedPrice, fromCurrency.DigitsMultiplier)
+                            : 0m;
 
                 return new SwapPriceEstimation
                 {
-                    TargetAmount  = targetAmount,
+                    FromAmount    = isSoldAmount ? amount : oppositeAmount, 
+                    ToAmount      = isSoldAmount ? oppositeAmount : amount,
                     OrderPrice    = estimatedOrderPrice,
                     Price         = estimatedPrice,
-                    MaxAmount     = estimatedMaxAmount,
+                    MaxFromAmount = estimatedMaxFromAmount,
+                    MaxToAmount   = estimatedMaxToAmount,
                     IsNoLiquidity = isNoLiquidity
                 };
             }, cancellationToken);

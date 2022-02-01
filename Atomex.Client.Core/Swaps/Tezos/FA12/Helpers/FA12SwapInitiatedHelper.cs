@@ -71,7 +71,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
                     .Opposite();
 
                 var requiredAmountInTokenDigits = AmountHelper
-                    .QtyToAmount(side, swap.Qty, swap.Price, fa12.DigitsMultiplier)
+                    .QtyToSellAmount(side, swap.Qty, swap.Price, fa12.DigitsMultiplier)
                     .ToTokenDigits(fa12.DigitsMultiplier);
 
                 var requiredRewardForRedeemInTokenDigits = swap.IsAcceptor ? swap.RewardForRedeem.ToTokenDigits(fa12.DigitsMultiplier) : 0;

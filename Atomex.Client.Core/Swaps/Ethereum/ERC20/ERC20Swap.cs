@@ -739,7 +739,7 @@ namespace Atomex.Swaps.Ethereum
 
         private decimal RequiredAmountInTokens(Swap swap, Erc20Config erc20)
         {
-            var requiredAmountInERC20 = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
+            var requiredAmountInERC20 = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
 
             // maker network fee
             if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInERC20) // network fee size check

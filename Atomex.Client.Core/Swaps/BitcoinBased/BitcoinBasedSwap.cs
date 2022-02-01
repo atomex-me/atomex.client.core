@@ -531,7 +531,7 @@ namespace Atomex.Swaps.BitcoinBased
                 swap.Id);
 
             var amountInSatoshi = currency.CoinToSatoshi(
-                AmountHelper.QtyToAmount(
+                AmountHelper.QtyToSellAmount(
                     swap.Side,
                     swap.Qty,
                     swap.Price,
@@ -582,7 +582,7 @@ namespace Atomex.Swaps.BitcoinBased
             var currency = Currencies.Get<BitcoinBasedConfig>(Currency);
 
             var amountInSatoshi = currency.CoinToSatoshi(
-                AmountHelper.QtyToAmount(
+                AmountHelper.QtyToSellAmount(
                     swap.Side,
                     swap.Qty,
                     swap.Price,
@@ -622,7 +622,7 @@ namespace Atomex.Swaps.BitcoinBased
             var currency = Currencies.Get<BitcoinBasedConfig>(Currency);
 
             var amountInSatoshi = currency.CoinToSatoshi(
-                AmountHelper.QtyToAmount(
+                AmountHelper.QtyToSellAmount(
                     swap.Side.Opposite(),
                     swap.Qty,
                     swap.Price,

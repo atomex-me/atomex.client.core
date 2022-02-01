@@ -750,7 +750,7 @@ namespace Atomex.Swaps.Tezos.FA12
 
         private decimal RequiredAmountInTokens(Swap swap, Fa12Config fa12)
         {
-            var requiredAmountInTokens = AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, fa12.DigitsMultiplier);
+            var requiredAmountInTokens = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, fa12.DigitsMultiplier);
 
             // maker network fee
             if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInTokens) // network fee size check

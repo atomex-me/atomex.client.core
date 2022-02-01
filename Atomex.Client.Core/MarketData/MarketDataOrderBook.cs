@@ -136,7 +136,8 @@ namespace Atomex.MarketData
             Side side,
             decimal amount,
             decimal amountDigitsMultiplier,
-            decimal qtyDigitsMultiplier)
+            decimal qtyDigitsMultiplier,
+            AmountType amountType)
         {
             try
             {
@@ -161,10 +162,14 @@ namespace Atomex.MarketData
                     var qty = entryPair.Value.Qty();
                     var price = entryPair.Key;
 
-                    var availableAmount = AmountHelper.QtyToAmount(side, qty, price, amountDigitsMultiplier);
+                    var availableAmount = amountType == AmountType.Sold
+                        ? AmountHelper.QtyToSellAmount(side, qty, price, amountDigitsMultiplier)
+                        : AmountHelper.QtyToBuyAmount(side, qty, price, amountDigitsMultiplier);
 
                     var usedAmount = Math.Min(requiredAmount, availableAmount);
-                    var usedQty = AmountHelper.AmountToQty(side, usedAmount, price, qtyDigitsMultiplier);
+                    var usedQty = amountType == AmountType.Sold
+                        ? AmountHelper.AmountToSellQty(side, usedAmount, price, qtyDigitsMultiplier)
+                        : AmountHelper.AmountToBuyQty(side, usedAmount, price, qtyDigitsMultiplier);
 
                     totalUsedQuoteAmount += usedQty * price;
                     totalUsedQty += usedQty;
@@ -257,13 +262,16 @@ namespace Atomex.MarketData
             }
         }
 
-        public decimal EstimateMaxAmount(Side side, decimal digitsMultiplier)
+        public (decimal soldAmount, decimal purchasedAmount) EstimateMaxAmount(
+            Side side,
+            decimal digitsMultiplier)
         {
             try
             {
                 _semaphoreSlim.Wait();
 
-                var amount = 0m;
+                var soldAmount = 0m;
+                var purchasedAmount = 0m;
 
                 var book = side == Side.Buy
                     ? Sells
@@ -271,10 +279,11 @@ namespace Atomex.MarketData
 
                 foreach (var entryPair in book)
                 {
-                    amount += AmountHelper.QtyToAmount(side, entryPair.Value.Qty(), entryPair.Key, digitsMultiplier);
+                    soldAmount += AmountHelper.QtyToSellAmount(side, entryPair.Value.Qty(), entryPair.Key, digitsMultiplier);
+                    purchasedAmount += AmountHelper.QtyToBuyAmount(side, entryPair.Value.Qty(), entryPair.Key, digitsMultiplier);
                 }
 
-                return amount;
+                return (soldAmount, purchasedAmount);
             }
             finally
             {
