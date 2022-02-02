@@ -14,7 +14,7 @@ namespace Atomex.Blockchain.BitcoinBased
     public class BitcoinTransactionParams
     {
         public IEnumerable<BitcoinInputToSign> InputsToSign { get; set; }
-        public IEnumerable<BitcoinDestination> Destinations { get; set; }
+        //public IEnumerable<BitcoinDestination> Destinations { get; set; }
         public decimal Size { get; set; }
         public decimal FeeInSatoshi { get; set; }
         public decimal FeeRate { get; set; }
@@ -63,6 +63,23 @@ namespace Atomex.Blockchain.BitcoinBased
             BitcoinBasedConfig currencyConfig,
             CancellationToken cancellationToken = default)
         {
+            return SelectTransactionParamsByFeeRateAsync(
+                availableInputs: availableInputs,
+                destinations: destinations.Select(d => (d.AmountInSatoshi, d.Size())),
+                changeAddress: changeAddress,
+                feeRate: feeRate,
+                currencyConfig: currencyConfig,
+                cancellationToken: cancellationToken);
+        }
+
+        public static Task<BitcoinTransactionParams> SelectTransactionParamsByFeeRateAsync(
+            IEnumerable<BitcoinInputToSign> availableInputs,
+            IEnumerable<(decimal AmountInSatoshi, int Size)> destinations,
+            string changeAddress,
+            decimal feeRate,
+            BitcoinBasedConfig currencyConfig,
+            CancellationToken cancellationToken = default)
+        {
             return Task.Run(() =>
             {
                 if (!availableInputs.Any())
@@ -74,7 +91,7 @@ namespace Atomex.Blockchain.BitcoinBased
                     .SortList((i1, i2) => i1.Output.Value.CompareTo(i2.Output.Value));
 
                 var requiredAmountInSatoshi = destinations.Sum(d => d.AmountInSatoshi);
-                var outputsSize             = destinations.Sum(d => d.Size());
+                var outputsSize             = destinations.Sum(d => d.Size);
                 var changeOutputSize        = CalculateChangeOutputSize(changeAddress, currencyConfig.Network);
 
                 // try to use one input
@@ -112,7 +129,7 @@ namespace Atomex.Blockchain.BitcoinBased
                         return Task.FromResult(new BitcoinTransactionParams
                         {
                             InputsToSign     = new BitcoinInputToSign[] { input },
-                            Destinations     = destinations,
+                            //Destinations     = destinations,
                             Size             = transactionSize,
                             FeeInSatoshi     = calculatedFeeInSatoshi,
                             FeeRate          = calculatedFeeInSatoshi / transactionSize,
@@ -220,7 +237,7 @@ namespace Atomex.Blockchain.BitcoinBased
                 return Task.FromResult(new BitcoinTransactionParams
                 {
                     InputsToSign     = usedInputs.Skip(skip),
-                    Destinations     = destinations,
+                    //Destinations     = destinations,
                     Size             = resultTransactionSize,
                     FeeInSatoshi     = resultFeeInSatoshi,
                     FeeRate          = resultFeeInSatoshi / resultTransactionSize,
@@ -319,7 +336,7 @@ namespace Atomex.Blockchain.BitcoinBased
                         return Task.FromResult(new BitcoinTransactionParams
                         {
                             InputsToSign     = new BitcoinInputToSign[] { input },
-                            Destinations     = destinations,
+                            //Destinations     = destinations,
                             Size             = resultTransactionSize,
                             FeeInSatoshi     = resultFeeInSatoshi,
                             FeeRate          = resultFeeInSatoshi / resultTransactionSize,
@@ -418,7 +435,7 @@ namespace Atomex.Blockchain.BitcoinBased
                 return Task.FromResult(new BitcoinTransactionParams
                 {
                     InputsToSign     = usedInputs.Skip(skip),
-                    Destinations     = destinations,
+                    //Destinations     = destinations,
                     Size             = resultTransactionSize,
                     FeeInSatoshi     = resultFeeInSatoshi,
                     FeeRate          = resultFeeInSatoshi / resultTransactionSize,

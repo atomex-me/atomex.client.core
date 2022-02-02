@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using NBitcoin;
 
 using Atomex.Blockchain.Abstract;
@@ -20,6 +21,7 @@ namespace Atomex
         public const int DefaultPaymentTxSize = 372; // 2 inputs and 2 outputs
         public const int DefaultRedeemTxSize = 300;
         public const int OneInputTwoOutputTxSize = 226; // size for legacy transaction with one P2PKH input and two P2PKH outputs
+        public const int LegacyTxOutputSize = 34;
 
         public decimal FeeRate { get; set; }
         public decimal DustFeeRate { get; set; }

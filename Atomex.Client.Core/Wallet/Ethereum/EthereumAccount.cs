@@ -178,14 +178,13 @@ namespace Atomex.Wallet.Ethereum
             return EthConfig.GetFeeAmount(GasLimitByType(type), gasPrice);
         }
 
-        public async Task<decimal?> EstimateFeeAsync(
+        public async Task<decimal?> EstimateSwapPaymentFeeAsync(
             IFromSource from,
             decimal amount,
-            BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
         {
             return await EstimateFeeAsync(
-                    type: type,
+                    type: BlockchainTransactionType.SwapPayment,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -257,9 +256,8 @@ namespace Atomex.Wallet.Ethereum
             };
         }
 
-        public Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
+        public Task<MaxAmountEstimation> EstimateMaxSwapPaymentAmountAsync(
             IFromSource from,
-            BlockchainTransactionType type,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -267,7 +265,7 @@ namespace Atomex.Wallet.Ethereum
 
             return EstimateMaxAmountToSendAsync(
                 from: fromAddress,
-                type: type,
+                type: BlockchainTransactionType.SwapPayment,
                 gasLimit: null,
                 gasPrice: null,
                 reserve: reserve,

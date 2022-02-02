@@ -149,7 +149,6 @@ namespace Atomex.Wallet.BitcoinBased
 
         public async Task<decimal?> EstimateFeeAsync(
             IEnumerable<BitcoinInputToSign> from,
-            string to,
             string changeTo,
             decimal amount,
             decimal feeRate,
@@ -157,12 +156,9 @@ namespace Atomex.Wallet.BitcoinBased
         {
             var txParams = await BitcoinTransactionParams.SelectTransactionParamsByFeeRateAsync(
                     availableInputs: from,
-                    destinations: new BitcoinDestination[] {
-                        new BitcoinDestination
-                        {
-                            Script = BitcoinAddress.Create(to, Config.Network).ScriptPubKey,
-                            AmountInSatoshi = Config.CoinToSatoshi(amount)
-                        }
+                    destinations: new (decimal AmountInSatoshi, int Size)[]
+                    {
+                        (AmountInSatoshi: Config.CoinToSatoshi(amount), Size: BitcoinBasedConfig.LegacyTxOutputSize)
                     },
                     changeAddress: changeTo,
                     feeRate: feeRate,
@@ -175,10 +171,9 @@ namespace Atomex.Wallet.BitcoinBased
                 : 0;
         }
 
-        public async Task<decimal?> EstimateFeeAsync(
+        public async Task<decimal?> EstimateSwapPaymentFeeAsync(
             IFromSource from,
             decimal amount,
-            BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
         {
             var feeRate = await Config
@@ -195,7 +190,6 @@ namespace Atomex.Wallet.BitcoinBased
 
             return await EstimateFeeAsync(
                     from: outputs.Select(o => new BitcoinInputToSign { Output = o }),
-                    to: null,
                     changeTo: changeAddress.Address,
                     amount: amount,
                     feeRate: feeRate,
@@ -203,9 +197,8 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
+        public Task<MaxAmountEstimation> EstimateMaxSwapPaymentAmountAsync(
             IFromSource from,
-            BlockchainTransactionType type,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -250,10 +243,9 @@ namespace Atomex.Wallet.BitcoinBased
             var inputsSize = inputsToSign.Sum(i => i.SizeWithSignature());
             var witnessCount = outputs.Sum(o => o.IsSegWit ? 1 : 0);
 
-            var destination = new BitcoinDestination
-            {
-                Script = BitcoinAddress.Create(to, Config.Network).ScriptPubKey,
-            };
+            var destinationSize = to != null
+                ? new BitcoinDestination { Script = BitcoinAddress.Create(to, Config.Network).ScriptPubKey }.Size()
+                : BitcoinBasedConfig.LegacyTxOutputSize;
 
             var changeAddress = await GetFreeInternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -262,7 +254,7 @@ namespace Atomex.Wallet.BitcoinBased
                 inputsCount: outputs.Count(),
                 inputsSize: inputsSize,
                 outputsCount: 1,
-                outputsSize: destination.Size(),
+                outputsSize: destinationSize,
                 witnessCount: witnessCount,
                 changeOutputSize: BitcoinTransactionParams.CalculateChangeOutputSize(changeAddress.Address, Config.Network));
 

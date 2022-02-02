@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Core;
 
@@ -43,16 +42,14 @@ namespace Atomex.Wallet.Abstract
 
     public interface IEstimatable
     {
-        Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
+        Task<MaxAmountEstimation> EstimateMaxSwapPaymentAmountAsync(
             IFromSource from,
-            BlockchainTransactionType type,
             bool reserve = false,
             CancellationToken cancellationToken = default);
 
-        Task<decimal?> EstimateFeeAsync(
+        Task<decimal?> EstimateSwapPaymentFeeAsync(
             IFromSource from,
             decimal amount,
-            BlockchainTransactionType type,
             CancellationToken cancellationToken = default);
     }
 }

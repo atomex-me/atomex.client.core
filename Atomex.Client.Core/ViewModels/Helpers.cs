@@ -567,18 +567,16 @@ namespace Atomex.ViewModels
 
                 // estimate payment fee
                 var estimatedPaymentFee = await fromCurrencyAccount
-                    .EstimateFeeAsync(
+                    .EstimateSwapPaymentFeeAsync(
                         from: from,
                         amount: fromAmount,
-                        type: BlockchainTransactionType.SwapPayment,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 // estimate max amount and max fee
                 var maxAmountEstimation = await fromCurrencyAccount
-                    .EstimateMaxAmountToSendAsync(
+                    .EstimateMaxSwapPaymentAmountAsync(
                         from: from,
-                        type: BlockchainTransactionType.SwapPayment,
                         reserve: true,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);

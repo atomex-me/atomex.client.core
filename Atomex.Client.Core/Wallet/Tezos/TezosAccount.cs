@@ -180,10 +180,9 @@ namespace Atomex.Wallet.Tezos
             return txFeeInTez + storageFeeInTez;
         }
 
-        public async Task<decimal?> EstimateFeeAsync(
+        public async Task<decimal?> EstimateSwapPaymentFeeAsync(
             IFromSource from,
             decimal amount,
-            BlockchainTransactionType type,
             CancellationToken cancellationToken = default)
         {
             var fromAddress = (from as FromAddress)?.Address;
@@ -191,7 +190,7 @@ namespace Atomex.Wallet.Tezos
             return await EstimateFeeAsync(
                     from: fromAddress,
                     to: null,
-                    type: type,
+                    type: BlockchainTransactionType.SwapPayment,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -258,9 +257,8 @@ namespace Atomex.Wallet.Tezos
             };
         }
 
-        public Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
+        public Task<MaxAmountEstimation> EstimateMaxSwapPaymentAmountAsync(
             IFromSource from,
-            BlockchainTransactionType type,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -269,7 +267,7 @@ namespace Atomex.Wallet.Tezos
             return EstimateMaxAmountToSendAsync(
                 from: fromAddress,
                 to: null,
-                type: type,
+                type: BlockchainTransactionType.SwapPayment,
                 reserve: reserve,
                 cancellationToken: cancellationToken);
         }
