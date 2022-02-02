@@ -70,7 +70,7 @@ namespace Atomex.Client.Core.Tests
                 Qty = lastQty
             };
 
-            var amountInSatoshi = bitcoin.CoinToSatoshi(AmountHelper.QtyToAmount(swap.Side, swap.Qty, swap.Price, bitcoin.DigitsMultiplier));
+            var amountInSatoshi = bitcoin.CoinToSatoshi(AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, bitcoin.DigitsMultiplier));
 
             var outputs = (await new BlockchainTxOutputSource(bitcoin)
                 .GetAvailableOutputsAsync(new[] { aliceBtcAddress }))
