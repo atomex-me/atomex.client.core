@@ -621,7 +621,7 @@ namespace Atomex.ViewModels
                         RewardForRedeem  = rewardForRedeem,
                         MakerNetworkFee  = estimatedMakerNetworkFee,
                         ReservedForSwaps = reservedForSwapsAmount,
-                        Error            = null
+                        Error            = new Error(Errors.InsufficientFunds, "Insufficient funds")
                     };
                 }
 
@@ -709,6 +709,7 @@ namespace Atomex.ViewModels
                     MaxToAmount   = estimatedMaxToAmount,
                     IsNoLiquidity = isNoLiquidity
                 };
+
             }, cancellationToken);
         }
 
