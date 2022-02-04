@@ -487,6 +487,12 @@ namespace Atomex.Services
         {
             try
             {
+                if (args.Swap == null)
+                {
+                    OnError(TerminalService.Exchange, "Null swap received.");
+                    return;
+                }
+
                 var error = await SwapManager
                     .HandleSwapAsync(args.Swap, _cts.Token)
                     .ConfigureAwait(false);

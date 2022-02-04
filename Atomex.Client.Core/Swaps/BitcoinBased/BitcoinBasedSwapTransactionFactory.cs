@@ -3,12 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using NBitcoin;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
-using Atomex.Common;
-using Serilog;
 
 namespace Atomex.Swaps.BitcoinBased
 {
@@ -95,7 +94,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             var tx = currencyConfig
                 .CreateHtlcP2PkhScriptSwapPaymentTx(
-                    unspentOutputs: txParams.InputsToSign.Select(i => i.Output),
+                    unspentOutputs: txParams?.InputsToSign.Select(i => i.Output) ?? fromOutputs,
                     aliceRefundAddress: refundAddress,
                     bobAddress: toAddress,
                     lockTime: lockTime,

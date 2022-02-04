@@ -42,7 +42,6 @@ namespace Atomex.LiteDb
         private const string TokenIdKey            = nameof(TokenBalance) + "." + nameof(TokenBalance.TokenId);
         private const string TransferContract      = nameof(TokenTransfer.Contract);
         private const string KeyTypeKey            = nameof(WalletAddress.KeyType);
-        private const string AccountKey            = nameof(KeyIndex) + "." + nameof(KeyIndex.Account);
 
         private readonly string _pathToDb;
         private string _sessionPassword;
@@ -1137,8 +1136,12 @@ namespace Atomex.LiteDb
                     }
 
                     // forward local params
-                    order.IsApproved = pendingOrder.IsApproved;
-                    order.MakerNetworkFee = pendingOrder.MakerNetworkFee;
+                    order.IsApproved        = pendingOrder.IsApproved;
+                    order.MakerNetworkFee   = pendingOrder.MakerNetworkFee;
+                    order.FromAddress       = pendingOrder.FromAddress;
+                    order.FromOutputs       = pendingOrder.FromOutputs;
+                    order.ToAddress         = pendingOrder.ToAddress;
+                    order.RedeemFromAddress = pendingOrder.RedeemFromAddress;
                 }
             }
             else
@@ -1163,8 +1166,12 @@ namespace Atomex.LiteDb
                 }
 
                 // forward local params
-                order.IsApproved = actualOrder.IsApproved;
-                order.MakerNetworkFee = actualOrder.MakerNetworkFee;
+                order.IsApproved        = actualOrder.IsApproved;
+                order.MakerNetworkFee   = actualOrder.MakerNetworkFee;
+                order.FromAddress       = actualOrder.FromAddress;
+                order.FromOutputs       = actualOrder.FromOutputs;
+                order.ToAddress         = actualOrder.ToAddress;
+                order.RedeemFromAddress = actualOrder.RedeemFromAddress;
             }
 
             return true;

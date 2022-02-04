@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 
 using Atomex.Abstract;
-using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography;
@@ -548,6 +547,7 @@ namespace Atomex.ViewModels
 
                 // get amount reserved for active swaps
                 var reservedForSwapsAmount = await GetAmountReservedForSwapsAsync(
+                        from: from,
                         account: account,
                         currency: fromCurrency)
                     .ConfigureAwait(false);
@@ -714,6 +714,7 @@ namespace Atomex.ViewModels
         }
 
         public static async Task<decimal> GetAmountReservedForSwapsAsync(
+            IFromSource from,
             IAccount account,
             CurrencyConfig currency)
         {
@@ -721,11 +722,33 @@ namespace Atomex.ViewModels
                 .GetSwapsAsync()
                 .ConfigureAwait(false);
 
-            var reservedAmount = swaps.Sum(s =>
-                (s.IsActive && s.SoldCurrency == currency.Name &&
-                 !s.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-                    ? (s.Symbol.IsBaseCurrency(currency.Name) ? s.Qty : s.Qty * s.Price) + s.MakerNetworkFee
-                    : 0);
+            var reservedAmount = 0m;
+
+            foreach (var swap in swaps)
+            {
+                if (!swap.IsActive ||
+                    swap.SoldCurrency != currency.Name ||
+                    swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
+                    continue;
+
+                if (from is FromAddress fromAddress && fromAddress.Address == swap.FromAddress)
+                {
+                    reservedAmount += (swap.Symbol.IsBaseCurrency(currency.Name) ? swap.Qty : swap.Qty * swap.Price) + swap.MakerNetworkFee;
+                }
+                else if (from is FromOutputs fromOutputs)
+                {
+                    if (currency is not BitcoinBasedConfig bitcoinBasedConfig)
+                        continue;
+
+                    foreach (var fromOutput in fromOutputs.Outputs)
+                    {
+                        var isUsed = swap.FromOutputs.Any(o => o.TxId == fromOutput.TxId && o.Index == fromOutput.Index);
+
+                        if (isUsed)
+                            reservedAmount += bitcoinBasedConfig.SatoshiToCoin(fromOutput.Value);
+                    }
+                }
+            }
 
             return AmountHelper.RoundDown(reservedAmount, currency.DigitsMultiplier);
         }
