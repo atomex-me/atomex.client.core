@@ -1,10 +1,12 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-
+using Atomex.Common;
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
+using Atomex.Wallet.Tezos;
+
 
 namespace Atomex.ViewModels
 {
@@ -13,42 +15,70 @@ namespace Atomex.ViewModels
         public static async Task<IEnumerable<WalletAddressViewModel>> GetReceivingAddressesAsync(
             IAccount account,
             CurrencyConfig currency,
-            string tokenContract = null,
-            string tokenType = null)
+            string tokenContract = null)
         {
-            var isTezosToken = Currencies.IsTezosToken(currency.Name) || (tokenContract != null && tokenType != null);
+            var isTezosToken = Currencies.IsTezosToken(currency.Name) || tokenContract != null;
 
             if (isTezosToken)
             {
                 if (currency is Fa12Config fa12Config)
                 {
-                    if (tokenContract == null)
-                        tokenContract = fa12Config.TokenContractAddress;
-
-                    if (tokenType == null)
-                        tokenType = "FA12";
-
-                    currency = account.Currencies.Get<TezosConfig>("XTZ");
+                    tokenContract ??= fa12Config.TokenContractAddress;
                 }
+
+                var tezosConfig = currency as TezosConfig;
+
+                if (tokenContract == null)
+                    return Enumerable.Empty<WalletAddressViewModel>();
+
+                var tezosAccount = account
+                    .GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz);
+
+                var tezosAddresses = tezosAccount
+                    .GetUnspentAddressesAsync()
+                    .WaitForResult()
+                    .ToDictionary(w => w.Address, w => w);
+
+                var tokenAddresses = tezosAccount.DataRepository
+                    .GetTezosTokenAddressesByContractAsync(tokenContract)
+                    .WaitForResult();
+
+                return tokenAddresses
+                    .Where(w => w.Balance != 0)
+                    .Select(w =>
+                    {
+                        var tokenBalance = w.Balance;
+
+                        var showTokenBalance = tokenBalance != 0;
+
+                        var tokenCode = w.TokenBalance?.Symbol ?? "TOKENS";
+
+                        var tezosBalance = tezosAddresses.TryGetValue(w.Address, out var tezosAddress)
+                            ? tezosAddress.AvailableBalance()
+                            : 0m;
+
+                        return new WalletAddressViewModel
+                        {
+                            WalletAddress = w,
+                            Address = w.Address,
+                            AvailableBalance = tezosBalance,
+                            CurrencyFormat = tezosConfig.Format,
+                            CurrencyCode = tezosConfig.Name,
+                            IsFreeAddress = false,
+                            ShowTokenBalance = showTokenBalance,
+                            TokenBalance = tokenBalance,
+                            TokenFormat = "F8",
+                            TokenCode = tokenCode,
+                            TokenId = w.TokenBalance?.TokenId ?? 0,
+                            IsTezosToken = true
+                        };
+                    });
             }
-
-            // get all addresses with tokens (if exists)
-            var addressesWithTokens = Currencies.HasTokens(currency.Name)
-                ? (account.GetCurrencyAccount(currency.Name) is IHasTokens accountWithTokens
-                    ? await accountWithTokens
-                        .GetUnspentTokenAddressesAsync()
-                        .ConfigureAwait(false) ?? new List<WalletAddress>()
-                    : new List<WalletAddress>())
-                : new List<WalletAddress>();
-
-            var tokenSymbol = tokenContract != null
-                ? addressesWithTokens.FirstOrDefault(a => a.TokenBalance?.Contract == tokenContract && a.TokenBalance?.Symbol != null)?.TokenBalance.Symbol
-                : null;
 
             // get all nonzero addresses
             var activeAddresses = (await account
-                .GetUnspentAddressesAsync(currency.Name)
-                .ConfigureAwait(false))
+                    .GetUnspentAddressesAsync(currency.Name)
+                    .ConfigureAwait(false))
                 .ToList();
 
             // get free external address
@@ -57,70 +87,24 @@ namespace Atomex.ViewModels
                 .ConfigureAwait(false);
 
             return activeAddresses
-                .Concat(addressesWithTokens)
-                .Concat(new [] { freeAddress })
+                .Concat(new[] { freeAddress })
                 .GroupBy(w => w.Address)
                 .Select(g =>
                 {
                     // main address
                     var address = g.FirstOrDefault(w => w.Currency == currency.Name);
-
                     var isFreeAddress = address?.Address == freeAddress.Address && freeAddress.Balance == 0;
-
-                    var hasAddressesWithTokens = g.Any(w => w.Currency != currency.Name);
-
-                    var tokenContractAddresses = tokenContract != null
-                        ? g.Where(w => w.TokenBalance?.Contract == tokenContract)
-                        : Enumerable.Empty<WalletAddress>();
-
-                    var isMultiTokenContract = tokenContractAddresses.Count() > 1;
-
-                    var tokenAddress = tokenContractAddresses.FirstOrDefault();
-
-                    var tokenBalance = isMultiTokenContract
-                        ? tokenContractAddresses.Count() // for multi token contract balance is count of tokens
-                        : tokenAddress?.Balance ?? 0m;
-
-                    var showTokenBalance = isMultiTokenContract
-                        ? tokenBalance != 0
-                        : tokenContract != null && tokenAddress?.TokenBalance?.Symbol != null;
-
-                    var tokenCode = isMultiTokenContract
-                        ? "TOKENS"
-                        : tokenAddress?.TokenBalance?.Symbol ?? tokenSymbol;
-
-                    var walletAddress = tokenContract == null
-                        ? address
-                        : tokenAddress ?? new WalletAddress
-                        {
-                            Address  = g.Key,
-                            KeyIndex = g.First().KeyIndex,
-                            KeyType  = g.First().KeyType,
-                            Balance  = 0m,
-                            Currency = tokenType,
-                            TokenBalance = new Blockchain.Tezos.TokenBalance
-                            {
-                                Contract = tokenContract,
-                                Balance  = "0",
-                                Decimals = 1,
-                            },
-                            HasActivity = address?.HasActivity ?? hasAddressesWithTokens
-                        };
 
                     return new WalletAddressViewModel
                     {
-                        WalletAddress    = walletAddress,
-                        Address          = g.Key,
-                        HasActivity      = address?.HasActivity ?? hasAddressesWithTokens,
+                        WalletAddress = address,
+                        Address = g.Key,
+                        HasActivity = address?.HasActivity ?? false,
                         AvailableBalance = address?.AvailableBalance() ?? 0m,
-                        CurrencyFormat   = currency.Format,
-                        CurrencyCode     = currency.Name,
-                        IsFreeAddress    = isFreeAddress,
-                        ShowTokenBalance = showTokenBalance,
-                        TokenBalance     = tokenBalance,
-                        TokenFormat      = "F8",
-                        TokenCode        = tokenCode,
-                        IsTezosToken     = isTezosToken
+                        CurrencyFormat = currency.Format,
+                        CurrencyCode = currency.Name,
+                        IsFreeAddress = isFreeAddress,
+                        IsTezosToken = false
                     };
                 });
         }
