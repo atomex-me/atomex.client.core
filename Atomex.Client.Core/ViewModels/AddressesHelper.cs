@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Atomex.Common;
@@ -12,6 +13,7 @@ namespace Atomex.ViewModels
 {
     public static class AddressesHelper
     {
+        public const int MaxTokenCurrencyFormatDecimals = 9;
         public static async Task<IEnumerable<WalletAddressViewModel>> GetReceivingAddressesAsync(
             IAccount account,
             CurrencyConfig currency,
@@ -69,7 +71,7 @@ namespace Atomex.ViewModels
                             IsFreeAddress = false,
                             ShowTokenBalance = showTokenBalance,
                             TokenBalance = tokenBalance,
-                            TokenFormat = "F8",
+                            TokenFormat = $"F{Math.Min(w.TokenBalance?.Decimals ?? MaxTokenCurrencyFormatDecimals, MaxTokenCurrencyFormatDecimals)}",
                             TokenCode = tokenCode,
                             TokenId = w.TokenBalance?.TokenId ?? 0,
                             IsTezosToken = true
