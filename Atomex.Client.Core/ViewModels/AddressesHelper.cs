@@ -25,8 +25,10 @@ namespace Atomex.ViewModels
                 {
                     tokenContract ??= fa12Config.TokenContractAddress;
                 }
-
-                var tezosConfig = currency as TezosConfig;
+                else
+                {
+                    fa12Config = null;
+                }
 
                 if (tokenContract == null)
                     return Enumerable.Empty<WalletAddressViewModel>();
@@ -51,7 +53,7 @@ namespace Atomex.ViewModels
 
                         var showTokenBalance = tokenBalance != 0;
 
-                        var tokenCode = w.TokenBalance?.Symbol ?? "TOKENS";
+                        var tokenCode = w.TokenBalance?.Symbol ?? fa12Config?.Name ?? "TOKENS";
 
                         var tezosBalance = tezosAddresses.TryGetValue(w.Address, out var tezosAddress)
                             ? tezosAddress.AvailableBalance()
@@ -62,8 +64,8 @@ namespace Atomex.ViewModels
                             WalletAddress = w,
                             Address = w.Address,
                             AvailableBalance = tezosBalance,
-                            CurrencyFormat = tezosConfig.Format,
-                            CurrencyCode = tezosConfig.Name,
+                            CurrencyFormat = currency.Format,
+                            CurrencyCode = currency.Name,
                             IsFreeAddress = false,
                             ShowTokenBalance = showTokenBalance,
                             TokenBalance = tokenBalance,
