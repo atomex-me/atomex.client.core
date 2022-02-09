@@ -2,14 +2,15 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Serilog;
 
 using Newtonsoft.Json.Linq;
+using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.Swaps.Abstract;
 
 namespace Atomex.Swaps.Tezos.Helpers
 {
@@ -22,21 +23,33 @@ namespace Atomex.Swaps.Tezos.Helpers
         {
             var tezos = currency as TezosConfig;
 
-            if (!(swap.PaymentTx is TezosTransaction savedTx))
+            if (swap.PaymentTx is not TezosTransaction paymentTx)
                 return new Error(Errors.SwapError, "Saved tx is null");
 
-            var savedParameters = savedTx.Params?.ToString(Newtonsoft.Json.Formatting.None);
+            var lockTimeInSeconds = swap.IsInitiator
+                ? CurrencySwap.DefaultInitiatorLockTimeInSeconds
+                : CurrencySwap.DefaultAcceptorLockTimeInSeconds;
 
-            if (savedParameters == null)
-                return new Error(Errors.SwapError, "Saved tx has null parameters");
+            var refundTime = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds))
+                .ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+            var rewardForRedeemInMtz = swap.IsInitiator
+                ? swap.PartyRewardForRedeem.ToMicroTez()
+                : 0;
+
+            var parameters = "entrypoint=initiate" +
+                $"&parameter.participant={swap.PartyAddress}" +
+                $"&parameter.settings.refund_time={refundTime}" +
+                $"&parameter.settings.hashed_secret={swap.SecretHash.ToHexString()}" +
+                $"&parameter.settings.payoff={(long)rewardForRedeemInMtz}";
 
             var api = tezos.BlockchainApi as ITezosBlockchainApi;
 
             var txsResult = await api
                 .TryGetTransactionsAsync(
-                    from: savedTx.From,
+                    from: paymentTx.From,
                     to: tezos.SwapContractAddress,
-                    parameters: savedParameters,
+                    parameters: parameters,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 

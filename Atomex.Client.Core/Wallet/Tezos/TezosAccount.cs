@@ -123,7 +123,7 @@ namespace Atomex.Wallet.Tezos
                         keyType: selectedAddress.WalletAddress.KeyType);
 
                     // fill operation
-                    var fillResult = await tx
+                    var (fillResult, isRunSuccess, hasReveal) = await tx
                         .FillOperationsAsync(
                             securePublicKey: securePublicKey,
                             tezosConfig: xtzConfig,
@@ -353,7 +353,7 @@ namespace Atomex.Wallet.Tezos
         {
             var xtz = Config;
 
-            if (!(tx is TezosTransaction xtzTx))
+            if (tx is not TezosTransaction xtzTx)
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
             var oldTx = !xtzTx.IsInternal

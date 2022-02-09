@@ -476,7 +476,7 @@
       "Description": "kUSD",
       "DigitsMultiplier": 1000000000000000000,
       "RedeemGasLimit": 110000,
-      "SwapContract": "KT19LfNyUj9JE1gBZnXKgRzXD4ZJ3fiKQ6X3",
+      "SwapContract": "KT1LKgjA47VHUMEEb2NtKAMqWv2dWiij5G4V",
       "TokenContract": "KT19xMLYcMZttwT1vesMPsQh2YcKcWmubi2u",
       "FeeCurrencySymbol": "XTZ/KUSD"
     },

@@ -80,7 +80,7 @@ namespace Atomex.Swaps.Tezos
                             .GetPublicKey(XtzConfig, address.KeyIndex, address.KeyType);
 
                         // fill operation
-                        var fillResult = await paymentTx
+                        var (fillResult, isRunSuccess, hasReveal) = await paymentTx
                             .FillOperationsAsync(
                                 securePublicKey: securePublicKey,
                                 tezosConfig: XtzConfig,
@@ -285,7 +285,7 @@ namespace Atomex.Swaps.Tezos
                 Fee          = xtzConfig.RedeemFee + xtzConfig.RevealFee,
                 GasLimit     = xtzConfig.RedeemGasLimit,
                 StorageLimit = xtzConfig.RedeemStorageLimit,
-                Params       = RedeemParams(swap),
+                Params       = CreateRedeemParams(swap),
                 Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
 
                 UseRun              = true,
@@ -303,7 +303,7 @@ namespace Atomex.Swaps.Tezos
                     .GetPublicKey(xtzConfig, walletAddress.KeyIndex, walletAddress.KeyType);
 
                 // fill operation
-                var fillResult = await redeemTx
+                var (fillResult, isRunSuccess, hasReveal) = await redeemTx
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
                         tezosConfig: xtzConfig,
@@ -401,7 +401,7 @@ namespace Atomex.Swaps.Tezos
                 Fee          = xtzConfig.RedeemFee + xtzConfig.RevealFee,
                 GasLimit     = xtzConfig.RedeemGasLimit,
                 StorageLimit = xtzConfig.RedeemStorageLimit,
-                Params       = RedeemParams(swap),
+                Params       = CreateRedeemParams(swap),
                 Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
 
                 UseRun              = true,
@@ -417,7 +417,7 @@ namespace Atomex.Swaps.Tezos
                 .GetPublicKey(xtzConfig, walletAddress.KeyIndex, walletAddress.KeyType);
 
             // fill operation
-            var fillResult = await redeemTx
+            var (fillResult, isRunSuccess, hasReveal) = await redeemTx
                 .FillOperationsAsync(
                     securePublicKey: securePublicKey,
                     tezosConfig: xtzConfig,
@@ -499,7 +499,7 @@ namespace Atomex.Swaps.Tezos
                 Fee          = xtzConfig.RefundFee + xtzConfig.RevealFee,
                 GasLimit     = xtzConfig.RefundGasLimit,
                 StorageLimit = xtzConfig.RefundStorageLimit,
-                Params       = RefundParams(swap),
+                Params       = CreateRefundParams(swap),
                 Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund,
 
                 UseRun              = true,
@@ -517,7 +517,7 @@ namespace Atomex.Swaps.Tezos
                     .GetPublicKey(xtzConfig, walletAddress.KeyIndex, walletAddress.KeyType);
 
                 // fill operation
-                var fillResult = await refundTx
+                var (fillResult, isRunSuccess, hasReveal) = await refundTx
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
                         tezosConfig: xtzConfig,
@@ -827,7 +827,7 @@ namespace Atomex.Swaps.Tezos
                         Fee          = feeAmountInMtz,
                         GasLimit     = xtzConfig.InitiateGasLimit,
                         StorageLimit = xtzConfig.InitiateStorageLimit,
-                        Params       = InitParams(swap, refundTimeStampUtcInSec, (long)rewardForRedeemInMtz),
+                        Params       = CreateInitParams(swap, refundTimeStampUtcInSec, (long)rewardForRedeemInMtz),
                         Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment,
 
                         UseRun              = true,
@@ -847,7 +847,7 @@ namespace Atomex.Swaps.Tezos
                         Fee          = feeAmountInMtz,
                         GasLimit     = xtzConfig.AddGasLimit,
                         StorageLimit = xtzConfig.AddStorageLimit,
-                        Params       = AddParams(swap),
+                        Params       = CreateAddParams(swap),
                         Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment,
 
                         UseRun              = true,
@@ -948,7 +948,7 @@ namespace Atomex.Swaps.Tezos
             return false;
         }
 
-        private JObject InitParams(
+        private JObject CreateInitParams(
             Swap swap,
             long refundTimestamp,
             long redeemFeeAmount)
@@ -956,17 +956,17 @@ namespace Atomex.Swaps.Tezos
             return JObject.Parse(@"{'entrypoint':'default','value':{'prim':'Left','args':[{'prim':'Left','args':[{'prim':'Pair','args':[{'string':'" + swap.PartyAddress + "'},{'prim':'Pair','args':[{'prim':'Pair','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'},{'int':'" + refundTimestamp + "'}]},{'int':'" + redeemFeeAmount + "'}]}]}]}]}}");
         }
 
-        private JObject AddParams(Swap swap)
+        private JObject CreateAddParams(Swap swap)
         {
             return JObject.Parse(@"{'entrypoint':'default','value':{'prim':'Left','args':[{'prim':'Right','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'}]}]}}");
         }
 
-        private JObject RedeemParams(Swap swap)
+        private JObject CreateRedeemParams(Swap swap)
         {
             return JObject.Parse(@"{'entrypoint':'default','value':{'prim':'Right','args':[{'prim':'Left','args':[{'bytes':'" + swap.Secret.ToHexString() + "'}]}]}}");
         }
 
-        private JObject RefundParams(Swap swap)
+        private JObject CreateRefundParams(Swap swap)
         {
             return JObject.Parse(@"{'entrypoint':'default','value':{'prim':'Right','args':[{'prim':'Right','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'}]}]}}");
         }

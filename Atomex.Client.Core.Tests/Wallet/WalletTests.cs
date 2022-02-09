@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Security;
-using Atomex.Wallet;
+
 using NBitcoin;
 using Xunit;
+
+using Atomex.Wallet;
 using Network = Atomex.Core.Network;
 
 namespace Atomex.Client.Core.Tests

@@ -138,7 +138,7 @@ namespace Atomex.Blockchain.Tezos
             var transaction = new TezosTransaction();
             var isParentTxValid = false;
 
-            var requestUri = $"operations/transactions/{txId}";
+            var requestUri = $"operations/transactions/{txId}?micheline=2";
 
             return await HttpHelper
                 .GetAsyncResult<IBlockchainTransaction>(
@@ -184,7 +184,7 @@ namespace Atomex.Blockchain.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = $"accounts/{address}/operations?type=transaction";
+            var requestUri = $"accounts/{address}/operations?type=transaction&micheline=2";
 
             var txsResult = await HttpHelper
                 .GetAsyncResult(
@@ -223,7 +223,7 @@ namespace Atomex.Blockchain.Tezos
             return await HttpHelper
                 .GetAsyncResult(
                     baseUri: _baseUri,
-                    requestUri: $"operations/transactions?sender={from}&target={to}&parameters.eq={parameters}",
+                    requestUri: $"operations/transactions?sender={from}&target={to}&{parameters}",
                     headers: _headers,
                     responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)),
                     cancellationToken: cancellationToken)
@@ -381,7 +381,7 @@ namespace Atomex.Blockchain.Tezos
 
             foreach (var op in data)
             {
-                if (!(op is JObject transaction))
+                if (op is not JObject transaction)
                     return new Error(Errors.NullOperation, "Null operation in response");
 
                 var state = StateFromStatus(transaction["status"].Value<string>());
@@ -431,8 +431,8 @@ namespace Atomex.Blockchain.Tezos
                 }
                 else
                 {
-                    var txParameters = transaction.ContainsKey("parameters")
-                        ? JObject.Parse(transaction["parameters"].Value<string>())
+                    var txParameters = transaction.ContainsKey("parameter")
+                        ? transaction["parameter"].Value<JObject>()
                         : null;
 
                     tx.Params       = txParameters;
@@ -481,7 +481,7 @@ namespace Atomex.Blockchain.Tezos
                     Fee               = 0, //token.GetAllowanceFee,
                     GasLimit          = tokenConfig.GetAllowanceGasLimit,
                     StorageLimit      = 0, //token.GetAllowanceStorageLimit,
-                    Params            = GetAllowanceParams(holderAddress, spenderAddress, tokenConfig.ViewContractAddress),
+                    Params            = CreateGetAllowanceParams(holderAddress, spenderAddress, tokenConfig.ViewContractAddress),
 
                     UseRun            = false,
                     UseOfflineCounter = false
@@ -536,7 +536,7 @@ namespace Atomex.Blockchain.Tezos
 
         #endregion
 
-        private JObject GetAllowanceParams(
+        private JObject CreateGetAllowanceParams(
             string holderAddress,
             string spenderAddress,
             string viewContractAddress)

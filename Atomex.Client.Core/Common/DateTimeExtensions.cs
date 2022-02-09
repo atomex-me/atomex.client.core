@@ -4,7 +4,7 @@ namespace Atomex.Common
 {
     public static class DateTimeExtensions
     {
-        public static DateTime UnixStartTime = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        public static DateTime UnixStartTime = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
         public static DateTime ToUtcDateTime(this int unixTime) =>
             UnixStartTime.AddSeconds(unixTime);
@@ -26,7 +26,7 @@ namespace Atomex.Common
             dt.Minute == d.Minute;
 
         public static DateTime ToMinutes(this DateTime dt) =>
-            new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, second: 0);
+            new(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, second: 0);
 
         public static DateTime FromHexString(this string hex) =>
             UnixStartTime.AddSeconds(int.Parse(hex, System.Globalization.NumberStyles.HexNumber));

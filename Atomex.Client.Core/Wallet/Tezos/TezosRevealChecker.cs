@@ -15,7 +15,7 @@ namespace Atomex.Wallet.Tezos
         private readonly TezosConfig _tezos;
         private readonly IDictionary<string, TezosAddressInfo> _addresses;
 
-        public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromMinutes(30);
+        public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromSeconds(30);
 
         public TezosRevealChecker(TezosConfig tezos)
         {

@@ -10,6 +10,8 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.TezosTokens;
+using Atomex.Swaps.Abstract;
+using Newtonsoft.Json.Linq;
 
 namespace Atomex.Swaps.Tezos.FA12.Helpers
 {
@@ -22,21 +24,37 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
         {
             var fa12 = currency as Fa12Config;
 
-            if (!(swap.PaymentTx is TezosTransaction savedTx))
-                return new Error(Errors.SwapError, "Saved tx is null");
+            if (swap.PaymentTx is not TezosTransaction paymentTx)
+                throw new ArgumentNullException("Swap payment transaction is null");
 
-            var savedParameters = savedTx.Params?.ToString(Newtonsoft.Json.Formatting.None);
+            var lockTimeInSeconds = swap.IsInitiator
+                ? CurrencySwap.DefaultInitiatorLockTimeInSeconds
+                : CurrencySwap.DefaultAcceptorLockTimeInSeconds;
 
-            if (savedParameters == null)
-                return new Error(Errors.SwapError, "Saved tx has null parameters");
+            var refundTime = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds))
+                .ToString("yyyy-MM-ddTHH:mm:ssZ");
+
+            var rewardForRedeemInTokenDigits = swap.IsInitiator
+                ? swap.PartyRewardForRedeem.ToTokenDigits(fa12.DigitsMultiplier)
+                : 0;
+
+            var requiredAmountInTokens = Fa12Swap.RequiredAmountInTokens(swap, fa12);
+
+            var parameters = "entrypoint=initiate" +
+                $"&parameter.refundTime={refundTime}" +
+                $"&parameter.participant={swap.PartyAddress}" +
+                $"&parameter.totalAmount={requiredAmountInTokens.ToTokenDigits(fa12.DigitsMultiplier)}" +
+                $"&parameter.hashedSecret={swap.SecretHash.ToHexString()}" +
+                $"&parameter.payoffAmount={(long)rewardForRedeemInTokenDigits}" +
+                $"&parameter.tokenAddress={fa12.TokenContractAddress}";
 
             var api = fa12.BlockchainApi as ITezosBlockchainApi;
 
             var txsResult = await api
                 .TryGetTransactionsAsync(
-                    from: savedTx.From,
+                    from: paymentTx.From,
                     to: fa12.SwapContractAddress,
-                    parameters: savedParameters,
+                    parameters: parameters,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -114,7 +132,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
                     {
                         var detectedPayment = false;
 
-                        if (IsSwapInit(tx, fa12.TokenContractAddress, swap.SecretHash, swap.ToAddress))
+                        if (IsSwapInit(tx, swap.SecretHash.ToHexString(), fa12.TokenContractAddress, swap.ToAddress, refundTimeStamp))
                         {
                             // init payment to secret hash!
                             detectedPayment = true;
@@ -238,21 +256,86 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
 
         public static bool IsSwapInit(
             TezosTransaction tx,
+            string secretHash,
             string tokenContractAddress,
-            byte[] secretHash,
-            string participant)
+            string participant,
+            long refundTimeStamp)
         {
             try
             {
-                return tx.Params["entrypoint"].ToString().Equals("initiate") &&
-                       tx.Params["value"]["args"][0]["args"][0]["args"][0]["bytes"].ToString().Equals(secretHash.ToHexString()) &&
-                       tx.Params["value"]["args"][0]["args"][0]["args"][1]["string"].ToString().Equals(participant) &&
-                       tx.Params["value"]["args"][1]["args"][0]["string"].ToString().Equals(tokenContractAddress);
+                if (tx.Params == null)
+                    return false;
+
+                var entrypoint = tx.Params?["entrypoint"]?.ToString();
+
+                return entrypoint switch
+                {
+                    "default" => IsSwapInit(tx.Params?["value"]?["args"]?[0]?["args"]?[0], secretHash, tokenContractAddress, participant, refundTimeStamp),
+                    "initiate" => IsSwapInit(tx.Params?["value"], secretHash, tokenContractAddress, participant, refundTimeStamp),
+                    _ => false
+                };
             }
             catch (Exception)
             {
                 return false;
             }
+            //try
+            //{
+            //    return tx.Params["entrypoint"].ToString().Equals("initiate") &&
+            //           tx.Params["value"]["args"][0]["args"][0]["args"][0]["bytes"].ToString().Equals(secretHash.ToHexString()) &&
+            //           tx.Params["value"]["args"][0]["args"][0]["args"][1]["string"].ToString().Equals(participant) &&
+            //           tx.Params["value"]["args"][1]["args"][0]["string"].ToString().Equals(tokenContractAddress);
+            //}
+            //catch (Exception)
+            //{
+            //    return false;
+            //}
+        }
+
+        private static bool IsSwapInit(
+            JToken initParams,
+            string secretHash,
+            string tokenContractAddress,
+            string participantAddress,
+            long refundTimeStamp)
+        {
+            if (initParams?["args"]?[0]?["args"]?[0]?["args"]?[0]?["bytes"]?.Value<string>() != secretHash)
+                return false;
+
+            try
+            {
+                var timestamp = TezosConfig.ParseTimestamp(initParams?["args"]?[0]?["args"]?[1]?["args"]?[1]);
+                if (timestamp < refundTimeStamp)
+                {
+                    Log.Debug($"IsSwapInit: refundTimeStamp is less than expected (should be at least {refundTimeStamp})");
+                    return false;
+                }
+
+                var address = TezosConfig.ParseAddress(initParams?["args"]?[0]?["args"]?[0]?["args"]?[1]);
+                if (address != participantAddress)
+                {
+                    Log.Debug($"IsSwapInit: participantAddress is unexpected (should be {participantAddress})");
+                    return false;
+                }
+
+                var tokenAddress = TezosConfig.ParseAddress(initParams?["args"]?[1]?["args"]?[0]);
+                if (tokenAddress != tokenContractAddress)
+                {
+                    Log.Debug($"IsSwapInit: tokenContractAddress is unexpected (should be {tokenContractAddress})");
+                    return false;
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error($"IsSwapInit: {e.Message}");
+                return false;
+            }
+
+            return true;
+            //return initParams?["args"]?[0]?["args"]?[0]?["args"]?[0]?["bytes"]?.Value<string>() == secretHash &&
+            //       initParams?["args"]?[0]?["args"]?[0]?["args"]?[1]?["string"]?.Value<string>() == participantAddress &&
+            //       initParams?["args"]?[1]?["args"]?[0]?["string"]?.Value<string>() == tokenContractAddress &&
+            //       initParams?["args"]?[0]?["args"]?[1]?["args"]?[1]?["int"]?.Value<ulong>() >= refundTimeStamp;
         }
 
         public static decimal GetAmount(TezosTransaction tx)

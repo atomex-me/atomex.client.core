@@ -106,7 +106,7 @@ namespace Atomex.Wallet.Tezos
                 Fee          = feeInMtz,
                 GasLimit     = fa2Config.TransferGasLimit,
                 StorageLimit = storageLimit,
-                Params       = TransferParams(tokenId, from, to, amount),
+                Params       = CreateTransferParams(tokenId, from, to, amount),
                 Type         = BlockchainTransactionType.Output | BlockchainTransactionType.TokenCall,
 
                 UseRun              = useDefaultFee,
@@ -126,7 +126,7 @@ namespace Atomex.Wallet.Tezos
                     keyType: xtzAddress.KeyType);
 
                 // fill operation
-                var (fillResult, isRunSuccess) = await tx
+                var (fillResult, isRunSuccess, hasReveal) = await tx
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
                         tezosConfig: xtzConfig,
@@ -209,7 +209,7 @@ namespace Atomex.Wallet.Tezos
 
         #region Helpers
 
-        private JObject TransferParams(
+        private JObject CreateTransferParams(
             int tokenId,
             string from,
             string to,
