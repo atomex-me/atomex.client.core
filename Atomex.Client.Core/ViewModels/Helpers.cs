@@ -607,7 +607,13 @@ namespace Atomex.ViewModels
                         RewardForRedeem  = rewardForRedeem,
                         MakerNetworkFee  = estimatedMakerNetworkFee,
                         ReservedForSwaps = reservedForSwapsAmount,
-                        Error            = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                        Error = new Error(
+                            code: Errors.InsufficientFunds,
+                            description: Resources.InsufficientFundsToCoverMakerNetworkFee,
+                            details: string.Format(Resources.InsufficientFundsToCoverMakerNetworkFeeDetails,
+                                estimatedMakerNetworkFee,                             // required
+                                fromCurrency.Name,                                    // currency code
+                                maxAmountEstimation.Amount - reservedForSwapsAmount)) // available
                     };
                 }
 
@@ -621,7 +627,13 @@ namespace Atomex.ViewModels
                         RewardForRedeem  = rewardForRedeem,
                         MakerNetworkFee  = estimatedMakerNetworkFee,
                         ReservedForSwaps = reservedForSwapsAmount,
-                        Error            = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                        Error = new Error(
+                            code: Errors.InsufficientFunds,
+                            description: Resources.InsufficientFunds,
+                            details: string.Format(Resources.InsufficientFundsToSendAmountDetails,
+                                fromAmount,        // required
+                                fromCurrency.Name, // currency code
+                                maxNetAmount))     // available
                     };
                 }
 

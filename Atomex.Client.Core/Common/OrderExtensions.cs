@@ -2,10 +2,11 @@
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Abstract;
+
+using Serilog;
+
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Serilog;
 
 namespace Atomex.Common
 {
@@ -45,28 +46,6 @@ namespace Atomex.Common
             }
         }
 
-        public static Error VerifyProofOfPossession(this Order order, ICurrencies currencies)
-        {
-            foreach (var address in order.FromWallets)
-            {
-                if (address == null)
-                    continue;
-
-                var data = Encoding.Unicode.GetBytes($"{address.Nonce}{order.TimeStamp.ToUniversalTime():yyyy.MM.dd HH:mm:ss.fff}");
-                var pubKeyBytes = address.PublicKeyBytes();
-
-                var currency = currencies.GetByName(address.Currency);
-
-                if (!currency.IsAddressFromKey(address.Address, pubKeyBytes))
-                    return new Error(Errors.InvalidSigns, "Invalid public key for wallet", order);
-
-                if (!currency.VerifyMessage(data, Convert.FromBase64String(address.ProofOfPossession), pubKeyBytes))
-                   return new Error(Errors.InvalidSigns, "Invalid sign for wallet", order);
-            }
-
-            return null;
-        }
-
         public static bool IsContinuationOf(this Order order, Order previousOrder)
         {
             if (previousOrder == null)
@@ -104,22 +83,15 @@ namespace Atomex.Common
 
         public static bool IsContinuationOf(this OrderStatus status, OrderStatus previousStatus)
         {
-            switch (status)
+            return status switch
             {
-                case OrderStatus.Pending:
-                    return false;
-                case OrderStatus.Placed:
-                    return previousStatus == OrderStatus.Pending;
-                case OrderStatus.PartiallyFilled:
-                case OrderStatus.Filled:
-                case OrderStatus.Canceled:
-                    return previousStatus == OrderStatus.Placed ||
-                           previousStatus == OrderStatus.PartiallyFilled;
-                case OrderStatus.Rejected:
-                    return previousStatus == OrderStatus.Pending;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(status), status, null);
-            }
+                OrderStatus.Pending => false,
+                OrderStatus.Placed => previousStatus == OrderStatus.Pending,
+                OrderStatus.PartiallyFilled or OrderStatus.Filled or OrderStatus.Canceled =>
+                    previousStatus == OrderStatus.Placed || previousStatus == OrderStatus.PartiallyFilled,
+                OrderStatus.Rejected => previousStatus == OrderStatus.Pending,
+                _ => throw new ArgumentOutOfRangeException(nameof(status), status, null),
+            };
         }
 
         public static Order WithEndOfTransaction(this Order order, bool endOfTransaction)

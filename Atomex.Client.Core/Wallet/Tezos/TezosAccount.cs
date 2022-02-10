@@ -204,7 +204,7 @@ namespace Atomex.Wallet.Tezos
         {
             if (string.IsNullOrEmpty(from))
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.FromAddressIsNullOrEmpty, "\"From\" address is null or empty")
+                    Error = new Error(Errors.FromAddressIsNullOrEmpty, Resources.FromAddressIsNullOrEmpty)
                 };
 
             //if (from == to)
@@ -217,7 +217,7 @@ namespace Atomex.Wallet.Tezos
 
             if (fromAddress == null)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.AddressNotFound, "Address not found")
+                    Error = new Error(Errors.AddressNotFound, Resources.AddressNotFoundInLocalDb)
                 };
 
             var reserveFee = ReserveFee();
@@ -246,7 +246,14 @@ namespace Atomex.Wallet.Tezos
                     Amount   = restAmountInTez,
                     Fee      = requiredFeeInTez,
                     Reserved = reserveFee,
-                    Error    = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        description: Resources.InsufficientFundsToCoverFees,
+                        details: string.Format(
+                            Resources.InsufficientFundsToCoverFeesDetails,
+                            requiredFeeInTez,
+                            Currency,
+                            fromAddress.AvailableBalance()))
                 };
 
             return new MaxAmountEstimation

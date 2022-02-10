@@ -199,7 +199,7 @@ namespace Atomex.Wallet.Ethereum
         {
             if (string.IsNullOrEmpty(from))
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.FromAddressIsNullOrEmpty, "\"From\" address is null or empty")
+                    Error = new Error(Errors.FromAddressIsNullOrEmpty, Resources.FromAddressIsNullOrEmpty)
                 };
 
             //if (from == to)
@@ -214,7 +214,7 @@ namespace Atomex.Wallet.Ethereum
 
             if (fromAddress == null)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.AddressNotFound, "Address not found")
+                    Error = new Error(Errors.AddressNotFound, Resources.AddressNotFoundInLocalDb)
                 };
 
             var estimatedGasPrice = Math.Floor(await eth
@@ -231,7 +231,7 @@ namespace Atomex.Wallet.Ethereum
 
             if (feeInEth == 0)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.InsufficientFee, "Too low fees")
+                    Error = new Error(Errors.InsufficientFee, Resources.TooLowFees)
                 };
 
             var reserveFeeInEth = ReserveFee(estimatedGasPrice);
@@ -245,7 +245,14 @@ namespace Atomex.Wallet.Ethereum
                     Amount   = restAmountInEth,
                     Fee      = requiredFeeInEth,
                     Reserved = reserveFeeInEth,
-                    Error    = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        description: Resources.InsufficientFundsToCoverFees,
+                        details: string.Format(
+                            Resources.InsufficientFundsToCoverFeesDetails,
+                            requiredFeeInEth,
+                            Currency,
+                            fromAddress.AvailableBalance()))
                 };
 
             return new MaxAmountEstimation

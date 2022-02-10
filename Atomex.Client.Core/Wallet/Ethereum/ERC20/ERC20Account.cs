@@ -214,7 +214,7 @@ namespace Atomex.Wallet.Ethereum
         {
             if (string.IsNullOrEmpty(from))
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.FromAddressIsNullOrEmpty, "\"From\" address is null or empty")
+                    Error = new Error(Errors.FromAddressIsNullOrEmpty, Resources.FromAddressIsNullOrEmpty)
                 };
 
             //if (from == to)
@@ -227,7 +227,7 @@ namespace Atomex.Wallet.Ethereum
 
             if (tokenAddress == null)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.AddressNotFound, "Address not found")
+                    Error = new Error(Errors.AddressNotFound, Resources.AddressNotFoundInLocalDb)
                 };
 
             var eth = EthConfig;
@@ -248,7 +248,7 @@ namespace Atomex.Wallet.Ethereum
 
             if (feeInEth == 0)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.InsufficientFee, "Too low fees")
+                    Error = new Error(Errors.InsufficientFee, Resources.TooLowFees)
                 };
 
             var requiredFeeInEth = feeInEth + (reserve ? reserveFeeInEth : 0);
@@ -262,12 +262,14 @@ namespace Atomex.Wallet.Ethereum
                 {
                     Fee      = requiredFeeInEth,
                     Reserved = reserveFeeInEth,
-                    Error    = new Error(
-                        Errors.InsufficientChainFunds,
-                        string.Format(CultureInfo.CurrentCulture,
-                            "Insufficient {0} to cover token transfer fee. Required {1} ETH. Available 0 ETH",
-                            Erc20Config.FeeCurrencyName,
-                            requiredFeeInEth))
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        description: Resources.InsufficientFundsToCoverFees,
+                        details: string.Format(
+                            Resources.InsufficientFundsToCoverFeesDetails,
+                            requiredFeeInEth,            // required fee
+                            Erc20Config.FeeCurrencyName, // currency code
+                            0m))                         // available
                 };
 
             var restBalanceInEth = ethAddress.AvailableBalance() - requiredFeeInEth;
@@ -276,20 +278,27 @@ namespace Atomex.Wallet.Ethereum
                 return new MaxAmountEstimation {
                     Fee      = requiredFeeInEth,
                     Reserved = reserveFeeInEth,
-                    Error    = new Error(
-                        Errors.InsufficientChainFunds,
-                        string.Format(CultureInfo.CurrentCulture,
-                            "Insufficient {0} to cover token transfer fee. Required {1} ETH. Available {2} ETH",
-                            Erc20Config.FeeCurrencyName,
-                            requiredFeeInEth,
-                            ethAddress.AvailableBalance()))
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        description: Resources.InsufficientFundsToCoverFees,
+                        details: string.Format(
+                            Resources.InsufficientFundsToCoverFeesDetails,
+                            requiredFeeInEth,               // required fee
+                            Erc20Config.FeeCurrencyName,    // currency code
+                            ethAddress.AvailableBalance())) // available
                 };
 
             if (tokenAddress.AvailableBalance() <= 0)
                 return new MaxAmountEstimation {
                     Fee      = requiredFeeInEth,
                     Reserved = reserveFeeInEth,
-                    Error    = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        description: Resources.InsufficientFunds,
+                        details: string.Format(
+                            Resources.InsufficientFundsDetails,
+                            tokenAddress.AvailableBalance(), // available tokens
+                            Erc20Config.Name))               // currency code
                 };
 
             return new MaxAmountEstimation

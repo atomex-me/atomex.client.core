@@ -224,7 +224,7 @@ namespace Atomex.Wallet.Tezos
         {
             if (string.IsNullOrEmpty(from))
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.FromAddressIsNullOrEmpty, "\"From\" address is null or empty")
+                    Error = new Error(Errors.FromAddressIsNullOrEmpty, Resources.FromAddressIsNullOrEmpty)
                 };
 
             //if (from == to)
@@ -237,7 +237,7 @@ namespace Atomex.Wallet.Tezos
 
             if (fromAddress == null)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.AddressNotFound, "Address not found")
+                    Error = new Error(Errors.AddressNotFound, Resources.AddressNotFoundInLocalDb)
                 };
 
             var reserveFee = ReserveFee();
@@ -266,12 +266,14 @@ namespace Atomex.Wallet.Tezos
                 {
                     Fee      = requiredFeeInTez,
                     Reserved = reserveFee,
-                    Error    = new Error(
-                        Errors.InsufficientChainFunds,
-                        string.Format(CultureInfo.InvariantCulture,
-                            "Insufficient {0} to cover token transfer fee. Required {1} XTZ. Available 0 XTZ",
-                            Fa12Config.FeeCurrencyName,
-                            requiredFeeInTez))
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        description: Resources.InsufficientFundsToCoverFees,
+                        details: string.Format(
+                            Resources.InsufficientFundsToCoverFeesDetails,
+                            requiredFeeInTez,           // required fee
+                            Fa12Config.FeeCurrencyName, // currency code
+                            0m))                        // available
                 };
 
             var restBalanceInTez = xtzAddress.AvailableBalance() - requiredFeeInTez;
@@ -280,20 +282,27 @@ namespace Atomex.Wallet.Tezos
                 return new MaxAmountEstimation {
                     Fee      = requiredFeeInTez,
                     Reserved = reserveFee,
-                    Error    = new Error(
-                        Errors.InsufficientChainFunds,
-                        string.Format(CultureInfo.InvariantCulture,
-                            "Insufficient {0} to cover token transfer fee. Required {1} XTZ. Available {2} XTZ",
-                            Fa12Config.FeeCurrencyName,
-                            requiredFeeInTez,
-                            xtzAddress.AvailableBalance()))
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        description: Resources.InsufficientFundsToCoverFees,
+                        details: string.Format(
+                            Resources.InsufficientFundsToCoverFeesDetails,
+                            requiredFeeInTez,               // required fee
+                            Fa12Config.FeeCurrencyName,     // currency code
+                            xtzAddress.AvailableBalance())) // available
                 };
 
             if (fromAddress.AvailableBalance() <= 0)
                 return new MaxAmountEstimation {
                     Fee      = requiredFeeInTez,
                     Reserved = reserveFee,
-                    Error    = new Error(Errors.InsufficientFunds, "Insufficient funds")
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        description: Resources.InsufficientFunds,
+                        details: string.Format(
+                            Resources.InsufficientFundsDetails,
+                            fromAddress.AvailableBalance(), // available tokens
+                            Fa12Config.Name))               // currency code
                 };
 
             return new MaxAmountEstimation

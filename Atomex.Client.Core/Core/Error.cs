@@ -4,6 +4,7 @@
     {
         public int Code { get; set; }
         public string Description { get; set; }
+        public string Details { get; set; }
         public string RequestId { get; set; }
         public string OrderId { get; set; }
         public long? SwapId { get; set; }
@@ -19,14 +20,8 @@
             Description = description;
         }
 
-        public Error(int code, string description, string requestId)
-            : this(code, description) => RequestId = requestId;
-
-        public Error(int code, string description, Order order)
-            : this(code, description) => OrderId = order.ClientOrderId;
-
-        public Error(int code, string description, Swap swap)
-            : this(code, description) => SwapId = swap.Id;
+        public Error(int code, string description, string details)
+            : this(code, description) => Details = details;
 
         public override string ToString()
         {
