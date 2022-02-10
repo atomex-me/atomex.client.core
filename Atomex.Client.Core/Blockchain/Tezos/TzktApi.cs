@@ -384,9 +384,9 @@ namespace Atomex.Blockchain.Tezos
                 if (op is not JObject transaction)
                     return new Error(Errors.NullOperation, "Null operation in response");
 
-                var state = StateFromStatus(transaction["status"].Value<string>());
+                var state = StateFromStatus(transaction["status"]?.Value<string>());
 
-                var alias = $"{transaction["sender"]["alias"]?.Value<string>()}/{transaction["target"]["alias"]?.Value<string>()}";
+                var alias = $"{transaction["sender"]?["alias"]?.Value<string>() ?? string.Empty}/{transaction["target"]?["alias"]?.Value<string>() ?? string.Empty}";
 
                 if (alias.Length == 1)
                     alias = string.Empty;
