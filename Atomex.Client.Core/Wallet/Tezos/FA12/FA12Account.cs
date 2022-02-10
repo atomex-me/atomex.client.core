@@ -95,7 +95,7 @@ namespace Atomex.Wallet.Tezos
                 Fee           = addressFeeUsage.UsedFee.ToMicroTez(),
                 GasLimit      = fa12Config.TransferGasLimit,
                 StorageLimit  = storageLimit,
-                Params        = TransferParams(addressFeeUsage.WalletAddress.Address, to, Math.Round(addressAmountInDigits, 0)),
+                Params        = CreateTransferParams(addressFeeUsage.WalletAddress.Address, to, Math.Round(addressAmountInDigits, 0)),
                 Type          = BlockchainTransactionType.Output | BlockchainTransactionType.TokenCall,
 
                 UseRun              = useDefaultFee,
@@ -113,7 +113,7 @@ namespace Atomex.Wallet.Tezos
                 keyType: addressFeeUsage.WalletAddress.KeyType);
 
             // fill operation
-            var (fillResult, isRunSuccess) = await tx
+            var (fillResult, isRunSuccess, hasReveal) = await tx
                 .FillOperationsAsync(
                     securePublicKey: securePublicKey,
                     tezosConfig: xtzConfig,
@@ -457,7 +457,7 @@ namespace Atomex.Wallet.Tezos
 
         #region Helpers
 
-        private JObject TransferParams(string from, string to, decimal amount)
+        private JObject CreateTransferParams(string from, string to, decimal amount)
         {
             return JObject.FromObject(new
             {

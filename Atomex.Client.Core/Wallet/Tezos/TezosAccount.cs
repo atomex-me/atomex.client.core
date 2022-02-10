@@ -115,7 +115,7 @@ namespace Atomex.Wallet.Tezos
                 keyType: addressFeeUsage.WalletAddress.KeyType);
 
             // fill operation
-            var (fillResult, isRunSuccess) = await tx
+            var (fillResult, isRunSuccess, hasReveal) = await tx
                 .FillOperationsAsync(
                     securePublicKey: securePublicKey,
                     tezosConfig: xtzConfig,

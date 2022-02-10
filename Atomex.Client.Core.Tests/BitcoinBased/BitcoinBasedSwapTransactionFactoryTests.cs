@@ -43,7 +43,8 @@ namespace Atomex.Client.Core.Tests
             litecoinApi.Setup(a => a.GetUnspentOutputsAsync(It.IsAny<string>(), null, new CancellationToken()))
                 .Returns(Task.FromResult(GetTestOutputs(Common.Bob.PubKey, AltNetworkSets.Litecoin.Testnet)));
 
-            var tempCurrencies = new Currencies(Common.CurrenciesConfiguration.GetSection(Atomex.Core.Network.TestNet.ToString()));
+            var tempCurrencies = new CurrenciesProvider(Common.CurrenciesConfigurationString)
+                .GetCurrencies(Atomex.Core.Network.TestNet);
 
             var bitcoin = tempCurrencies.Get<BitcoinConfig>("BTC");
             bitcoin.BlockchainApi = bitcoinApi.Object;

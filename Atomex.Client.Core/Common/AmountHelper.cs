@@ -41,7 +41,10 @@ namespace Atomex.Common
             if (digitsMultiplier > 1000000000)
                 digitsMultiplier = 1000000000; // server decimal precision
 
-            return Math.Floor(d * digitsMultiplier) / digitsMultiplier;
+            var integral = Math.Truncate(d);
+            var fraction = d - integral;
+
+            return integral + Math.Truncate(fraction * digitsMultiplier) / digitsMultiplier;
         }
 
         public static decimal DustProofMin(

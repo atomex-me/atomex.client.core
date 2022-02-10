@@ -135,10 +135,11 @@ namespace Atomex.Blockchain.Tezos
             return SignedMessage != null;
         }
 
-        public async Task<(bool result, bool isRunSuccess)> FillOperationsAsync(
+        public async Task<(bool result, bool isRunSuccess, bool hasReveal)> FillOperationsAsync(
             SecureBytes securePublicKey,
             TezosConfig tezosConfig,
             int headOffset = 0,
+            bool isAlreadyRevealed = false,
             CancellationToken cancellationToken = default)
         {
             using var publicKey = securePublicKey.ToUnsecuredBytes();
@@ -162,7 +163,7 @@ namespace Atomex.Blockchain.Tezos
 
             var gas      = GasLimit.ToString(CultureInfo.InvariantCulture);
             var storage  = StorageLimit.ToString(CultureInfo.InvariantCulture);
-            var revealed = managerKey.Value<string>() != null;
+            var revealed = managerKey.Value<string>() != null || isAlreadyRevealed;
 
             UsedCounters = revealed ? 1 : 2;
 
@@ -244,7 +245,11 @@ namespace Atomex.Blockchain.Tezos
                 }
             }
 
-            return (result: true, isRunSuccess);
+            return (
+                result: true,
+                isRunSuccess: isRunSuccess,
+                hasReveal: !revealed
+            );
         }
 
         public void RollbackOfflineCounterIfNeed()

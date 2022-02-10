@@ -76,6 +76,8 @@ namespace Atomex.Swaps.Tezos.FA12
                     {
                         var isInitiateTx = tx.Type.HasFlag(BlockchainTransactionType.SwapPayment);
 
+                        var isAlreadyRevealed = false;
+
                         var address = await TezosAccount
                             .GetAddressAsync(tx.From, cancellationToken)
                             .ConfigureAwait(false);
@@ -84,13 +86,16 @@ namespace Atomex.Swaps.Tezos.FA12
                             .GetPublicKey(XtzConfig, address.KeyIndex, address.KeyType);
 
                         // fill operation
-                        var (fillResult, isRunSuccess) = await tx
+                        var (fillResult, isRunSuccess, hasReveal) = await tx
                             .FillOperationsAsync(
                                 securePublicKey: securePublicKey,
                                 tezosConfig: TezosAccount.Config,
                                 headOffset: TezosConfig.HeadOffset,
+                                isAlreadyRevealed: isAlreadyRevealed,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
+
+                        isAlreadyRevealed = hasReveal;
 
                         var signResult = await SignTransactionAsync(tx, cancellationToken)
                             .ConfigureAwait(false);
@@ -297,7 +302,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 Fee          = fa12.RedeemFee + fa12.RevealFee,
                 GasLimit     = fa12.RedeemGasLimit,
                 StorageLimit = fa12.RedeemStorageLimit,
-                Params       = RedeemParams(swap),
+                Params       = CreateRedeemParams(swap),
                 Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
 
                 UseRun              = true,
@@ -315,7 +320,7 @@ namespace Atomex.Swaps.Tezos.FA12
                     .GetPublicKey(XtzConfig, walletAddress.KeyIndex, walletAddress.KeyType);
 
                 // fill operation
-                var (fillResult, isRunSuccess) = await redeemTx
+                var (fillResult, isRunSuccess, hasReveal) = await redeemTx
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
                         tezosConfig: XtzConfig,
@@ -412,7 +417,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 Fee          = fa12.RedeemFee + fa12.RevealFee,
                 GasLimit     = fa12.RedeemGasLimit,
                 StorageLimit = fa12.RedeemStorageLimit,
-                Params       = RedeemParams(swap),
+                Params       = CreateRedeemParams(swap),
                 Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
 
                 UseRun              = true,
@@ -428,7 +433,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 .GetPublicKey(XtzConfig, walletAddress.KeyIndex, walletAddress.KeyType);
 
             // fill operation
-            var (fillResult, isRunSuccess) = await redeemTx
+            var (fillResult, isRunSuccess, hasReveal) = await redeemTx
                 .FillOperationsAsync(
                     securePublicKey: securePublicKey,
                     tezosConfig: XtzConfig,
@@ -509,7 +514,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 Fee          = fa12.RefundFee + fa12.RevealFee,
                 GasLimit     = fa12.RefundGasLimit,
                 StorageLimit = fa12.RefundStorageLimit,
-                Params       = RefundParams(swap),
+                Params       = CreateRefundParams(swap),
                 Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund,
 
                 UseRun              = true,
@@ -527,7 +532,7 @@ namespace Atomex.Swaps.Tezos.FA12
                     .GetPublicKey(XtzConfig, walletAddress.KeyIndex, walletAddress.KeyType);
 
                 // fill operation
-                var (fillResult, isRunSuccess) = await refundTx
+                var (fillResult, isRunSuccess, hasReveal) = await refundTx
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
                         tezosConfig: XtzConfig,
@@ -748,7 +753,7 @@ namespace Atomex.Swaps.Tezos.FA12
             return false;
         }
 
-        private decimal RequiredAmountInTokens(Swap swap, Fa12Config fa12)
+        public static decimal RequiredAmountInTokens(Swap swap, Fa12Config fa12)
         {
             var requiredAmountInTokens = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, fa12.DigitsMultiplier);
 
@@ -844,7 +849,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 Fee          = feeAmountInMtz,
                 GasLimit     = fa12.InitiateGasLimit,
                 StorageLimit = fa12.InitiateStorageLimit,
-                Params       = InitParams(swap, fa12.TokenContractAddress, amountInTokens.ToTokenDigits(fa12.DigitsMultiplier), refundTimeStampUtcInSec, (long)rewardForRedeemInTokenDigits),
+                Params       = CreateInitParams(swap, fa12.TokenContractAddress, amountInTokens.ToTokenDigits(fa12.DigitsMultiplier), refundTimeStampUtcInSec, (long)rewardForRedeemInTokenDigits),
                 Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment,
 
                 UseRun              = true,
@@ -901,7 +906,7 @@ namespace Atomex.Swaps.Tezos.FA12
                     Fee          = fa12.ApproveFee,
                     GasLimit     = fa12.ApproveGasLimit,
                     StorageLimit = fa12.ApproveStorageLimit,
-                    Params       = ApproveParams(fa12.SwapContractAddress, 0),
+                    Params       = CreateApproveParams(fa12.SwapContractAddress, 0),
                     Type         = BlockchainTransactionType.TokenApprove,
 
                     UseRun              = true,
@@ -927,7 +932,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 Fee          = fa12.ApproveFee,
                 GasLimit     = fa12.ApproveGasLimit,
                 StorageLimit = fa12.ApproveStorageLimit,
-                Params       = ApproveParams(fa12.SwapContractAddress, amountInTokens.ToTokenDigits(fa12.DigitsMultiplier)),
+                Params       = CreateApproveParams(fa12.SwapContractAddress, amountInTokens.ToTokenDigits(fa12.DigitsMultiplier)),
                 Type         = BlockchainTransactionType.TokenApprove,
 
                 UseRun              = true,
@@ -990,14 +995,14 @@ namespace Atomex.Swaps.Tezos.FA12
                 .ConfigureAwait(false);
         }
 
-        private JObject ApproveParams(
+        private JObject CreateApproveParams(
             string spender,
             decimal amount)
         {
             return JObject.Parse(@"{'entrypoint':'approve','value':{'prim':'Pair','args':[{'string':'" + spender + "'},{'int':'" + amount + "'}]}}");
         }
 
-        private JObject InitParams(
+        private JObject CreateInitParams(
             Swap swap,
             string tokenContractAddress,
             decimal tokenAmountInDigigts,
@@ -1007,12 +1012,12 @@ namespace Atomex.Swaps.Tezos.FA12
             return JObject.Parse(@"{'entrypoint':'initiate','value':{'prim':'Pair','args':[{'prim':'Pair','args':[{'prim':'Pair','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'},{'string':'" + swap.PartyAddress + "'}]},{'prim':'Pair','args':[{'int':'" + redeemFeeAmount + "'},{'int':'" + refundTimestamp + "'}]}]},{'prim':'Pair','args':[{'string':'" + tokenContractAddress + "'},{'int':'" + tokenAmountInDigigts + "'}]}]}}");
         }
 
-        private JObject RedeemParams(Swap swap)
+        private JObject CreateRedeemParams(Swap swap)
         {
             return JObject.Parse(@"{'entrypoint':'redeem','value':{'bytes':'" + swap.Secret.ToHexString() + "'}}");
         }
 
-        private JObject RefundParams(Swap swap)
+        private JObject CreateRefundParams(Swap swap)
         {
             return JObject.Parse(@"{'entrypoint':'refund','value':{'bytes':'" + swap.SecretHash.ToHexString() + "'}}");
         }
