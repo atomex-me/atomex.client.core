@@ -118,33 +118,33 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <data name="AddressNotFoundInLocalDb" xml:space="preserve">
-    <value>Address not found in local database.</value>
+    <value>Address not found in local database</value>
   </data>
   <data name="FromAddressIsNullOrEmpty" xml:space="preserve">
-    <value>'From' address must not be empty.</value>
+    <value>'From' address must not be empty</value>
   </data>
   <data name="InsufficientFunds" xml:space="preserve">
-    <value>Insufficient funds.</value>
+    <value>Insufficient funds</value>
   </data>
   <data name="InsufficientFundsDetails" xml:space="preserve">
-    <value>Insufficient funds. {0} {1} available.</value>
+    <value>Insufficient funds. {0} {1} available</value>
   </data>
   <data name="InsufficientFundsToCoverFees" xml:space="preserve">
-    <value>Insufficient funds to cover fees.</value>
+    <value>Insufficient funds to cover fees</value>
   </data>
   <data name="InsufficientFundsToCoverFeesDetails" xml:space="preserve">
-    <value>Insufficient funds to cover fees. {0} {1} required. {2} {1} available.</value>
+    <value>Insufficient funds to cover fees. {0} {1} required. {2} {1} available</value>
   </data>
   <data name="InsufficientFundsToCoverMakerNetworkFee" xml:space="preserve">
-    <value>Insufficient funds to cover maker network fees.</value>
+    <value>Insufficient funds to cover maker network fees</value>
   </data>
   <data name="InsufficientFundsToCoverMakerNetworkFeeDetails" xml:space="preserve">
-    <value>Insufficient funds to cover maker network fees. {0} {1} required. {2} {1} available.</value>
+    <value>Insufficient funds to cover maker network fees. {0} {1} required. {2} {1} available</value>
   </data>
   <data name="InsufficientFundsToSendAmountDetails" xml:space="preserve">
-    <value>Insufficient funds. {0} {1} required. {2} {1} available.</value>
+    <value>Insufficient funds. {0} {1} required. {2} {1} available</value>
   </data>
   <data name="TooLowFees" xml:space="preserve">
-    <value>Too low fees.</value>
+    <value>Too low fees</value>
   </data>
 </root>

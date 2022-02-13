@@ -61,7 +61,7 @@ namespace Atomex {
         }
         
         /// <summary>
-        ///   Ищет локализованную строку, похожую на Address not found in local database..
+        ///   Ищет локализованную строку, похожую на Address not found in local database.
         /// </summary>
         internal static string AddressNotFoundInLocalDb {
             get {
@@ -70,7 +70,7 @@ namespace Atomex {
         }
         
         /// <summary>
-        ///   Ищет локализованную строку, похожую на &apos;From&apos; address must not be empty..
+        ///   Ищет локализованную строку, похожую на &apos;From&apos; address must not be empty.
         /// </summary>
         internal static string FromAddressIsNullOrEmpty {
             get {
@@ -79,7 +79,7 @@ namespace Atomex {
         }
         
         /// <summary>
-        ///   Ищет локализованную строку, похожую на Insufficient funds..
+        ///   Ищет локализованную строку, похожую на Insufficient funds.
         /// </summary>
         internal static string InsufficientFunds {
             get {
@@ -88,7 +88,7 @@ namespace Atomex {
         }
         
         /// <summary>
-        ///   Ищет локализованную строку, похожую на Insufficient funds. {0} {1} available..
+        ///   Ищет локализованную строку, похожую на Insufficient funds. {0} {1} available.
         /// </summary>
         internal static string InsufficientFundsDetails {
             get {
@@ -97,7 +97,7 @@ namespace Atomex {
         }
         
         /// <summary>
-        ///   Ищет локализованную строку, похожую на Insufficient funds to cover fees..
+        ///   Ищет локализованную строку, похожую на Insufficient funds to cover fees.
         /// </summary>
         internal static string InsufficientFundsToCoverFees {
             get {
@@ -106,7 +106,7 @@ namespace Atomex {
         }
         
         /// <summary>
-        ///   Ищет локализованную строку, похожую на Insufficient funds to cover fees. {0} {1} required. {2} {1} available..
+        ///   Ищет локализованную строку, похожую на Insufficient funds to cover fees. {0} {1} required. {2} {1} available.
         /// </summary>
         internal static string InsufficientFundsToCoverFeesDetails {
             get {
@@ -115,7 +115,7 @@ namespace Atomex {
         }
         
         /// <summary>
-        ///   Ищет локализованную строку, похожую на Insufficient funds to cover maker network fees..
+        ///   Ищет локализованную строку, похожую на Insufficient funds to cover maker network fees.
         /// </summary>
         internal static string InsufficientFundsToCoverMakerNetworkFee {
             get {
@@ -124,7 +124,7 @@ namespace Atomex {
         }
         
         /// <summary>
-        ///   Ищет локализованную строку, похожую на Insufficient funds to cover maker network fees. {0} {1} required. {2} {1} available..
+        ///   Ищет локализованную строку, похожую на Insufficient funds to cover maker network fees. {0} {1} required. {2} {1} available.
         /// </summary>
         internal static string InsufficientFundsToCoverMakerNetworkFeeDetails {
             get {
@@ -133,7 +133,7 @@ namespace Atomex {
         }
         
         /// <summary>
-        ///   Ищет локализованную строку, похожую на Insufficient funds. {0} {1} required. {2} {1} available..
+        ///   Ищет локализованную строку, похожую на Insufficient funds. {0} {1} required. {2} {1} available.
         /// </summary>
         internal static string InsufficientFundsToSendAmountDetails {
             get {
@@ -142,7 +142,7 @@ namespace Atomex {
         }
         
         /// <summary>
-        ///   Ищет локализованную строку, похожую на Too low fees..
+        ///   Ищет локализованную строку, похожую на Too low fees.
         /// </summary>
         internal static string TooLowFees {
             get {
