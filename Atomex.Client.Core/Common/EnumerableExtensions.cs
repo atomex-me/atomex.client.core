@@ -33,7 +33,7 @@ namespace Atomex.Common
                 : default;
         }
 
-        public static IEnumerable<T> WhereNotNull<T>(this IEnumerable<T?> source) =>
+        public static IEnumerable<T> WhereNotNull<T>(this IEnumerable<T> source) =>
             source.Where(i => i != null);
     }
 }
