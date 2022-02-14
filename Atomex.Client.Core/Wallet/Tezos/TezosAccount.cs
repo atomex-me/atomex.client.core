@@ -236,10 +236,12 @@ namespace Atomex.Wallet.Tezos
 
             var requiredFeeInTez = feeInTez +
                 storageFeeInTez +
-                (reserve ? reserveFee : 0) +
+                (reserve ? reserveFee : 0);
+
+            var requiredInTez = requiredFeeInTez +
                 Config.MicroTezReserve.ToTez();
 
-            var restAmountInTez = fromAddress.AvailableBalance() - requiredFeeInTez;
+            var restAmountInTez = fromAddress.AvailableBalance() - requiredInTez;
 
             if (restAmountInTez < 0)
                 return new MaxAmountEstimation {
@@ -251,7 +253,7 @@ namespace Atomex.Wallet.Tezos
                         description: Resources.InsufficientFundsToCoverFees,
                         details: string.Format(
                             Resources.InsufficientFundsToCoverFeesDetails,
-                            requiredFeeInTez,
+                            requiredInTez,
                             Currency,
                             fromAddress.AvailableBalance()))
                 };
