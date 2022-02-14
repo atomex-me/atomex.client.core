@@ -6,7 +6,7 @@ namespace Atomex.Common
 {
     public static class AmountHelper
     {
-        public static decimal AmountToQty(
+        public static decimal AmountToSellQty(
             Side side,
             decimal amount,
             decimal price,
@@ -15,7 +15,13 @@ namespace Atomex.Common
             return RoundDown(side == Side.Buy ? amount / price : amount, digitsMultiplier);
         }
 
-        public static decimal QtyToAmount(
+        public static decimal AmountToBuyQty(
+            Side side,
+            decimal amount,
+            decimal price,
+            decimal digitsMultiplier) => AmountToSellQty(side.Opposite(), amount, price, digitsMultiplier);
+
+        public static decimal QtyToSellAmount(
             Side side,
             decimal qty,
             decimal price,
@@ -23,6 +29,12 @@ namespace Atomex.Common
         {
             return RoundDown(side == Side.Buy ? qty * price : qty, digitsMultiplier);
         }
+
+        public static decimal QtyToBuyAmount(
+            Side side,
+            decimal qty,
+            decimal price,
+            decimal digitsMultiplier) => QtyToSellAmount(side.Opposite(), qty, price, digitsMultiplier);
 
         public static decimal RoundDown(decimal d, decimal digitsMultiplier)
         {

@@ -470,6 +470,13 @@ namespace Atomex.Services
             Log.Verbose("Snapshot: {@snapshot}", args.Snapshot);
 
             MarketDataRepository.ApplySnapshot(args.Snapshot);
+
+            var symbol = SymbolsProvider
+                .GetSymbols(Account.Network)
+                .GetByName(args.Snapshot.Symbol);
+
+            if (symbol != null)
+                QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));
         }
 
         #endregion
@@ -480,6 +487,12 @@ namespace Atomex.Services
         {
             try
             {
+                if (args.Swap == null)
+                {
+                    OnError(TerminalService.Exchange, "Null swap received.");
+                    return;
+                }
+
                 var error = await SwapManager
                     .HandleSwapAsync(args.Swap, _cts.Token)
                     .ConfigureAwait(false);
@@ -611,8 +624,13 @@ namespace Atomex.Services
         {
             try
             {
-                await Account
-                    .GetCurrencyAccount<ILegacyCurrencyAccount>(tx.Currency)
+                if (Account.GetCurrencyAccount(tx.Currency) is not ITransactionalAccount account)
+                {
+                    Log.Error("Transaction for {@currency} received.", tx.Currency);
+                    return;
+                }
+
+                await account
                     .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

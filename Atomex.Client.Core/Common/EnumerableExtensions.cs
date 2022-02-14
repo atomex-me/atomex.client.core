@@ -32,5 +32,8 @@ namespace Atomex.Common
                 ? MaxBy(source, selector)
                 : default;
         }
+
+        public static IEnumerable<T> WhereNotNull<T>(this IEnumerable<T> source) =>
+            source.Where(i => i != null);
     }
 }

@@ -89,19 +89,19 @@ namespace Atomex
         {
             return configurationSection.Key switch
             {
-                "BTC"   => (CurrencyConfig) new BitcoinConfig(configurationSection),
-                "LTC"   => new LitecoinConfig(configurationSection),
-                "ETH"   => new EthereumConfig(configurationSection),
-                "XTZ"   => new TezosConfig(configurationSection),
-                "USDT"  => new Erc20Config(configurationSection),
-                "TBTC"  => new Erc20Config(configurationSection),
-                "WBTC"  => new Erc20Config(configurationSection),
+                "BTC" => (CurrencyConfig)new BitcoinConfig(configurationSection),
+                "LTC" => new LitecoinConfig(configurationSection),
+                "ETH" => new EthereumConfig(configurationSection),
+                "XTZ" => new TezosConfig(configurationSection),
+                "USDT" => new Erc20Config(configurationSection),
+                "TBTC" => new Erc20Config(configurationSection),
+                "WBTC" => new Erc20Config(configurationSection),
                 "TZBTC" => new Fa12Config(configurationSection),
-                "KUSD"  => new Fa12Config(configurationSection),
+                "KUSD" => new Fa12Config(configurationSection),
 
-                "FA12"  => new Fa12Config(configurationSection),
-                "FA2"   => new Fa2Config(configurationSection),
-                _       => null
+                "FA12" => new Fa12Config(configurationSection),
+                "FA2" => new Fa2Config(configurationSection),
+                _ => null
             };
         }
 
@@ -128,19 +128,15 @@ namespace Atomex
         public static bool IsTezosBased(string name) =>
             name == "XTZ" || IsTezosToken(name);
 
-        public static bool IsTezosToken(string name) =>
-            name == "TZBTC" ||
-            name == "KUSD" ||
-            name == "FA2" ||
-            name == "FA12";
+        public static bool IsTezosToken(string name) => XtzTokens.Contains(name);
 
         public static bool HasTokens(string name) =>
             name == "ETH" ||
             name == "XTZ";
 
-        public static bool IsEthereumToken(string name) =>
-            name == "USDT" ||
-            name == "WBTC" ||
-            name == "TBTC";
+        public static bool IsEthereumToken(string name) => EthTokens.Contains(name);
+
+        public static string[] EthTokens = { "USDT", "WBTC", "TBTC" };
+        public static string[] XtzTokens = { "TZBTC", "KUSD", "FA2", "FA12" };
     }
 }

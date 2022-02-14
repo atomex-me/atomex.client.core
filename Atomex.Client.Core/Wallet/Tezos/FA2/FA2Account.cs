@@ -114,65 +114,57 @@ namespace Atomex.Wallet.Tezos
                 UseOfflineCounter   = true
             };
 
-            try
-            {
-                await _tezosAccount.AddressLocker
-                    .LockAsync(from, cancellationToken)
-                    .ConfigureAwait(false);
+            using var addressLock = await _tezosAccount.AddressLocker
+                .GetLockAsync(from, cancellationToken)
+                .ConfigureAwait(false);
 
-                using var securePublicKey = Wallet.GetPublicKey(
-                    currency: xtzConfig,
-                    keyIndex: xtzAddress.KeyIndex,
-                    keyType: xtzAddress.KeyType);
+            using var securePublicKey = Wallet.GetPublicKey(
+                currency: xtzConfig,
+                keyIndex: fromAddress.KeyIndex,
+                keyType: fromAddress.KeyType);
 
-                // fill operation
-                var (fillResult, isRunSuccess, hasReveal) = await tx
-                    .FillOperationsAsync(
-                        securePublicKey: securePublicKey,
-                        tezosConfig: xtzConfig,
-                        headOffset: TezosConfig.HeadOffset,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
+            // fill operation
+            var (fillResult, isRunSuccess, hasReveal) = await tx
+                .FillOperationsAsync(
+                    securePublicKey: securePublicKey,
+                    tezosConfig: xtzConfig,
+                    headOffset: TezosConfig.HeadOffset,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
-                var signResult = await Wallet
-                    .SignAsync(tx, xtzAddress, xtzConfig, cancellationToken)
-                    .ConfigureAwait(false);
+            var signResult = await Wallet
+                .SignAsync(tx, xtzAddress, xtzConfig, cancellationToken)
+                .ConfigureAwait(false);
 
-                if (!signResult)
-                    return new Error(
-                        code: Errors.TransactionSigningError,
-                        description: "Transaction signing error");
+            if (!signResult)
+                return new Error(
+                    code: Errors.TransactionSigningError,
+                    description: "Transaction signing error");
 
-                var broadcastResult = await xtzConfig.BlockchainApi
-                    .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
+            var broadcastResult = await xtzConfig.BlockchainApi
+                .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
-                if (broadcastResult.HasError)
-                    return broadcastResult.Error;
+            if (broadcastResult.HasError)
+                return broadcastResult.Error;
 
-                var txId = broadcastResult.Value;
+            var txId = broadcastResult.Value;
 
-                if (txId == null)
-                    return new Error(
-                        code: Errors.TransactionBroadcastError,
-                        description: "Transaction Id is null");
+            if (txId == null)
+                return new Error(
+                    code: Errors.TransactionBroadcastError,
+                    description: "Transaction Id is null");
 
-                Log.Debug("Transaction successfully sent with txId: {@id}", txId);
+            Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
-                await _tezosAccount
-                    .UpsertTransactionAsync(
-                        tx: tx,
-                        updateBalance: false,
-                        notifyIfUnconfirmed: true,
-                        notifyIfBalanceUpdated: false,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            finally
-            {
-                _tezosAccount.AddressLocker
-                    .Unlock(from);
-            }
+            await _tezosAccount
+                .UpsertTransactionAsync(
+                    tx: tx,
+                    updateBalance: false,
+                    notifyIfUnconfirmed: true,
+                    notifyIfBalanceUpdated: false,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
             return null;
         }

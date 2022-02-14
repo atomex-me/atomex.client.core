@@ -90,7 +90,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
                     .Opposite();
 
                 var refundTimeStamp = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSec)).ToUnixTimeSeconds();
-                var requiredAmountInERC20 = AmountHelper.QtyToAmount(side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
+                var requiredAmountInERC20 = AmountHelper.QtyToSellAmount(side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
                 var requiredAmountInDecimals = erc20.TokensToTokenDigits(requiredAmountInERC20);
                 var receivedAmountInDecimals = new BigInteger(0);
                 var requiredRewardForRedeemInDecimals = swap.IsAcceptor

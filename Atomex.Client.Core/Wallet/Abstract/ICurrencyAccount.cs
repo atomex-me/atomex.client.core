@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Atomex.Blockchain;
 using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract
@@ -11,7 +10,6 @@ namespace Atomex.Wallet.Abstract
     public interface ICurrencyAccount
     {
         event EventHandler<CurrencyEventArgs> BalanceUpdated;
-        event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded;
 
         #region Balances
 

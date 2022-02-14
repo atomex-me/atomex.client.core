@@ -43,7 +43,7 @@ namespace Atomex.EthereumTokens
 
             FeeDigits                  = Digits;
             FeeCode                    = "ETH";
-            FeeFormat                  = $"F{(FeeDigits < 9 ? FeeDigits : 9)}";
+            FeeFormat                  = $"F{(int)Math.Round(BigInteger.Log10(new BigInteger(decimal.Parse(configuration["BaseCurrencyDigitsMultiplier"]))))}";
             FeeCurrencyName            = "ETH";
 
             HasFeePrice                = true;

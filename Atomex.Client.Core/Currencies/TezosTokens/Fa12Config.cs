@@ -63,7 +63,7 @@ namespace Atomex.TezosTokens
 
             FeeDigits               = Digits;
             FeeCode                 = "XTZ";
-            FeeFormat               = $"F{(FeeDigits < 9 ? FeeDigits : 9)}";
+            FeeFormat               = $"F{(int)Math.Round(BigInteger.Log10(new BigInteger(decimal.Parse(configuration["BaseCurrencyDigitsMultiplier"]))))}";
             HasFeePrice             = false;
             FeeCurrencyName         = "XTZ";
 

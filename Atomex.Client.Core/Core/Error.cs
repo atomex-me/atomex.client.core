@@ -4,6 +4,7 @@
     {
         public int Code { get; set; }
         public string Description { get; set; }
+        public string Details { get; set; }
         public string RequestId { get; set; }
         public string OrderId { get; set; }
         public long? SwapId { get; set; }
@@ -19,14 +20,8 @@
             Description = description;
         }
 
-        public Error(int code, string description, string requestId)
-            : this(code, description) => RequestId = requestId;
-
-        public Error(int code, string description, Order order)
-            : this(code, description) => OrderId = order.ClientOrderId;
-
-        public Error(int code, string description, Swap swap)
-            : this(code, description) => SwapId = swap.Id;
+        public Error(int code, string description, string details)
+            : this(code, description) => Details = details;
 
         public override string ToString()
         {
@@ -69,6 +64,8 @@
         public const int InsufficientFee = 2006;
         public const int InsufficientAmount = 2007;
         public const int InsufficientChainFunds = 2008;
+        public const int SendingAndReceivingAddressesAreSame = 2009;
+        public const int FromAddressIsNullOrEmpty = 2010;
 
         public const int SwapError = 3000;
         public const int SwapNotFound = 3001;
@@ -92,5 +89,6 @@
         public const int NullTxId = 5003;
         public const int NullOperation = 5004;
         public const int RpcResponseError = 5005;
+        public const int AddressNotFound = 5006;
     }
 }

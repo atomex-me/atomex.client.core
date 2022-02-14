@@ -5,25 +5,30 @@ using LiteDB;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Core;
+using System.Linq;
+using Atomex.Blockchain.BitcoinBased;
 
 namespace Atomex.Common.Bson
 {
     public class SwapToBsonSerializer : BsonSerializer<Swap>
     {
-        private const string StatusKey       = nameof(Swap.Status);
-        private const string StateKey        = nameof(Swap.StateFlags);
-        private const string TimeStampKey    = nameof(Swap.TimeStamp);
-        private const string SymbolKey       = nameof(Swap.Symbol);
-        private const string SideKey         = nameof(Swap.Side);
-        private const string PriceKey        = nameof(Swap.Price);
-        private const string QtyKey          = nameof(Swap.Qty);
-        private const string IsInitiativeKey = nameof(Swap.IsInitiative);
+        private const string StatusKey               = nameof(Swap.Status);
+        private const string StateKey                = nameof(Swap.StateFlags);
+        private const string TimeStampKey            = nameof(Swap.TimeStamp);
+        private const string SymbolKey               = nameof(Swap.Symbol);
+        private const string SideKey                 = nameof(Swap.Side);
+        private const string PriceKey                = nameof(Swap.Price);
+        private const string QtyKey                  = nameof(Swap.Qty);
+        private const string IsInitiativeKey         = nameof(Swap.IsInitiative);
 
-        private const string ToAddressKey       = nameof(Swap.ToAddress);
-        private const string RewardForRedeemKey = nameof(Swap.RewardForRedeem);
-        private const string PaymentTxIdKey     = nameof(Swap.PaymentTxId);
-        private const string RedeemScriptKey    = nameof(Swap.RedeemScript);
-        private const string RefundAddressKey   = nameof(Swap.RefundAddress);
+        private const string ToAddressKey            = nameof(Swap.ToAddress);
+        private const string RewardForRedeemKey      = nameof(Swap.RewardForRedeem);
+        private const string PaymentTxIdKey          = nameof(Swap.PaymentTxId);
+        private const string RedeemScriptKey         = nameof(Swap.RedeemScript);
+        private const string RefundAddressKey        = nameof(Swap.RefundAddress);
+        private const string FromAddressKey          = nameof(Swap.FromAddress);
+        private const string FromOutputsKey          = nameof(Swap.FromOutputs);
+        private const string RedeemFromAddressKey    = nameof(Swap.RedeemFromAddress);
 
         private const string PartyAddressKey         = nameof(Swap.PartyAddress);
         private const string PartyRewardForRedeemKey = nameof(Swap.PartyRewardForRedeem);
@@ -31,17 +36,17 @@ namespace Atomex.Common.Bson
         private const string PartyRedeemScriptKey    = nameof(Swap.PartyRedeemScript);
         private const string PartyRefundAddressKey   = nameof(Swap.PartyRefundAddress);
 
-        private const string OrderIdKey    = nameof(Swap.OrderId);
+        private const string OrderIdKey              = nameof(Swap.OrderId);
 
-        private const string SecretKey     = nameof(Swap.Secret);
-        private const string SecretHashKey = nameof(Swap.SecretHash);
+        private const string SecretKey               = nameof(Swap.Secret);
+        private const string SecretHashKey           = nameof(Swap.SecretHash);
 
-        private const string PaymentTxKey      = nameof(Swap.PaymentTx);
-        private const string RefundTxKey       = nameof(Swap.RefundTx);
-        private const string RedeemTxKey       = nameof(Swap.RedeemTx);
-        private const string PartyPaymentTxKey = nameof(Swap.PartyPaymentTx);
+        private const string PaymentTxKey            = nameof(Swap.PaymentTx);
+        private const string RefundTxKey             = nameof(Swap.RefundTx);
+        private const string RedeemTxKey             = nameof(Swap.RedeemTx);
+        private const string PartyPaymentTxKey       = nameof(Swap.PartyPaymentTx);
 
-        private const string MakerNetworkFeeKey = nameof(Swap.MakerNetworkFee);
+        private const string MakerNetworkFeeKey      = nameof(Swap.MakerNetworkFee);
 
         private readonly ICurrencies _currencies;
 
@@ -64,6 +69,12 @@ namespace Atomex.Common.Bson
             var soldCurrency = _currencies.GetByName(symbol.SoldCurrency(side));
             var purchasedCurrency = _currencies.GetByName(symbol.PurchasedCurrency(side));
 
+            var fromOutputs = !bson[FromOutputsKey].IsNull
+                ? bson[FromOutputsKey].AsArray
+                    .Select(v => BsonMapper.ToObject<BitcoinBasedTxOutput>((BsonDocument)v))
+                    .ToList()
+                : null;
+
             return new Swap
             {
                 Id                   = bson[IdKey].AsInt64,
@@ -82,6 +93,9 @@ namespace Atomex.Common.Bson
                 PaymentTxId          = bson[PaymentTxIdKey].AsString,
                 RedeemScript         = bson[RedeemScriptKey].AsString,
                 RefundAddress        = bson[RefundAddressKey].AsString,
+                FromAddress          = bson[FromAddressKey].AsString,
+                FromOutputs          = fromOutputs,
+                RedeemFromAddress    = bson[RedeemFromAddressKey].AsString,
 
                 PartyAddress         = bson[PartyAddressKey].AsString,
                 PartyRewardForRedeem = bson[PartyRewardForRedeemKey].AsDecimal,
@@ -89,10 +103,9 @@ namespace Atomex.Common.Bson
                 PartyRedeemScript    = bson[PartyRedeemScriptKey].AsString,
                 PartyRefundAddress   = bson[PartyRefundAddressKey].AsString,
 
-                MakerNetworkFee = !bson[MakerNetworkFeeKey].IsNull ? bson[MakerNetworkFeeKey].AsDecimal : 0m,
-
-                Secret     = bson[SecretKey].AsBinary,
-                SecretHash = bson[SecretHashKey].AsBinary,
+                MakerNetworkFee      = !bson[MakerNetworkFeeKey].IsNull ? bson[MakerNetworkFeeKey].AsDecimal : 0m,
+                Secret               = bson[SecretKey].AsBinary,
+                SecretHash           = bson[SecretHashKey].AsBinary,
 
                 PaymentTx = !bson[PaymentTxKey].IsNull
                     ? (IBlockchainTransaction)BsonMapper.ToObject(
@@ -122,6 +135,10 @@ namespace Atomex.Common.Bson
 
         public override BsonValue Serialize(Swap swap)
         {
+            var bsonFromOutputs = swap.FromOutputs != null
+                ? new BsonArray(swap.FromOutputs.Select(o => BsonMapper.ToDocument(o)))
+                : null;
+
             return new BsonDocument
             {
                 [IdKey]                   = swap.Id,
@@ -140,6 +157,9 @@ namespace Atomex.Common.Bson
                 [PaymentTxIdKey]          = swap.PaymentTxId,
                 [RedeemScriptKey]         = swap.RedeemScript,
                 [RefundAddressKey]        = swap.RefundAddress,
+                [FromAddressKey]          = swap.FromAddress,
+                [FromOutputsKey]          = bsonFromOutputs,
+                [RedeemFromAddressKey]    = swap.RedeemFromAddress,
 
                 [PartyAddressKey]         = swap.PartyAddress,
                 [PartyRewardForRedeemKey] = swap.PartyRewardForRedeem,
@@ -147,10 +167,9 @@ namespace Atomex.Common.Bson
                 [PartyRedeemScriptKey]    = swap.PartyRedeemScript,
                 [PartyRefundAddressKey]   = swap.PartyRefundAddress,
 
-                [MakerNetworkFeeKey] = swap.MakerNetworkFee,
-                
-                [SecretKey]     = swap.Secret,
-                [SecretHashKey] = swap.SecretHash,
+                [MakerNetworkFeeKey]      = swap.MakerNetworkFee,
+                [SecretKey]               = swap.Secret,
+                [SecretHashKey]           = swap.SecretHash,
 
                 [PaymentTxKey] = swap.PaymentTx != null
                     ? BsonMapper.ToDocument(swap.PaymentTx)

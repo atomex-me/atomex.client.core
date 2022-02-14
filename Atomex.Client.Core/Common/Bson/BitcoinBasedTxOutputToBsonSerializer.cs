@@ -47,15 +47,15 @@ namespace Atomex.Common.Bson
 
             return new BsonDocument
             {
-                [IdKey] = $"{output.TxId}:{output.Index}",
-                [TxIdKey] = output.TxId,
-                [IndexKey] = (int)output.Index,
-                [ValueKey] = output.Value,
+                [IdKey]         = $"{output.TxId}:{output.Index}",
+                [TxIdKey]       = output.TxId,
+                [IndexKey]      = (int)output.Index,
+                [ValueKey]      = output.Value,
                 [SpentIndexKey] = output.SpentTxPoint != null
                     ? (int)output.SpentTxPoint?.Index
                     : 0,
-                [SpentHashKey] = output.SpentTxPoint?.Hash,
-                [ScriptKey] = output.Coin.TxOut.ScriptPubKey.ToHex()
+                [SpentHashKey]  = output.SpentTxPoint?.Hash,
+                [ScriptKey]     = output.Coin.TxOut.ScriptPubKey.ToHex()
             };
         }
     }

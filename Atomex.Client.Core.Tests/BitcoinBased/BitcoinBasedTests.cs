@@ -42,8 +42,8 @@ namespace Atomex.Client.Core.Tests
             Assert.True(tx.Check());
             Assert.NotNull(tx.Outputs.FirstOrDefault(o => o.Value == amount));
             Assert.NotNull(tx.Outputs.FirstOrDefault(o => o.Value == change));
-            Assert.Equal(tx.Outputs.First(o => o.Value == amount).DestinationAddress(currency), Common.BobAddress(currency));
-            Assert.Equal(tx.Outputs.First(o => o.Value == change).DestinationAddress(currency), Common.AliceAddress(currency));
+            Assert.Equal(tx.Outputs.First(o => o.Value == amount).DestinationAddress(currency.Network), Common.BobAddress(currency));
+            Assert.Equal(tx.Outputs.First(o => o.Value == change).DestinationAddress(currency.Network), Common.AliceAddress(currency));
             Assert.Equal(initTx.TotalOut - fee, tx.TotalOut);
             Assert.Equal(fee, tx.GetFee(initTx.Outputs));
 
@@ -71,7 +71,7 @@ namespace Atomex.Client.Core.Tests
             Assert.True(tx.Check());
             Assert.NotNull(tx.Outputs.FirstOrDefault(o => o.Value == amount));
             Assert.NotNull(tx.Outputs.FirstOrDefault(o => o.Value == change));
-            Assert.Equal(tx.Outputs.First(o => o.Value == amount).DestinationAddress(currency), Common.BobSegwitAddress(currency));
+            Assert.Equal(tx.Outputs.First(o => o.Value == amount).DestinationAddress(currency.Network), Common.BobSegwitAddress(currency));
             Assert.Equal(initTx.TotalOut - fee, tx.TotalOut);
             Assert.Equal(fee, tx.GetFee(initTx.Outputs));
 

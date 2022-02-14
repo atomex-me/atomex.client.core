@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Abstract;
-using Atomex.Blockchain;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
@@ -16,7 +15,6 @@ namespace Atomex.Wallet.Tezos
     public abstract class TezosTokenAccount : ICurrencyAccount
     {
         public event EventHandler<CurrencyEventArgs> BalanceUpdated;
-        public event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded;
 
         protected readonly string _tokenContract;
         protected readonly decimal _tokenId;
@@ -32,7 +30,6 @@ namespace Atomex.Wallet.Tezos
         protected decimal UnconfirmedIncome { get; set; }
         protected decimal UnconfirmedOutcome { get; set; }
         protected TezosConfig XtzConfig => Currencies.Get<TezosConfig>(TezosConfig.Xtz);
-
 
         public TezosTokenAccount(
             string currency,

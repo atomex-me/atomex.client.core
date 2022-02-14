@@ -105,7 +105,7 @@ namespace Atomex.Blockchain.BitcoinBased
 
             foreach (var spentOutput in spentOutputs)
             {
-                var address = spentOutput.DestinationAddress(btcBasedConfig);
+                var address = spentOutput.DestinationAddress(btcBasedConfig.Network);
 
                 var walletAddress = await addressResolver
                     .GetAddressAsync(

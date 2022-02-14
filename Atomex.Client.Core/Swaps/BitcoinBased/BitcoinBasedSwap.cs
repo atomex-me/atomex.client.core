@@ -530,15 +530,8 @@ namespace Atomex.Swaps.BitcoinBased
                 currency.Name,
                 swap.Id);
 
-            var unspentAddresses = (await _account
-                .GetUnspentAddressesAsync()
-                .ConfigureAwait(false))
-                .ToList()
-                .SortList(new AvailableBalanceAscending())
-                .Select(a => a.Address);
-
             var amountInSatoshi = currency.CoinToSatoshi(
-                AmountHelper.QtyToAmount(
+                AmountHelper.QtyToSellAmount(
                     swap.Side,
                     swap.Qty,
                     swap.Price,
@@ -555,15 +548,14 @@ namespace Atomex.Swaps.BitcoinBased
 
             var tx = await _transactionFactory
                 .CreateSwapPaymentTxAsync(
-                    currency: currency,
+                    fromOutputs: swap.FromOutputs,  
                     amount: amountInSatoshi,
-                    fromWallets: unspentAddresses,
                     refundAddress: refundAddress,
                     toAddress: swap.PartyAddress,
                     lockTime: lockTime,
                     secretHash: swap.SecretHash,
                     secretSize: DefaultSecretSize,
-                    outputsSource: new LocalTxOutputSource(_account))
+                    currencyConfig: currency)
                 .ConfigureAwait(false);
 
             if (tx == null)
@@ -590,7 +582,7 @@ namespace Atomex.Swaps.BitcoinBased
             var currency = Currencies.Get<BitcoinBasedConfig>(Currency);
 
             var amountInSatoshi = currency.CoinToSatoshi(
-                AmountHelper.QtyToAmount(
+                AmountHelper.QtyToSellAmount(
                     swap.Side,
                     swap.Qty,
                     swap.Price,
@@ -598,12 +590,12 @@ namespace Atomex.Swaps.BitcoinBased
 
             var tx = await _transactionFactory
                 .CreateSwapRefundTxAsync(
-                    currency: currency,
                     paymentTx: paymentTx,
                     amount: amountInSatoshi,
                     refundAddress: refundAddress,
+                    redeemScript: redeemScript,
                     lockTime: lockTime,
-                    redeemScript: redeemScript)
+                    currency: currency)
                 .ConfigureAwait(false);
 
             if (tx == null)
@@ -630,7 +622,7 @@ namespace Atomex.Swaps.BitcoinBased
             var currency = Currencies.Get<BitcoinBasedConfig>(Currency);
 
             var amountInSatoshi = currency.CoinToSatoshi(
-                AmountHelper.QtyToAmount(
+                AmountHelper.QtyToSellAmount(
                     swap.Side.Opposite(),
                     swap.Qty,
                     swap.Price,
@@ -651,11 +643,11 @@ namespace Atomex.Swaps.BitcoinBased
 
             var tx = await _transactionFactory
                 .CreateSwapRedeemTxAsync(
-                    currency: currency,
                     paymentTx: paymentTx,
                     amount: amountInSatoshi,
                     redeemAddress: redeemAddress,
                     redeemScript: redeemScript,
+                    currency: currency,
                     sequenceNumber: sequenceNumber)
                 .ConfigureAwait(false);
 
