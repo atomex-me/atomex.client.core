@@ -23,7 +23,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
     public class Rpc
     {
-        private static readonly Dictionary<string, IOperationHandler> OpHandlers = new Dictionary<string, IOperationHandler>
+        private static readonly Dictionary<string, IOperationHandler> OpHandlers = new()
         {
             { OperationType.ActivateAccount, new ActivateAccountOperationHandler() },
             { OperationType.Transaction, new TransactionOperationHandler() },
@@ -80,7 +80,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             QueryJ($"chains/{_chain}/blocks/head/context/contracts/{address}/manager_key");
 
         public async Task<bool> AutoFillOperations(
-            Atomex.TezosConfig tezosConfig,
+            TezosConfig tezosConfig,
             JObject head,
             JArray operations,
             bool useSafeStorageLimit = false,
@@ -184,7 +184,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
         public Task<JToken> ForgeOperations(JObject blockHead, JToken operations)
         {
-            if (!(operations is JArray arrOps))
+            if (operations is not JArray arrOps)
                 arrOps = new JArray(operations);
 
             var contents = new JObject
@@ -232,7 +232,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
             if (appliedOps?.Count > 0)
             {
-                if (!(appliedOps.First["contents"] is JArray contents))
+                if (appliedOps.First["contents"] is not JArray contents)
                     return operationResults;
 
                 foreach (var content in contents)
