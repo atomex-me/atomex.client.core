@@ -237,7 +237,13 @@ namespace Atomex.Wallet.Tezos
 
             if (fromAddress == null)
                 return new MaxAmountEstimation {
-                    Error = new Error(Errors.AddressNotFound, Resources.AddressNotFoundInLocalDb)
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        description: Resources.InsufficientFunds,
+                        details: string.Format(
+                            Resources.InsufficientFundsDetails,
+                            0,                // available tokens
+                            Fa12Config.Name)) // currency code
                 };
 
             var reserveFee = ReserveFee();

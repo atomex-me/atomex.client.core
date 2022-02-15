@@ -100,7 +100,7 @@ namespace Atomex.Wallet.Tezos
                 StorageLimit  = storageLimit,
                 Type          = BlockchainTransactionType.Output,
 
-                UseRun              = useDefaultFee,
+                UseRun              = false, //useDefaultFee,
                 UseSafeStorageLimit = false,
                 UseOfflineCounter   = true
             };
