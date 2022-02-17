@@ -52,7 +52,7 @@ namespace Atomex.Wallet.BitcoinBased
             if (amountInSatoshi < config.GetDust())
                 return new Error(
                     code: Errors.InsufficientAmount,
-                    description: $"Insufficient amount to send. Min non-dust amount {config.GetDust()}, actual {amountInSatoshi}");
+                    description: $"Insufficient amount to send. Min non-dust amount {config.SatoshiToCoin(config.GetDust())}, actual {config.SatoshiToCoin(amountInSatoshi)}");
 
             from = from
                 .SelectOutputsForAmount(requiredInSatoshi)
@@ -63,7 +63,7 @@ namespace Atomex.Wallet.BitcoinBased
             if (!from.Any())
                 return new Error(
                     code: Errors.InsufficientFunds,
-                    description: $"Insufficient funds. Required {requiredInSatoshi}, available {availableInSatoshi}");
+                    description: $"Insufficient funds. Required {config.SatoshiToCoin(requiredInSatoshi)}, available {config.SatoshiToCoin(availableInSatoshi)}");
 
             var changeAddress = await GetFreeInternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -77,7 +77,7 @@ namespace Atomex.Wallet.BitcoinBased
                     case DustUsagePolicy.Warning:
                         return new Error(
                             code: Errors.InsufficientAmount,
-                            description: $"Change {changeInSatoshi} can be definded by the network as dust and the transaction will be rejected");
+                            description: $"Change {config.SatoshiToCoin(changeInSatoshi)} can be definded by the network as dust and the transaction will be rejected");
                     case DustUsagePolicy.AddToDestination:
                         amountInSatoshi += changeInSatoshi;
                         break;
@@ -281,9 +281,9 @@ namespace Atomex.Wallet.BitcoinBased
                         code: Errors.InsufficientFunds,
                         description: Resources.InsufficientFunds,
                         details: string.Format(Resources.InsufficientFundsToSendAmountDetails,
-                            estimatedFeeInSatoshi, // required
+                            Config.SatoshiToCoin(estimatedFeeInSatoshi), // required
                             Currency,              // currency code
-                            availableInSatoshi))   // available
+                            Config.SatoshiToCoin(availableInSatoshi)))   // available
                 };
 
             return new MaxAmountEstimation
