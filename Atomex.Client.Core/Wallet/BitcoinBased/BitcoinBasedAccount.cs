@@ -245,7 +245,19 @@ namespace Atomex.Wallet.BitcoinBased
                 };
             }
 
-            var inputsToSign = outputs.Select(o => new BitcoinInputToSign { Output = o });
+            if (feeRate == null)
+            {
+                feeRate = await Config
+                    .GetFeeRateAsync(cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            var inputsToSign = outputs
+                .Select(o => new BitcoinInputToSign { Output = o })
+                .Where(i => i.SizeWithSignature() * feeRate < i.Output.Value); // skip outputs that are less than the fee for adding them
+
+            availableInSatoshi = inputsToSign.Sum(i => i.Output.Value);
+
             var inputsSize = inputsToSign.Sum(i => i.SizeWithSignature());
             var witnessCount = outputs.Sum(o => o.IsSegWit ? 1 : 0);
 
@@ -257,19 +269,12 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
 
             var (size, sizeWithChange) = BitcoinTransactionParams.CalculateTxSize(
-                inputsCount: outputs.Count(),
+                inputsCount: inputsToSign.Count(),
                 inputsSize: inputsSize,
                 outputsCount: 1,
                 outputsSize: destinationSize,
                 witnessCount: witnessCount,
                 changeOutputSize: BitcoinTransactionParams.CalculateChangeOutputSize(changeAddress.Address, Config.Network));
-
-            if (feeRate == null)
-            {
-                feeRate = await Config
-                    .GetFeeRateAsync(cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-            }
 
             var estimatedFeeInSatoshi = (long)(feeRate * size);
 

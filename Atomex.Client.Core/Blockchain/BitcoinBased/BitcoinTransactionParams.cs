@@ -14,7 +14,6 @@ namespace Atomex.Blockchain.BitcoinBased
     public class BitcoinTransactionParams
     {
         public IEnumerable<BitcoinInputToSign> InputsToSign { get; set; }
-        //public IEnumerable<BitcoinDestination> Destinations { get; set; }
         public decimal Size { get; set; }
         public decimal FeeInSatoshi { get; set; }
         public decimal FeeRate { get; set; }
@@ -129,7 +128,6 @@ namespace Atomex.Blockchain.BitcoinBased
                         return Task.FromResult(new BitcoinTransactionParams
                         {
                             InputsToSign     = new BitcoinInputToSign[] { input },
-                            //Destinations     = destinations,
                             Size             = transactionSize,
                             FeeInSatoshi     = calculatedFeeInSatoshi,
                             FeeRate          = calculatedFeeInSatoshi / transactionSize,
@@ -147,6 +145,11 @@ namespace Atomex.Blockchain.BitcoinBased
                 var resultTransactionSize   = 0m;
                 var resultFeeInSatoshi      = 0m;
                 var resultChangeAddressUsed = false;
+
+                // skip inputs that are less than the fee for adding them
+                sortedInputs = sortedInputs
+                    .Where(i => i.SizeWithSignature() * feeRate < i.Output.Value)
+                    .ToList();
 
                 // try to use several inputs
                 for (var i = 0; i < sortedInputs.Count; ++i)
@@ -237,7 +240,6 @@ namespace Atomex.Blockchain.BitcoinBased
                 return Task.FromResult(new BitcoinTransactionParams
                 {
                     InputsToSign     = usedInputs.Skip(skip),
-                    //Destinations     = destinations,
                     Size             = resultTransactionSize,
                     FeeInSatoshi     = resultFeeInSatoshi,
                     FeeRate          = resultFeeInSatoshi / resultTransactionSize,
@@ -336,7 +338,6 @@ namespace Atomex.Blockchain.BitcoinBased
                         return Task.FromResult(new BitcoinTransactionParams
                         {
                             InputsToSign     = new BitcoinInputToSign[] { input },
-                            //Destinations     = destinations,
                             Size             = resultTransactionSize,
                             FeeInSatoshi     = resultFeeInSatoshi,
                             FeeRate          = resultFeeInSatoshi / resultTransactionSize,
@@ -435,7 +436,6 @@ namespace Atomex.Blockchain.BitcoinBased
                 return Task.FromResult(new BitcoinTransactionParams
                 {
                     InputsToSign     = usedInputs.Skip(skip),
-                    //Destinations     = destinations,
                     Size             = resultTransactionSize,
                     FeeInSatoshi     = resultFeeInSatoshi,
                     FeeRate          = resultFeeInSatoshi / resultTransactionSize,

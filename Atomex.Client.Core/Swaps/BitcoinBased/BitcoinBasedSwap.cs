@@ -158,7 +158,7 @@ namespace Atomex.Swaps.BitcoinBased
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            Log.Debug("Redeem for swap {@swap}.", swap.Id);
+            Log.Debug("Redeem for swap {@swap}", swap.Id);
 
             var currency = Currencies.GetByName(swap.PurchasedCurrency);
 
@@ -166,7 +166,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast))
             {
-                Log.Debug("Check redeem confirmation for swap {@swap}.", swap.Id);
+                Log.Debug("Check redeem confirmation for swap {@swap}", swap.Id);
 
                 // redeem already broadcast
                 var result = await currency
@@ -177,18 +177,18 @@ namespace Atomex.Swaps.BitcoinBased
 
                 if (result == null)
                 {
-                    Log.Error("Error while check bitcoin based redeem tx confirmation. Result is null.");
+                    Log.Error("Error while check bitcoin based redeem tx confirmation. Result is null");
                     return;
                 }
                 else if (result.HasError && result.Error.Code == (int)HttpStatusCode.NotFound)
                 {
                     // probably the transaction was deleted by miners
-                    Log.Debug("Probably the transaction {@tx} was deleted by miners.", swap.RedeemTx.Id);
+                    Log.Debug("Probably the transaction {@tx} was deleted by miners", swap.RedeemTx.Id);
                     needReplaceTx = true;
                 }
                 else if (result.HasError)
                 {
-                    Log.Error("Error while check bitcoin based redeem tx confirmation. Code: {@code}. Description: {@description}.",
+                    Log.Error("Error while check bitcoin based redeem tx confirmation. Code: {@code}. Description: {@description}",
                         result.Error.Code,
                         result.Error.Description);
 
@@ -196,7 +196,7 @@ namespace Atomex.Swaps.BitcoinBased
                 }
                 else if (result.Value.IsConfirmed) // tx already confirmed
                 {
-                    Log.Debug("Transaction {@tx} is already confirmed.", swap.RedeemTx.Id);
+                    Log.Debug("Transaction {@tx} is already confirmed", swap.RedeemTx.Id);
 
                     await RedeemConfirmedEventHandler(swap, result.Value.Transaction, cancellationToken)
                         .ConfigureAwait(false);
@@ -261,14 +261,13 @@ namespace Atomex.Swaps.BitcoinBased
 
             var partyRedeemScript = swap.PartyRefundAddress == null && swap.PartyRedeemScript != null
                 ? new Script(Convert.FromBase64String(swap.PartyRedeemScript))
-                : BitcoinBasedSwapTemplate
-                    .GenerateHtlcP2PkhSwapPayment(
-                        aliceRefundAddress: swap.PartyRefundAddress,
-                        bobAddress: swap.ToAddress,
-                        lockTimeStamp: refundTimeUtcInSec,
-                        secretHash: swap.SecretHash,
-                        secretSize: DefaultSecretSize,
-                        expectedNetwork: bitcoinBased.Network);
+                : BitcoinBasedSwapTemplate.GenerateHtlcP2PkhSwapPayment(
+                    aliceRefundAddress: swap.PartyRefundAddress,
+                    bobAddress: swap.ToAddress,
+                    lockTimeStamp: refundTimeUtcInSec,
+                    secretHash: swap.SecretHash,
+                    secretSize: DefaultSecretSize,
+                    expectedNetwork: bitcoinBased.Network);
 
             var side = swap.Symbol
                 .OrderSideForBuyCurrency(swap.PurchasedCurrency)
