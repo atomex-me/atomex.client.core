@@ -1,9 +1,8 @@
 ﻿using System;
 using System.IO;
-using System.Security;
+using System.Linq;
 using System.Text;
-using Atomex.Cryptography;
-using NBitcoin;
+using Atomex.Abstract;
 using Newtonsoft.Json;
 using Serilog;
 
@@ -12,31 +11,36 @@ namespace Atomex.Wallet
     public class UserSettings
     {
         private const int MaxFileSizeInBytes = 1 * 1024 * 1024; // 1  MB
-        private const int AesKeySize = 256;
-        private const int AesSaltSize = 16;
-        private const int AesRfc2898Iterations = 1024;
+        // private const int AesKeySize = 256;
+        // private const int AesSaltSize = 16;
+        // private const int AesRfc2898Iterations = 1024;
 
         public bool AutoSignOut { get; set; }
         public int PeriodOfInactivityInMin { get; set; }
         public uint AuthenticationKeyIndex { get; set; }
         public bool ShowActiveSwapWarning { get; set; }
         public int BalanceUpdateIntervalInSec { get; set; }
+        public string[] InitializedCurrencies { get; set; }
 
-        public static UserSettings DefaultSettings => new UserSettings
+        public static UserSettings GetDefaultSettings(ICurrencies currencies)
         {
-            AutoSignOut = true,
-            PeriodOfInactivityInMin = 5,
-            AuthenticationKeyIndex = 0,
-            ShowActiveSwapWarning = true,
-            BalanceUpdateIntervalInSec = 120
-        };
+            return new UserSettings
+            {
+                AutoSignOut = true,
+                PeriodOfInactivityInMin = 5,
+                AuthenticationKeyIndex = 0,
+                ShowActiveSwapWarning = true,
+                BalanceUpdateIntervalInSec = 120,
+                InitializedCurrencies = currencies.Select(curr => curr.Name).ToArray()
+            };
+        }
 
         public UserSettings Clone()
         {
             return (UserSettings)MemberwiseClone();
         }
 
-        public static UserSettings TryLoadFromFile(string pathToFile, SecureString password)
+        public static UserSettings TryLoadFromFile(string pathToFile)
         {
             if (!File.Exists(pathToFile))
                 return null;
@@ -46,21 +50,8 @@ namespace Atomex.Wallet
 
             try
             {
-                using (var stream = new FileStream(pathToFile, FileMode.Open))
-                {
-                    var encryptedBytes = stream.ReadBytes((int) stream.Length);
-
-                    var decryptedBytes = Aes.Decrypt(
-                        encryptedBytes: encryptedBytes,
-                        password: password,
-                        keySize: AesKeySize,
-                        saltSize: AesSaltSize,
-                        iterations: AesRfc2898Iterations);
-
-                    var json = Encoding.UTF8.GetString(decryptedBytes);
-
-                    return JsonConvert.DeserializeObject<UserSettings>(json);
-                }
+                var json = File.ReadAllText(pathToFile);
+                return JsonConvert.DeserializeObject<UserSettings>(json);
             }
             catch (Exception e)
             {
@@ -70,24 +61,12 @@ namespace Atomex.Wallet
             return null;
         }
 
-        public void SaveToFile(string pathToFile, SecureString password)
+        public void SaveToFile(string pathToFile)
         {
             try
             {
-                using (var stream = new FileStream(pathToFile, FileMode.Create))
-                {
-                    var serialized = JsonConvert.SerializeObject(this, Formatting.Indented);
-                    var serializedBytes = Encoding.UTF8.GetBytes(serialized);
-
-                    var encryptedBytes = Aes.Encrypt(
-                        plainBytes: serializedBytes,
-                        password: password,
-                        keySize: AesKeySize,
-                        saltSize: AesSaltSize,
-                        iterations: AesRfc2898Iterations);
-
-                    stream.Write(encryptedBytes, 0, encryptedBytes.Length);
-                }
+                var serialized = JsonConvert.SerializeObject(this, Formatting.Indented);
+                File.WriteAllText(pathToFile, serialized, Encoding.UTF8);
             }
             catch (Exception e)
             {

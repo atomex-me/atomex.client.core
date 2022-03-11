@@ -28,6 +28,7 @@ namespace Atomex.Wallet
         private const string DefaultDataFileName = "data.db";
         private const string DefaultAccountKey = "Account:Default";
         private const string ApiVersion = "1.5";
+        public string SettingsFilePath => $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}";
 
         public event EventHandler<CurrencyEventArgs> BalanceUpdated
         {
@@ -105,8 +106,7 @@ namespace Atomex.Wallet
             CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, DataRepository);
 
             UserSettings = UserSettings.TryLoadFromFile(
-                pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
-                password: password) ?? UserSettings.DefaultSettings;
+                pathToFile: SettingsFilePath) ?? UserSettings.GetDefaultSettings(Currencies);
 
             _clientType = clientType;
         }
@@ -125,8 +125,7 @@ namespace Atomex.Wallet
             CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, DataRepository);
 
             UserSettings = UserSettings.TryLoadFromFile(
-                pathToFile: $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}",
-                password: password) ?? UserSettings.DefaultSettings;
+                pathToFile: SettingsFilePath) ?? UserSettings.GetDefaultSettings(Currencies);
 
             _clientType = clientType;
         }
@@ -135,14 +134,12 @@ namespace Atomex.Wallet
 
         public void ChangePassword(SecureString newPassword)
         {
-            var pathToWallet = $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}";
-
             var hdWallet = Wallet as HdWallet;
 
             hdWallet.KeyStorage.Encrypt(newPassword);
             hdWallet.SaveToFile(Wallet.PathToWallet, newPassword);
 
-            UserSettings.SaveToFile(pathToWallet, newPassword);
+            UserSettings.SaveToFile(SettingsFilePath);
             DataRepository.ChangePassword(newPassword);
         }
 

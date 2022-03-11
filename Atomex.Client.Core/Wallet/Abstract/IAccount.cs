@@ -40,6 +40,11 @@ namespace Atomex.Wallet.Abstract
         /// Get user settings
         /// </summary>
         UserSettings UserSettings { get; }
+        
+        /// <summary>
+        /// Get user settings file path
+        /// </summary>
+        string SettingsFilePath { get; }
 
         #region Common
 
