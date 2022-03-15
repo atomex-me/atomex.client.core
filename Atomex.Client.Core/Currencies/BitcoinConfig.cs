@@ -2,6 +2,7 @@
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
 
@@ -11,6 +12,7 @@ using Atomex.Blockchain.BitCore;
 using Atomex.Blockchain.BlockCypher;
 using Atomex.Blockchain.Insight;
 using Atomex.Blockchain.SoChain;
+using Atomex.Common;
 using Atomex.Wallet.Bip;
 using FeeRate = Atomex.Blockchain.BitcoinBased.FeeRate;
 
@@ -31,22 +33,21 @@ namespace Atomex
 
         public void Update(IConfiguration configuration)
         {
-            Name                    = configuration["Name"];
-            Description             = configuration["Description"];
-            IsToken                 = bool.Parse(configuration["IsToken"]);
+            Name                    = configuration[nameof(Name)];
+            Description             = configuration[nameof(Description)];
+            IsToken                 = bool.Parse(configuration[nameof(IsToken)]);
  
             DigitsMultiplier        = BtcDigitsMultiplier;
             Digits                  = (int)Math.Round(Math.Log10(BtcDigitsMultiplier));
-            Format                  = $"F{Digits}";
+            Format                  = DecimalExtensions.GetFormatWithPrecision(Digits);
 
-            FeeRate                 = decimal.Parse(configuration["FeeRate"]);
-            DustFeeRate             = decimal.Parse(configuration["DustFeeRate"]);
-            MinTxFeeRate            = decimal.Parse(configuration["MinTxFeeRate"]);
-            MinRelayTxFeeRate       = decimal.Parse(configuration["MinRelayTxFeeRate"]);
+            FeeRate                 = decimal.Parse(configuration[nameof(FeeRate)]);
+            DustFeeRate             = decimal.Parse(configuration[nameof(DustFeeRate)]);
+            MinTxFeeRate            = decimal.Parse(configuration[nameof(MinTxFeeRate)]);
+            MinRelayTxFeeRate       = decimal.Parse(configuration[nameof(MinRelayTxFeeRate)]);
 
-            FeeDigits               = Digits;
             FeeCode                 = Name;
-            FeeFormat               = $"F{FeeDigits}";
+            FeeFormat               = DecimalExtensions.GetFormatWithPrecision(Digits);
             FeeCurrencyName         = Name;
 
             MaxRewardPercent        = configuration[nameof(MaxRewardPercent)] != null
@@ -62,8 +63,8 @@ namespace Atomex
 
             Network                 = ResolveNetwork(configuration);
             BlockchainApi           = ResolveBlockchainApi(configuration);
-            TxExplorerUri           = configuration["TxExplorerUri"];
-            AddressExplorerUri      = configuration["AddressExplorerUri"];
+            TxExplorerUri           = configuration[nameof(TxExplorerUri)];
+            AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
 
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Bitcoin;
@@ -89,10 +90,10 @@ namespace Atomex
 
             return blockchainApi switch
             {
-                "sochain"             => (IBlockchainApi) new SoChainApi(this, configuration),
-                "blockcypher"         => (IBlockchainApi) new BlockCypherApi(this, configuration),
-                "insight"             => (IBlockchainApi) new InsightApi(this, configuration),
-                "bitcore+blockcypher" => (IBlockchainApi) new BitCoreApi(this, configuration),
+                "sochain"             => new SoChainApi(this, configuration),
+                "blockcypher"         => new BlockCypherApi(this, configuration),
+                "insight"             => new InsightApi(this, configuration),
+                "bitcore+blockcypher" => new BitCoreApi(this, configuration),
                 _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
             };
         }

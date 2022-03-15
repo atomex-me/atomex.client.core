@@ -5,6 +5,7 @@ using System.Numerics;
 using Microsoft.Extensions.Configuration;
 
 using Atomex.Blockchain.Tezos;
+using Atomex.Common;
 using Atomex.Wallet.Bip;
 
 namespace Atomex.TezosTokens
@@ -32,24 +33,23 @@ namespace Atomex.TezosTokens
 
         public override void Update(IConfiguration configuration)
         {
-            Name                    = configuration["Name"];
-            Description             = configuration["Description"];
+            Name                    = configuration[nameof(Name)];
+            Description             = configuration[nameof(Description)];
 
-            if (!string.IsNullOrEmpty(configuration["DigitsMultiplier"]))
-                DigitsMultiplier = decimal.Parse(configuration["DigitsMultiplier"]);
+            if (!string.IsNullOrEmpty(configuration[nameof(DigitsMultiplier)]))
+                DigitsMultiplier = decimal.Parse(configuration[nameof(DigitsMultiplier)]);
 
-            DustDigitsMultiplier    = long.Parse(configuration["DustDigitsMultiplier"]);
+            DustDigitsMultiplier    = long.Parse(configuration[nameof(DustDigitsMultiplier)]);
 
             Digits = DigitsMultiplier != 0
                 ? (int)Math.Round(BigInteger.Log10(new BigInteger(DigitsMultiplier)))
                 : 0;
 
-            Format                  = $"F{Digits}";
-            IsToken                 = bool.Parse(configuration["IsToken"]);
+            Format                  = DecimalExtensions.GetFormatWithPrecision(Digits);
+            IsToken                 = bool.Parse(configuration[nameof(IsToken)]);
 
-            FeeDigits               = Digits;
             FeeCode                 = "XTZ";
-            FeeFormat               = $"F{FeeDigits}";
+            FeeFormat               = DecimalExtensions.GetFormatWithPrecision(Digits);
             HasFeePrice             = false;
             FeeCurrencyName         = "XTZ";
 
@@ -107,29 +107,29 @@ namespace Atomex.TezosTokens
 
             BaseUri                 = configuration["BlockchainApiBaseUri"];
             RpcNodeUri              = configuration["BlockchainRpcNodeUri"];
-            BbApiUri                = configuration["BbApiUri"];
+            BbApiUri                = configuration[nameof(BbApiUri)];
 
-            BcdApi                  = configuration["BcdApi"];
-            BcdNetwork              = configuration["BcdNetwork"];
-            BcdSizeLimit = !string.IsNullOrEmpty(configuration["BcdSizeLimit"])
-                ? int.Parse(configuration["BcdSizeLimit"])
+            BcdApi                  = configuration[nameof(BcdApi)];
+            BcdNetwork              = configuration[nameof(BcdNetwork)];
+            BcdSizeLimit = !string.IsNullOrEmpty(configuration[nameof(BcdSizeLimit)])
+                ? int.Parse(configuration[nameof(BcdSizeLimit)])
                 : 10;
 
-            BcdTokensSizeLimit = !string.IsNullOrEmpty(configuration["BcdTokensSizeLimit"])
-                ? int.Parse(configuration["BcdTokensSizeLimit"])
+            BcdTokensSizeLimit = !string.IsNullOrEmpty(configuration[nameof(BcdTokensSizeLimit)])
+                ? int.Parse(configuration[nameof(BcdTokensSizeLimit)])
                 : 50;
 
-            BcdMaxTokensPerUpdate = !string.IsNullOrEmpty(configuration["BcdMaxTokensPerUpdate"])
-                ? int.Parse(configuration["BcdMaxTokensPerUpdate"])
+            BcdMaxTokensPerUpdate = !string.IsNullOrEmpty(configuration[nameof(BcdMaxTokensPerUpdate)])
+                ? int.Parse(configuration[nameof(BcdMaxTokensPerUpdate)])
                 : 1000;
 
-            BcdMaxTransfersPerUpdate = !string.IsNullOrEmpty(configuration["BcdMaxTransfersPerUpdate"])
-                ? int.Parse(configuration["BcdMaxTransfersPerUpdate"])
+            BcdMaxTransfersPerUpdate = !string.IsNullOrEmpty(configuration[nameof(BcdMaxTransfersPerUpdate)])
+                ? int.Parse(configuration[nameof(BcdMaxTransfersPerUpdate)])
                 : 30;
 
             BlockchainApi           = ResolveBlockchainApi(configuration, this);
-            TxExplorerUri           = configuration["TxExplorerUri"];
-            AddressExplorerUri      = configuration["AddressExplorerUri"];
+            TxExplorerUri           = configuration[nameof(TxExplorerUri)];
+            AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
             SwapContractAddress     = configuration["SwapContract"];
             TransactionType         = typeof(TezosTransaction);
 

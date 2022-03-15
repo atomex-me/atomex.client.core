@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Numerics;
 
 namespace Atomex.Common
@@ -84,5 +85,11 @@ namespace Atomex.Common
                 return false;
             }
         }
+
+        public static string GetFormatWithPrecision(int precision) =>
+            "0." + new string('#', precision);
+
+        public static string FormatWithPrecision(this decimal d, int precision) =>
+            d.ToString(GetFormatWithPrecision(precision), CultureInfo.CurrentCulture);
     }
 }

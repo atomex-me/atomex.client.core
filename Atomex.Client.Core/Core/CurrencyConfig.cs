@@ -25,7 +25,6 @@ namespace Atomex.Core
         public string Format { get; set; }
         public bool IsToken { get; set; }
 
-        public int FeeDigits { get; set; }
         public string FeeCode { get; set; }
         public string FeeFormat { get; set; }
         public bool HasFeePrice { get; set; }

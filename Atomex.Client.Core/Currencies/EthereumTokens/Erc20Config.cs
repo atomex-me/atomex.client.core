@@ -1,13 +1,14 @@
-﻿using System.Globalization;
+﻿using System;
+using System.Globalization;
 using System.Numerics;
 using System.Threading.Tasks;
 using System.Threading;
+
 using Microsoft.Extensions.Configuration;
 
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Atomex.Wallet.Bip;
-using System;
 
 namespace Atomex.EthereumTokens
 {
@@ -33,17 +34,17 @@ namespace Atomex.EthereumTokens
 
         public override void Update(IConfiguration configuration)
         {
-            Name                       = configuration["Name"];
-            Description                = configuration["Description"];
-            DigitsMultiplier           = decimal.Parse(configuration["DigitsMultiplier"]);
-            DustDigitsMultiplier       = long.Parse(configuration["DustDigitsMultiplier"]);
+            Name                       = configuration[nameof(Name)];
+            Description                = configuration[nameof(Description)];
+            DigitsMultiplier           = decimal.Parse(configuration[nameof(DigitsMultiplier)]);
+            DustDigitsMultiplier       = long.Parse(configuration[nameof(DustDigitsMultiplier)]);
             Digits                     = (int)Math.Round(BigInteger.Log10(new BigInteger(DigitsMultiplier)));
-            Format                     = $"F{(Digits < 9 ? Digits : 9)}";
-            IsToken                    = bool.Parse(configuration["IsToken"]);
+            Format                     = DecimalExtensions.GetFormatWithPrecision(Digits < 9 ? Digits : 9);
+            IsToken                    = bool.Parse(configuration[nameof(IsToken)]);
 
-            FeeDigits                  = Digits;
+            var feeDigits = (int)Math.Round(BigInteger.Log10(new BigInteger(decimal.Parse(configuration["BaseCurrencyDigitsMultiplier"]))));
+            FeeFormat                  = DecimalExtensions.GetFormatWithPrecision(feeDigits);
             FeeCode                    = "ETH";
-            FeeFormat                  = $"F{(int)Math.Round(BigInteger.Log10(new BigInteger(decimal.Parse(configuration["BaseCurrencyDigitsMultiplier"]))))}";
             FeeCurrencyName            = "ETH";
 
             HasFeePrice                = true;
@@ -59,16 +60,16 @@ namespace Atomex.EthereumTokens
             FeeCurrencyToBaseSymbol    = configuration[nameof(FeeCurrencyToBaseSymbol)];
             FeeCurrencySymbol          = configuration[nameof(FeeCurrencySymbol)];
 
-            TransferGasLimit           = decimal.Parse(configuration["TransferGasLimit"], CultureInfo.InvariantCulture);
-            ApproveGasLimit            = decimal.Parse(configuration["ApproveGasLimit"], CultureInfo.InvariantCulture);
-            InitiateGasLimit           = decimal.Parse(configuration["InitiateGasLimit"], CultureInfo.InvariantCulture);
-            InitiateWithRewardGasLimit = decimal.Parse(configuration["InitiateWithRewardGasLimit"], CultureInfo.InvariantCulture);
-            AddGasLimit                = decimal.Parse(configuration["AddGasLimit"], CultureInfo.InvariantCulture);
-            RefundGasLimit             = decimal.Parse(configuration["RefundGasLimit"], CultureInfo.InvariantCulture);
-            RedeemGasLimit             = decimal.Parse(configuration["RedeemGasLimit"], CultureInfo.InvariantCulture);
-            EstimatedRedeemGasLimit    = decimal.Parse(configuration["EstimatedRedeemGasLimit"], CultureInfo.InvariantCulture);
-            EstimatedRedeemWithRewardGasLimit = decimal.Parse(configuration["EstimatedRedeemWithRewardGasLimit"], CultureInfo.InvariantCulture);
-            GasPriceInGwei             = decimal.Parse(configuration["GasPriceInGwei"], CultureInfo.InvariantCulture);
+            TransferGasLimit           = decimal.Parse(configuration[nameof(TransferGasLimit)], CultureInfo.InvariantCulture);
+            ApproveGasLimit            = decimal.Parse(configuration[nameof(ApproveGasLimit)], CultureInfo.InvariantCulture);
+            InitiateGasLimit           = decimal.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
+            InitiateWithRewardGasLimit = decimal.Parse(configuration[nameof(InitiateWithRewardGasLimit)], CultureInfo.InvariantCulture);
+            AddGasLimit                = decimal.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
+            RefundGasLimit             = decimal.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
+            RedeemGasLimit             = decimal.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
+            EstimatedRedeemGasLimit    = decimal.Parse(configuration[nameof(EstimatedRedeemGasLimit)], CultureInfo.InvariantCulture);
+            EstimatedRedeemWithRewardGasLimit = decimal.Parse(configuration[nameof(EstimatedRedeemWithRewardGasLimit)], CultureInfo.InvariantCulture);
+            GasPriceInGwei             = decimal.Parse(configuration[nameof(GasPriceInGwei)], CultureInfo.InvariantCulture);
 
             MaxGasPriceInGwei = configuration[nameof(MaxGasPriceInGwei)] != null
                 ? decimal.Parse(configuration[nameof(MaxGasPriceInGwei)], CultureInfo.InvariantCulture)
@@ -77,18 +78,18 @@ namespace Atomex.EthereumTokens
             Chain                      = ResolveChain(configuration);
 
             ERC20ContractAddress       = configuration["ERC20Contract"];
-            ERC20ContractBlockNumber   = ulong.Parse(configuration["ERC20ContractBlockNumber"], CultureInfo.InvariantCulture);
+            ERC20ContractBlockNumber   = ulong.Parse(configuration[nameof(ERC20ContractBlockNumber)], CultureInfo.InvariantCulture);
 
             SwapContractAddress        = configuration["SwapContract"];
-            SwapContractBlockNumber    = ulong.Parse(configuration["SwapContractBlockNumber"], CultureInfo.InvariantCulture);
+            SwapContractBlockNumber    = ulong.Parse(configuration[nameof(SwapContractBlockNumber)], CultureInfo.InvariantCulture);
 
-            BlockchainApiBaseUri       = configuration["BlockchainApiBaseUri"];
+            BlockchainApiBaseUri       = configuration[nameof(BlockchainApiBaseUri)];
             BlockchainApi              = ResolveBlockchainApi(
                 configuration: configuration,
                 currency: this);
 
-            TxExplorerUri              = configuration["TxExplorerUri"];
-            AddressExplorerUri         = configuration["AddressExplorerUri"];
+            TxExplorerUri              = configuration[nameof(TxExplorerUri)];
+            AddressExplorerUri         = configuration[nameof(AddressExplorerUri)];
             TransactionType            = typeof(EthereumTransaction);
 
             IsSwapAvailable            = true;
@@ -96,7 +97,7 @@ namespace Atomex.EthereumTokens
         }
 
         public BigInteger TokensToTokenDigits(decimal tokens) =>
-            new BigInteger(tokens * DigitsMultiplier);
+            new(tokens * DigitsMultiplier);
 
         public decimal TokenDigitsToTokens(BigInteger tokenDigits) =>
             (decimal)tokenDigits / DigitsMultiplier;

@@ -93,16 +93,15 @@ namespace Atomex
 
         public virtual void Update(IConfiguration configuration)
         {
-            Name                    = configuration["Name"];
-            Description             = configuration["Description"];
+            Name                    = configuration[nameof(Name)];
+            Description             = configuration[nameof(Description)];
             DigitsMultiplier        = XtzDigitsMultiplier;
             Digits                  = (int)Math.Round(Math.Log10(XtzDigitsMultiplier));
-            Format                  = $"F{Digits}";
-            IsToken                 = bool.Parse(configuration["IsToken"]);
+            Format                  = DecimalExtensions.GetFormatWithPrecision(Digits);
+            IsToken                 = bool.Parse(configuration[nameof(IsToken)]);
 
-            FeeDigits               = Digits;
             FeeCode                 = Name;
-            FeeFormat               = $"F{FeeDigits}";
+            FeeFormat               = DecimalExtensions.GetFormatWithPrecision(Digits);
             HasFeePrice             = false;
             FeeCurrencyName         = Name;
 
@@ -159,35 +158,35 @@ namespace Atomex
 
             BaseUri                 = configuration["BlockchainApiBaseUri"];
             RpcNodeUri              = configuration["BlockchainRpcNodeUri"];
-            BbUri                   = configuration["BbUri"];
-            BbApiUri                = configuration["BbApiUri"];
+            BbUri                   = configuration[nameof(BbUri)];
+            BbApiUri                = configuration[nameof(BbApiUri)];
 
             BlockchainApi           = ResolveBlockchainApi(configuration, this);
-            TxExplorerUri           = configuration["TxExplorerUri"];
-            AddressExplorerUri      = configuration["AddressExplorerUri"];
+            TxExplorerUri           = configuration[nameof(TxExplorerUri)];
+            AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
             SwapContractAddress     = configuration["SwapContract"];
             TransactionType         = typeof(TezosTransaction);
 
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Tezos;
 
-            BcdApi     = configuration["BcdApi"];
-            BcdNetwork = configuration["BcdNetwork"];
+            BcdApi     = configuration[nameof(BcdApi)];
+            BcdNetwork = configuration[nameof(BcdNetwork)];
 
-            BcdSizeLimit = !string.IsNullOrEmpty(configuration["BcdSizeLimit"])
-                ? int.Parse(configuration["BcdSizeLimit"])
+            BcdSizeLimit = !string.IsNullOrEmpty(configuration[nameof(BcdSizeLimit)])
+                ? int.Parse(configuration[nameof(BcdSizeLimit)])
                 : 10;
 
-            BcdTokensSizeLimit = !string.IsNullOrEmpty(configuration["BcdTokensSizeLimit"])
-                ? int.Parse(configuration["BcdTokensSizeLimit"])
+            BcdTokensSizeLimit = !string.IsNullOrEmpty(configuration[nameof(BcdTokensSizeLimit)])
+                ? int.Parse(configuration[nameof(BcdTokensSizeLimit)])
                 : 50;
 
-            BcdMaxTokensPerUpdate = !string.IsNullOrEmpty(configuration["BcdMaxTokensPerUpdate"])
-                ? int.Parse(configuration["BcdMaxTokensPerUpdate"])
+            BcdMaxTokensPerUpdate = !string.IsNullOrEmpty(configuration[nameof(BcdMaxTokensPerUpdate)])
+                ? int.Parse(configuration[nameof(BcdMaxTokensPerUpdate)])
                 : 1000;
 
-            BcdMaxTransfersPerUpdate = !string.IsNullOrEmpty(configuration["BcdMaxTransfersPerUpdate"])
-                ? int.Parse(configuration["BcdMaxTransfersPerUpdate"])
+            BcdMaxTransfersPerUpdate = !string.IsNullOrEmpty(configuration[nameof(BcdMaxTransfersPerUpdate)])
+                ? int.Parse(configuration[nameof(BcdMaxTransfersPerUpdate)])
                 : 30;
         }
 
@@ -208,7 +207,7 @@ namespace Atomex
         public override IExtKey CreateExtKey(SecureBytes seed, int keyType) =>
             keyType switch
             {
-                StandardKey      => new TezosExtKey(seed),
+                StandardKey     => new TezosExtKey(seed),
                 Bip32Ed25519Key => new Bip32TezosExtKey(seed),
                 _               => new TezosExtKey(seed)
             };
@@ -370,7 +369,7 @@ namespace Atomex
             throw new ArgumentException($"Either int or string are accepted: {michelineExpr}");
         }
 
-        public BcdApiSettings BcdApiSettings => new BcdApiSettings
+        public BcdApiSettings BcdApiSettings => new()
         {
             Uri                   = BcdApi,
             Network               = BcdNetwork,

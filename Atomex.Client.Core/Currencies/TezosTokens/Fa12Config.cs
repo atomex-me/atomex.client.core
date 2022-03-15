@@ -10,7 +10,6 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Wallet.Bip;
 
-
 namespace Atomex.TezosTokens
 {
     public class Fa12Config : TezosConfig
@@ -46,25 +45,25 @@ namespace Atomex.TezosTokens
 
         public override void Update(IConfiguration configuration)
         {
-            Name                    = configuration["Name"];
-            Description             = configuration["Description"];
+            Name                    = configuration[nameof(Name)];
+            Description             = configuration[nameof(Description)];
 
-            if (!string.IsNullOrEmpty(configuration["DigitsMultiplier"]))
-                DigitsMultiplier = decimal.Parse(configuration["DigitsMultiplier"]);
+            if (!string.IsNullOrEmpty(configuration[nameof(DigitsMultiplier)]))
+                DigitsMultiplier = decimal.Parse(configuration[nameof(DigitsMultiplier)]);
 
-            DustDigitsMultiplier    = long.Parse(configuration["DustDigitsMultiplier"]);
+            DustDigitsMultiplier    = long.Parse(configuration[nameof(DustDigitsMultiplier)]);
             
             Digits = DigitsMultiplier != 0
                 ? (int)Math.Round(BigInteger.Log10(new BigInteger(DigitsMultiplier)))
                 : 0;
 
-            Format                  = $"F{(Digits < 9 ? Digits : 9)}";
-            IsToken                 = bool.Parse(configuration["IsToken"]);
+            Format                  = DecimalExtensions.GetFormatWithPrecision(Digits < 9 ? Digits : 9);
+            IsToken                 = bool.Parse(configuration[nameof(IsToken)]);
 
-            FeeDigits               = Digits;
-            FeeCode                 = "XTZ";
-            FeeFormat               = $"F{(int)Math.Round(BigInteger.Log10(new BigInteger(decimal.Parse(configuration["BaseCurrencyDigitsMultiplier"]))))}";
+            var feeDigits           = (int)Math.Round(BigInteger.Log10(new BigInteger(decimal.Parse(configuration["BaseCurrencyDigitsMultiplier"]))));
+            FeeFormat               = DecimalExtensions.GetFormatWithPrecision(feeDigits);
             HasFeePrice             = false;
+            FeeCode                 = "XTZ";
             FeeCurrencyName         = "XTZ";
 
             MaxRewardPercent        = configuration[nameof(MaxRewardPercent)] != null
@@ -141,29 +140,29 @@ namespace Atomex.TezosTokens
 
             BaseUri                 = configuration["BlockchainApiBaseUri"];
             RpcNodeUri              = configuration["BlockchainRpcNodeUri"];
-            BbApiUri                = configuration["BbApiUri"];
-            BcdApi                  = configuration["BcdApi"];
-            BcdNetwork              = configuration["BcdNetwork"];
+            BbApiUri                = configuration[nameof(BbApiUri)];
+            BcdApi                  = configuration[nameof(BcdApi)];
+            BcdNetwork              = configuration[nameof(BcdNetwork)];
 
-            BcdSizeLimit = !string.IsNullOrEmpty(configuration["BcdSizeLimit"])
-                ? int.Parse(configuration["BcdSizeLimit"])
+            BcdSizeLimit = !string.IsNullOrEmpty(configuration[nameof(BcdSizeLimit)])
+                ? int.Parse(configuration[nameof(BcdSizeLimit)])
                 : 10;
 
-            BcdTokensSizeLimit = !string.IsNullOrEmpty(configuration["BcdTokensSizeLimit"])
-                ? int.Parse(configuration["BcdTokensSizeLimit"])
+            BcdTokensSizeLimit = !string.IsNullOrEmpty(configuration[nameof(BcdTokensSizeLimit)])
+                ? int.Parse(configuration[nameof(BcdTokensSizeLimit)])
                 : 50;
 
-            BcdMaxTokensPerUpdate = !string.IsNullOrEmpty(configuration["BcdMaxTokensPerUpdate"])
-                ? int.Parse(configuration["BcdMaxTokensPerUpdate"])
+            BcdMaxTokensPerUpdate = !string.IsNullOrEmpty(configuration[nameof(BcdMaxTokensPerUpdate)])
+                ? int.Parse(configuration[nameof(BcdMaxTokensPerUpdate)])
                 : 1000;
 
-            BcdMaxTransfersPerUpdate = !string.IsNullOrEmpty(configuration["BcdMaxTransfersPerUpdate"])
-                ? int.Parse(configuration["BcdMaxTransfersPerUpdate"])
+            BcdMaxTransfersPerUpdate = !string.IsNullOrEmpty(configuration[nameof(BcdMaxTransfersPerUpdate)])
+                ? int.Parse(configuration[nameof(BcdMaxTransfersPerUpdate)])
                 : 30;
 
             BlockchainApi           = ResolveBlockchainApi(configuration, this);
-            TxExplorerUri           = configuration["TxExplorerUri"];
-            AddressExplorerUri      = configuration["AddressExplorerUri"];
+            TxExplorerUri           = configuration[nameof(TxExplorerUri)];
+            AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
             SwapContractAddress     = configuration["SwapContract"];
             TokenContractAddress    = configuration["TokenContract"];
             ViewContractAddress     = configuration["ViewContract"];

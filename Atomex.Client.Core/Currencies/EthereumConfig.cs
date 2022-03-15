@@ -76,16 +76,15 @@ namespace Atomex
 
         public virtual void Update(IConfiguration configuration)
         {
-            Name                       = configuration["Name"];
-            Description                = configuration["Description"];
+            Name                       = configuration[nameof(Name)];
+            Description                = configuration[nameof(Description)];
             DigitsMultiplier           = EthDigitsMultiplier;
             Digits                     = (int)Math.Round(Math.Log10(EthDigitsMultiplier));
-            Format                     = $"F{Digits}";
-            IsToken                    = bool.Parse(configuration["IsToken"]);
+            Format                     = DecimalExtensions.GetFormatWithPrecision(Digits);
+            IsToken                    = bool.Parse(configuration[nameof(IsToken)]);
 
-            FeeDigits                  = Digits; // in gas
             FeeCode                    = Name;
-            FeeFormat                  = $"F{FeeDigits}";
+            FeeFormat                  = DecimalExtensions.GetFormatWithPrecision(Digits);
             FeeCurrencyName            = Name;
 
             HasFeePrice                = true;
@@ -101,15 +100,15 @@ namespace Atomex
             FeeCurrencyToBaseSymbol    = configuration[nameof(FeeCurrencyToBaseSymbol)];
             FeeCurrencySymbol          = configuration[nameof(FeeCurrencySymbol)];
 
-            GasLimit                   = decimal.Parse(configuration["GasLimit"], CultureInfo.InvariantCulture);
-            InitiateGasLimit           = decimal.Parse(configuration["InitiateGasLimit"], CultureInfo.InvariantCulture);
-            InitiateWithRewardGasLimit = decimal.Parse(configuration["InitiateWithRewardGasLimit"], CultureInfo.InvariantCulture);
-            AddGasLimit                = decimal.Parse(configuration["AddGasLimit"], CultureInfo.InvariantCulture);
-            RefundGasLimit             = decimal.Parse(configuration["RefundGasLimit"], CultureInfo.InvariantCulture);
-            RedeemGasLimit             = decimal.Parse(configuration["RedeemGasLimit"], CultureInfo.InvariantCulture);
-            EstimatedRedeemGasLimit    = decimal.Parse(configuration["EstimatedRedeemGasLimit"], CultureInfo.InvariantCulture);
-            EstimatedRedeemWithRewardGasLimit = decimal.Parse(configuration["EstimatedRedeemWithRewardGasLimit"], CultureInfo.InvariantCulture);
-            GasPriceInGwei             = decimal.Parse(configuration["GasPriceInGwei"], CultureInfo.InvariantCulture);
+            GasLimit                   = decimal.Parse(configuration[nameof(GasLimit)], CultureInfo.InvariantCulture);
+            InitiateGasLimit           = decimal.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
+            InitiateWithRewardGasLimit = decimal.Parse(configuration[nameof(InitiateWithRewardGasLimit)], CultureInfo.InvariantCulture);
+            AddGasLimit                = decimal.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
+            RefundGasLimit             = decimal.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
+            RedeemGasLimit             = decimal.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
+            EstimatedRedeemGasLimit    = decimal.Parse(configuration[nameof(EstimatedRedeemGasLimit)], CultureInfo.InvariantCulture);
+            EstimatedRedeemWithRewardGasLimit = decimal.Parse(configuration[nameof(EstimatedRedeemWithRewardGasLimit)], CultureInfo.InvariantCulture);
+            GasPriceInGwei             = decimal.Parse(configuration[nameof(GasPriceInGwei)], CultureInfo.InvariantCulture);
 
             MaxGasPriceInGwei = configuration[nameof(MaxGasPriceInGwei)] != null
                 ? decimal.Parse(configuration[nameof(MaxGasPriceInGwei)], CultureInfo.InvariantCulture)
@@ -117,15 +116,15 @@ namespace Atomex
 
             Chain                      = ResolveChain(configuration);
             SwapContractAddress        = configuration["SwapContract"];
-            SwapContractBlockNumber    = ulong.Parse(configuration["SwapContractBlockNumber"], CultureInfo.InvariantCulture);
+            SwapContractBlockNumber    = ulong.Parse(configuration[nameof(SwapContractBlockNumber)], CultureInfo.InvariantCulture);
 
-            BlockchainApiBaseUri       = configuration["BlockchainApiBaseUri"];
+            BlockchainApiBaseUri       = configuration[nameof(BlockchainApiBaseUri)];
             BlockchainApi              = ResolveBlockchainApi(
                 configuration: configuration,
                 currency: this);
 
-            TxExplorerUri              = configuration["TxExplorerUri"];
-            AddressExplorerUri         = configuration["AddressExplorerUri"];
+            TxExplorerUri              = configuration[nameof(TxExplorerUri)];
+            AddressExplorerUri         = configuration[nameof(AddressExplorerUri)];
             TransactionType            = typeof(EthereumTransaction);
 
             IsSwapAvailable            = true;
