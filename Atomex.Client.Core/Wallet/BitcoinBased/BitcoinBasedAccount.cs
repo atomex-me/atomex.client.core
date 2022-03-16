@@ -549,15 +549,6 @@ namespace Atomex.Wallet.BitcoinBased
             return ResolvePublicKey(refundAddress);
         }
 
-        public async Task<WalletAddress> GetRedeemAddressAsync(
-            CancellationToken cancellationToken = default)
-        {
-            var redeemAddress = await GetFreeExternalAddressAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            return ResolvePublicKey(redeemAddress);
-        }
-
         #endregion Addresses
 
         #region Transactions

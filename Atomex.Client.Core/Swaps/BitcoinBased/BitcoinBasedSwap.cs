@@ -16,7 +16,6 @@ using Atomex.Core;
 using Atomex.Swaps.Abstract;
 using Atomex.Swaps.BitcoinBased.Helpers;
 using Atomex.Swaps.Helpers;
-using Atomex.Wallet;
 using Atomex.Wallet.BitcoinBased;
 
 namespace Atomex.Swaps.BitcoinBased
@@ -246,10 +245,6 @@ namespace Atomex.Swaps.BitcoinBased
                 }
             }
 
-            var redeemAddress = await _account
-                .GetFreeInternalAddressAsync()
-                .ConfigureAwait(false);
-
             var lockTimeInSeconds = swap.IsInitiator
                 ? DefaultAcceptorLockTimeInSeconds
                 : DefaultInitiatorLockTimeInSeconds;
@@ -292,11 +287,16 @@ namespace Atomex.Swaps.BitcoinBased
                 return;
             }
 
+            var redeemToAddress = swap.RedeemFromAddress ?? (await _account
+                .GetFreeInternalAddressAsync()
+                .ConfigureAwait(false))
+                .Address;
+
             // create redeem tx
             swap.RedeemTx = await CreateRedeemTxAsync(
                     swap: swap,
                     paymentTx: (IBitcoinBasedTransaction)partyPaymentResult.Value,
-                    redeemAddress: redeemAddress.Address,
+                    redeemAddress: redeemToAddress,
                     redeemScript: partyRedeemScript.ToBytes(),
                     increaseSequenceNumber: needReplaceTx)
                 .ConfigureAwait(false);
