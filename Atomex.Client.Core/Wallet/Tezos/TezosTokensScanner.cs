@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Bcd;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 

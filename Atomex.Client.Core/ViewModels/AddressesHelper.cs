@@ -78,7 +78,7 @@ namespace Atomex.ViewModels
                                 HasActivity  = false,
                                 KeyIndex     = w.KeyIndex,
                                 KeyType      = w.KeyType,
-                                TokenBalance = new Blockchain.Tezos.TokenBalance
+                                TokenBalance = new Blockchain.Tezos.Bcd.TokenBalance
                                 {
                                     Contract = tokenContract,
                                     Balance  = "0",

@@ -10,7 +10,7 @@ using Serilog;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Bcd;
 using Atomex.Common;
 using Atomex.Common.Bson;
 using Atomex.Core;

@@ -10,7 +10,7 @@ using Atomex.Blockchain.Ethereum;
 using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
-using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Bcd;
 using Atomex.TezosTokens;
 
 namespace Atomex.ViewModels
