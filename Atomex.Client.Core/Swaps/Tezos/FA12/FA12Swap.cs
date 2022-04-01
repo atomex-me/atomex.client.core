@@ -86,6 +86,11 @@ namespace Atomex.Swaps.Tezos.FA12
                                 .GetAddressAsync(tx.From, cancellationToken)
                                 .ConfigureAwait(false);
 
+                            // temporary fix: check operation sequence
+                            await TezosOperationsSequencer
+                                .WaitAsync(tx.From, TezosAccount, cancellationToken)
+                                .ConfigureAwait(false);
+
                             using var securePublicKey = TezosAccount.Wallet
                                 .GetPublicKey(XtzConfig, address.KeyIndex, address.KeyType);
 
@@ -315,6 +320,11 @@ namespace Atomex.Swaps.Tezos.FA12
                     .LockAsync(redeemTx.From, cancellationToken)
                     .ConfigureAwait(false);
 
+                // temporary fix: check operation sequence
+                await TezosOperationsSequencer
+                    .WaitAsync(redeemTx.From, TezosAccount, cancellationToken)
+                    .ConfigureAwait(false);
+
                 using var securePublicKey = TezosAccount.Wallet
                     .GetPublicKey(XtzConfig, walletAddress.KeyIndex, walletAddress.KeyType);
 
@@ -429,6 +439,11 @@ namespace Atomex.Swaps.Tezos.FA12
                 .GetLockAsync(redeemTx.From, cancellationToken)
                 .ConfigureAwait(false);
 
+            // temporary fix: check operation sequence
+            await TezosOperationsSequencer
+                .WaitAsync(redeemTx.From, TezosAccount, cancellationToken)
+                .ConfigureAwait(false);
+
             using var securePublicKey = TezosAccount.Wallet
                 .GetPublicKey(XtzConfig, walletAddress.KeyIndex, walletAddress.KeyType);
 
@@ -527,6 +542,11 @@ namespace Atomex.Swaps.Tezos.FA12
             {
                 await TezosAccount.AddressLocker
                     .LockAsync(refundTx.From, cancellationToken)
+                    .ConfigureAwait(false);
+
+                // temporary fix: check operation sequence
+                await TezosOperationsSequencer
+                    .WaitAsync(refundTx.From, TezosAccount, cancellationToken)
                     .ConfigureAwait(false);
 
                 using var securePublicKey = TezosAccount.Wallet

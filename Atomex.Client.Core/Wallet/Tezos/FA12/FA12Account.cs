@@ -113,6 +113,11 @@ namespace Atomex.Wallet.Tezos
                         .LockAsync(selectedAddress.WalletAddress.Address, cancellationToken)
                         .ConfigureAwait(false);
 
+                    // temporary fix: check operation sequence
+                    await TezosOperationsSequencer
+                        .WaitAsync(selectedAddress.WalletAddress.Address, _tezosAccount, cancellationToken)
+                        .ConfigureAwait(false);
+
                     using var securePublicKey = Wallet.GetPublicKey(
                         currency: xtzConfig,
                         keyIndex: selectedAddress.WalletAddress.KeyIndex,

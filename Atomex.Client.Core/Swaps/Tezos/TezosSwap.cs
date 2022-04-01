@@ -72,6 +72,11 @@ namespace Atomex.Swaps.Tezos
                             .LockAsync(paymentTx.From, cancellationToken)
                             .ConfigureAwait(false);
 
+                        // temporary fix: check operation sequence
+                        await TezosOperationsSequencer
+                            .WaitAsync(paymentTx.From, _account, cancellationToken)
+                            .ConfigureAwait(false);
+
                         var address = await _account
                             .GetAddressAsync(paymentTx.From, cancellationToken)
                             .ConfigureAwait(false);
@@ -299,6 +304,11 @@ namespace Atomex.Swaps.Tezos
                     .LockAsync(redeemTx.From, cancellationToken)
                     .ConfigureAwait(false);
 
+                // temporary fix: check operation sequence
+                await TezosOperationsSequencer
+                    .WaitAsync(redeemTx.From, _account, cancellationToken)
+                    .ConfigureAwait(false);
+
                 using var securePublicKey = _account.Wallet
                     .GetPublicKey(xtzConfig, walletAddress.KeyIndex, walletAddress.KeyType);
 
@@ -413,6 +423,11 @@ namespace Atomex.Swaps.Tezos
                 .GetLockAsync(redeemTx.From, cancellationToken)
                 .ConfigureAwait(false);
 
+            // temporary fix: check operation sequence
+            await TezosOperationsSequencer
+                .WaitAsync(redeemTx.From, _account, cancellationToken)
+                .ConfigureAwait(false);
+
             using var securePublicKey = _account.Wallet
                 .GetPublicKey(xtzConfig, walletAddress.KeyIndex, walletAddress.KeyType);
 
@@ -511,6 +526,11 @@ namespace Atomex.Swaps.Tezos
             {
                 await _account.AddressLocker
                     .LockAsync(refundTx.From, cancellationToken)
+                    .ConfigureAwait(false);
+
+                // temporary fix: check operation sequence
+                await TezosOperationsSequencer
+                    .WaitAsync(refundTx.From, _account, cancellationToken)
                     .ConfigureAwait(false);
 
                 using var securePublicKey = _account.Wallet
