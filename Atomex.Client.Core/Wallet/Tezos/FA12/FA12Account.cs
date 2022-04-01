@@ -107,6 +107,11 @@ namespace Atomex.Wallet.Tezos
                 .GetLockAsync(addressFeeUsage.WalletAddress.Address, cancellationToken)
                 .ConfigureAwait(false);
 
+            // temporary fix: check operation sequence
+            await TezosOperationsSequencer
+                .WaitAsync(addressFeeUsage.WalletAddress.Address, _tezosAccount, cancellationToken)
+                .ConfigureAwait(false);
+
             using var securePublicKey = Wallet.GetPublicKey(
                 currency: xtzConfig,
                 keyIndex: addressFeeUsage.WalletAddress.KeyIndex,

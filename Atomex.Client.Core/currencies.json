@@ -288,7 +288,7 @@
       "RedeemGasLimit": 140000,
       "EstimatedRedeemGasLimit": 48000,
       "EstimatedRedeemWithRewardGasLimit": 66000,
-      "GasPriceInGwei": 100,
+      "GasPriceInGwei": 25,
       "Chain": "Ropsten",
       "BlockchainApi": "EtherScan",
       "BlockchainApiBaseUri": "https://api-ropsten.etherscan.io/",

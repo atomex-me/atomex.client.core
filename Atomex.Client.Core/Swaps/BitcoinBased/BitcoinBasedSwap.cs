@@ -545,6 +545,23 @@ namespace Atomex.Swaps.BitcoinBased
                     amountInSatoshi += makerNetworkFeeInSatoshi;
             }
 
+            // check from outputs
+            var availableOutputs = await _account
+                .GetAvailableOutputsAsync()
+                .ConfigureAwait(false);
+
+            var outputsAlreadySpent = swap.FromOutputs
+                .Any(o => availableOutputs.FirstOrDefault(ao => ao.TxId == o.TxId && ao.Index == o.Index) == null);
+
+            if (outputsAlreadySpent)
+            {
+                Log.Debug($"Some outputs already spent for {Currency} swap payment");
+
+                swap.FromOutputs = swap.FromOutputs
+                    .Where(o => availableOutputs.FirstOrDefault(ao => ao.TxId == o.TxId && ao.Index == o.Index) != null)
+                    .ToList();
+            }
+
             var tx = await _transactionFactory
                 .CreateSwapPaymentTxAsync(
                     fromOutputs: swap.FromOutputs,  
