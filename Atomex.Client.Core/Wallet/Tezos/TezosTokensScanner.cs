@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Tezos.Bcd;
+using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 
@@ -76,13 +77,9 @@ namespace Atomex.Wallet.Tezos
         {
             return Task.Run(async () =>
             {
-                var tezosConfig = _tezosAccount.Config;
+                var tzktApi = new TzktApi(_tezosAccount.Config);
 
-                var bcdSettings = tezosConfig.BcdApiSettings;
-
-                var bcdApi = new BcdApi(bcdSettings);
-
-                var tokenContractsResult = await bcdApi
+                var tokenContractsResult = await tzktApi
                     .GetTokenContractsAsync(address, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -99,19 +96,19 @@ namespace Atomex.Wallet.Tezos
                 // upsert contracts
                 if (tokenContractsResult.Value.Any())
                     await _tezosAccount.DataRepository
-                        .UpsertTezosTokenContractsAsync(tokenContractsResult.Value.Values)
+                        .UpsertTezosTokenContractsAsync(tokenContractsResult.Value)
                         .ConfigureAwait(false);
 
                 // contracts from local db
                 var contracts = (await _tezosAccount.DataRepository
                     .GetTezosTokenAddressesAsync(address)
                     .ConfigureAwait(false))
-                    .Select(a => a.TokenBalance.Contract)
+                    .Select(a => a.TokenBalance.Token.Contract)
                     .ToList();
 
                 // add contracts from network
                 if (tokenContractsResult.Value.Any())
-                    contracts.AddRange(tokenContractsResult.Value.Keys);
+                    contracts.AddRange(tokenContractsResult.Value.Select(x => x.Address));
 
                 contracts = contracts
                     .Distinct()
@@ -120,10 +117,7 @@ namespace Atomex.Wallet.Tezos
                 // scan by address and contract
                 foreach (var contractAddress in contracts)
                 {
-                    var contractWithMetadata = tokenContractsResult.Value.TryGetValue(contractAddress, out var contract)
-                        ? contract
-                        : null;
-
+                    var contractWithMetadata = tokenContractsResult.Value.Find(x => x.Address == contractAddress);
                     await ScanContractAsync(
                             address,
                             contractAddress,
@@ -196,11 +190,9 @@ namespace Atomex.Wallet.Tezos
             {
                 var tezosConfig = _tezosAccount.Config;
 
-                var bcdSettings = tezosConfig.BcdApiSettings;
+                var tzktApi = new TzktApi(tezosConfig);
 
-                var bcdApi = new BcdApi(bcdSettings);
-
-                var tokenContractsResult = await bcdApi
+                var tokenContractsResult = await tzktApi
                     .GetTokenContractsAsync(address, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -217,13 +209,10 @@ namespace Atomex.Wallet.Tezos
                 // upsert contracts
                 if (tokenContractsResult.Value.Any())
                     await _tezosAccount.DataRepository
-                        .UpsertTezosTokenContractsAsync(tokenContractsResult.Value.Values)
+                        .UpsertTezosTokenContractsAsync(tokenContractsResult.Value)
                         .ConfigureAwait(false);
 
-                var contractWithMetadata = tokenContractsResult.Value.TryGetValue(contractAddress, out var contract)
-                    ? contract
-                    : null;
-
+                var contractWithMetadata = tokenContractsResult.Value.Find(x => x.Address == contractAddress);
                 await ScanContractAsync(
                         address,
                         contractAddress,
@@ -237,26 +226,21 @@ namespace Atomex.Wallet.Tezos
         private Task ScanContractAsync(
             string address,
             string contractAddress,
-            TokenContractWithMetadata contract,
+            TokenContract contractWithMetadata,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
             {
                 var tezosConfig = _tezosAccount.Config;
 
-                var bcdSettings = tezosConfig.BcdApiSettings;
+                var tzktApi = new TzktApi(tezosConfig);
 
-                var bcdApi = new BcdApi(bcdSettings);
+                var contractType = contractWithMetadata?.Type ?? "FA2";
 
-                var contractType = contract
-                    ?.GetContractType() ?? "FA2";
-
-                var tokenBalancesResult = await bcdApi
+                var tokenBalancesResult = await tzktApi
                     .GetTokenBalancesAsync(
                         address: address,
                         contractAddress: contractAddress,
-                        offset: 0,
-                        count: bcdSettings.MaxTokensPerUpdate,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -277,7 +261,7 @@ namespace Atomex.Wallet.Tezos
                     .ToList();
 
                 var tokenBalanceDict = tokenBalancesResult.Value
-                    .GroupBy(tb => UniqueTokenId(contractType, tb.Contract, tb.TokenId))
+                    .GroupBy(tb => UniqueTokenId(contractType, tb.Token.Contract, tb.Token.TokenId))
                     .ToDictionary(
                         g => g.Key,
                         g => g.First());
@@ -286,8 +270,8 @@ namespace Atomex.Wallet.Tezos
                 {
                     var uniqueTokenId = UniqueTokenId(
                         localAddress.Currency,
-                        localAddress.TokenBalance.Contract,
-                        localAddress.TokenBalance.TokenId);
+                        localAddress.TokenBalance.Token.Contract,
+                        localAddress.TokenBalance.Token.TokenId);
 
                     if (tokenBalanceDict.TryGetValue(uniqueTokenId, out var tb))
                     {
@@ -330,12 +314,11 @@ namespace Atomex.Wallet.Tezos
 
                 foreach (var localAddress in localTokenAddresses)
                 {
-                    var transfersResult = await bcdApi
-                        .GetTokenTransfers(
+                    var transfersResult = await tzktApi
+                        .GetTokenTransfersAsync(
                             address: localAddress.Address,
-                            contract: localAddress.TokenBalance.Contract,
-                            tokenId: localAddress.TokenBalance.TokenId,
-                            count: bcdSettings.MaxTransfersPerUpdate,
+                            contractAddress: localAddress.TokenBalance.Token.Contract,
+                            tokenId: localAddress.TokenBalance.Token.TokenId,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -343,8 +326,8 @@ namespace Atomex.Wallet.Tezos
                     {
                         Log.Error($"Error while get transfers for " +
                             $"address: {localAddress.Address}, " +
-                            $"contract: {localAddress.TokenBalance.Contract} and " +
-                            $"token id: {localAddress.TokenBalance.TokenId}. " +
+                            $"contract: {localAddress.TokenBalance.Token.Contract} and " +
+                            $"token id: {localAddress.TokenBalance.Token.TokenId}. " +
                             $"Code: {transfersResult.Error.Code}. " +
                             $"Description: {transfersResult.Error.Description}.");
 

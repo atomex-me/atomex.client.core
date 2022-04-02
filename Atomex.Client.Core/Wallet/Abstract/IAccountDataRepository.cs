@@ -4,7 +4,7 @@ using System.Security;
 using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Tezos.Bcd;
+using Atomex.Blockchain.Tezos;
 using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract

@@ -9,6 +9,7 @@ using Newtonsoft.Json.Linq;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Core;
@@ -574,38 +575,107 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             });
         }
 
-        public Task<Result<TokenContractResponse>> GetTokenContractsAsync(
+        public async Task<Result<List<TokenContract>>> GetTokenContractsAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var offset = 0;
+            var hasPages = true;
+            var contractAddresses = new HashSet<string>();
+
+            while (hasPages)
+            {
+                var res = await HttpHelper
+                    .GetAsyncResult<List<string>>(
+                        baseUri: _baseUri,
+                        requestUri: $"tokens/balances?account={address}&select=token.contract.address",
+                        responseHandler: (response, content) => JsonConvert.DeserializeObject<List<string>>(content),
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (res.HasError)
+                    return res.Error;
+                
+                if (res.Value.Any())
+                {
+                    contractAddresses.UnionWith(res.Value);
+                    offset += res.Value.Count;
+
+                    if (res.Value.Count < PageSize)
+                        hasPages = false;
+                }
+                else {
+                    hasPages = false;
+                }
+            }
+
+            var contracts = new List<TokenContract>();
+
+            foreach (var contractAddress in contractAddresses)
+            {
+                var tokenContract = await HttpHelper
+                    .GetAsyncResult<TokenContractResponse>(
+                        baseUri: _baseUri,
+                        requestUri: $"contracts/{contractAddress}",
+                        responseHandler: (response, content) => JsonConvert.DeserializeObject<TokenContractResponse>(content),
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (tokenContract.HasError)
+                    return tokenContract.Error;
+
+                contracts.Add(tokenContract.Value.ToTokenContract());
+            }
+
+            return contracts;
         }
 
         public async Task<Result<List<TokenBalance>>> GetTokenBalancesAsync(
             string address,
             string contractAddress = null,
-            int offset = 0,
-            int count = 20,
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var offset = 0;
+            var hasPages = true;
+            var tokenBalances = new List<TokenBalance>();
+
+            while (hasPages)
+            {
+                var requestUri = $"tokens/balances?" +
+                    $"account={address}" +
+                    $"&offset={offset}" +
+                    (contractAddress != null ? $"&token.contract={contractAddress}" : "");
+
+                var res = await HttpHelper
+                    .GetAsyncResult<List<TokenBalanceResponse>>(
+                        baseUri: _baseUri,
+                        requestUri: requestUri,
+                        responseHandler: (response, content) => JsonConvert.DeserializeObject<List<TokenBalanceResponse>>(content),
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (res.HasError)
+                    return res.Error;
+                
+                if (res.Value.Any())
+                {
+                    tokenBalances.AddRange(res.Value.Select(x => x.ToTokenBalance()));
+                    offset += res.Value.Count;
+
+                    if (res.Value.Count < PageSize)
+                        hasPages = false;
+                }
+                else {
+                    hasPages = false;
+                }
+            }
+
+            return tokenBalances;
         }
 
-        public Task<Result<List<TokenTransfer>>> GetTokenTransfers(
+        public async Task<Result<List<TokenTransfer>>> GetTokenTransfersAsync(
             string address,
-            string contract,
-            decimal? tokenId = null,
-            int start = 0,
-            int end = int.MaxValue,
-            int count = 20,
-            CancellationToken cancellationToken = default)
-        {
-            throw new NotImplementedException();
-        }
-
-        public async Task<Result<List<TokenTransfer>>> GetTokenTransfers(
-            string address,
-            IEnumerable<string> contracts,
+            string contractAddress = null,
             decimal? tokenId = null,
             int count = 20,
             CancellationToken cancellationToken = default)
@@ -622,14 +692,14 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     $"anyof.from.to={address}" +
                     $"&offset={offset}" +
                     $"&limit={limit}" +
-                    (contracts.Count() > 0 ? $"&token.contract.in={string.Join(",", contracts)}" : "") +
+                    (contractAddress != null ? $"&token.contract={contractAddress}" : "") +
                     (tokenId != null ? $"&token.tokenId={tokenId}" : "");
 
                 var res = await HttpHelper
-                    .GetAsyncResult<List<TokenTransfer>>(
+                    .GetAsyncResult<List<TokenTransferResponse>>(
                         baseUri: _baseUri,
                         requestUri: requestUri,
-                        responseHandler: (response, content) => JsonConvert.DeserializeObject<List<TokenTransfer>>(content),
+                        responseHandler: (response, content) => JsonConvert.DeserializeObject<List<TokenTransferResponse>>(content),
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -638,8 +708,11 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 
                 if (res.Value.Any())
                 {
-                    transfers.AddRange(res.Value);
+                    transfers.AddRange(res.Value.Select(x => x.ToTokenTransfer()));
                     offset += res.Value.Count;
+
+                    if (res.Value.Count < limit)
+                        hasPages = false;
                 }
                 else {
                     hasPages = false;

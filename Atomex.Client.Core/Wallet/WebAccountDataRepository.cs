@@ -6,7 +6,7 @@ using System.Security;
 
 using Serilog;
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Tezos.Bcd;
+using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
@@ -380,7 +380,7 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var addresses = _tezosTokensAddresses.Values
-                    .Where(w => w.Address == address && w.TokenBalance.Contract == tokenContract)
+                    .Where(w => w.Address == address && w.TokenBalance.Token.Contract == tokenContract)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
@@ -393,7 +393,7 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var addresses = _tezosTokensAddresses.Values
-                    .Where(w => w.TokenBalance.Contract == tokenContract)
+                    .Where(w => w.TokenBalance.Token.Contract == tokenContract)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
@@ -407,7 +407,7 @@ namespace Atomex.Wallet
             {
                 foreach (var wa in walletAddresses)
                 {
-                    var walletId = $"{wa.Currency}:{wa.TokenBalance.Contract}:{wa.TokenBalance.TokenId}:{wa.Address}";
+                    var walletId = $"{wa.Currency}:{wa.TokenBalance.Token.Contract}:{wa.TokenBalance.Token.TokenId}:{wa.Address}";
 
                     _tezosTokensAddresses[walletId] = wa.Copy();
 
@@ -429,8 +429,8 @@ namespace Atomex.Wallet
                 var addresses = _tezosTokensAddresses.Values
                     .Where(w =>
                         //w.Currency == currency && 
-                        w.TokenBalance.Contract == tokenContract &&
-                        w.TokenBalance.TokenId == tokenId &&
+                        w.TokenBalance.Token.Contract == tokenContract &&
+                        w.TokenBalance.Token.TokenId == tokenId &&
                         (w.Balance != 0 ||
                          w.UnconfirmedIncome != 0 ||
                          w.UnconfirmedOutcome != 0));
@@ -444,7 +444,7 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var walletId =
-                    $"{address.Currency}:{address.TokenBalance.Contract}:{address.TokenBalance.TokenId}:{address.Address}";
+                    $"{address.Currency}:{address.TokenBalance.Token.Contract}:{address.TokenBalance.Token.TokenId}:{address.Address}";
 
                 if (_tezosTokensAddresses.ContainsKey(walletId))
                     return Task.FromResult(false);
@@ -483,7 +483,7 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var txs = _tezosTokensTransfers.Values
-                    .Where(t => t.Contract == contractAddress)
+                    .Where(t => t.Token.Contract == contractAddress)
                     .ToList()
                     .SortList((t1, t2) => t1.TimeStamp.CompareTo(t2.TimeStamp))
                     .Skip(offset)

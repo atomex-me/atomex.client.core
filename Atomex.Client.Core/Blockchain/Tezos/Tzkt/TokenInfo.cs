@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using Newtonsoft.Json;
+
 using Atomex.Common;
 
 namespace Atomex.Blockchain.Tezos.Tzkt
@@ -35,5 +37,36 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// </summary>
         [JsonPropertyName("metadata")]
         public RawJson Metadata { get; set; }
+
+        public Token ToToken()
+        {
+            var token = new Token()
+            {
+                Contract = Contract.Address,
+                TokenId = decimal.Parse(TokenId),
+            };
+
+            if (Metadata != null) 
+            {
+                try
+                {
+                    var metadata = JsonConvert.DeserializeObject<Tzip21>(Metadata);
+                    token.Name = metadata.Name;
+                    token.Symbol = metadata.Symbol;
+                    token.Decimals = metadata.Decimals;
+                    token.Description = metadata.Description;
+                    token.ArtifactUri = metadata.ArtifactUri;
+                    token.DisplayUri = metadata.DisplayUri;
+                    token.ThumbnailUri = metadata.ThumbnailUri;
+                    token.Creators = metadata.Creators;
+                }
+                catch
+                {
+                    // Invalid metadata JSON            
+                }
+            }
+
+            return token;
+        }
     }
 }

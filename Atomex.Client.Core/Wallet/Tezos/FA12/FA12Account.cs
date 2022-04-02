@@ -75,7 +75,7 @@ namespace Atomex.Wallet.Tezos
 
             var digitsMultiplier = fa12Config.DigitsMultiplier != 0
                 ? fa12Config.DigitsMultiplier
-                : (decimal)Math.Pow(10, addressFeeUsage.WalletAddress.TokenBalance.Decimals);
+                : (decimal)Math.Pow(10, addressFeeUsage.WalletAddress.TokenBalance.Token.Decimals);
 
             var addressAmountInDigits = addressFeeUsage.UsedAmount.ToTokenDigits(digitsMultiplier);
 

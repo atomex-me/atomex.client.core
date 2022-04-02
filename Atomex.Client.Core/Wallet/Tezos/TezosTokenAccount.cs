@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Abstract;
-using Atomex.Blockchain.Tezos.Bcd;
+using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
@@ -172,8 +172,11 @@ namespace Atomex.Wallet.Tezos
 
             walletAddress.TokenBalance = new TokenBalance
             {
-                Contract = _tokenContract,
-                TokenId  = _tokenId
+                Token = new Token()
+                {
+                    Contract = _tokenContract,
+                    TokenId  = _tokenId,
+                }
             };
 
             await DataRepository

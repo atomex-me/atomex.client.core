@@ -56,7 +56,7 @@ namespace Atomex.Wallet.Tezos
                 .GetTezosTokenAddressAsync(TokenType, _tokenContract, _tokenId, from)
                 .ConfigureAwait(false);
 
-            var digitsMultiplier = (decimal)Math.Pow(10, fromAddress.TokenBalance.Decimals);
+            var digitsMultiplier = (decimal)Math.Pow(10, fromAddress.TokenBalance.Token.Decimals);
 
             var availableBalance = fromAddress.AvailableBalance() * digitsMultiplier;
 

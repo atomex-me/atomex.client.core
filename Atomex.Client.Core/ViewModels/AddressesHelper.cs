@@ -78,12 +78,15 @@ namespace Atomex.ViewModels
                                 HasActivity  = false,
                                 KeyIndex     = w.KeyIndex,
                                 KeyType      = w.KeyType,
-                                TokenBalance = new Blockchain.Tezos.Bcd.TokenBalance
+                                TokenBalance = new Blockchain.Tezos.TokenBalance
                                 {
-                                    Contract = tokenContract,
                                     Balance  = "0",
-                                    Symbol   = fa12Config?.Name ?? "TOKENS",
-                                    Decimals = 0
+                                    Token = new Blockchain.Tezos.Token()
+                                    {
+                                        Contract = tokenContract,
+                                        Symbol   = fa12Config?.Name ?? "TOKENS",
+                                        Decimals = 0,
+                                    }
                                 }
                             };
                         }
@@ -94,12 +97,13 @@ namespace Atomex.ViewModels
                         }
 
                         var tezosBalance = tezosAddress?.AvailableBalance() ?? 0;
+                        var token = tokenAddress?.TokenBalance?.Token;
 
                         var tokenBalance     = tokenAddress?.Balance ?? 0;
                         var showTokenBalance = tokenBalance != 0;
-                        var tokenCode        = tokenAddress?.TokenBalance?.Symbol ?? fa12Config?.Name ?? "TOKENS";
-                        var tokenFormat      = $"F{Math.Min(tokenAddress?.TokenBalance?.Decimals ?? MaxTokenCurrencyFormatDecimals, MaxTokenCurrencyFormatDecimals)}";
-                        var tokenId          = tokenAddress?.TokenBalance?.TokenId ?? 0;
+                        var tokenCode        = token?.Symbol ?? fa12Config?.Name ?? "TOKENS";
+                        var tokenFormat      = $"F{Math.Min(token?.Decimals ?? MaxTokenCurrencyFormatDecimals, MaxTokenCurrencyFormatDecimals)}";
+                        var tokenId          = token?.TokenId ?? 0;
 
                         var isFreeAddress = w.Address == freeTezosAddress.Address;
 

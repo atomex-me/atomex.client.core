@@ -10,7 +10,7 @@ using Serilog;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Tezos.Bcd;
+using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Common.Bson;
 using Atomex.Core;
@@ -38,9 +38,9 @@ namespace Atomex.LiteDb
         private const string ChainKey              = nameof(KeyIndex) + "." + nameof(KeyIndex.Chain);
         private const string IndexKey              = nameof(KeyIndex) + "." + nameof(KeyIndex.Index);
         private const string HasActivityKey        = nameof(WalletAddress.HasActivity);
-        private const string TokenContractKey      = nameof(TokenBalance) + "." + nameof(TokenBalance.Contract);
-        private const string TokenIdKey            = nameof(TokenBalance) + "." + nameof(TokenBalance.TokenId);
-        private const string TransferContract      = nameof(TokenTransfer.Contract);
+        private const string TokenContractKey      = nameof(TokenBalance) + "." + nameof(TokenBalance.Token.Contract);
+        private const string TokenIdKey            = nameof(TokenBalance) + "." + nameof(TokenBalance.Token.TokenId);
+        private const string TransferContract      = nameof(TokenTransfer.Token.Contract);
         private const string KeyTypeKey            = nameof(WalletAddress.KeyType);
 
         private readonly string _pathToDb;

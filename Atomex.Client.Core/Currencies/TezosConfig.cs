@@ -369,15 +369,5 @@ namespace Atomex
 
             throw new ArgumentException($"Either int or string are accepted: {michelineExpr}");
         }
-
-        public BcdApiSettings BcdApiSettings => new()
-        {
-            Uri                   = BcdApi,
-            Network               = BcdNetwork,
-            MaxSize               = BcdSizeLimit,
-            MaxTokensSize         = BcdTokensSizeLimit,
-            MaxTokensPerUpdate    = BcdMaxTokensPerUpdate,
-            MaxTransfersPerUpdate = BcdMaxTransfersPerUpdate
-        };
     }
 }

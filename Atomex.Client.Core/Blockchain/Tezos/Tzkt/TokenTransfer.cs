@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Atomex.Blockchain.Tezos.Tzkt
 {
-    public class TokenTransfer
+    public class TokenTransferResponse
     {
         /// <summary>
         /// Internal TzKT id.  
@@ -70,5 +70,21 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// </summary>
         [JsonPropertyName("migrationId")]
         public int? MigrationId { get; set; }
+
+        public TokenTransfer ToTokenTransfer()
+        {
+            var token = Token.ToToken();
+            return new TokenTransfer()
+            {
+                Id = Id.ToString(),
+                Currency = token.Symbol,
+                TimeStamp = Timestamp,
+                Level = Level,
+                From = From.Address,
+                To = To.Address,
+                Amount = Amount,
+                Token = token,
+            };
+        }
     }
 }
