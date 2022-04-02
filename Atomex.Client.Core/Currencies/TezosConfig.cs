@@ -82,6 +82,10 @@ namespace Atomex
         public int BcdMaxTokensPerUpdate { get; protected set; }
         public int BcdMaxTransfersPerUpdate { get; protected set; }
 
+        public string ThumbsApiUri { get; protected set; }
+        public string IpfsGatewayUri { get; protected set; }
+        public string CatavaApiUri { get; protected set; }
+
         public TezosConfig()
         {
         }
@@ -188,6 +192,10 @@ namespace Atomex
             BcdMaxTransfersPerUpdate = !string.IsNullOrEmpty(configuration[nameof(BcdMaxTransfersPerUpdate)])
                 ? int.Parse(configuration[nameof(BcdMaxTransfersPerUpdate)])
                 : 30;
+
+            ThumbsApiUri            = configuration[nameof(ThumbsApiUri)];
+            CatavaApiUri            = configuration[nameof(CatavaApiUri)];
+            IpfsGatewayUri          = configuration[nameof(IpfsGatewayUri)];
         }
 
         protected static IBlockchainApi ResolveBlockchainApi(
@@ -377,6 +385,13 @@ namespace Atomex
             MaxTokensSize         = BcdTokensSizeLimit,
             MaxTokensPerUpdate    = BcdMaxTokensPerUpdate,
             MaxTransfersPerUpdate = BcdMaxTransfersPerUpdate
+        };
+
+        public ThumbsApiSettings ThumbsApiSettings => new()
+        {
+            ThumbsApiUri   = ThumbsApiUri,
+            CatavaApiUri   = CatavaApiUri,
+            IpfsGatewayUri = IpfsGatewayUri
         };
     }
 }
