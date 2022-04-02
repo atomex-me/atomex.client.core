@@ -1,8 +1,6 @@
 using System.Text.Json.Serialization;
 using Newtonsoft.Json;
 
-using Atomex.Common;
-
 namespace Atomex.Blockchain.Tezos.Tzkt
 {
     public class TokenInfo
@@ -36,7 +34,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// **[sortable]**
         /// </summary>
         [JsonPropertyName("metadata")]
-        public RawJson Metadata { get; set; }
+        public string Metadata { get; set; }
 
         public Token ToToken()
         {
