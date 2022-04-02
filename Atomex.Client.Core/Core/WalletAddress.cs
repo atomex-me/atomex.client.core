@@ -11,7 +11,7 @@ namespace Atomex.Core
 
         public string UniqueId => Currency != "FA12" && Currency != "FA2"
             ? $"{Address}:{Currency}"
-            : $"{Address}:{Currency}:{TokenBalance.Token.Contract}:{TokenBalance.Token.TokenId}";
+            : $"{Address}:{Currency}:{TokenBalance.Contract}:{TokenBalance.TokenId}";
 
         public long Id { get; set; }
         public string Currency { get; set; }

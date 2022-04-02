@@ -54,15 +54,13 @@ namespace Atomex.Blockchain.Tezos
         public bool HasDescription =>
             !string.IsNullOrEmpty(Description);
     }
-    public class TokenBalance
+    public class TokenBalance : Token
     {
-        [JsonPropertyName("token")]
-        public Token Token { get; set; }
         [JsonPropertyName("balance")]
         public string Balance { get; set; } = "0";
 
         public decimal GetTokenBalance() =>
-            Balance.TryParseWithRound(Token.Decimals, out var result)
+            Balance.TryParseWithRound(Decimals, out var result)
                 ? result
                 : 0;
     }

@@ -103,7 +103,7 @@ namespace Atomex.Wallet.Tezos
                 var contracts = (await _tezosAccount.DataRepository
                     .GetTezosTokenAddressesAsync(address)
                     .ConfigureAwait(false))
-                    .Select(a => a.TokenBalance.Token.Contract)
+                    .Select(a => a.TokenBalance.Contract)
                     .ToList();
 
                 // add contracts from network
@@ -261,7 +261,7 @@ namespace Atomex.Wallet.Tezos
                     .ToList();
 
                 var tokenBalanceDict = tokenBalancesResult.Value
-                    .GroupBy(tb => UniqueTokenId(contractType, tb.Token.Contract, tb.Token.TokenId))
+                    .GroupBy(tb => UniqueTokenId(contractType, tb.Contract, tb.TokenId))
                     .ToDictionary(
                         g => g.Key,
                         g => g.First());
@@ -270,8 +270,8 @@ namespace Atomex.Wallet.Tezos
                 {
                     var uniqueTokenId = UniqueTokenId(
                         localAddress.Currency,
-                        localAddress.TokenBalance.Token.Contract,
-                        localAddress.TokenBalance.Token.TokenId);
+                        localAddress.TokenBalance.Contract,
+                        localAddress.TokenBalance.TokenId);
 
                     if (tokenBalanceDict.TryGetValue(uniqueTokenId, out var tb))
                     {
@@ -317,8 +317,8 @@ namespace Atomex.Wallet.Tezos
                     var transfersResult = await tzktApi
                         .GetTokenTransfersAsync(
                             address: localAddress.Address,
-                            contractAddress: localAddress.TokenBalance.Token.Contract,
-                            tokenId: localAddress.TokenBalance.Token.TokenId,
+                            contractAddress: localAddress.TokenBalance.Contract,
+                            tokenId: localAddress.TokenBalance.TokenId,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -326,8 +326,8 @@ namespace Atomex.Wallet.Tezos
                     {
                         Log.Error($"Error while get transfers for " +
                             $"address: {localAddress.Address}, " +
-                            $"contract: {localAddress.TokenBalance.Token.Contract} and " +
-                            $"token id: {localAddress.TokenBalance.Token.TokenId}. " +
+                            $"contract: {localAddress.TokenBalance.Contract} and " +
+                            $"token id: {localAddress.TokenBalance.TokenId}. " +
                             $"Code: {transfersResult.Error.Code}. " +
                             $"Description: {transfersResult.Error.Description}.");
 

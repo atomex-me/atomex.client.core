@@ -380,7 +380,7 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var addresses = _tezosTokensAddresses.Values
-                    .Where(w => w.Address == address && w.TokenBalance.Token.Contract == tokenContract)
+                    .Where(w => w.Address == address && w.TokenBalance.Contract == tokenContract)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
@@ -393,7 +393,7 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var addresses = _tezosTokensAddresses.Values
-                    .Where(w => w.TokenBalance.Token.Contract == tokenContract)
+                    .Where(w => w.TokenBalance.Contract == tokenContract)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
@@ -407,7 +407,7 @@ namespace Atomex.Wallet
             {
                 foreach (var wa in walletAddresses)
                 {
-                    var walletId = $"{wa.Currency}:{wa.TokenBalance.Token.Contract}:{wa.TokenBalance.Token.TokenId}:{wa.Address}";
+                    var walletId = $"{wa.Currency}:{wa.TokenBalance.Contract}:{wa.TokenBalance.TokenId}:{wa.Address}";
 
                     _tezosTokensAddresses[walletId] = wa.Copy();
 
@@ -429,8 +429,8 @@ namespace Atomex.Wallet
                 var addresses = _tezosTokensAddresses.Values
                     .Where(w =>
                         //w.Currency == currency && 
-                        w.TokenBalance.Token.Contract == tokenContract &&
-                        w.TokenBalance.Token.TokenId == tokenId &&
+                        w.TokenBalance.Contract == tokenContract &&
+                        w.TokenBalance.TokenId == tokenId &&
                         (w.Balance != 0 ||
                          w.UnconfirmedIncome != 0 ||
                          w.UnconfirmedOutcome != 0));
@@ -444,7 +444,7 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var walletId =
-                    $"{address.Currency}:{address.TokenBalance.Token.Contract}:{address.TokenBalance.Token.TokenId}:{address.Address}";
+                    $"{address.Currency}:{address.TokenBalance.Contract}:{address.TokenBalance.TokenId}:{address.Address}";
 
                 if (_tezosTokensAddresses.ContainsKey(walletId))
                     return Task.FromResult(false);

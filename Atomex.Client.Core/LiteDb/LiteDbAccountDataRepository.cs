@@ -38,8 +38,8 @@ namespace Atomex.LiteDb
         private const string ChainKey              = nameof(KeyIndex) + "." + nameof(KeyIndex.Chain);
         private const string IndexKey              = nameof(KeyIndex) + "." + nameof(KeyIndex.Index);
         private const string HasActivityKey        = nameof(WalletAddress.HasActivity);
-        private const string TokenContractKey      = nameof(TokenBalance) + "." + nameof(TokenBalance.Token.Contract);
-        private const string TokenIdKey            = nameof(TokenBalance) + "." + nameof(TokenBalance.Token.TokenId);
+        private const string TokenContractKey      = nameof(TokenBalance) + "." + nameof(TokenBalance.Contract);
+        private const string TokenIdKey            = nameof(TokenBalance) + "." + nameof(TokenBalance.TokenId);
         private const string TransferContract      = nameof(TokenTransfer.Token.Contract);
         private const string KeyTypeKey            = nameof(WalletAddress.KeyType);
 
