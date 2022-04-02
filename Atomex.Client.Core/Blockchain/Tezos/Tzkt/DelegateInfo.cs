@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 
 namespace Atomex.Blockchain.Tezos.Tzkt
 {
@@ -11,16 +7,19 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// <summary>
         /// Name of the baking service
         /// </summary>
+        [JsonPropertyName("alias")]
         public string Alias { get; set; }
 
         /// <summary>
         /// Public key hash of the delegate (baker)
         /// </summary>
+        [JsonPropertyName("address")]
         public string Address { get; set; }
 
         /// <summary>
         /// Delegation status (`true` - active, `false` - deactivated)
         /// </summary>
+        [JsonPropertyName("active")]
         public bool Active { get; set; }
     }
 }
