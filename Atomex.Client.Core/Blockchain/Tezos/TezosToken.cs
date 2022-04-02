@@ -81,6 +81,7 @@ namespace Atomex.Blockchain.Tezos
         public BlockchainTransactionType Type { get; set; }
         public DateTime? CreationTime => TimeStamp.UtcDateTime;
         public bool IsConfirmed => true;
+        public string Contract => Token.Contract;
 
         [JsonPropertyName("timestamp")]
         public DateTimeOffset TimeStamp { get; set; }
@@ -111,5 +112,7 @@ namespace Atomex.Blockchain.Tezos
         public string Name { get; set; }
         [JsonPropertyName("type")]
         public string Type { get; set; }
+
+        public string GetContractType() => Type;
     }
 }

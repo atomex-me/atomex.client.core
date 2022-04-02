@@ -80,10 +80,10 @@ namespace Atomex.ViewModels
                                 KeyType      = w.KeyType,
                                 TokenBalance = new Blockchain.Tezos.TokenBalance
                                 {
-                                    Balance  = "0",
                                     Contract = tokenContract,
+                                    Balance  = "0",
                                     Symbol   = fa12Config?.Name ?? "TOKENS",
-                                    Decimals = 0,
+                                    Decimals = 0
                                 }
                             };
                         }

@@ -40,7 +40,7 @@ namespace Atomex.LiteDb
         private const string HasActivityKey        = nameof(WalletAddress.HasActivity);
         private const string TokenContractKey      = nameof(TokenBalance) + "." + nameof(TokenBalance.Contract);
         private const string TokenIdKey            = nameof(TokenBalance) + "." + nameof(TokenBalance.TokenId);
-        private const string TransferContract      = nameof(TokenTransfer.Token.Contract);
+        private const string TransferContract      = nameof(TokenTransfer.Contract);
         private const string KeyTypeKey            = nameof(WalletAddress.KeyType);
 
         private readonly string _pathToDb;

@@ -483,7 +483,7 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var txs = _tezosTokensTransfers.Values
-                    .Where(t => t.Token.Contract == contractAddress)
+                    .Where(t => t.Contract == contractAddress)
                     .ToList()
                     .SortList((t1, t2) => t1.TimeStamp.CompareTo(t2.TimeStamp))
                     .Skip(offset)

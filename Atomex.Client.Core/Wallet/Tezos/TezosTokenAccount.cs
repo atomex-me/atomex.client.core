@@ -173,7 +173,7 @@ namespace Atomex.Wallet.Tezos
             walletAddress.TokenBalance = new TokenBalance
             {
                 Contract = _tokenContract,
-                TokenId  = _tokenId,
+                TokenId  = _tokenId
             };
 
             await DataRepository
