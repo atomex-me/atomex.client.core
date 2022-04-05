@@ -15,7 +15,7 @@ using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Tezos;
 
-namespace Atomex.Blockchain.Tezos
+namespace Atomex.Blockchain.Tezos.Tzkt
 {
     public class TzktApi : BlockchainApi, ITezosBlockchainApi, ITokenBlockchainApi
     {
@@ -23,13 +23,7 @@ namespace Atomex.Blockchain.Tezos
         private readonly string _baseUri;
         private readonly string _rpcNodeUri;
         private readonly HttpRequestHeaders _headers;
-
-        private class TxsSource
-        {
-            public string BaseUri { get; set; }
-            public string RequestUri { get; set; }
-            public Func<string, Result<IEnumerable<TezosTransaction>>> Parser { get; set; }
-        }
+        public const int PageSize = 10000;
 
         public TzktApi(TezosConfig currency)
         {
@@ -571,6 +565,153 @@ namespace Atomex.Blockchain.Tezos
                     prim = "Pair"
                 }
             });
+        }
+
+        public async Task<Result<List<TokenContract>>> GetTokenContractsAsync(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            var offset = 0;
+            var hasPages = true;
+            var contractAddresses = new HashSet<string>();
+
+            while (hasPages)
+            {
+                var res = await HttpHelper
+                    .GetAsyncResult<List<string>>(
+                        baseUri: _baseUri,
+                        requestUri: $"tokens/balances?account={address}&select=token.contract.address",
+                        responseHandler: (response, content) => JsonConvert.DeserializeObject<List<string>>(content),
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (res.HasError)
+                    return res.Error;
+                
+                if (res.Value.Any())
+                {
+                    contractAddresses.UnionWith(res.Value);
+                    offset += res.Value.Count;
+
+                    if (res.Value.Count < PageSize)
+                        hasPages = false;
+                }
+                else {
+                    hasPages = false;
+                }
+            }
+
+            var contracts = new List<TokenContract>();
+
+            foreach (var contractAddress in contractAddresses)
+            {
+                var tokenContract = await HttpHelper
+                    .GetAsyncResult<TokenContractResponse>(
+                        baseUri: _baseUri,
+                        requestUri: $"contracts/{contractAddress}",
+                        responseHandler: (response, content) => JsonConvert.DeserializeObject<TokenContractResponse>(content),
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (tokenContract.HasError)
+                    return tokenContract.Error;
+
+                contracts.Add(tokenContract.Value.ToTokenContract());
+            }
+
+            return contracts;
+        }
+
+        public async Task<Result<List<TokenBalance>>> GetTokenBalancesAsync(
+            string address,
+            string contractAddress = null,
+            CancellationToken cancellationToken = default)
+        {
+            var offset = 0;
+            var hasPages = true;
+            var tokenBalances = new List<TokenBalance>();
+
+            while (hasPages)
+            {
+                var requestUri = $"tokens/balances?" +
+                    $"account={address}" +
+                    $"&offset={offset}" +
+                    (contractAddress != null ? $"&token.contract={contractAddress}" : "");
+
+                var res = await HttpHelper
+                    .GetAsyncResult<List<TokenBalanceResponse>>(
+                        baseUri: _baseUri,
+                        requestUri: requestUri,
+                        responseHandler: (response, content) => JsonConvert.DeserializeObject<List<TokenBalanceResponse>>(content),
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (res.HasError)
+                    return res.Error;
+                
+                if (res.Value.Any())
+                {
+                    tokenBalances.AddRange(res.Value.Select(x => x.ToTokenBalance()));
+                    offset += res.Value.Count;
+
+                    if (res.Value.Count < PageSize)
+                        hasPages = false;
+                }
+                else {
+                    hasPages = false;
+                }
+            }
+
+            return tokenBalances;
+        }
+
+        public async Task<Result<List<TokenTransfer>>> GetTokenTransfersAsync(
+            string address,
+            string contractAddress = null,
+            decimal? tokenId = null,
+            int count = 20,
+            CancellationToken cancellationToken = default)
+        {
+            var offset = 0;
+            var hasPages = true;
+            var transfers = new List<TokenTransfer>();
+
+            while (hasPages && transfers.Count < count)
+            {
+                var limit = Math.Min(count - transfers.Count, PageSize);
+
+                var requestUri = $"tokens/transfers?" +
+                    $"anyof.from.to={address}" +
+                    $"&offset={offset}" +
+                    $"&limit={limit}" +
+                    (contractAddress != null ? $"&token.contract={contractAddress}" : "") +
+                    (tokenId != null ? $"&token.tokenId={tokenId}" : "");
+
+                var res = await HttpHelper
+                    .GetAsyncResult<List<TokenTransferResponse>>(
+                        baseUri: _baseUri,
+                        requestUri: requestUri,
+                        responseHandler: (response, content) => JsonConvert.DeserializeObject<List<TokenTransferResponse>>(content),
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (res.HasError)
+                    return res.Error;
+                
+                if (res.Value.Any())
+                {
+                    transfers.AddRange(res.Value.Select(x => x.ToTokenTransfer()));
+                    offset += res.Value.Count;
+
+                    if (res.Value.Count < limit)
+                        hasPages = false;
+                }
+                else {
+                    hasPages = false;
+                }
+            }
+
+            return transfers;
         }
     }
 }

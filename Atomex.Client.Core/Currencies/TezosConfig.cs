@@ -8,6 +8,7 @@ using Newtonsoft.Json.Linq;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Core;
@@ -376,22 +377,5 @@ namespace Atomex
 
             throw new ArgumentException($"Either int or string are accepted: {michelineExpr}");
         }
-
-        public BcdApiSettings BcdApiSettings => new()
-        {
-            Uri                   = BcdApi,
-            Network               = BcdNetwork,
-            MaxSize               = BcdSizeLimit,
-            MaxTokensSize         = BcdTokensSizeLimit,
-            MaxTokensPerUpdate    = BcdMaxTokensPerUpdate,
-            MaxTransfersPerUpdate = BcdMaxTransfersPerUpdate
-        };
-
-        public ThumbsApiSettings ThumbsApiSettings => new()
-        {
-            ThumbsApiUri   = ThumbsApiUri,
-            CatavaApiUri   = CatavaApiUri,
-            IpfsGatewayUri = IpfsGatewayUri
-        };
     }
 }

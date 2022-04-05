@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Xunit;
 
-using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Tzkt;
 
 namespace Atomex.Client.Core.Tests
 {

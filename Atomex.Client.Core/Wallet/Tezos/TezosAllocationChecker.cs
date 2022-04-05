@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Tzkt;
 using Serilog;
 
 namespace Atomex.Wallet.Tezos
