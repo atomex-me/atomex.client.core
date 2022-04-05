@@ -569,15 +569,19 @@ namespace Atomex.LiteDb
             string tokenContract,
             decimal tokenId)
         {
-            var query = Query.And(
-                //Query.EQ(CurrencyKey, currency),
+            var queries = new List<Query>
+            {
                 Query.EQ(TokenContractKey, tokenContract),
-                Query.EQ(TokenIdKey, tokenId),
                 Query.Or(
                     Query.Not(BalanceKey, 0m),
                     Query.Not(UnconfirmedIncomeKey, 0m),
                     Query.Not(UnconfirmedOutcomeKey, 0m))
-                );
+            };
+
+            if (tokenId != 0)
+                queries.Insert(1, Query.EQ(TokenIdKey, tokenId));
+
+            var query = Query.And(queries.ToArray());
 
             try
             {
@@ -728,7 +732,14 @@ namespace Atomex.LiteDb
 
                     var contracts = contractsCollection
                         .FindAll()
-                        .Select(d => _bsonMapper.ToObject<TokenContract>(d))
+                        .Select(d => new TokenContract
+                        {
+                            Address = d["Address"].AsString,
+                            Name = d["Name"].AsString,
+                            Type = d.ContainsKey("Type")
+                                ? d["Type"].AsString
+                                : GetContractType(d),
+                        }) // _bsonMapper.ToObject<TokenContract>(d))
                         .ToList();
 
                     return Task.FromResult<IEnumerable<TokenContract>>(contracts);
@@ -740,6 +751,41 @@ namespace Atomex.LiteDb
             }
 
             return Task.FromResult(Enumerable.Empty<TokenContract>());
+        }
+
+        private string GetContractType(BsonDocument d)
+        {
+            var contractTags = d.ContainsKey("ContractTags")
+                ? d["ContractTags"].AsArray
+                    .Select(v => v.AsString)
+                    .ToList()
+                : null;
+
+            if (contractTags != null)
+            {
+                if (contractTags.Contains("fa2"))
+                    return "FA2";
+
+                if (contractTags.Contains("fa1-2"))
+                    return "FA12";
+            }
+
+            var interfaces = d.ContainsKey("Interfaces")
+                ? d["Interfaces"].AsArray
+                    .Select(v => v.AsString)
+                    .ToList()
+                : null;
+
+            if (interfaces == null)
+                return "FA2";
+
+            if (interfaces.FirstOrDefault(i => i == "TZIP-12" || i == "TZIP-012" || i.StartsWith("TZIP-012")) != null)
+                return "FA2";
+
+            if (interfaces.FirstOrDefault(i => i == "TZIP-7" || i == "TZIP-007" || i.StartsWith("TZIP-007")) != null)
+                return "FA12";
+
+            return "FA2";
         }
 
         #endregion TezosTokens
