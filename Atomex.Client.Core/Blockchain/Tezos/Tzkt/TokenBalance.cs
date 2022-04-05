@@ -1,6 +1,5 @@
 using System;
 using System.Text.Json.Serialization;
-using Atomex.Common;
 
 namespace Atomex.Blockchain.Tezos.Tzkt
 {

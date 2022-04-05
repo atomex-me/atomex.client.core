@@ -1,5 +1,6 @@
-using System.Text.Json.Serialization;
 using Newtonsoft.Json;
+
+using Atomex.Common;
 
 namespace Atomex.Blockchain.Tezos.Tzkt
 {
@@ -8,32 +9,33 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// <summary>
         /// Internal TzKT id (not the same as `tokenId`).
         /// </summary>
-        [JsonPropertyName("id")]
+        [JsonProperty("id")]
         public int Id { get; set; }
 
         /// <summary>
         /// Contract, created the token.
         /// </summary>
-        [JsonPropertyName("contract")]
+        [JsonProperty("contract")]
         public Alias Contract { get; set; }
 
         /// <summary>
         /// Token id, unique within the contract.
         /// </summary>
-        [JsonPropertyName("tokenId")]
+        [JsonProperty("tokenId")]
         public string TokenId { get; set; }
 
         /// <summary>
         /// Token standard (either `fa1.2` or `fa2`).
         /// </summary>
-        [JsonPropertyName("standard")]
+        [JsonProperty("standard")]
         public string Standard { get; set; }
 
         /// <summary>
         /// Token metadata.  
         /// **[sortable]**
         /// </summary>
-        [JsonPropertyName("metadata")]
+        [JsonProperty("metadata")]
+        [JsonConverter(typeof(ObjectAsRawStringJsonConverter))]
         public string Metadata { get; set; }
 
         public Token ToToken()

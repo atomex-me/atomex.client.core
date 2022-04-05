@@ -9,7 +9,6 @@ using Newtonsoft.Json.Linq;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Core;
@@ -25,13 +24,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         private readonly string _rpcNodeUri;
         private readonly HttpRequestHeaders _headers;
         public const int PageSize = 10000;
-
-        private class TxsSource
-        {
-            public string BaseUri { get; set; }
-            public string RequestUri { get; set; }
-            public Func<string, Result<IEnumerable<TezosTransaction>>> Parser { get; set; }
-        }
 
         public TzktApi(TezosConfig currency)
         {
