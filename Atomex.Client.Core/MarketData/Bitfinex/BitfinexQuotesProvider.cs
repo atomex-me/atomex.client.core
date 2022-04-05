@@ -99,11 +99,13 @@ namespace Atomex.MarketData.Bitfinex
 
                                 var bid = ticker[1].Value<decimal>();
                                 var ask = ticker[3].Value<decimal>();
+                                var dailyChangePercent = ticker[6].Value<decimal>();
 
                                 Quotes[symbol] = new Quote
                                 {
                                     Bid = bid,
-                                    Ask = ask
+                                    Ask = ask,
+                                    DailyChangePercent = dailyChangePercent
                                 };
                             }
 

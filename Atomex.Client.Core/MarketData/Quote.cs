@@ -8,6 +8,7 @@ namespace Atomex.MarketData
         public DateTime TimeStamp { get; set; }
         public decimal Bid { get; set; }
         public decimal Ask { get; set; }
+        public decimal DailyChangePercent { get; set; }
 
         public override string ToString() =>
             $"{{Bid: {Bid}, Ask: {Ask}}}";
