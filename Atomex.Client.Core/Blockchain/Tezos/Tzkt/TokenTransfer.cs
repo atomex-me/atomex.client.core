@@ -74,16 +74,20 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         public TokenTransfer ToTokenTransfer()
         {
             var token = Token.ToToken();
+
             return new TokenTransfer()
             {
-                Id = Id.ToString(),
-                Currency = token.Symbol,
-                TimeStamp = Timestamp,
-                Level = Level,
-                From = From.Address,
-                To = To.Address,
-                Amount = Amount,
-                Token = token,
+                Id            = Id.ToString(),
+                Currency      = token.Symbol,
+                TimeStamp     = Timestamp,
+                Level         = Level,
+                From          = From.Address,
+                To            = To.Address,
+                Amount        = Amount,
+                Token         = token,
+                FromAlias     = From.Name,
+                ToAlias       = To.Name,
+                ContractAlias = Token.Contract?.Name
             };
         }
     }
