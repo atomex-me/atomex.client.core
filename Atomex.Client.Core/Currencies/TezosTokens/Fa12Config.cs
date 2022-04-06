@@ -141,24 +141,6 @@ namespace Atomex.TezosTokens
             BaseUri                 = configuration["BlockchainApiBaseUri"];
             RpcNodeUri              = configuration["BlockchainRpcNodeUri"];
             BbApiUri                = configuration[nameof(BbApiUri)];
-            BcdApi                  = configuration[nameof(BcdApi)];
-            BcdNetwork              = configuration[nameof(BcdNetwork)];
-
-            BcdSizeLimit = !string.IsNullOrEmpty(configuration[nameof(BcdSizeLimit)])
-                ? int.Parse(configuration[nameof(BcdSizeLimit)])
-                : 10;
-
-            BcdTokensSizeLimit = !string.IsNullOrEmpty(configuration[nameof(BcdTokensSizeLimit)])
-                ? int.Parse(configuration[nameof(BcdTokensSizeLimit)])
-                : 50;
-
-            BcdMaxTokensPerUpdate = !string.IsNullOrEmpty(configuration[nameof(BcdMaxTokensPerUpdate)])
-                ? int.Parse(configuration[nameof(BcdMaxTokensPerUpdate)])
-                : 1000;
-
-            BcdMaxTransfersPerUpdate = !string.IsNullOrEmpty(configuration[nameof(BcdMaxTransfersPerUpdate)])
-                ? int.Parse(configuration[nameof(BcdMaxTransfersPerUpdate)])
-                : 30;
 
             BlockchainApi           = ResolveBlockchainApi(configuration, this);
             TxExplorerUri           = configuration[nameof(TxExplorerUri)];

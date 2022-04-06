@@ -76,12 +76,9 @@ namespace Atomex
         public string BbApiUri { get; protected set; }
         public string SwapContractAddress { get; protected set; }
 
-        public string BcdApi { get; protected set; }
-        public string BcdNetwork { get; protected set; }
-        public int BcdSizeLimit { get; protected set; }
-        public int BcdTokensSizeLimit { get; protected set; }
-        public int BcdMaxTokensPerUpdate { get; protected set; }
-        public int BcdMaxTransfersPerUpdate { get; protected set; }
+        public string ThumbsApiUri { get; protected set; }
+        public string IpfsGatewayUri { get; protected set; }
+        public string CatavaApiUri { get; protected set; }
 
         public TezosConfig()
         {
@@ -171,24 +168,9 @@ namespace Atomex
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Tezos;
 
-            BcdApi     = configuration[nameof(BcdApi)];
-            BcdNetwork = configuration[nameof(BcdNetwork)];
-
-            BcdSizeLimit = !string.IsNullOrEmpty(configuration[nameof(BcdSizeLimit)])
-                ? int.Parse(configuration[nameof(BcdSizeLimit)])
-                : 10;
-
-            BcdTokensSizeLimit = !string.IsNullOrEmpty(configuration[nameof(BcdTokensSizeLimit)])
-                ? int.Parse(configuration[nameof(BcdTokensSizeLimit)])
-                : 50;
-
-            BcdMaxTokensPerUpdate = !string.IsNullOrEmpty(configuration[nameof(BcdMaxTokensPerUpdate)])
-                ? int.Parse(configuration[nameof(BcdMaxTokensPerUpdate)])
-                : 1000;
-
-            BcdMaxTransfersPerUpdate = !string.IsNullOrEmpty(configuration[nameof(BcdMaxTransfersPerUpdate)])
-                ? int.Parse(configuration[nameof(BcdMaxTransfersPerUpdate)])
-                : 30;
+            ThumbsApiUri            = configuration[nameof(ThumbsApiUri)];
+            CatavaApiUri            = configuration[nameof(CatavaApiUri)];
+            IpfsGatewayUri          = configuration[nameof(IpfsGatewayUri)];
         }
 
         protected static IBlockchainApi ResolveBlockchainApi(
