@@ -14,7 +14,7 @@ namespace Atomex.Blockchain.Tezos
 
     public class ThumbsApi
     {
-        private ThumbsApiSettings _settings;
+        private readonly ThumbsApiSettings _settings;
 
         public ThumbsApi(ThumbsApiSettings settings)
         {

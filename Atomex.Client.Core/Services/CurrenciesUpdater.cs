@@ -15,7 +15,7 @@ namespace Atomex.Services
     public class CurrenciesUpdater : ICurrenciesUpdater, IDisposable
     {
         private const string BaseUri = "https://atomex.me/";
-        private const string CurrenciesConfig = "coins.v5.json";
+        private const string CurrenciesConfig = "coins.v6.json";
 
         private readonly ICurrenciesProvider _currenciesProvider;
         private Task _updaterTask;
