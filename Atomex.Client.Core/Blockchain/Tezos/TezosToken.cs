@@ -82,24 +82,28 @@ namespace Atomex.Blockchain.Tezos
         public DateTime? CreationTime => TimeStamp.UtcDateTime;
         public bool IsConfirmed => true;
         public string Contract => Token.Contract;
-
-        [JsonPropertyName("timestamp")]
         public DateTimeOffset TimeStamp { get; set; }
-        [JsonPropertyName("level")]
         public int Level { get; set; }
-        [JsonPropertyName("from")]
         public string From { get; set; }
-        [JsonPropertyName("to")]
         public string To { get; set; }
-        [JsonPropertyName("amount")]
         public string Amount { get; set; }
-        [JsonPropertyName("token")]
         public Token Token { get; set; }
+        public string FromAlias { get; set; }
+        public string ToAlias { get; set; }
+        public string ContractAlias { get; set; }
 
         public decimal GetTransferAmount() =>
             Amount.TryParseWithRound(Token.Decimals, out var result)
                 ? result
                 : 0;
+
+        public string GetAlias() => Type.HasFlag(BlockchainTransactionType.Input)
+            ? !string.IsNullOrEmpty(FromAlias)
+                ? FromAlias
+                : From
+            : !string.IsNullOrEmpty(ToAlias)
+                ? ToAlias
+                : To;
     }
 
     public class TokenContract
