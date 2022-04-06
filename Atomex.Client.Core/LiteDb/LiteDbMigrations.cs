@@ -1,18 +1,18 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
-using Atomex.Common;
-using Atomex.Core;
+
 using LiteDB;
 using Serilog;
+
+using Atomex.Core;
 
 namespace Atomex.LiteDb
 {
     public static class LiteDbMigrations
     {
-        public const ushort LastVersion = Version8;
+        public const ushort LastVersion = Version9;
 
         public const ushort Version0 = 0;
         public const ushort Version1 = 1;
@@ -23,8 +23,11 @@ namespace Atomex.LiteDb
         public const ushort Version6 = 6;
         public const ushort Version7 = 7;
         public const ushort Version8 = 8;
+        public const ushort Version9 = 9;
 
-        public static ushort MigrateFrom_0_to_1(string pathToDb, string sessionPassword)
+        public static ushort MigrateFrom_0_to_1(
+            string pathToDb,
+            string sessionPassword)
         {
             var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
 
@@ -280,7 +283,9 @@ namespace Atomex.LiteDb
             return Version5;
         }
         
-        public static ushort MigrateFrom_5_to_6(string pathToDb, string sessionPassword)
+        public static ushort MigrateFrom_5_to_6(
+            string pathToDb,
+            string sessionPassword)
         {
             var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
 
@@ -307,7 +312,9 @@ namespace Atomex.LiteDb
             return Version6;
         }
 
-        public static ushort MigrateFrom_6_to_7(string pathToDb, string sessionPassword)
+        public static ushort MigrateFrom_6_to_7(
+            string pathToDb,
+            string sessionPassword)
         {
             var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
 
@@ -339,7 +346,9 @@ namespace Atomex.LiteDb
             return Version7;
         }
 
-        public static ushort MigrateFrom_7_to_8(string pathToDb, string sessionPassword)
+        public static ushort MigrateFrom_7_to_8(
+            string pathToDb,
+            string sessionPassword)
         {
             var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
 
@@ -379,6 +388,52 @@ namespace Atomex.LiteDb
             return Version8;
         }
 
+        public static ushort MigrateFrom_8_to_9_Ithaca(
+            string pathToDb,
+            string sessionPassword,
+            Network network)
+        {
+            var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
+
+            using (var db_ver = new LiteDatabase(connectionString))
+                if (db_ver.Engine.UserVersion != Version8)
+                    throw new Exception("Invalid db version");
+
+            Backup(pathToDb);
+
+            using var db = new LiteDatabase(connectionString);
+
+            if (network == Network.TestNet)
+            {
+                // remove all tezos addresses, transactions and contracts
+                var removedTokenAddresses = db
+                    .GetCollection("TezosTokensAddresses")
+                    .Delete(Query.All());
+
+                var removedTransfers = db
+                    .GetCollection("TezosTokensTransfers")
+                    .Delete(Query.All());
+
+                var removedContracts = db
+                    .GetCollection("TezosTokensContracts")
+                    .Delete(Query.All());
+
+                var removedTransactions = db
+                    .GetCollection("Transactions")
+                    .Delete(Query.EQ(nameof(WalletAddress.Currency), "XTZ"));
+
+                var removedAddresses = db
+                    .GetCollection("Addresses")
+                    .Delete(Query.EQ(nameof(WalletAddress.Currency), "XTZ"));
+            }
+
+            Shrink(db, sessionPassword);
+            UpdateVersion(db: db, fromVersion: Version8, toVersion: Version9);
+
+            return Version9;
+        }
+
+
         private static void Backup(string pathToDb)
         {
             var dbDirectory = Path.GetDirectoryName(pathToDb);
@@ -394,7 +449,9 @@ namespace Atomex.LiteDb
             File.Copy(fullPathToDb, fullPathToBackup);
         }
 
-        public static void Shrink(LiteDatabase db, string sessionPassword)
+        public static void Shrink(
+            LiteDatabase db,
+            string sessionPassword)
         {
             try
             {
@@ -410,7 +467,10 @@ namespace Atomex.LiteDb
             }
         }
 
-        private static void UpdateVersion(LiteDatabase db, ushort fromVersion, ushort toVersion)
+        private static void UpdateVersion(
+            LiteDatabase db,
+            ushort fromVersion,
+            ushort toVersion)
         {
             db.Engine.UserVersion = toVersion;
 
