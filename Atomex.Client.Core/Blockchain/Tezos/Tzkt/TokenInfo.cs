@@ -50,15 +50,15 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             {
                 try
                 {
-                    var metadata = JsonConvert.DeserializeObject<Tzip21>(Metadata);
-                    token.Name = metadata.Name;
-                    token.Symbol = metadata.Symbol;
-                    token.Decimals = metadata.Decimals;
-                    token.Description = metadata.Description;
-                    token.ArtifactUri = metadata.ArtifactUri;
-                    token.DisplayUri = metadata.DisplayUri;
+                    var metadata       = JsonConvert.DeserializeObject<Tzip21>(Metadata);
+                    token.Name         = metadata.Name;
+                    token.Symbol       = metadata.Symbol;
+                    token.Decimals     = metadata.Decimals;
+                    token.Description  = metadata.Description;
+                    token.ArtifactUri  = metadata.ArtifactUri;
+                    token.DisplayUri   = metadata.DisplayUri;
                     token.ThumbnailUri = metadata.ThumbnailUri;
-                    token.Creators = metadata.Creators;
+                    token.Creators     = metadata.Creators;
                 }
                 catch
                 {

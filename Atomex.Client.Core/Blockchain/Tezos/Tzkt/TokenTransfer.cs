@@ -81,12 +81,12 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 Currency      = token.Symbol,
                 TimeStamp     = Timestamp,
                 Level         = Level,
-                From          = From.Address,
-                To            = To.Address,
+                From          = From?.Address,
+                To            = To?.Address,
                 Amount        = Amount,
                 Token         = token,
-                FromAlias     = From.Name,
-                ToAlias       = To.Name,
+                FromAlias     = From?.Name,
+                ToAlias       = To?.Name,
                 ContractAlias = Token.Contract?.Name
             };
         }
