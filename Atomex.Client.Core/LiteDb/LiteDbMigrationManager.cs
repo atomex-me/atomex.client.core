@@ -71,7 +71,9 @@ namespace Atomex.LiteDb
                 if (currentVersion == LiteDbMigrations.Version8)
                 {
                     currentVersion = LiteDbMigrations.MigrateFrom_8_to_9_Ithaca(pathToDb, sessionPassword, network);
-                    migrationComplete?.Invoke(MigrationActionType.XtzTransactionsDeleted);
+
+                    if (network == Network.TestNet)
+                        migrationComplete?.Invoke(MigrationActionType.XtzTransactionsDeleted);
                 }
             }
             catch (Exception e)
