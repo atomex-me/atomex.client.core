@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
+using Atomex.ViewModels;
 
 namespace Atomex.Blockchain.Tezos
 {
@@ -100,10 +101,10 @@ namespace Atomex.Blockchain.Tezos
         public string GetAlias() => Type.HasFlag(BlockchainTransactionType.Input)
             ? !string.IsNullOrEmpty(FromAlias)
                 ? FromAlias
-                : From
+                : From.TruncateAddress()
             : !string.IsNullOrEmpty(ToAlias)
                 ? ToAlias
-                : To;
+                : To.TruncateAddress();
     }
 
     public class TokenContract

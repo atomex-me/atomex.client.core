@@ -16,7 +16,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// Contract, created the token.
         /// </summary>
         [JsonProperty("contract")]
-        public Alias Contract { get; set; }
+        public AddressAccount Contract { get; set; }
 
         /// <summary>
         /// Token id, unique within the contract.

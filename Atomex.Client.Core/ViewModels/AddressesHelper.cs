@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
@@ -30,7 +29,8 @@ namespace Atomex.ViewModels
                 else
                 {
                     fa12Config = account.Currencies
-                        .FirstOrDefault(c => c is Fa12Config fa12 && fa12.TokenContractAddress == tokenContract) as Fa12Config;
+                            .FirstOrDefault(c => c is Fa12Config fa12 && fa12.TokenContractAddress == tokenContract) as
+                        Fa12Config;
                 }
 
                 if (tokenContract == null)
@@ -54,8 +54,8 @@ namespace Atomex.ViewModels
                     .ToDictionary(w => w.Address, w => w);
 
                 var tokenAddresses = (await tezosAccount.DataRepository
-                    .GetTezosTokenAddressesByContractAsync(tokenContract)
-                    .ConfigureAwait(false))
+                        .GetTezosTokenAddressesByContractAsync(tokenContract)
+                        .ConfigureAwait(false))
                     .Where(w => w.Currency == "FA12" || w.Currency == "FA2");
 
                 var tezosAddressesWithoutTokens = tezosAddresses
@@ -72,17 +72,17 @@ namespace Atomex.ViewModels
                             tezosAddress = w;
                             tokenAddress = new WalletAddress
                             {
-                                Address      = w.Address,
-                                Currency     = fa12Config != null ? "FA12" : "FA2",
-                                Balance      = 0,
-                                HasActivity  = false,
-                                KeyIndex     = w.KeyIndex,
-                                KeyType      = w.KeyType,
+                                Address = w.Address,
+                                Currency = fa12Config != null ? "FA12" : "FA2",
+                                Balance = 0,
+                                HasActivity = false,
+                                KeyIndex = w.KeyIndex,
+                                KeyType = w.KeyType,
                                 TokenBalance = new Blockchain.Tezos.TokenBalance
                                 {
                                     Contract = tokenContract,
-                                    Balance  = "0",
-                                    Symbol   = fa12Config?.Name ?? "TOKENS",
+                                    Balance = "0",
+                                    Symbol = fa12Config?.Name ?? "TOKENS",
                                     Decimals = 0
                                 }
                             };
@@ -95,36 +95,37 @@ namespace Atomex.ViewModels
 
                         var tezosBalance = tezosAddress?.AvailableBalance() ?? 0;
 
-                        var tokenBalance     = tokenAddress?.Balance ?? 0;
+                        var tokenBalance = tokenAddress?.Balance ?? 0;
                         var showTokenBalance = tokenBalance != 0;
-                        var tokenCode        = tokenAddress?.TokenBalance?.Symbol ?? fa12Config?.Name ?? "TOKENS";
-                        var tokenFormat      = $"F{Math.Min(tokenAddress?.TokenBalance?.Decimals ?? MaxTokenCurrencyFormatDecimals, MaxTokenCurrencyFormatDecimals)}";
-                        var tokenId          = tokenAddress?.TokenBalance?.TokenId ?? 0;
+                        var tokenCode = tokenAddress?.TokenBalance?.Symbol ?? fa12Config?.Name ?? "TOKENS";
+                        var tokenFormat =
+                            $"F{Math.Min(tokenAddress?.TokenBalance?.Decimals ?? MaxTokenCurrencyFormatDecimals, MaxTokenCurrencyFormatDecimals)}";
+                        var tokenId = tokenAddress?.TokenBalance?.TokenId ?? 0;
 
                         var isFreeAddress = w.Address == freeTezosAddress.Address;
 
                         return new WalletAddressViewModel
                         {
-                            WalletAddress    = tokenAddress,
-                            Address          = w.Address,
+                            WalletAddress = tokenAddress,
+                            Address = w.Address,
                             AvailableBalance = tezosBalance,
-                            CurrencyFormat   = currency.Format,
-                            CurrencyCode     = currency.Name,
-                            IsFreeAddress    = isFreeAddress,
+                            CurrencyFormat = currency.Format,
+                            CurrencyCode = currency.Name,
+                            IsFreeAddress = isFreeAddress,
                             ShowTokenBalance = showTokenBalance,
-                            TokenBalance     = tokenBalance,
-                            TokenFormat      = tokenFormat,
-                            TokenCode        = tokenCode,
-                            TokenId          = tokenId,
-                            IsTezosToken     = true
+                            TokenBalance = tokenBalance,
+                            TokenFormat = tokenFormat,
+                            TokenCode = tokenCode,
+                            TokenId = tokenId,
+                            IsTezosToken = true
                         };
                     });
             }
 
             // get all nonzero addresses
             var activeAddresses = (await account
-                .GetUnspentAddressesAsync(currency.Name)
-                .ConfigureAwait(false))
+                    .GetUnspentAddressesAsync(currency.Name)
+                    .ConfigureAwait(false))
                 .ToList();
 
             // get free external address
@@ -143,16 +144,25 @@ namespace Atomex.ViewModels
 
                     return new WalletAddressViewModel
                     {
-                        WalletAddress    = address,
-                        Address          = g.Key,
-                        HasActivity      = address?.HasActivity ?? false,
+                        WalletAddress = address,
+                        Address = g.Key,
+                        HasActivity = address?.HasActivity ?? false,
                         AvailableBalance = address?.AvailableBalance() ?? 0m,
-                        CurrencyFormat   = currency.Format,
-                        CurrencyCode     = currency.Name,
-                        IsFreeAddress    = isFreeAddress,
-                        IsTezosToken     = false
+                        CurrencyFormat = currency.Format,
+                        CurrencyCode = currency.Name,
+                        IsFreeAddress = isFreeAddress,
+                        IsTezosToken = false
                     };
                 });
+        }
+
+        public static string TruncateAddress(this string address, int leftLength = 4, int rightLength = 5)
+        {
+            if (string.IsNullOrEmpty(address) || address.Length < 9)
+                return address;
+
+            return
+                $"{address.Substring(0, leftLength)}···{address.Substring(address.Length - rightLength, rightLength)}";
         }
     }
 }
