@@ -12,7 +12,7 @@ namespace Atomex
     {
         event EventHandler<AtomexClientChangedEventArgs> AtomexClientChanged;
 
-        IAtomexClient Terminal { get; }
+        IAtomexClient AtomexClient { get; }
         IAccount Account { get; }
         ICurrencyQuotesProvider QuotesProvider { get; }
         ICurrencyOrderBookProvider OrderBooksProvider { get; }

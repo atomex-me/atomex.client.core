@@ -28,13 +28,13 @@ namespace Atomex.Services
 {
     public class WebSocketAtomexClient : IAtomexClient
     {
-        protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(48 * 60);
+        //protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(48 * 60);
         private static TimeSpan HeartBeatInterval = TimeSpan.FromSeconds(10);
 
-        public event EventHandler<TerminalServiceEventArgs> ServiceConnected;
-        public event EventHandler<TerminalServiceEventArgs> ServiceDisconnected;
-        public event EventHandler<TerminalServiceEventArgs> ServiceAuthenticated;
-        public event EventHandler<TerminalErrorEventArgs> Error;
+        public event EventHandler<AtomexClientServiceEventArgs> ServiceConnected;
+        public event EventHandler<AtomexClientServiceEventArgs> ServiceDisconnected;
+        public event EventHandler<AtomexClientServiceEventArgs> ServiceAuthenticated;
+        public event EventHandler<AtomexClientErrorEventArgs> Error;
         public event EventHandler<OrderEventArgs> OrderReceived;
         public event EventHandler<MarketDataEventArgs> QuotesUpdated;
         public event EventHandler<SwapEventArgs> SwapUpdated;
@@ -52,40 +52,40 @@ namespace Atomex.Services
 
         public IAccount Account { get; set; }
         private ISymbolsProvider SymbolsProvider { get; set; }
-        private ICurrencyQuotesProvider QuotesProvider { get; set; }
+        //private ICurrencyQuotesProvider QuotesProvider { get; set; }
         private IConfiguration Configuration { get; }
         private IMarketDataRepository MarketDataRepository { get; set; }
-        private ISwapManager SwapManager { get; set; }
+        //private ISwapManager SwapManager { get; set; }
 
-        private TimeSpan TransactionConfirmationCheckInterval(string currency) =>
-            currency == "BTC"
-                ? TimeSpan.FromSeconds(120)
-                : TimeSpan.FromSeconds(45);
+        //private TimeSpan TransactionConfirmationCheckInterval(string currency) =>
+        //    currency == "BTC"
+        //        ? TimeSpan.FromSeconds(120)
+        //        : TimeSpan.FromSeconds(45);
 
         public WebSocketAtomexClient(
             IConfiguration configuration,
             IAccount account,
-            ISymbolsProvider symbolsProvider,
-            ICurrencyQuotesProvider quotesProvider = null)
+            ISymbolsProvider symbolsProvider)
+            //ICurrencyQuotesProvider quotesProvider = null)
         {
             Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
             Account = account ?? throw new ArgumentNullException(nameof(account));
-            Account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
+            //Account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
 
             SymbolsProvider = symbolsProvider ?? throw new ArgumentNullException(nameof(symbolsProvider));
-            QuotesProvider = quotesProvider;
+            //QuotesProvider = quotesProvider;
 
             _cts = new CancellationTokenSource();
         }
 
-        public bool IsServiceConnected(TerminalService service)
+        public bool IsServiceConnected(AtomexClientService service)
         {
             return service switch
             {
-                TerminalService.Exchange => ExchangeClient.IsConnected,
-                TerminalService.MarketData => MarketDataClient.IsConnected,
-                TerminalService.All => ExchangeClient.IsConnected && MarketDataClient.IsConnected,
+                AtomexClientService.Exchange   => ExchangeClient.IsConnected,
+                AtomexClientService.MarketData => MarketDataClient.IsConnected,
+                AtomexClientService.All        => ExchangeClient.IsConnected && MarketDataClient.IsConnected,
                 _ => throw new ArgumentOutOfRangeException(nameof(service), service, null),
             };
         }
@@ -107,56 +107,57 @@ namespace Atomex.Services
 
                 // init exchange client
                 ExchangeClient = new ExchangeWebClient(configuration, schemes);
-                ExchangeClient.Connected += OnExchangeConnectedEventHandler;
-                ExchangeClient.Disconnected += OnExchangeDisconnectedEventHandler;
-                ExchangeClient.AuthOk += OnExchangeAuthOkEventHandler;
-                ExchangeClient.AuthNonce += OnExchangeAuthNonceEventHandler;
-                ExchangeClient.Error += OnExchangeErrorEventHandler;
+                ExchangeClient.Connected     += OnExchangeConnectedEventHandler;
+                ExchangeClient.Disconnected  += OnExchangeDisconnectedEventHandler;
+                ExchangeClient.AuthOk        += OnExchangeAuthOkEventHandler;
+                ExchangeClient.AuthNonce     += OnExchangeAuthNonceEventHandler;
+                ExchangeClient.Error         += OnExchangeErrorEventHandler;
                 ExchangeClient.OrderReceived += OnExchangeOrderEventHandler;
-                ExchangeClient.SwapReceived += OnSwapReceivedEventHandler;
+                ExchangeClient.SwapReceived  += OnSwapReceivedEventHandler;
 
                 // init market data client
                 MarketDataClient = new MarketDataWebClient(configuration, schemes);
-                MarketDataClient.Connected += OnMarketDataConnectedEventHandler;
-                MarketDataClient.Disconnected += OnMarketDataDisconnectedEventHandler;
-                MarketDataClient.AuthOk += OnMarketDataAuthOkEventHandler;
-                MarketDataClient.AuthNonce += OnMarketDataAuthNonceEventHandler;
-                MarketDataClient.Error += OnMarketDataErrorEventHandler;
-                MarketDataClient.QuotesReceived += OnQuotesReceivedEventHandler;
-                MarketDataClient.EntriesReceived += OnEntriesReceivedEventHandler;
+                MarketDataClient.Connected        += OnMarketDataConnectedEventHandler;
+                MarketDataClient.Disconnected     += OnMarketDataDisconnectedEventHandler;
+                MarketDataClient.AuthOk           += OnMarketDataAuthOkEventHandler;
+                MarketDataClient.AuthNonce        += OnMarketDataAuthNonceEventHandler;
+                MarketDataClient.Error            += OnMarketDataErrorEventHandler;
+                MarketDataClient.QuotesReceived   += OnQuotesReceivedEventHandler;
+                MarketDataClient.EntriesReceived  += OnEntriesReceivedEventHandler;
                 MarketDataClient.SnapshotReceived += OnSnapshotReceivedEventHandler;
 
                 // start services
                 var exchangeConnectTask = ExchangeClient.ConnectAsync();
                 var marketDataConnectTask = MarketDataClient.ConnectAsync();
+
                 await Task.WhenAll(exchangeConnectTask, marketDataConnectTask)
                     .ConfigureAwait(false);
 
                 // start async unconfirmed transactions tracking
-                _ = TrackUnconfirmedTransactionsAsync(_cts.Token);
+                //_ = TrackUnconfirmedTransactionsAsync(_cts.Token);
 
                 // init swap manager
-                SwapManager = new SwapManager(
-                    account: Account,
-                    swapClient: ExchangeClient,
-                    quotesProvider: QuotesProvider,
-                    marketDataRepository: MarketDataRepository);
+                //SwapManager = new SwapManager(
+                //    account: Account,
+                //    swapClient: ExchangeClient,
+                //    quotesProvider: QuotesProvider,
+                //    marketDataRepository: MarketDataRepository);
 
-                SwapManager.SwapUpdated += (sender, args) => SwapUpdated?.Invoke(sender, args);
+                //SwapManager.SwapUpdated += (sender, args) => SwapUpdated?.Invoke(sender, args);
 
-                _ = Task.Run(async () =>
-                {
-                    // restore swaps
-                    await SwapManager
-                            .RestoreSwapsAsync(_cts.Token)
-                            .ConfigureAwait(false);
+                //_ = Task.Run(async () =>
+                //{
+                //    // restore swaps
+                //    await SwapManager
+                //            .RestoreSwapsAsync(_cts.Token)
+                //            .ConfigureAwait(false);
 
-                    // timeout control
-                    await SwapManager
-                            .SwapTimeoutControlAsync(_cts.Token)
-                            .ConfigureAwait(false);
+                //    // timeout control
+                //    await SwapManager
+                //            .SwapTimeoutControlAsync(_cts.Token)
+                //            .ConfigureAwait(false);
 
-                }, _cts.Token);
+                //}, _cts.Token);
             }
             catch (Exception e)
             {
@@ -180,25 +181,25 @@ namespace Atomex.Services
                 await Task.WhenAll(ExchangeClient.CloseAsync(), MarketDataClient.CloseAsync())
                     .ConfigureAwait(false);
 
-                ExchangeClient.Connected -= OnExchangeConnectedEventHandler;
-                ExchangeClient.Disconnected -= OnExchangeDisconnectedEventHandler;
-                ExchangeClient.AuthOk -= OnExchangeAuthOkEventHandler;
-                ExchangeClient.AuthNonce -= OnExchangeAuthNonceEventHandler;
-                ExchangeClient.Error -= OnExchangeErrorEventHandler;
+                ExchangeClient.Connected     -= OnExchangeConnectedEventHandler;
+                ExchangeClient.Disconnected  -= OnExchangeDisconnectedEventHandler;
+                ExchangeClient.AuthOk        -= OnExchangeAuthOkEventHandler;
+                ExchangeClient.AuthNonce     -= OnExchangeAuthNonceEventHandler;
+                ExchangeClient.Error         -= OnExchangeErrorEventHandler;
                 ExchangeClient.OrderReceived -= OnExchangeOrderEventHandler;
-                ExchangeClient.SwapReceived -= OnSwapReceivedEventHandler;
+                ExchangeClient.SwapReceived  -= OnSwapReceivedEventHandler;
 
-                MarketDataClient.Connected -= OnMarketDataConnectedEventHandler;
-                MarketDataClient.Disconnected -= OnMarketDataDisconnectedEventHandler;
-                MarketDataClient.AuthOk -= OnMarketDataAuthOkEventHandler;
-                MarketDataClient.AuthNonce -= OnMarketDataAuthNonceEventHandler;
-                MarketDataClient.Error -= OnMarketDataErrorEventHandler;
-                MarketDataClient.QuotesReceived -= OnQuotesReceivedEventHandler;
-                MarketDataClient.EntriesReceived -= OnEntriesReceivedEventHandler;
+                MarketDataClient.Connected        -= OnMarketDataConnectedEventHandler;
+                MarketDataClient.Disconnected     -= OnMarketDataDisconnectedEventHandler;
+                MarketDataClient.AuthOk           -= OnMarketDataAuthOkEventHandler;
+                MarketDataClient.AuthNonce        -= OnMarketDataAuthNonceEventHandler;
+                MarketDataClient.Error            -= OnMarketDataErrorEventHandler;
+                MarketDataClient.QuotesReceived   -= OnQuotesReceivedEventHandler;
+                MarketDataClient.EntriesReceived  -= OnEntriesReceivedEventHandler;
                 MarketDataClient.SnapshotReceived -= OnSnapshotReceivedEventHandler;
 
-                SwapManager.SwapUpdated -= SwapUpdated;
-                SwapManager.Clear();
+                //SwapManager.SwapUpdated -= SwapUpdated;
+                //SwapManager.Clear();
             }
             catch (Exception e)
             {
@@ -248,11 +249,11 @@ namespace Atomex.Services
 
         #region AccountEventHandlers
 
-        private void OnUnconfirmedTransactionAddedEventHandler(object sender, TransactionEventArgs e)
-        {
-            if (!e.Transaction.IsConfirmed && e.Transaction.State != BlockchainTransactionState.Failed)
-                _ = TrackTransactionAsync(e.Transaction, _cts.Token);
-        }
+        //private void OnUnconfirmedTransactionAddedEventHandler(object sender, TransactionEventArgs e)
+        //{
+        //    if (!e.Transaction.IsConfirmed && e.Transaction.State != BlockchainTransactionState.Failed)
+        //        _ = TrackTransactionAsync(e.Transaction, _cts.Token);
+        //}
 
         #endregion
 
@@ -273,7 +274,7 @@ namespace Atomex.Services
                 _exchangeHeartBeatTask = RunHeartBeatLoopAsync(ExchangeClient, _exchangeCts.Token);
             }
 
-            ServiceConnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
+            ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
         }
 
         private void OnExchangeDisconnectedEventHandler(object sender, EventArgs args)
@@ -296,11 +297,11 @@ namespace Atomex.Services
                 }
             }
 
-            ServiceDisconnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
+            ServiceDisconnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
         }
 
         private void OnExchangeAuthOkEventHandler(object sender, EventArgs e) =>
-            ServiceAuthenticated?.Invoke(this, new TerminalServiceEventArgs(TerminalService.Exchange));
+            ServiceAuthenticated?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
 
         private async void OnExchangeAuthNonceEventHandler(object sender, EventArgs args)
         {
@@ -323,7 +324,7 @@ namespace Atomex.Services
         private void OnExchangeErrorEventHandler(object sender, ErrorEventArgs args)
         {
             Log.Error("Exchange service error {@Error}", args.Error);
-            Error?.Invoke(this, new TerminalErrorEventArgs(TerminalService.Exchange, args.Error));
+            Error?.Invoke(this, new AtomexClientErrorEventArgs(AtomexClientService.Exchange, args.Error));
         }
 
         private async void OnExchangeOrderEventHandler(object sender, OrderEventArgs args)
@@ -336,7 +337,7 @@ namespace Atomex.Services
             {
                 if (order.Status == OrderStatus.Pending)
                 {
-                    OnError(TerminalService.Exchange, $"Invalid order status {order.Status}");
+                    OnError(AtomexClientService.Exchange, $"Invalid order status {order.Status}");
                     return;
                 }
 
@@ -350,13 +351,13 @@ namespace Atomex.Services
                     .ConfigureAwait(false);
 
                 if (!result)
-                    OnError(TerminalService.Exchange, "Error adding order");
+                    OnError(AtomexClientService.Exchange, "Error adding order");
 
                 OrderReceived?.Invoke(this, args);
             }
             catch (Exception e)
             {
-                OnError(TerminalService.Exchange, e);
+                OnError(AtomexClientService.Exchange, e);
             }
         }
 
@@ -379,7 +380,7 @@ namespace Atomex.Services
                 _marketDataHeartBeatTask = RunHeartBeatLoopAsync(MarketDataClient, _marketDataCts.Token);
             }
 
-            ServiceConnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
+            ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
         }
 
         private void OnMarketDataDisconnectedEventHandler(object sender, EventArgs args)
@@ -402,11 +403,11 @@ namespace Atomex.Services
                 }
             }
 
-            ServiceDisconnected?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
+            ServiceDisconnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
         }
 
         private void OnMarketDataAuthOkEventHandler(object sender, EventArgs e) =>
-            ServiceAuthenticated?.Invoke(this, new TerminalServiceEventArgs(TerminalService.MarketData));
+            ServiceAuthenticated?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
 
         private async void OnMarketDataAuthNonceEventHandler(object sender, EventArgs args)
         {
@@ -430,7 +431,7 @@ namespace Atomex.Services
         {
             Log.Warning("Market data service error {@Error}", args.Error);
 
-            Error?.Invoke(this, new TerminalErrorEventArgs(TerminalService.Exchange, args.Error));
+            Error?.Invoke(this, new AtomexClientErrorEventArgs(AtomexClientService.Exchange, args.Error));
         }
 
         private void OnQuotesReceivedEventHandler(object sender, QuotesEventArgs args)
@@ -489,7 +490,7 @@ namespace Atomex.Services
             {
                 if (args.Swap == null)
                 {
-                    OnError(TerminalService.Exchange, "Null swap received.");
+                    OnError(AtomexClientService.Exchange, "Null swap received.");
                     return;
                 }
 
@@ -498,202 +499,202 @@ namespace Atomex.Services
                     .ConfigureAwait(false);
 
                 if (error != null)
-                    OnError(TerminalService.Exchange, error.Description);
+                    OnError(AtomexClientService.Exchange, error.Description);
             }
             catch (Exception e)
             {
-                OnError(TerminalService.Exchange, e);
+                OnError(AtomexClientService.Exchange, e);
             }
         }
 
         #endregion
 
-        private Task BalanceUpdateLoopAsync(CancellationToken cancellationToken)
-        {
-           return Task.Run(async () =>
-           {
-               try
-               {
-                   while (!cancellationToken.IsCancellationRequested)
-                   {
-                       await new HdWalletScanner(Account)
-                           .ScanFreeAddressesAsync(cancellationToken)
-                           .ConfigureAwait(false);
+        //private Task BalanceUpdateLoopAsync(CancellationToken cancellationToken)
+        //{
+        //   return Task.Run(async () =>
+        //   {
+        //       try
+        //       {
+        //           while (!cancellationToken.IsCancellationRequested)
+        //           {
+        //               await new HdWalletScanner(Account)
+        //                   .ScanFreeAddressesAsync(cancellationToken)
+        //                   .ConfigureAwait(false);
 
-                       await Task.Delay(TimeSpan.FromSeconds(Account.UserSettings.BalanceUpdateIntervalInSec), cancellationToken)
-                           .ConfigureAwait(false);
-                   }
-               }
-               catch (OperationCanceledException)
-               {
-                   Log.Debug("Balance autoupdate task canceled.");
-               }
-               catch (Exception e)
-               {
-                   Log.Error(e, "Balance autoupdate task error");
-               }
-           });
-        }
+        //               await Task.Delay(TimeSpan.FromSeconds(Account.UserSettings.BalanceUpdateIntervalInSec), cancellationToken)
+        //                   .ConfigureAwait(false);
+        //           }
+        //       }
+        //       catch (OperationCanceledException)
+        //       {
+        //           Log.Debug("Balance autoupdate task canceled.");
+        //       }
+        //       catch (Exception e)
+        //       {
+        //           Log.Error(e, "Balance autoupdate task error");
+        //       }
+        //   });
+        //}
 
-        private async Task TrackUnconfirmedTransactionsAsync(
-            CancellationToken cancellationToken)
-        {
-            try
-            {
-                var txs = await Account
-                    .GetTransactionsAsync()
-                    .ConfigureAwait(false);
+        //private async Task TrackUnconfirmedTransactionsAsync(
+        //    CancellationToken cancellationToken)
+        //{
+        //    try
+        //    {
+        //        var txs = await Account
+        //            .GetTransactionsAsync()
+        //            .ConfigureAwait(false);
 
-                foreach (var tx in txs)
-                    if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
-                        _ = TrackTransactionAsync(tx, cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                Log.Debug("TrackUnconfirmedTransactionsAsync canceled");
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Unconfirmed transactions track error.");
-            }
-        }
+        //        foreach (var tx in txs)
+        //            if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
+        //                _ = TrackTransactionAsync(tx, cancellationToken);
+        //    }
+        //    catch (OperationCanceledException)
+        //    {
+        //        Log.Debug("TrackUnconfirmedTransactionsAsync canceled");
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Log.Error(e, "Unconfirmed transactions track error.");
+        //    }
+        //}
 
-        private Task TrackTransactionAsync(
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken)
-        {
-            return Task.Run(async () =>
-            {
-                try
-                {
-                    while (!cancellationToken.IsCancellationRequested)
-                    {
-                        var currency = Account.Currencies
-                            .GetByName(tx.Currency);
+        //private Task TrackTransactionAsync(
+        //    IBlockchainTransaction tx,
+        //    CancellationToken cancellationToken)
+        //{
+        //    return Task.Run(async () =>
+        //    {
+        //        try
+        //        {
+        //            while (!cancellationToken.IsCancellationRequested)
+        //            {
+        //                var currency = Account.Currencies
+        //                    .GetByName(tx.Currency);
 
-                        var result = await currency
-                            .IsTransactionConfirmed(
-                                txId: tx.Id,
-                                cancellationToken: cancellationToken)
-                            .ConfigureAwait(false);
+        //                var result = await currency
+        //                    .IsTransactionConfirmed(
+        //                        txId: tx.Id,
+        //                        cancellationToken: cancellationToken)
+        //                    .ConfigureAwait(false);
 
-                        if (result.HasError)
-                        {
-                            await Task.Delay(TransactionConfirmationCheckInterval(tx?.Currency), cancellationToken)
-                                .ConfigureAwait(false);
+        //                if (result.HasError)
+        //                {
+        //                    await Task.Delay(TransactionConfirmationCheckInterval(tx?.Currency), cancellationToken)
+        //                        .ConfigureAwait(false);
 
-                            continue;
-                        }
+        //                    continue;
+        //                }
 
-                        if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed)
-                        {
-                            TransactionProcessedHandler(result.Value.Transaction, cancellationToken);
-                            break;
-                        }
+        //                if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed)
+        //                {
+        //                    TransactionProcessedHandler(result.Value.Transaction, cancellationToken);
+        //                    break;
+        //                }
 
-                        // mark old unconfirmed txs as failed
-                        if (tx.CreationTime != null &&
-                            DateTime.UtcNow > tx.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
-                            !Currencies.IsBitcoinBased(tx.Currency))
-                        {
-                            tx.State = BlockchainTransactionState.Failed;
+        //                // mark old unconfirmed txs as failed
+        //                if (tx.CreationTime != null &&
+        //                    DateTime.UtcNow > tx.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
+        //                    !Currencies.IsBitcoinBased(tx.Currency))
+        //                {
+        //                    tx.State = BlockchainTransactionState.Failed;
 
-                            TransactionProcessedHandler(tx, cancellationToken);
-                            break;
-                        }
+        //                    TransactionProcessedHandler(tx, cancellationToken);
+        //                    break;
+        //                }
 
-                        await Task.Delay(TransactionConfirmationCheckInterval(tx?.Currency), cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    Log.Debug("TrackTransactionAsync canceled.");
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "TrackTransactionAsync error.");
-                }
+        //                await Task.Delay(TransactionConfirmationCheckInterval(tx?.Currency), cancellationToken)
+        //                    .ConfigureAwait(false);
+        //            }
+        //        }
+        //        catch (OperationCanceledException)
+        //        {
+        //            Log.Debug("TrackTransactionAsync canceled.");
+        //        }
+        //        catch (Exception e)
+        //        {
+        //            Log.Error(e, "TrackTransactionAsync error.");
+        //        }
 
-            }, _cts.Token);
-        }
+        //    }, _cts.Token);
+        //}
 
-        private async void TransactionProcessedHandler(
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken)
-        {
-            try
-            {
-                if (Account.GetCurrencyAccount(tx.Currency) is not ITransactionalAccount account)
-                {
-                    Log.Error("Transaction for {@currency} received.", tx.Currency);
-                    return;
-                }
+        //private async void TransactionProcessedHandler(
+        //    IBlockchainTransaction tx,
+        //    CancellationToken cancellationToken)
+        //{
+        //    try
+        //    {
+        //        if (Account.GetCurrencyAccount(tx.Currency) is not ITransactionalAccount account)
+        //        {
+        //            Log.Error("Transaction for {@currency} received.", tx.Currency);
+        //            return;
+        //        }
 
-                await account
-                    .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
+        //        await account
+        //            .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
+        //            .ConfigureAwait(false);
 
-                await Account
-                    .UpdateBalanceAsync(tx.Currency, cancellationToken)
-                    .ConfigureAwait(false);
+        //        await Account
+        //            .UpdateBalanceAsync(tx.Currency, cancellationToken)
+        //            .ConfigureAwait(false);
 
-                if (Currencies.HasTokens(tx.Currency))
-                    await UpdateTokenBalanceAsync(tx, cancellationToken)
-                        .ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                Log.Debug("Transaction processed handler task canceled.");
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error in transaction processed handler.");
-            }
-        }
+        //        if (Currencies.HasTokens(tx.Currency))
+        //            await UpdateTokenBalanceAsync(tx, cancellationToken)
+        //                .ConfigureAwait(false);
+        //    }
+        //    catch (OperationCanceledException)
+        //    {
+        //        Log.Debug("Transaction processed handler task canceled.");
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Log.Error(e, "Error in transaction processed handler.");
+        //    }
+        //}
 
-        private async Task UpdateTokenBalanceAsync(
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken)
-        {
-            if (tx.Currency == EthereumConfig.Eth)
-            {
-                // 
-            }
-            else if (tx.Currency == TezosConfig.Xtz)
-            {
-                var tezosTx = tx as TezosTransaction;
+        //private async Task UpdateTokenBalanceAsync(
+        //    IBlockchainTransaction tx,
+        //    CancellationToken cancellationToken)
+        //{
+        //    if (tx.Currency == EthereumConfig.Eth)
+        //    {
+        //        // 
+        //    }
+        //    else if (tx.Currency == TezosConfig.Xtz)
+        //    {
+        //        var tezosTx = tx as TezosTransaction;
 
-                if (tezosTx.Params == null)
-                    return;
+        //        if (tezosTx.Params == null)
+        //            return;
 
-                var tezosAccount = Account
-                .GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz);
+        //        var tezosAccount = Account
+        //        .GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz);
 
-                var tezosTokensScanner = new TezosTokensScanner(tezosAccount);
+        //        var tezosTokensScanner = new TezosTokensScanner(tezosAccount);
 
-                await tezosTokensScanner.ScanAsync(
-                    skipUsed: false,
-                    cancellationToken: cancellationToken);
+        //        await tezosTokensScanner.ScanAsync(
+        //            skipUsed: false,
+        //            cancellationToken: cancellationToken);
 
-                // reload balances for all tezos tokens account
-                foreach (var currency in Account.Currencies)
-                    if (Currencies.IsTezosToken(currency.Name))
-                        Account.GetCurrencyAccount<TezosTokenAccount>(currency.Name)
-                            .ReloadBalances();
-            }
-        }
+        //        // reload balances for all tezos tokens account
+        //        foreach (var currency in Account.Currencies)
+        //            if (Currencies.IsTezosToken(currency.Name))
+        //                Account.GetCurrencyAccount<TezosTokenAccount>(currency.Name)
+        //                    .ReloadBalances();
+        //    }
+        //}
 
-        private void OnError(TerminalService service, string description)
+        private void OnError(AtomexClientService service, string description)
         {
             Log.Error(description);
-            Error?.Invoke(this, new TerminalErrorEventArgs(service, new Error(Errors.InternalError, description)));
+            Error?.Invoke(this, new AtomexClientErrorEventArgs(service, new Error(Errors.InternalError, description)));
         }
 
-        private void OnError(TerminalService service, Exception exception)
+        private void OnError(AtomexClientService service, Exception exception)
         {
             Log.Error(exception, exception.Message);
-            Error?.Invoke(this, new TerminalErrorEventArgs(service, new Error(Errors.InternalError, exception.Message)));
+            Error?.Invoke(this, new AtomexClientErrorEventArgs(service, new Error(Errors.InternalError, exception.Message)));
         }
 
         private async Task RunHeartBeatLoopAsync(

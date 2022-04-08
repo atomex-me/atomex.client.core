@@ -1,6 +1,6 @@
 ﻿namespace Atomex.Services
 {
-    public enum TerminalService
+    public enum AtomexClientService
     {
         Exchange,
         MarketData,

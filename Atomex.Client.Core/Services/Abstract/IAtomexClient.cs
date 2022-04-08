@@ -10,17 +10,17 @@ namespace Atomex.Services.Abstract
 {
     public interface IAtomexClient
     {
-        event EventHandler<TerminalServiceEventArgs> ServiceConnected;
-        event EventHandler<TerminalServiceEventArgs> ServiceDisconnected;
-        event EventHandler<TerminalServiceEventArgs> ServiceAuthenticated;
-        event EventHandler<TerminalErrorEventArgs> Error;
+        event EventHandler<AtomexClientServiceEventArgs> ServiceConnected;
+        event EventHandler<AtomexClientServiceEventArgs> ServiceDisconnected;
+        event EventHandler<AtomexClientServiceEventArgs> ServiceAuthenticated;
+        event EventHandler<AtomexClientErrorEventArgs> Error;
         event EventHandler<OrderEventArgs> OrderReceived;
         event EventHandler<MarketDataEventArgs> QuotesUpdated;
         event EventHandler<SwapEventArgs> SwapUpdated;
 
         IAccount Account { get; }
 
-        bool IsServiceConnected(TerminalService service);
+        bool IsServiceConnected(AtomexClientService service);
         Task StartAsync();
         Task StopAsync();
 

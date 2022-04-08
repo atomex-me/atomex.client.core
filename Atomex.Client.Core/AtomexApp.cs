@@ -4,6 +4,7 @@ using Atomex.Common;
 using Atomex.MarketData.Abstract;
 using Atomex.Services;
 using Atomex.Services.Abstract;
+using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex
@@ -12,22 +13,25 @@ namespace Atomex
     {
         public event EventHandler<AtomexClientChangedEventArgs> AtomexClientChanged;
 
-        public IAtomexClient Terminal { get; private set; }
-        public IAccount Account => Terminal?.Account;
+        public IAtomexClient AtomexClient { get; private set; }
+        public IAccount Account => AtomexClient?.Account;
         public ICurrencyQuotesProvider QuotesProvider { get; private set; }
         public ICurrencyOrderBookProvider OrderBooksProvider { get; private set; }
         public ICurrenciesProvider CurrenciesProvider { get; private set; }
         public ISymbolsProvider SymbolsProvider { get; private set; }
         public ICurrenciesUpdater CurrenciesUpdater { get; private set; }
         public ISymbolsUpdater SymbolsUpdater { get; private set; }
+        public ISwapManager SwapManager { get; private set; }
+        public ITransactionTracker TransactionTracker { get; private set; }
+
         public bool HasQuotesProvider => QuotesProvider != null;
         public bool HasOrderBooksProvider => OrderBooksProvider != null;
-        public bool HasTerminal => Terminal != null;
+        public bool HasAtomexClient => AtomexClient != null;
 
         public IAtomexApp Start()
         {
-            if (HasTerminal)
-                StartTerminal();
+            if (HasAtomexClient)
+                StartAtomexClient();
 
             if (HasQuotesProvider)
                 QuotesProvider.Start();
@@ -43,8 +47,8 @@ namespace Atomex
 
         public IAtomexApp Stop()
         {
-            if (HasTerminal)
-                StopTerminal();
+            if (HasAtomexClient)
+                StopAtomexClient();
 
             if (HasQuotesProvider)
                 QuotesProvider.Stop();
@@ -58,28 +62,28 @@ namespace Atomex
             return this;
         }
 
-        private void StartTerminal()
+        private void StartAtomexClient()
         {
-            _ = Terminal.StartAsync();
+            _ = AtomexClient.StartAsync();
         }
 
-        private void StopTerminal()
+        private void StopAtomexClient()
         {
-            Terminal.Account.Lock();
+            AtomexClient.Account.Lock();
 
-            _ = Terminal.StopAsync();
+            _ = AtomexClient.StopAsync();
         }
 
-        public IAtomexApp UseAtomexClient(IAtomexClient terminal, bool restart = false)
+        public IAtomexApp UseAtomexClient(IAtomexClient atomexClient, bool restart = false)
         {
-            if (HasTerminal)
-                StopTerminal();
+            if (HasAtomexClient)
+                StopAtomexClient();
 
-            Terminal = terminal;
-            AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(Terminal));
+            AtomexClient = atomexClient;
+            AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(AtomexClient));
 
-            if (HasTerminal && restart)
-                StartTerminal();
+            if (HasAtomexClient && restart)
+                StartAtomexClient();
 
             return this;
         }
