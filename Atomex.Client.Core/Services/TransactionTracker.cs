@@ -202,32 +202,5 @@ namespace Atomex.Services
                             .ReloadBalances();
             }
         }
-
-        //private Task BalanceUpdateLoopAsync(CancellationToken cancellationToken)
-        //{
-        //    return Task.Run(async () =>
-        //    {
-        //        try
-        //        {
-        //            while (!cancellationToken.IsCancellationRequested)
-        //            {
-        //                await new HdWalletScanner(Account)
-        //                    .ScanFreeAddressesAsync(cancellationToken)
-        //                    .ConfigureAwait(false);
-
-        //                await Task.Delay(TimeSpan.FromSeconds(Account.UserSettings.BalanceUpdateIntervalInSec), cancellationToken)
-        //                    .ConfigureAwait(false);
-        //            }
-        //        }
-        //        catch (OperationCanceledException)
-        //        {
-        //            Log.Debug("Balance autoupdate task canceled.");
-        //        }
-        //        catch (Exception e)
-        //        {
-        //            Log.Error(e, "Balance autoupdate task error");
-        //        }
-        //    });
-        //}
     }
 }
