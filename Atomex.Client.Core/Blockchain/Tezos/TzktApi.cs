@@ -433,6 +433,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     tx.Fee          = transaction["bakerFee"].Value<decimal>();
                     tx.GasLimit     = transaction["gasLimit"].Value<decimal>();
                     tx.StorageLimit = transaction["storageLimit"].Value<decimal>();
+                    tx.StorageUsed = transaction["storageUsed"].Value<decimal>();
                 }
 
                 if (tx != null)

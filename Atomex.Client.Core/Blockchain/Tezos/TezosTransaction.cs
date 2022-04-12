@@ -36,6 +36,7 @@ namespace Atomex.Blockchain.Tezos
         public decimal GasLimit { get; set; }
         public decimal GasUsed { get; set; }
         public decimal StorageLimit { get; set; }
+        public decimal StorageUsed { get; set; }
         public decimal Burn { get; set; }
         public string Alias { get; set; }
 
