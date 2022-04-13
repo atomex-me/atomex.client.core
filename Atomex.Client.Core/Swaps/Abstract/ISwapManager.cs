@@ -10,16 +10,10 @@ namespace Atomex.Swaps.Abstract
     {
         event EventHandler<SwapEventArgs> SwapUpdated;
 
+        void Start(CancellationToken cancellationToken = default);
+        void Stop();
         Task<Error> HandleSwapAsync(
             Swap receivedSwap,
             CancellationToken cancellationToken = default);
-
-        Task RestoreSwapsAsync(
-            CancellationToken cancellationToken = default);
-
-        Task SwapTimeoutControlAsync(
-            CancellationToken cancellationToken = default);
-
-        void Clear();
     }
 }
