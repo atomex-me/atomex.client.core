@@ -13,18 +13,42 @@ namespace Atomex.MarketData
         private readonly IDictionary<string, Queue<Entry>> _entriesQueue;
         private readonly IDictionary<string, Quote> _lastQuotes;
 
-        public MarketDataRepository(IEnumerable<Symbol> symbols)
+        public MarketDataRepository()
         {
             _orderBooks = new Dictionary<string, MarketDataOrderBook>();
             _entriesQueue = new Dictionary<string, Queue<Entry>>();
             _lastQuotes = new Dictionary<string, Quote>();
+        }
 
+        public MarketDataRepository(IEnumerable<Symbol> symbols)
+            : this()
+        {
+            Initialize(symbols);
+        }
+
+        public void Initialize(IEnumerable<Symbol> symbols)
+        {
             foreach (var symbol in symbols)
             {
                 _orderBooks.Add(symbol.Name, new MarketDataOrderBook(symbol.Name));
                 _entriesQueue.Add(symbol.Name, new Queue<Entry>());
                 _lastQuotes.Add(symbol.Name, null);
             }
+        }
+
+        public void Clear()
+        {
+            foreach (var pair in _orderBooks)
+                pair.Value.Clear();
+
+            _orderBooks.Clear();
+
+            foreach (var pair in _entriesQueue)
+                pair.Value.Clear();
+
+            _entriesQueue.Clear();
+
+            _lastQuotes.Clear();
         }
 
         public void ApplyQuotes(IList<Quote> quotes)

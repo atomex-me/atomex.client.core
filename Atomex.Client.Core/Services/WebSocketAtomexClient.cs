@@ -50,11 +50,10 @@ namespace Atomex.Services
             IAccount account,
             ISymbolsProvider symbolsProvider)
         {
-            Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-
-            Account = account ?? throw new ArgumentNullException(nameof(account));
-
-            SymbolsProvider = symbolsProvider ?? throw new ArgumentNullException(nameof(symbolsProvider));
+            Configuration        = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            Account              = account ?? throw new ArgumentNullException(nameof(account));
+            SymbolsProvider      = symbolsProvider ?? throw new ArgumentNullException(nameof(symbolsProvider));
+            MarketDataRepository = new MarketDataRepository();
         }
 
         public bool IsServiceConnected(AtomexClientService service)
@@ -80,8 +79,7 @@ namespace Atomex.Services
                 var schemes = new ProtoSchemes();
 
                 // init market data repository
-                MarketDataRepository = new MarketDataRepository(
-                    symbols: SymbolsProvider.GetSymbols(Account.Network));
+                MarketDataRepository.Initialize(SymbolsProvider.GetSymbols(Account.Network));
 
                 // init exchange client
                 ExchangeClient = new ExchangeWebClient(configuration, schemes);
@@ -146,6 +144,8 @@ namespace Atomex.Services
                 MarketDataClient.QuotesReceived   -= OnQuotesReceivedEventHandler;
                 MarketDataClient.EntriesReceived  -= OnEntriesReceivedEventHandler;
                 MarketDataClient.SnapshotReceived -= OnSnapshotReceivedEventHandler;
+
+                MarketDataRepository.Clear();
             }
             catch (Exception e)
             {

@@ -56,23 +56,14 @@ namespace Atomex
         private async void StartAtomexClient()
         {
             // start atomex client
-            AtomexClient.SwapReceived += AtomexClient_SwapReceived;
-
             await AtomexClient
                 .StartAsync()
                 .ConfigureAwait(false);
 
-            // create and start swap manager
-            SwapManager = new SwapManager(
-                account: Account,
-                swapClient: AtomexClient,
-                quotesProvider: QuotesProvider,
-                marketDataRepository: AtomexClient.MarketDataRepository);
-
+            // start swap manager
             SwapManager.Start();
 
-            // create and start transactions tracker
-            TransactionsTracker = new TransactionsTracker(Account);
+            // start transactions tracker
             TransactionsTracker.Start();
         }
 
@@ -106,9 +97,29 @@ namespace Atomex
         public IAtomexApp UseAtomexClient(IAtomexClient atomexClient, bool restart = false)
         {
             if (AtomexClient != null)
+            {
                 StopAtomexClient();
 
+                AtomexClient.SwapReceived -= AtomexClient_SwapReceived;
+            }
+
             AtomexClient = atomexClient;
+
+            if (AtomexClient != null)
+            {
+                AtomexClient.SwapReceived += AtomexClient_SwapReceived;
+
+                // create swap manager
+                SwapManager = new SwapManager(
+                    account: Account,
+                    swapClient: AtomexClient,
+                    quotesProvider: QuotesProvider,
+                    marketDataRepository: AtomexClient.MarketDataRepository);
+
+                // create transactions tracker
+                TransactionsTracker = new TransactionsTracker(Account);
+            }
+
             AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(AtomexClient));
 
             if (AtomexClient != null && restart)
