@@ -8,27 +8,19 @@ using Serilog;
 
 using Atomex.Abstract;
 using Atomex.Api.Proto;
-using Atomex.Blockchain;
-using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Helpers;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.MarketData;
 using Atomex.MarketData.Abstract;
 using Atomex.Services.Abstract;
 using Atomex.Swaps;
-using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Web;
-using Atomex.Wallet;
-using Atomex.Blockchain.Tezos;
-using Atomex.Wallet.Tezos;
 
 namespace Atomex.Services
 {
     public class WebSocketAtomexClient : IAtomexClient
     {
-        //protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(48 * 60);
         private static TimeSpan HeartBeatInterval = TimeSpan.FromSeconds(10);
 
         public event EventHandler<AtomexClientServiceEventArgs> ServiceConnected;
@@ -36,10 +28,8 @@ namespace Atomex.Services
         public event EventHandler<AtomexClientServiceEventArgs> ServiceAuthenticated;
         public event EventHandler<AtomexClientErrorEventArgs> Error;
         public event EventHandler<OrderEventArgs> OrderReceived;
+        public event EventHandler<SwapEventArgs> SwapReceived;
         public event EventHandler<MarketDataEventArgs> QuotesUpdated;
-        public event EventHandler<SwapEventArgs> SwapUpdated;
-
-        private readonly CancellationTokenSource _cts;
 
         private CancellationTokenSource _exchangeCts;
         private Task _exchangeHeartBeatTask;
@@ -50,33 +40,21 @@ namespace Atomex.Services
         private ExchangeWebClient ExchangeClient { get; set; }
         private MarketDataWebClient MarketDataClient { get; set; }
 
-        public IAccount Account { get; set; }
+        public IAccount Account { get; private set; }
+        public IMarketDataRepository MarketDataRepository { get; private set; }
         private ISymbolsProvider SymbolsProvider { get; set; }
-        //private ICurrencyQuotesProvider QuotesProvider { get; set; }
         private IConfiguration Configuration { get; }
-        private IMarketDataRepository MarketDataRepository { get; set; }
-        //private ISwapManager SwapManager { get; set; }
-
-        //private TimeSpan TransactionConfirmationCheckInterval(string currency) =>
-        //    currency == "BTC"
-        //        ? TimeSpan.FromSeconds(120)
-        //        : TimeSpan.FromSeconds(45);
 
         public WebSocketAtomexClient(
             IConfiguration configuration,
             IAccount account,
             ISymbolsProvider symbolsProvider)
-            //ICurrencyQuotesProvider quotesProvider = null)
         {
             Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
 
             Account = account ?? throw new ArgumentNullException(nameof(account));
-            //Account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
 
             SymbolsProvider = symbolsProvider ?? throw new ArgumentNullException(nameof(symbolsProvider));
-            //QuotesProvider = quotesProvider;
-
-            _cts = new CancellationTokenSource();
         }
 
         public bool IsServiceConnected(AtomexClientService service)
@@ -132,32 +110,6 @@ namespace Atomex.Services
 
                 await Task.WhenAll(exchangeConnectTask, marketDataConnectTask)
                     .ConfigureAwait(false);
-
-                // start async unconfirmed transactions tracking
-                //_ = TrackUnconfirmedTransactionsAsync(_cts.Token);
-
-                // init swap manager
-                //SwapManager = new SwapManager(
-                //    account: Account,
-                //    swapClient: ExchangeClient,
-                //    quotesProvider: QuotesProvider,
-                //    marketDataRepository: MarketDataRepository);
-
-                //SwapManager.SwapUpdated += (sender, args) => SwapUpdated?.Invoke(sender, args);
-
-                //_ = Task.Run(async () =>
-                //{
-                //    // restore swaps
-                //    await SwapManager
-                //            .RestoreSwapsAsync(_cts.Token)
-                //            .ConfigureAwait(false);
-
-                //    // timeout control
-                //    await SwapManager
-                //            .SwapTimeoutControlAsync(_cts.Token)
-                //            .ConfigureAwait(false);
-
-                //}, _cts.Token);
             }
             catch (Exception e)
             {
@@ -173,9 +125,6 @@ namespace Atomex.Services
                     return;
 
                 Log.Information("Stop terminal services");
-
-                // cancel all terminal background tasks
-                _cts.Cancel();
 
                 // close services
                 await Task.WhenAll(ExchangeClient.CloseAsync(), MarketDataClient.CloseAsync())
@@ -197,19 +146,11 @@ namespace Atomex.Services
                 MarketDataClient.QuotesReceived   -= OnQuotesReceivedEventHandler;
                 MarketDataClient.EntriesReceived  -= OnEntriesReceivedEventHandler;
                 MarketDataClient.SnapshotReceived -= OnSnapshotReceivedEventHandler;
-
-                //SwapManager.SwapUpdated -= SwapUpdated;
-                //SwapManager.Clear();
             }
             catch (Exception e)
             {
                 Log.Error(e, "StopAsync error.");
             }
-        }
-
-        private void SwapUpdatedHandler(object sender, SwapEventArgs swapEventArgs)
-        {
-            SwapUpdated?.Invoke(sender, swapEventArgs);
         }
 
         public async void OrderSendAsync(Order order)
@@ -232,8 +173,8 @@ namespace Atomex.Services
             }
         }
 
-        public void OrderCancelAsync(Order order) =>
-            ExchangeClient.OrderCancelAsync(order);
+        public void OrderCancelAsync(long id, string symbol, Side side) =>
+            ExchangeClient.OrderCancelAsync(id, symbol, side);
 
         public void SubscribeToMarketData(SubscriptionType type) =>
             MarketDataClient.SubscribeAsync(new List<Subscription> { new Subscription { Type = type } });
@@ -246,16 +187,6 @@ namespace Atomex.Services
 
         public Quote GetQuote(Symbol symbol) =>
             MarketDataRepository?.QuoteBySymbol(symbol.Name);
-
-        #region AccountEventHandlers
-
-        //private void OnUnconfirmedTransactionAddedEventHandler(object sender, TransactionEventArgs e)
-        //{
-        //    if (!e.Transaction.IsConfirmed && e.Transaction.State != BlockchainTransactionState.Failed)
-        //        _ = TrackTransactionAsync(e.Transaction, _cts.Token);
-        //}
-
-        #endregion
 
         #region ExchangeEventHandlers
 
@@ -484,7 +415,7 @@ namespace Atomex.Services
 
         #region SwapEventHandlers
 
-        private async void OnSwapReceivedEventHandler(object sender, SwapEventArgs args)
+        private void OnSwapReceivedEventHandler(object sender, SwapEventArgs args)
         {
             try
             {
@@ -494,12 +425,7 @@ namespace Atomex.Services
                     return;
                 }
 
-                var error = await SwapManager
-                    .HandleSwapAsync(args.Swap, _cts.Token)
-                    .ConfigureAwait(false);
-
-                if (error != null)
-                    OnError(AtomexClientService.Exchange, error.Description);
+                SwapReceived?.Invoke(this, args);
             }
             catch (Exception e)
             {
@@ -508,182 +434,6 @@ namespace Atomex.Services
         }
 
         #endregion
-
-        //private Task BalanceUpdateLoopAsync(CancellationToken cancellationToken)
-        //{
-        //   return Task.Run(async () =>
-        //   {
-        //       try
-        //       {
-        //           while (!cancellationToken.IsCancellationRequested)
-        //           {
-        //               await new HdWalletScanner(Account)
-        //                   .ScanFreeAddressesAsync(cancellationToken)
-        //                   .ConfigureAwait(false);
-
-        //               await Task.Delay(TimeSpan.FromSeconds(Account.UserSettings.BalanceUpdateIntervalInSec), cancellationToken)
-        //                   .ConfigureAwait(false);
-        //           }
-        //       }
-        //       catch (OperationCanceledException)
-        //       {
-        //           Log.Debug("Balance autoupdate task canceled.");
-        //       }
-        //       catch (Exception e)
-        //       {
-        //           Log.Error(e, "Balance autoupdate task error");
-        //       }
-        //   });
-        //}
-
-        //private async Task TrackUnconfirmedTransactionsAsync(
-        //    CancellationToken cancellationToken)
-        //{
-        //    try
-        //    {
-        //        var txs = await Account
-        //            .GetTransactionsAsync()
-        //            .ConfigureAwait(false);
-
-        //        foreach (var tx in txs)
-        //            if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
-        //                _ = TrackTransactionAsync(tx, cancellationToken);
-        //    }
-        //    catch (OperationCanceledException)
-        //    {
-        //        Log.Debug("TrackUnconfirmedTransactionsAsync canceled");
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        Log.Error(e, "Unconfirmed transactions track error.");
-        //    }
-        //}
-
-        //private Task TrackTransactionAsync(
-        //    IBlockchainTransaction tx,
-        //    CancellationToken cancellationToken)
-        //{
-        //    return Task.Run(async () =>
-        //    {
-        //        try
-        //        {
-        //            while (!cancellationToken.IsCancellationRequested)
-        //            {
-        //                var currency = Account.Currencies
-        //                    .GetByName(tx.Currency);
-
-        //                var result = await currency
-        //                    .IsTransactionConfirmed(
-        //                        txId: tx.Id,
-        //                        cancellationToken: cancellationToken)
-        //                    .ConfigureAwait(false);
-
-        //                if (result.HasError)
-        //                {
-        //                    await Task.Delay(TransactionConfirmationCheckInterval(tx?.Currency), cancellationToken)
-        //                        .ConfigureAwait(false);
-
-        //                    continue;
-        //                }
-
-        //                if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed)
-        //                {
-        //                    TransactionProcessedHandler(result.Value.Transaction, cancellationToken);
-        //                    break;
-        //                }
-
-        //                // mark old unconfirmed txs as failed
-        //                if (tx.CreationTime != null &&
-        //                    DateTime.UtcNow > tx.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
-        //                    !Currencies.IsBitcoinBased(tx.Currency))
-        //                {
-        //                    tx.State = BlockchainTransactionState.Failed;
-
-        //                    TransactionProcessedHandler(tx, cancellationToken);
-        //                    break;
-        //                }
-
-        //                await Task.Delay(TransactionConfirmationCheckInterval(tx?.Currency), cancellationToken)
-        //                    .ConfigureAwait(false);
-        //            }
-        //        }
-        //        catch (OperationCanceledException)
-        //        {
-        //            Log.Debug("TrackTransactionAsync canceled.");
-        //        }
-        //        catch (Exception e)
-        //        {
-        //            Log.Error(e, "TrackTransactionAsync error.");
-        //        }
-
-        //    }, _cts.Token);
-        //}
-
-        //private async void TransactionProcessedHandler(
-        //    IBlockchainTransaction tx,
-        //    CancellationToken cancellationToken)
-        //{
-        //    try
-        //    {
-        //        if (Account.GetCurrencyAccount(tx.Currency) is not ITransactionalAccount account)
-        //        {
-        //            Log.Error("Transaction for {@currency} received.", tx.Currency);
-        //            return;
-        //        }
-
-        //        await account
-        //            .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
-        //            .ConfigureAwait(false);
-
-        //        await Account
-        //            .UpdateBalanceAsync(tx.Currency, cancellationToken)
-        //            .ConfigureAwait(false);
-
-        //        if (Currencies.HasTokens(tx.Currency))
-        //            await UpdateTokenBalanceAsync(tx, cancellationToken)
-        //                .ConfigureAwait(false);
-        //    }
-        //    catch (OperationCanceledException)
-        //    {
-        //        Log.Debug("Transaction processed handler task canceled.");
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        Log.Error(e, "Error in transaction processed handler.");
-        //    }
-        //}
-
-        //private async Task UpdateTokenBalanceAsync(
-        //    IBlockchainTransaction tx,
-        //    CancellationToken cancellationToken)
-        //{
-        //    if (tx.Currency == EthereumConfig.Eth)
-        //    {
-        //        // 
-        //    }
-        //    else if (tx.Currency == TezosConfig.Xtz)
-        //    {
-        //        var tezosTx = tx as TezosTransaction;
-
-        //        if (tezosTx.Params == null)
-        //            return;
-
-        //        var tezosAccount = Account
-        //        .GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz);
-
-        //        var tezosTokensScanner = new TezosTokensScanner(tezosAccount);
-
-        //        await tezosTokensScanner.ScanAsync(
-        //            skipUsed: false,
-        //            cancellationToken: cancellationToken);
-
-        //        // reload balances for all tezos tokens account
-        //        foreach (var currency in Account.Currencies)
-        //            if (Currencies.IsTezosToken(currency.Name))
-        //                Account.GetCurrencyAccount<TezosTokenAccount>(currency.Name)
-        //                    .ReloadBalances();
-        //    }
-        //}
 
         private void OnError(AtomexClientService service, string description)
         {
@@ -721,6 +471,34 @@ namespace Atomex.Services
             }
 
             Log.Debug("Heartbeat stopped.");
+        }
+
+        public void SwapInitiateAsync(
+            long id,
+            byte[] secretHash,
+            string symbol,
+            string toAddress,
+            decimal rewardForRedeem,
+            string refundAddress)
+        {
+            ExchangeClient.SwapInitiateAsync(id, secretHash, symbol, toAddress, rewardForRedeem, refundAddress);
+        }
+
+        public void SwapAcceptAsync(
+            long id,
+            string symbol,
+            string toAddress,
+            decimal rewardForRedeem,
+            string refundAddress)
+        {
+            ExchangeClient.SwapAcceptAsync(id, symbol, toAddress, rewardForRedeem, refundAddress);
+        }
+
+        public void SwapStatusAsync(
+            string requestId,
+            long swapId)
+        {
+            ExchangeClient.SwapStatusAsync(requestId, swapId);
         }
     }
 }

@@ -1,9 +1,10 @@
 ﻿using System;
+
 using Atomex.Abstract;
-using Atomex.Common;
 using Atomex.MarketData.Abstract;
 using Atomex.Services;
 using Atomex.Services.Abstract;
+using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 
@@ -22,23 +23,17 @@ namespace Atomex
         public ICurrenciesUpdater CurrenciesUpdater { get; private set; }
         public ISymbolsUpdater SymbolsUpdater { get; private set; }
         public ISwapManager SwapManager { get; private set; }
-        public ITransactionTracker TransactionTracker { get; private set; }
+        public ITransactionsTracker TransactionsTracker { get; private set; }
 
         public bool HasQuotesProvider => QuotesProvider != null;
-        public bool HasOrderBooksProvider => OrderBooksProvider != null;
-        public bool HasAtomexClient => AtomexClient != null;
 
         public IAtomexApp Start()
         {
-            if (HasAtomexClient)
+            if (AtomexClient != null)
                 StartAtomexClient();
 
-            if (HasQuotesProvider)
-                QuotesProvider.Start();
-
-            if (HasOrderBooksProvider)
-                OrderBooksProvider.Start();
-
+            QuotesProvider?.Start();
+            OrderBooksProvider?.Start();
             CurrenciesUpdater?.Start();
             SymbolsUpdater?.Start();
 
@@ -47,42 +42,76 @@ namespace Atomex
 
         public IAtomexApp Stop()
         {
-            if (HasAtomexClient)
+            if (AtomexClient != null)
                 StopAtomexClient();
 
-            if (HasQuotesProvider)
-                QuotesProvider.Stop();
-
-            if (HasOrderBooksProvider)
-                OrderBooksProvider.Stop();
-
+            QuotesProvider?.Stop();
+            OrderBooksProvider?.Stop();
             CurrenciesUpdater?.Stop();
             SymbolsUpdater?.Stop();
 
             return this;
         }
 
-        private void StartAtomexClient()
+        private async void StartAtomexClient()
         {
-            _ = AtomexClient.StartAsync();
+            // start atomex client
+            AtomexClient.SwapReceived += AtomexClient_SwapReceived;
+
+            await AtomexClient
+                .StartAsync()
+                .ConfigureAwait(false);
+
+            // create and start swap manager
+            SwapManager = new SwapManager(
+                account: Account,
+                swapClient: AtomexClient,
+                quotesProvider: QuotesProvider,
+                marketDataRepository: AtomexClient.MarketDataRepository);
+
+            SwapManager.Start();
+
+            // create and start transactions tracker
+            TransactionsTracker = new TransactionsTracker(Account);
+            TransactionsTracker.Start();
         }
 
-        private void StopAtomexClient()
+        private async void AtomexClient_SwapReceived(object sender, SwapEventArgs e)
         {
+            var error = await SwapManager
+                .HandleSwapAsync(e.Swap)
+                .ConfigureAwait(false);
+
+            if (error != null)
+                throw new Exception(error.Description);
+        }
+
+        private async void StopAtomexClient()
+        {
+            // stop transactions tracker
+            TransactionsTracker.Stop();
+
+            // stop swap manager
+            SwapManager.Stop();
+
+            // lock account's wallet
             AtomexClient.Account.Lock();
 
-            _ = AtomexClient.StopAsync();
+            // stop atomex client
+            await AtomexClient
+                .StopAsync()
+                .ConfigureAwait(false);
         }
 
         public IAtomexApp UseAtomexClient(IAtomexClient atomexClient, bool restart = false)
         {
-            if (HasAtomexClient)
+            if (AtomexClient != null)
                 StopAtomexClient();
 
             AtomexClient = atomexClient;
             AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(AtomexClient));
 
-            if (HasAtomexClient && restart)
+            if (AtomexClient != null && restart)
                 StartAtomexClient();
 
             return this;

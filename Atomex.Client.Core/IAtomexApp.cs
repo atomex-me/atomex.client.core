@@ -4,6 +4,7 @@ using Atomex.Abstract;
 using Atomex.MarketData.Abstract;
 using Atomex.Services;
 using Atomex.Services.Abstract;
+using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex
@@ -20,6 +21,8 @@ namespace Atomex
         ISymbolsProvider SymbolsProvider { get; }
         ICurrenciesUpdater CurrenciesUpdater { get; }
         ISymbolsUpdater SymbolsUpdater { get; }
+        ISwapManager SwapManager { get; }
+        ITransactionsTracker TransactionsTracker { get; }
         bool HasQuotesProvider { get; }
 
         IAtomexApp Start();

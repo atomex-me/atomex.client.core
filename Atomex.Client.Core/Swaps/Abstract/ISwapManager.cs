@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Core;
@@ -10,10 +9,8 @@ namespace Atomex.Swaps.Abstract
     {
         event EventHandler<SwapEventArgs> SwapUpdated;
 
-        void Start(CancellationToken cancellationToken = default);
+        void Start();
         void Stop();
-        Task<Error> HandleSwapAsync(
-            Swap receivedSwap,
-            CancellationToken cancellationToken = default);
+        Task<Error> HandleSwapAsync(Swap receivedSwap);
     }
 }

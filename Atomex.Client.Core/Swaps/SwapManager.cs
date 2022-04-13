@@ -10,11 +10,11 @@ using Serilog;
 using Atomex.Blockchain.Helpers;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.MarketData.Abstract;
 using Atomex.Swaps.Abstract;
+using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
-using Atomex.MarketData.Abstract;
-using Atomex.Swaps.Helpers;
 
 namespace Atomex.Swaps
 {
@@ -33,13 +33,12 @@ namespace Atomex.Swaps
         private readonly IMarketDataRepository _marketDataRepository;
         private readonly IDictionary<string, ICurrencySwap> _currencySwaps;
         private CancellationTokenSource _cts;
-        private CancellationTokenSource _linkedCts;
         private Task _workerTask;
 
         public bool IsRunning => _workerTask != null &&
-                        !_workerTask.IsCompleted &&
-                        !_workerTask.IsCanceled &&
-                        !_workerTask.IsFaulted;
+            !_workerTask.IsCompleted &&
+            !_workerTask.IsCanceled &&
+            !_workerTask.IsFaulted;
 
         private static ConcurrentDictionary<long, SemaphoreSlim> _swapsSync;
         private static ConcurrentDictionary<long, SemaphoreSlim> SwapsSync
@@ -87,39 +86,37 @@ namespace Atomex.Swaps
             _currencySwaps = currencySwaps.ToDictionary(cs => cs.Currency);
         }
 
-        public void Start(CancellationToken cancellationToken = default)
+        public void Start()
         {
             if (IsRunning)
-                throw new InvalidOperationException("SwapManager already running");
+                throw new InvalidOperationException("Swap manager already running");
 
             _cts = new CancellationTokenSource();
-
-            _linkedCts = cancellationToken != default
-                ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _cts.Token)
-                : CancellationTokenSource.CreateLinkedTokenSource(_cts.Token);
 
             _workerTask = Task.Run(async () =>
             {
                 try
                 {
                     // restore swaps
-                    await RestoreSwapsAsync(_linkedCts.Token)
+                    await RestoreSwapsAsync(_cts.Token)
                         .ConfigureAwait(false);
 
                     // run swaps timeout control
-                    await RunSwapTimeoutControlLoopAsync(_linkedCts.Token)
+                    await RunSwapTimeoutControlLoopAsync(_cts.Token)
                         .ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("SwapManager worker task canceled");
+                    Log.Debug("Swap manager worker task canceled");
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "SwapManager worker task error");
+                    Log.Error(e, "Swap manager worker task error");
                 }
 
-            }, _linkedCts.Token);
+            }, _cts.Token);
+
+            Log.Information("Swap manager successfully started");
         }
 
         public void Stop()
@@ -127,20 +124,23 @@ namespace Atomex.Swaps
             if (!IsRunning)
                 return;
 
-            _linkedCts.Cancel();
+            _cts.Cancel();
 
             Clear();
+
+            Log.Information("Swap manager stopped");
         }
 
         private ICurrencySwap GetCurrencySwap(string currency) => _currencySwaps[currency];
 
-        public async Task<Error> HandleSwapAsync(
-            Swap receivedSwap,
-            CancellationToken cancellationToken = default)
+        public async Task<Error> HandleSwapAsync(Swap receivedSwap)
         {
+            if (!IsRunning)
+                throw new InvalidOperationException("Swap manager not started");
+
             Log.Debug("Handle swap {@swap}", receivedSwap.ToString());
 
-            await LockSwapAsync(receivedSwap.Id, cancellationToken)
+            await LockSwapAsync(receivedSwap.Id, _cts.Token)
                 .ConfigureAwait(false);
 
             Log.Debug("Swap {@swap} locked", receivedSwap.Id);
@@ -153,16 +153,16 @@ namespace Atomex.Swaps
 
                 if (swap == null) // is new swap
                 {
-                    swap = await AddSwapAsync(receivedSwap)
+                    swap = await AddSwapAsync(receivedSwap, _cts.Token)
                         .ConfigureAwait(false);
 
                     if (swap != null && swap.IsInitiator)
-                        await InitiateSwapAsync(swap, cancellationToken)
+                        await InitiateSwapAsync(swap, _cts.Token)
                             .ConfigureAwait(false);
                 }
                 else // is exists swap
                 {
-                    var error = await HandleExistingSwapAsync(swap, receivedSwap, cancellationToken)
+                    var error = await HandleExistingSwapAsync(swap, receivedSwap, _cts.Token)
                         .ConfigureAwait(false);
 
                     if (error != null)
@@ -181,9 +181,11 @@ namespace Atomex.Swaps
             }
         }
 
-        private async Task<Swap> AddSwapAsync(Swap receivedSwap)
+        private async Task<Swap> AddSwapAsync(
+            Swap receivedSwap,
+            CancellationToken cancellationToken = default)
         {
-            var order = await GetOrderAsync(receivedSwap)
+            var order = await GetOrderAsync(receivedSwap, cancellationToken)
                 .ConfigureAwait(false);
 
             if (order == null || !order.IsApproved) // || !clientSwap.Order.IsContinuationOf(order))
@@ -224,7 +226,9 @@ namespace Atomex.Swaps
             return swap;
          }
 
-        private Task<Order> GetOrderAsync(Swap receivedSwap)
+        private Task<Order> GetOrderAsync(
+            Swap receivedSwap,
+            CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
             {
@@ -241,12 +245,13 @@ namespace Atomex.Swaps
                     if (order != null)
                         return order;
 
-                    await Task.Delay(attemptIntervalMs)
+                    await Task.Delay(attemptIntervalMs, cancellationToken)
                         .ConfigureAwait(false);
                 }
 
                 return null;
-            });
+
+            }, cancellationToken);
         }
 
         private async Task InitiateSwapAsync(
@@ -311,7 +316,13 @@ namespace Atomex.Swaps
             await UpdateSwapAsync(swap, SwapStateFlags.Empty, cancellationToken)
                 .ConfigureAwait(false);
 
-            _swapClient.SwapInitiateAsync(swap);
+            _swapClient.SwapInitiateAsync(
+                swap.Id,
+                swap.SecretHash,
+                swap.Symbol,
+                swap.ToAddress,
+                swap.RewardForRedeem,
+                swap.RefundAddress);
         }
 
         private async Task<Error> HandleExistingSwapAsync(
@@ -442,7 +453,12 @@ namespace Atomex.Swaps
                 .ConfigureAwait(false);
 
             // send "accept" to other side
-            _swapClient.SwapAcceptAsync(swap);
+            _swapClient.SwapAcceptAsync(
+                swap.Id,
+                swap.Symbol,
+                swap.ToAddress,
+                swap.RewardForRedeem,
+                swap.RefundAddress);
 
             await GetCurrencySwap(swap.PurchasedCurrency)
                 .StartPartyPaymentControlAsync(swap, cancellationToken)
@@ -654,13 +670,13 @@ namespace Atomex.Swaps
                     if (!swap.Status.HasFlag(SwapStatus.Initiated)) // not initiated
                     {
                         // try to get actual swap status from server and accept swap
-                        _swapClient.SwapStatusAsync(new Request<Swap>() { Id = $"get_swap_{swap.Id}", Data = swap });
+                        _swapClient.SwapStatusAsync($"get_swap_{swap.Id}", swap.Id);
                     }
                     else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated but not accepted
                             !swap.Status.HasFlag(SwapStatus.Accepted))
                     {
                         // try to get actual swap status from server and accept swap
-                        _swapClient.SwapStatusAsync(new Request<Swap>() { Id = $"get_swap_{swap.Id}", Data = swap });
+                        _swapClient.SwapStatusAsync($"get_swap_{swap.Id}", swap.Id);
                     }
                     else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated and accepted
                              swap.Status.HasFlag(SwapStatus.Accepted))
@@ -683,7 +699,7 @@ namespace Atomex.Swaps
                             !swap.Status.HasFlag(SwapStatus.Accepted))
                     {
                         // try to get actual swap status from server
-                        _swapClient.SwapStatusAsync(new Request<Swap>() { Id = $"get_swap_{swap.Id}", Data = swap });
+                        _swapClient.SwapStatusAsync($"get_swap_{swap.Id}", swap.Id);
                     }
                     else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated and accepted
                              swap.Status.HasFlag(SwapStatus.Accepted))

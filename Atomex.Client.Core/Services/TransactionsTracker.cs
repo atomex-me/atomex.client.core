@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -12,26 +10,29 @@ using Atomex.Blockchain.Helpers;
 using Atomex.Blockchain.Tezos;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Tezos;
+using Atomex.Services.Abstract;
 
 namespace Atomex.Services
 {
-    public interface ITransactionTracker
-    {
-
-    }
-
-    public class TransactionTracker : ITransactionTracker
+    public class TransactionsTracker : ITransactionsTracker
     {
         protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(48 * 60);
 
         private readonly IAccount _account;
+        private CancellationTokenSource _cts;
+        private Task _workerTask;
+
+        public bool IsRunning => _workerTask != null &&
+            !_workerTask.IsCompleted &&
+            !_workerTask.IsCanceled &&
+            !_workerTask.IsFaulted;
 
         private TimeSpan TransactionConfirmationCheckInterval(string currency) =>
             currency == "BTC"
                 ? TimeSpan.FromSeconds(120)
                 : TimeSpan.FromSeconds(45);
 
-        public TransactionTracker(IAccount account)
+        public TransactionsTracker(IAccount account)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
@@ -39,36 +40,46 @@ namespace Atomex.Services
 
         public void Start()
         {
+            if (IsRunning)
+                throw new InvalidOperationException("Transactions tracker already running");
+
+            _cts = new CancellationTokenSource();
+
             // start async unconfirmed transactions tracking
-            _ = TrackUnconfirmedTransactionsAsync(_cts.Token);
+            _workerTask = Task.Run(async () =>
+            {
+                try
+                {
+                    var txs = await _account
+                        .GetTransactionsAsync()
+                        .ConfigureAwait(false);
+
+                    foreach (var tx in txs)
+                        if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
+                            _ = TrackTransactionAsync(tx, _cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("TrackUnconfirmedTransactionsAsync canceled");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Unconfirmed transactions track error.");
+                }
+
+            }, _cts.Token);
+
+            Log.Information("Transactions tracker successfully started");
         }
 
         public void Stop()
         {
-            // TODO:
-        }
+            if (!IsRunning)
+                return;
 
-        private async Task TrackUnconfirmedTransactionsAsync(
-            CancellationToken cancellationToken)
-        {
-            try
-            {
-                var txs = await _account
-                    .GetTransactionsAsync()
-                    .ConfigureAwait(false);
+            _cts.Cancel();
 
-                foreach (var tx in txs)
-                    if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
-                        _ = TrackTransactionAsync(tx, cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                Log.Debug("TrackUnconfirmedTransactionsAsync canceled");
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Unconfirmed transactions track error.");
-            }
+            Log.Information("Transactions tracker stopped");
         }
 
         private void OnUnconfirmedTransactionAddedEventHandler(object sender, TransactionEventArgs e)
