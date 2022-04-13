@@ -71,7 +71,7 @@ namespace Atomex.Services
         {
             try
             {
-                Log.Information("Start terminal services");
+                Log.Information("Start AtomexClient services");
 
                 var configuration = Configuration.GetSection($"Services:{Account.Network}");
 
@@ -122,7 +122,7 @@ namespace Atomex.Services
                 if (ExchangeClient == null || MarketDataClient == null)
                     return;
 
-                Log.Information("Stop terminal services");
+                Log.Information("Stop AtomexClient services");
 
                 // close services
                 await Task.WhenAll(ExchangeClient.CloseAsync(), MarketDataClient.CloseAsync())
