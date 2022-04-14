@@ -4,25 +4,26 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Serilog;
 
 using Atomex.Blockchain.Helpers;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.MarketData.Abstract;
 using Atomex.Swaps.Abstract;
+using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
-using Atomex.MarketData.Abstract;
-using Atomex.Swaps.Helpers;
 
 namespace Atomex.Swaps
 {
     public class SwapManager : ISwapManager
     {
         protected static TimeSpan DefaultCredentialsExchangeTimeout = TimeSpan.FromMinutes(10);
-        protected static TimeSpan DefaultMaxSwapTimeout = TimeSpan.FromMinutes(20); // TimeSpan.FromMinutes(40);
-        protected static TimeSpan DefaultMaxPaymentTimeout = TimeSpan.FromMinutes(48*60);
-        protected static TimeSpan SwapTimeoutControlInterval = TimeSpan.FromMinutes(10);
+        protected static TimeSpan DefaultMaxSwapTimeout             = TimeSpan.FromMinutes(20); // TimeSpan.FromMinutes(40);
+        protected static TimeSpan DefaultMaxPaymentTimeout          = TimeSpan.FromMinutes(48*60);
+        protected static TimeSpan SwapTimeoutControlInterval        = TimeSpan.FromMinutes(10);
 
         public event EventHandler<SwapEventArgs> SwapUpdated;
 
@@ -31,6 +32,13 @@ namespace Atomex.Swaps
         private readonly ICurrencyQuotesProvider _quotesProvider;
         private readonly IMarketDataRepository _marketDataRepository;
         private readonly IDictionary<string, ICurrencySwap> _currencySwaps;
+        private CancellationTokenSource _cts;
+        private Task _workerTask;
+
+        public bool IsRunning => _workerTask != null &&
+            !_workerTask.IsCompleted &&
+            !_workerTask.IsCanceled &&
+            !_workerTask.IsFaulted;
 
         private static ConcurrentDictionary<long, SemaphoreSlim> _swapsSync;
         private static ConcurrentDictionary<long, SemaphoreSlim> SwapsSync
@@ -78,51 +86,61 @@ namespace Atomex.Swaps
             _currencySwaps = currencySwaps.ToDictionary(cs => cs.Currency);
         }
 
-        public void Clear()
+        public void Start()
         {
-            foreach (var swapSync in SwapsSync)
+            if (IsRunning)
+                throw new InvalidOperationException("SwapManager already running");
+
+            _cts = new CancellationTokenSource();
+
+            _workerTask = Task.Run(async () =>
             {
-                var swapId = swapSync.Key;
-                var semaphore = swapSync.Value;
-
-                if (semaphore.CurrentCount == 0)
+                try
                 {
-                    try
-                    {
-                        semaphore.Release();
-                    }
-                    catch (SemaphoreFullException)
-                    {
-                        Log.Warning($"Semaphore for swap {swapId} is already released");
-                    }
-                    catch (ObjectDisposedException)
-                    {
-                        Log.Warning($"Semaphore for swap {swapId} is already disposed");
-                    }
+                    // restore swaps
+                    await RestoreSwapsAsync(_cts.Token)
+                        .ConfigureAwait(false);
 
-                    try
-                    {
-                        semaphore.Dispose();
-                    }
-                    catch (Exception)
-                    {
-                        Log.Warning($"Semaphore for swap {swapId} is already disposed");
-                    }
+                    // run swaps timeout control
+                    await RunSwapTimeoutControlLoopAsync(_cts.Token)
+                        .ConfigureAwait(false);
                 }
-            }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("SwapManager worker task canceled");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "SwapManager worker task error");
+                }
 
-            SwapsSync.Clear();
+            }, _cts.Token);
+
+            Log.Information("SwapManager successfully started");
+        }
+
+        public void Stop()
+        {
+            if (!IsRunning)
+                return;
+
+            _cts.Cancel();
+
+            Clear();
+
+            Log.Information("SwapManager stopped");
         }
 
         private ICurrencySwap GetCurrencySwap(string currency) => _currencySwaps[currency];
 
-        public async Task<Error> HandleSwapAsync(
-            Swap receivedSwap,
-            CancellationToken cancellationToken = default)
+        public async Task<Error> HandleSwapAsync(Swap receivedSwap)
         {
+            if (!IsRunning)
+                throw new InvalidOperationException("SwapManager not started");
+
             Log.Debug("Handle swap {@swap}", receivedSwap.ToString());
 
-            await LockSwapAsync(receivedSwap.Id, cancellationToken)
+            await LockSwapAsync(receivedSwap.Id, _cts.Token)
                 .ConfigureAwait(false);
 
             Log.Debug("Swap {@swap} locked", receivedSwap.Id);
@@ -133,18 +151,18 @@ namespace Atomex.Swaps
                     .GetSwapByIdAsync(receivedSwap.Id)
                     .ConfigureAwait(false);
 
-                if (swap == null)
+                if (swap == null) // is new swap
                 {
-                    swap = await AddSwapAsync(receivedSwap)
+                    swap = await AddSwapAsync(receivedSwap, _cts.Token)
                         .ConfigureAwait(false);
 
                     if (swap != null && swap.IsInitiator)
-                        await InitiateSwapAsync(swap, cancellationToken)
+                        await InitiateSwapAsync(swap, _cts.Token)
                             .ConfigureAwait(false);
                 }
-                else
+                else // is exists swap
                 {
-                    var error = await HandleExistingSwapAsync(swap, receivedSwap, cancellationToken)
+                    var error = await HandleExistingSwapAsync(swap, receivedSwap, _cts.Token)
                         .ConfigureAwait(false);
 
                     if (error != null)
@@ -163,9 +181,11 @@ namespace Atomex.Swaps
             }
         }
 
-        private async Task<Swap> AddSwapAsync(Swap receivedSwap)
+        private async Task<Swap> AddSwapAsync(
+            Swap receivedSwap,
+            CancellationToken cancellationToken = default)
         {
-            var order = await GetOrderAsync(receivedSwap)
+            var order = await GetOrderAsync(receivedSwap, cancellationToken)
                 .ConfigureAwait(false);
 
             if (order == null || !order.IsApproved) // || !clientSwap.Order.IsContinuationOf(order))
@@ -206,7 +226,9 @@ namespace Atomex.Swaps
             return swap;
          }
 
-        private Task<Order> GetOrderAsync(Swap receivedSwap)
+        private Task<Order> GetOrderAsync(
+            Swap receivedSwap,
+            CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
             {
@@ -223,12 +245,13 @@ namespace Atomex.Swaps
                     if (order != null)
                         return order;
 
-                    await Task.Delay(attemptIntervalMs)
+                    await Task.Delay(attemptIntervalMs, cancellationToken)
                         .ConfigureAwait(false);
                 }
 
                 return null;
-            });
+
+            }, cancellationToken);
         }
 
         private async Task InitiateSwapAsync(
@@ -293,7 +316,13 @@ namespace Atomex.Swaps
             await UpdateSwapAsync(swap, SwapStateFlags.Empty, cancellationToken)
                 .ConfigureAwait(false);
 
-            _swapClient.SwapInitiateAsync(swap);
+            _swapClient.SwapInitiateAsync(
+                swap.Id,
+                swap.SecretHash,
+                swap.Symbol,
+                swap.ToAddress,
+                swap.RewardForRedeem,
+                swap.RefundAddress);
         }
 
         private async Task<Error> HandleExistingSwapAsync(
@@ -424,7 +453,12 @@ namespace Atomex.Swaps
                 .ConfigureAwait(false);
 
             // send "accept" to other side
-            _swapClient.SwapAcceptAsync(swap);
+            _swapClient.SwapAcceptAsync(
+                swap.Id,
+                swap.Symbol,
+                swap.ToAddress,
+                swap.RewardForRedeem,
+                swap.RefundAddress);
 
             await GetCurrencySwap(swap.PurchasedCurrency)
                 .StartPartyPaymentControlAsync(swap, cancellationToken)
@@ -489,7 +523,7 @@ namespace Atomex.Swaps
             return null; // no error
         }
 
-        public Task RestoreSwapsAsync(
+        private Task RestoreSwapsAsync(
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -636,13 +670,13 @@ namespace Atomex.Swaps
                     if (!swap.Status.HasFlag(SwapStatus.Initiated)) // not initiated
                     {
                         // try to get actual swap status from server and accept swap
-                        _swapClient.SwapStatusAsync(new Request<Swap>() { Id = $"get_swap_{swap.Id}", Data = swap });
+                        _swapClient.SwapStatusAsync($"get_swap_{swap.Id}", swap.Id);
                     }
                     else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated but not accepted
                             !swap.Status.HasFlag(SwapStatus.Accepted))
                     {
                         // try to get actual swap status from server and accept swap
-                        _swapClient.SwapStatusAsync(new Request<Swap>() { Id = $"get_swap_{swap.Id}", Data = swap });
+                        _swapClient.SwapStatusAsync($"get_swap_{swap.Id}", swap.Id);
                     }
                     else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated and accepted
                              swap.Status.HasFlag(SwapStatus.Accepted))
@@ -665,7 +699,7 @@ namespace Atomex.Swaps
                             !swap.Status.HasFlag(SwapStatus.Accepted))
                     {
                         // try to get actual swap status from server
-                        _swapClient.SwapStatusAsync(new Request<Swap>() { Id = $"get_swap_{swap.Id}", Data = swap });
+                        _swapClient.SwapStatusAsync($"get_swap_{swap.Id}", swap.Id);
                     }
                     else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated and accepted
                              swap.Status.HasFlag(SwapStatus.Accepted))
@@ -691,7 +725,7 @@ namespace Atomex.Swaps
             }
         }
 
-        public Task SwapTimeoutControlAsync(
+        private Task RunSwapTimeoutControlLoopAsync(
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -700,7 +734,7 @@ namespace Atomex.Swaps
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        await Task.Delay(SwapTimeoutControlInterval)
+                        await Task.Delay(SwapTimeoutControlInterval, cancellationToken)
                             .ConfigureAwait(false);
 
                         var swaps = (await _account
@@ -888,7 +922,7 @@ namespace Atomex.Swaps
             if (SwapsSync.TryGetValue(swapId, out SemaphoreSlim semaphore))
             {
                 await semaphore
-                    .WaitAsync()
+                    .WaitAsync(cancellationToken)
                     .ConfigureAwait(false);
             }
             else
@@ -937,6 +971,42 @@ namespace Atomex.Swaps
                     Log.Warning($"Semaphore for swap {id} is already disposed");
                 }
             }
+        }
+
+        private void Clear()
+        {
+            foreach (var swapSync in SwapsSync)
+            {
+                var swapId = swapSync.Key;
+                var semaphore = swapSync.Value;
+
+                if (semaphore.CurrentCount == 0)
+                {
+                    try
+                    {
+                        semaphore.Release();
+                    }
+                    catch (SemaphoreFullException)
+                    {
+                        Log.Warning($"Semaphore for swap {swapId} is already released");
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        Log.Warning($"Semaphore for swap {swapId} is already disposed");
+                    }
+
+                    try
+                    {
+                        semaphore.Dispose();
+                    }
+                    catch (Exception)
+                    {
+                        Log.Warning($"Semaphore for swap {swapId} is already disposed");
+                    }
+                }
+            }
+
+            SwapsSync.Clear();
         }
     }
 }

@@ -1,9 +1,11 @@
 ﻿using System;
+
 using Atomex.Abstract;
-using Atomex.Common;
 using Atomex.MarketData.Abstract;
 using Atomex.Services;
 using Atomex.Services.Abstract;
+using Atomex.Swaps;
+using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex
@@ -12,29 +14,26 @@ namespace Atomex
     {
         public event EventHandler<AtomexClientChangedEventArgs> AtomexClientChanged;
 
-        public IAtomexClient Terminal { get; private set; }
-        public IAccount Account => Terminal?.Account;
+        public IAtomexClient AtomexClient { get; private set; }
+        public IAccount Account => AtomexClient?.Account;
         public ICurrencyQuotesProvider QuotesProvider { get; private set; }
         public ICurrencyOrderBookProvider OrderBooksProvider { get; private set; }
         public ICurrenciesProvider CurrenciesProvider { get; private set; }
         public ISymbolsProvider SymbolsProvider { get; private set; }
         public ICurrenciesUpdater CurrenciesUpdater { get; private set; }
         public ISymbolsUpdater SymbolsUpdater { get; private set; }
+        public ISwapManager SwapManager { get; private set; }
+        public ITransactionsTracker TransactionsTracker { get; private set; }
+
         public bool HasQuotesProvider => QuotesProvider != null;
-        public bool HasOrderBooksProvider => OrderBooksProvider != null;
-        public bool HasTerminal => Terminal != null;
 
         public IAtomexApp Start()
         {
-            if (HasTerminal)
-                StartTerminal();
+            if (AtomexClient != null)
+                StartAtomexClient();
 
-            if (HasQuotesProvider)
-                QuotesProvider.Start();
-
-            if (HasOrderBooksProvider)
-                OrderBooksProvider.Start();
-
+            QuotesProvider?.Start();
+            OrderBooksProvider?.Start();
             CurrenciesUpdater?.Start();
             SymbolsUpdater?.Start();
 
@@ -43,43 +42,88 @@ namespace Atomex
 
         public IAtomexApp Stop()
         {
-            if (HasTerminal)
-                StopTerminal();
+            if (AtomexClient != null)
+                StopAtomexClient();
 
-            if (HasQuotesProvider)
-                QuotesProvider.Stop();
-
-            if (HasOrderBooksProvider)
-                OrderBooksProvider.Stop();
-
+            QuotesProvider?.Stop();
+            OrderBooksProvider?.Stop();
             CurrenciesUpdater?.Stop();
             SymbolsUpdater?.Stop();
 
             return this;
         }
 
-        private void StartTerminal()
+        private async void StartAtomexClient()
         {
-            _ = Terminal.StartAsync();
+            // start atomex client
+            await AtomexClient
+                .StartAsync()
+                .ConfigureAwait(false);
+
+            // start swap manager
+            SwapManager.Start();
+
+            // start transactions tracker
+            TransactionsTracker.Start();
         }
 
-        private void StopTerminal()
+        private async void AtomexClient_SwapReceived(object sender, SwapEventArgs e)
         {
-            Terminal.Account.Lock();
+            var error = await SwapManager
+                .HandleSwapAsync(e.Swap)
+                .ConfigureAwait(false);
 
-            _ = Terminal.StopAsync();
+            if (error != null)
+                throw new Exception(error.Description);
         }
 
-        public IAtomexApp UseAtomexClient(IAtomexClient terminal, bool restart = false)
+        private async void StopAtomexClient()
         {
-            if (HasTerminal)
-                StopTerminal();
+            // stop transactions tracker
+            TransactionsTracker.Stop();
 
-            Terminal = terminal;
-            AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(Terminal));
+            // stop swap manager
+            SwapManager.Stop();
 
-            if (HasTerminal && restart)
-                StartTerminal();
+            // lock account's wallet
+            AtomexClient.Account.Lock();
+
+            // stop atomex client
+            await AtomexClient
+                .StopAsync()
+                .ConfigureAwait(false);
+        }
+
+        public IAtomexApp UseAtomexClient(IAtomexClient atomexClient, bool restart = false)
+        {
+            if (AtomexClient != null)
+            {
+                StopAtomexClient();
+
+                AtomexClient.SwapReceived -= AtomexClient_SwapReceived;
+            }
+
+            AtomexClient = atomexClient;
+
+            if (AtomexClient != null)
+            {
+                AtomexClient.SwapReceived += AtomexClient_SwapReceived;
+
+                // create swap manager
+                SwapManager = new SwapManager(
+                    account: Account,
+                    swapClient: AtomexClient,
+                    quotesProvider: QuotesProvider,
+                    marketDataRepository: AtomexClient.MarketDataRepository);
+
+                // create transactions tracker
+                TransactionsTracker = new TransactionsTracker(Account);
+            }
+
+            AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(AtomexClient));
+
+            if (AtomexClient != null && restart)
+                StartAtomexClient();
 
             return this;
         }
