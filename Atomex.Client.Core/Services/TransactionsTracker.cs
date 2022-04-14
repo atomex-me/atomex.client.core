@@ -20,12 +20,8 @@ namespace Atomex.Services
 
         private readonly IAccount _account;
         private CancellationTokenSource _cts;
-        private Task _workerTask;
 
-        public bool IsRunning => _workerTask != null &&
-            !_workerTask.IsCompleted &&
-            !_workerTask.IsCanceled &&
-            !_workerTask.IsFaulted;
+        public bool IsRunning { get; private set; }
 
         private TimeSpan TransactionConfirmationCheckInterval(string currency) =>
             currency == "BTC"
@@ -43,10 +39,12 @@ namespace Atomex.Services
             if (IsRunning)
                 throw new InvalidOperationException("TransactionsTracker already running");
 
+            IsRunning = true;
+
             _cts = new CancellationTokenSource();
 
             // start async unconfirmed transactions tracking
-            _workerTask = Task.Run(async () =>
+            Task.Run(async () =>
             {
                 try
                 {
@@ -77,9 +75,15 @@ namespace Atomex.Services
             if (!IsRunning)
                 return;
 
+            // unsubscribe from unconfirmed transaction added event handler
+            _account.UnconfirmedTransactionAdded -= OnUnconfirmedTransactionAddedEventHandler;
+
+            // cancel all background tasks
             _cts.Cancel();
 
             Log.Information("TransactionsTracker stopped");
+
+            IsRunning = false;
         }
 
         private void OnUnconfirmedTransactionAddedEventHandler(object sender, TransactionEventArgs e)
