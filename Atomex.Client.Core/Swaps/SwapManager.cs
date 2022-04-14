@@ -89,7 +89,7 @@ namespace Atomex.Swaps
         public void Start()
         {
             if (IsRunning)
-                throw new InvalidOperationException("Swap manager already running");
+                throw new InvalidOperationException("SwapManager already running");
 
             _cts = new CancellationTokenSource();
 
@@ -107,16 +107,16 @@ namespace Atomex.Swaps
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("Swap manager worker task canceled");
+                    Log.Debug("SwapManager worker task canceled");
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Swap manager worker task error");
+                    Log.Error(e, "SwapManager worker task error");
                 }
 
             }, _cts.Token);
 
-            Log.Information("Swap manager successfully started");
+            Log.Information("SwapManager successfully started");
         }
 
         public void Stop()
@@ -128,7 +128,7 @@ namespace Atomex.Swaps
 
             Clear();
 
-            Log.Information("Swap manager stopped");
+            Log.Information("SwapManager stopped");
         }
 
         private ICurrencySwap GetCurrencySwap(string currency) => _currencySwaps[currency];
@@ -136,7 +136,7 @@ namespace Atomex.Swaps
         public async Task<Error> HandleSwapAsync(Swap receivedSwap)
         {
             if (!IsRunning)
-                throw new InvalidOperationException("Swap manager not started");
+                throw new InvalidOperationException("SwapManager not started");
 
             Log.Debug("Handle swap {@swap}", receivedSwap.ToString());
 

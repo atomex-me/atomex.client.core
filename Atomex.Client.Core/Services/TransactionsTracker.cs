@@ -41,7 +41,7 @@ namespace Atomex.Services
         public void Start()
         {
             if (IsRunning)
-                throw new InvalidOperationException("Transactions tracker already running");
+                throw new InvalidOperationException("TransactionsTracker already running");
 
             _cts = new CancellationTokenSource();
 
@@ -64,12 +64,12 @@ namespace Atomex.Services
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Unconfirmed transactions track error.");
+                    Log.Error(e, "Unconfirmed transactions track error");
                 }
 
             }, _cts.Token);
 
-            Log.Information("Transactions tracker successfully started");
+            Log.Information("TransactionsTracker successfully started");
         }
 
         public void Stop()
@@ -79,7 +79,7 @@ namespace Atomex.Services
 
             _cts.Cancel();
 
-            Log.Information("Transactions tracker stopped");
+            Log.Information("TransactionsTracker stopped");
         }
 
         private void OnUnconfirmedTransactionAddedEventHandler(object sender, TransactionEventArgs e)
@@ -138,11 +138,11 @@ namespace Atomex.Services
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("TrackTransactionAsync canceled.");
+                    Log.Debug("TrackTransactionAsync canceled");
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "TrackTransactionAsync error.");
+                    Log.Error(e, "TrackTransactionAsync error");
                 }
 
             }, _cts.Token);
@@ -156,7 +156,7 @@ namespace Atomex.Services
             {
                 if (_account.GetCurrencyAccount(tx.Currency) is not ITransactionalAccount account)
                 {
-                    Log.Error("Transaction for {@currency} received.", tx.Currency);
+                    Log.Error("Transaction for {@currency} received", tx.Currency);
                     return;
                 }
 
@@ -174,11 +174,11 @@ namespace Atomex.Services
             }
             catch (OperationCanceledException)
             {
-                Log.Debug("Transaction processed handler task canceled.");
+                Log.Debug("Transaction processed handler task canceled");
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error in transaction processed handler.");
+                Log.Error(e, "Error in transaction processed handler");
             }
         }
 
