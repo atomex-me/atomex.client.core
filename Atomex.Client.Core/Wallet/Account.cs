@@ -14,7 +14,7 @@ using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Cryptography;
+using Atomex.Cryptography.Abstract;
 using Atomex.LiteDb;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Tezos;
@@ -267,7 +267,7 @@ namespace Atomex.Wallet
             using var servicePublicKey = Wallet.GetServicePublicKey(keyIndex);
             using var publicKey = servicePublicKey.ToUnsecuredBytes();
 
-            return Sha256.Compute(Sha256.Compute(publicKey)).ToHexString();
+            return HashAlgorithm.Sha256.Hash(publicKey.Data, iterations: 2).ToHexString();
         }
 
         #endregion Common

@@ -56,8 +56,6 @@ namespace Atomex.Common
             var bstr1 = IntPtr.Zero;
             var bstr2 = IntPtr.Zero;
             
-            RuntimeHelpers.PrepareConstrainedRegions();
-
             try
             {
                 bstr1 = Marshal.SecureStringToBSTR(s1);
@@ -87,8 +85,6 @@ namespace Atomex.Common
 
             var bsrc = IntPtr.Zero;
 
-            RuntimeHelpers.PrepareConstrainedRegions();
-
             try
             {
                 bsrc = Marshal.SecureStringToBSTR(source);
@@ -110,8 +106,6 @@ namespace Atomex.Common
         public static bool ContainsChar(this SecureString s, Func<char, bool> condition)
         {
             var bstr = IntPtr.Zero;
-
-            RuntimeHelpers.PrepareConstrainedRegions();
 
             try
             {

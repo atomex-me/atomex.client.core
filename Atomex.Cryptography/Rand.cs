@@ -8,12 +8,10 @@ namespace Atomex.Cryptography
         {
             var result = new byte[length];
 
-            using (var provider = new RNGCryptoServiceProvider())
-            {
-                provider.GetBytes(result);
+            using var provider = new RNGCryptoServiceProvider();
+            provider.GetBytes(result);
 
-                return result;
-            }
+            return result;
         }
     }
 }

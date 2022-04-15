@@ -11,6 +11,7 @@ using Serilog;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography;
+using Atomex.Cryptography.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 using Aes = Atomex.Cryptography.Aes;
@@ -286,7 +287,7 @@ namespace Atomex.Wallet
             return derivedKey.VerifyMessage(data, signature);
         }
 
-        private static object _secretCounterSync = new();
+        private static readonly object _secretCounterSync = new();
         private static int _secretCounter = 0;
         private static long _secretTimeStampMs = 0;
         public static int SecretCounter(long timeStamp)
@@ -323,7 +324,7 @@ namespace Atomex.Wallet
             using var securePublicKey = extKey.GetPublicKey();
             using var publicKey = securePublicKey.ToUnsecuredBytes();
 
-            return Sha512.Compute(publicKey);
+            return HashAlgorithm.Sha512.Hash(publicKey.Data);
         }
 
         public static HdKeyStorage LoadFromFile(string pathToFile, SecureString password)

@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27703.2018
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32112.339
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Client.Core", "Atomex.Client.Core\Atomex.Client.Core.csproj", "{FE561137-2416-42F2-88AF-86CBD578F6F0}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Client.Core.Tests", "Atomex.Client.Core.Tests\Atomex.Client.Core.Tests.csproj", "{F37C962A-1D73-42A7-B1D4-87293B350E5B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atomex.Cryptography", "Atomex.Cryptography\Atomex.Cryptography.csproj", "{08D0B06C-2F07-40BF-A698-18D81724E132}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,6 +43,18 @@ Global
 		{F37C962A-1D73-42A7-B1D4-87293B350E5B}.Release|x64.Build.0 = Release|Any CPU
 		{F37C962A-1D73-42A7-B1D4-87293B350E5B}.Release|x86.ActiveCfg = Release|Any CPU
 		{F37C962A-1D73-42A7-B1D4-87293B350E5B}.Release|x86.Build.0 = Release|Any CPU
+		{08D0B06C-2F07-40BF-A698-18D81724E132}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{08D0B06C-2F07-40BF-A698-18D81724E132}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{08D0B06C-2F07-40BF-A698-18D81724E132}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{08D0B06C-2F07-40BF-A698-18D81724E132}.Debug|x64.Build.0 = Debug|Any CPU
+		{08D0B06C-2F07-40BF-A698-18D81724E132}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{08D0B06C-2F07-40BF-A698-18D81724E132}.Debug|x86.Build.0 = Debug|Any CPU
+		{08D0B06C-2F07-40BF-A698-18D81724E132}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{08D0B06C-2F07-40BF-A698-18D81724E132}.Release|Any CPU.Build.0 = Release|Any CPU
+		{08D0B06C-2F07-40BF-A698-18D81724E132}.Release|x64.ActiveCfg = Release|Any CPU
+		{08D0B06C-2F07-40BF-A698-18D81724E132}.Release|x64.Build.0 = Release|Any CPU
+		{08D0B06C-2F07-40BF-A698-18D81724E132}.Release|x86.ActiveCfg = Release|Any CPU
+		{08D0B06C-2F07-40BF-A698-18D81724E132}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

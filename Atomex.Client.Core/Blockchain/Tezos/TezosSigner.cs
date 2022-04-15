@@ -1,7 +1,9 @@
 ﻿using System;
+
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Cryptography;
+using Atomex.Cryptography.Abstract;
 using Atomex.Cryptography.BouncyCastle;
 
 namespace Atomex.Blockchain.Tezos
@@ -51,7 +53,7 @@ namespace Atomex.Blockchain.Tezos
                 dataForSign = bytesWithWatermark;
             }
 
-            var hash = HmacBlake2b.Compute(dataForSign, SignedMessage.HashSizeBits);
+            var hash = MacAlgorithm.HmacBlake2b.Mac(key: null, dataForSign);
 
             var signature = signer(hash, privateKey);
 
@@ -95,7 +97,7 @@ namespace Atomex.Blockchain.Tezos
             byte[] signature,
             byte[] publicKey)
         {
-            var hash = HmacBlake2b.Compute(data, SignedMessage.HashSizeBits);
+            var hash = MacAlgorithm.HmacBlake2b.Mac(key: null, data);
 
             return Ed25519.Verify(
                 data: hash,

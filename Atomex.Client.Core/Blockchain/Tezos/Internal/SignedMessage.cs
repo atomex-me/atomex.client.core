@@ -1,11 +1,14 @@
 ﻿using Atomex.Cryptography;
+using Atomex.Cryptography.Abstract;
+
 using Newtonsoft.Json;
 
 namespace Atomex.Blockchain.Tezos.Internal
 {
     public class SignedMessage
     {
-        public const int HashSizeBits = 32 * 8;
+        public const int HashLength = 32;
+        public const int HashSizeInBits = HashLength * 8;
 
         [JsonProperty("bytes")]
         public byte[] Bytes { get; set; }
@@ -18,7 +21,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
         public string HashBytes()
         {
-            return Base58Check.Encode(HmacBlake2b.Compute(Bytes, HashSizeBits));
+            return Base58Check.Encode(MacAlgorithm.HmacBlake2b.Mac(key: null, Bytes));
         }
     }
 }

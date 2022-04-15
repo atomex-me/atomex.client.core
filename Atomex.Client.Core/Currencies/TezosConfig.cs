@@ -27,7 +27,8 @@ namespace Atomex
         // ext key types
         public const int Bip32Ed25519Key = 1;
 
-        protected const int PkHashSize = 20 * 8;
+        private const int PkHashSize = 20;
+        protected const int PkHashSizeInBits = PkHashSize * 8;
 
         public decimal MinimalFee { get; protected set; }
         public decimal MinimalNanotezPerGasUnit { get; protected set; }
@@ -198,10 +199,12 @@ namespace Atomex
         public override IKey CreateKey(SecureBytes seed) =>
             new TezosKey(seed);
 
-        public override string AddressFromKey(byte[] publicKey) =>
-            Base58Check.Encode(
-                payload: HmacBlake2b.Compute(publicKey, PkHashSize),
+        public override string AddressFromKey(byte[] publicKey) {
+            
+            return Base58Check.Encode(
+                data: new HmacBlake2b(HmacBlake2b.DefaultKeySize, PkHashSize).Mac(key: null, publicKey),
                 prefix: Prefix.Tz1);
+        }
 
         public override bool IsValidAddress(string address) =>
             Address.CheckTz1Address(address) ||

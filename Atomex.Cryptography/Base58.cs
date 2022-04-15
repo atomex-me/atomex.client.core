@@ -1,8 +1,9 @@
 ﻿using System;
 using System.Linq;
 using System.Numerics;
-using System.Security.Cryptography;
+
 using Atomex.Common;
+using Atomex.Cryptography.Abstract;
 
 namespace Atomex.Cryptography
 {
@@ -15,17 +16,24 @@ namespace Atomex.Cryptography
     public static class Base58Check
     {
         private const int CheckSumSize = 4;
-        private const string Digits = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+        private const string Alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+        private static readonly sbyte[] AsciiToDigit = {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, -1,
+            -1, -1, -1, -1, -1, -1, 9, 10, 11, 12,
+            13, 14, 15, 16, -1, 17, 18, 19, 20, 21,
+            -1, 22, 23, 24, 25, 26, 27, 28, 29, 30,
+            31, 32, -1, -1, -1, -1, -1, -1, 33, 34,
+            35, 36, 37, 38, 39, 40, 41, 42, 43, -1,
+            44, 45, 46, 47, 48, 49, 50, 51, 52, 53,
+            54, 55, 56, 57 };
 
         /// <summary>
         /// Encodes data with a 4-byte checksum
         /// </summary>
         /// <param name="data">Data to be encoded</param>
         /// <returns></returns>
-        public static string Encode(byte[] data)
-        {
-            return EncodePlain(AddCheckSum(data));
-        }
+        public static string Encode(ReadOnlySpan<byte> data) =>
+            EncodePlain(AddCheckSum(data));
 
         /// <summary>
         /// Encodes data with a 4-byte checksum and one byte prefix
@@ -33,39 +41,37 @@ namespace Atomex.Cryptography
         /// <param name="data">Data to be encoded</param>
         /// <param name="prefix">Prefix byte</param>
         /// <returns></returns>
-        public static string Encode(byte[] data, byte prefix)
-        {
-            return Encode(new[] {prefix}.ConcatArrays(data));
-        }
+        public static string Encode(ReadOnlySpan<byte> data, byte prefix) =>
+            Encode(data: data, prefix: new[] { prefix });
 
         /// <summary>
         /// Encodes data with a 4-byte checksum and one prefix
         /// </summary>
-        /// <param name="payload">Data to be encoded</param>
+        /// <param name="data">Data to be encoded</param>
         /// <param name="prefix">Prefix bytes</param>
         /// <returns></returns>
-        public static string Encode(byte[] payload, byte[] prefix)
-        {
-            return Encode(prefix.ConcatArrays(payload));
-        }
+        public static string Encode(ReadOnlySpan<byte> data, ReadOnlySpan<byte> prefix) =>
+            Encode(prefix.Concat(data));
 
         /// <summary>
         /// Encodes data in plain Base58, without any checksum.
         /// </summary>
         /// <param name="data">The data to be encoded</param>
         /// <returns></returns>
-        public static string EncodePlain(byte[] data)
+        public static string EncodePlain(ReadOnlySpan<byte> data)
         {
-            // Decode byte[] to BigInteger
-            var intData = data.Aggregate<byte, BigInteger>(0, (current, t) => current * 256 + t);
+            BigInteger intData = 0;
 
-            // Encode BigInteger to Base58 string
+            foreach (var @byte in data)
+                intData = intData * 256 + @byte;
+
             var result = string.Empty;
+
             while (intData > 0)
             {
                 var remainder = (int)(intData % 58);
                 intData /= 58;
-                result = Digits[remainder] + result;
+                result = Alphabet[remainder] + result;
             }
 
             // Append `1` for each leading 0 byte
@@ -80,7 +86,7 @@ namespace Atomex.Cryptography
         /// </summary>
         /// <param name="data">Data to be decoded</param>
         /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
-        public static byte[] Decode(string data)
+        public static ReadOnlySpan<byte> Decode(string data)
         {
             var dataWithCheckSum = DecodePlain(data);
             var dataWithoutCheckSum = VerifyAndRemoveCheckSum(dataWithCheckSum);
@@ -97,19 +103,14 @@ namespace Atomex.Cryptography
         /// <param name="encoded">Encoded data</param>
         /// <param name="prefix">Prefix bytes</param>
         /// <returns></returns>
-        public static byte[] Decode(string encoded, byte[] prefix)
+        public static ReadOnlySpan<byte> Decode(string encoded, ReadOnlySpan<byte> prefix)
         {
-            int prefixLen = prefix?.Length ?? 0;
-
             var decoded = Decode(encoded);
 
-            if (decoded.Length < prefixLen)
+            if (decoded.Length < prefix.Length)
                 return null;
 
-            byte[] result = new byte[decoded.Length - prefixLen];
-            Array.Copy(decoded, prefixLen, result, 0, result.Length);
-
-            return result;
+            return decoded[prefix.Length..];
         }
 
         /// <summary>
@@ -117,14 +118,13 @@ namespace Atomex.Cryptography
         /// </summary>
         /// <param name="data">Data to be decoded</param>
         /// <returns>Returns decoded data if valid; throws FormatException if invalid</returns>
-        public static byte[] DecodePlain(string data)
+        public static ReadOnlySpan<byte> DecodePlain(string data)
         {
-            // Decode Base58 string to BigInteger 
             BigInteger intData = 0;
 
             for (var i = 0; i < data.Length; i++)
             {
-                var digit = Digits.IndexOf(data[i]); //Slow
+                var digit = AsciiToDigit[data[i] - 49];
 
                 if (digit < 0)
                     throw new FormatException($"Invalid Base58 character `{data[i]}` at position {i}");
@@ -132,15 +132,18 @@ namespace Atomex.Cryptography
                 intData = intData * 58 + digit;
             }
 
-            // Encode BigInteger to byte[]
-            // Leading zero bytes get encoded as leading `1` characters
-            var leadingZeroCount = data.TakeWhile(c => c == '1').Count();
-            var leadingZeros = Enumerable.Repeat((byte)0, leadingZeroCount);
+            // encode BigInteger to byte[]
+            // leading zero bytes get encoded as leading `1` characters
+            var leadingZeroCount = data
+                .TakeWhile(c => c == '1')
+                .Count();
+
+            var leadingZeros = Enumerable.Repeat((byte) 0, leadingZeroCount);
 
             var bytesWithoutLeadingZeros = intData
                 .ToByteArray()
-                .Reverse()// to big endian
-                .SkipWhile(b => b == 0);//strip sign byte
+                .Reverse() // to big endian
+                .SkipWhile(b => b == 0); //strip sign byte
 
             var result = leadingZeros
                 .Concat(bytesWithoutLeadingZeros)
@@ -149,34 +152,26 @@ namespace Atomex.Cryptography
             return result;
         }
 
-        private static byte[] AddCheckSum(byte[] data)
-        {
-            var checkSum = GetCheckSum(data);
-            var dataWithCheckSum = data.ConcatArrays(checkSum);
+        private static ReadOnlySpan<byte> AddCheckSum(ReadOnlySpan<byte> data) =>
+            data.Concat(GetCheckSum(data));
 
-            return dataWithCheckSum;
-        }
-
-        //Returns null if the checksum is invalid
-        private static byte[] VerifyAndRemoveCheckSum(byte[] data)
+        private static ReadOnlySpan<byte> VerifyAndRemoveCheckSum(ReadOnlySpan<byte> data)
         {
-            var result = ArrayHelpers.SubArray(data, 0, data.Length - CheckSumSize);
-            var givenCheckSum = data.SubArray(data.Length - CheckSumSize);
+            var result          = data[0..^4];
+            var givenCheckSum   = data[^CheckSumSize..];
             var correctCheckSum = GetCheckSum(result);
 
-            return givenCheckSum.SequenceEqual(correctCheckSum) ? result : null;
+            return givenCheckSum.SequenceEqual(correctCheckSum)
+                ? result
+                : null;
         }
 
-        private static byte[] GetCheckSum(byte[] data)
+        private static ReadOnlySpan<byte> GetCheckSum(ReadOnlySpan<byte> data)
         {
-            using var sha256 = new SHA256Managed();
-            var hash1 = sha256.ComputeHash(data);
-            var hash2 = sha256.ComputeHash(hash1);
+            var hash1 = HashAlgorithm.Sha256.Hash(data);
+            var hash2 = HashAlgorithm.Sha256.Hash(hash1);
 
-            var result = new byte[CheckSumSize];
-            Buffer.BlockCopy(hash2, 0, result, 0, result.Length);
-
-            return result;
+            return new ReadOnlySpan<byte>(hash2)[..CheckSumSize];
         }
     }
 }

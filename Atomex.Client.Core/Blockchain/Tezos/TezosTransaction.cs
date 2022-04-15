@@ -189,7 +189,7 @@ namespace Atomex.Blockchain.Tezos
                 {
                     ["kind"]          = Internal.OperationType.Reveal,
                     ["fee"]           = "0",
-                    ["public_key"]    = Base58Check.Encode(publicKey, Prefix.Edpk),
+                    ["public_key"]    = Base58Check.Encode(publicKey.Data, Prefix.Edpk),
                     ["source"]        = From,
                     ["storage_limit"] = "0",
                     ["gas_limit"]     = tezosConfig.RevealGasLimit.ToString(),

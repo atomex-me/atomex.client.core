@@ -31,8 +31,6 @@ namespace Atomex.Common
 
             var unistr = IntPtr.Zero;
 
-            RuntimeHelpers.PrepareConstrainedRegions();
-
             try
             {
                 unistr = Marshal.SecureStringToGlobalAllocUnicode(_data);
