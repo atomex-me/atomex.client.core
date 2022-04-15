@@ -44,7 +44,7 @@ namespace Atomex.Cryptography
             int saltSize = SaltSize,
             int iterations = Iterations)
         {
-            using var scopedPasswordBytes = new ScopedBytes(password.ToBytes());
+            var scopedPasswordBytes = password.ToBytes();
 
             return Encrypt(plainBytes, scopedPasswordBytes, keySize, saltSize, iterations);
         }
@@ -83,7 +83,7 @@ namespace Atomex.Cryptography
             int saltSize = SaltSize,
             int iterations = Iterations)
         {
-            using var scopedPasswordBytes = new ScopedBytes(password.ToBytes());
+            var scopedPasswordBytes = password.ToBytes();
 
             return Decrypt(encryptedBytes, scopedPasswordBytes, keySize, saltSize, iterations);
         }

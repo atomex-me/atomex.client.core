@@ -886,9 +886,9 @@ namespace Atomex.ViewModels
         {
             using var servicePublicKey =
                 account.Wallet.GetServicePublicKey(account.UserSettings.AuthenticationKeyIndex);
-            using var publicKey = servicePublicKey.ToUnsecuredBytes();
+            var publicKey = servicePublicKey.ToUnsecuredBytes();
 
-            return HashAlgorithm.Sha256.Hash(publicKey.Data, iterations: 2).ToHexString();
+            return HashAlgorithm.Sha256.Hash(publicKey, iterations: 2).ToHexString();
         }
 
         public static async Task<List<UserMessage>> GetUserMessages(string userId,

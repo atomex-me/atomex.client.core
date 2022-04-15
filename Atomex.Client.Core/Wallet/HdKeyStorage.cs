@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using Serilog;
 
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Cryptography.Abstract;
@@ -52,8 +53,8 @@ namespace Atomex.Wallet
             Version = CurrentVersion;
             Network = network;
 
-            using var scopedSeed = new ScopedBytes(new Mnemonic(mnemonic, wordList)
-                .DeriveSeed(passPhrase.ToUnsecuredString()));
+            var scopedSeed = new Mnemonic(mnemonic, wordList)
+                .DeriveSeed(passPhrase.ToUnsecuredString());
 
             Seed = new SecureBytes(scopedSeed);
         }
@@ -68,12 +69,12 @@ namespace Atomex.Wallet
         {
             try
             {
-                using var scopedSeed = new ScopedBytes(Aes.Decrypt(
+                var scopedSeed = Aes.Decrypt(
                     encryptedBytes: Hex.FromString(EncryptedSeed),
                     password: password,
                     keySize: AesKeySize,
                     saltSize: AesSaltSize,
-                    iterations: AesRfc2898Iterations));
+                    iterations: AesRfc2898Iterations);
 
                 Seed = new SecureBytes(scopedSeed);
             }
@@ -89,7 +90,7 @@ namespace Atomex.Wallet
         {
             try
             {
-                using var scopedSeed = Seed.ToUnsecuredBytes();
+                var scopedSeed = Seed.ToUnsecuredBytes();
 
                 EncryptedSeed = Aes.Encrypt(
                         plainBytes: scopedSeed,
@@ -322,9 +323,9 @@ namespace Atomex.Wallet
                 .Derive(new KeyPath(path: $"m/{ServicePurpose}'/{currency.Bip44Code}'/0'/{daysIndex}/{secondsIndex}/{msIndex}/{counter}"));
 
             using var securePublicKey = extKey.GetPublicKey();
-            using var publicKey = securePublicKey.ToUnsecuredBytes();
+            var publicKey = securePublicKey.ToUnsecuredBytes();
 
-            return HashAlgorithm.Sha512.Hash(publicKey.Data);
+            return HashAlgorithm.Sha512.Hash(publicKey);
         }
 
         public static HdKeyStorage LoadFromFile(string pathToFile, SecureString password)

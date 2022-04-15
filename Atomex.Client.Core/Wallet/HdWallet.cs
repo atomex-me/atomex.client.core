@@ -10,6 +10,7 @@ using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Network = Atomex.Core.Network;
@@ -94,7 +95,7 @@ namespace Atomex.Wallet
             if (securePublicKey == null)
                 return null;
 
-            using var publicKey = securePublicKey.ToUnsecuredBytes();
+            var publicKey = securePublicKey.ToUnsecuredBytes();
 
             var address = currency.AddressFromKey(publicKey);
 
@@ -324,7 +325,7 @@ namespace Atomex.Wallet
             KeyStorage.GetDeterministicSecret(currency, timeStamp);
 
         public static HdWallet LoadFromFile(string pathToWallet, SecureString password) =>
-            new HdWallet(pathToWallet, password);
+            new(pathToWallet, password);
 
         public void SaveToFile(string pathToWallet, SecureString password)
         {

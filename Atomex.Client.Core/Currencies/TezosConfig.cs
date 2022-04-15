@@ -11,6 +11,7 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.Bip;
@@ -322,7 +323,7 @@ namespace Atomex
                 if (raw.Length != 22)
                     throw new ArgumentException($"Invalid address size: {raw.Length}");
 
-                var data = hex.Substring(0, 4) switch
+                var data = hex[..4] switch
                 {
                     "0000" => Prefix.Tz1.ConcatArrays(raw.SubArray(2)),
                     "0001" => Prefix.Tz2.ConcatArrays(raw.SubArray(2)),

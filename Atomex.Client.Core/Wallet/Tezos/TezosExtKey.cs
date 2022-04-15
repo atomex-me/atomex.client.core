@@ -7,8 +7,10 @@ using NBitcoin.DataEncoders;
 
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Cryptography;
 using Atomex.Cryptography.BouncyCastle;
+using Utils = NBitcoin.Utils;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -28,8 +30,8 @@ namespace Atomex.Wallet.Tezos
 
         public TezosExtKey(SecureBytes seed)
         {
-            using var scopedSeed = seed.ToUnsecuredBytes();
-            using var scopedHashSeed = new ScopedBytes(Hashes.HMACSHA512(HashKey, scopedSeed));
+            var scopedSeed = seed.ToUnsecuredBytes();
+            var scopedHashSeed = Hashes.HMACSHA512(HashKey, scopedSeed);
             using var secureHashSeed = new SecureBytes(scopedHashSeed);
 
             Ed25519.GenerateKeyPair(
@@ -81,7 +83,7 @@ namespace Atomex.Wallet.Tezos
                 childPrivateKey: out var childPrivateKey,
                 childPublicKey: out var childPublicKey);
 
-            using var scopedPublicKey = _publicKey.ToUnsecuredBytes();
+            var scopedPublicKey = _publicKey.ToUnsecuredBytes();
 
             var fingerPrint = Utils.ToUInt32(
                 value: Hashes.Hash160(scopedPublicKey).ToBytes(),
@@ -108,17 +110,17 @@ namespace Atomex.Wallet.Tezos
 
         public SecureBytes GetPrivateKey()
         {
-            return _privateKey.Clone();
+            return _privateKey.Copy();
         }
 
         public SecureBytes GetPublicKey()
         {
-            return _publicKey.Clone();
+            return _publicKey.Copy();
         }
 
         public byte[] SignHash(byte[] hash)
         {
-            using var scopedPrivateKey = _privateKey.ToUnsecuredBytes();
+            var scopedPrivateKey = _privateKey.ToUnsecuredBytes();
 
             return TezosSigner.Sign(
                 data: hash,
@@ -127,7 +129,7 @@ namespace Atomex.Wallet.Tezos
 
         public byte[] SignMessage(byte[] data)
         {
-            using var scopedPrivateKey = _privateKey.ToUnsecuredBytes();
+            var scopedPrivateKey = _privateKey.ToUnsecuredBytes();
 
             return TezosSigner.Sign(
                 data: data,
@@ -136,7 +138,7 @@ namespace Atomex.Wallet.Tezos
 
         public bool VerifyHash(byte[] hash, byte[] signature)
         {
-            using var scopedPublicKey = _publicKey.ToUnsecuredBytes();
+            var scopedPublicKey = _publicKey.ToUnsecuredBytes();
 
             return TezosSigner.Verify(
                 data: hash,
@@ -146,7 +148,7 @@ namespace Atomex.Wallet.Tezos
 
         public bool VerifyMessage(byte[] data, byte[] signature)
         {
-            using var scopedPublicKey = _publicKey.ToUnsecuredBytes();
+            var scopedPublicKey = _publicKey.ToUnsecuredBytes();
 
             return TezosSigner.Verify(
                 data: data,
@@ -161,10 +163,10 @@ namespace Atomex.Wallet.Tezos
             out SecureBytes childPrivateKey,
             out SecureBytes childPublicKey)
         {
-            using var scopedPublicKey = _publicKey.ToUnsecuredBytes();
-            using var scopedPrivateKey = _privateKey.ToUnsecuredBytes();
+            var scopedPublicKey = _publicKey.ToUnsecuredBytes();
+            var scopedPrivateKey = _privateKey.ToUnsecuredBytes();
 
-            using var data = new ScopedBytes(1 + 32 + 4);
+            var data = new byte[1 + 32 + 4];
 
             if (child >> 31 == 0)
             {
@@ -179,8 +181,8 @@ namespace Atomex.Wallet.Tezos
 
             Buffer.BlockCopy(src: IndexToBytes(child), srcOffset: 0, dst: data, dstOffset: 33, count: 4);
 
-            using var l = new ScopedBytes(Hashes.HMACSHA512(chainCode, data));
-            using var scopedChildPrivateKey = new ScopedBytes(l.Data.SubArray(start: 0, length: 32));
+            var l = Hashes.HMACSHA512(chainCode, data);
+            var scopedChildPrivateKey = l.SubArray(start: 0, length: 32);
 
             childPrivateKey = new SecureBytes(scopedChildPrivateKey);
 

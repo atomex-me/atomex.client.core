@@ -12,6 +12,7 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
+using Atomex.Common.Memory;
 
 namespace Atomex.Blockchain.BitcoinBased
 {
@@ -146,7 +147,7 @@ namespace Atomex.Blockchain.BitcoinBased
             ITxOutput spentOutput,
             BitcoinBasedConfig bitcoinBasedConfig)
         {
-            using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
+            var scopedPrivateKey = privateKey.ToUnsecuredBytes();
 
             Sign(new Key(scopedPrivateKey), spentOutput, bitcoinBasedConfig); // todo: do not use NBitcoin.Key
         }
@@ -165,7 +166,7 @@ namespace Atomex.Blockchain.BitcoinBased
             ITxOutput[] spentOutputs,
             BitcoinBasedConfig bitcoinBasedConfig)
         {
-            using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
+            var scopedPrivateKey = privateKey.ToUnsecuredBytes();
 
             Sign(new Key(scopedPrivateKey), spentOutputs, bitcoinBasedConfig); // todo: do not use NBitcoin.Key
         }

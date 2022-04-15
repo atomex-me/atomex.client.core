@@ -10,6 +10,7 @@ using Serilog;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.Abstract;
@@ -115,7 +116,7 @@ namespace Atomex.Blockchain.Tezos
                 return false;
             }
 
-            using var privateKey = securePrivateKey.ToUnsecuredBytes();
+            var privateKey = securePrivateKey.ToUnsecuredBytes();
 
             var xtz = currencyConfig as TezosConfig;
 
@@ -143,7 +144,7 @@ namespace Atomex.Blockchain.Tezos
             bool isAlreadyRevealed = false,
             CancellationToken cancellationToken = default)
         {
-            using var publicKey = securePublicKey.ToUnsecuredBytes();
+            var publicKey = securePublicKey.ToUnsecuredBytes();
 
             var rpc = new Rpc(tezosConfig.RpcNodeUri);
 
@@ -189,7 +190,7 @@ namespace Atomex.Blockchain.Tezos
                 {
                     ["kind"]          = Internal.OperationType.Reveal,
                     ["fee"]           = "0",
-                    ["public_key"]    = Base58Check.Encode(publicKey.Data, Prefix.Edpk),
+                    ["public_key"]    = Base58Check.Encode(publicKey, Prefix.Edpk),
                     ["source"]        = From,
                     ["storage_limit"] = "0",
                     ["gas_limit"]     = tezosConfig.RevealGasLimit.ToString(),

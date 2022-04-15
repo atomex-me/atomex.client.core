@@ -172,14 +172,14 @@ namespace Atomex.Wallet
             }
 
             using var securePublicKey = Wallet.GetServicePublicKey(keyIndex);
-            using var publicKey = securePublicKey.ToUnsecuredBytes();
+            var publicKey = securePublicKey.ToUnsecuredBytes();
 
             var auth = new Auth
             {
                 TimeStamp    = DateTime.UtcNow,
                 Nonce        = nonce.Nonce,
                 ClientNonce  = Guid.NewGuid().ToString(),
-                PublicKeyHex = publicKey.Data.ToHexString(),
+                PublicKeyHex = publicKey.ToHexString(),
                 Version      = $"{ApiVersion} {_clientType}"
             };
 
@@ -265,9 +265,9 @@ namespace Atomex.Wallet
         public string GetUserId(uint keyIndex = 0)
         {
             using var servicePublicKey = Wallet.GetServicePublicKey(keyIndex);
-            using var publicKey = servicePublicKey.ToUnsecuredBytes();
+            var publicKey = servicePublicKey.ToUnsecuredBytes();
 
-            return HashAlgorithm.Sha256.Hash(publicKey.Data, iterations: 2).ToHexString();
+            return HashAlgorithm.Sha256.Hash(publicKey, iterations: 2).ToHexString();
         }
 
         #endregion Common

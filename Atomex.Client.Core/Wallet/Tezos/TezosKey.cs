@@ -1,5 +1,5 @@
 ﻿using Atomex.Blockchain.Tezos;
-using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Cryptography;
 using Atomex.Cryptography.BouncyCastle;
 
@@ -20,18 +20,18 @@ namespace Atomex.Wallet.Tezos
 
         public SecureBytes GetPrivateKey()
         {
-            return _privateKey.Clone();
+            return _privateKey.Copy();
         }
 
         public SecureBytes GetPublicKey()
         {
-            return _publicKey.Clone();
+            return _publicKey.Copy();
         }
 
         public byte[] SignHash(byte[] hash)
         {
             using var securePrivateKey = GetPrivateKey();
-            using var scopedPrivateKey = securePrivateKey.ToUnsecuredBytes();
+            var scopedPrivateKey = securePrivateKey.ToUnsecuredBytes();
 
             if (scopedPrivateKey.Length == 32)
                 return TezosSigner.Sign(
@@ -46,7 +46,7 @@ namespace Atomex.Wallet.Tezos
         public byte[] SignMessage(byte[] data)
         {
             using var securePrivateKey = GetPrivateKey();
-            using var scopedPrivateKey = securePrivateKey.ToUnsecuredBytes();
+            var scopedPrivateKey = securePrivateKey.ToUnsecuredBytes();
 
             if (scopedPrivateKey.Length == 32)
                 return TezosSigner.Sign(
@@ -61,7 +61,7 @@ namespace Atomex.Wallet.Tezos
         public bool VerifyHash(byte[] hash, byte[] signature)
         {
             using var securePublicKey = GetPublicKey();
-            using var scopedPublicKey = securePublicKey.ToUnsecuredBytes();
+            var scopedPublicKey = securePublicKey.ToUnsecuredBytes();
 
             return TezosSigner.Verify(
                 data: hash,
@@ -72,7 +72,7 @@ namespace Atomex.Wallet.Tezos
         public bool VerifyMessage(byte[] data, byte[] signature)
         {
             using var securePublicKey = GetPublicKey();
-            using var scopedPublicKey = securePublicKey.ToUnsecuredBytes();
+            var scopedPublicKey = securePublicKey.ToUnsecuredBytes();
 
             return TezosSigner.Verify(
                 data: data,

@@ -1,4 +1,4 @@
-﻿using Atomex.Common;
+﻿using Atomex.Common.Memory;
 using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract

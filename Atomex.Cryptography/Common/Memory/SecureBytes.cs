@@ -10,6 +10,7 @@ namespace Atomex.Common.Memory
     public sealed class SecureBytes : IDisposable
     {
         private SecureString _securedData;
+        private bool _disposed;
 
         private SecureBytes(SecureString secureString)
         {
@@ -74,20 +75,32 @@ namespace Atomex.Common.Memory
             _securedData = data.ToHexSecureString();
         }
 
-        public SecureBytes Copy()
-        {
-            return new SecureBytes(_securedData);
-        }
-
-        public void Dispose()
-        {
-            _securedData.Clear();
-            _securedData.Dispose();
-        }
+        public SecureBytes Copy() => new(_securedData);
 
         private static byte HexCharToByte(char c) =>
             c >= 65
                 ? (byte)(c - 65 + 10)  // ascii 'A'
                 : (byte)(c - 48); // ascii '0'
+
+        private void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _securedData.Clear();
+                    _securedData.Dispose();
+                }
+
+                _securedData = null;
+                _disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
     }
 }

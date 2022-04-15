@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Diagnostics;
-using Atomex.Common;
+
 using Org.BouncyCastle.Crypto;
 using Org.BouncyCastle.Crypto.Digests;
 using Org.BouncyCastle.Math.EC.Rfc7748;
 using Org.BouncyCastle.Security;
 using Org.BouncyCastle.Utilities;
+
+using Atomex.Common;
+using Atomex.Common.Memory;
 
 namespace Atomex.Cryptography.BouncyCastle
 {
@@ -1162,9 +1165,9 @@ namespace Atomex.Cryptography.BouncyCastle
             out SecureBytes privateKey,
             out SecureBytes publicKey)
         {
-            using var scopedSeed = seed.ToUnsecuredBytes();
-            using var scopedPrivateKey = new ScopedBytes(PrivateKeySize);
-            using var scopedPublicKey = new ScopedBytes(PublicKeySize);
+            var scopedSeed = seed.ToUnsecuredBytes();
+            var scopedPrivateKey = new byte[PrivateKeySize];
+            var scopedPublicKey = new byte[PublicKeySize];
 
             // copy first 32-bytes from seed to expandedPrivateKey left part ([0-31] bytes)
             Array.Copy(
@@ -1189,8 +1192,8 @@ namespace Atomex.Cryptography.BouncyCastle
             SecureBytes privateKey,
             out SecureBytes publicKey)
         {
-            using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
-            using var scopedPublicKey = new ScopedBytes(PublicKeySize);
+            var scopedPrivateKey = privateKey.ToUnsecuredBytes();
+            var scopedPublicKey = new byte[PublicKeySize];
 
             GeneratePublicKey(
                 sk: scopedPrivateKey,
@@ -1205,8 +1208,9 @@ namespace Atomex.Cryptography.BouncyCastle
             SecureBytes extendedPrivateKey,
             out SecureBytes publicKey)
         {
-            using var scopedExtentedPrivateKey = extendedPrivateKey.ToUnsecuredBytes();
-            using var scopedPublicKey = new ScopedBytes(PointBytes);
+            var scopedExtentedPrivateKey = extendedPrivateKey.ToUnsecuredBytes();
+            var scopedPublicKey = new byte[PointBytes];
+
             ScalarMultBaseEncoded(scopedExtentedPrivateKey, scopedPublicKey, 0);
 
             publicKey = new SecureBytes(scopedPublicKey);

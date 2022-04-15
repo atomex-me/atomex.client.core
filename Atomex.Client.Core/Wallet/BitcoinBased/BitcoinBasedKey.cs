@@ -1,7 +1,10 @@
 ﻿using System;
-using Atomex.Common;
-using Atomex.Cryptography;
+
 using NBitcoin;
+
+using Atomex.Common;
+using Atomex.Common.Memory;
+using Atomex.Cryptography;
 
 namespace Atomex.Wallet.BitcoinBased
 {
@@ -11,21 +14,21 @@ namespace Atomex.Wallet.BitcoinBased
 
         public BitcoinBasedKey(SecureBytes seed)
         {
-            using var scopedSeed = seed.ToUnsecuredBytes();
+            var scopedSeed = seed.ToUnsecuredBytes();
 
             Key = new Key(scopedSeed);
         }
 
         public SecureBytes GetPrivateKey()
         {
-            using var privateKey = new ScopedBytes(Key.ToBytes());
+            var privateKey = Key.ToBytes();
 
             return new SecureBytes(privateKey);
         }
 
         public SecureBytes GetPublicKey()
         {
-            using var publicKey = new ScopedBytes(Key.PubKey.ToBytes());
+            var publicKey = Key.PubKey.ToBytes();
 
             return new SecureBytes(publicKey);
         }

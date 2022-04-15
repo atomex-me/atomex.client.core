@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Cryptography;
 
 namespace Atomex.Core

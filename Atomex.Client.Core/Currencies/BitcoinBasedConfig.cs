@@ -12,6 +12,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.BitcoinBased;
+using Atomex.Common.Memory;
 
 namespace Atomex
 {

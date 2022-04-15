@@ -11,7 +11,7 @@ using Serilog;
 using Transaction = Nethereum.RPC.Eth.DTOs.Transaction;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 
@@ -178,7 +178,7 @@ namespace Atomex.Blockchain.Ethereum
             if (privateKey == null)
                 throw new ArgumentNullException(nameof(privateKey));
 
-            using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
+            var scopedPrivateKey = privateKey.ToUnsecuredBytes();
 
             var chain = ethereumConfig.Chain;
 

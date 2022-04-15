@@ -1,8 +1,9 @@
-﻿using Atomex.Common;
+﻿using NBitcoin;
+using Nethereum.Signer;
+
+using Atomex.Common.Memory;
 using Atomex.Cryptography;
 using Atomex.Wallet.BitcoinBased;
-using NBitcoin;
-using Nethereum.Signer;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -57,7 +58,7 @@ namespace Atomex.Wallet.Ethereum
         private EthECKey GetEcKey()
         {
             using var securePrivateKey = GetPrivateKey();
-            using var privateKey = securePrivateKey.ToUnsecuredBytes();
+            var privateKey = securePrivateKey.ToUnsecuredBytes();
 
             return new EthECKey(privateKey, true);
         }
