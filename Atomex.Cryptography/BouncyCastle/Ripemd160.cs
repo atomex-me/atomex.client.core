@@ -7,33 +7,19 @@ using Atomex.Cryptography.Abstract;
 
 namespace Atomex.Cryptography.BouncyCastle
 {
-    public class Blake2b : HashAlgorithm
+    public class Ripemd160 : HashAlgorithm
     {
-        public static readonly int DefaultHashSize = 32;
-
-        private readonly int _hashSize;
-
-        public override int HashSize => _hashSize;
-
-        public Blake2b()
-            : this(DefaultHashSize)
-        {
-        }
-
-        public Blake2b(int hashSize)
-        {
-            _hashSize = hashSize;
-        }
+        public override int HashSize => 20;
 
         public override byte[] Hash(
             ReadOnlySpan<byte> data)
         {
-            var hash = new byte[HashSize];
+            var ripemd160 = new RipeMD160Digest();
 
-            var blake2b = new Blake2bDigest(HashSize * 8);
+            var hash = new byte[ripemd160.GetDigestSize()];
 
-            blake2b.BlockUpdate(data.ToArray(), 0, data.Length);
-            blake2b.DoFinal(hash, 0);
+            ripemd160.BlockUpdate(data.ToArray(), 0, data.Length);
+            ripemd160.DoFinal(hash, 0);
 
             return hash;
         }
@@ -57,38 +43,31 @@ namespace Atomex.Cryptography.BouncyCastle
         }
 
         public override IIncrementalHash CreateIncrementalHash() =>
-            new Blake2bIncremental();
+            new Ripemd160Incremental();
 
         public override IIncrementalHash CreateIncrementalHash(int hashSize) =>
-            new Blake2bIncremental(hashSize);
+            hashSize == HashSize
+                ? CreateIncrementalHash()
+                : throw new NotSupportedException($"The hash size of the Ripemd160 is fixed and equal to {HashSize} bytes");
     }
 
-    public class Blake2bIncremental : IIncrementalHash
+    public class Ripemd160Incremental : IIncrementalHash
     {
-        private Blake2bDigest _blake2b;
+        private RipeMD160Digest _ripemd160;
 
-        public int HashSize { get; private set; }
-
-        public Blake2bIncremental()
-            : this(Blake2b.DefaultHashSize)
+        public Ripemd160Incremental()
         {
-        }
-
-        public Blake2bIncremental(int hashSize)
-        {
-            HashSize = hashSize;
-
             Initialize();
         }
 
         public void Initialize()
         {
-            _blake2b = new Blake2bDigest(HashSize * 8);
+            _ripemd160 = new RipeMD160Digest();
         }
 
         public void Update(ReadOnlySpan<byte> data)
         {
-            _blake2b.BlockUpdate(data.ToArray(), 0, data.Length);
+            _ripemd160.BlockUpdate(data.ToArray(), 0, data.Length);
         }
 
         public void Finalize(Span<byte> hash)
@@ -98,9 +77,9 @@ namespace Atomex.Cryptography.BouncyCastle
 
         public byte[] Finalize()
         {
-            var result = new byte[HashSize];
+            var result = new byte[_ripemd160.GetDigestSize()];
 
-            _blake2b.DoFinal(result, 0);
+            _ripemd160.DoFinal(result, 0);
 
             return result;
         }

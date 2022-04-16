@@ -13,17 +13,22 @@ namespace Atomex.Cryptography.DotNet
     {
         public override int HashSize => 64;
 
-        public override byte[] Hash(ReadOnlySpan<byte> data)
+        public override byte[] Hash(
+            ReadOnlySpan<byte> data)
         {
             return NetSha512.HashData(data);
         }
 
-        public override void Hash(ReadOnlySpan<byte> data, Span<byte> hash)
+        public override void Hash(
+            ReadOnlySpan<byte> data,
+            Span<byte> hash)
         {
             NetSha512.HashData(data, hash);
         }
 
-        public unsafe override bool Verify(ReadOnlySpan<byte> data, ReadOnlySpan<byte> hash)
+        public unsafe override bool Verify(
+            ReadOnlySpan<byte> data,
+            ReadOnlySpan<byte> hash)
         {
             Debug.Assert(hash.Length == HashSize);
 
@@ -36,7 +41,8 @@ namespace Atomex.Cryptography.DotNet
                 return FixedTimeEqual.Equals(temp, @out, hash.Length);
         }
 
-        public override IIncrementalHash CreateIncrementalHash() => new Sha512Incremental();
+        public override IIncrementalHash CreateIncrementalHash() =>
+            new Sha512Incremental();
 
         public override IIncrementalHash CreateIncrementalHash(int hashSize) =>
             hashSize == HashSize
@@ -47,6 +53,7 @@ namespace Atomex.Cryptography.DotNet
     public class Sha512Incremental : IIncrementalHash
     {
         private readonly NetIncrementalHash _sha512;
+        private bool disposedValue;
 
         public Sha512Incremental()
         {
@@ -74,9 +81,23 @@ namespace Atomex.Cryptography.DotNet
             return _sha512.GetHashAndReset();
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _sha512.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
         public void Dispose()
         {
-            _sha512.Dispose();
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

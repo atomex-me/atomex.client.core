@@ -70,13 +70,35 @@ namespace Atomex.Cryptography.Abstract
             }
         }
 
+        private static Ripemd160 _ripemd160;
+        public static Ripemd160 Ripemd160
+        {
+            get
+            {
+                var instance = _ripemd160;
+
+                if (instance == null)
+                {
+                    Interlocked.CompareExchange(ref _ripemd160, new Ripemd160(), null);
+                    instance = _ripemd160;
+                }
+
+                return instance;
+            }
+        }
+
         public abstract int HashSize { get; }
 
-        public abstract byte[] Hash(ReadOnlySpan<byte> data);
+        public abstract byte[] Hash(
+            ReadOnlySpan<byte> data);
 
-        public abstract void Hash(ReadOnlySpan<byte> data, Span<byte> hash);
+        public abstract void Hash(
+            ReadOnlySpan<byte> data,
+            Span<byte> hash);
 
-        public abstract bool Verify(ReadOnlySpan<byte> data, ReadOnlySpan<byte> hash);
+        public abstract bool Verify(
+            ReadOnlySpan<byte> data,
+            ReadOnlySpan<byte> hash);
 
         public abstract IIncrementalHash CreateIncrementalHash();
 

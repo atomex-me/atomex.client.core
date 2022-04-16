@@ -12,7 +12,7 @@ namespace Atomex.Cryptography
         public Aes256Gcm()
         {
             _impl = Sodium.IsInitialized
-                ? (AeadAlgorithm)new Libsodium.Aes256Gcm()
+                ? new Libsodium.Aes256Gcm()
                 : new BouncyCastle.Aes256Gcm();
         }
 

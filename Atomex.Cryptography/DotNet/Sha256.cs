@@ -41,17 +41,19 @@ namespace Atomex.Cryptography.DotNet
                 return FixedTimeEqual.Equals(temp, @out, hash.Length);
         }
 
-        public override IIncrementalHash CreateIncrementalHash() => new Sha256Incremental();
+        public override IIncrementalHash CreateIncrementalHash() =>
+            new Sha256Incremental();
 
         public override IIncrementalHash CreateIncrementalHash(int hashSize) =>
             hashSize == HashSize
                 ? CreateIncrementalHash()
-                : throw new NotSupportedException($"The hash size of the Sha256 is fixed and equal to {HashSize} bytes.");
+                : throw new NotSupportedException($"The hash size of the Sha256 is fixed and equal to {HashSize} bytes");
     }
 
     public class Sha256Incremental : IIncrementalHash
     {
         private readonly NetIncrementalHash _sha256;
+        private bool disposedValue;
 
         public Sha256Incremental()
         {
@@ -79,9 +81,23 @@ namespace Atomex.Cryptography.DotNet
             return _sha256.GetHashAndReset();
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _sha256.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
         public void Dispose()
         {
-            _sha256.Dispose();
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

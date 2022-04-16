@@ -13,9 +13,9 @@ using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Cryptography.Abstract;
+using Atomex.Cryptography.DotNet;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using Aes = Atomex.Cryptography.Aes;
 using Network = Atomex.Core.Network;
 
 namespace Atomex.Wallet
@@ -69,14 +69,15 @@ namespace Atomex.Wallet
         {
             try
             {
-                var scopedSeed = Aes.Decrypt(
-                    encryptedBytes: Hex.FromString(EncryptedSeed),
-                    password: password,
-                    keySize: AesKeySize,
-                    saltSize: AesSaltSize,
-                    iterations: AesRfc2898Iterations);
+                var seed = new AesCbc(
+                        keySize: AesKeySize,
+                        saltSize: AesSaltSize,
+                        iterations: AesRfc2898Iterations)
+                    .Decrypt(
+                        key: password.ToBytes(),
+                        ciphertext: Hex.FromString(EncryptedSeed));
 
-                Seed = new SecureBytes(scopedSeed);
+                Seed = new SecureBytes(seed);
             }
             catch (Exception e)
             {
@@ -92,12 +93,13 @@ namespace Atomex.Wallet
             {
                 var scopedSeed = Seed.ToUnsecuredBytes();
 
-                EncryptedSeed = Aes.Encrypt(
-                        plainBytes: scopedSeed,
-                        password: password,
+                EncryptedSeed = new AesCbc(
                         keySize: AesKeySize,
                         saltSize: AesSaltSize,
                         iterations: AesRfc2898Iterations)
+                    .Encrypt(
+                        key: password.ToBytes(),
+                        plaintext: scopedSeed)
                     .ToHexString();
             }
             catch (Exception e)
@@ -345,12 +347,13 @@ namespace Atomex.Wallet
 
                 var encryptedBytes = stream.ReadBytes((int)stream.Length - 1);
 
-                var decryptedBytes = Aes.Decrypt(
-                    encryptedBytes: encryptedBytes,
-                    password: password,
-                    keySize: AesKeySize,
-                    saltSize: AesSaltSize,
-                    iterations: AesRfc2898Iterations);
+                var decryptedBytes = new AesCbc(
+                        keySize: AesKeySize,
+                        saltSize: AesSaltSize,
+                        iterations: AesRfc2898Iterations)
+                    .Decrypt(
+                        key: password.ToBytes(),
+                        ciphertext: encryptedBytes);
 
                 var json = Encoding.UTF8.GetString(decryptedBytes);
 
@@ -379,12 +382,13 @@ namespace Atomex.Wallet
                 var serialized = JsonConvert.SerializeObject(this, Formatting.Indented);
                 var serializedBytes = Encoding.UTF8.GetBytes(serialized);
 
-                var encryptedBytes = Aes.Encrypt(
-                    plainBytes: serializedBytes,
-                    password: password,
-                    keySize: AesKeySize,
-                    saltSize: AesSaltSize,
-                    iterations: AesRfc2898Iterations);
+                var encryptedBytes = new AesCbc(
+                        keySize: AesKeySize,
+                        saltSize: AesSaltSize,
+                        iterations: AesRfc2898Iterations)
+                    .Encrypt(
+                        key: password.ToBytes(),
+                        plaintext: serializedBytes);
 
                 stream.WriteByte((byte)Network);
                 stream.Write(encryptedBytes, 0, encryptedBytes.Length);
