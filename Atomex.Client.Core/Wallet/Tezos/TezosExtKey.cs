@@ -23,6 +23,8 @@ namespace Atomex.Wallet.Tezos
 
         private readonly SecureBytes _privateKey;
         private readonly SecureBytes _publicKey;
+        private bool disposedValue;
+
         private byte[] ChainCode { get; }
         private uint Child { get; }
         private uint Depth { get; }
@@ -34,7 +36,7 @@ namespace Atomex.Wallet.Tezos
             var scopedHashSeed = Hashes.HMACSHA512(HashKey, scopedSeed);
             using var secureHashSeed = new SecureBytes(scopedHashSeed);
 
-            Ed25519.GenerateKeyPair(
+            BcEd25519.GenerateKeyPair(
                 seed: secureHashSeed,
                 privateKey: out _privateKey,
                 publicKey: out _publicKey);
@@ -195,7 +197,7 @@ namespace Atomex.Wallet.Tezos
                 dstOffset: 0,
                 count: ChainCodeLength);
 
-            Ed25519.GeneratePublicKey(
+            BcEd25519.GeneratePublicKey(
                 privateKey: childPrivateKey,
                 publicKey: out childPublicKey);
         }
@@ -211,14 +213,24 @@ namespace Atomex.Wallet.Tezos
             return num;
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _privateKey?.Dispose();
+                    _publicKey?.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
         public void Dispose()
         {
-            if (_privateKey != null)
-                _privateKey.Dispose();
-
-            if (_publicKey != null)
-                _publicKey.Dispose();
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
-
 }

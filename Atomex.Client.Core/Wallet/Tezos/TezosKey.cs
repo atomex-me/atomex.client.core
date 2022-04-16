@@ -1,4 +1,6 @@
-﻿using Atomex.Blockchain.Tezos;
+﻿using System;
+
+using Atomex.Blockchain.Tezos;
 using Atomex.Common.Memory;
 using Atomex.Cryptography;
 using Atomex.Cryptography.BouncyCastle;
@@ -9,10 +11,11 @@ namespace Atomex.Wallet.Tezos
     {
         private readonly SecureBytes _privateKey;
         private readonly SecureBytes _publicKey;
+        private bool disposedValue;
 
         public TezosKey(SecureBytes seed)
         {
-            Ed25519.GenerateKeyPair(
+            BcEd25519.GenerateKeyPair(
                 seed: seed,
                 privateKey: out _privateKey,
                 publicKey: out _publicKey);
@@ -80,13 +83,24 @@ namespace Atomex.Wallet.Tezos
                 publicKey: scopedPublicKey);
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _privateKey?.Dispose();
+                    _publicKey?.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
         public void Dispose()
         {
-            if (_privateKey != null)
-                _privateKey.Dispose();
-
-            if (_publicKey != null)
-                _publicKey.Dispose();
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

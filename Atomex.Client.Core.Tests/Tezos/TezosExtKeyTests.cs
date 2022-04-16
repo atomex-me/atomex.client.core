@@ -1,8 +1,10 @@
 ﻿using System.Text;
-using Atomex.Common;
-using Atomex.Wallet.Tezos;
+
 using NBitcoin;
 using Xunit;
+
+using Atomex.Common.Memory;
+using Atomex.Wallet.Tezos;
 
 namespace Atomex.Client.Core.Tests
 {
@@ -22,7 +24,7 @@ namespace Atomex.Client.Core.Tests
             using var extKey = new TezosExtKey(seed);
             using var childKey = extKey.Derive(new KeyPath("m/44'/1729'/0'/0'"));
             using var secureChildPublicKey = childKey.GetPublicKey();
-            using var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
+            var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
 
             var signature = childKey.SignMessage(messageBytes);
             Assert.True(childKey.VerifyMessage(messageBytes, signature));
@@ -40,7 +42,7 @@ namespace Atomex.Client.Core.Tests
             using var extKey = new Bip32TezosExtKey(seed);
             using var childKey = extKey.Derive(new KeyPath("m/44'/1729'/0'/0'"));
             using var secureChildPublicKey = childKey.GetPublicKey();
-            using var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
+            var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
 
             var signature = childKey.SignMessage(messageBytes);
             Assert.True(childKey.VerifyMessage(messageBytes, signature));
@@ -61,7 +63,7 @@ namespace Atomex.Client.Core.Tests
             {
                 using var childKey = extKey.Derive(new KeyPath($"m/44'/1729'/0'/0/{i}"));
                 using var secureChildPublicKey = childKey.GetPublicKey();
-                using var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
+                var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
 
                 var signature = childKey.SignMessage(messageBytes);
                 Assert.True(childKey.VerifyMessage(messageBytes, signature));

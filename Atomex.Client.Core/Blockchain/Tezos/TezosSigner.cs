@@ -14,14 +14,18 @@ namespace Atomex.Blockchain.Tezos
             byte[] data,
             byte[] privateKey)
         {
-            return Ed25519.Sign(data, privateKey);
+            return BcEd25519.Sign(
+                privateKey: privateKey,
+                data: data);
         }
 
         public static byte[] SignByExtendedKey(
             byte[] data,
             byte[] extendedPrivateKey)
         {
-            return Ed25519.SignByExtendedKey(data, extendedPrivateKey);
+            return BcEd25519.SignWithExtendedKey(
+                privateKey: extendedPrivateKey,
+                data: data);
         }
 
         private static SignedMessage SignHash(
@@ -55,14 +59,14 @@ namespace Atomex.Blockchain.Tezos
 
             var hash = MacAlgorithm.HmacBlake2b.Mac(key: null, dataForSign);
 
-            var signature = signer(hash, privateKey);
+            var signature = signer(privateKey, hash);
 
             return new SignedMessage
             {
-                Bytes = dataForSign,
-                SignedHash = signature,
+                Bytes            = dataForSign,
+                SignedHash       = signature,
                 EncodedSignature = Base58Check.Encode(signature, Prefix.Edsig),
-                SignedBytes = data.ToHexString() + signature.ToHexString()
+                SignedBytes      = data.ToHexString() + signature.ToHexString()
             };
         }
 
@@ -75,12 +79,12 @@ namespace Atomex.Blockchain.Tezos
             if (isExtendedKey)
                 return SignHash(data,
                     privateKey,
-                    Ed25519.SignByExtendedKey,
+                    (pkKey, data) => BcEd25519.SignWithExtendedKey(pkKey, data),
                     watermark);
  
             return SignHash(data,
                 privateKey,
-                Ed25519.Sign,
+                (pkKey, data) => BcEd25519.Sign(pkKey, data),
                 watermark);
         }
 
@@ -89,7 +93,10 @@ namespace Atomex.Blockchain.Tezos
             byte[] signature,
             byte[] publicKey)
         {
-            return Ed25519.Verify(data, signature, publicKey);
+            return BcEd25519.Verify(
+                publicKey: publicKey,
+                data: data,
+                signature: signature);
         }
 
         public static bool VerifyHash(
@@ -99,10 +106,10 @@ namespace Atomex.Blockchain.Tezos
         {
             var hash = MacAlgorithm.HmacBlake2b.Mac(key: null, data);
 
-            return Ed25519.Verify(
+            return BcEd25519.Verify(
+                publicKey: publicKey,
                 data: hash,
-                signature: signature,
-                publicKey: publicKey);
+                signature: signature);
         }
     }
 }

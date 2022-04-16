@@ -23,6 +23,8 @@ namespace Atomex.Wallet.Tezos
 
         private readonly SecureBytes _privateKey;
         private readonly SecureBytes _publicKey;
+        private bool disposedValue;
+
         private byte[] ChainCode { get; }
         private uint Child { get; }
         private uint Depth { get; }
@@ -71,7 +73,7 @@ namespace Atomex.Wallet.Tezos
 
             PruneScalar(_privateKey);
 
-            Ed25519.GeneratePublicKeyFromExtended(
+            BcEd25519.GeneratePublicKeyFromExtended(
                 extendedPrivateKey: _privateKey,
                 publicKey: out _publicKey);
 
@@ -314,7 +316,7 @@ namespace Atomex.Wallet.Tezos
 
                 var childPrivateKey = new SecureBytes(childK);
 
-                Ed25519.GeneratePublicKeyFromExtended(
+                BcEd25519.GeneratePublicKeyFromExtended(
                     extendedPrivateKey: childPrivateKey,
                     publicKey: out var childPublicKey);
 
@@ -357,13 +359,24 @@ namespace Atomex.Wallet.Tezos
             data.Reset(scopedData);
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _privateKey?.Dispose();
+                    _publicKey?.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
         public void Dispose()
         {
-            if (_privateKey != null)
-                _privateKey.Dispose();
-
-            if (_publicKey != null)
-                _publicKey.Dispose();
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
