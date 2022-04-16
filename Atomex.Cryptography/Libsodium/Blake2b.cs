@@ -158,7 +158,7 @@ namespace Atomex.Cryptography.Libsodium
 
         public void Dispose()
         {
-            // nothing to do
+            GC.SuppressFinalize(this);
         }
     }
 }

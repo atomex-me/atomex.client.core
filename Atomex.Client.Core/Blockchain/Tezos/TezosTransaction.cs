@@ -128,13 +128,23 @@ namespace Atomex.Blockchain.Tezos
 
             //var forgedOpGroup = Forge.ForgeOperationsLocal(Head["hash"].ToString(), Operations);
 
+            var dataToSign = Hex.FromString(forgedOpGroup.ToString());
+
             SignedMessage = TezosSigner.SignHash(
-                data: Hex.FromString(forgedOpGroup.ToString()),
+                data: dataToSign,
                 privateKey: privateKey,
                 watermark: Watermark.Generic,
                 isExtendedKey: privateKey.Length == 64);
 
-            return SignedMessage != null;
+            var verifyResult = TezosSigner.VerifyHash(
+                data: Watermark.Generic.ConcatArrays(dataToSign),
+                signature: SignedMessage.SignedHash,
+                publicKey: keyStorage.GetPublicKey(
+                    currency: currencyConfig,
+                    keyIndex: address.KeyIndex,
+                    keyType: address.KeyType).ToUnsecuredBytes());
+
+            return SignedMessage != null && verifyResult;
         }
 
         public async Task<(bool result, bool isRunSuccess, bool hasReveal)> FillOperationsAsync(

@@ -9,10 +9,10 @@ namespace Atomex.Cryptography
 {
     public class HmacSha256Tests
     {
-        public static IEnumerable<MacAlgorithm> MacAlgorithms = new List<MacAlgorithm>
+        private static readonly IEnumerable<MacAlgorithm> MacAlgorithms = new List<MacAlgorithm>
         {
-            new Atomex.Cryptography.Libsodium.HmacSha256(),
-            new Atomex.Cryptography.DotNet.HmacSha256(),
+            new Libsodium.HmacSha256(),
+            new DotNet.HmacSha256(),
             new HmacSha256()
         };
 
@@ -55,7 +55,8 @@ namespace Atomex.Cryptography
 
         public static IEnumerable<object[]> Data
         {
-            get {
+            get
+            {
                 var data = new List<object[]>();
 
                 foreach (var macAlgorithm in MacAlgorithms)

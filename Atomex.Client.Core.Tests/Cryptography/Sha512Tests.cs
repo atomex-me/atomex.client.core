@@ -10,10 +10,10 @@ namespace Atomex.Cryptography
 {
     public class Sha512Tests
     {
-        public static IEnumerable<HashAlgorithm> HashAlgorithms = new List<HashAlgorithm>
+        private static readonly IEnumerable<HashAlgorithm> HashAlgorithms = new List<HashAlgorithm>
         {
-            new Atomex.Cryptography.Libsodium.Sha512(),
-            new Atomex.Cryptography.DotNet.Sha512(),
+            new Libsodium.Sha512(),
+            new DotNet.Sha512(),
             new Sha512()
         };
 
@@ -115,7 +115,7 @@ namespace Atomex.Cryptography
             var dataBytesSpan = new ReadOnlySpan<byte>(dataBytes);
 
             using var incrementalHash = hashAlgorithm.CreateIncrementalHash();
-            incrementalHash.Update(dataBytesSpan.Slice(0, dataBytes.Length / 2));
+            incrementalHash.Update(dataBytesSpan[..(dataBytes.Length / 2)]);
             incrementalHash.Update(dataBytesSpan[(dataBytes.Length / 2)..]);
 
             var hashBytes = incrementalHash.Finalize();
@@ -131,7 +131,7 @@ namespace Atomex.Cryptography
             var dataBytesSpan = new ReadOnlySpan<byte>(dataBytes);
 
             using var incrementalHash = hashAlgorithm.CreateIncrementalHash();
-            incrementalHash.Update(dataBytesSpan.Slice(0, dataBytes.Length / 2));
+            incrementalHash.Update(dataBytesSpan[..(dataBytes.Length / 2)]);
             incrementalHash.Update(dataBytesSpan[(dataBytes.Length / 2)..]);
 
             var hashBytes = new byte[hash.Length / 2];

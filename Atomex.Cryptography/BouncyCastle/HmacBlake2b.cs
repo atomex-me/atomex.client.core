@@ -44,7 +44,9 @@ namespace Atomex.Cryptography.BouncyCastle
             ReadOnlySpan<byte> key,
             ReadOnlySpan<byte> data)
         {
-            var blake2b = new Blake2bDigest(key.ToArray(), HashSize, null, null);
+            var blake2b = key == null || key.IsEmpty
+                ? new Blake2bDigest(HashSize * 8)
+                : new Blake2bDigest(key.ToArray(), HashSize, null, null);
 
             var hash = new byte[blake2b.GetDigestSize()];
             blake2b.BlockUpdate(data.ToArray(), 0, data.Length);

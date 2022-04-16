@@ -60,7 +60,7 @@ namespace Atomex.Common.Memory.Libsodium
 
         protected override void Dispose(bool disposing)
         {
-            if (!disposed)
+            if (disposed)
                 return;
 
             // zero memory

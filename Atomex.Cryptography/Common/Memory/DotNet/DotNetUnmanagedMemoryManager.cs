@@ -56,7 +56,7 @@ namespace Atomex.Common.Memory.DotNet
 
         protected override void Dispose(bool disposing)
         {
-            if (!disposed)
+            if (disposed)
                 return;
 
             // zero memory

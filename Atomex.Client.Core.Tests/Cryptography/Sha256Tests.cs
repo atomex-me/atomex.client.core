@@ -10,10 +10,10 @@ namespace Atomex.Cryptography
 {
     public class Sha256Tests
     {
-        public static IEnumerable<HashAlgorithm> HashAlgorithms = new List<HashAlgorithm>
+        private static readonly IEnumerable<HashAlgorithm> HashAlgorithms = new List<HashAlgorithm>
         {
-            new Atomex.Cryptography.Libsodium.Sha256(),
-            new Atomex.Cryptography.DotNet.Sha256(),
+            new Libsodium.Sha256(),
+            new DotNet.Sha256(),
             new Sha256()
         };
 

@@ -8,7 +8,7 @@ namespace Atomex.Cryptography
 {
     public class Aes256GcmTests
     {
-        public static IEnumerable<AeadAlgorithm> AeadAlgorithms = new List<AeadAlgorithm>
+        private static readonly IEnumerable<AeadAlgorithm> AeadAlgorithms = new List<AeadAlgorithm>
         {
             new Libsodium.Aes256Gcm(),
             new BouncyCastle.Aes256Gcm(),

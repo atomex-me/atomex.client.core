@@ -10,13 +10,13 @@ namespace Atomex.Cryptography
 {
     public class Blake2bTests
     {
-        public static IEnumerable<HashAlgorithm> HashAlgorithms = new List<HashAlgorithm>
+        private static readonly IEnumerable<HashAlgorithm> HashAlgorithms = new List<HashAlgorithm>
         {
-            new Atomex.Cryptography.Libsodium.Blake2b(),
-            new Atomex.Cryptography.BouncyCastle.Blake2b(),
+            new Libsodium.Blake2b(),
+            new BouncyCastle.Blake2b(),
             new Blake2b(),
-            new Atomex.Cryptography.Libsodium.Blake2b(20),
-            new Atomex.Cryptography.BouncyCastle.Blake2b(20),
+            new Libsodium.Blake2b(20),
+            new BouncyCastle.Blake2b(20),
             new Blake2b(20)
         };
 
@@ -115,7 +115,7 @@ namespace Atomex.Cryptography
             var dataBytesSpan = new ReadOnlySpan<byte>(dataBytes);
 
             using var incrementalHash = hashAlgorithm.CreateIncrementalHash(hash.Length / 2);
-            incrementalHash.Update(dataBytesSpan.Slice(0, dataBytes.Length / 2));
+            incrementalHash.Update(dataBytesSpan[..(dataBytes.Length / 2)]);
             incrementalHash.Update(dataBytesSpan[(dataBytes.Length / 2)..]);
 
             var hashBytes = incrementalHash.Finalize();
@@ -131,7 +131,7 @@ namespace Atomex.Cryptography
             var dataBytesSpan = new ReadOnlySpan<byte>(dataBytes);
 
             using var incrementalHash = hashAlgorithm.CreateIncrementalHash(hash.Length / 2);
-            incrementalHash.Update(dataBytesSpan.Slice(0, dataBytes.Length / 2));
+            incrementalHash.Update(dataBytesSpan[..(dataBytes.Length / 2)]);
             incrementalHash.Update(dataBytesSpan[(dataBytes.Length / 2)..]);
 
             var hashBytes = new byte[hash.Length / 2];

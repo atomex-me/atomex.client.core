@@ -9,10 +9,10 @@ namespace Atomex.Cryptography
 {
     public class HmacSha512Tests
     {
-        public static IEnumerable<MacAlgorithm> MacAlgorithms = new List<MacAlgorithm>
+        private static readonly IEnumerable<MacAlgorithm> MacAlgorithms = new List<MacAlgorithm>
         {
-            new Atomex.Cryptography.Libsodium.HmacSha512(),
-            new Atomex.Cryptography.DotNet.HmacSha512(),
+            new Libsodium.HmacSha512(),
+            new DotNet.HmacSha512(),
             new HmacSha512()
         };
 
