@@ -69,11 +69,5 @@ namespace Atomex.Common
         {
             return SubArray(arr, start, arr.Length - start);
         }
-
-        public static void Clear<T>(this T[] array)
-        {
-            if (array != null)
-                Array.Clear(array: array, index: 0, length: array.Length);
-        }
     }
 }

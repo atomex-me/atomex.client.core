@@ -26,11 +26,11 @@
     <PackageReference Include="LiteDB" Version="4.1.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="5.0.0" />
-    <PackageReference Include="NBitcoin" Version="5.0.81" />
-    <PackageReference Include="NBitcoin.Altcoins" Version="2.0.33" />
-    <PackageReference Include="Nethereum.HdWallet" Version="3.8.0" />
-    <PackageReference Include="Nethereum.JsonRpc.WebSocketClient" Version="3.8.0" />
-    <PackageReference Include="Nethereum.Web3" Version="3.8.0" />
+    <PackageReference Include="NBitcoin" Version="7.0.6" />
+    <PackageReference Include="NBitcoin.Altcoins" Version="3.0.8" />
+    <PackageReference Include="Nethereum.HdWallet" Version="4.3.0" />
+    <PackageReference Include="Nethereum.JsonRpc.WebSocketClient" Version="4.3.0" />
+    <PackageReference Include="Nethereum.Web3" Version="4.3.0" />
     <PackageReference Include="Portable.BouncyCastle" Version="1.9.0" />
     <PackageReference Include="protobuf-net" Version="2.4.4" />
     <PackageReference Include="System.Private.ServiceModel" Version="4.7.0" />
@@ -44,7 +44,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Atomex.Cryptography\Atomex.Cryptography.csproj" />
+    <ProjectReference Include="..\Atomex.Wallets.Bitcoin\Atomex.Wallets.Bitcoin.csproj" />
+    <ProjectReference Include="..\Atomex.Wallets.Ethereum\Atomex.Wallets.Ethereum.csproj" />
+    <ProjectReference Include="..\Atomex.Wallets.Tezos\Atomex.Wallets.Tezos.csproj" />
   </ItemGroup>
 
   <ItemGroup>

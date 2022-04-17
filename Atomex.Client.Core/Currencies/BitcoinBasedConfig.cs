@@ -46,7 +46,8 @@ namespace Atomex
 
         public override string AddressFromKey(byte[] publicKey) =>
             new PubKey(publicKey)
-                .ToString(Network);
+                .GetAddress(ScriptPubKeyType.Legacy, Network)
+                .ToString();
 
         public override bool IsValidAddress(string address)
         {

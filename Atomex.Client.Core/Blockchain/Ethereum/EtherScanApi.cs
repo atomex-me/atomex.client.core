@@ -18,6 +18,7 @@ using Atomex.Blockchain.Ethereum.ERC20;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.EthereumTokens;
+using Error = Atomex.Core.Error;
 
 namespace Atomex.Blockchain.Ethereum
 {
@@ -28,7 +29,7 @@ namespace Atomex.Blockchain.Ethereum
         private static readonly int prefixOffset = 2;
 
         private static readonly RequestLimitControl RequestLimitControl 
-            = new RequestLimitControl(MinDelayBetweenRequestMs);
+            = new(MinDelayBetweenRequestMs);
 
         private string BaseUrl { get; }
 
@@ -217,7 +218,7 @@ namespace Atomex.Blockchain.Ethereum
                    {
                        var json = JsonConvert.DeserializeObject<JObject>(content);
                        var blockNumber = json.ContainsKey("result")
-                           ? long.Parse(json["result"].ToString().Substring(prefixOffset), System.Globalization.NumberStyles.HexNumber)
+                           ? long.Parse(json["result"].ToString()[prefixOffset..], System.Globalization.NumberStyles.HexNumber)
                            : 0;
 
                        return new Result<long>(blockNumber);
@@ -601,7 +602,7 @@ namespace Atomex.Blockchain.Ethereum
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default)
         {
-            if (!(transaction is EthereumTransaction ethTx))
+            if (transaction is not EthereumTransaction ethTx)
                 return new Error(Errors.TransactionBroadcastError, "Invalid transaction type.");
 
             var requestUri = $"api?module=proxy&action=eth_sendRawTransaction&hex=0x{ethTx.RlpEncodedTx}&apikey={ApiKey}";
@@ -643,7 +644,7 @@ namespace Atomex.Blockchain.Ethereum
                 {
                     txId = txIdResult.Value; // remember tx id
 
-                    await Task.Delay(delayIntervalMs)
+                    await Task.Delay(delayIntervalMs, cancellationToken)
                         .ConfigureAwait(false);
                 }
                 else if (txIdResult.HasError && txId != null)

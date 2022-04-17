@@ -18,7 +18,7 @@ namespace Atomex.Common
 
         public static string ToUnsecuredString(this SecureString secureString)
         {
-            var bstrPtr = IntPtr.Zero;
+            var unistr = IntPtr.Zero;
 
             if (secureString != null)
             {
@@ -26,13 +26,13 @@ namespace Atomex.Common
                 {
                     try
                     {
-                        bstrPtr = Marshal.SecureStringToBSTR(secureString);
-                        return Marshal.PtrToStringBSTR(bstrPtr);
+                        unistr = Marshal.SecureStringToGlobalAllocUnicode(secureString);
+                        return Marshal.PtrToStringUni(unistr);
                     }
                     finally
                     {
-                        if (bstrPtr != IntPtr.Zero)
-                            Marshal.ZeroFreeBSTR(bstrPtr);
+                        if (unistr != IntPtr.Zero)
+                            Marshal.ZeroFreeGlobalAllocUnicode(unistr);
                     }
                 }
             }
@@ -51,17 +51,17 @@ namespace Atomex.Common
             if (s1.Length != s2.Length)
                 return false;
 
-            var bstr1 = IntPtr.Zero;
-            var bstr2 = IntPtr.Zero;
-            
+            var unistr1 = IntPtr.Zero;
+            var unistr2 = IntPtr.Zero;
+
             try
             {
-                bstr1 = Marshal.SecureStringToBSTR(s1);
-                bstr2 = Marshal.SecureStringToBSTR(s2);
+                unistr1 = Marshal.SecureStringToGlobalAllocUnicode(s1);
+                unistr2 = Marshal.SecureStringToGlobalAllocUnicode(s2);
 
                 unsafe
                 {
-                    for (char* ptr1 = (char*)bstr1.ToPointer(), ptr2 = (char*)bstr2.ToPointer(); *ptr1 != 0 && *ptr2 != 0; ++ptr1, ++ptr2)
+                    for (char* ptr1 = (char*)unistr1.ToPointer(), ptr2 = (char*)unistr2.ToPointer(); *ptr1 != 0 && *ptr2 != 0; ++ptr1, ++ptr2)
                         if (*ptr1 != *ptr2)
                             return false;
                 }
@@ -70,10 +70,10 @@ namespace Atomex.Common
             }
             finally
             {
-                if (bstr1 != IntPtr.Zero)
-                    Marshal.ZeroFreeBSTR(bstr1);
-                if (bstr2 != IntPtr.Zero)
-                    Marshal.ZeroFreeBSTR(bstr2);
+                if (unistr1 != IntPtr.Zero)
+                    Marshal.ZeroFreeGlobalAllocUnicode(unistr1);
+                if (unistr2 != IntPtr.Zero)
+                    Marshal.ZeroFreeGlobalAllocUnicode(unistr2);
             }
         }
 
@@ -81,38 +81,38 @@ namespace Atomex.Common
         {
             destination.Clear();
 
-            var bsrc = IntPtr.Zero;
+            var unistr = IntPtr.Zero;
 
             try
             {
-                bsrc = Marshal.SecureStringToBSTR(source);
+                unistr = Marshal.SecureStringToGlobalAllocUnicode(source);
 
                 unsafe
                 {
-                    for (var ptr = (char*)bsrc.ToPointer(); *ptr != 0 ; ++ptr)
+                    for (var ptr = (char*)unistr.ToPointer(); *ptr != 0; ++ptr)
                         destination.AppendChar(*ptr);
                 }
 
             }
             finally
             {
-                if (bsrc != IntPtr.Zero)
-                    Marshal.ZeroFreeBSTR(bsrc);
+                if (unistr != IntPtr.Zero)
+                    Marshal.ZeroFreeGlobalAllocUnicode(unistr);
             }
         }
 
         public static bool ContainsChar(this SecureString s, Func<char, bool> condition)
         {
-            var bstr = IntPtr.Zero;
+            var unistr = IntPtr.Zero;
 
             try
             {
-                bstr = Marshal.SecureStringToBSTR(s);
+                unistr = Marshal.SecureStringToGlobalAllocUnicode(s);
 
                 unsafe
                 {
-                    for (var ptr = (char*)bstr.ToPointer(); *ptr != 0; ++ptr)
-                        if (condition(* ptr))
+                    for (var ptr = (char*)unistr.ToPointer(); *ptr != 0; ++ptr)
+                        if (condition(*ptr))
                             return true;
                 }
 
@@ -120,37 +120,27 @@ namespace Atomex.Common
             }
             finally
             {
-                if (bstr != IntPtr.Zero)
-                    Marshal.ZeroFreeBSTR(bstr);
+                if (unistr != IntPtr.Zero)
+                    Marshal.ZeroFreeGlobalAllocUnicode(unistr);
             }
         }
 
-        public static bool ContainsChar(this SecureString s, char ch)
-        {
-            return s.ContainsChar(c => c == ch);
-        }
+        public static bool ContainsChar(this SecureString s, char ch) =>
+            s.ContainsChar(c => c == ch);
 
-        public static bool ContainsDigit(this SecureString s)
-        {
-            return s.ContainsChar(char.IsDigit);
-        }
+        public static bool ContainsDigit(this SecureString s) =>
+            s.ContainsChar(char.IsDigit);
 
-        public static bool ContainsLower(this SecureString s)
-        {
-            return s.ContainsChar(char.IsLower);
-        }
+        public static bool ContainsLower(this SecureString s) =>
+            s.ContainsChar(char.IsLower);
 
-        public static bool ContainsUpper(this SecureString s)
-        {
-            return s.ContainsChar(char.IsUpper);
-        }
+        public static bool ContainsUpper(this SecureString s) =>
+            s.ContainsChar(char.IsUpper);
 
         public const string SpecialsCharacters = "!@#$%^&*?_~-£()";
 
-        public static bool ContainsSpecials(this SecureString s)
-        {
-            return s.ContainsChar(c => SpecialsCharacters.Contains(c));
-        }
+        public static bool ContainsSpecials(this SecureString s) =>
+            s.ContainsChar(c => SpecialsCharacters.Contains(c));
 
         public static byte[] ToBytes(this SecureString s)
         {

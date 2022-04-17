@@ -2,8 +2,8 @@
 using System.Linq;
 
 using NBitcoin;
-using NBitcoin.BouncyCastle.Math;
 using NBitcoin.Crypto;
+using Org.BouncyCastle.Math;
 
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
@@ -78,7 +78,7 @@ namespace Atomex.Wallet.Tezos
                 publicKey: out _publicKey);
 
             var prefix = new byte[] { 0x01 };
-            var data = prefix.ConcatArrays(masterSecret);
+            var data = prefix.Concat(masterSecret).ToArray();
             ChainCode = Hashes.SHA256(data);
         }
 
