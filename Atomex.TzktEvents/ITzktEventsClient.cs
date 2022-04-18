@@ -6,7 +6,7 @@ namespace Atomex.TzktEvents
     {
         string BaseUri { get; }
 
-        Task Start();
+        Task Start(string baseUri);
         Task Stop();
     }
 }

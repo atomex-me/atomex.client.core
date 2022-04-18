@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Atomex.TzktEvents.Services;
 using Microsoft.AspNetCore.SignalR.Client;
 
 
@@ -7,21 +8,16 @@ namespace Atomex.TzktEvents
 {
     public class TzktEventsClient : ITzktEventsClient
     {
-        public string BaseUri { get; }
-        private string EventsUri => $"https://{BaseUri}/v1/events";
+        public string BaseUri { get; private set; }
+        private string EventsUrl => $"https://{BaseUri}/v1/events";
 
-        private readonly HubConnection _connection;
+        private HubConnection _connection;
+        private readonly IHubConnectionCreator _hubConnectionCreator;
 
 
-        public TzktEventsClient(string baseUri)
+        public TzktEventsClient(IHubConnectionCreator hubConnectionCreator)
         {
-            BaseUri = baseUri;
-
-            _connection = new HubConnectionBuilder()
-                .WithUrl(EventsUri)
-                .Build();
-
-            _connection.Closed += Init;
+            _hubConnectionCreator = hubConnectionCreator;
         }
 
         private async Task Init(Exception? arg = null)
@@ -30,8 +26,13 @@ namespace Atomex.TzktEvents
             // TODO: Add subscribers on channels.
         }
 
-        public async Task Start()
+        public async Task Start(string baseUri)
         {
+            BaseUri = baseUri;
+
+            _connection = _hubConnectionCreator.Create(EventsUrl);
+            _connection.Closed += Init;
+
             await Init();
         }
 
