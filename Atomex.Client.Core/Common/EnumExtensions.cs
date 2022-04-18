@@ -11,7 +11,7 @@ namespace Atomex.Common
             var type = enumerationValue.GetType();
             if (!type.IsEnum)
             {
-                throw new ArgumentException("EnumerationValue must be of Enum type", nameof(enumerationValue));
+                throw new ArgumentException(Resources.EnumerationValueMustBeOfEnumType, nameof(enumerationValue));
             }
             
             var memberInfo = type.GetMember(enumerationValue.ToString());
