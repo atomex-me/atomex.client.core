@@ -14,13 +14,16 @@ namespace Atomex.TzktEvents
         public string EventsUrl => $"{BaseUri}/events";
 
         private HubConnection _connection;
-        private readonly IHubConnectionCreator _hubConnectionCreator;
         private bool _isStarted;
 
+        private readonly IHubConnectionCreator _hubConnectionCreator;
+        private readonly ILogger _log;
 
-        public TzktEventsClient(IHubConnectionCreator hubConnectionCreator)
+
+        public TzktEventsClient(IHubConnectionCreator hubConnectionCreator, ILogger log)
         {
             _hubConnectionCreator = hubConnectionCreator ?? throw new ArgumentNullException(nameof(hubConnectionCreator));
+            _log = log ?? throw new ArgumentNullException(nameof(log));
         }
 
         private async Task Init(Exception? arg = null)
@@ -33,7 +36,7 @@ namespace Atomex.TzktEvents
         {
             if (_isStarted)
             {
-                Log.Warning($"Trying to start new connection with baseUri = {baseUri} while TzktEventsClient is already connected to {EventsUrl}.");
+                _log.Warning($"Trying to start new connection with baseUri = {baseUri} while TzktEventsClient is already connected to {EventsUrl}.");
                 return;
             }
 
@@ -50,7 +53,7 @@ namespace Atomex.TzktEvents
         {
             if (!_isStarted)
             {
-                Log.Warning("Connection of TzktEventsClient was already stopped.");
+                _log.Warning("Connection of TzktEventsClient was already stopped.");
                 return;
             }
 

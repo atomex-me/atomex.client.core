@@ -13,7 +13,7 @@ namespace Atomex.TzktEvents.Tests
         [Fact]
         public void Constructor_NullInput_ThrowsException()
         {
-            Assert.Throws<ArgumentNullException>(() => new TzktEventsClient(null));
+            Assert.Throws<ArgumentNullException>(() => new TzktEventsClient(null, null));
         }
 
         // Seems like there is an issue with testing SignalR clients cause of HubConnection implementation:
