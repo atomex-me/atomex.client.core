@@ -8,11 +8,11 @@ using NBitcoin;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
-using Atomex.Common;
 using Atomex.Core;
-using Atomex.Cryptography;
-using Atomex.Wallet.BitcoinBased;
 using Atomex.Common.Memory;
+using Atomex.Wallets;
+using Atomex.Wallets.Bitcoin;
+using BitcoinExtKey = Atomex.Wallets.Bitcoin.BitcoinExtKey;
 
 namespace Atomex
 {
@@ -39,10 +39,10 @@ namespace Atomex
             CreateExtKeyFromSeed(seed);
 
         public static IExtKey CreateExtKeyFromSeed(SecureBytes seed) => 
-            new BitcoinBasedExtKey(seed);
+            new BitcoinExtKey(seed);
 
         public override IKey CreateKey(SecureBytes seed) => 
-            new BitcoinBasedKey(seed);
+            new BitcoinKey(seed);
 
         public override string AddressFromKey(byte[] publicKey) =>
             new PubKey(publicKey)
@@ -77,10 +77,6 @@ namespace Atomex
                 return false;
             } 
         }
-
-        public override bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey) => 
-            new PubKey(publicKey)
-                .VerifyMessage(data, Convert.ToBase64String(signature));
 
         public override decimal GetFeeAmount(decimal fee, decimal feePrice) =>
             fee;

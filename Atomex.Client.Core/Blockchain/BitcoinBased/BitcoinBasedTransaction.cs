@@ -297,18 +297,30 @@ namespace Atomex.Blockchain.BitcoinBased
                 .Satoshi;
         }
 
-        public byte[] GetSignatureHash(ITxOutput spentOutput)
+        public byte[] GetSignatureHash(
+            BitcoinBasedTxOutput output,
+            Script redeemScript = null,
+            SigHash sigHash = SigHash.All)
         {
-            return Tx.GetSignatureHash(((BitcoinBasedTxOutput)spentOutput).Coin).ToBytes();
-        }
+            var coin = redeemScript == null
+                ? output.Coin
+                : new ScriptCoin(output.Coin, redeemScript);
 
-        public byte[] GetSignatureHash(Script redeemScript, ITxOutput spentOutput)
-        {
-            var coin = ((BitcoinBasedTxOutput) spentOutput).Coin;
+            var input = Tx.Inputs
+                .AsIndexedInputs()
+                .FirstOrDefault(i => i.PrevOut.Hash == coin.Outpoint.Hash && i.PrevOut.N == coin.Outpoint.N);
 
-            var scriptCoint = new ScriptCoin(coin, redeemScript);
+            if (input == null)
+                throw new Exception($"Transaction has no input for coin {coin.Outpoint.Hash}:{coin.Outpoint.N}");
 
-            return Tx.GetSignatureHash(scriptCoint).ToBytes();
+            return Tx
+                .GetSignatureHash(
+                    scriptCode: coin.GetScriptCode(),
+                    nIn: (int)input.Index,
+                    nHashType: sigHash,
+                    spentOutput: coin.TxOut,
+                    sigversion: coin.GetHashVersion())
+                .ToBytes();
         }
 
         public Script GetScriptSig(int inputNo) =>

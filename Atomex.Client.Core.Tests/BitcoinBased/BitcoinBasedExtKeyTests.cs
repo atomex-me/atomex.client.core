@@ -4,7 +4,7 @@ using NBitcoin;
 using Xunit;
 
 using Atomex.Common.Memory;
-using Atomex.Wallet.BitcoinBased;
+using BitcoinExtKey = Atomex.Wallets.Bitcoin.BitcoinExtKey;
 
 namespace Atomex.Client.Core.Tests
 {
@@ -21,13 +21,13 @@ namespace Atomex.Client.Core.Tests
             var messageBytes = Encoding.UTF8.GetBytes(Message);
 
             using var seed = new SecureBytes(new Mnemonic(Mnemonic).DeriveSeed());
-            using var extKey = new BitcoinBasedExtKey(seed);
-            using var childKey = extKey.Derive(new KeyPath("m/44'/0'/0'/0'"));
+            using var extKey = new BitcoinExtKey(seed);
+            using var childKey = extKey.Derive("m/44'/0'/0'/0'");
             using var secureChildPublicKey = childKey.GetPublicKey();
             var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
 
-            var signature = childKey.SignMessage(messageBytes);
-            Assert.True(childKey.VerifyMessage(messageBytes, signature));
+            var signature = childKey.Sign(messageBytes);
+            Assert.True(childKey.Verify(messageBytes, signature));
 
             var address = Common.CurrenciesTestNet.Get<BitcoinConfig>("BTC").AddressFromKey(childPublicKey);
             Assert.NotNull(address);

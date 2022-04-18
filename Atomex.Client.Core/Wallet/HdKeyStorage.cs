@@ -11,9 +11,9 @@ using Serilog;
 using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Core;
-using Atomex.Cryptography;
 using Atomex.Cryptography.Abstract;
 using Atomex.Cryptography.DotNet;
+using Atomex.Wallets;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 using Network = Atomex.Core.Network;
@@ -125,10 +125,10 @@ namespace Atomex.Wallet
 
             if (keyType == CurrencyConfig.StandardKey && Currencies.IsTezosBased(currency.Name))
             {
-                return masterKey.Derive(new KeyPath(path: $"m/{purpose}'/{currency.Bip44Code}'/{account}'/{chain}'"));
+                return masterKey.Derive($"m/{purpose}'/{currency.Bip44Code}'/{account}'/{chain}'");
             }
 
-            return masterKey.Derive(new KeyPath(path: $"m/{purpose}'/{currency.Bip44Code}'/{account}'/{chain}/{index}"));
+            return masterKey.Derive($"m/{purpose}'/{currency.Bip44Code}'/{account}'/{chain}/{index}");
         }
 
         private IExtKey GetExtKey(
@@ -183,7 +183,7 @@ namespace Atomex.Wallet
                 .CreateExtKeyFromSeed(Seed);
 
             using var extKey = masterKey
-                .Derive(new KeyPath(path: $"m/{ServicePurpose}'/0'/0'/0/{index}"));
+                .Derive($"m/{ServicePurpose}'/0'/0'/0/{index}");
 
             return extKey.GetPublicKey();
         }
@@ -214,22 +214,7 @@ namespace Atomex.Wallet
                 keyIndex: keyIndex,
                 keyType: keyType);
 
-            return extKey.SignHash(hash);
-        }
-
-        public byte[] SignMessage(
-            CurrencyConfig currency,
-            byte[] data,
-            KeyIndex keyIndex,
-            int keyType)
-        {
-            using var extKey = GetExtKey(
-                currency: currency,
-                purpose: Bip44.Purpose,
-                keyIndex: keyIndex,
-                keyType: keyType);
-
-            return extKey.SignMessage(data);
+            return extKey.Sign(hash);
         }
 
         public byte[] SignMessageByServiceKey(byte[] data, int chain, uint index)
@@ -238,9 +223,9 @@ namespace Atomex.Wallet
                 .CreateExtKeyFromSeed(Seed);
 
             using var derivedKey = masterKey
-                .Derive(new KeyPath(path: $"m/{ServicePurpose}'/0'/0'/{chain}/{index}"));
+                .Derive($"m/{ServicePurpose}'/0'/0'/{chain}/{index}");
 
-            return derivedKey.SignMessage(data);
+            return derivedKey.Sign(data);
         }
 
         public bool VerifyHash(
@@ -256,23 +241,7 @@ namespace Atomex.Wallet
                 keyIndex: keyIndex,
                 keyType: keyType);
 
-            return extKey.VerifyHash(hash, signature);
-        }
-
-        public bool VerifyMessage(
-            CurrencyConfig currency,
-            byte[] data,
-            byte[] signature,
-            KeyIndex keyIndex,
-            int keyType)
-        {
-            using var extKey = GetExtKey(
-                currency: currency,
-                purpose: Bip44.Purpose,
-                keyIndex: keyIndex,
-                keyType: keyType);
-
-            return extKey.VerifyMessage(data, signature);
+            return extKey.Verify(hash, signature);
         }
 
         public bool VerifyMessageByServiceKey(
@@ -285,9 +254,9 @@ namespace Atomex.Wallet
                 .CreateExtKeyFromSeed(Seed);
 
             using var derivedKey = masterKey
-                .Derive(new KeyPath(path: $"m/{ServicePurpose}'/0'/0'/{chain}/{index}"));
+                .Derive($"m/{ServicePurpose}'/0'/0'/{chain}/{index}");
 
-            return derivedKey.VerifyMessage(data, signature);
+            return derivedKey.Verify(data, signature);
         }
 
         private static readonly object _secretCounterSync = new();
@@ -322,7 +291,7 @@ namespace Atomex.Wallet
                 .CreateExtKeyFromSeed(Seed);
 
             using var extKey = masterKey
-                .Derive(new KeyPath(path: $"m/{ServicePurpose}'/{currency.Bip44Code}'/0'/{daysIndex}/{secondsIndex}/{msIndex}/{counter}"));
+                .Derive($"m/{ServicePurpose}'/{currency.Bip44Code}'/0'/{daysIndex}/{secondsIndex}/{msIndex}/{counter}");
 
             using var securePublicKey = extKey.GetPublicKey();
             var publicKey = securePublicKey.ToUnsecuredBytes();

@@ -96,7 +96,7 @@ namespace Atomex.Swaps.BitcoinBased
             // clean any signature, if exists
             tx.NonStandardSign(Script.Empty, 0);
 
-            var sigHash = tx.GetSignatureHash(new Script(redeemScript), spentOutput);
+            var sigHash = tx.GetSignatureHash(spentOutput, new Script(redeemScript));
 
             var signature = await Account.Wallet
                 .SignHashAsync(
@@ -156,7 +156,7 @@ namespace Atomex.Swaps.BitcoinBased
                 return null;
             }
 
-            var sigHash = tx.GetSignatureHash(new Script(redeemScript), spentOutput);
+            var sigHash = tx.GetSignatureHash(spentOutput, new Script(redeemScript));
 
             var signature = await Account.Wallet
                 .SignHashAsync(

@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Common.Memory;
-using Atomex.Cryptography;
+using Atomex.Wallets;
 
 namespace Atomex.Core
 {
@@ -56,7 +56,7 @@ namespace Atomex.Core
 
         public abstract bool IsAddressFromKey(string address, byte[] publicKey);
 
-        public abstract bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey);
+        //public abstract bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey);
 
         public abstract decimal GetFeeAmount(decimal fee, decimal feePrice);
 

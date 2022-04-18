@@ -146,18 +146,18 @@ namespace Atomex.Wallet
                 return Task.FromResult<byte[]>(null);
             }
 
-            var signature = KeyStorage.SignMessage(
+            var signature = KeyStorage.SignHash(
                 currency: currency,
-                data: data,
+                hash: data,
                 keyIndex: address.KeyIndex,
                 keyType: address.KeyType);
 
             Log.Verbose("Data signature in base64: {@signature}",
                 Convert.ToBase64String(signature));
 
-            if (!KeyStorage.VerifyMessage(
+            if (!KeyStorage.VerifyHash(
                 currency: currency,
-                data: data,
+                hash: data,
                 signature: signature,
                 keyIndex: address.KeyIndex,
                 keyType: address.KeyType))

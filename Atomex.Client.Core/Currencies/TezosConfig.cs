@@ -15,7 +15,8 @@ using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.Bip;
-using Atomex.Wallet.Tezos;
+using Atomex.Wallets.Keys;
+using Atomex.Wallets;
 
 namespace Atomex
 {
@@ -192,13 +193,13 @@ namespace Atomex
         public override IExtKey CreateExtKey(SecureBytes seed, int keyType) =>
             keyType switch
             {
-                StandardKey     => new TezosExtKey(seed),
-                Bip32Ed25519Key => new Bip32TezosExtKey(seed),
-                _               => new TezosExtKey(seed)
+                StandardKey     => new Ed25519ExtKey(seed),
+                Bip32Ed25519Key => new Bip32Ed25519ExtKey(seed),
+                _               => new Ed25519ExtKey(seed)
             };
 
         public override IKey CreateKey(SecureBytes seed) =>
-            new TezosKey(seed);
+            new Ed25519Key(seed);
 
         public override string AddressFromKey(byte[] publicKey) {
             
@@ -217,11 +218,11 @@ namespace Atomex
              AddressFromKey(publicKey).ToLowerInvariant()
                 .Equals(address.ToLowerInvariant());
 
-        public override bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey) =>
-            TezosSigner.Verify(
-                data: data,
-                signature: signature,
-                publicKey: publicKey);
+        //public override bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey) =>
+        //    TezosSigner.Verify(
+        //        data: data,
+        //        signature: signature,
+        //        publicKey: publicKey);
  
         public override decimal GetFeeAmount(decimal fee, decimal feePrice) =>
             fee;

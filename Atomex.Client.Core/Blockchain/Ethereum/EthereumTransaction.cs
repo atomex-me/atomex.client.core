@@ -6,14 +6,17 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Nethereum.RPC.Eth.DTOs;
+using Nethereum.Signer;
 using Nethereum.Web3;
 using Serilog;
 using Transaction = Nethereum.RPC.Eth.DTOs.Transaction;
 
 using Atomex.Blockchain.Abstract;
+using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
+using Atomex.Wallets.Ethereum;
 
 namespace Atomex.Blockchain.Ethereum
 {
@@ -43,6 +46,8 @@ namespace Atomex.Blockchain.Ethereum
         public bool IsInternal { get; set; }
         public int InternalIndex { get; set; }
         public List<EthereumTransaction> InternalTxs { get; set; }
+
+        public byte[] Signature { get; set; }
 
         public EthereumTransaction()
         {
@@ -137,18 +142,10 @@ namespace Atomex.Blockchain.Ethereum
             return resTx;
         }
 
-        public bool Verify(EthereumConfig ethereumConfig)
-        {
-            return Web3.OfflineTransactionSigner
-                .VerifyTransaction(
-                    rlp: RlpEncodedTx,
-                    chain: ethereumConfig.Chain);
-        }
+        public bool Verify(EthereumConfig ethereumConfig) =>
+            TransactionVerificationAndRecovery.VerifyTransaction(RlpEncodedTx);
 
-        public byte[] ToBytes()
-        {
-            return Encoding.UTF8.GetBytes(RlpEncodedTx);
-        }
+        public byte[] ToBytes() => Encoding.UTF8.GetBytes(RlpEncodedTx);
 
         public async Task<bool> SignAsync(
             IKeyStorage keyStorage,
@@ -171,33 +168,52 @@ namespace Atomex.Blockchain.Ethereum
                 .ConfigureAwait(false);
         }
 
-        private Task<bool> SignAsync(
+        private async Task<bool> SignAsync(
             SecureBytes privateKey,
             EthereumConfig ethereumConfig)
         {
             if (privateKey == null)
                 throw new ArgumentNullException(nameof(privateKey));
 
-            var scopedPrivateKey = privateKey.ToUnsecuredBytes();
-
             var chain = ethereumConfig.Chain;
 
-            RlpEncodedTx = Web3.OfflineTransactionSigner
-                .SignTransaction(
-                    privateKey: scopedPrivateKey,
-                    chain: chain,
-                    to: To,
-                    amount: Amount,
-                    nonce: Nonce,
-                    gasPrice: GasPrice,
-                    gasLimit: GasLimit,
-                    data: Input);
-            
-            From = Web3.OfflineTransactionSigner
-                .GetSenderAddress(RlpEncodedTx, chain)
-                .ToLowerInvariant();
+            using var key = new EthereumKey(privateKey);
 
-            return Task.FromResult(true);
+            Signature = await key
+                .SignAsync(data: GetRawHash(chain))
+                .ConfigureAwait(false);
+
+            RlpEncodedTx = GetRlpEncoded(chain);
+
+            return true;
         }
+
+        public string GetRlpEncoded(Chain chain)
+        {
+            var tx = new LegacyTransactionChainId(
+                to: To,
+                amount: Amount,
+                nonce: Nonce,
+                gasPrice: GasPrice,
+                gasLimit: GasLimit,
+                data: Input,
+                chainId: (int)chain);
+
+            tx.SetSignature(new EthECDSASignature(Signature));
+
+            return tx
+                .GetRLPEncoded()
+                .ToHexString();
+        }
+
+        public byte[] GetRawHash(Chain chain) =>
+            new LegacyTransactionChainId(
+                to: To,
+                amount: Amount,
+                nonce: Nonce,
+                gasPrice: GasPrice,
+                gasLimit: GasLimit,
+                data: Input,
+                chainId: (int)chain).RawHash;
     }
 }

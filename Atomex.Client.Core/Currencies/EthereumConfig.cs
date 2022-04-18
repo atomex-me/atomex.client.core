@@ -15,9 +15,9 @@ using Atomex.Blockchain.Ethereum.Abstract;
 using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Core;
-using Atomex.Cryptography;
 using Atomex.Wallet.Bip;
-using Atomex.Wallet.Ethereum;
+using Atomex.Wallets;
+using Atomex.Wallets.Ethereum;
 
 namespace Atomex
 {
@@ -178,9 +178,9 @@ namespace Atomex
             AddressFromKey(publicKey).ToLowerInvariant()
                 .Equals(address.ToLowerInvariant());
 
-        public override bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey) =>
-            new EthECKey(publicKey, false)
-                .Verify(data, EthECDSASignature.FromDER(signature));
+        //public override bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey) =>
+        //    new EthECKey(publicKey, false)
+        //        .Verify(data, EthECDSASignature.FromDER(signature));
 
         public override decimal GetFeeAmount(decimal fee, decimal feePrice) =>
             fee * feePrice / GweiInEth;

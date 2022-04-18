@@ -176,12 +176,12 @@ namespace Atomex.Client.Core.Tests
                 knownRedeems: redeemScript
             );
 
-            var sigHash = new uint256(refundTx.GetSignatureHash(redeemScript, paymentTxOutputs.First()));
+            var sigHash = new uint256(refundTx.GetSignatureHash(paymentTxOutputs.First() as BitcoinBasedTxOutput, redeemScript));
 
-            var aliceSign = Common.Alice.Sign(sigHash, SigHash.All);
+            var aliceSign = Common.Alice.Sign(sigHash);
 
             var refundScript = BitcoinBasedSwapTemplate.GenerateHtlcSwapRefundForP2Sh(
-                aliceRefundSig: aliceSign.ToBytes(),
+                aliceRefundSig: aliceSign.ToDER(),
                 aliceRefundPubKey: Common.Alice.PubKey.ToBytes(),
                 redeemScript: redeemScriptBytes);
 
@@ -217,10 +217,10 @@ namespace Atomex.Client.Core.Tests
                 lockTime: DateTimeOffset.MinValue,
                 knownRedeems: redeemScript);
 
-            var sigHash = new uint256(redeemTx.GetSignatureHash(redeemScript, paymentTxOutputs.First()));
+            var sigHash = new uint256(redeemTx.GetSignatureHash(paymentTxOutputs.First() as BitcoinBasedTxOutput, redeemScript));
 
             var scriptSig = BitcoinBasedSwapTemplate.GenerateP2PkhSwapRedeemForP2Sh(
-                sig: Common.Bob.Sign(sigHash, SigHash.All).ToBytes(),
+                sig: Common.Bob.Sign(sigHash).ToDER(),
                 pubKey: Common.Bob.PubKey.ToBytes(),
                 secret: Common.Secret,
                 redeemScript: redeemScriptBytes);
@@ -247,11 +247,11 @@ namespace Atomex.Client.Core.Tests
                 unspentOutputs: paymentTxOutputs,
                 destinationAddress: Common.Bob
                     .PubKey
-                    .GetSegwitAddress(currency.Network)
+                    .GetAddress(ScriptPubKeyType.Segwit, currency.Network)
                     .ToString(),
                 changeAddress: Common.Bob
                     .PubKey
-                    .GetSegwitAddress(currency.Network)
+                    .GetAddress(ScriptPubKeyType.Segwit, currency.Network)
                     .ToString(),
                 amount: 9999_0000,
                 fee: 1_0000);

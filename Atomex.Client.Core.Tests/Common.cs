@@ -87,9 +87,13 @@ namespace Atomex.Client.Core.Tests
         }
 
         public static string AliceSegwitAddress(BitcoinBasedConfig currency) =>
-            Alice.PubKey.GetSegwitAddress(currency.Network).ToString();
+            Alice.PubKey
+                .GetAddress(ScriptPubKeyType.Segwit, currency.Network)
+                .ToString();
 
         public static string BobSegwitAddress(BitcoinBasedConfig currency) =>
-            Bob.PubKey.GetSegwitAddress(currency.Network).ToString();
+            Bob.PubKey
+                .GetAddress(ScriptPubKeyType.Segwit, currency.Network)
+                .ToString();
     }
 }
