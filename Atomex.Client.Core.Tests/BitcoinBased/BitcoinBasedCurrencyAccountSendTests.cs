@@ -3,6 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Moq;
+using NBitcoin;
+using Xunit;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
@@ -10,9 +15,6 @@ using Atomex.Core;
 using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
-using Moq;
-using NBitcoin;
-using Xunit;
 using Network = Atomex.Core.Network;
 
 namespace Atomex.Client.Core.Tests

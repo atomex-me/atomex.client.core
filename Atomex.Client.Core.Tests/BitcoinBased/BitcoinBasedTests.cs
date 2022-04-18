@@ -181,7 +181,7 @@ namespace Atomex.Client.Core.Tests
             var aliceSign = Common.Alice.Sign(sigHash);
 
             var refundScript = BitcoinBasedSwapTemplate.GenerateHtlcSwapRefundForP2Sh(
-                aliceRefundSig: aliceSign.ToDER(),
+                aliceRefundSig: aliceSign.ToCompact(),
                 aliceRefundPubKey: Common.Alice.PubKey.ToBytes(),
                 redeemScript: redeemScriptBytes);
 
@@ -220,7 +220,7 @@ namespace Atomex.Client.Core.Tests
             var sigHash = new uint256(redeemTx.GetSignatureHash(paymentTxOutputs.First() as BitcoinBasedTxOutput, redeemScript));
 
             var scriptSig = BitcoinBasedSwapTemplate.GenerateP2PkhSwapRedeemForP2Sh(
-                sig: Common.Bob.Sign(sigHash).ToDER(),
+                sig: Common.Bob.Sign(sigHash).ToCompact(),
                 pubKey: Common.Bob.PubKey.ToBytes(),
                 secret: Common.Secret,
                 redeemScript: redeemScriptBytes);

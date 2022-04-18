@@ -250,7 +250,7 @@ namespace Atomex.Blockchain.BitcoinBased
                     .Cast<BitcoinBasedTxOutput>()
                     .Select(o => o.Coin)
                     .ToArray())
-                .Verify(Tx, out _);
+                .Verify(Tx, out var errors);
 
             return result;
         }

@@ -4,6 +4,8 @@ using NBitcoin;
 using Xunit;
 
 using Atomex.Common.Memory;
+using Atomex.Cryptography.Abstract;
+using Atomex.Wallets;
 using BitcoinExtKey = Atomex.Wallets.Bitcoin.BitcoinExtKey;
 
 namespace Atomex.Client.Core.Tests
@@ -25,6 +27,9 @@ namespace Atomex.Client.Core.Tests
             using var childKey = extKey.Derive("m/44'/0'/0'/0'");
             using var secureChildPublicKey = childKey.GetPublicKey();
             var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
+
+            if (childKey.SignDataType == SignDataType.Hash)
+                messageBytes = HashAlgorithm.Sha256.Hash(messageBytes);
 
             var signature = childKey.Sign(messageBytes);
             Assert.True(childKey.Verify(messageBytes, signature));
