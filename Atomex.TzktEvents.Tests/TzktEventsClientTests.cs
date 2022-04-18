@@ -18,7 +18,8 @@ namespace Atomex.TzktEvents.Tests
 
         // Seems like there is an issue with testing SignalR clients cause of HubConnection implementation:
         // See also: https://github.com/dotnet/aspnetcore/issues/14924
-        /*[Fact]
+        /*
+        [Fact]
         public async Task Start_WithUri_ShouldSetUpEventsUrl()
         {
             var hubConnectionCreator = new Mock<IHubConnectionCreator>();
@@ -28,9 +29,10 @@ namespace Atomex.TzktEvents.Tests
             var client = new TzktEventsClient(hubConnectionCreator.Object);
             const string baseUri = "api.tzkt.io";
 
-            await client.Start(baseUri);
+            await client.StartAsync(baseUri);
 
             Assert.Equal("https://api.tzkt.io/v1/events", client.EventsUrl);
-        }*/
+        }
+        */
     }
 }

@@ -58,7 +58,7 @@ namespace Atomex.TzktEvents
         {
             if (!_isStarted)
             {
-                _log.Warning("Connection of TzktEventsClient was already stopped.");
+                _log.Warning("Connection of TzktEventsClient was not started.");
                 return;
             }
 
