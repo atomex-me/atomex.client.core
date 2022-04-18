@@ -26,13 +26,18 @@ namespace Atomex.TzktEvents
             _log = log ?? throw new ArgumentNullException(nameof(log));
         }
 
-        private async Task Init(Exception? arg = null)
+        private async Task InitAsync(Exception? exception = null)
         {
+            if (exception != null)
+            {
+                _log.Warning($"Connection closed due to an error: {exception}. Reconnecting.");
+            }
+
             await _connection.StartAsync();
             // TODO: Add subscribers on channels.
         }
 
-        public async Task Start(string baseUri)
+        public async Task StartAsync(string baseUri)
         {
             if (_isStarted)
             {
@@ -44,12 +49,12 @@ namespace Atomex.TzktEvents
             BaseUri = baseUri;
 
             _connection = _hubConnectionCreator.Create(EventsUrl);
-            _connection.Closed += Init;
+            _connection.Closed += InitAsync;
 
-            await Init();
+            await InitAsync();
         }
 
-        public async Task Stop()
+        public async Task StopAsync()
         {
             if (!_isStarted)
             {
@@ -57,7 +62,7 @@ namespace Atomex.TzktEvents
                 return;
             }
 
-            _connection.Closed -= Init;
+            _connection.Closed -= InitAsync;
             await _connection.StopAsync();
             await _connection.DisposeAsync();
             _isStarted = false;
