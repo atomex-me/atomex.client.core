@@ -11,7 +11,7 @@ namespace Atomex.TzktEvents
     public class TzktEventsClient : ITzktEventsClient
     {
         public string BaseUri { get; private set; }
-        private string EventsUrl => $"https://{BaseUri}/v1/events";
+        public string EventsUrl => $"{BaseUri}/events";
 
         private HubConnection _connection;
         private readonly IHubConnectionCreator _hubConnectionCreator;
