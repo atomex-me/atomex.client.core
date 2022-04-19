@@ -40,9 +40,8 @@ namespace Atomex.TzktEvents
 
             await _connection.StartAsync();
 
-
-
-            _connection.On(SubscriptionMethod.SubscribeToHead.GetDescription(), (object msg) =>
+            
+            _connection.On(SubscriptionMethod.SubscribeToHead.Channel, (object msg) =>
             {
                 _log.Debug($"Has got msg from TzktEvents on 'head' channel: {msg}.");
             });
@@ -52,7 +51,7 @@ namespace Atomex.TzktEvents
                 _log.Debug($"Has got msg from TzktEvents on 'operations' channel: {msg}.");
             });*/
 
-            _connection.On(SubscriptionMethod.SubscribeToOperations.GetDescription(), (JObject msg) =>
+            _connection.On(SubscriptionMethod.SubscribeToOperations.Channel, (JObject msg) =>
             {
                 if ((int) msg["type"] == 1)
                 {
@@ -112,7 +111,7 @@ namespace Atomex.TzktEvents
 
         public async Task NotifyOnBalanceChange(string address, Action handler)
         {
-            await _connection.InvokeAsync(SubscriptionMethod.SubscribeToOperations.ToString(), new
+            await _connection.InvokeAsync(SubscriptionMethod.SubscribeToOperations.Method, new
             {
                 address,
                 type = OperationType.Transaction.GetDescription()
