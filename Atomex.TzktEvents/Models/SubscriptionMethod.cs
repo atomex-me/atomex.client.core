@@ -19,7 +19,7 @@ namespace Atomex.TzktEvents.Models
 
         public static readonly SubscriptionMethod SubscribeToHead = new("SubscribeToHead", "head");
         public static readonly SubscriptionMethod SubscribeToBlocks = new("SubscribeToBlocks", "blocks");
-        public static readonly SubscriptionMethod SubscribeToAccounts = new("SubscribeToAccount", "accounts");
+        public static readonly SubscriptionMethod SubscribeToAccounts = new("SubscribeToAccounts", "accounts");
         public static readonly SubscriptionMethod SubscribeToOperations = new("SubscribeToOperations", "operations");
         public static readonly SubscriptionMethod SubscribeToBigMaps = new("SubscribeToBigMaps", "bigmaps");
         public static readonly SubscriptionMethod SubscribeToTokenTransfers = new("SubscribeToTokenTransfers", "transfers");

@@ -50,10 +50,13 @@ namespace Atomex.TzktEvents
             {
                 if (msg["type"]?.Value<int>() == 1)
                 {
-                    var account = msg["data"]?["address"]?.ToString();
-                    if (account != null && _accountHandlers.TryGetValue(account, out var accountHandler))
+                    foreach (var account in msg["data"])
                     {
-                        accountHandler();
+                        var address = account["address"]?.ToString();
+                        if (address != null && _accountHandlers.TryGetValue(address, out var addressHandler))
+                        {
+                            addressHandler();
+                        }
                     }
                 }
 
