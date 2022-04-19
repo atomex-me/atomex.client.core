@@ -20,14 +20,14 @@ namespace Atomex.LiteDb
 {
     public class LiteDbAccountDataRepository : IAccountDataRepository
     {
-        private const string OrdersCollectionName      = "Orders";
-        private const string SwapsCollectionName       = "Swaps";
-        private const string TransactionCollectionName = "Transactions";
-        private const string OutputsCollectionName     = "Outputs";
-        private const string AddressesCollectionName   = "Addresses";
-        private const string TezosTokensAddresses      = "TezosTokensAddresses";
-        private const string TezosTokensTransfers      = "TezosTokensTransfers";
-        private const string TezosTokensContracts      = "TezosTokensContracts";
+        public const string OrdersCollectionName      = "Orders";
+        public const string SwapsCollectionName       = "Swaps";
+        public const string TransactionCollectionName = "Transactions";
+        public const string OutputsCollectionName     = "Outputs";
+        public const string AddressesCollectionName   = "Addresses";
+        public const string TezosTokensAddresses      = "TezosTokensAddresses";
+        public const string TezosTokensTransfers      = "TezosTokensTransfers";
+        public const string TezosTokensContracts      = "TezosTokensContracts";
 
         private const string IdKey                 = "_id";
         private const string CurrencyKey           = nameof(WalletAddress.Currency);
