@@ -174,9 +174,6 @@ namespace Atomex.Wallet
                 index: index,
                 keyType: keyType);
 
-            // DEBUG
-            var privateKey = extKey.GetPrivateKey().ToUnmanagedBytes();
-
             return extKey.GetPublicKey();
         }
 
@@ -220,7 +217,7 @@ namespace Atomex.Wallet
             return extKey.Sign(hash);
         }
 
-        public byte[] SignMessageByServiceKey(byte[] data, int chain, uint index)
+        public byte[] SignByServiceKey(byte[] data, int chain, uint index)
         {
             using var masterKey = BitcoinBasedConfig
                 .CreateExtKeyFromSeed(Seed);
@@ -247,7 +244,7 @@ namespace Atomex.Wallet
             return extKey.Verify(hash, signature);
         }
 
-        public bool VerifyMessageByServiceKey(
+        public bool VerifyByServiceKey(
             byte[] data,
             byte[] signature,
             int chain,

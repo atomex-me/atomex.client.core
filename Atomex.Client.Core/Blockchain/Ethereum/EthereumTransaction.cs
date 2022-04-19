@@ -47,7 +47,7 @@ namespace Atomex.Blockchain.Ethereum
         public int InternalIndex { get; set; }
         public List<EthereumTransaction> InternalTxs { get; set; }
 
-        public byte[] Signature { get; set; }
+        //public byte[] Signature { get; set; }
 
         public EthereumTransaction()
         {
@@ -142,7 +142,7 @@ namespace Atomex.Blockchain.Ethereum
             return resTx;
         }
 
-        public bool Verify(EthereumConfig ethereumConfig) =>
+        public bool Verify() =>
             TransactionVerificationAndRecovery.VerifyTransaction(RlpEncodedTx);
 
         public byte[] ToBytes() => Encoding.UTF8.GetBytes(RlpEncodedTx);
@@ -168,7 +168,7 @@ namespace Atomex.Blockchain.Ethereum
                 .ConfigureAwait(false);
         }
 
-        private async Task<bool> SignAsync(
+        private Task<bool> SignAsync(
             SecureBytes privateKey,
             EthereumConfig ethereumConfig)
         {
@@ -177,19 +177,6 @@ namespace Atomex.Blockchain.Ethereum
 
             var chain = ethereumConfig.Chain;
 
-            using var key = new EthereumKey(privateKey);
-
-            Signature = await key
-                .SignAsync(data: GetRawHash(chain))
-                .ConfigureAwait(false);
-
-            RlpEncodedTx = GetRlpEncoded(chain);
-
-            return true;
-        }
-
-        public string GetRlpEncoded(Chain chain)
-        {
             var tx = new LegacyTransactionChainId(
                 to: To,
                 amount: Amount,
@@ -199,21 +186,16 @@ namespace Atomex.Blockchain.Ethereum
                 data: Input,
                 chainId: (int)chain);
 
-            tx.SetSignature(new EthECDSASignature(Signature));
+            var pkKey = privateKey.ToUnsecuredBytes();
+            var key = new EthECKey(pkKey, true);
 
-            return tx
+            tx.Sign(key);
+
+            RlpEncodedTx = tx
                 .GetRLPEncoded()
                 .ToHexString();
-        }
 
-        public byte[] GetRawHash(Chain chain) =>
-            new LegacyTransactionChainId(
-                to: To,
-                amount: Amount,
-                nonce: Nonce,
-                gasPrice: GasPrice,
-                gasLimit: GasLimit,
-                data: Input,
-                chainId: (int)chain).RawHash;
+            return Task.FromResult(true);
+        }
     }
 }

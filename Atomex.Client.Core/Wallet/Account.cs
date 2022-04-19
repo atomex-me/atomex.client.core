@@ -113,7 +113,6 @@ namespace Atomex.Wallet
 
         public Account(
             IHdWallet wallet,
-            SecureString password,
             IAccountDataRepository dataRepository,
             ICurrenciesProvider currenciesProvider,
             ClientType clientType)
@@ -183,8 +182,10 @@ namespace Atomex.Wallet
                 Version      = $"{ApiVersion} {_clientType}"
             };
 
+            var hashToSign = HashAlgorithm.Sha256.Hash(auth.SignedData);
+
             var signature = await Wallet
-                .SignByServiceKeyAsync(auth.SignedData, keyIndex)
+                .SignByServiceKeyAsync(hashToSign, keyIndex)
                 .ConfigureAwait(false);
 
             auth.Signature = Convert.ToBase64String(signature);

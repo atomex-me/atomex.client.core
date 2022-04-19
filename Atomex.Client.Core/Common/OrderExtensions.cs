@@ -7,6 +7,7 @@ using Serilog;
 
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
+using Atomex.Cryptography.Abstract;
 
 namespace Atomex.Common
 {
@@ -26,10 +27,12 @@ namespace Atomex.Common
                     var data = Encoding.Unicode
                         .GetBytes($"{address.Nonce}{order.TimeStamp.ToUniversalTime():yyyy.MM.dd HH:mm:ss.fff}");
 
+                    var hashToSign = HashAlgorithm.Sha256.Hash(data);
+
                     var currency = account.Currencies.GetByName(address.Currency);
 
                     var signature = await account.Wallet
-                        .SignAsync(data, address, currency)
+                        .SignAsync(hashToSign, address, currency)
                         .ConfigureAwait(false);
 
                     if (signature == null)

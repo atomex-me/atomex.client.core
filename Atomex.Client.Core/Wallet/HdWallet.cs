@@ -295,14 +295,14 @@ namespace Atomex.Wallet
                 return null;
             }
 
-            var signature = KeyStorage.SignMessageByServiceKey(
+            var signature = KeyStorage.SignByServiceKey(
                 data: data,
                 chain: 0,
                 index: keyIndex);
 
             Log.Verbose("Signature in base64: {@signature}", Convert.ToBase64String(signature));
 
-            if (!KeyStorage.VerifyMessageByServiceKey(data, signature, chain: 0, index: keyIndex))
+            if (!KeyStorage.VerifyByServiceKey(data, signature, chain: 0, index: keyIndex))
             {
                 Log.Error("Signature verify error");
                 return null;
