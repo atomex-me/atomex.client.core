@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Signer;
-using Nethereum.Web3;
 using Serilog;
 using Transaction = Nethereum.RPC.Eth.DTOs.Transaction;
 
@@ -16,7 +15,6 @@ using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallets.Ethereum;
 
 namespace Atomex.Blockchain.Ethereum
 {
@@ -46,8 +44,6 @@ namespace Atomex.Blockchain.Ethereum
         public bool IsInternal { get; set; }
         public int InternalIndex { get; set; }
         public List<EthereumTransaction> InternalTxs { get; set; }
-
-        //public byte[] Signature { get; set; }
 
         public EthereumTransaction()
         {

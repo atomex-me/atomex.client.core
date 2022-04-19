@@ -132,7 +132,7 @@ namespace Atomex.Wallet.Ethereum
                     code: Errors.TransactionSigningError,
                     description: "Transaction signing error");
 
-            if (!tx.Verify(erc20Config))
+            if (!tx.Verify())
                 return new Error(
                     code: Errors.TransactionVerificationError,
                     description: "Transaction verification error");
