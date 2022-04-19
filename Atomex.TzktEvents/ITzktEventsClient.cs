@@ -12,6 +12,6 @@ namespace Atomex.TzktEvents
         Task StartAsync(string baseUri);
         Task StopAsync();
 
-        Task NotifyOnBalanceChange(string address, Action handler);
+        Task NotifyOnAccount(string address, Action handler);
     }
 }

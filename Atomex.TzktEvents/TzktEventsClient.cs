@@ -23,7 +23,7 @@ namespace Atomex.TzktEvents
         private readonly IHubConnectionCreator _hubConnectionCreator;
         private readonly ILogger _log;
 
-        private readonly ConcurrentDictionary<string, Action> _balanceChangedHandlers = new();
+        private readonly ConcurrentDictionary<string, Action> _accountHandlers = new();
 
         public TzktEventsClient(IHubConnectionCreator hubConnectionCreator, ILogger log)
         {
@@ -45,32 +45,15 @@ namespace Atomex.TzktEvents
             {
                 _log.Debug($"Has got msg from TzktEvents on 'head' channel: {msg}.");
             });
-
-            /*_connection.On(SubscriptionMethod.SubscribeToOperations.GetDescription(), (Object msg) =>
+            
+            _connection.On(SubscriptionMethod.SubscribeToAccounts.Channel, (JObject msg) =>
             {
-                _log.Debug($"Has got msg from TzktEvents on 'operations' channel: {msg}.");
-            });*/
-
-            _connection.On(SubscriptionMethod.SubscribeToOperations.Channel, (JObject msg) =>
-            {
-                if ((int) msg["type"] == 1)
+                if (msg["type"]?.Value<int>() == 1)
                 {
-                    foreach (var operation in msg["data"])
+                    var account = msg["data"]?["address"]?.ToString();
+                    if (account != null && _accountHandlers.TryGetValue(account, out var accountHandler))
                     {
-                        if (operation["type"]?.ToString() != "transaction") continue;
-
-                        var senderAddress = operation["sender"]?["address"]?.ToString();
-                        var targetAddress = operation["target"]?["address"]?.ToString();
-
-                        if (senderAddress != null && _balanceChangedHandlers.TryGetValue(senderAddress, out var senderHandler))
-                        {
-                            senderHandler();
-                        }
-
-                        if (targetAddress != null && _balanceChangedHandlers.TryGetValue(targetAddress, out var targetHandler))
-                        {
-                            targetHandler();
-                        }
+                        accountHandler();
                     }
                 }
 
@@ -109,15 +92,14 @@ namespace Atomex.TzktEvents
             _isStarted = false;
         }
 
-        public async Task NotifyOnBalanceChange(string address, Action handler)
+        public async Task NotifyOnAccount(string address, Action handler)
         {
-            await _connection.InvokeAsync(SubscriptionMethod.SubscribeToOperations.Method, new
+            await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
             {
-                address,
-                type = OperationType.Transaction.GetDescription()
+                addresses = new []{ address }
             });
 
-            _balanceChangedHandlers.AddOrUpdate(address, handler, (_, _) => handler);
+            _accountHandlers.AddOrUpdate(address, handler, (_, _) => handler);
         }
     }
 }
