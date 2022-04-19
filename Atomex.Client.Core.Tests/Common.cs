@@ -12,15 +12,17 @@ using Atomex.Common.Configuration;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
 using Atomex.TezosTokens;
+using Atomex.Common;
 
 namespace Atomex.Client.Core.Tests
 {
     public static class Common
     {
-        public static Key Alice { get; } = new Key();
-        public static Key Bob { get; } = new Key();
+        public static Key Alice { get; } = new Key(Hex.FromString("7259256491b657968b9845aaf611dd75f0ae8310d0627568523170f3d991ad98"));
+        public static Key Bob { get; } = new Key(Hex.FromString("13930c71bac0a3ba03f2b8fabc9f3494f17399c21b3dfa6fc060386b0d96716e"));
         public static byte[] Secret { get; } = Encoding.UTF8.GetBytes("_atomexatomexatomexatomexatomex_");
         public static byte[] SecretHash { get; } = CurrencySwap.CreateSwapSecretHash(Secret);
+        public static DateTime LockTime { get; } = new DateTime(2022, 6, 12);
 
         private static Assembly CoreAssembly { get; } = AppDomain.CurrentDomain
             .GetAssemblies()

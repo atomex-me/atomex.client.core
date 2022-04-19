@@ -73,7 +73,5 @@ namespace Atomex.Wallets.Bitcoin
             // todo: use other secured framework for secp256r1 keys instead NBitcoin
             return new ExtKey(unmanagedBytes.ToBytes().ToHexString());
         }
-
-        protected override Key GetKey() => GetExtKey().PrivateKey;
     }
 }

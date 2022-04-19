@@ -47,13 +47,34 @@ namespace Atomex.Client.Core.Tests
             var apiMock = new Mock<IBlockchainApi>();
             apiSetup?.Invoke(apiMock);
 
-            var wallet = new HdWallet(Network.TestNet);
+            var mnemonic = "ocean mosquito pool boss curve toddler trash coach enforce table skin jungle meadow grab clinic";
+
+            var extKey = new Mnemonic(mnemonic).DeriveExtKey();
+            var childKey = extKey.Derive(new KeyPath($"m/44'/0'/0'/0/0"));
+            var childPrivateKey = childKey.PrivateKey.ToBytes();
+            var childPrivateKeyPubKey = childKey.PrivateKey.PubKey.ToBytes();
+            var childPubKey = childKey.GetPublicKey();
+            var childPubKeyBytes = childPubKey.ToBytes();
+            var childKeyAddress = childPubKey.GetAddress(currency);
+
+            var wallet = new HdWallet(mnemonic, Wordlist.English, network: Network.TestNet);
+
             var fromAddress = wallet.GetAddress(
                 currency: currency,
                 account: 0,
                 chain: 0,
                 index: 0,
                 keyType: CurrencyConfig.StandardKey);
+
+            var address = wallet.GetAddress(currency, new KeyIndex(), CurrencyConfig.StandardKey);
+
+            var securedKey = wallet.KeyStorage.GetPrivateKey(currency, new KeyIndex(), CurrencyConfig.StandardKey);
+            var unsecuredKey = securedKey.ToUnsecuredBytes();
+
+            var key = new Key(unsecuredKey);
+
+            var addressFromKey = key.PubKey.GetAddress(currency);
+
             var fromOutputs = GetOutputs(fromAddress.Address, NBitcoin.Network.TestNet, currency.CoinToSatoshi(available)).ToList();
 
             var repositoryMock = new Mock<IAccountDataRepository>();

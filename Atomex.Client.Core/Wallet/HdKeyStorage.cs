@@ -174,6 +174,9 @@ namespace Atomex.Wallet
                 index: index,
                 keyType: keyType);
 
+            // DEBUG
+            var privateKey = extKey.GetPrivateKey().ToUnmanagedBytes();
+
             return extKey.GetPublicKey();
         }
 

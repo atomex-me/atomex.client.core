@@ -149,7 +149,12 @@ namespace Atomex.Blockchain.BitcoinBased
         {
             var scopedPrivateKey = privateKey.ToUnsecuredBytes();
 
-            Sign(new Key(scopedPrivateKey), spentOutput, bitcoinBasedConfig); // todo: do not use NBitcoin.Key
+            var key = new Key(scopedPrivateKey);
+            var debugAddress = spentOutput.DestinationAddress(bitcoinBasedConfig.Network);
+            var keyAddress = key.PubKey.GetAddress(bitcoinBasedConfig);
+            
+
+            Sign(key, spentOutput, bitcoinBasedConfig); // todo: do not use NBitcoin.Key
         }
 
         public void Sign(
@@ -244,7 +249,7 @@ namespace Atomex.Blockchain.BitcoinBased
                 .SetTransactionPolicy(new StandardTransactionPolicy
                 {
                     CheckScriptPubKey = checkScriptPubKey,
-                    ScriptVerify = ScriptVerify.Standard
+                    ScriptVerify = ScriptVerify.Standard,
                 })
                 .AddCoins(spentOutputs
                     .Cast<BitcoinBasedTxOutput>()

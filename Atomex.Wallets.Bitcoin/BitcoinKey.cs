@@ -14,6 +14,8 @@ namespace Atomex.Wallets.Bitcoin
     /// <inheritdoc/>
     public class BitcoinKey : IKey
     {
+        public const int HashSize = 32;
+
         protected readonly SecureBytes _privateKey;
         private bool disposed;
 
@@ -30,6 +32,8 @@ namespace Atomex.Wallets.Bitcoin
         {
             using var key = GetKey();
 
+            var privateKey = key.ToBytes();
+
             return new SecureBytes(key.PubKey.ToBytes());
         }
 
@@ -44,6 +48,9 @@ namespace Atomex.Wallets.Bitcoin
             SigHash sigHash,
             bool useLowR = true)
         {
+            if (hash.Length != HashSize)
+                throw new ArgumentException($"Hash size must be {HashSize} bytes ({HashSize * 8} bits)", nameof(hash));
+
             using var key = GetKey();
 
             return key
@@ -62,6 +69,9 @@ namespace Atomex.Wallets.Bitcoin
             ReadOnlySpan<byte> data,
             ReadOnlySpan<byte> signature)
         {
+            if (data.Length != HashSize)
+                throw new ArgumentException($"Data size must be {HashSize} bytes ({HashSize * 8} bits)", nameof(data));
+
             using var key = GetKey();
 
             return key.PubKey.Verify(

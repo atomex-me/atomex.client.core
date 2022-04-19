@@ -48,14 +48,6 @@ namespace Atomex.Wallet
                 network: network);
         }
 
-        public HdWallet(Network network = Network.MainNet)
-            : this(mnemonic: new Mnemonic(Wordlist.English, WordCount.Fifteen).ToString(),
-                   wordList: Wordlist.English,
-                   passPhrase: null,
-                   network: network)
-        {
-        }
-
         public void Lock() =>
             KeyStorage.Lock();
 

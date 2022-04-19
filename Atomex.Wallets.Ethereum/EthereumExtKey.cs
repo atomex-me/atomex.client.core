@@ -3,7 +3,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using NBitcoin;
-using Nethereum.Signer;
 
 using Atomex.Common;
 using Atomex.Common.Memory;
@@ -73,13 +72,6 @@ namespace Atomex.Wallets.Ethereum
 
             // todo: use other secured framework for secp256r1 keys instead NBitcoin
             return new ExtKey(unmanagedBytes.ToBytes().ToHexString());
-        }
-
-        protected override EthECKey GetKey()
-        {
-            using var privateKey = GetExtKey().PrivateKey;
-
-            return new EthECKey(privateKey.ToBytes(), true);
         }
     }
 }
