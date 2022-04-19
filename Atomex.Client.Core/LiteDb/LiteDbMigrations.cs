@@ -402,31 +402,28 @@ namespace Atomex.LiteDb
             Backup(pathToDb);
 
             using var db = new LiteDatabase(connectionString);
+            
+            // remove all tezos addresses, transactions and contracts
+            var removedTokenAddresses = db
+                .GetCollection("TezosTokensAddresses")
+                .Delete(Query.All());
 
-            if (network == Network.TestNet)
-            {
-                // remove all tezos addresses, transactions and contracts
-                var removedTokenAddresses = db
-                    .GetCollection("TezosTokensAddresses")
-                    .Delete(Query.All());
+            var removedTransfers = db
+                .GetCollection("TezosTokensTransfers")
+                .Delete(Query.All());
 
-                var removedTransfers = db
-                    .GetCollection("TezosTokensTransfers")
-                    .Delete(Query.All());
+            var removedContracts = db
+                .GetCollection("TezosTokensContracts")
+                .Delete(Query.All());
 
-                var removedContracts = db
-                    .GetCollection("TezosTokensContracts")
-                    .Delete(Query.All());
+            var removedTransactions = db
+                .GetCollection("Transactions")
+                .Delete(Query.EQ(nameof(WalletAddress.Currency), "XTZ"));
 
-                var removedTransactions = db
-                    .GetCollection("Transactions")
-                    .Delete(Query.EQ(nameof(WalletAddress.Currency), "XTZ"));
-
-                var removedAddresses = db
-                    .GetCollection("Addresses")
-                    .Delete(Query.EQ(nameof(WalletAddress.Currency), "XTZ"));
-            }
-
+            var removedAddresses = db
+                .GetCollection("Addresses")
+                .Delete(Query.EQ(nameof(WalletAddress.Currency), "XTZ"));
+                
             Shrink(db, sessionPassword);
             UpdateVersion(db: db, fromVersion: Version8, toVersion: Version9);
 
