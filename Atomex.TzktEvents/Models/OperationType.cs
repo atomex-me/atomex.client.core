@@ -2,6 +2,10 @@
 
 namespace Atomex.TzktEvents.Models
 {
+    /***
+     * Describes types of for operations (https://api.tzkt.io/#section/SubscribeToOperations)
+     * and stores their api values for each type in <see cref="Description"/> attribute.
+     */
     public enum OperationType
     {
         [Description("transaction")]

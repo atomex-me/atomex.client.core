@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks; 
 
 namespace Atomex.TzktEvents
 {
@@ -8,5 +9,7 @@ namespace Atomex.TzktEvents
 
         Task StartAsync(string baseUri);
         Task StopAsync();
+
+        Task NotifyOnBalanceChange(string address, Action handler);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Atomex.TzktEvents.Services
 {
@@ -8,6 +9,7 @@ namespace Atomex.TzktEvents.Services
         {
             var hubConnection = new HubConnectionBuilder()
                 .WithUrl(url)
+                .AddNewtonsoftJsonProtocol()
                 .Build();
 
             return hubConnection;

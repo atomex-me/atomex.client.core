@@ -7,9 +7,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Client.Core", "Atome
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Client.Core.Tests", "Atomex.Client.Core.Tests\Atomex.Client.Core.Tests.csproj", "{F37C962A-1D73-42A7-B1D4-87293B350E5B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atomex.TzktEvents", "Atomex.TzktEvents\Atomex.TzktEvents.csproj", "{195BA9D3-86DD-4A2B-9072-70B9479B66A7}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.TzktEvents", "Atomex.TzktEvents\Atomex.TzktEvents.csproj", "{195BA9D3-86DD-4A2B-9072-70B9479B66A7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atomex.TzktEvents.Tests", "Atomex.TzktEvents.Tests\Atomex.TzktEvents.Tests.csproj", "{B4B62A49-D32F-4226-A7D2-5C379C7D9964}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.TzktEvents.Tests", "Atomex.TzktEvents.Tests\Atomex.TzktEvents.Tests.csproj", "{B4B62A49-D32F-4226-A7D2-5C379C7D9964}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

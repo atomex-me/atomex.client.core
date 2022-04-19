@@ -350,3 +350,5 @@ Atomex.Client.Core/.vscode/
 
 # Local History for Visual Studio Code
 .history/
+
+tmp/
