@@ -15,7 +15,7 @@ namespace Atomex.TzktEvents.Services
         private readonly HubConnection _connection;
         private readonly ILogger _log;
 
-        private readonly ConcurrentDictionary<string, Action> _accountHandlers = new();
+        private readonly ConcurrentDictionary<string, AccountSubscription> _accounts = new();
         private IDisposable _subscription;
 
 
@@ -32,14 +32,15 @@ namespace Atomex.TzktEvents.Services
                 addresses = new[] { address }
             });
 
-            _accountHandlers.AddOrUpdate(address, handler, (_, _) => handler);
+            var account = new AccountSubscription(address, handler);
+            _accounts.AddOrUpdate(address, account, (_, _) => account);
         }
 
         public async Task InitAsync()
         {
-            if (!_accountHandlers.IsEmpty)
+            if (!_accounts.IsEmpty)
             {
-                var addresses = _accountHandlers.Keys.ToArray();
+                var addresses = _accounts.Keys.ToArray();
                 await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
                 {
                     addresses
@@ -55,12 +56,20 @@ namespace Atomex.TzktEvents.Services
 
                 if (msg["type"]?.Value<int>() == (int)MessageType.Data)
                 {
-                    foreach (var account in msg["data"])
+                    foreach (var accountEvent in msg["data"])
                     {
-                        var address = account["address"]?.ToString();
-                        if (address != null && _accountHandlers.TryGetValue(address, out var addressHandler))
+                        var address = accountEvent["address"]?.ToString();
+                        if (address != null && _accounts.TryGetValue(address, out var account))
                         {
-                            addressHandler();
+                            lock (account)
+                            {
+                                var lastActivity = accountEvent["lastActivity"]?.Value<int>() ?? 0;
+                                if (lastActivity > account.LastState)
+                                {
+                                    account.LastState = lastActivity;
+                                    account.Handler();
+                                }
+                            }
                         }
                     }
                 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
+using Atomex.TzktEvents.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using Serilog;
 using Atomex.TzktEvents.Services;
