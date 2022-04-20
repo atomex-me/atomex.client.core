@@ -582,7 +582,6 @@ namespace Atomex.Swaps.Ethereum
                 currency: EthConfig,
                 refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
                 interval: TimeSpan.FromSeconds(30),
-                cancelOnlyIfRefundTimeReached: true,
                 redeemedHandler: RedeemCompletedEventHandler,
                 canceledHandler: RedeemCanceledEventHandler,
                 cancellationToken: cancellationToken);
@@ -602,7 +601,6 @@ namespace Atomex.Swaps.Ethereum
                 currency: EthConfig,
                 refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
                 interval: TimeSpan.FromSeconds(30),
-                cancelOnlyIfRefundTimeReached: true,
                 redeemedHandler: RedeemBySomeoneCompletedEventHandler,
                 canceledHandler: RedeemBySomeoneCanceledEventHandler,
                 cancellationToken: cancellationToken);

@@ -5,7 +5,6 @@ using Serilog;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Helpers;
 using Atomex.Core;
 using Atomex.Common;
 using Atomex.Cryptography;
