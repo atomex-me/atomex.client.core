@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
 using Serilog;
 
-using Atomex.TzktEvents.Services;
 using Atomex.TzktEvents.Models;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 
 
@@ -20,18 +20,16 @@ namespace Atomex.TzktEvents
         private HubConnection _connection;
         private bool _isStarted;
 
-        private readonly IHubConnectionCreator _hubConnectionCreator;
         private readonly ILogger _log;
 
         private readonly ConcurrentDictionary<string, Action> _accountHandlers = new();
 
-        public TzktEventsClient(IHubConnectionCreator hubConnectionCreator, ILogger log)
+        public TzktEventsClient(ILogger log)
         {
-            _hubConnectionCreator = hubConnectionCreator ?? throw new ArgumentNullException(nameof(hubConnectionCreator));
             _log = log ?? throw new ArgumentNullException(nameof(log));
         }
 
-        private async Task InitAsync(Exception? exception = null)
+        private async Task InitAsync(Exception exception = null)
         {
             if (exception != null)
             {
@@ -63,7 +61,10 @@ namespace Atomex.TzktEvents
             _isStarted = true;
             BaseUri = baseUri;
 
-            _connection = _hubConnectionCreator.Create(EventsUrl);
+            _connection = new HubConnectionBuilder()
+                .WithUrl(EventsUrl)
+                .AddNewtonsoftJsonProtocol()
+                .Build();
             _connection.Closed += InitAsync;
 
             // TODO: Move to Set subscriptions method
