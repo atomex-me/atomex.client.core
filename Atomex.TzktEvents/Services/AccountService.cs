@@ -51,9 +51,9 @@ namespace Atomex.TzktEvents.Services
         {
             _subscription = _connection.On(SubscriptionMethod.SubscribeToAccounts.Channel, (JObject msg) =>
             {
-                _log.Debug($"Has got msg from TzktEvents on 'operations' channel: {msg}.");
+                _log.Debug($"Has got msg from TzktEvents on '{SubscriptionMethod.SubscribeToAccounts.Channel}' channel: {msg}.");
 
-                if (msg["type"]?.Value<int>() == 1)
+                if (msg["type"]?.Value<int>() == (int)MessageType.Data)
                 {
                     foreach (var account in msg["data"])
                     {
