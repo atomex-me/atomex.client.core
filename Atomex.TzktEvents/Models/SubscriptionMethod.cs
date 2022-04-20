@@ -4,7 +4,7 @@ namespace Atomex.TzktEvents.Models
 {
     /***
      * Enumerates subscription methods for TzKT Events (https://api.tzkt.io/#tag/Subscriptions)
-     * and stores names of channels for each method in <see cref="Description"/> attribute.
+     * and stores names of channels for each method.
      */
     public class SubscriptionMethod
     {

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Linq;
 using System.Threading.Tasks;
-using Atomex.Common;
 using Microsoft.AspNetCore.SignalR.Client;
 using Serilog;
 
@@ -39,29 +39,17 @@ namespace Atomex.TzktEvents
             }
 
             await _connection.StartAsync();
+            _log.Debug($"Established connection to TzKT events with id: {_connection.ConnectionId}.");
 
-            
-            _connection.On(SubscriptionMethod.SubscribeToHead.Channel, (object msg) =>
+
+            if (!_accountHandlers.IsEmpty)
             {
-                _log.Debug($"Has got msg from TzktEvents on 'head' channel: {msg}.");
-            });
-            
-            _connection.On(SubscriptionMethod.SubscribeToAccounts.Channel, (JObject msg) =>
-            {
-                if (msg["type"]?.Value<int>() == 1)
+                var addresses = _accountHandlers.Keys.ToArray();
+                await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
                 {
-                    foreach (var account in msg["data"])
-                    {
-                        var address = account["address"]?.ToString();
-                        if (address != null && _accountHandlers.TryGetValue(address, out var addressHandler))
-                        {
-                            addressHandler();
-                        }
-                    }
-                }
-
-                _log.Debug($"Has got msg from TzktEvents on 'operations' channel: {msg}.");
-            });
+                    addresses
+                });
+            }
         }
 
         public async Task StartAsync(string baseUri)
@@ -77,6 +65,26 @@ namespace Atomex.TzktEvents
 
             _connection = _hubConnectionCreator.Create(EventsUrl);
             _connection.Closed += InitAsync;
+
+            // TODO: Move to Set subscriptions method
+            _connection.On(SubscriptionMethod.SubscribeToAccounts.Channel, (JObject msg) =>
+            {
+                _log.Debug($"Has got msg from TzktEvents on 'operations' channel: {msg}.");
+                Console.WriteLine(msg);
+
+                if (msg["type"]?.Value<int>() == 1)
+                {
+                    foreach (var account in msg["data"])
+                    {
+                        var address = account["address"]?.ToString();
+                        if (address != null && _accountHandlers.TryGetValue(address, out var addressHandler))
+                        {
+                            addressHandler();
+                        }
+                    }
+                }
+
+            });
 
             await InitAsync();
         }
