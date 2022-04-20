@@ -106,9 +106,6 @@ namespace Atomex.TzktEvents.Services
         }
         
 
-        public void Dispose()
-        {
-            _subscription.Dispose();
-        }
+        public void Dispose() => _subscription.Dispose();
     }
 }

@@ -4,10 +4,8 @@ using System.Threading.Tasks;
 
 namespace Atomex.TzktEvents.Services
 {
-    public interface IAccountService : IDisposable
+    public interface IAccountService : IService
     {
-        Task InitAsync();
-        void SetSubscriptions();
         Task NotifyOnAccountAsync(string address, Action handler);
     }
 }
