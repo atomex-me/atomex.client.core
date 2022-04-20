@@ -1,13 +1,9 @@
 ﻿using System;
-using System.Collections.Concurrent;
-using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
 using Serilog;
-
-using Atomex.TzktEvents.Models;
+using Atomex.TzktEvents.Services;
 using Microsoft.Extensions.DependencyInjection;
-using Newtonsoft.Json.Linq;
 
 
 namespace Atomex.TzktEvents
@@ -17,12 +13,12 @@ namespace Atomex.TzktEvents
         public string BaseUri { get; private set; }
         public string EventsUrl => $"{BaseUri}/events";
 
-        private HubConnection _connection;
         private bool _isStarted;
 
         private readonly ILogger _log;
+        private HubConnection _connection;
+        private IAccountService _accountService;
 
-        private readonly ConcurrentDictionary<string, Action> _accountHandlers = new();
 
         public TzktEventsClient(ILogger log)
         {
@@ -37,17 +33,10 @@ namespace Atomex.TzktEvents
             }
 
             await _connection.StartAsync();
-            _log.Debug($"Established connection to TzKT events with id: {_connection.ConnectionId}.");
+            _log.Debug($"Established connection to TzKT Events with id: {_connection.ConnectionId}.");
 
 
-            if (!_accountHandlers.IsEmpty)
-            {
-                var addresses = _accountHandlers.Keys.ToArray();
-                await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
-                {
-                    addresses
-                });
-            }
+            await _accountService.InitAsync();
         }
 
         public async Task StartAsync(string baseUri)
@@ -65,28 +54,18 @@ namespace Atomex.TzktEvents
                 .WithUrl(EventsUrl)
                 .AddNewtonsoftJsonProtocol()
                 .Build();
+            
+            _accountService = new AccountService(_connection, _log);
+
             _connection.Closed += InitAsync;
-
-            // TODO: Move to Set subscriptions method
-            _connection.On(SubscriptionMethod.SubscribeToAccounts.Channel, (JObject msg) =>
-            {
-                _log.Debug($"Has got msg from TzktEvents on 'operations' channel: {msg}.");
-
-                if (msg["type"]?.Value<int>() == 1)
-                {
-                    foreach (var account in msg["data"])
-                    {
-                        var address = account["address"]?.ToString();
-                        if (address != null && _accountHandlers.TryGetValue(address, out var addressHandler))
-                        {
-                            addressHandler();
-                        }
-                    }
-                }
-
-            });
+            SetSubscriptions();
 
             await InitAsync();
+        }
+
+        private void SetSubscriptions()
+        {
+            _accountService.SetSubscriptions();
         }
 
         public async Task StopAsync()
@@ -103,14 +82,16 @@ namespace Atomex.TzktEvents
             _isStarted = false;
         }
 
-        public async Task NotifyOnAccount(string address, Action handler)
+        public async Task NotifyOnAccountAsync(string address, Action handler)
         {
-            await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
+            if (!_isStarted)
             {
-                addresses = new []{ address }
-            });
+                // Throw?
+                _log.Error("NotifyOnAccountAsync was called before established connection to Tzkt Events.");
+                return;
+            }
 
-            _accountHandlers.AddOrUpdate(address, handler, (_, _) => handler);
+            await _accountService.NotifyOnAccountAsync(address, handler);
         }
     }
 }
