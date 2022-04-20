@@ -71,7 +71,6 @@ namespace Atomex.TzktEvents
             _connection.On(SubscriptionMethod.SubscribeToAccounts.Channel, (JObject msg) =>
             {
                 _log.Debug($"Has got msg from TzktEvents on 'operations' channel: {msg}.");
-                Console.WriteLine(msg);
 
                 if (msg["type"]?.Value<int>() == 1)
                 {

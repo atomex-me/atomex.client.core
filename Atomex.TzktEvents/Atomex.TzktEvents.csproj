@@ -14,8 +14,4 @@
     <ProjectReference Include="..\Atomex.Client.Core\Atomex.Client.Core.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Services\" />
-  </ItemGroup>
-
 </Project>
