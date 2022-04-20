@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Atomex.TzktEvents.Models;
@@ -50,32 +49,62 @@ namespace Atomex.TzktEvents.Services
 
         public void SetSubscriptions()
         {
-            _subscription = _connection.On(SubscriptionMethod.SubscribeToAccounts.Channel, (JObject msg) =>
-            {
-                _log.Debug($"Has got msg from TzktEvents on '{SubscriptionMethod.SubscribeToAccounts.Channel}' channel: {msg}.");
+            _subscription = _connection.On<JObject>(SubscriptionMethod.SubscribeToAccounts.Channel, Handler);
+        }
 
-                if (msg["type"]?.Value<int>() == (int)MessageType.Data)
-                {
+        private void Handler(JObject msg)
+        {
+            _log.Debug($"Got msg from TzktEvents on '{SubscriptionMethod.SubscribeToAccounts.Channel}' channel: {msg}.");
+
+            var messageType = (MessageType?)msg["type"]?.Value<int>();
+            switch (messageType)
+            {
+                case MessageType.State:
+                    break;
+
+                case MessageType.Data:
                     foreach (var accountEvent in msg["data"])
                     {
                         var address = accountEvent["address"]?.ToString();
-                        if (address != null && _accounts.TryGetValue(address, out var account))
+                        if (address == null || !_accounts.TryGetValue(address, out var account)) continue;
+                        
+                        lock (account)
                         {
-                            lock (account)
+                            var lastActivity = accountEvent["lastActivity"]?.Value<int>() ?? 0;
+                            if (lastActivity > account.LastState)
                             {
-                                var lastActivity = accountEvent["lastActivity"]?.Value<int>() ?? 0;
-                                if (lastActivity > account.LastState)
-                                {
-                                    account.LastState = lastActivity;
-                                    account.Handler();
-                                }
+                                account.LastState = lastActivity;
+                                account.Handler();
                             }
                         }
                     }
-                }
 
-            });
+                    break;
+
+                case MessageType.Reorg:
+                    var state = msg["state"]?.Value<int>();
+                    if (state == null) break;
+
+                    foreach (var account in _accounts.Values)
+                    {
+                        lock (account)
+                        {
+                            if (account.LastState != state)
+                            {
+                                account.LastState = state.Value;
+                                account.Handler();
+                            }
+                        }
+                    }
+
+                    break;
+
+                default:
+                    _log.Warning($"Got msg with unrecognizable type from TzktEvents on '{SubscriptionMethod.SubscribeToAccounts.Channel}' channel: {msg}.");
+                    break;
+            }
         }
+        
 
         public void Dispose()
         {

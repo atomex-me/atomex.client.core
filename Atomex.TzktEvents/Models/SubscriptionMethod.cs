@@ -1,6 +1,4 @@
-﻿using System.ComponentModel;
-
-namespace Atomex.TzktEvents.Models
+﻿namespace Atomex.TzktEvents.Models
 {
     /***
      * Enumerates subscription methods for TzKT Events (https://api.tzkt.io/#tag/Subscriptions)
