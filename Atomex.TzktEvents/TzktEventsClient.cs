@@ -13,6 +13,9 @@ namespace Atomex.TzktEvents
         public string BaseUri { get; private set; }
         public string EventsUrl => $"{BaseUri}/events";
 
+        public event EventHandler Connected;
+        public event EventHandler Disconnected;
+
         private bool _isStarted;
 
         private readonly ILogger _log;
@@ -25,19 +28,6 @@ namespace Atomex.TzktEvents
             _log = log ?? throw new ArgumentNullException(nameof(log));
         }
 
-        private async Task InitAsync(Exception exception = null)
-        {
-            if (exception != null)
-            {
-                _log.Warning($"Connection closed due to an error: {exception}. Reconnecting.");
-            }
-
-            await _connection.StartAsync();
-            _log.Debug($"Established connection to TzKT Events with id: {_connection.ConnectionId}.");
-
-
-            await _accountService.InitAsync();
-        }
 
         public async Task StartAsync(string baseUri)
         {
@@ -47,25 +37,27 @@ namespace Atomex.TzktEvents
                 return;
             }
 
-            _isStarted = true;
             BaseUri = baseUri;
 
             _connection = new HubConnectionBuilder()
                 .WithUrl(EventsUrl)
                 .AddNewtonsoftJsonProtocol()
+                .WithAutomaticReconnect(new RetryPolicy())
                 .Build();
             
             _accountService = new AccountService(_connection, _log);
 
-            _connection.Closed += InitAsync;
+            _connection.Reconnecting += Reconnecting;
+            _connection.Reconnected += Reconnected;
+            _connection.Closed += Closed;
+
             SetSubscriptions();
 
-            await InitAsync();
-        }
+            await _connection.StartAsync();
+            _isStarted = true;
 
-        private void SetSubscriptions()
-        {
-            _accountService.SetSubscriptions();
+            await InitAsync();
+            Connected?.Invoke(this, null);
         }
 
         public async Task StopAsync()
@@ -76,10 +68,15 @@ namespace Atomex.TzktEvents
                 return;
             }
 
-            _connection.Closed -= InitAsync;
+            _connection.Reconnecting -= Reconnecting;
+            _connection.Reconnected -= Reconnected;
+            _connection.Closed -= Closed;
+
             await _connection.StopAsync();
             await _connection.DisposeAsync();
             _isStarted = false;
+
+            Disconnected?.Invoke(this, null);
         }
 
         public async Task NotifyOnAccountAsync(string address, Action handler)
@@ -92,6 +89,45 @@ namespace Atomex.TzktEvents
             }
 
             await _accountService.NotifyOnAccountAsync(address, handler);
+        }
+
+        private Task Reconnecting(Exception exception = null)
+        {
+            if (exception != null)
+            {
+                _log.Warning($"Reconnecting to TzktEvents due to an error: {exception}.");
+            }
+
+            Disconnected?.Invoke(this, null);
+            return Task.CompletedTask;
+        }
+
+        private async Task Reconnected(string connectionId)
+        {
+            _log.Debug($"Reconnected to TzKT Events with id: {connectionId}.");
+
+            await InitAsync();
+            Connected?.Invoke(this, null);
+        }
+
+        private async Task InitAsync()
+        {
+            await _accountService.InitAsync();
+        }
+
+        private async Task Closed(Exception exception = null)
+        {
+            if (exception != null)
+            {
+                _log.Warning($"Connection closed due to an error: {exception}. Reconnecting.");
+            }
+
+            await StopAsync();
+        }
+
+        private void SetSubscriptions()
+        {
+            _accountService.SetSubscriptions();
         }
     }
 }

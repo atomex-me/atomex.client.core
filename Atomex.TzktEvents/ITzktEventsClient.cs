@@ -9,6 +9,9 @@ namespace Atomex.TzktEvents
 
         string EventsUrl { get; }
 
+        event EventHandler Connected;
+        event EventHandler Disconnected;
+
         Task StartAsync(string baseUri);
         Task StopAsync();
 
