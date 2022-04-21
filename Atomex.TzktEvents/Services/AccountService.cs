@@ -10,6 +10,8 @@ using Serilog;
 
 namespace Atomex.TzktEvents.Services
 {
+    record AccountSubscription(Action Handler, int LastState = 0);
+
     public class AccountService : IAccountService
     {
         private readonly HubConnection _connection;
@@ -18,6 +20,7 @@ namespace Atomex.TzktEvents.Services
         private readonly ConcurrentDictionary<string, AccountSubscription> _accounts = new();
         private IDisposable _subscription;
 
+        private readonly Func<string, AccountSubscription> _willNotBeCalled = _ => null;
 
         public AccountService(HubConnection connection, ILogger log)
         {
@@ -32,7 +35,7 @@ namespace Atomex.TzktEvents.Services
                 addresses = new[] { address }
             }).ConfigureAwait(false);
 
-            var account = new AccountSubscription(address, handler);
+            var account = new AccountSubscription(handler);
             _accounts.AddOrUpdate(address, account, (_, _) => account);
         }
 
@@ -69,14 +72,15 @@ namespace Atomex.TzktEvents.Services
                         var address = accountEvent["address"]?.ToString();
                         if (address == null || !_accounts.TryGetValue(address, out var account)) continue;
                         
-                        lock (account)
+                        var lastActivity = accountEvent["lastActivity"]?.Value<int>() ?? 0;
+                        
+                        if (lastActivity > account.LastState)
                         {
-                            var lastActivity = accountEvent["lastActivity"]?.Value<int>() ?? 0;
-                            if (lastActivity > account.LastState)
+                            account.Handler();
+                            _accounts.AddOrUpdate(address, _willNotBeCalled, (_, existing) => existing with
                             {
-                                account.LastState = lastActivity;
-                                account.Handler();
-                            }
+                                LastState = lastActivity
+                            });
                         }
                     }
 
@@ -86,15 +90,15 @@ namespace Atomex.TzktEvents.Services
                     var state = msg["state"]?.Value<int>();
                     if (state == null) break;
 
-                    foreach (var account in _accounts.Values)
+                    foreach (var (key, account) in _accounts)
                     {
-                        lock (account)
+                        if (account.LastState != state)
                         {
-                            if (account.LastState != state)
+                            account.Handler();
+                            _accounts.AddOrUpdate(key, _willNotBeCalled, (_, existing) => existing with
                             {
-                                account.LastState = state.Value;
-                                account.Handler();
-                            }
+                                LastState = state.Value
+                            });
                         }
                     }
 

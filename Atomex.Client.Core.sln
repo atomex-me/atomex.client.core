@@ -9,6 +9,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Client.Core.Tests", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.TzktEvents", "Atomex.TzktEvents\Atomex.TzktEvents.csproj", "{195BA9D3-86DD-4A2B-9072-70B9479B66A7}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sandbox", "tmp\Sandbox\Sandbox.csproj", "{0AC0891A-35F0-4014-8389-A32CF0DB2733}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -55,6 +57,18 @@ Global
 		{195BA9D3-86DD-4A2B-9072-70B9479B66A7}.Release|x64.Build.0 = Release|Any CPU
 		{195BA9D3-86DD-4A2B-9072-70B9479B66A7}.Release|x86.ActiveCfg = Release|Any CPU
 		{195BA9D3-86DD-4A2B-9072-70B9479B66A7}.Release|x86.Build.0 = Release|Any CPU
+		{0AC0891A-35F0-4014-8389-A32CF0DB2733}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0AC0891A-35F0-4014-8389-A32CF0DB2733}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0AC0891A-35F0-4014-8389-A32CF0DB2733}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{0AC0891A-35F0-4014-8389-A32CF0DB2733}.Debug|x64.Build.0 = Debug|Any CPU
+		{0AC0891A-35F0-4014-8389-A32CF0DB2733}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0AC0891A-35F0-4014-8389-A32CF0DB2733}.Debug|x86.Build.0 = Debug|Any CPU
+		{0AC0891A-35F0-4014-8389-A32CF0DB2733}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0AC0891A-35F0-4014-8389-A32CF0DB2733}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0AC0891A-35F0-4014-8389-A32CF0DB2733}.Release|x64.ActiveCfg = Release|Any CPU
+		{0AC0891A-35F0-4014-8389-A32CF0DB2733}.Release|x64.Build.0 = Release|Any CPU
+		{0AC0891A-35F0-4014-8389-A32CF0DB2733}.Release|x86.ActiveCfg = Release|Any CPU
+		{0AC0891A-35F0-4014-8389-A32CF0DB2733}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
