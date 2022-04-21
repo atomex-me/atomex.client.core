@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.SignalR.Client;
 using Newtonsoft.Json.Linq;
 using Serilog;
 
+
 namespace Atomex.TzktEvents.Services
 {
     public class AccountService : IAccountService
@@ -29,7 +30,7 @@ namespace Atomex.TzktEvents.Services
             await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
             {
                 addresses = new[] { address }
-            });
+            }).ConfigureAwait(false);
 
             var account = new AccountSubscription(address, handler);
             _accounts.AddOrUpdate(address, account, (_, _) => account);
@@ -43,7 +44,7 @@ namespace Atomex.TzktEvents.Services
                 await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
                 {
                     addresses
-                });
+                }).ConfigureAwait(false);
             }
         }
 

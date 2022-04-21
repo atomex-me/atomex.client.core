@@ -54,10 +54,10 @@ namespace Atomex.TzktEvents
 
             SetSubscriptions();
 
-            await _connection.StartAsync();
+            await _connection.StartAsync().ConfigureAwait(false);
             _isStarted = true;
 
-            await InitAsync();
+            await InitAsync().ConfigureAwait(false);
             Connected?.Invoke(this, null);
         }
 
@@ -73,8 +73,8 @@ namespace Atomex.TzktEvents
             _connection.Reconnected -= ReconnectedHandler;
             _connection.Closed -= ClosedHandler;
 
-            await _connection.StopAsync();
-            await _connection.DisposeAsync();
+            await _connection.StopAsync().ConfigureAwait(false);
+            await _connection.DisposeAsync().ConfigureAwait(false);
             _isStarted = false;
 
             Disconnected?.Invoke(this, null);
@@ -84,12 +84,11 @@ namespace Atomex.TzktEvents
         {
             if (!_isStarted)
             {
-                // Throw?
                 _log.Error("NotifyOnAccountAsync was called before established connection to Tzkt Events.");
                 return;
             }
 
-            await _accountService.NotifyOnAccountAsync(address, handler);
+            await _accountService.NotifyOnAccountAsync(address, handler).ConfigureAwait(false);
         }
 
         private Task ReconnectingHandler(Exception exception = null)
@@ -107,7 +106,7 @@ namespace Atomex.TzktEvents
         {
             _log.Debug($"ReconnectedHandler to TzKT Events with id: {connectionId}.");
 
-            await InitAsync();
+            await InitAsync().ConfigureAwait(false);
             Connected?.Invoke(this, null);
         }
 
@@ -118,11 +117,12 @@ namespace Atomex.TzktEvents
                 _log.Warning($"Connection closed due to an error: {exception}. ReconnectingHandler.");
             }
 
-            await StopAsync();
+            await StopAsync().ConfigureAwait(false);
         }
+
         private async Task InitAsync()
         {
-            await _accountService.InitAsync();
+            await _accountService.InitAsync().ConfigureAwait(false);
         }
 
         private void SetSubscriptions()
