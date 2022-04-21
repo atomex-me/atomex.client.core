@@ -3,12 +3,13 @@ using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Atomex.Common
+namespace Atomex.Wallets.Common
 {
     public class ResourceLock<T> : IDisposable
     {
         private readonly T _resource;
         private ResourceLocker<T> _locker;
+        private bool _disposed;
 
         public ResourceLock(ResourceLocker<T> locker, T resource)
         {
@@ -16,19 +17,31 @@ namespace Atomex.Common
             _resource = resource;
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    _locker?.Unlock(_resource);
+                    _locker = null;
+                }
+
+                _disposed = true;
+            }
+        }
+
         public void Dispose()
         {
-            if (_locker != null)
-            {
-                _locker.Unlock(_resource);
-                _locker = null;
-            }
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 
     public class ResourceLocker<T> : IDisposable
     {
         private readonly ConcurrentDictionary<T, SemaphoreSlim> _semaphores;
+        private bool _disposed;
 
         public ResourceLocker()
         {
@@ -77,12 +90,26 @@ namespace Atomex.Common
             semaphore.Release();
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    foreach (var semaphore in _semaphores.Values)
+                        semaphore.Dispose();
+
+                    _semaphores.Clear();
+                }
+
+                _disposed = true;
+            }
+        }
+
         public void Dispose()
         {
-            foreach (var semaphore in _semaphores.Values)
-                semaphore.Dispose();
-
-            _semaphores.Clear();
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

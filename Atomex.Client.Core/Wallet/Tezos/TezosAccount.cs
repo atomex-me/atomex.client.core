@@ -13,6 +13,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
+using Atomex.Wallets.Common;
 
 namespace Atomex.Wallet.Tezos
 {

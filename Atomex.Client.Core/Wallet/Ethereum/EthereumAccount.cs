@@ -16,6 +16,7 @@ using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
+using Atomex.Wallets.Common;
 
 namespace Atomex.Wallet.Ethereum
 {
