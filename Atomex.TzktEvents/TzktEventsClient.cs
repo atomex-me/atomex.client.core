@@ -14,6 +14,7 @@ namespace Atomex.TzktEvents
         public string EventsUrl => $"{BaseUri}/events";
 
         public event EventHandler Connected;
+        public event EventHandler Reconnecting;
         public event EventHandler Disconnected;
 
         private bool _isStarted;
@@ -47,9 +48,9 @@ namespace Atomex.TzktEvents
             
             _accountService = new AccountService(_connection, _log);
 
-            _connection.Reconnecting += Reconnecting;
-            _connection.Reconnected += Reconnected;
-            _connection.Closed += Closed;
+            _connection.Reconnecting += ReconnectingHandler;
+            _connection.Reconnected += ReconnectedHandler;
+            _connection.Closed += ClosedHandler;
 
             SetSubscriptions();
 
@@ -68,9 +69,9 @@ namespace Atomex.TzktEvents
                 return;
             }
 
-            _connection.Reconnecting -= Reconnecting;
-            _connection.Reconnected -= Reconnected;
-            _connection.Closed -= Closed;
+            _connection.Reconnecting -= ReconnectingHandler;
+            _connection.Reconnected -= ReconnectedHandler;
+            _connection.Closed -= ClosedHandler;
 
             await _connection.StopAsync();
             await _connection.DisposeAsync();
@@ -91,38 +92,37 @@ namespace Atomex.TzktEvents
             await _accountService.NotifyOnAccountAsync(address, handler);
         }
 
-        private Task Reconnecting(Exception exception = null)
+        private Task ReconnectingHandler(Exception exception = null)
         {
             if (exception != null)
             {
-                _log.Warning($"Reconnecting to TzktEvents due to an error: {exception}.");
+                _log.Warning($"ReconnectingHandler to TzktEvents due to an error: {exception}.");
             }
 
-            Disconnected?.Invoke(this, null);
+            Reconnecting?.Invoke(this, null);
             return Task.CompletedTask;
         }
 
-        private async Task Reconnected(string connectionId)
+        private async Task ReconnectedHandler(string connectionId)
         {
-            _log.Debug($"Reconnected to TzKT Events with id: {connectionId}.");
+            _log.Debug($"ReconnectedHandler to TzKT Events with id: {connectionId}.");
 
             await InitAsync();
             Connected?.Invoke(this, null);
         }
 
-        private async Task InitAsync()
-        {
-            await _accountService.InitAsync();
-        }
-
-        private async Task Closed(Exception exception = null)
+        private async Task ClosedHandler(Exception exception = null)
         {
             if (exception != null)
             {
-                _log.Warning($"Connection closed due to an error: {exception}. Reconnecting.");
+                _log.Warning($"Connection closed due to an error: {exception}. ReconnectingHandler.");
             }
 
             await StopAsync();
+        }
+        private async Task InitAsync()
+        {
+            await _accountService.InitAsync();
         }
 
         private void SetSubscriptions()
