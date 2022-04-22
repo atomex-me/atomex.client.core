@@ -41,7 +41,7 @@ namespace Atomex.Wallet.Tezos
 
         public TezosConfig Config => Currencies.Get<TezosConfig>(Currency);
 
-        public async Task<Error> SendAsync(
+        public async Task<(string txId, Error error)> SendAsync(
             string from,
             string to,
             decimal amount,
@@ -69,9 +69,11 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (addressFeeUsage == null)
-                return new Error(
-                    code: Errors.InsufficientFunds,
-                    description: "Insufficient funds");
+                return (
+                    txId: null,
+                    error: new Error(
+                        code: Errors.InsufficientFunds,
+                        description: "Insufficient funds"));
 
             var isActive = await IsAllocatedDestinationAsync(to, cancellationToken)
                 .ConfigureAwait(false);
@@ -133,23 +135,27 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (!signResult)
-                return new Error(
-                    code: Errors.TransactionSigningError,
-                    description: "Transaction signing error");
+                return (
+                    txId: null,
+                    error: new Error(
+                        code: Errors.TransactionSigningError,
+                        description: "Transaction signing error"));
 
             var broadcastResult = await xtzConfig.BlockchainApi
                 .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (broadcastResult.HasError)
-                return broadcastResult.Error;
+                return (txId: null, error: broadcastResult.Error);
 
             var txId = broadcastResult.Value;
 
             if (txId == null)
-                return new Error(
-                    code: Errors.TransactionBroadcastError,
-                    description: "Transaction Id is null");
+                return (
+                    txId: null,
+                    error: new Error(
+                        code: Errors.TransactionBroadcastError,
+                        description: "Transaction Id is null"));
 
             Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
@@ -161,7 +167,7 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            return null;
+            return (txId, error: null);
         }
 
         public async Task<decimal> EstimateFeeAsync(
