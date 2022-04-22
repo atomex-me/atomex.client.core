@@ -178,6 +178,8 @@ namespace Atomex.Common
             Func<HttpResponseMessage, T> responseHandler,
             CancellationToken cancellationToken = default)
         {
+            var uri = new Uri($"{baseUri}{requestUri}");
+
             Log.Debug("Send {@method} request: {@baseUri}{@request}", 
                 method.ToString(),
                 baseUri,
@@ -185,13 +187,17 @@ namespace Atomex.Common
 
             try
             {
-                using var response = await SendRequest(
-                        baseUri: baseUri, 
-                        requestUri: requestUri,
-                        method: method,
-                        content: content, 
-                        headers: headers,
-                        cancellationToken: cancellationToken)
+                using var request = new HttpRequestMessage(method, uri);
+
+                if (headers != null)
+                    foreach (var header in headers)
+                        request.Headers.Add(header.Key, header.Value);
+
+                if (method == HttpMethod.Post)
+                    request.Content = content;
+
+                var response = await HttpClient
+                    .SendAsync(request, cancellationToken)
                     .ConfigureAwait(false);
 
                 Log.Debug(
@@ -202,42 +208,22 @@ namespace Atomex.Common
             }
             catch (HttpRequestException e)
             {
-                Log.Error("SendRequestAsync error: {@message}", e.Message);
+                Log.Error("SendRequestAsync error. Request: {@request}. Message: {@message}",
+                    uri.ToString(),
+                    e.Message);
             }
             catch (OperationCanceledException)
             {
-                Log.Warning("SendRequestAsync operation canceled.");
+                Log.Warning("SendRequestAsync operation canceled");
 
                 throw;
             }
             catch (Exception e)
             {
-                Log.Error(e, "SendRequestAsync error");
+                Log.Error(e, "SendRequestAsync error. Request: {@request}", uri.ToString());
             }
 
             return default;
-        }
-
-        public static async Task<HttpResponseMessage> SendRequest(
-            string baseUri,
-            string requestUri,
-            HttpMethod method,
-            HttpContent content,
-            HttpRequestHeaders headers,
-            CancellationToken cancellationToken = default)
-        {
-            using var request = new HttpRequestMessage(method, new Uri($"{baseUri}{requestUri}"));
-
-            if (headers != null)
-                foreach (var header in headers)
-                    request.Headers.Add(header.Key, header.Value);
-
-            if (method == HttpMethod.Post)
-                request.Content = content;
-
-            return await HttpClient
-                .SendAsync(request, cancellationToken)
-                .ConfigureAwait(false);
         }
     }
 }
