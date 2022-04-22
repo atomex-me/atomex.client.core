@@ -40,25 +40,32 @@ namespace Atomex.TzktEvents
 
             BaseUri = baseUri;
 
-            _connection = new HubConnectionBuilder()
-                .WithUrl(EventsUrl)
-                .AddNewtonsoftJsonProtocol()
-                .WithAutomaticReconnect(new RetryPolicy())
-                .Build();
-            
-            _accountService = new AccountService(_connection, _log);
+            try
+            {
+                _connection = new HubConnectionBuilder()
+                    .WithUrl(EventsUrl)
+                    .AddNewtonsoftJsonProtocol()
+                    .WithAutomaticReconnect(new RetryPolicy())
+                    .Build();
 
-            _connection.Reconnecting += ReconnectingHandler;
-            _connection.Reconnected += ReconnectedHandler;
-            _connection.Closed += ClosedHandler;
+                _accountService = new AccountService(_connection, _log);
 
-            SetSubscriptions();
+                _connection.Reconnecting += ReconnectingHandler;
+                _connection.Reconnected += ReconnectedHandler;
+                _connection.Closed += ClosedHandler;
 
-            await _connection.StartAsync().ConfigureAwait(false);
-            _isStarted = true;
+                SetSubscriptions();
 
-            await InitAsync().ConfigureAwait(false);
-            Connected?.Invoke(this, null);
+                await _connection.StartAsync().ConfigureAwait(false);
+                _isStarted = true;
+
+                await InitAsync().ConfigureAwait(false);
+                Connected?.Invoke(this, EventArgs.Empty);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, ex.Message);
+            }
         }
 
         public async Task StopAsync()
@@ -69,15 +76,22 @@ namespace Atomex.TzktEvents
                 return;
             }
 
-            _connection.Reconnecting -= ReconnectingHandler;
-            _connection.Reconnected -= ReconnectedHandler;
-            _connection.Closed -= ClosedHandler;
+            try
+            {
+                _connection.Reconnecting -= ReconnectingHandler;
+                _connection.Reconnected -= ReconnectedHandler;
+                _connection.Closed -= ClosedHandler;
 
-            await _connection.StopAsync().ConfigureAwait(false);
-            await _connection.DisposeAsync().ConfigureAwait(false);
-            _isStarted = false;
+                await _connection.StopAsync().ConfigureAwait(false);
+                await _connection.DisposeAsync().ConfigureAwait(false);
+                _isStarted = false;
 
-            Disconnected?.Invoke(this, null);
+                Disconnected?.Invoke(this, EventArgs.Empty);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, ex.Message);
+            }
         }
 
         public async Task NotifyOnAccountAsync(string address, Action handler)
@@ -98,7 +112,7 @@ namespace Atomex.TzktEvents
                 _log.Warning($"ReconnectingHandler to TzktEvents due to an error: {exception}.");
             }
 
-            Reconnecting?.Invoke(this, null);
+            Reconnecting?.Invoke(this, EventArgs.Empty);
             return Task.CompletedTask;
         }
 
@@ -107,7 +121,7 @@ namespace Atomex.TzktEvents
             _log.Debug($"ReconnectedHandler to TzKT Events with id: {connectionId}.");
 
             await InitAsync().ConfigureAwait(false);
-            Connected?.Invoke(this, null);
+            Connected?.Invoke(this, EventArgs.Empty);
         }
 
         private async Task ClosedHandler(Exception exception = null)

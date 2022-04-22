@@ -67,46 +67,70 @@ namespace Atomex.TzktEvents.Services
                     break;
 
                 case MessageType.Data:
-                    foreach (var accountEvent in msg["data"])
-                    {
-                        var address = accountEvent["address"]?.ToString();
-                        if (address == null || !_accounts.TryGetValue(address, out var account)) continue;
-                        
-                        var lastActivity = accountEvent["lastActivity"]?.Value<int>() ?? 0;
-                        
-                        if (lastActivity > account.LastState)
-                        {
-                            account.Handler();
-                            _accounts.AddOrUpdate(address, _willNotBeCalled, (_, existing) => existing with
-                            {
-                                LastState = lastActivity
-                            });
-                        }
-                    }
-
+                    DataHandler(msg["data"]);
                     break;
 
                 case MessageType.Reorg:
-                    var state = msg["state"]?.Value<int>();
-                    if (state == null) break;
-
-                    foreach (var (key, account) in _accounts)
-                    {
-                        if (account.LastState != state)
-                        {
-                            account.Handler();
-                            _accounts.AddOrUpdate(key, _willNotBeCalled, (_, existing) => existing with
-                            {
-                                LastState = state.Value
-                            });
-                        }
-                    }
-
+                    ReorgHandler(msg);
                     break;
 
                 default:
                     _log.Warning($"Got msg with unrecognizable type from TzktEvents on '{SubscriptionMethod.SubscribeToAccounts.Channel}' channel: {msg}.");
                     break;
+            }
+        }
+
+        private void DataHandler(JToken data)
+        {
+            foreach (var accountEvent in data)
+            {
+                var address = accountEvent["address"]?.ToString();
+                if (address == null || !_accounts.TryGetValue(address, out var account)) continue;
+
+                var lastActivity = accountEvent["lastActivity"]?.Value<int>() ?? 0;
+
+                if (lastActivity > account.LastState)
+                {
+                    var updatedAccount = _accounts.AddOrUpdate(address, _willNotBeCalled, (_, existing) => existing with
+                    {
+                        LastState = lastActivity
+                    });
+
+                    try
+                    {
+                        updatedAccount.Handler();
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.Error(ex, ex.Message);
+                    }
+                }
+            }
+        }
+
+        private void ReorgHandler(JObject msg)
+        {
+            var state = msg["state"]?.Value<int>();
+            if (state == null) return;
+
+            foreach (var (address, account) in _accounts)
+            {
+                if (account.LastState != state)
+                {
+                    var updatedAccount = _accounts.AddOrUpdate(address, _willNotBeCalled, (_, existing) => existing with
+                    {
+                        LastState = state.Value
+                    });
+
+                    try
+                    {
+                        updatedAccount.Handler();
+                    }
+                    catch (Exception ex)
+                    {
+                        _log.Error(ex, ex.Message);
+                    }
+                }
             }
         }
         
