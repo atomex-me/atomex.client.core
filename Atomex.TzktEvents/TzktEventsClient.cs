@@ -39,32 +39,34 @@ namespace Atomex.TzktEvents
             }
 
             BaseUri = baseUri;
+            
+            _connection = new HubConnectionBuilder()
+                .WithUrl(EventsUrl)
+                .AddNewtonsoftJsonProtocol()
+                .WithAutomaticReconnect(new RetryPolicy())
+                .Build();
+
+            _accountService = new AccountService(_connection, _log);
+
+            _connection.Reconnecting += ReconnectingHandler;
+            _connection.Reconnected += ReconnectedHandler;
+            _connection.Closed += ClosedHandler;
+
+            SetSubscriptions();
+
+            await _connection.StartAsync().ConfigureAwait(false);
+            _isStarted = true;
+
+            await InitAsync().ConfigureAwait(false);
 
             try
             {
-                _connection = new HubConnectionBuilder()
-                    .WithUrl(EventsUrl)
-                    .AddNewtonsoftJsonProtocol()
-                    .WithAutomaticReconnect(new RetryPolicy())
-                    .Build();
-
-                _accountService = new AccountService(_connection, _log);
-
-                _connection.Reconnecting += ReconnectingHandler;
-                _connection.Reconnected += ReconnectedHandler;
-                _connection.Closed += ClosedHandler;
-
-                SetSubscriptions();
-
-                await _connection.StartAsync().ConfigureAwait(false);
-                _isStarted = true;
-
-                await InitAsync().ConfigureAwait(false);
                 Connected?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
             {
                 _log.Error(ex, ex.Message);
+                _isStarted = false;
             }
         }
 
@@ -76,16 +78,17 @@ namespace Atomex.TzktEvents
                 return;
             }
 
+            
+            _connection.Reconnecting -= ReconnectingHandler;
+            _connection.Reconnected -= ReconnectedHandler;
+            _connection.Closed -= ClosedHandler;
+
+            await _connection.StopAsync().ConfigureAwait(false);
+            await _connection.DisposeAsync().ConfigureAwait(false);
+            _isStarted = false;
+
             try
             {
-                _connection.Reconnecting -= ReconnectingHandler;
-                _connection.Reconnected -= ReconnectedHandler;
-                _connection.Closed -= ClosedHandler;
-
-                await _connection.StopAsync().ConfigureAwait(false);
-                await _connection.DisposeAsync().ConfigureAwait(false);
-                _isStarted = false;
-
                 Disconnected?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
@@ -112,16 +115,31 @@ namespace Atomex.TzktEvents
                 _log.Warning($"ReconnectingHandler to TzktEvents due to an error: {exception}.");
             }
 
-            Reconnecting?.Invoke(this, EventArgs.Empty);
+            try
+            {
+                Reconnecting?.Invoke(this, EventArgs.Empty);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, ex.Message);
+            }
+
             return Task.CompletedTask;
         }
 
         private async Task ReconnectedHandler(string connectionId)
         {
             _log.Debug($"ReconnectedHandler to TzKT Events with id: {connectionId}.");
-
             await InitAsync().ConfigureAwait(false);
-            Connected?.Invoke(this, EventArgs.Empty);
+
+            try
+            {
+                Connected?.Invoke(this, EventArgs.Empty);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, ex.Message);
+            }
         }
 
         private async Task ClosedHandler(Exception exception = null)
@@ -136,12 +154,26 @@ namespace Atomex.TzktEvents
 
         private async Task InitAsync()
         {
-            await _accountService.InitAsync().ConfigureAwait(false);
+            try
+            {
+                await _accountService.InitAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, ex.Message);
+            }
         }
 
         private void SetSubscriptions()
         {
-            _accountService.SetSubscriptions();
+            try
+            {
+                _accountService.SetSubscriptions();
+            }
+            catch (Exception ex)
+            {
+                _log.Error(ex, ex.Message);
+            }
         }
     }
 }

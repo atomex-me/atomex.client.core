@@ -10,7 +10,7 @@ using Serilog;
 
 namespace Atomex.TzktEvents.Services
 {
-    record AccountSubscription(Action Handler, int LastState = 0);
+    internal record AccountSubscription(Action Handler, int LastState = 0);
 
     public class AccountService : IAccountService
     {
@@ -135,6 +135,6 @@ namespace Atomex.TzktEvents.Services
         }
         
 
-        public void Dispose() => _subscription.Dispose();
+        public void Dispose() => _subscription?.Dispose();
     }
 }
