@@ -74,7 +74,7 @@ namespace Atomex.Wallets
             CancellationToken cancellationToken = default)
         {
             if (keyPath != SingleKeyPath)
-                throw new ArgumentException("Single key wallet can't derive keys and must use default key path: 'm'.");
+                throw new ArgumentException("Single key wallet can't derive keys and must use default key path: 'm'");
 
             using var key = CreateKey(keyPath);
 
