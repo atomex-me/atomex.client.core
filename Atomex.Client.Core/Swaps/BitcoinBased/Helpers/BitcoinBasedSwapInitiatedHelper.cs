@@ -159,9 +159,10 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        if (swap.IsCanceled)
+                        if (swap.IsCanceled || DateTimeOffset.UtcNow >= DateTimeOffset.FromUnixTimeSeconds(refundTimeStamp))
                         {
-                            await canceledHandler.Invoke(swap, cancellationToken)
+                            await canceledHandler
+                                .Invoke(swap, cancellationToken)
                                 .ConfigureAwait(false);
 
                             break;
@@ -174,16 +175,17 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (isInitiatedResult.HasError && isInitiatedResult.Error.Code != Errors.RequestError)
-                        {
-                            await canceledHandler.Invoke(swap, cancellationToken)
-                                .ConfigureAwait(false);
+                        if (isInitiatedResult.HasError)
+                            Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
+                                currency.Name,
+                                swap.Id,
+                                isInitiatedResult.Error.Code,
+                                isInitiatedResult.Error.Description);
 
-                            break;
-                        }
-                        else if (!isInitiatedResult.HasError && isInitiatedResult.Value)
+                        if (!isInitiatedResult.HasError && isInitiatedResult.Value)
                         {
-                            await initiatedHandler.Invoke(swap, cancellationToken)
+                            await initiatedHandler
+                                .Invoke(swap, cancellationToken)
                                 .ConfigureAwait(false);
 
                             break;
@@ -195,11 +197,11 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("StartSwapInitiatedControlAsync canceled.");
+                    Log.Debug("StartSwapInitiatedControlAsync canceled");
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "StartSwapInitiatedControlAsync error.");
+                    Log.Error(e, "StartSwapInitiatedControlAsync error");
                 }
 
             }, cancellationToken);

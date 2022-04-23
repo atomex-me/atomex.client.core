@@ -2,13 +2,13 @@
 
 namespace Atomex.Services
 {
-    public class TerminalErrorEventArgs : TerminalServiceEventArgs
+    public class AtomexClientErrorEventArgs : AtomexClientServiceEventArgs
     {
         public Error Error { get; }
         public int Code => Error.Code;
         public string Description => Error.Description;
 
-        public TerminalErrorEventArgs(TerminalService service, Error error)
+        public AtomexClientErrorEventArgs(AtomexClientService service, Error error)
             : base(service)
         {
             Error = error;

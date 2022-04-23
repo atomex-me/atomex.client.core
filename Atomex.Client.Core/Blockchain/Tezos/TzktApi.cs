@@ -670,7 +670,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             string address,
             string contractAddress = null,
             decimal? tokenId = null,
-            int count = 20,
+            int count = 100,
             CancellationToken cancellationToken = default)
         {
             var offset = 0;
@@ -692,7 +692,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     .GetAsyncResult<List<TokenTransferResponse>>(
                         baseUri: _baseUri,
                         requestUri: requestUri,
-                        responseHandler: (response, content) => JsonConvert.DeserializeObject<List<TokenTransferResponse>>(content),
+                        responseHandler: (_, content) => JsonConvert.DeserializeObject<List<TokenTransferResponse>>(content),
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -701,7 +701,27 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 
                 if (res.Value.Any())
                 {
-                    transfers.AddRange(res.Value.Select(x => x.ToTokenTransfer()));
+                    var operationTxIdsString = res.Value.Aggregate(string.Empty, (acc, tokenTransfer) => $"{acc}{tokenTransfer.TransactionId},");
+                    
+                    var tokenOperationRes =  await HttpHelper
+                        .GetAsyncResult<List<TokenOperation>>(
+                            baseUri: _baseUri,
+                            requestUri: $"operations/transactions?id.in={operationTxIdsString}&select=hash,counter,nonce",
+                            responseHandler: (_, content) => JsonConvert.DeserializeObject<List<TokenOperation>>(content),
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (res.HasError)
+                        return res.Error;
+                    
+                    transfers.AddRange(res.Value.Select(
+                        (x, index) => x.ToTokenTransfer(
+                            tokenOperationRes.Value[index].Hash,
+                            tokenOperationRes.Value[index].Counter, 
+                            tokenOperationRes.Value[index].Nonce)
+                        )
+                    );
+                    
                     offset += res.Value.Count;
 
                     if (res.Value.Count < limit)
