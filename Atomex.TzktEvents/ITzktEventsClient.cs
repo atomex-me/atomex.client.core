@@ -13,8 +13,7 @@ namespace Atomex.TzktEvents
 
         Task StartAsync(string baseUri);
         Task StopAsync();
-
-
+        
         Task NotifyOnAccountAsync(string address, Action handler);
     }
 }

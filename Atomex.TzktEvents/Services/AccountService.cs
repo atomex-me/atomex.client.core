@@ -18,8 +18,6 @@ namespace Atomex.TzktEvents.Services
         private readonly ILogger _log;
 
         private readonly ConcurrentDictionary<string, AccountSubscription> _accounts = new();
-        private IDisposable _subscription;
-
         private readonly Func<string, AccountSubscription> _willNotBeCalled = _ => null;
 
         public AccountService(HubConnection connection, ILogger log)
@@ -53,7 +51,7 @@ namespace Atomex.TzktEvents.Services
 
         public void SetSubscriptions()
         {
-            _subscription = _connection.On<JObject>(SubscriptionMethod.SubscribeToAccounts.Channel, Handler);
+            _connection.On<JObject>(SubscriptionMethod.SubscribeToAccounts.Channel, Handler);
         }
 
         private void Handler(JObject msg)
@@ -135,8 +133,5 @@ namespace Atomex.TzktEvents.Services
                 }
             }
         }
-        
-
-        public void Dispose() => _subscription?.Dispose();
     }
 }
