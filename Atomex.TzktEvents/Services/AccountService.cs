@@ -58,7 +58,8 @@ namespace Atomex.TzktEvents.Services
 
         private void Handler(JObject msg)
         {
-            _log.Debug($"Got msg from TzktEvents on '{SubscriptionMethod.SubscribeToAccounts.Channel}' channel: {msg}.");
+            _log.Debug("Got msg from TzktEvents on '{Channel}' channel: {Message}",
+                SubscriptionMethod.SubscribeToAccounts.Channel, msg);
 
             var messageType = (MessageType?)msg["type"]?.Value<int>();
             switch (messageType)
@@ -75,7 +76,8 @@ namespace Atomex.TzktEvents.Services
                     break;
 
                 default:
-                    _log.Warning($"Got msg with unrecognizable type from TzktEvents on '{SubscriptionMethod.SubscribeToAccounts.Channel}' channel: {msg}.");
+                    _log.Warning("Got msg with unrecognizable type from TzktEvents on '{Channel}' channel: {Message}",
+                        SubscriptionMethod.SubscribeToAccounts.Channel, msg);
                     break;
             }
         }

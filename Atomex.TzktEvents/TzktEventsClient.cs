@@ -34,7 +34,8 @@ namespace Atomex.TzktEvents
         {
             if (_isStarted)
             {
-                _log.Warning($"Trying to start new connection with baseUri = {baseUri} while TzktEventsClient is already connected to {EventsUrl}.");
+                _log.Warning("Trying to start new connection with baseUri = {BaseUri} while TzktEventsClient is already connected to {EventsUrl}",
+                    _baseUri, EventsUrl);
                 return;
             }
 
@@ -74,7 +75,7 @@ namespace Atomex.TzktEvents
         {
             if (!_isStarted)
             {
-                _log.Warning("Connection of TzktEventsClient was not started.");
+                _log.Warning("Connection of TzktEventsClient was not started");
                 return;
             }
             
@@ -102,7 +103,7 @@ namespace Atomex.TzktEvents
         {
             if (!_isStarted)
             {
-                _log.Error("NotifyOnAccountAsync was called before established connection to Tzkt Events.");
+                _log.Error("NotifyOnAccountAsync was called before established connection to Tzkt Events");
                 return;
             }
 
@@ -113,7 +114,7 @@ namespace Atomex.TzktEvents
         {
             if (exception != null)
             {
-                _log.Warning($"ReconnectingHandler to TzktEvents due to an error: {exception}.");
+                _log.Warning("ReconnectingHandler to TzktEvents due to an error: {Exception}", exception);
             }
 
             try
@@ -130,7 +131,7 @@ namespace Atomex.TzktEvents
 
         private async Task ReconnectedHandler(string connectionId)
         {
-            _log.Debug($"ReconnectedHandler to TzKT Events with id: {connectionId}.");
+            _log.Debug("ReconnectedHandler to TzKT Events with id: {ConnectionId}", connectionId);
             await InitAsync().ConfigureAwait(false);
 
             try
@@ -147,7 +148,7 @@ namespace Atomex.TzktEvents
         {
             if (exception != null)
             {
-                _log.Warning($"Connection closed due to an error: {exception}. ReconnectingHandler.");
+                _log.Warning("Connection closed due to an error: {Exception}", exception);
             }
 
             await StopAsync().ConfigureAwait(false);
