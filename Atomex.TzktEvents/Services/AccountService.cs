@@ -10,7 +10,7 @@ using Serilog;
 
 namespace Atomex.TzktEvents.Services
 {
-    internal record AccountSubscription(Action Handler, int LastState = 0);
+    internal record AccountSubscription(Action<string> Handler, int LastState = 0);
 
     public class AccountService : IAccountService
     {
@@ -26,7 +26,7 @@ namespace Atomex.TzktEvents.Services
             _log = log ?? throw new ArgumentNullException(nameof(log));
         }
 
-        public async Task NotifyOnAccountAsync(string address, Action handler)
+        public async Task NotifyOnAccountAsync(string address, Action<string> handler)
         {
             await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
             {
@@ -98,7 +98,7 @@ namespace Atomex.TzktEvents.Services
 
                     try
                     {
-                        updatedAccount.Handler();
+                        updatedAccount.Handler(address);
                     }
                     catch (Exception ex)
                     {
@@ -124,7 +124,7 @@ namespace Atomex.TzktEvents.Services
 
                     try
                     {
-                        updatedAccount.Handler();
+                        updatedAccount.Handler(address);
                     }
                     catch (Exception ex)
                     {
