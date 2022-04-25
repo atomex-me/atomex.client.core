@@ -44,10 +44,10 @@ namespace Atomex.TzktEvents
             try
             {
                 _connection = new HubConnectionBuilder()
-                .WithUrl(EventsUrl)
-                .AddNewtonsoftJsonProtocol()
-                .WithAutomaticReconnect(new RetryPolicy())
-                .Build();
+                    .WithUrl(EventsUrl)
+                    .AddNewtonsoftJsonProtocol()
+                    .WithAutomaticReconnect(new RetryPolicy())
+                    .Build();
 
                 _accountService = new AccountService(_connection, _log);
 
