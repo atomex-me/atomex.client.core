@@ -55,7 +55,7 @@ namespace Atomex.TzktEvents.Services
 
             await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
             {
-                addressesList
+                addresses = addressesList
             }).ConfigureAwait(false);
         }
 
