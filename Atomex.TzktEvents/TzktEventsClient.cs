@@ -10,13 +10,13 @@ namespace Atomex.TzktEvents
 {
     public class TzktEventsClient : ITzktEventsClient
     {
-        public string BaseUri { get; private set; }
-        public string EventsUrl => $"{BaseUri}/events";
+        public string EventsUrl => $"{_baseUri}/events";
 
         public event EventHandler Connected;
         public event EventHandler Reconnecting;
         public event EventHandler Disconnected;
 
+        private string _baseUri;
         private bool _isStarted;
 
         private readonly ILogger _log;
@@ -38,29 +38,29 @@ namespace Atomex.TzktEvents
                 return;
             }
 
-            BaseUri = baseUri;
-            
-            _connection = new HubConnectionBuilder()
+            _baseUri = baseUri;
+
+            try
+            {
+                _connection = new HubConnectionBuilder()
                 .WithUrl(EventsUrl)
                 .AddNewtonsoftJsonProtocol()
                 .WithAutomaticReconnect(new RetryPolicy())
                 .Build();
 
-            _accountService = new AccountService(_connection, _log);
+                _accountService = new AccountService(_connection, _log);
 
-            _connection.Reconnecting += ReconnectingHandler;
-            _connection.Reconnected += ReconnectedHandler;
-            _connection.Closed += ClosedHandler;
+                _connection.Reconnecting += ReconnectingHandler;
+                _connection.Reconnected += ReconnectedHandler;
+                _connection.Closed += ClosedHandler;
 
-            SetSubscriptions();
+                SetSubscriptions();
 
-            await _connection.StartAsync().ConfigureAwait(false);
-            _isStarted = true;
+                await _connection.StartAsync().ConfigureAwait(false);
+                _isStarted = true;
 
-            await InitAsync().ConfigureAwait(false);
-
-            try
-            {
+                await InitAsync().ConfigureAwait(false);
+                
                 Connected?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
@@ -77,23 +77,24 @@ namespace Atomex.TzktEvents
                 _log.Warning("Connection of TzktEventsClient was not started.");
                 return;
             }
-
             
             _connection.Reconnecting -= ReconnectingHandler;
             _connection.Reconnected -= ReconnectedHandler;
             _connection.Closed -= ClosedHandler;
 
-            await _connection.StopAsync().ConfigureAwait(false);
-            await _connection.DisposeAsync().ConfigureAwait(false);
-            _isStarted = false;
-
             try
             {
+                await _connection.StopAsync().ConfigureAwait(false);
+                await _connection.DisposeAsync().ConfigureAwait(false);
                 Disconnected?.Invoke(this, EventArgs.Empty);
             }
             catch (Exception ex)
             {
                 _log.Error(ex, ex.Message);
+            }
+            finally
+            {
+                _isStarted = false;
             }
         }
 

@@ -5,8 +5,6 @@ namespace Atomex.TzktEvents
 {
     public interface ITzktEventsClient
     {
-        string BaseUri { get; }
-
         string EventsUrl { get; }
 
         event EventHandler Connected;
