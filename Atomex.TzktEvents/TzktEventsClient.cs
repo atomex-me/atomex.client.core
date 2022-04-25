@@ -63,6 +63,7 @@ namespace Atomex.TzktEvents
                 await InitAsync().ConfigureAwait(false);
                 
                 Connected?.Invoke(this, EventArgs.Empty);
+                _log.Information("TzktEventsClient started with events url: {EventsUrl}", EventsUrl);
             }
             catch (Exception ex)
             {
@@ -87,7 +88,9 @@ namespace Atomex.TzktEvents
             {
                 await _connection.StopAsync().ConfigureAwait(false);
                 await _connection.DisposeAsync().ConfigureAwait(false);
+
                 Disconnected?.Invoke(this, EventArgs.Empty);
+                _log.Information("TzktEventsClient stopped");
             }
             catch (Exception ex)
             {
@@ -114,7 +117,7 @@ namespace Atomex.TzktEvents
         {
             if (exception != null)
             {
-                _log.Warning("ReconnectingHandler to TzktEvents due to an error: {Exception}", exception);
+                _log.Warning("Reconnecting to TzktEvents due to an error: {Exception}", exception);
             }
 
             try
@@ -131,7 +134,7 @@ namespace Atomex.TzktEvents
 
         private async Task ReconnectedHandler(string connectionId)
         {
-            _log.Debug("ReconnectedHandler to TzKT Events with id: {ConnectionId}", connectionId);
+            _log.Debug("Reconnected to TzKT Events with connection id: {ConnectionId}", connectionId);
             await InitAsync().ConfigureAwait(false);
 
             try
