@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Atomex.TzktEvents.Models;
@@ -28,13 +29,34 @@ namespace Atomex.TzktEvents.Services
 
         public async Task NotifyOnAccountAsync(string address, Action<string> handler)
         {
+            var account = new AccountSubscription(handler);
+            _accounts.AddOrUpdate(address, account, (_, _) => account);
+
             await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
             {
                 addresses = new[] { address }
             }).ConfigureAwait(false);
+        }
 
-            var account = new AccountSubscription(handler);
-            _accounts.AddOrUpdate(address, account, (_, _) => account);
+        public async Task NotifyOnAccountsAsync(IEnumerable<string> addresses, Action<string> handler)
+        {
+            var addressesList = addresses.ToList();
+            if (addressesList.Count == 0)
+            {
+                _log.Error("NotifyOnAccountsAsync was called with empty list of addresses");
+                return;
+            }
+
+            foreach (var address in addressesList)
+            {
+                var account = new AccountSubscription(handler);
+                _accounts.AddOrUpdate(address, account, (_, _) => account);
+            }
+
+            await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
+            {
+                addressesList
+            }).ConfigureAwait(false);
         }
 
         public async Task InitAsync()

@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 using Microsoft.AspNetCore.SignalR.Client;
 using Serilog;
 using Atomex.TzktEvents.Services;
@@ -102,15 +104,31 @@ namespace Atomex.TzktEvents
             }
         }
 
-        public async Task NotifyOnAccountAsync(string address, Action handler)
+        public async Task NotifyOnAccountAsync(string address, Action<string> handler)
+        {
+            if (CheckIsStarted(nameof(NotifyOnAccountAsync)))
+            {
+                await _accountService.NotifyOnAccountAsync(address, handler).ConfigureAwait(false);
+            }
+        }
+
+        public async Task NotifyOnAccountsAsync(IEnumerable<string> addresses, Action<string> handler)
+        {
+            if (CheckIsStarted(nameof(NotifyOnAccountsAsync)))
+            {
+                await _accountService.NotifyOnAccountsAsync(addresses, handler).ConfigureAwait(false);
+            }
+        }
+
+        private bool CheckIsStarted(string methodName)
         {
             if (!_isStarted)
             {
-                _log.Error("NotifyOnAccountAsync was called before established connection to Tzkt Events");
-                return;
+                _log.Error("{MethodName} was called before established connection to Tzkt Events", methodName);
+                return false;
             }
 
-            await _accountService.NotifyOnAccountAsync(address, handler).ConfigureAwait(false);
+            return true;
         }
 
         private Task ReconnectingHandler(Exception exception = null)
