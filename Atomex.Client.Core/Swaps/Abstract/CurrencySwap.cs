@@ -8,6 +8,7 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Core;
 using Atomex.Common;
 using Atomex.Cryptography;
+using Atomex.Cryptography.Abstract;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.Swaps.Abstract
@@ -104,7 +105,7 @@ namespace Atomex.Swaps.Abstract
             Rand.SecureRandomBytes(DefaultSecretSize);
 
         public static byte[] CreateSwapSecretHash(byte[] secretBytes) =>
-            Sha256.Compute(secretBytes, 2);
+            HashAlgorithm.Sha256.Hash(secretBytes, iterations: 2);
 
         protected Task TrackTransactionConfirmationAsync(
             Swap swap,

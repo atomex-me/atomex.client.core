@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
@@ -19,6 +18,7 @@ using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
+using Error = Atomex.Core.Error;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -59,7 +59,7 @@ namespace Atomex.Wallet.Ethereum
                 gasLimit = GasLimitByType(BlockchainTransactionType.Output);
 
                 gasPrice = await erc20Config
-                    .GetGasPriceAsync()
+                    .GetGasPriceAsync(cancellationToken)
                     .ConfigureAwait(false);
             }
 
@@ -98,7 +98,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             var nonceResult = await EthereumNonceManager.Instance
-                .GetNonceAsync(EthConfig, addressFeeUsage.WalletAddress.Address)
+                .GetNonceAsync(EthConfig, addressFeeUsage.WalletAddress.Address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (nonceResult.HasError)
@@ -132,7 +132,7 @@ namespace Atomex.Wallet.Ethereum
                     code: Errors.TransactionSigningError,
                     description: "Transaction signing error");
 
-            if (!tx.Verify(erc20Config))
+            if (!tx.Verify())
                 return new Error(
                     code: Errors.TransactionVerificationError,
                     description: "Transaction verification error");

@@ -14,7 +14,7 @@ using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Cryptography;
+using Atomex.Cryptography.Abstract;
 using Atomex.LiteDb;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Tezos;
@@ -113,7 +113,6 @@ namespace Atomex.Wallet
 
         public Account(
             IHdWallet wallet,
-            SecureString password,
             IAccountDataRepository dataRepository,
             ICurrenciesProvider currenciesProvider,
             ClientType clientType)
@@ -172,19 +171,21 @@ namespace Atomex.Wallet
             }
 
             using var securePublicKey = Wallet.GetServicePublicKey(keyIndex);
-            using var publicKey = securePublicKey.ToUnsecuredBytes();
+            var publicKey = securePublicKey.ToUnsecuredBytes();
 
             var auth = new Auth
             {
                 TimeStamp    = DateTime.UtcNow,
                 Nonce        = nonce.Nonce,
                 ClientNonce  = Guid.NewGuid().ToString(),
-                PublicKeyHex = publicKey.Data.ToHexString(),
+                PublicKeyHex = publicKey.ToHexString(),
                 Version      = $"{ApiVersion} {_clientType}"
             };
 
+            var hashToSign = HashAlgorithm.Sha256.Hash(auth.SignedData);
+
             var signature = await Wallet
-                .SignByServiceKeyAsync(auth.SignedData, keyIndex)
+                .SignByServiceKeyAsync(hashToSign, keyIndex)
                 .ConfigureAwait(false);
 
             auth.Signature = Convert.ToBase64String(signature);
@@ -265,9 +266,9 @@ namespace Atomex.Wallet
         public string GetUserId(uint keyIndex = 0)
         {
             using var servicePublicKey = Wallet.GetServicePublicKey(keyIndex);
-            using var publicKey = servicePublicKey.ToUnsecuredBytes();
+            var publicKey = servicePublicKey.ToUnsecuredBytes();
 
-            return Sha256.Compute(Sha256.Compute(publicKey)).ToHexString();
+            return HashAlgorithm.Sha256.Hash(publicKey, iterations: 2).ToHexString();
         }
 
         #endregion Common

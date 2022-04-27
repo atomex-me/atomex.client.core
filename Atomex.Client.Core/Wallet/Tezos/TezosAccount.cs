@@ -82,7 +82,7 @@ namespace Atomex.Wallet.Tezos
             var addressAmountMtz = addressFeeUsage.UsedAmount.ToMicroTez();
 
             Log.Debug("Send {@amount} XTZ from address {@address} with available balance {@balance}",
-                addressAmountMtz,
+                addressFeeUsage.UsedAmount,
                 addressFeeUsage.WalletAddress.Address,
                 addressFeeUsage.WalletAddress.AvailableBalance());
 

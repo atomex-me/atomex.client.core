@@ -8,14 +8,14 @@ namespace Atomex.Common
             this PubKey key,
             BitcoinBasedConfig currency)
         {
-            return key.GetAddress(ScriptPubKeyType.Legacy ,currency.Network).ToString();
+            return key.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString();
         }
 
         public static string GetSegwitAddress(
             this PubKey key,
             BitcoinBasedConfig currency)
         {
-            return key.GetSegwitAddress(currency.Network).ToString();
+            return key.GetAddress(ScriptPubKeyType.Segwit, currency.Network).ToString();
         }
     }
 }

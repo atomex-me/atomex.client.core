@@ -3,6 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Moq;
+using NBitcoin;
+using Xunit;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
@@ -10,9 +15,6 @@ using Atomex.Core;
 using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
-using Moq;
-using NBitcoin;
-using Xunit;
 using Network = Atomex.Core.Network;
 
 namespace Atomex.Client.Core.Tests
@@ -45,13 +47,17 @@ namespace Atomex.Client.Core.Tests
             var apiMock = new Mock<IBlockchainApi>();
             apiSetup?.Invoke(apiMock);
 
-            var wallet = new HdWallet(Network.TestNet);
+            var mnemonic = "ocean mosquito pool boss curve toddler trash coach enforce table skin jungle meadow grab clinic";
+
+            var wallet = new HdWallet(mnemonic, Wordlist.English, network: Network.TestNet);
+
             var fromAddress = wallet.GetAddress(
                 currency: currency,
                 account: 0,
                 chain: 0,
                 index: 0,
                 keyType: CurrencyConfig.StandardKey);
+
             var fromOutputs = GetOutputs(fromAddress.Address, NBitcoin.Network.TestNet, currency.CoinToSatoshi(available)).ToList();
 
             var repositoryMock = new Mock<IAccountDataRepository>();

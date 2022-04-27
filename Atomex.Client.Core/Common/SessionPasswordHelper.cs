@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Security;
+
 using Atomex.Cryptography;
+using Atomex.Cryptography.Abstract;
 
 namespace Atomex.Common
 {
@@ -13,7 +15,7 @@ namespace Atomex.Common
             int hashIterationsCount = DefaultHashIterationsCount)
         {
             var passwordBytes = password.ToBytes();
-            var passwordHash = Sha256.Compute(passwordBytes, hashIterationsCount);
+            var passwordHash = HashAlgorithm.Sha256.Hash(passwordBytes, hashIterationsCount);
 
             Array.Clear(passwordBytes, 0, passwordBytes.Length);
 
@@ -25,7 +27,7 @@ namespace Atomex.Common
             int hashIterationsCount = DefaultHashIterationsCount)
         {
             var passwordBytes = password.ToBytes();
-            var passwordHash = Sha256.Compute(passwordBytes, hashIterationsCount);
+            var passwordHash = HashAlgorithm.Sha256.Hash(passwordBytes, hashIterationsCount);
 
             Array.Clear(passwordBytes, 0, passwordBytes.Length);
 

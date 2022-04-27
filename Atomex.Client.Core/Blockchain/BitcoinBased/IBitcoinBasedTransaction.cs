@@ -3,8 +3,8 @@
 using NBitcoin;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Common;
 using Atomex.Core;
+using Atomex.Common.Memory;
 
 namespace Atomex.Blockchain.BitcoinBased
 {
@@ -13,8 +13,10 @@ namespace Atomex.Blockchain.BitcoinBased
         long TotalOut { get; }
 
         long GetFee(ITxOutput[] spentOutputs);
-        byte[] GetSignatureHash(ITxOutput spentOutput);
-        byte[] GetSignatureHash(Script redeemScript, ITxOutput spentOutput);
+        byte[] GetSignatureHash(
+            BitcoinBasedTxOutput output,
+            Script redeemScript = null,
+            SigHash sigHash = SigHash.All);
         Script GetScriptSig(int inputNo);
 
         void Sign(SecureBytes privateKey, ITxOutput[] spentOutputs, BitcoinBasedConfig bitcoinBasedConfig);

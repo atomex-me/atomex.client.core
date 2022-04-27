@@ -14,7 +14,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 {
     public class Forge
     {
-        public static Dictionary<string, int> OperationTags = new Dictionary<string, int>
+        private static readonly Dictionary<string, int> OperationTags = new()
         {
             {"endorsement", 0 },
             {"proposal", 5 },
@@ -31,7 +31,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
         public static JToken ForgeOperationsLocal(string blockHeadHash, JToken operations)
         {
-            if (!(operations is JArray arrOps))
+            if (operations is not JArray arrOps)
                 arrOps = new JArray(operations);
 
             var res = blockHeadHash != null
@@ -159,7 +159,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
         public static string ForgeAddress(string value)
         {
-            var prefix = value.Substring(0, 3);
+            var prefix = value[..3];
 
             var res = Base58Check.Decode(value).ToHexString().Substring(6);
 
@@ -175,9 +175,9 @@ namespace Atomex.Blockchain.Tezos.Internal
 
         private static string ForgeSource(string value)
         {
-            var prefix = value.Substring(0, 3);
+            var prefix = value[..3];
 
-            var res = Base58Check.Decode(value).ToHexString().Substring(6);
+            var res = Base58Check.Decode(value).ToHexString()[6..];
 
             return prefix switch
             {
@@ -193,9 +193,9 @@ namespace Atomex.Blockchain.Tezos.Internal
 
         private static string ForgePublicKey(string value)
         {
-            var prefix = value.Substring(0, 4);
+            var prefix = value[..4];
 
-            var res = Base58Check.Decode(value).ToHexString().Substring(8);
+            var res = Base58Check.Decode(value).ToHexString()[8..];
 
             return prefix switch
             {
@@ -257,7 +257,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
             while (abs > 0)
             {
-                res[res.Count - 1] |= 0x80;
+                res[^1] |= 0x80;
                 res.Add((byte)(abs & 0x7F));
                 abs >>= 7;
             }
@@ -343,7 +343,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             return res;
         }
 
-        private static Dictionary<bool, string>[] LenTags = new Dictionary<bool, string>[]
+        private static readonly Dictionary<bool, string>[] LenTags = new Dictionary<bool, string>[]
         {
             new Dictionary<bool, string> {
                 { false, "03" },
@@ -363,7 +363,8 @@ namespace Atomex.Blockchain.Tezos.Internal
             }
         };
 
-        public static Dictionary<string, int> EntrypointTags = new Dictionary<string, int> {
+        private static readonly Dictionary<string, int> EntrypointTags = new()
+        {
             {"default", 0 },
             {"root", 1 },
             {"do", 2 },
@@ -371,7 +372,8 @@ namespace Atomex.Blockchain.Tezos.Internal
             {"remove_delegate", 4 }
         };
 
-        private static Dictionary<string, string> PrimTags = new Dictionary<string, string> {
+        private static readonly Dictionary<string, string> PrimTags = new()
+        {
             {"parameter", "00" },
             {"storage", "01" },
             {"code", "02" },

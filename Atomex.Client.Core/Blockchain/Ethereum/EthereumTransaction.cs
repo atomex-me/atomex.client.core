@@ -6,12 +6,13 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Nethereum.RPC.Eth.DTOs;
-using Nethereum.Web3;
+using Nethereum.Signer;
 using Serilog;
 using Transaction = Nethereum.RPC.Eth.DTOs.Transaction;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 
@@ -137,18 +138,10 @@ namespace Atomex.Blockchain.Ethereum
             return resTx;
         }
 
-        public bool Verify(EthereumConfig ethereumConfig)
-        {
-            return Web3.OfflineTransactionSigner
-                .VerifyTransaction(
-                    rlp: RlpEncodedTx,
-                    chain: ethereumConfig.Chain);
-        }
+        public bool Verify() =>
+            TransactionVerificationAndRecovery.VerifyTransaction(RlpEncodedTx);
 
-        public byte[] ToBytes()
-        {
-            return Encoding.UTF8.GetBytes(RlpEncodedTx);
-        }
+        public byte[] ToBytes() => Encoding.UTF8.GetBytes(RlpEncodedTx);
 
         public async Task<bool> SignAsync(
             IKeyStorage keyStorage,
@@ -178,24 +171,25 @@ namespace Atomex.Blockchain.Ethereum
             if (privateKey == null)
                 throw new ArgumentNullException(nameof(privateKey));
 
-            using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
-
             var chain = ethereumConfig.Chain;
 
-            RlpEncodedTx = Web3.OfflineTransactionSigner
-                .SignTransaction(
-                    privateKey: scopedPrivateKey,
-                    chain: chain,
-                    to: To,
-                    amount: Amount,
-                    nonce: Nonce,
-                    gasPrice: GasPrice,
-                    gasLimit: GasLimit,
-                    data: Input);
-            
-            From = Web3.OfflineTransactionSigner
-                .GetSenderAddress(RlpEncodedTx, chain)
-                .ToLowerInvariant();
+            var tx = new LegacyTransactionChainId(
+                to: To,
+                amount: Amount,
+                nonce: Nonce,
+                gasPrice: GasPrice,
+                gasLimit: GasLimit,
+                data: Input,
+                chainId: (int)chain);
+
+            var pkKey = privateKey.ToUnsecuredBytes();
+            var key = new EthECKey(pkKey, true);
+
+            tx.Sign(key);
+
+            RlpEncodedTx = tx
+                .GetRLPEncoded()
+                .ToHexString();
 
             return Task.FromResult(true);
         }

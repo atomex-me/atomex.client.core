@@ -30,8 +30,8 @@ namespace Atomex.Client.Core.Tests
         {
             return currency.CreateP2WPkhTx(
                 unspentOutputs: outputs,
-                destinationAddress: to.GetSegwitAddress(currency.Network).ToString(),
-                changeAddress: from.GetSegwitAddress(currency.Network).ToString(),
+                destinationAddress: to.GetAddress(ScriptPubKeyType.Segwit, currency.Network).ToString(),
+                changeAddress: from.GetAddress(ScriptPubKeyType.Segwit, currency.Network).ToString(),
                 amount: amount,
                 fee: fee);
         }

@@ -11,6 +11,7 @@ using Serilog;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Tezos;

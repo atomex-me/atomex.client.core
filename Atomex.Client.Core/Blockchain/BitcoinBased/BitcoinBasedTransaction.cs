@@ -12,6 +12,7 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
+using Atomex.Common.Memory;
 
 namespace Atomex.Blockchain.BitcoinBased
 {
@@ -146,9 +147,14 @@ namespace Atomex.Blockchain.BitcoinBased
             ITxOutput spentOutput,
             BitcoinBasedConfig bitcoinBasedConfig)
         {
-            using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
+            var scopedPrivateKey = privateKey.ToUnsecuredBytes();
 
-            Sign(new Key(scopedPrivateKey), spentOutput, bitcoinBasedConfig); // todo: do not use NBitcoin.Key
+            var key = new Key(scopedPrivateKey);
+            var debugAddress = spentOutput.DestinationAddress(bitcoinBasedConfig.Network);
+            var keyAddress = key.PubKey.GetAddress(bitcoinBasedConfig);
+            
+
+            Sign(key, spentOutput, bitcoinBasedConfig); // todo: do not use NBitcoin.Key
         }
 
         public void Sign(
@@ -165,7 +171,7 @@ namespace Atomex.Blockchain.BitcoinBased
             ITxOutput[] spentOutputs,
             BitcoinBasedConfig bitcoinBasedConfig)
         {
-            using var scopedPrivateKey = privateKey.ToUnsecuredBytes();
+            var scopedPrivateKey = privateKey.ToUnsecuredBytes();
 
             Sign(new Key(scopedPrivateKey), spentOutputs, bitcoinBasedConfig); // todo: do not use NBitcoin.Key
         }
@@ -243,13 +249,13 @@ namespace Atomex.Blockchain.BitcoinBased
                 .SetTransactionPolicy(new StandardTransactionPolicy
                 {
                     CheckScriptPubKey = checkScriptPubKey,
-                    ScriptVerify = ScriptVerify.Standard
+                    ScriptVerify = ScriptVerify.Standard,
                 })
                 .AddCoins(spentOutputs
                     .Cast<BitcoinBasedTxOutput>()
                     .Select(o => o.Coin)
                     .ToArray())
-                .Verify(Tx, out _);
+                .Verify(Tx, out var errors);
 
             return result;
         }
@@ -296,18 +302,30 @@ namespace Atomex.Blockchain.BitcoinBased
                 .Satoshi;
         }
 
-        public byte[] GetSignatureHash(ITxOutput spentOutput)
+        public byte[] GetSignatureHash(
+            BitcoinBasedTxOutput output,
+            Script redeemScript = null,
+            SigHash sigHash = SigHash.All)
         {
-            return Tx.GetSignatureHash(((BitcoinBasedTxOutput)spentOutput).Coin).ToBytes();
-        }
+            var coin = redeemScript == null
+                ? output.Coin
+                : new ScriptCoin(output.Coin, redeemScript);
 
-        public byte[] GetSignatureHash(Script redeemScript, ITxOutput spentOutput)
-        {
-            var coin = ((BitcoinBasedTxOutput) spentOutput).Coin;
+            var input = Tx.Inputs
+                .AsIndexedInputs()
+                .FirstOrDefault(i => i.PrevOut.Hash == coin.Outpoint.Hash && i.PrevOut.N == coin.Outpoint.N);
 
-            var scriptCoint = new ScriptCoin(coin, redeemScript);
+            if (input == null)
+                throw new Exception($"Transaction has no input for coin {coin.Outpoint.Hash}:{coin.Outpoint.N}");
 
-            return Tx.GetSignatureHash(scriptCoint).ToBytes();
+            return Tx
+                .GetSignatureHash(
+                    scriptCode: coin.GetScriptCode(),
+                    nIn: (int)input.Index,
+                    nHashType: sigHash,
+                    spentOutput: coin.TxOut,
+                    sigversion: coin.GetHashVersion())
+                .ToBytes();
         }
 
         public Script GetScriptSig(int inputNo) =>

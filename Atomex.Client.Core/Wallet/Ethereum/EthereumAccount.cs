@@ -106,7 +106,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             var nonceAsyncResult = await EthereumNonceManager.Instance
-                .GetNonceAsync(ethConfig, addressFeeUsage.WalletAddress.Address)
+                .GetNonceAsync(ethConfig, addressFeeUsage.WalletAddress.Address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (nonceAsyncResult.HasError)
@@ -117,6 +117,7 @@ namespace Atomex.Wallet.Ethereum
                 Currency     = ethConfig.Name,
                 Type         = BlockchainTransactionType.Output,
                 CreationTime = DateTime.UtcNow,
+                From         = addressFeeUsage.WalletAddress.Address,
                 To           = to.ToLowerInvariant(),
                 Amount       = EthereumConfig.EthToWei(addressFeeUsage.UsedAmount),
                 Nonce        = nonceAsyncResult.Value,
@@ -133,7 +134,7 @@ namespace Atomex.Wallet.Ethereum
                     code: Errors.TransactionSigningError,
                     description: "Transaction signing error");
 
-            if (!tx.Verify(ethConfig))
+            if (!tx.Verify())
                 return new Error(
                     code: Errors.TransactionVerificationError,
                     description: "Transaction verification error");

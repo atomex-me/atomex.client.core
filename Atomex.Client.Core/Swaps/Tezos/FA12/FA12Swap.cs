@@ -10,6 +10,7 @@ using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Helpers;
@@ -887,7 +888,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 .GetAddressAsync(paymentTx.From, cancellationToken)
                 .ConfigureAwait(false);
 
-            using var callingAddressPublicKey = new SecureBytes((await TezosAccount.GetAddressAsync(walletAddress.Address)
+            using var callingAddressPublicKey = new SecureBytes((await TezosAccount.GetAddressAsync(walletAddress.Address, cancellationToken)
                 .ConfigureAwait(false))
                 .PublicKeyBytes());
 

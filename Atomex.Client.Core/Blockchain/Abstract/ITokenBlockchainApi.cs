@@ -2,6 +2,7 @@
 using System.Threading.Tasks;
 
 using Atomex.Common;
+using Atomex.Common.Memory;
 
 namespace Atomex.Blockchain.Abstract
 {

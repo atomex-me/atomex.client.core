@@ -10,6 +10,7 @@ using Serilog;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.Abstract;
@@ -116,7 +117,7 @@ namespace Atomex.Blockchain.Tezos
                 return false;
             }
 
-            using var privateKey = securePrivateKey.ToUnsecuredBytes();
+            var privateKey = securePrivateKey.ToUnsecuredBytes();
 
             var xtz = currencyConfig as TezosConfig;
 
@@ -128,13 +129,23 @@ namespace Atomex.Blockchain.Tezos
 
             //var forgedOpGroup = Forge.ForgeOperationsLocal(Head["hash"].ToString(), Operations);
 
+            var dataToSign = Hex.FromString(forgedOpGroup.ToString());
+
             SignedMessage = TezosSigner.SignHash(
-                data: Hex.FromString(forgedOpGroup.ToString()),
+                data: dataToSign,
                 privateKey: privateKey,
                 watermark: Watermark.Generic,
                 isExtendedKey: privateKey.Length == 64);
 
-            return SignedMessage != null;
+            var verifyResult = TezosSigner.VerifyHash(
+                data: Watermark.Generic.ConcatArrays(dataToSign),
+                signature: SignedMessage.SignedHash,
+                publicKey: keyStorage.GetPublicKey(
+                    currency: currencyConfig,
+                    keyIndex: address.KeyIndex,
+                    keyType: address.KeyType).ToUnsecuredBytes());
+
+            return SignedMessage != null && verifyResult;
         }
 
         public async Task<(bool result, bool isRunSuccess, bool hasReveal)> FillOperationsAsync(
@@ -144,7 +155,7 @@ namespace Atomex.Blockchain.Tezos
             bool isAlreadyRevealed = false,
             CancellationToken cancellationToken = default)
         {
-            using var publicKey = securePublicKey.ToUnsecuredBytes();
+            var publicKey = securePublicKey.ToUnsecuredBytes();
 
             var rpc = new Rpc(tezosConfig.RpcNodeUri);
 

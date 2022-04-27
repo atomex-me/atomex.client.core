@@ -11,10 +11,12 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallet.Bip;
-using Atomex.Wallet.Tezos;
+using Atomex.Wallets.Keys;
+using Atomex.Wallets;
 
 namespace Atomex
 {
@@ -27,7 +29,8 @@ namespace Atomex
         // ext key types
         public const int Bip32Ed25519Key = 1;
 
-        protected const int PkHashSize = 20 * 8;
+        private const int PkHashSize = 20;
+        protected const int PkHashSizeInBits = PkHashSize * 8;
 
         public decimal MinimalFee { get; protected set; }
         public decimal MinimalNanotezPerGasUnit { get; protected set; }
@@ -190,18 +193,20 @@ namespace Atomex
         public override IExtKey CreateExtKey(SecureBytes seed, int keyType) =>
             keyType switch
             {
-                StandardKey     => new TezosExtKey(seed),
-                Bip32Ed25519Key => new Bip32TezosExtKey(seed),
-                _               => new TezosExtKey(seed)
+                StandardKey     => new Ed25519ExtKey(seed),
+                Bip32Ed25519Key => new Bip32Ed25519ExtKey(seed),
+                _               => new Ed25519ExtKey(seed)
             };
 
         public override IKey CreateKey(SecureBytes seed) =>
-            new TezosKey(seed);
+            new Ed25519Key(seed);
 
-        public override string AddressFromKey(byte[] publicKey) =>
-            Base58Check.Encode(
-                payload: HmacBlake2b.Compute(publicKey, PkHashSize),
+        public override string AddressFromKey(byte[] publicKey) {
+            
+            return Base58Check.Encode(
+                data: new HmacBlake2b(HmacBlake2b.DefaultKeySize, PkHashSize).Mac(key: null, publicKey),
                 prefix: Prefix.Tz1);
+        }
 
         public override bool IsValidAddress(string address) =>
             Address.CheckTz1Address(address) ||
@@ -213,11 +218,11 @@ namespace Atomex
              AddressFromKey(publicKey).ToLowerInvariant()
                 .Equals(address.ToLowerInvariant());
 
-        public override bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey) =>
-            TezosSigner.Verify(
-                data: data,
-                signature: signature,
-                publicKey: publicKey);
+        //public override bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey) =>
+        //    TezosSigner.Verify(
+        //        data: data,
+        //        signature: signature,
+        //        publicKey: publicKey);
  
         public override decimal GetFeeAmount(decimal fee, decimal feePrice) =>
             fee;
@@ -319,7 +324,7 @@ namespace Atomex
                 if (raw.Length != 22)
                     throw new ArgumentException($"Invalid address size: {raw.Length}");
 
-                var data = hex.Substring(0, 4) switch
+                var data = hex[..4] switch
                 {
                     "0000" => Prefix.Tz1.ConcatArrays(raw.SubArray(2)),
                     "0001" => Prefix.Tz2.ConcatArrays(raw.SubArray(2)),

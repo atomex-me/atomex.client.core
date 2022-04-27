@@ -1,8 +1,10 @@
 ﻿using System.Text;
-using Atomex.Common;
-using Atomex.Wallet.Tezos;
+
 using NBitcoin;
 using Xunit;
+
+using Atomex.Common.Memory;
+using Atomex.Wallets.Keys;
 
 namespace Atomex.Client.Core.Tests
 {
@@ -19,13 +21,13 @@ namespace Atomex.Client.Core.Tests
             var messageBytes = Encoding.UTF8.GetBytes(Message);
 
             using var seed = new SecureBytes(new Mnemonic(Mnemonic).DeriveSeed());
-            using var extKey = new TezosExtKey(seed);
-            using var childKey = extKey.Derive(new KeyPath("m/44'/1729'/0'/0'"));
+            using var extKey = new Ed25519ExtKey(seed);
+            using var childKey = extKey.Derive("m/44'/1729'/0'/0'");
             using var secureChildPublicKey = childKey.GetPublicKey();
-            using var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
+            var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
 
-            var signature = childKey.SignMessage(messageBytes);
-            Assert.True(childKey.VerifyMessage(messageBytes, signature));
+            var signature = childKey.Sign(messageBytes);
+            Assert.True(childKey.Verify(messageBytes, signature));
 
             var address = Common.CurrenciesTestNet.Get<TezosConfig>("XTZ").AddressFromKey(childPublicKey);
             Assert.NotNull(address);
@@ -37,13 +39,13 @@ namespace Atomex.Client.Core.Tests
             var messageBytes = Encoding.UTF8.GetBytes(Message);
 
             using var seed = new SecureBytes(new Mnemonic(Mnemonic).DeriveSeed());
-            using var extKey = new Bip32TezosExtKey(seed);
-            using var childKey = extKey.Derive(new KeyPath("m/44'/1729'/0'/0'"));
+            using var extKey = new Bip32Ed25519ExtKey(seed);
+            using var childKey = extKey.Derive("m/44'/1729'/0'/0'");
             using var secureChildPublicKey = childKey.GetPublicKey();
-            using var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
+            var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
 
-            var signature = childKey.SignMessage(messageBytes);
-            Assert.True(childKey.VerifyMessage(messageBytes, signature));
+            var signature = childKey.Sign(messageBytes);
+            Assert.True(childKey.Verify(messageBytes, signature));
 
             var address = Common.CurrenciesTestNet.Get<TezosConfig>("XTZ").AddressFromKey(childPublicKey);
             Assert.NotNull(address);
@@ -55,16 +57,16 @@ namespace Atomex.Client.Core.Tests
             var messageBytes = Encoding.UTF8.GetBytes(Message);
 
             using var seed = new SecureBytes(new Mnemonic(Mnemonic).DeriveSeed());
-            using var extKey = new Bip32TezosExtKey(seed);
+            using var extKey = new Bip32Ed25519ExtKey(seed);
 
             for (var i = 0; i < 100; ++i)
             {
-                using var childKey = extKey.Derive(new KeyPath($"m/44'/1729'/0'/0/{i}"));
+                using var childKey = extKey.Derive($"m/44'/1729'/0'/0/{i}");
                 using var secureChildPublicKey = childKey.GetPublicKey();
-                using var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
+                var childPublicKey = secureChildPublicKey.ToUnsecuredBytes();
 
-                var signature = childKey.SignMessage(messageBytes);
-                Assert.True(childKey.VerifyMessage(messageBytes, signature));
+                var signature = childKey.Sign(messageBytes);
+                Assert.True(childKey.Verify(messageBytes, signature));
 
                 var address = Common.CurrenciesTestNet.Get<TezosConfig>("XTZ").AddressFromKey(childPublicKey);
                 Assert.NotNull(address);
