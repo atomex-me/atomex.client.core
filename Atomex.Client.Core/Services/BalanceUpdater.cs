@@ -24,7 +24,7 @@ namespace Atomex.Services
         public BalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, ILogger log)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
-            _currenciesProvider = currenciesProvider ?? throw new ArgumentNullException(nameof(currenciesProvider));
+            _currenciesProvider = currenciesProvider;
             _log = log ?? throw new ArgumentNullException(nameof(log));
 
             _tzktEvents = new TzktEventsClient(_log);
