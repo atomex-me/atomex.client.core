@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Atomex.Abstract;
 using Atomex.Services.Abstract;
 using Atomex.TzktEvents;
+using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Serilog;
 
@@ -17,6 +18,7 @@ namespace Atomex.Services
         private readonly ICurrenciesProvider _currenciesProvider;
         private readonly ILogger _log;
         private readonly ITzktEventsClient _tzktEvents;
+        private readonly IHdWalletScanner _walletScanner;
 
         private CancellationTokenSource _cts;
         private bool _isRunning;
@@ -28,6 +30,7 @@ namespace Atomex.Services
             _log = log ?? throw new ArgumentNullException(nameof(log));
 
             _tzktEvents = new TzktEventsClient(_log);
+            _walletScanner = new HdWalletScanner(_account);
         }
 
         public void Start()
@@ -108,8 +111,16 @@ namespace Atomex.Services
 
         private async void TezosBalanceUpdateHandler(string address)
         {
-            var account = _account.GetCurrencyAccount(TezosConfig.Xtz);
-            await account.UpdateBalanceAsync(address, _cts.Token).ConfigureAwait(false);
+            try
+            {
+                await _walletScanner
+                    .ScanAddressAsync(TezosConfig.Xtz, address)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                _log.Error(e, "Error on handling Tezos balance update");
+            }
         }
 
         private async Task StopTezosBalanceUpdater()
