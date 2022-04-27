@@ -147,4 +147,7 @@
   <data name="TooLowFees" xml:space="preserve">
     <value>Too low fees</value>
   </data>
+  <data name="EnumerationValueMustBeOfEnumType" xml:space="preserve">
+	  <value>EnumerationValue must be of Enum type</value>
+  </data>
 </root>
