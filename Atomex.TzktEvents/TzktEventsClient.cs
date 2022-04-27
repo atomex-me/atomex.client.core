@@ -12,7 +12,7 @@ namespace Atomex.TzktEvents
 {
     public class TzktEventsClient : ITzktEventsClient
     {
-        public string EventsUrl => $"{_baseUri}/events";
+        public string EventsUrl => $"{_baseUri}events";
 
         public event EventHandler Connected;
         public event EventHandler Reconnecting;

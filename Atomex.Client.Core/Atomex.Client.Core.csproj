@@ -44,6 +44,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Atomex.TzktEvents\Atomex.TzktEvents.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Atomex.Wallets.Bitcoin\Atomex.Wallets.Bitcoin.csproj" />
     <ProjectReference Include="..\Atomex.Wallets.Ethereum\Atomex.Wallets.Ethereum.csproj" />
     <ProjectReference Include="..\Atomex.Wallets.Tezos\Atomex.Wallets.Tezos.csproj" />

@@ -7,6 +7,7 @@ using Atomex.Services.Abstract;
 using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
+using Serilog;
 
 namespace Atomex
 {
@@ -26,6 +27,8 @@ namespace Atomex
         public ITransactionsTracker TransactionsTracker { get; private set; }
 
         public bool HasQuotesProvider => QuotesProvider != null;
+
+        private IBalanceUpdater _balanceUpdater;
 
         public IAtomexApp Start()
         {
@@ -65,6 +68,8 @@ namespace Atomex
 
             // start transactions tracker
             TransactionsTracker.Start();
+
+            _balanceUpdater.Start();
         }
 
         private async void AtomexClient_SwapReceived(object sender, SwapEventArgs e)
@@ -79,6 +84,8 @@ namespace Atomex
 
         private async void StopAtomexClient()
         {
+            _balanceUpdater.Stop();
+
             // stop transactions tracker
             TransactionsTracker.Stop();
 
@@ -118,6 +125,11 @@ namespace Atomex
 
                 // create transactions tracker
                 TransactionsTracker = new TransactionsTracker(Account);
+
+                _balanceUpdater = new BalanceUpdater(
+                    account: Account,
+                    currenciesProvider: CurrenciesProvider,
+                    log: Log.Logger);
             }
 
             AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(AtomexClient));

@@ -135,8 +135,11 @@ namespace Atomex.TzktEvents.Services
             var state = msg["state"]?.Value<int>();
             if (state == null) return;
 
-            foreach (var (address, account) in _accounts)
+            foreach (var pair in _accounts)
             {
+                var account = pair.Value;
+                var address = pair.Key;
+
                 if (account.LastState != state)
                 {
                     var updatedAccount = _accounts.AddOrUpdate(address, _willNotBeCalled, (_, existing) => existing with
@@ -156,4 +159,9 @@ namespace Atomex.TzktEvents.Services
             }
         }
     }
+}
+
+namespace System.Runtime.CompilerServices
+{
+    internal static class IsExternalInit { }
 }
