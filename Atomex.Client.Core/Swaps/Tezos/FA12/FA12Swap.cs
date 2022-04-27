@@ -618,7 +618,6 @@ namespace Atomex.Swaps.Tezos.FA12
                 tezos: XtzConfig,
                 refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
                 interval: TimeSpan.FromSeconds(30),
-                cancelOnlyIfRefundTimeReached: true,
                 redeemedHandler: RedeemCompletedEventHandler,
                 canceledHandler: RedeemCanceledEventHandler,
                 cancellationToken: cancellationToken);
@@ -639,7 +638,6 @@ namespace Atomex.Swaps.Tezos.FA12
                 tezos: XtzConfig,
                 refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
                 interval: TimeSpan.FromSeconds(30),
-                cancelOnlyIfRefundTimeReached: true,
                 redeemedHandler: RedeemBySomeoneCompletedEventHandler,
                 canceledHandler: RedeemBySomeoneCanceledEventHandler,
                 cancellationToken: cancellationToken);
@@ -884,6 +882,8 @@ namespace Atomex.Swaps.Tezos.FA12
             TezosTransaction paymentTx,
             CancellationToken cancellationToken = default)
         {
+            Log.Debug("Create approve txs for swap {@swap}", swap.Id);
+
             var walletAddress = await Fa12Account
                 .GetAddressAsync(paymentTx.From, cancellationToken)
                 .ConfigureAwait(false);
@@ -915,6 +915,8 @@ namespace Atomex.Swaps.Tezos.FA12
             }
 
             var transactions = new List<TezosTransaction>();
+
+            Log.Debug("Allowance: {@allowance}", allowanceResult.Value);
 
             if (allowanceResult.Value > 0)
             {

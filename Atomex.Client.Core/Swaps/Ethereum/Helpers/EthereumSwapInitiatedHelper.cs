@@ -21,7 +21,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
             CurrencyConfig currency,
             CancellationToken cancellationToken = default)
         {
-            var ethereum = currency as Atomex.EthereumConfig;
+            var ethereum = currency as EthereumConfig;
 
             var api = ethereum.BlockchainApi as IEthereumBlockchainApi;
 
@@ -78,15 +78,15 @@ namespace Atomex.Swaps.Ethereum.Helpers
             {
                 Log.Debug("Ethereum: check initiated event");
 
-                var ethereum = (Atomex.EthereumConfig)currency;
+                var ethereum = (EthereumConfig)currency;
 
                 var sideOpposite = swap.Symbol
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
                     .Opposite();
 
                 var requiredAmountInEth = AmountHelper.QtyToSellAmount(sideOpposite, swap.Qty, swap.Price, ethereum.DigitsMultiplier);
-                var requiredAmountInWei = Atomex.EthereumConfig.EthToWei(requiredAmountInEth);
-                var requiredRewardForRedeemInWei = Atomex.EthereumConfig.EthToWei(swap.RewardForRedeem);
+                var requiredAmountInWei = EthereumConfig.EthToWei(requiredAmountInEth);
+                var requiredRewardForRedeemInWei = EthereumConfig.EthToWei(swap.RewardForRedeem);
 
                 var api = new EtherScanApi(ethereum);
 
@@ -182,7 +182,6 @@ namespace Atomex.Swaps.Ethereum.Helpers
                         requiredAmountInWei - requiredRewardForRedeemInWei,
                         (long)@event.Value);
                 }
-                
             }
             catch (Exception e)
             {
@@ -209,7 +208,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        if (swap.IsCanceled)
+                        if (swap.IsCanceled || DateTimeOffset.UtcNow >= DateTimeOffset.FromUnixTimeSeconds(refundTimeStamp))
                         {
                             await canceledHandler
                                 .Invoke(swap, cancellationToken)
@@ -225,15 +224,14 @@ namespace Atomex.Swaps.Ethereum.Helpers
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (isInitiatedResult.HasError && isInitiatedResult.Error.Code != Errors.RequestError)
-                        {
-                            await canceledHandler
-                                .Invoke(swap, cancellationToken)
-                                .ConfigureAwait(false);
+                        if (isInitiatedResult.HasError)
+                            Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
+                                currency.Name,
+                                swap.Id,
+                                isInitiatedResult.Error.Code,
+                                isInitiatedResult.Error.Description);
 
-                            break;
-                        }
-                        else if (!isInitiatedResult.HasError && isInitiatedResult.Value)
+                        if (!isInitiatedResult.HasError && isInitiatedResult.Value)
                         {
                             await initiatedHandler
                                 .Invoke(swap, cancellationToken)
@@ -248,11 +246,11 @@ namespace Atomex.Swaps.Ethereum.Helpers
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("StartSwapInitiatedControlAsync canceled.");
+                    Log.Debug("StartSwapInitiatedControlAsync canceled");
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "StartSwapInitiatedControlAsync error.");
+                    Log.Error(e, "StartSwapInitiatedControlAsync error");
                 }
 
             }, cancellationToken);

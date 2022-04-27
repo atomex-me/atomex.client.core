@@ -39,7 +39,7 @@ namespace Atomex.Wallet.Tezos
 
         #region Common
 
-        public async Task<Error> SendAsync(
+        public async Task<(string txId, Error error)> SendAsync(
             string from,
             string to,
             decimal amount,
@@ -61,11 +61,13 @@ namespace Atomex.Wallet.Tezos
             var availableBalance = fromAddress.AvailableBalance() * digitsMultiplier;
 
             if (availableBalance < amount)
-                return new Error(
-                    code: Errors.InsufficientFunds,
-                    description: $"Insufficient tokens. " +
-                        $"Available: {fromAddress.AvailableBalance()}. " +
-                        $"Required: {amount}.");
+                return (
+                    txId: null,
+                    error: new Error(
+                        code: Errors.InsufficientFunds,
+                        description: $"Insufficient tokens. " +
+                            $"Available: {fromAddress.AvailableBalance()}. " +
+                            $"Required: {amount}."));
 
             var xtzAddress = await DataRepository
                 .GetWalletAddressAsync(xtzConfig.Name, from)
@@ -84,11 +86,13 @@ namespace Atomex.Wallet.Tezos
             var availableBalanceInTz = xtzAddress.AvailableBalance().ToMicroTez() - feeInMtz - xtzConfig.MicroTezReserve;
 
             if (availableBalanceInTz < 0)
-                return new Error(
-                    code: Errors.InsufficientFunds,
-                    description: $"Insufficient funds to pay fee for address {from}. " +
-                        $"Available: {xtzAddress.AvailableBalance()}. " +
-                        $"Required: {feeInMtz + xtzConfig.MicroTezReserve}");
+                return (
+                    txId: null,
+                    error: new Error(
+                        code: Errors.InsufficientFunds,
+                        description: $"Insufficient funds to pay fee for address {from}. " +
+                            $"Available: {xtzAddress.AvailableBalance()}. " +
+                            $"Required: {feeInMtz + xtzConfig.MicroTezReserve}"));
 
             Log.Debug("Send {@amount} tokens from address {@address} with available balance {@balance}",
                 amount,
@@ -142,23 +146,27 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (!signResult)
-                return new Error(
-                    code: Errors.TransactionSigningError,
-                    description: "Transaction signing error");
+                return (
+                    txId: null,
+                    error: new Error(
+                        code: Errors.TransactionSigningError,
+                        description: "Transaction signing error"));
 
             var broadcastResult = await xtzConfig.BlockchainApi
                 .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (broadcastResult.HasError)
-                return broadcastResult.Error;
+                return (txId: null, error: broadcastResult.Error);
 
             var txId = broadcastResult.Value;
 
             if (txId == null)
-                return new Error(
-                    code: Errors.TransactionBroadcastError,
-                    description: "Transaction Id is null");
+                return (
+                    txId: null,
+                    error: new Error(
+                        code: Errors.TransactionBroadcastError,
+                        description: "Transaction Id is null"));
 
             Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
@@ -171,7 +179,7 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            return null;
+            return (txId, error: null);
         }
 
         public override async Task<(decimal fee, bool isEnougth)> EstimateTransferFeeAsync(

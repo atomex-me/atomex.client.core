@@ -68,7 +68,18 @@ namespace Atomex {
                 return ResourceManager.GetString("AddressNotFoundInLocalDb", resourceCulture);
             }
         }
-        
+
+        /// <summary>
+        ///   Looks up a localized string similar to EnumerationValue must be of Enum type.
+        /// </summary>
+        internal static string EnumerationValueMustBeOfEnumType
+        {
+            get
+            {
+                return ResourceManager.GetString("EnumerationValueMustBeOfEnumType", resourceCulture);
+            }
+        }
+
         /// <summary>
         ///   Ищет локализованную строку, похожую на &apos;From&apos; address must not be empty.
         /// </summary>

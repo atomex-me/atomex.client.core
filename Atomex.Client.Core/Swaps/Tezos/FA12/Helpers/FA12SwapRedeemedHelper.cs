@@ -127,7 +127,6 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
             TezosConfig tezos,
             DateTime refundTimeUtc,
             TimeSpan interval,
-            bool cancelOnlyIfRefundTimeReached = true,
             Func<Swap, byte[], CancellationToken, Task> redeemedHandler = null,
             Func<Swap, DateTime, CancellationToken, Task> canceledHandler = null,
             CancellationToken cancellationToken = default)
@@ -145,15 +144,14 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (isRedeemedResult.HasError && isRedeemedResult.Error.Code != Errors.RequestError) // has error
-                        {
-                            await canceledHandler
-                                .Invoke(swap, refundTimeUtc, cancellationToken)
-                                .ConfigureAwait(false);
+                        if (isRedeemedResult.HasError)
+                            Log.Error("{@currency} IsRedeemedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
+                                currency.Name,
+                                swap.Id,
+                                isRedeemedResult.Error.Code,
+                                isRedeemedResult.Error.Description);
 
-                            break;
-                        }
-                        else if (!isRedeemedResult.HasError && isRedeemedResult.Value != null) // has secret
+                        if (!isRedeemedResult.HasError && isRedeemedResult.Value != null) // has secret
                         {
                             await redeemedHandler
                                 .Invoke(swap, isRedeemedResult.Value, cancellationToken)
@@ -162,7 +160,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
                             break;
                         }
 
-                        if (!cancelOnlyIfRefundTimeReached || DateTime.UtcNow >= refundTimeUtc)
+                        if (DateTime.UtcNow >= refundTimeUtc)
                         {
                             await canceledHandler
                                 .Invoke(swap, refundTimeUtc, cancellationToken)
@@ -177,11 +175,11 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("StartSwapRedeemedControlAsync canceled.");
+                    Log.Debug("StartSwapRedeemedControlAsync canceled");
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "StartSwapRedeemedControlAsync error.");
+                    Log.Error(e, "StartSwapRedeemedControlAsync error");
                 }
 
             }, cancellationToken);

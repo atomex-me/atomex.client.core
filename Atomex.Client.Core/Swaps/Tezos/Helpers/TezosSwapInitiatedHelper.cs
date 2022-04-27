@@ -190,7 +190,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        if (swap.IsCanceled)
+                        if (swap.IsCanceled || DateTimeOffset.UtcNow >= DateTimeOffset.FromUnixTimeSeconds(refundTimeStamp))
                         {
                             await canceledHandler
                                 .Invoke(swap, cancellationToken)
@@ -206,15 +206,14 @@ namespace Atomex.Swaps.Tezos.Helpers
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (isInitiatedResult.HasError && isInitiatedResult.Error.Code != Errors.RequestError)
-                        {
-                            await canceledHandler
-                                .Invoke(swap, cancellationToken)
-                                .ConfigureAwait(false);
+                        if (isInitiatedResult.HasError)
+                            Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
+                                currency.Name,
+                                swap.Id,
+                                isInitiatedResult.Error.Code,
+                                isInitiatedResult.Error.Description);
 
-                            break;
-                        }
-                        else if (!isInitiatedResult.HasError && isInitiatedResult.Value)
+                        if (!isInitiatedResult.HasError && isInitiatedResult.Value)
                         {
                             await initiatedHandler
                                 .Invoke(swap, cancellationToken)
@@ -229,17 +228,21 @@ namespace Atomex.Swaps.Tezos.Helpers
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("StartSwapInitiatedControlAsync canceled.");
+                    Log.Debug("StartSwapInitiatedControlAsync canceled");
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "StartSwapInitiatedControlAsync error.");
+                    Log.Error(e, "StartSwapInitiatedControlAsync error");
                 }
 
             }, cancellationToken);
         }
 
-        public static bool IsSwapInit(TezosTransaction tx, long refundTimestamp, byte[] secretHash, string participant)
+        public static bool IsSwapInit(
+            TezosTransaction tx,
+            long refundTimestamp,
+            byte[] secretHash,
+            string participant)
         {
             try
             {
@@ -296,7 +299,9 @@ namespace Atomex.Swaps.Tezos.Helpers
             return true;
         }
 
-        public static bool IsSwapAdd(TezosTransaction tx, byte[] secretHash)
+        public static bool IsSwapAdd(
+            TezosTransaction tx,
+            byte[] secretHash)
         {
             try
             {
@@ -319,12 +324,15 @@ namespace Atomex.Swaps.Tezos.Helpers
             }
         }
 
-        private static bool IsSwapAdd(JToken addParams, string secretHash)
+        private static bool IsSwapAdd(
+            JToken addParams,
+            string secretHash)
         {
             return addParams?["bytes"]?.Value<string>() == secretHash;
         }
 
-        public static decimal GetRedeemFee(TezosTransaction tx)
+        public static decimal GetRedeemFee(
+            TezosTransaction tx)
         {
             var entrypoint = tx.Params?["entrypoint"]?.ToString();
 
@@ -337,7 +345,8 @@ namespace Atomex.Swaps.Tezos.Helpers
             };
         }
 
-        private static decimal GetRedeemFee(JToken initiateParams)
+        private static decimal GetRedeemFee(
+            JToken initiateParams)
         {
             return decimal.Parse(initiateParams["args"][1]["args"][1]["int"].ToString());
         }

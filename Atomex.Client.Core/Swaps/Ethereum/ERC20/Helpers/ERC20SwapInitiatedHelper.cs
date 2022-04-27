@@ -284,7 +284,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
             {
                 Log.Debug("Ethereum ERC20: check transfer event");
 
-                var erc20 = (EthereumTokens.Erc20Config)currency;
+                var erc20 = (Erc20Config)currency;
 
                 var api = new EtherScanApi(erc20);
 
@@ -333,8 +333,20 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
             {
                 try
                 {
+                    var refundTimeStamp = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSec));
+
                     while (!cancellationToken.IsCancellationRequested)
                     {
+
+                        if (swap.IsCanceled || DateTimeOffset.UtcNow >= refundTimeStamp)
+                        {
+                            await canceledHandler
+                                .Invoke(swap, cancellationToken)
+                                .ConfigureAwait(false);
+
+                            break;
+                        }
+
                         var isInitiatedResult = await IsInitiatedAsync(
                                 swap: swap,
                                 currency: currency,
@@ -343,18 +355,16 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
                             .ConfigureAwait(false);
 
                         if (isInitiatedResult.HasError)
-                        {
-                            if (isInitiatedResult.Error.Code != Errors.RequestError)
-                            {
-                                await canceledHandler.Invoke(swap, cancellationToken)
-                                    .ConfigureAwait(false);
+                            Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
+                                currency.Name,
+                                swap.Id,
+                                isInitiatedResult.Error.Code,
+                                isInitiatedResult.Error.Description);
 
-                                break;
-                            }
-                        }
-                        else if (isInitiatedResult.Value)
+                        if (!isInitiatedResult.HasError && isInitiatedResult.Value)
                         {
-                            await initiatedHandler.Invoke(swap, cancellationToken)
+                            await initiatedHandler
+                                .Invoke(swap, cancellationToken)
                                 .ConfigureAwait(false);
 
                             break;
@@ -366,11 +376,11 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("StartSwapInitiatedControlAsync canceled.");
+                    Log.Debug("StartSwapInitiatedControlAsync canceled");
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "StartSwapInitiatedControlAsync error.");
+                    Log.Error(e, "StartSwapInitiatedControlAsync error");
                 }
 
             }, cancellationToken);

@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 
 namespace Atomex.Wallet.Tezos
@@ -24,7 +25,8 @@ namespace Atomex.Wallet.Tezos
                 .Cast<TezosTransaction>()
                 .Where(t => t.From == fromAddress &&
                             t.CreationTime != null &&
-                            t.CreationTime.Value.ToUniversalTime() + TimeSpan.FromHours(1) > DateTime.UtcNow);
+                            t.CreationTime.Value.ToUniversalTime() + TimeSpan.FromHours(1) > DateTime.UtcNow &&
+                            t.State != BlockchainTransactionState.Failed);
 
             // allow to send a transaction if there is not a single unconfirmed transaction
             return !unconfirmedTxs.Any();

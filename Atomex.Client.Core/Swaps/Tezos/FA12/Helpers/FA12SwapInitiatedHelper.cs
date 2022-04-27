@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Newtonsoft.Json.Linq;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
@@ -11,7 +12,6 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Swaps.Abstract;
-using Newtonsoft.Json.Linq;
 
 namespace Atomex.Swaps.Tezos.FA12.Helpers
 {
@@ -140,12 +140,6 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
                             detectedRedeemFeeAmountInTokenDigits = GetRedeemFee(tx);
                             detectedRefundTimestamp = GetRefundTimestamp(tx);
                         }
-                        ///not implemented
-                        //else if (IsSwapAdd(tx, swap.SecretHash))
-                        //{
-                        //    detectedPayment = true;
-                        //    detectedAmountInMtz += tx.Amount;
-                        //}
 
                         if (detectedPayment && detectedAmountInTokenDigits >= requiredAmountInTokenDigits)
                         {
@@ -213,9 +207,12 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        if (swap.IsCanceled)
+                        if (swap.IsCanceled || DateTimeOffset.UtcNow >= DateTimeOffset.FromUnixTimeSeconds(refundTimeStamp))
                         {
-                            canceledHandler?.Invoke(swap, cancellationToken);
+                            await canceledHandler
+                                .Invoke(swap, cancellationToken)
+                                .ConfigureAwait(false);
+
                             break;
                         }
 
@@ -227,14 +224,19 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (isInitiatedResult.HasError && isInitiatedResult.Error.Code != Errors.RequestError)
+                        if (isInitiatedResult.HasError)
+                            Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
+                                currency.Name,
+                                swap.Id,
+                                isInitiatedResult.Error.Code,
+                                isInitiatedResult.Error.Description);
+
+                        if (!isInitiatedResult.HasError && isInitiatedResult.Value)
                         {
-                            canceledHandler?.Invoke(swap, cancellationToken);
-                            break;
-                        }
-                        else if (!isInitiatedResult.HasError && isInitiatedResult.Value)
-                        {
-                            initiatedHandler?.Invoke(swap, cancellationToken);
+                            await initiatedHandler
+                                .Invoke(swap, cancellationToken)
+                                .ConfigureAwait(false);
+
                             break;
                         }
 
@@ -244,11 +246,11 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("StartSwapInitiatedControlAsync canceled.");
+                    Log.Debug("StartSwapInitiatedControlAsync canceled");
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "StartSwapInitiatedControlAsync error.");
+                    Log.Error(e, "StartSwapInitiatedControlAsync error");
                 }
 
             }, cancellationToken);
@@ -279,17 +281,6 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
             {
                 return false;
             }
-            //try
-            //{
-            //    return tx.Params["entrypoint"].ToString().Equals("initiate") &&
-            //           tx.Params["value"]["args"][0]["args"][0]["args"][0]["bytes"].ToString().Equals(secretHash.ToHexString()) &&
-            //           tx.Params["value"]["args"][0]["args"][0]["args"][1]["string"].ToString().Equals(participant) &&
-            //           tx.Params["value"]["args"][1]["args"][0]["string"].ToString().Equals(tokenContractAddress);
-            //}
-            //catch (Exception)
-            //{
-            //    return false;
-            //}
         }
 
         private static bool IsSwapInit(
@@ -332,10 +323,6 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
             }
 
             return true;
-            //return initParams?["args"]?[0]?["args"]?[0]?["args"]?[0]?["bytes"]?.Value<string>() == secretHash &&
-            //       initParams?["args"]?[0]?["args"]?[0]?["args"]?[1]?["string"]?.Value<string>() == participantAddress &&
-            //       initParams?["args"]?[1]?["args"]?[0]?["string"]?.Value<string>() == tokenContractAddress &&
-            //       initParams?["args"]?[0]?["args"]?[1]?["args"]?[1]?["int"]?.Value<ulong>() >= refundTimeStamp;
         }
 
         public static decimal GetAmount(TezosTransaction tx)

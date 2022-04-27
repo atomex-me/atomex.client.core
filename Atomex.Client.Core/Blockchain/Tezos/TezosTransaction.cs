@@ -75,6 +75,7 @@ namespace Atomex.Blockchain.Tezos
                 GasLimit     = GasLimit,
                 GasUsed      = GasUsed,
                 StorageLimit = StorageLimit,
+                StorageUsed  = StorageUsed,
                 Burn         = Burn,
                 Alias        = Alias,
 

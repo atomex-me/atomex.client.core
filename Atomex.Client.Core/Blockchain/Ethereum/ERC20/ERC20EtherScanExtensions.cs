@@ -294,19 +294,18 @@ namespace Atomex.Blockchain.Ethereum.ERC20
 
             var tx = new EthereumTransaction() //todo: make a refactoring
             {
-                Currency     = erc20.Name,
-                Id           = contractEvent.HexTransactionHash,
-                Type         = BlockchainTransactionType.Output | BlockchainTransactionType.TokenApprove,
-                State        = BlockchainTransactionState.Confirmed, //todo: check if true in 100% cases
-                CreationTime = contractEvent.HexTimeStamp.Substring(PrefixOffset).FromHexString(),
+                Currency      = erc20.Name,
+                Id            = contractEvent.HexTransactionHash,
+                Type          = BlockchainTransactionType.Output | BlockchainTransactionType.TokenApprove,
+                State         = BlockchainTransactionState.Confirmed, //todo: check if true in 100% cases
+                CreationTime  = contractEvent.HexTimeStamp.Substring(PrefixOffset).FromHexString(),
 
-                From = approvalEvent.Owner,
-                To   = approvalEvent.Spender,
-                Amount = 0,
+                From          = approvalEvent.Owner,
+                To            = approvalEvent.Spender,
+                Amount        = 0,
                 ////Nonce 
-                GasPrice = new HexBigInteger(contractEvent.HexGasPrice).Value,
-                ////GasLimit
-                GasLimit      = new HexBigInteger(contractEvent.HexGasUsed).Value,
+                GasPrice      = new HexBigInteger(contractEvent.HexGasPrice).Value,
+                GasUsed       = new HexBigInteger(contractEvent.HexGasUsed).Value,
                 ReceiptStatus = true,
                 IsInternal    = false,
                 InternalIndex = 0,
@@ -355,8 +354,7 @@ namespace Atomex.Blockchain.Ethereum.ERC20
                 Amount = transferEvent.Value.ToHexBigInteger(),
                 ////Nonce 
                 GasPrice = new HexBigInteger(contractEvent.HexGasPrice).Value,
-                ////GasLimit
-                GasLimit = new HexBigInteger(contractEvent.HexGasUsed).Value,
+                GasUsed = new HexBigInteger(contractEvent.HexGasUsed).Value,
                 ReceiptStatus = true,
                 IsInternal = transferEvent.From == erc20.SwapContractAddress.ToLowerInvariant()
                     || transferEvent.To == erc20.SwapContractAddress.ToLowerInvariant(),
