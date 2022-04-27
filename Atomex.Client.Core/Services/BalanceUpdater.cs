@@ -78,6 +78,7 @@ namespace Atomex.Services
             _isRunning = false;
         }
 
+
         #region Tezos
 
         private async Task StartTezosBalanceUpdater()

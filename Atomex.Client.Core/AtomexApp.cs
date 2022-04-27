@@ -7,7 +7,6 @@ using Atomex.Services.Abstract;
 using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
-using LiteDB;
 using Serilog;
 
 namespace Atomex
@@ -130,8 +129,7 @@ namespace Atomex
                 _balanceUpdater = new BalanceUpdater(
                     account: Account,
                     currenciesProvider: CurrenciesProvider,
-                    log: Log.Logger
-                );
+                    log: Log.Logger);
             }
 
             AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(AtomexClient));
