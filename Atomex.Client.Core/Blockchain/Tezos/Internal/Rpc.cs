@@ -274,7 +274,7 @@ namespace Atomex.Blockchain.Tezos.Internal
 
             var httpMethod = get ? HttpMethod.Get : HttpMethod.Post;
 
-            var requestUri = $"{_provider}/{ep}";
+            var requestUri = new Uri(Url.Combine(_provider, ep));
 
             using var request = new HttpRequestMessage(httpMethod, requestUri);
             request.Headers.Add("User-Agent", "Atomex");

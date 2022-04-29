@@ -226,7 +226,9 @@ namespace Atomex.Common
             HttpRequestHeaders headers,
             CancellationToken cancellationToken = default)
         {
-            using var request = new HttpRequestMessage(method, new Uri($"{baseUri}{requestUri}"));
+            var uri = new Uri(Url.Combine(baseUri, requestUri));
+
+            using var request = new HttpRequestMessage(method, uri);
 
             if (headers != null)
                 foreach (var header in headers)
