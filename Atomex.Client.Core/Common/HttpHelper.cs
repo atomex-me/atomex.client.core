@@ -178,7 +178,7 @@ namespace Atomex.Common
             Func<HttpResponseMessage, T> responseHandler,
             CancellationToken cancellationToken = default)
         {
-            var uri = new Uri($"{baseUri}{requestUri}");
+            var uri = new Uri(Url.Combine(baseUri, requestUri));
 
             Log.Debug("Send {@method} request: {@baseUri}{@request}", 
                 method.ToString(),

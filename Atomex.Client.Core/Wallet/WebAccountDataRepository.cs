@@ -5,6 +5,9 @@ using System.Threading.Tasks;
 using System.Security;
 
 using Serilog;
+using LiteDB;
+using Newtonsoft.Json;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
@@ -12,9 +15,6 @@ using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Abstract;
 using Atomex.Common.Bson;
-using LiteDB;
-using Newtonsoft.Json;
-
 
 namespace Atomex.Wallet
 {
@@ -29,11 +29,11 @@ namespace Atomex.Wallet
         private readonly Dictionary<string, TokenTransfer> _tezosTokensTransfers;
         private readonly Dictionary<string, TokenContract> _tezosTokensContracts;
 
-        private ICurrencies _currencies;
+        private readonly ICurrencies _currencies;
 
         private readonly object _sync;
 
-        private BsonMapper _bsonMapper;
+        private readonly BsonMapper _bsonMapper;
 
         public Action<AvailableDataType, string, string> SaveDataCallback;
 
@@ -102,7 +102,7 @@ namespace Atomex.Wallet
                     string currency = parsedId[1];
 
                     BsonDocument bd = BsonSerializer.Deserialize(Convert.FromBase64String(dbObj.data));
-                    _transactions[$"{id}:{currency}"] = (IBlockchainTransaction) _bsonMapper.ToObject(doc: bd,
+                    _transactions[$"{id}:{currency}"] = (IBlockchainTransaction)_bsonMapper.ToObject(doc: bd,
                         type: _currencies.GetByName(currency).TransactionType);
                 }
                 else if (dbObj.type == AvailableDataType.Swap.ToString())
@@ -121,9 +121,9 @@ namespace Atomex.Wallet
                     BsonDocument bd = BsonSerializer.Deserialize(Convert.FromBase64String(dbObj.data));
                     BitcoinBasedConfig BtcBasedCurrency = _currencies.Get<BitcoinBasedConfig>(currency);
                     ITxOutput output =
-                        (ITxOutput) _bsonMapper.ToObject(doc: bd, type: BtcBasedCurrency.OutputType());
+                        (ITxOutput)_bsonMapper.ToObject(doc: bd, type: BtcBasedCurrency.OutputType());
 
-                    _outputs[id] = new OutputEntity {Output = output, Currency = currency, Address = address};
+                    _outputs[id] = new OutputEntity { Output = output, Currency = currency, Address = address };
                 }
                 else if (dbObj.type == AvailableDataType.Order.ToString())
                 {
@@ -140,11 +140,19 @@ namespace Atomex.Wallet
 
                 else if (dbObj.type == AvailableDataType.TezosTokenContract.ToString())
                 {
-                    _tezosTokensContracts[dbObj.id] =
-                        _bsonMapper.ToObject<TokenContract>(
-                            BsonSerializer.Deserialize(Convert.FromBase64String(dbObj.data)));
-                }
+                    var tcd = BsonSerializer.Deserialize(Convert.FromBase64String(dbObj.data));
 
+                    var tokenContract = new TokenContract
+                    {
+                        Address = tcd["Address"].AsString,
+                        Name = tcd["Name"].AsString,
+                        Type = tcd.ContainsKey("Type")
+                            ? tcd["Type"].AsString
+                            : GetContractType(tcd),
+                    };
+
+                    _tezosTokensContracts[dbObj.id] = tokenContract;
+                }
                 else if (dbObj.type == AvailableDataType.TezosTokenTransfer.ToString())
                 {
                     _tezosTokensTransfers[dbObj.id] =
@@ -152,6 +160,41 @@ namespace Atomex.Wallet
                             BsonSerializer.Deserialize(Convert.FromBase64String(dbObj.data)));
                 }
             }
+        }
+
+        private string GetContractType(BsonDocument d)
+        {
+            var contractTags = d.ContainsKey("ContractTags")
+                ? d["ContractTags"].AsArray
+                    .Select(v => v.AsString)
+                    .ToList()
+                : null;
+
+            if (contractTags != null)
+            {
+                if (contractTags.Contains("fa2"))
+                    return "FA2";
+
+                if (contractTags.Contains("fa1-2"))
+                    return "FA12";
+            }
+
+            var interfaces = d.ContainsKey("Interfaces")
+                ? d["Interfaces"].AsArray
+                    .Select(v => v.AsString)
+                    .ToList()
+                : null;
+
+            if (interfaces == null)
+                return "FA2";
+
+            if (interfaces.FirstOrDefault(i => i == "TZIP-12" || i == "TZIP-012" || i.StartsWith("TZIP-012")) != null)
+                return "FA2";
+
+            if (interfaces.FirstOrDefault(i => i == "TZIP-7" || i == "TZIP-007" || i.StartsWith("TZIP-007")) != null)
+                return "FA12";
+
+            return "FA2";
         }
 
         #region Addresses
@@ -196,17 +239,16 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var walletId = $"{walletAddress.Currency}:{walletAddress.Address}";
-                WalletAddress existsAddress;
-                
-                if (!_addresses.TryGetValue(walletId, out existsAddress))
+
+                if (!_addresses.TryGetValue(walletId, out WalletAddress existsAddress))
                 {
                     _addresses[walletId] = walletAddress.Copy();
-                    
+
                     var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(walletAddress)));
                     SaveDataCallback?.Invoke(AvailableDataType.WalletAddress, walletId, data);
                     return Task.FromResult(true);
                 }
-                
+
                 if (existsAddress.KeyType != walletAddress.KeyType)
                 {
                     existsAddress.KeyType          = walletAddress.KeyType;

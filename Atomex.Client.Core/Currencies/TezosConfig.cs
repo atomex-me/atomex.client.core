@@ -9,6 +9,7 @@ using Newtonsoft.Json.Linq;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Internal;
+using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography;
@@ -75,12 +76,10 @@ namespace Atomex
         public string BbApiUri { get; protected set; }
         public string SwapContractAddress { get; protected set; }
 
-        public string BcdApi { get; protected set; }
-        public string BcdNetwork { get; protected set; }
-        public int BcdSizeLimit { get; protected set; }
-        public int BcdTokensSizeLimit { get; protected set; }
-        public int BcdMaxTokensPerUpdate { get; protected set; }
-        public int BcdMaxTransfersPerUpdate { get; protected set; }
+        public string ThumbsApiUri { get; protected set; }
+        public string IpfsGatewayUri { get; protected set; }
+        public string CatavaApiUri { get; protected set; }
+
 
         public TezosConfig()
         {
@@ -171,24 +170,9 @@ namespace Atomex
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Tezos;
 
-            BcdApi     = configuration["BcdApi"];
-            BcdNetwork = configuration["BcdNetwork"];
-
-            BcdSizeLimit = !string.IsNullOrEmpty(configuration["BcdSizeLimit"])
-                ? int.Parse(configuration["BcdSizeLimit"])
-                : 10;
-
-            BcdTokensSizeLimit = !string.IsNullOrEmpty(configuration["BcdTokensSizeLimit"])
-                ? int.Parse(configuration["BcdTokensSizeLimit"])
-                : 50;
-
-            BcdMaxTokensPerUpdate = !string.IsNullOrEmpty(configuration["BcdMaxTokensPerUpdate"])
-                ? int.Parse(configuration["BcdMaxTokensPerUpdate"])
-                : 1000;
-
-            BcdMaxTransfersPerUpdate = !string.IsNullOrEmpty(configuration["BcdMaxTransfersPerUpdate"])
-                ? int.Parse(configuration["BcdMaxTransfersPerUpdate"])
-                : 30;
+            ThumbsApiUri            = configuration[nameof(ThumbsApiUri)];
+            CatavaApiUri            = configuration[nameof(CatavaApiUri)];
+            IpfsGatewayUri          = configuration[nameof(IpfsGatewayUri)];
         }
 
         protected static IBlockchainApi ResolveBlockchainApi(
@@ -369,15 +353,5 @@ namespace Atomex
 
             throw new ArgumentException($"Either int or string are accepted: {michelineExpr}");
         }
-
-        public BcdApiSettings BcdApiSettings => new BcdApiSettings
-        {
-            Uri                   = BcdApi,
-            Network               = BcdNetwork,
-            MaxSize               = BcdSizeLimit,
-            MaxTokensSize         = BcdTokensSizeLimit,
-            MaxTokensPerUpdate    = BcdMaxTokensPerUpdate,
-            MaxTransfersPerUpdate = BcdMaxTransfersPerUpdate
-        };
     }
 }

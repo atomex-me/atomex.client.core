@@ -10,7 +10,6 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Wallet.Bip;
 
-
 namespace Atomex.TezosTokens
 {
     public class Fa12Config : TezosConfig
@@ -142,24 +141,6 @@ namespace Atomex.TezosTokens
             BaseUri                 = configuration["BlockchainApiBaseUri"];
             RpcNodeUri              = configuration["BlockchainRpcNodeUri"];
             BbApiUri                = configuration["BbApiUri"];
-            BcdApi                  = configuration["BcdApi"];
-            BcdNetwork              = configuration["BcdNetwork"];
-
-            BcdSizeLimit = !string.IsNullOrEmpty(configuration["BcdSizeLimit"])
-                ? int.Parse(configuration["BcdSizeLimit"])
-                : 10;
-
-            BcdTokensSizeLimit = !string.IsNullOrEmpty(configuration["BcdTokensSizeLimit"])
-                ? int.Parse(configuration["BcdTokensSizeLimit"])
-                : 50;
-
-            BcdMaxTokensPerUpdate = !string.IsNullOrEmpty(configuration["BcdMaxTokensPerUpdate"])
-                ? int.Parse(configuration["BcdMaxTokensPerUpdate"])
-                : 1000;
-
-            BcdMaxTransfersPerUpdate = !string.IsNullOrEmpty(configuration["BcdMaxTransfersPerUpdate"])
-                ? int.Parse(configuration["BcdMaxTransfersPerUpdate"])
-                : 30;
 
             BlockchainApi           = ResolveBlockchainApi(configuration, this);
             TxExplorerUri           = configuration["TxExplorerUri"];

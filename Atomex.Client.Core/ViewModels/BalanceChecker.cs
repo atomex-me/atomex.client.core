@@ -10,7 +10,7 @@ using Atomex.Blockchain.Ethereum;
 using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
-using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.TezosTokens;
 
 namespace Atomex.ViewModels
@@ -53,11 +53,9 @@ namespace Atomex.ViewModels
                             var xtzConfig = account.Currencies.Get<TezosConfig>("XTZ");
                             var fa12Config = account.Currencies.Get<Fa12Config>(address.Currency);
 
-                            var bcdSettings = xtzConfig.BcdApiSettings;
+                            var tzktApi = new TzktApi(xtzConfig);
 
-                            var bcdApi = new BcdApi(bcdSettings);
-
-                            var balanceResult = await bcdApi
+                            var balanceResult = await tzktApi
                                 .GetTokenBalancesAsync(
                                     address: address.Address,
                                     contractAddress: fa12Config.TokenContractAddress,
