@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\Atomex.Blockchain.Bitcoin\Atomex.Blockchain.Bitcoin.csproj" />
     <ProjectReference Include="..\Atomex.Common\Atomex.Common.csproj" />
     <ProjectReference Include="..\Atomex.Wallets\Atomex.Wallets.csproj" />
   </ItemGroup>

@@ -45,7 +45,7 @@ namespace Atomex.Blockchain.Common
                 .ConfigureAwait(false);
         }
 
-        public static Task<HttpResponseMessage> GetAsync<T>(
+        public static Task<HttpResponseMessage> GetAsync(
             string baseUri,
             string relativeUri,
             HttpRequestHeaders headers = null,
@@ -62,7 +62,7 @@ namespace Atomex.Blockchain.Common
                 cancellationToken: cancellationToken);
         }
 
-        public static Task<HttpResponseMessage> PostAsync<T>(
+        public static Task<HttpResponseMessage> PostAsync(
             string baseUri,
             string relativeUri,
             HttpContent content = null,
