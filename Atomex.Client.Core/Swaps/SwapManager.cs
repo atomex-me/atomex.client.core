@@ -553,6 +553,8 @@ namespace Atomex.Swaps
             Swap swap,
             CancellationToken cancellationToken = default)
         {
+            Log.Error("DEBUG: RestoreSwapAsync for swap {@swap}", swap.ToString());
+
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentSigned) &&
                 !swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
             {
@@ -633,6 +635,8 @@ namespace Atomex.Swaps
             }
             else
             {
+                Log.Error("DEBUG: RestoreSwapAsync for swap {@swap}. Before PaymentDeadline control", swap.Id);
+
                 if (IsPaymentDeadlineReached(swap))
                 {
                     await CancelSwapByTimeoutAsync(swap, cancellationToken)
@@ -657,6 +661,8 @@ namespace Atomex.Swaps
                     else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated and accepted
                              swap.Status.HasFlag(SwapStatus.Accepted))
                     {
+                        Log.Error("DEBUG: RestoreSwapAsync for swap {@swap}. StartPartyPaymentControlAsync", swap.Id);
+
                         // wait for initiator tx
                         await GetCurrencySwap(swap.PurchasedCurrency)
                             .StartPartyPaymentControlAsync(swap)
@@ -812,6 +818,8 @@ namespace Atomex.Swaps
                 if (swap.IsAcceptor &&
                     swap.IsPurchasedCurrency(currencySwap.Currency))
                 {
+                    Log.Error("DEBUG: InitiatorPaymentConfirmed for swap {@swap}. Before pay", swap.Id);
+
                     await GetCurrencySwap(swap.SoldCurrency)
                         .PayAsync(swap, cancellationToken)
                         .ConfigureAwait(false);
