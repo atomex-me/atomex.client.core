@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
+using Atomex.Common;
 using Atomex.Core;
 
 namespace Atomex.Swaps.Abstract

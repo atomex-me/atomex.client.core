@@ -1,36 +1,38 @@
 using System;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
-using Serilog;
+
+using Microsoft.Extensions.Logging;
 using Websocket.Client;
 
-namespace Atomex.Web
+namespace Atomex.Common
 {
     public class WebSocketClient
     {
         private readonly int RECONNECT_TIMEOUT_SECONDS = 18;
         private readonly int ERROR_RECONNECT_TIMEOUT_SECONDS = 15;
-        
+
         public event EventHandler Connected;
         public event EventHandler Disconnected;
         public event EventHandler<ResponseMessage> OnMessage;
-        public bool IsConnected => _ws.IsRunning;
-        private IWebsocketClient _ws { get; }
 
-        
-        public WebSocketClient(string url)
+        public bool IsConnected => _ws.IsRunning;
+        private readonly IWebsocketClient _ws;
+        private readonly ILogger _log;
+
+        public WebSocketClient(string url, ILogger log = null)
         {
             var factory = new Func<ClientWebSocket>(() =>
             {
                 var client = new ClientWebSocket
                 {
-                    Options =
-                    {
-                        KeepAliveInterval = TimeSpan.FromSeconds(5)
-                    }
+                    Options = { KeepAliveInterval = TimeSpan.FromSeconds(5) }
                 };
+
                 return client;
             });
+
+            _log = log;
 
             _ws = new WebsocketClient(new Uri(url), factory)
             {
@@ -40,18 +42,16 @@ namespace Atomex.Web
             };
 
             _ws.ReconnectionHappened.Subscribe(type =>
-                {
-                    Log.Debug($"WebSocket {_ws.Url} opened.");
-                    Connected?.Invoke(this, null);
-                }
-            );
+            {
+                _log?.LogDebug($"WebSocket {_ws.Url} opened");
+                Connected?.Invoke(this, null);
+            });
 
             _ws.DisconnectionHappened.Subscribe(info =>
-                {
-                    Log.Debug($"WebSocket {_ws.Url } closed.");
-                    Disconnected?.Invoke(this, null);
-                }
-            );
+            {
+                _log?.LogDebug($"WebSocket {_ws.Url } closed");
+                Disconnected?.Invoke(this, null);
+            });
 
             _ws.MessageReceived.Subscribe(msg =>
             {
@@ -72,32 +72,19 @@ namespace Atomex.Web
             });
         }
 
-        private void OnTextMessage(string data)
-        {
-        }
+        protected virtual void OnTextMessage(string data) { }
+        protected virtual void OnBinaryMessage(byte[] data) { }
 
-        protected virtual void OnBinaryMessage(byte[] data)
-        {
-        }
+        public Task ConnectAsync() =>
+            _ws.Start();
 
-        public Task ConnectAsync()
-        {
-            return _ws.Start();
-        }
+        public Task CloseAsync() =>
+            _ws.Stop(WebSocketCloseStatus.NormalClosure, string.Empty);
 
-        public Task CloseAsync()
-        {
-            return _ws.Stop(WebSocketCloseStatus.NormalClosure, string.Empty);
-        }
-
-        public void Send(string data)
-        {
+        public void Send(string data) =>
             _ws.Send(data);
-        }
 
-        protected void SendAsync(byte[] data)
-        {
+        protected void SendAsync(byte[] data) =>
             _ws.Send(data);
-        }
     }
 }

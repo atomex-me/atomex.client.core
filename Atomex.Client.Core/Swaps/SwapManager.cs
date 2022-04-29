@@ -20,10 +20,10 @@ namespace Atomex.Swaps
 {
     public class SwapManager : ISwapManager
     {
-        protected static TimeSpan DefaultCredentialsExchangeTimeout = TimeSpan.FromMinutes(10);
-        protected static TimeSpan DefaultMaxSwapTimeout             = TimeSpan.FromMinutes(20); // TimeSpan.FromMinutes(40);
-        protected static TimeSpan DefaultMaxPaymentTimeout          = TimeSpan.FromMinutes(48*60);
-        protected static TimeSpan SwapTimeoutControlInterval        = TimeSpan.FromMinutes(10);
+        private readonly static TimeSpan DefaultCredentialsExchangeTimeout = TimeSpan.FromMinutes(10);
+        private readonly static TimeSpan DefaultMaxSwapTimeout             = TimeSpan.FromMinutes(20); // TimeSpan.FromMinutes(40);
+        private readonly static TimeSpan DefaultMaxPaymentTimeout          = TimeSpan.FromMinutes(48*60);
+        private readonly static TimeSpan SwapTimeoutControlInterval        = TimeSpan.FromMinutes(10);
 
         public event EventHandler<SwapEventArgs> SwapUpdated;
 

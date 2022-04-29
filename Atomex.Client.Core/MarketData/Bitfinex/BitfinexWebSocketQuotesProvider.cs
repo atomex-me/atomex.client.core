@@ -9,7 +9,7 @@ using Websocket.Client;
 
 using Atomex.Core;
 using Atomex.MarketData.Abstract;
-using WebsocketClient = Atomex.Web.WebSocketClient;
+using WebsocketClient = Atomex.Common.WebSocketClient;
 
 namespace Atomex.MarketData.Bitfinex
 {

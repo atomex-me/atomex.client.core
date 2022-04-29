@@ -26,7 +26,6 @@ namespace Atomex.Services.Abstract
         bool IsServiceConnected(AtomexClientService service);
         Task StartAsync();
         Task StopAsync();
-
         void OrderSendAsync(Order order);
         void OrderCancelAsync(long id, string symbol, Side side);
         void SubscribeToMarketData(SubscriptionType type);

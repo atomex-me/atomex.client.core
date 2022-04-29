@@ -12,7 +12,7 @@ using Websocket.Client;
 
 using Atomex.Common;
 using Atomex.MarketData.Abstract;
-using WebSocketClient = Atomex.Web.WebSocketClient;
+using WebSocketClient = Atomex.Common.WebSocketClient;
 
 namespace Atomex.MarketData.Binance
 {
