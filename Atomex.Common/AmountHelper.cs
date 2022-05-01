@@ -1,7 +1,5 @@
 ﻿using System;
 
-using Atomex.Core;
-
 namespace Atomex.Common
 {
     public static class AmountHelper

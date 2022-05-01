@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Atomex.Blockchain.Common
+namespace Atomex.Common
 {
     public class RequestLimitControl : IDisposable
     {

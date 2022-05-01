@@ -4,9 +4,7 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Atomex.Common;
-
-namespace Atomex.Blockchain.Common
+namespace Atomex.Common
 {
     public class HttpRequestHeaders : List<KeyValuePair<string, IEnumerable<string>>> { };
 

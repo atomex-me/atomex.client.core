@@ -40,7 +40,9 @@ namespace Atomex.Common
         {
             var oldContext = SynchronizationContext.Current;
             var synch = new ExclusiveSynchronizationContext();
+
             SynchronizationContext.SetSynchronizationContext(synch);
+
             synch.Post(async _ =>
             {
                 try
@@ -56,7 +58,9 @@ namespace Atomex.Common
                 {
                     synch.EndMessageLoop();
                 }
+
             }, null);
+
             synch.BeginMessageLoop();
 
             SynchronizationContext.SetSynchronizationContext(oldContext);
@@ -68,6 +72,7 @@ namespace Atomex.Common
 
             var oldContext = SynchronizationContext.Current;
             var syncContext = new ExclusiveSynchronizationContext();
+
             SynchronizationContext.SetSynchronizationContext(syncContext);
 
             syncContext.Post(async _ =>
@@ -85,7 +90,9 @@ namespace Atomex.Common
                 {
                     syncContext.EndMessageLoop();
                 }
+
             }, null);
+
             syncContext.BeginMessageLoop();
 
             SynchronizationContext.SetSynchronizationContext(oldContext);
@@ -96,17 +103,13 @@ namespace Atomex.Common
         private class ExclusiveSynchronizationContext : SynchronizationContext
         {
             private bool _done;
-            private readonly AutoResetEvent _workItemsWaiting =
-                new AutoResetEvent(false);
-            private readonly Queue<Tuple<SendOrPostCallback, object>> _items =
-                new Queue<Tuple<SendOrPostCallback, object>>();
+            private readonly AutoResetEvent _workItemsWaiting = new(false);
+            private readonly Queue<Tuple<SendOrPostCallback, object>> _items = new();
 
             public Exception InnerException { get; set; }
 
-            public override void Send(SendOrPostCallback d, object state)
-            {
+            public override void Send(SendOrPostCallback d, object state) =>
                 throw new NotSupportedException("We cannot send to our same thread");
-            }
 
             public override void Post(SendOrPostCallback d, object state)
             {
@@ -126,6 +129,7 @@ namespace Atomex.Common
                 while (!_done)
                 {
                     Tuple<SendOrPostCallback, object> task = null;
+
                     lock (_items)
                         if (_items.Count > 0)
                             task = _items.Dequeue();
@@ -136,7 +140,6 @@ namespace Atomex.Common
 
                         if (InnerException != null) // the method threw an exception
                             throw new AggregateException("AsyncHelpers.Run method threw an exception.", InnerException);
-                        
                     }
                     else
                     {
