@@ -102,7 +102,7 @@ namespace Atomex.ViewModels
                             $"F{Math.Min(tokenAddress?.TokenBalance?.Decimals ?? MaxTokenCurrencyFormatDecimals, MaxTokenCurrencyFormatDecimals)}";
                         var tokenId = tokenAddress?.TokenBalance?.TokenId ?? 0;
 
-                        var isFreeAddress = w.Address == freeTezosAddress.Address;
+                        var isFreeAddress = w.Address == freeTezosAddress.Address && tokenBalance == 0;
 
                         return new WalletAddressViewModel
                         {
