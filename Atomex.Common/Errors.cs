@@ -8,6 +8,7 @@
         public const int BroadcastError = 1002;
         public const int VerificationError = 1003;
         public const int SendingError = 1004;
+        public const int InternalError = 1005;
 
         public const int GetBalanceError = 1100;
         public const int GetTransactionError = 1101;

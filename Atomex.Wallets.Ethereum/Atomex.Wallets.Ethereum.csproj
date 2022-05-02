@@ -10,7 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\Atomex.Blockchain.Ethereum\Atomex.Blockchain.Ethereum.csproj" />
+    <ProjectReference Include="..\Atomex.Blockchain.Ethereum\Atomex.Blockchain.Ethereum.csproj" />
     <ProjectReference Include="..\Atomex.Wallets\Atomex.Wallets.csproj" />
   </ItemGroup>
 

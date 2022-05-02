@@ -7,7 +7,7 @@ using Atomex.Common;
 
 namespace Atomex.Wallets.Abstract
 {
-    public interface ICurrencyAccount
+    public interface IAccount
     {
         string Currency { get; }
 
@@ -28,7 +28,7 @@ namespace Atomex.Wallets.Abstract
 
         #region Balances
 
-        ICurrencyWalletScanner GetWalletScanner();
+        IWalletScanner GetWalletScanner();
 
         Task<Balance> GetBalanceAsync(
             CancellationToken cancellationToken = default);

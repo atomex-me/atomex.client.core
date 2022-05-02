@@ -17,15 +17,10 @@ namespace Atomex.Common
         }
 
         public Error(int code, string description, params Error[] internalErrors)
+            : this(code, description)
         {
-            Code = code;
-            Description = description;
-
             if (internalErrors != null)
                 InternalErrors = new List<Error>(internalErrors);
         }
-
-        public override string ToString() =>
-            $"Code: {Code}. Description: {Description}";
     }
 }
