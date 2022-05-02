@@ -45,7 +45,7 @@ namespace Atomex.Blockchain.Ethereum
             bool pending = true,
             CancellationToken cancellationToken = default)
         {
-            var transactionCountResult = await ((IEthereumBlockchainApi)ethereum.BlockchainApi)
+            var transactionCountResult = await ((IEthereumBlockchainApi_OLD)ethereum.BlockchainApi)
                 .GetTransactionCountAsync(address, pending, cancellationToken)
                 .ConfigureAwait(false);
 

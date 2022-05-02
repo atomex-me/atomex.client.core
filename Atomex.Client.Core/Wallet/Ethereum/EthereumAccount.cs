@@ -20,7 +20,7 @@ using Atomex.Wallets.Common;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class EthereumAccount : CurrencyAccount, IEstimatable, IHasTokens
+    public class EthereumAccount : CurrencyAccount_OLD, IEstimatable, IHasTokens
     {
         private static ResourceLocker<string> _addressLocker;
         public static ResourceLocker<string> AddressLocker
@@ -41,8 +41,8 @@ namespace Atomex.Wallet.Ethereum
         public EthereumAccount(
             string currency,
             ICurrencies currencies,
-            IHdWallet wallet,
-            IAccountDataRepository dataRepository)
+            IHdWallet_OLD wallet,
+            IAccountDataRepository_OLD dataRepository)
                 : base(currency, currencies, wallet, dataRepository)
         {
         }
@@ -113,7 +113,7 @@ namespace Atomex.Wallet.Ethereum
             if (nonceAsyncResult.HasError)
                 return nonceAsyncResult.Error;
 
-            var tx = new EthereumTransaction
+            var tx = new EthereumTransaction_OLD
             {
                 Currency     = ethConfig.Name,
                 Type         = BlockchainTransactionType.Output,
@@ -308,12 +308,12 @@ namespace Atomex.Wallet.Ethereum
         }
 
         protected override async Task<bool> ResolveTransactionTypeAsync(
-            IBlockchainTransaction tx,
+            IBlockchainTransaction_OLD tx,
             CancellationToken cancellationToken = default)
         {
             var ethConfig = EthConfig;
 
-            if (tx is not EthereumTransaction ethTx)
+            if (tx is not EthereumTransaction_OLD ethTx)
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
             var oldTx = !ethTx.IsInternal
@@ -379,10 +379,10 @@ namespace Atomex.Wallet.Ethereum
                     var txs = (await DataRepository
                         .GetTransactionsAsync(Currency, eth.TransactionType)
                         .ConfigureAwait(false))
-                        .Cast<EthereumTransaction>()
+                        .Cast<EthereumTransaction_OLD>()
                         .ToList();
 
-                    var internalTxs = txs.Aggregate(new List<EthereumTransaction>(), (list, tx) =>
+                    var internalTxs = txs.Aggregate(new List<EthereumTransaction_OLD>(), (list, tx) =>
                     {
                         if (tx.InternalTxs != null)
                             list.AddRange(tx.InternalTxs);
@@ -394,7 +394,7 @@ namespace Atomex.Wallet.Ethereum
 
                     var totalUnconfirmedIncome = 0m;
                     var totalUnconfirmedOutcome = 0m;
-                    var addressBalances = new Dictionary<string, WalletAddress>();
+                    var addressBalances = new Dictionary<string, WalletAddress_OLD>();
 
                     foreach (var tx in txs.Concat(internalTxs))
                     {
@@ -541,10 +541,10 @@ namespace Atomex.Wallet.Ethereum
                     var unconfirmedTxs = (await DataRepository
                         .GetUnconfirmedTransactionsAsync(Currency, eth.TransactionType)
                         .ConfigureAwait(false))
-                        .Cast<EthereumTransaction>()
+                        .Cast<EthereumTransaction_OLD>()
                         .ToList();
 
-                    var unconfirmedInternalTxs = unconfirmedTxs.Aggregate(new List<EthereumTransaction>(), (list, tx) =>
+                    var unconfirmedInternalTxs = unconfirmedTxs.Aggregate(new List<EthereumTransaction_OLD>(), (list, tx) =>
                     {
                         if (tx.InternalTxs != null)
                             list.AddRange(tx.InternalTxs);
@@ -606,7 +606,7 @@ namespace Atomex.Wallet.Ethereum
 
         #region Addresses
 
-        public async Task<WalletAddress> GetRedeemAddressAsync(
+        public async Task<WalletAddress_OLD> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = await DataRepository
@@ -635,10 +635,10 @@ namespace Atomex.Wallet.Ethereum
             return ResolvePublicKey(redeemAddress);
         }
 
-        public async Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+        public async Task<IEnumerable<WalletAddress_OLD>> GetUnspentTokenAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            var result = new List<WalletAddress>();
+            var result = new List<WalletAddress_OLD>();
 
             foreach (var token in Atomex.Currencies.EthTokens)
             {

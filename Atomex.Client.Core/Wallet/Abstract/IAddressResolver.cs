@@ -13,7 +13,7 @@ namespace Atomex.Wallet.Abstract
         /// <param name="address">Address</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Wallet's address</returns>
-        Task<WalletAddress> GetAddressAsync(
+        Task<WalletAddress_OLD> GetAddressAsync(
             string currency,
             string address,
             CancellationToken cancellationToken = default);

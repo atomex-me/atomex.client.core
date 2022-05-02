@@ -16,7 +16,7 @@ namespace Atomex.Client.Core.Tests
         {
             var mnemonic = new Mnemonic(Wordlist.English, WordCount.TwentyFour);
 
-            var wallet = new HdWallet(mnemonic.ToString(), Wordlist.English, new SecureString(), Network.TestNet);
+            var wallet = new HdWallet_OLD(mnemonic.ToString(), Wordlist.English, new SecureString(), Network.TestNet);
 
             var timeStamp = DateTime.UtcNow;
 

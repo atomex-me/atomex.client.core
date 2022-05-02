@@ -14,7 +14,7 @@ namespace Atomex.ViewModels
         public const int MaxTokenCurrencyFormatDecimals = 9;
 
         public static async Task<IEnumerable<WalletAddressViewModel>> GetReceivingAddressesAsync(
-            IAccount account,
+            IAccount_OLD account,
             CurrencyConfig currency,
             string tokenContract = null)
         {
@@ -65,12 +65,12 @@ namespace Atomex.ViewModels
                     .Concat(tezosAddressesWithoutTokens)
                     .Select(w =>
                     {
-                        WalletAddress tezosAddress, tokenAddress;
+                        WalletAddress_OLD tezosAddress, tokenAddress;
 
                         if (w.Currency == "XTZ")
                         {
                             tezosAddress = w;
-                            tokenAddress = new WalletAddress
+                            tokenAddress = new WalletAddress_OLD
                             {
                                 Address = w.Address,
                                 Currency = fa12Config != null ? "FA12" : "FA2",

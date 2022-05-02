@@ -13,7 +13,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class TezosWalletScanner : ICurrencyHdWalletScanner
+    public class TezosWalletScanner : ICurrencyHdWalletScanner_OLD
     {
         private const int DefaultInternalLookAhead = 2;
         private const int DefaultExternalLookAhead = 2;
@@ -60,9 +60,9 @@ namespace Atomex.Wallet.Tezos
                     (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : ExternalLookAhead),
                 };
 
-            var txs = new List<TezosTransaction>();
-            var txsById = new Dictionary<string, TezosTransaction>();
-            var internalTxs = new List<TezosTransaction>();
+            var txs = new List<TezosTransaction_OLD>();
+            var txsById = new Dictionary<string, TezosTransaction_OLD>();
+            var internalTxs = new List<TezosTransaction_OLD>();
 
             foreach (var (keyType, chain, lookAhead) in scanParams)
             {
@@ -139,7 +139,7 @@ namespace Atomex.Wallet.Tezos
                 if (txsById.TryGetValue(internalTx.Id, out var tx))
                 {
                     if (tx.InternalTxs == null)
-                        tx.InternalTxs = new List<TezosTransaction>();
+                        tx.InternalTxs = new List<TezosTransaction_OLD>();
 
                     tx.InternalTxs.Add(internalTx);
                 }
@@ -196,9 +196,9 @@ namespace Atomex.Wallet.Tezos
             if (addressTxs == null || !addressTxs.Any()) // address without activity
                 return;
 
-            var txs = new List<TezosTransaction>();
-            var txsById = new Dictionary<string, TezosTransaction>();
-            var internalTxs = new List<TezosTransaction>();
+            var txs = new List<TezosTransaction_OLD>();
+            var txsById = new Dictionary<string, TezosTransaction_OLD>();
+            var internalTxs = new List<TezosTransaction_OLD>();
 
             foreach (var tx in addressTxs)
             {
@@ -218,7 +218,7 @@ namespace Atomex.Wallet.Tezos
                 if (txsById.TryGetValue(internalTx.Id, out var tx))
                 {
                     if (tx.InternalTxs == null)
-                        tx.InternalTxs = new List<TezosTransaction>();
+                        tx.InternalTxs = new List<TezosTransaction_OLD>();
 
                     tx.InternalTxs.Add(internalTx);
                 }
@@ -241,13 +241,13 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
         }
 
-        private async Task<IEnumerable<TezosTransaction>> ScanAddressAsync(
+        private async Task<IEnumerable<TezosTransaction_OLD>> ScanAddressAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
             var currency = Currency;
 
-            var txsResult = await ((ITezosBlockchainApi)currency.BlockchainApi)
+            var txsResult = await ((ITezosBlockchainApi_OLD)currency.BlockchainApi)
                 .TryGetTransactionsAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -262,13 +262,13 @@ namespace Atomex.Wallet.Tezos
             }
 
             var addressTxs = txsResult.Value
-                ?.Cast<TezosTransaction>()
+                ?.Cast<TezosTransaction_OLD>()
                 .ToList();
 
-            return await Task.FromResult<IEnumerable<TezosTransaction>>(addressTxs);
+            return await Task.FromResult<IEnumerable<TezosTransaction_OLD>>(addressTxs);
         }
 
-        private async Task UpsertTransactionsAsync(IEnumerable<TezosTransaction> transactions)
+        private async Task UpsertTransactionsAsync(IEnumerable<TezosTransaction_OLD> transactions)
         {
             foreach (var tx in transactions)
             {

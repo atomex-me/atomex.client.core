@@ -33,8 +33,8 @@ namespace Atomex.ViewModels
     public static class BalanceChecker
     {
         public static Task<IEnumerable<BalanceError>> CheckBalancesAsync(
-            IAccount account,
-            IEnumerable<WalletAddress> addresses,
+            IAccount_OLD account,
+            IEnumerable<WalletAddress_OLD> addresses,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -53,7 +53,7 @@ namespace Atomex.ViewModels
                             var xtzConfig = account.Currencies.Get<TezosConfig>("XTZ");
                             var fa12Config = account.Currencies.Get<Fa12Config>(address.Currency);
 
-                            var tzktApi = new TzktApi(xtzConfig);
+                            var tzktApi = new TzktApi_OLD(xtzConfig);
 
                             var balanceResult = await tzktApi
                                 .GetTokenBalancesAsync(
@@ -85,7 +85,7 @@ namespace Atomex.ViewModels
                             var erc20 = account.Currencies
                                 .Get<Erc20Config>(address.Currency);
 
-                            var api = erc20.BlockchainApi as IEthereumBlockchainApi;
+                            var api = erc20.BlockchainApi as IEthereumBlockchainApi_OLD;
 
                             var balanceResult = await api
                                 .TryGetErc20BalanceAsync(

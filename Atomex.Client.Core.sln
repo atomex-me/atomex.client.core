@@ -31,6 +31,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Client", "Atomex.Cli
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.MarketData", "Atomex.MarketData\Atomex.MarketData.csproj", "{FAEF0259-EBFA-40F9-B1C4-27626599E27C}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Swaps", "Atomex.Swaps\Atomex.Swaps.csproj", "{929C2541-9438-4B41-81A9-FC38653CF761}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -209,6 +211,18 @@ Global
 		{FAEF0259-EBFA-40F9-B1C4-27626599E27C}.Release|x64.Build.0 = Release|Any CPU
 		{FAEF0259-EBFA-40F9-B1C4-27626599E27C}.Release|x86.ActiveCfg = Release|Any CPU
 		{FAEF0259-EBFA-40F9-B1C4-27626599E27C}.Release|x86.Build.0 = Release|Any CPU
+		{929C2541-9438-4B41-81A9-FC38653CF761}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{929C2541-9438-4B41-81A9-FC38653CF761}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{929C2541-9438-4B41-81A9-FC38653CF761}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{929C2541-9438-4B41-81A9-FC38653CF761}.Debug|x64.Build.0 = Debug|Any CPU
+		{929C2541-9438-4B41-81A9-FC38653CF761}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{929C2541-9438-4B41-81A9-FC38653CF761}.Debug|x86.Build.0 = Debug|Any CPU
+		{929C2541-9438-4B41-81A9-FC38653CF761}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{929C2541-9438-4B41-81A9-FC38653CF761}.Release|Any CPU.Build.0 = Release|Any CPU
+		{929C2541-9438-4B41-81A9-FC38653CF761}.Release|x64.ActiveCfg = Release|Any CPU
+		{929C2541-9438-4B41-81A9-FC38653CF761}.Release|x64.Build.0 = Release|Any CPU
+		{929C2541-9438-4B41-81A9-FC38653CF761}.Release|x86.ActiveCfg = Release|Any CPU
+		{929C2541-9438-4B41-81A9-FC38653CF761}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -12,8 +12,8 @@ namespace Atomex.Swaps.Helpers
     public static class TransactionBroadcastHelper
     {
         public static Task<string> ForceBroadcast(
-            this IBlockchainTransaction tx,
-            IBlockchainApi blockchainApi,
+            this IBlockchainTransaction_OLD tx,
+            IBlockchainApi_OLD blockchainApi,
             Swap swap,
             TimeSpan interval,
             Action<Swap, string, CancellationToken> completionHandler = null,

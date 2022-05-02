@@ -511,8 +511,8 @@ namespace Atomex.ViewModels
             string redeemFromAddress,
             CurrencyConfig fromCurrency,
             CurrencyConfig toCurrency,
-            IAccount account,
-            IAtomexClient atomexClient,
+            IAccount_OLD account,
+            IAtomexClient_OLD atomexClient,
             ISymbolsProvider symbolsProvider,
             ICurrencyQuotesProvider quotesProvider,
             CancellationToken cancellationToken = default)
@@ -657,8 +657,8 @@ namespace Atomex.ViewModels
             AmountType amountType, 
             CurrencyConfig fromCurrency,
             CurrencyConfig toCurrency,
-            IAccount account,
-            IAtomexClient atomexClient,
+            IAccount_OLD account,
+            IAtomexClient_OLD atomexClient,
             ISymbolsProvider symbolsProvider,
             CancellationToken cancellationToken = default)
         {
@@ -728,7 +728,7 @@ namespace Atomex.ViewModels
 
         public static async Task<decimal> GetAmountReservedForSwapsAsync(
             IFromSource from,
-            IAccount account,
+            IAccount_OLD account,
             CurrencyConfig currency)
         {
             var swaps = await account
@@ -769,8 +769,8 @@ namespace Atomex.ViewModels
         public static async Task<decimal> EstimateMakerNetworkFeeAsync(
             CurrencyConfig fromCurrency,
             CurrencyConfig toCurrency,
-            IAccount account,
-            IAtomexClient atomexClient,
+            IAccount_OLD account,
+            IAtomexClient_OLD atomexClient,
             ISymbolsProvider symbolsProvider,
             CancellationToken cancellationToken = default)
         {
@@ -821,8 +821,8 @@ namespace Atomex.ViewModels
             decimal amount,
             string from,
             string to,
-            IAccount account,
-            IAtomexClient atomexClient,
+            IAccount_OLD account,
+            IAtomexClient_OLD atomexClient,
             ISymbolsProvider symbolsProvider)
         {
             var symbol = symbolsProvider
@@ -855,8 +855,8 @@ namespace Atomex.ViewModels
             decimal amount,
             string from,
             string to,
-            IAccount account,
-            IAtomexClient atomexClient,
+            IAccount_OLD account,
+            IAtomexClient_OLD atomexClient,
             ISymbolsProvider symbolsProvider)
         {
             // firstly try direct conversion first
@@ -882,7 +882,7 @@ namespace Atomex.ViewModels
             return null;
         }
 
-        public static string GetUserId(IAccount account)
+        public static string GetUserId(IAccount_OLD account)
         {
             using var servicePublicKey =
                 account.Wallet.GetServicePublicKey(account.UserSettings.AuthenticationKeyIndex);

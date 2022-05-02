@@ -17,7 +17,7 @@ namespace Atomex.Wallet
         }
 
         public async Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
-            IEnumerable<WalletAddress> addresses)
+            IEnumerable<WalletAddress_OLD> addresses)
         {
             var outputs = new List<ITxOutput>();
 

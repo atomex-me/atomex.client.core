@@ -55,7 +55,7 @@ namespace Atomex.Client.Core.Tests
         {
             Assert.Throws<ArgumentNullException>(() =>
             {
-                var _ = new LiteDbAccountDataRepository(
+                var _ = new LiteDbAccountDataRepository_OLD(
                     pathToDb: PathToDb,
                     password: null,
                     currencies: Common.CurrenciesTestNet,
@@ -68,7 +68,7 @@ namespace Atomex.Client.Core.Tests
         {
             File.Delete(PathToDb);
 
-            var repository = new LiteDbAccountDataRepository(
+            var repository = new LiteDbAccountDataRepository_OLD(
                 pathToDb: PathToDb,
                 password: Password,
                 currencies: Common.CurrenciesTestNet,
@@ -91,7 +91,7 @@ namespace Atomex.Client.Core.Tests
             var swapId = await AddSwapTestAsync()
                 .ConfigureAwait(false);
 
-            var repository = new LiteDbAccountDataRepository(
+            var repository = new LiteDbAccountDataRepository_OLD(
                 pathToDb: PathToDb,
                 password: Password,
                 currencies: Common.CurrenciesTestNet,
@@ -115,7 +115,7 @@ namespace Atomex.Client.Core.Tests
         [Fact]
         public async void AddEthereumTransactionTest()
         {
-            var repository = new LiteDbAccountDataRepository(
+            var repository = new LiteDbAccountDataRepository_OLD(
                 pathToDb: PathToDb,
                 password: Password,
                 currencies: Common.CurrenciesTestNet,

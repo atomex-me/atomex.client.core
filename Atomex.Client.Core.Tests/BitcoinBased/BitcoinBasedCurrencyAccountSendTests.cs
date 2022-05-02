@@ -42,14 +42,14 @@ namespace Atomex.Client.Core.Tests
             decimal fee,
             DustUsagePolicy dustUsagePolicy,
             Action<Mock<IBlockchainApi>> apiSetup = null,
-            Action<Mock<IAccountDataRepository>, WalletAddress> repositorySetup = null)
+            Action<Mock<IAccountDataRepository_OLD>, WalletAddress_OLD> repositorySetup = null)
         {
             var apiMock = new Mock<IBlockchainApi>();
             apiSetup?.Invoke(apiMock);
 
             var mnemonic = "ocean mosquito pool boss curve toddler trash coach enforce table skin jungle meadow grab clinic";
 
-            var wallet = new HdWallet(mnemonic, Wordlist.English, network: Network.TestNet);
+            var wallet = new HdWallet_OLD(mnemonic, Wordlist.English, network: Network.TestNet);
 
             var fromAddress = wallet.GetAddress(
                 currency: currency,
@@ -60,7 +60,7 @@ namespace Atomex.Client.Core.Tests
 
             var fromOutputs = GetOutputs(fromAddress.Address, NBitcoin.Network.TestNet, currency.CoinToSatoshi(available)).ToList();
 
-            var repositoryMock = new Mock<IAccountDataRepository>();
+            var repositoryMock = new Mock<IAccountDataRepository_OLD>();
             repositorySetup?.Invoke(repositoryMock, fromAddress);
 
             var currencies = Common.CurrenciesTestNet;
@@ -106,7 +106,7 @@ namespace Atomex.Client.Core.Tests
                 dustUsagePolicy: dustUsagePolicy,
                 apiSetup: apiMock =>
                 {
-                    apiMock.Setup(a => a.TryBroadcastAsync(It.IsAny<IBlockchainTransaction>(), 3, 1000, CancellationToken.None))
+                    apiMock.Setup(a => a.TryBroadcastAsync(It.IsAny<IBlockchainTransaction_OLD>(), 3, 1000, CancellationToken.None))
                         .Returns(Task.FromResult(new Result<string>("<txid>")));
                 },
                 repositorySetup: (repositoryMock, fromAddress) =>
@@ -217,9 +217,9 @@ namespace Atomex.Client.Core.Tests
         {
             var change = available - amount - fee;
 
-            var broadcastCallback = new Action<IBlockchainTransaction, int, int, CancellationToken>((tx, attempts, attemptsInterval, token) =>
+            var broadcastCallback = new Action<IBlockchainTransaction_OLD, int, int, CancellationToken>((tx, attempts, attemptsInterval, token) =>
             {
-                var btcBasedTx = (IBitcoinBasedTransaction) tx;
+                var btcBasedTx = (IBitcoinBasedTransaction_OLD) tx;
                 Assert.NotNull(btcBasedTx.Outputs.FirstOrDefault(o => o.Value == currency.CoinToSatoshi(amount + change)));
             });
 
@@ -231,7 +231,7 @@ namespace Atomex.Client.Core.Tests
                 dustUsagePolicy: dustUsagePolicy,
                 apiSetup: apiMock =>
                 {
-                    apiMock.Setup(a => a.TryBroadcastAsync(It.IsAny<IBlockchainTransaction>(), 3, 1000, CancellationToken.None))
+                    apiMock.Setup(a => a.TryBroadcastAsync(It.IsAny<IBlockchainTransaction_OLD>(), 3, 1000, CancellationToken.None))
                         .Callback(broadcastCallback)
                         .Returns(Task.FromResult(new Result<string>("<txid>")));
                 },
@@ -262,9 +262,9 @@ namespace Atomex.Client.Core.Tests
         {
             var change = available - amount - fee;
 
-            var broadcastCallback = new Action<IBlockchainTransaction, int, int, CancellationToken>((tx, attempts, attemptsInterval, token) =>
+            var broadcastCallback = new Action<IBlockchainTransaction_OLD, int, int, CancellationToken>((tx, attempts, attemptsInterval, token) =>
             {
-                var btcBasedTx = (IBitcoinBasedTransaction)tx;
+                var btcBasedTx = (IBitcoinBasedTransaction_OLD)tx;
                 Assert.True(btcBasedTx.Fees == currency.CoinToSatoshi(fee + change));
             });
 
@@ -276,7 +276,7 @@ namespace Atomex.Client.Core.Tests
                 dustUsagePolicy: dustUsagePolicy,
                 apiSetup: apiMock =>
                 {
-                    apiMock.Setup(a => a.TryBroadcastAsync(It.IsAny<IBlockchainTransaction>(), 3, 1000, CancellationToken.None))
+                    apiMock.Setup(a => a.TryBroadcastAsync(It.IsAny<IBlockchainTransaction_OLD>(), 3, 1000, CancellationToken.None))
                         .Callback(broadcastCallback)
                         .Returns(Task.FromResult(new Result<string>("<txid>")));
                 },

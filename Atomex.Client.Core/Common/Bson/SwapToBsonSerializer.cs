@@ -108,25 +108,25 @@ namespace Atomex.Common.Bson
                 SecretHash           = bson[SecretHashKey].AsBinary,
 
                 PaymentTx = !bson[PaymentTxKey].IsNull
-                    ? (IBlockchainTransaction)BsonMapper.ToObject(
+                    ? (IBlockchainTransaction_OLD)BsonMapper.ToObject(
                         type: soldCurrency.TransactionType,
                         doc: bson[PaymentTxKey].AsDocument)
                     : null,
 
                 RefundTx = !bson[RefundTxKey].IsNull
-                    ? (IBlockchainTransaction)BsonMapper.ToObject(
+                    ? (IBlockchainTransaction_OLD)BsonMapper.ToObject(
                         type: soldCurrency.TransactionType,
                         doc: bson[RefundTxKey].AsDocument)
                     : null,
 
                 RedeemTx = !bson[RedeemTxKey].IsNull
-                    ? (IBlockchainTransaction)BsonMapper.ToObject(
+                    ? (IBlockchainTransaction_OLD)BsonMapper.ToObject(
                         type: purchasedCurrency.TransactionType,
                         doc: bson[RedeemTxKey].AsDocument)
                     : null,
 
                 PartyPaymentTx = !bson[PartyPaymentTxKey].IsNull
-                    ? (IBlockchainTransaction)BsonMapper.ToObject(
+                    ? (IBlockchainTransaction_OLD)BsonMapper.ToObject(
                         type: purchasedCurrency.TransactionType,
                         doc: bson[PartyPaymentTxKey].AsDocument)
                     : null,

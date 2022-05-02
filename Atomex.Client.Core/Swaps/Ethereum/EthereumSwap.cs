@@ -237,7 +237,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            EthereumTransaction redeemTx;
+            EthereumTransaction_OLD redeemTx;
 
             try
             {
@@ -272,7 +272,7 @@ namespace Atomex.Swaps.Ethereum
 
                 var txInput = message.CreateTransactionInput(ethConfig.SwapContractAddress);
 
-                redeemTx = new EthereumTransaction(ethConfig.Name, txInput)
+                redeemTx = new EthereumTransaction_OLD(ethConfig.Name, txInput)
                 {
                     Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
                 };
@@ -391,7 +391,7 @@ namespace Atomex.Swaps.Ethereum
 
             var txInput = message.CreateTransactionInput(ethConfig.SwapContractAddress);
 
-            var redeemTx = new EthereumTransaction(ethConfig.Name, txInput)
+            var redeemTx = new EthereumTransaction_OLD(ethConfig.Name, txInput)
             {
                 Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
             };
@@ -487,7 +487,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            EthereumTransaction refundTx;
+            EthereumTransaction_OLD refundTx;
 
             try
             {
@@ -521,7 +521,7 @@ namespace Atomex.Swaps.Ethereum
 
                 var txInput = message.CreateTransactionInput(ethConfig.SwapContractAddress);
 
-                refundTx = new EthereumTransaction(ethConfig.Name, txInput)
+                refundTx = new EthereumTransaction_OLD(ethConfig.Name, txInput)
                 {
                     Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
                 };
@@ -610,7 +610,7 @@ namespace Atomex.Swaps.Ethereum
             return Task.CompletedTask;
         }
 
-        public override async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public override async Task<Result<IBlockchainTransaction_OLD>> TryToFindPaymentAsync(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
@@ -711,7 +711,7 @@ namespace Atomex.Swaps.Ethereum
 
         #region Helpers
 
-        protected virtual async Task<EthereumTransaction> CreatePaymentTxAsync(
+        protected virtual async Task<EthereumTransaction_OLD> CreatePaymentTxAsync(
             Swap swap,
             int lockTimeInSeconds,
             CancellationToken cancellationToken = default)
@@ -760,7 +760,7 @@ namespace Atomex.Swaps.Ethereum
                 return null;
             }
 
-            var nonceResult = await ((IEthereumBlockchainApi)ethConfig.BlockchainApi)
+            var nonceResult = await ((IEthereumBlockchainApi_OLD)ethConfig.BlockchainApi)
                 .GetTransactionCountAsync(walletAddress.Address, pending: false, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -793,14 +793,14 @@ namespace Atomex.Swaps.Ethereum
 
             txInput = message.CreateTransactionInput(ethConfig.SwapContractAddress);
 
-            return new EthereumTransaction(ethConfig.Name, txInput)
+            return new EthereumTransaction_OLD(ethConfig.Name, txInput)
             {
                 Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
             };
         }
 
         private async Task<bool> SignTransactionAsync(
-            EthereumTransaction tx,
+            EthereumTransaction_OLD tx,
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await _account
@@ -820,7 +820,7 @@ namespace Atomex.Swaps.Ethereum
 
         private async Task BroadcastTxAsync(
             Swap swap,
-            EthereumTransaction tx,
+            EthereumTransaction_OLD tx,
             CancellationToken cancellationToken = default)
         {
             var broadcastResult = await EthConfig.BlockchainApi

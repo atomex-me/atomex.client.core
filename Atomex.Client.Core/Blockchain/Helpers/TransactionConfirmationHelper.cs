@@ -14,9 +14,9 @@ namespace Atomex.Blockchain.Helpers
     public class ConfirmationCheckResult
     {
         public bool IsConfirmed { get; }
-        public IBlockchainTransaction Transaction { get; }
+        public IBlockchainTransaction_OLD Transaction { get; }
 
-        public ConfirmationCheckResult(bool isConfirmed, IBlockchainTransaction tx)
+        public ConfirmationCheckResult(bool isConfirmed, IBlockchainTransaction_OLD tx)
         {
             IsConfirmed = isConfirmed;
             Transaction = tx;

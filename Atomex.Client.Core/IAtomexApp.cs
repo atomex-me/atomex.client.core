@@ -13,8 +13,8 @@ namespace Atomex
     {
         event EventHandler<AtomexClientChangedEventArgs> AtomexClientChanged;
 
-        IAtomexClient AtomexClient { get; }
-        IAccount Account { get; }
+        IAtomexClient_OLD AtomexClient { get; }
+        IAccount_OLD Account { get; }
         ICurrencyQuotesProvider QuotesProvider { get; }
         ICurrencyOrderBookProvider OrderBooksProvider { get; }
         ICurrenciesProvider CurrenciesProvider { get; }
@@ -27,7 +27,7 @@ namespace Atomex
 
         IAtomexApp Start();
         IAtomexApp Stop();
-        IAtomexApp UseAtomexClient(IAtomexClient atomexClient, bool restart = false);
+        IAtomexApp UseAtomexClient(IAtomexClient_OLD atomexClient, bool restart = false);
         IAtomexApp UseCurrenciesProvider(ICurrenciesProvider currenciesProvider);
         IAtomexApp UseSymbolsProvider(ISymbolsProvider symbolsProvider);
         IAtomexApp UseCurrenciesUpdater(ICurrenciesUpdater currenciesUpdater);

@@ -16,39 +16,39 @@ namespace Atomex.Blockchain.Ethereum.ERC20
         private const int InputItemSizeInHex = 64;
         //private const int SignatureLengthInHex = 32;
         
-        public static bool IsERC20SignatureEqual(this EthereumTransaction transaction, string signatureHash)
+        public static bool IsERC20SignatureEqual(this EthereumTransaction_OLD transaction, string signatureHash)
         {
             var txSignature = transaction.Input.Substring(0, transaction.Input.Length % InputItemSizeInHex);
 
             return signatureHash.StartsWith(txSignature);
         }
 
-        public static bool IsERC20ApproveTransaction(this EthereumTransaction transaction)
+        public static bool IsERC20ApproveTransaction(this EthereumTransaction_OLD transaction)
         {
             return transaction.IsERC20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<ERC20ApproveFunctionMessage>());
         }
 
-        public static bool IsERC20TransferTransaction(this EthereumTransaction transaction)
+        public static bool IsERC20TransferTransaction(this EthereumTransaction_OLD transaction)
         {
             return transaction.IsERC20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<ERC20TransferFunctionMessage>());
         }
 
-        public static bool IsERC20InitiateTransaction(this EthereumTransaction transaction)
+        public static bool IsERC20InitiateTransaction(this EthereumTransaction_OLD transaction)
         {
             return transaction.IsERC20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<ERC20InitiateFunctionMessage>());
         }
 
-        public static bool IsERC20AddTransaction(this EthereumTransaction transaction)
+        public static bool IsERC20AddTransaction(this EthereumTransaction_OLD transaction)
         {
             return transaction.IsERC20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<ERC20AddFunctionMessage>());
         }
 
-        public static bool IsERC20RedeemTransaction(this EthereumTransaction transaction)
+        public static bool IsERC20RedeemTransaction(this EthereumTransaction_OLD transaction)
         {
             return transaction.IsERC20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<ERC20RedeemFunctionMessage>());
         }
 
-        public static bool IsERC20RefundTransaction(this EthereumTransaction transaction)
+        public static bool IsERC20RefundTransaction(this EthereumTransaction_OLD transaction)
         {
             return transaction.IsERC20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<ERC20RefundFunctionMessage>());
         }
@@ -83,8 +83,8 @@ namespace Atomex.Blockchain.Ethereum.ERC20
             return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<ERC20RefundedEventDTO>();
         }
 
-        public static EthereumTransaction ParseERC20TransactionType(
-            this EthereumTransaction transaction)
+        public static EthereumTransaction_OLD ParseERC20TransactionType(
+            this EthereumTransaction_OLD transaction)
         {
             if (transaction.Input == "0x")
                 return transaction;
@@ -103,8 +103,8 @@ namespace Atomex.Blockchain.Ethereum.ERC20
             return transaction;
         }
 
-        public static EthereumTransaction ParseERC20Input(
-            this EthereumTransaction transaction)
+        public static EthereumTransaction_OLD ParseERC20Input(
+            this EthereumTransaction_OLD transaction)
         {
             if (transaction.Input == "0x")
                 return transaction;
@@ -119,8 +119,8 @@ namespace Atomex.Blockchain.Ethereum.ERC20
             return transaction;
         }
         
-        public static EthereumTransaction ParseERC20TransferInput(
-            this EthereumTransaction transaction)
+        public static EthereumTransaction_OLD ParseERC20TransferInput(
+            this EthereumTransaction_OLD transaction)
         {
             var input = transaction.Input.Substring(transaction.Input.Length % InputItemSizeInHex);
             
@@ -130,8 +130,8 @@ namespace Atomex.Blockchain.Ethereum.ERC20
             return transaction;
         }
 
-        public static EthereumTransaction ParseERC20InitiateInput(
-            this EthereumTransaction transaction)
+        public static EthereumTransaction_OLD ParseERC20InitiateInput(
+            this EthereumTransaction_OLD transaction)
         {
             var input = transaction.Input.Substring(transaction.Input.Length % InputItemSizeInHex);
 
@@ -140,8 +140,8 @@ namespace Atomex.Blockchain.Ethereum.ERC20
             return transaction;
         }
 
-        public static EthereumTransaction ParseERC20AddInput(
-            this EthereumTransaction transaction)
+        public static EthereumTransaction_OLD ParseERC20AddInput(
+            this EthereumTransaction_OLD transaction)
         {
             var input = transaction.Input.Substring(transaction.Input.Length % InputItemSizeInHex);
 
@@ -282,7 +282,7 @@ namespace Atomex.Blockchain.Ethereum.ERC20
             };
         }
 
-        public static EthereumTransaction TransformApprovalEvent(
+        public static EthereumTransaction_OLD TransformApprovalEvent(
             this EtherScanApi.ContractEvent contractEvent,
             Erc20Config erc20,
             long lastBlockNumber)
@@ -292,7 +292,7 @@ namespace Atomex.Blockchain.Ethereum.ERC20
 
             var approvalEvent = contractEvent.ParseERC20ApprovalEvent();
 
-            var tx = new EthereumTransaction() //todo: make a refactoring
+            var tx = new EthereumTransaction_OLD() //todo: make a refactoring
             {
                 Currency     = erc20.Name,
                 Id           = contractEvent.HexTransactionHash,
@@ -326,7 +326,7 @@ namespace Atomex.Blockchain.Ethereum.ERC20
             return tx;
         }
 
-        public static EthereumTransaction TransformTransferEvent(
+        public static EthereumTransaction_OLD TransformTransferEvent(
             this EtherScanApi.ContractEvent contractEvent,
             string address,
             EthereumTokens.Erc20Config erc20,
@@ -337,7 +337,7 @@ namespace Atomex.Blockchain.Ethereum.ERC20
 
             var transferEvent = contractEvent.ParseERC20TransferEvent();
 
-            var tx = new EthereumTransaction() //todo: make a refactoring
+            var tx = new EthereumTransaction_OLD() //todo: make a refactoring
             {
                 Currency = erc20.Name,
                 Id = contractEvent.HexTransactionHash,

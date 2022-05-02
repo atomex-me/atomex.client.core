@@ -22,13 +22,13 @@ using Error = Atomex.Core.Error;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class Erc20Account : CurrencyAccount, IEstimatable
+    public class Erc20Account : CurrencyAccount_OLD, IEstimatable
     {
         public Erc20Account(
             string currency,
             ICurrencies currencies,
-            IHdWallet wallet,
-            IAccountDataRepository dataRepository)
+            IHdWallet_OLD wallet,
+            IAccountDataRepository_OLD dataRepository)
                 : base(currency, currencies, wallet, dataRepository)
         {
         }
@@ -118,7 +118,7 @@ namespace Atomex.Wallet.Ethereum
 
             txInput = message.CreateTransactionInput(erc20Config.ERC20ContractAddress);
 
-            var tx = new EthereumTransaction(erc20Config.Name, txInput)
+            var tx = new EthereumTransaction_OLD(erc20Config.Name, txInput)
             {
                 Type = BlockchainTransactionType.Output
             };
@@ -361,15 +361,15 @@ namespace Atomex.Wallet.Ethereum
         }
 
         protected override async Task<bool> ResolveTransactionTypeAsync(
-            IBlockchainTransaction tx,
+            IBlockchainTransaction_OLD tx,
             CancellationToken cancellationToken = default)
         {
             var erc20 = Erc20Config;
 
-            if (tx is not EthereumTransaction ethTx)
+            if (tx is not EthereumTransaction_OLD ethTx)
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
-            var oldTx = (EthereumTransaction) await DataRepository
+            var oldTx = (EthereumTransaction_OLD) await DataRepository
                 .GetTransactionByIdAsync(Currency, tx.Id, erc20.TransactionType)
                 .ConfigureAwait(false);
 
@@ -433,14 +433,14 @@ namespace Atomex.Wallet.Ethereum
                     var txs = (await DataRepository
                         .GetTransactionsAsync(Currency, erc20.TransactionType)
                         .ConfigureAwait(false))
-                        .Cast<EthereumTransaction>()
+                        .Cast<EthereumTransaction_OLD>()
                         .ToList();
 
                     // calculate balances
                     var totalUnconfirmedIncome = 0m;
                     var totalUnconfirmedOutcome = 0m;
 
-                    var addresses = new Dictionary<string, WalletAddress>();
+                    var addresses = new Dictionary<string, WalletAddress_OLD>();
 
                     foreach (var tx in txs)
                     {
@@ -503,7 +503,7 @@ namespace Atomex.Wallet.Ethereum
 
                     var totalBalance = 0m;
 
-                    var api = erc20.BlockchainApi as IEthereumBlockchainApi;
+                    var api = erc20.BlockchainApi as IEthereumBlockchainApi_OLD;
 
                     foreach (var wa in addresses.Values)
                     {
@@ -569,7 +569,7 @@ namespace Atomex.Wallet.Ethereum
                     if (walletAddress == null)
                         return;
 
-                    var api = erc20.BlockchainApi as IEthereumBlockchainApi;
+                    var api = erc20.BlockchainApi as IEthereumBlockchainApi_OLD;
 
                     var balanceResult = await api
                         .TryGetErc20BalanceAsync(
@@ -597,7 +597,7 @@ namespace Atomex.Wallet.Ethereum
                     var unconfirmedTxs = (await DataRepository
                         .GetUnconfirmedTransactionsAsync(Currency, erc20.TransactionType)
                         .ConfigureAwait(false))
-                        .Cast<EthereumTransaction>()
+                        .Cast<EthereumTransaction_OLD>()
                         .ToList();
 
                     foreach (var utx in unconfirmedTxs)
@@ -698,7 +698,7 @@ namespace Atomex.Wallet.Ethereum
             };
         }
 
-        public override async Task<WalletAddress> GetFreeExternalAddressAsync(
+        public override async Task<WalletAddress_OLD> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
             // addresses with tokens
@@ -739,7 +739,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
         }
 
-        public async Task<WalletAddress> GetRedeemAddressAsync(
+        public async Task<WalletAddress_OLD> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default)
         {
             // addresses with tokens

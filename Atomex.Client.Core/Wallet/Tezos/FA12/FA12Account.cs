@@ -25,8 +25,8 @@ namespace Atomex.Wallet.Tezos
             string tokenContract,
             decimal tokenId,
             ICurrencies currencies,
-            IHdWallet wallet,
-            IAccountDataRepository dataRepository,
+            IHdWallet_OLD wallet,
+            IAccountDataRepository_OLD dataRepository,
             TezosAccount tezosAccount)
             : base(currency,
                   "FA12",
@@ -86,7 +86,7 @@ namespace Atomex.Wallet.Tezos
 
             var storageLimit = Math.Max(fa12Config.TransferStorageLimit - fa12Config.ActivationStorage, 0); // without activation storage fee
                
-            var tx = new TezosTransaction
+            var tx = new TezosTransaction_OLD
             {
                 Currency      = xtzConfig.Name,
                 CreationTime  = DateTime.UtcNow,
@@ -406,7 +406,7 @@ namespace Atomex.Wallet.Tezos
 
         #region Addresses
 
-        public Task<WalletAddress> GetRedeemAddressAsync( // todo: match it with xtz balances
+        public Task<WalletAddress_OLD> GetRedeemAddressAsync( // todo: match it with xtz balances
             CancellationToken cancellationToken = default)
         {
             return GetFreeExternalAddressAsync(cancellationToken);

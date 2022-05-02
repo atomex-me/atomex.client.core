@@ -302,7 +302,7 @@ namespace Atomex.LiteDb
             var tezSymbols = new[] {"XTZ", "TZBTC", "KUSD"};
             
             var removedXtzTx = db.GetCollection("Transactions")
-                .Delete(Query.Where(nameof(WalletAddress.Currency), x => tezSymbols.Contains(x.AsString)));
+                .Delete(Query.Where(nameof(WalletAddress_OLD.Currency), x => tezSymbols.Contains(x.AsString)));
             
             Log.Debug($"{removedXtzTx} XTZ and tez tokens transactions removed by migration");
 
@@ -332,13 +332,13 @@ namespace Atomex.LiteDb
 
             var removedXtzTx = db
                 .GetCollection("Transactions")
-                .Delete(Query.Where(nameof(WalletAddress.Currency), x => tezosTokens.Contains(x.AsString)));
+                .Delete(Query.Where(nameof(WalletAddress_OLD.Currency), x => tezosTokens.Contains(x.AsString)));
 
             Log.Debug($"{removedXtzTx} Tezos tokens transactions removed by migration");
 
             var removedXtzAddresses = db
                 .GetCollection("Addresses")
-                .Delete(Query.Where(nameof(WalletAddress.Currency), x => tezosTokens.Contains(x.AsString)));
+                .Delete(Query.Where(nameof(WalletAddress_OLD.Currency), x => tezosTokens.Contains(x.AsString)));
 
             Shrink(db, sessionPassword);
             UpdateVersion(db: db, fromVersion: Version6, toVersion: Version7);
@@ -420,11 +420,11 @@ namespace Atomex.LiteDb
 
                 var removedTransactions = db
                     .GetCollection("Transactions")
-                    .Delete(Query.EQ(nameof(WalletAddress.Currency), "XTZ"));
+                    .Delete(Query.EQ(nameof(WalletAddress_OLD.Currency), "XTZ"));
 
                 var removedAddresses = db
                     .GetCollection("Addresses")
-                    .Delete(Query.EQ(nameof(WalletAddress.Currency), "XTZ"));
+                    .Delete(Query.EQ(nameof(WalletAddress_OLD.Currency), "XTZ"));
             }
 
             Shrink(db, sessionPassword);

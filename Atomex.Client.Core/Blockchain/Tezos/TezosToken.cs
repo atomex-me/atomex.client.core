@@ -66,7 +66,7 @@ namespace Atomex.Blockchain.Tezos
                 : 0;
     }
 
-    public class TokenTransfer : IBlockchainTransaction
+    public class TokenTransfer : IBlockchainTransaction_OLD
     {
         public string Id { get; set; }
         public string Currency { get; set; }

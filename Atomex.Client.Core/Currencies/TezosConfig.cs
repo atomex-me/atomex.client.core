@@ -166,7 +166,7 @@ namespace Atomex
             TxExplorerUri           = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
             SwapContractAddress     = configuration["SwapContract"];
-            TransactionType         = typeof(TezosTransaction);
+            TransactionType         = typeof(TezosTransaction_OLD);
 
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Tezos;
@@ -176,7 +176,7 @@ namespace Atomex
             IpfsGatewayUri          = configuration[nameof(IpfsGatewayUri)];
         }
 
-        protected static IBlockchainApi ResolveBlockchainApi(
+        protected static IBlockchainApi_OLD ResolveBlockchainApi(
             IConfiguration configuration,
             TezosConfig tezos)
         {
@@ -185,7 +185,7 @@ namespace Atomex
 
             return blockchainApi switch
             {
-                "tzkt" => new TzktApi(tezos),
+                "tzkt" => new TzktApi_OLD(tezos),
                 _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
             };
         }

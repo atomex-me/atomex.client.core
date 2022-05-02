@@ -12,11 +12,11 @@ namespace Atomex.Swaps.Helpers
     public static class RewardForRedeemHelper
     {
         public static async Task<decimal> EstimateAsync(
-            IAccount account,
+            IAccount_OLD account,
             ICurrencyQuotesProvider quotesProvider,
             Func<string, Quote> feeCurrencyQuotesProvider,
             CurrencyConfig redeemableCurrency,
-            WalletAddress redeemFromAddress = null,
+            WalletAddress_OLD redeemFromAddress = null,
             CancellationToken cancellationToken = default)
         {
             if (redeemableCurrency is BitcoinBasedConfig)

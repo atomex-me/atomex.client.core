@@ -14,13 +14,13 @@ namespace Atomex.Common.Bson
 {
     public class BitcoinBasedTransactionToBsonSerializer : BsonSerializer<BitcoinBasedTransaction>
     {
-        private const string CreationTimeKey = nameof(IBlockchainTransaction.CreationTime);
-        private const string CurrencyKey     = nameof(IBlockchainTransaction.Currency);
+        private const string CreationTimeKey = nameof(IBlockchainTransaction_OLD.CreationTime);
+        private const string CurrencyKey     = nameof(IBlockchainTransaction_OLD.Currency);
         private const string TxKey           = "Tx";
         private const string TxIdKey         = "TxId";
-        private const string BlockInfoKey    = nameof(IBlockchainTransaction.BlockInfo);
-        private const string StateKey        = nameof(IBlockchainTransaction.State);
-        private const string TypeKey         = nameof(IBlockchainTransaction.Type);
+        private const string BlockInfoKey    = nameof(IBlockchainTransaction_OLD.BlockInfo);
+        private const string StateKey        = nameof(IBlockchainTransaction_OLD.State);
+        private const string TypeKey         = nameof(IBlockchainTransaction_OLD.Type);
         private const string FeesKey         = nameof(BitcoinBasedTransaction.Fees);
         private const string AmountKey       = nameof(BitcoinBasedTransaction.Amount);
 

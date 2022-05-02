@@ -17,7 +17,7 @@ using Atomex.Wallets.Common;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class TezosAccount : CurrencyAccount, IEstimatable, IHasTokens
+    public class TezosAccount : CurrencyAccount_OLD, IEstimatable, IHasTokens
     {
         private readonly TezosRevealChecker _tezosRevealChecker;
         private readonly TezosAllocationChecker _tezosAllocationChecker;
@@ -26,8 +26,8 @@ namespace Atomex.Wallet.Tezos
 
         public TezosAccount(
             ICurrencies currencies,
-            IHdWallet wallet,
-            IAccountDataRepository dataRepository)
+            IHdWallet_OLD wallet,
+            IAccountDataRepository_OLD dataRepository)
                 : base(TezosConfig.Xtz, currencies, wallet, dataRepository)
         {
             var xtz = Config;
@@ -89,7 +89,7 @@ namespace Atomex.Wallet.Tezos
                 ? Math.Max(xtzConfig.StorageLimit - xtzConfig.ActivationStorage, 0) // without activation storage fee
                 : xtzConfig.StorageLimit;
 
-            var tx = new TezosTransaction
+            var tx = new TezosTransaction_OLD
             {
                 Currency      = xtzConfig.Name,
                 CreationTime  = DateTime.UtcNow,
@@ -288,12 +288,12 @@ namespace Atomex.Wallet.Tezos
         }
 
         protected override async Task<bool> ResolveTransactionTypeAsync(
-            IBlockchainTransaction tx,
+            IBlockchainTransaction_OLD tx,
             CancellationToken cancellationToken = default)
         {
             var xtz = Config;
 
-            if (tx is not TezosTransaction xtzTx)
+            if (tx is not TezosTransaction_OLD xtzTx)
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
             var oldTx = !xtzTx.IsInternal
@@ -348,7 +348,7 @@ namespace Atomex.Wallet.Tezos
             return true;
         }
 
-        public static void ResolveTezosTxAlias(TezosTransaction tx)
+        public static void ResolveTezosTxAlias(TezosTransaction_OLD tx)
         {
             var ALIAS_DELIMETER = '/';
 
@@ -365,8 +365,8 @@ namespace Atomex.Wallet.Tezos
             }
         }
 
-        private TezosTransaction ResolveFA12TransactionType(
-            TezosTransaction tx)
+        private TezosTransaction_OLD ResolveFA12TransactionType(
+            TezosTransaction_OLD tx)
         {
             if (tx.Params["entrypoint"].ToString().Equals("initiate")
                 || tx.Params["entrypoint"].ToString().Equals("redeem")
@@ -482,10 +482,10 @@ namespace Atomex.Wallet.Tezos
                     var txs = (await DataRepository
                         .GetTransactionsAsync(Currency, xtz.TransactionType)
                         .ConfigureAwait(false))
-                        .Cast<TezosTransaction>()
+                        .Cast<TezosTransaction_OLD>()
                         .ToList();
 
-                    var internalTxs = txs.Aggregate(new List<TezosTransaction>(), (list, tx) =>
+                    var internalTxs = txs.Aggregate(new List<TezosTransaction_OLD>(), (list, tx) =>
                     {
                         if (tx.InternalTxs != null)
                             list.AddRange(tx.InternalTxs);
@@ -497,7 +497,7 @@ namespace Atomex.Wallet.Tezos
                     var totalUnconfirmedIncome = 0m;
                     var totalUnconfirmedOutcome = 0m;
 
-                    var addresses = new Dictionary<string, WalletAddress>();
+                    var addresses = new Dictionary<string, WalletAddress_OLD>();
 
                     foreach (var tx in txs.Concat(internalTxs))
                     {
@@ -642,10 +642,10 @@ namespace Atomex.Wallet.Tezos
                     var unconfirmedTxs = (await DataRepository
                         .GetUnconfirmedTransactionsAsync(Currency, xtz.TransactionType)
                         .ConfigureAwait(false))
-                        .Cast<TezosTransaction>()
+                        .Cast<TezosTransaction_OLD>()
                         .ToList();
 
-                    var unconfirmedInternalTxs = unconfirmedTxs.Aggregate(new List<TezosTransaction>(), (list, tx) =>
+                    var unconfirmedInternalTxs = unconfirmedTxs.Aggregate(new List<TezosTransaction_OLD>(), (list, tx) =>
                     {
                         if (tx.InternalTxs != null)
                             list.AddRange(tx.InternalTxs);
@@ -707,7 +707,7 @@ namespace Atomex.Wallet.Tezos
 
         #region Addresses
 
-        public async Task<WalletAddress> GetRedeemAddressAsync(
+        public async Task<WalletAddress_OLD> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default)
         {
             var unspentAddresses = await GetUnspentAddressesAsync(cancellationToken)
@@ -735,7 +735,7 @@ namespace Atomex.Wallet.Tezos
             return ResolvePublicKey(redeemAddress);
         }
 
-        public async Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+        public async Task<IEnumerable<WalletAddress_OLD>> GetUnspentTokenAddressesAsync(
             CancellationToken cancellationToken = default)
         {
             return (await DataRepository

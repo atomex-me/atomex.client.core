@@ -38,7 +38,7 @@ namespace Atomex.Core
         public string FeeCurrencyToBaseSymbol { get; set; }
         public string FeeCurrencySymbol { get; set; }
 
-        public IBlockchainApi BlockchainApi { get; set; }
+        public IBlockchainApi_OLD BlockchainApi { get; set; }
         public string TxExplorerUri { get; set; }
         public string AddressExplorerUri { get; set; }
         public Type TransactionType { get; protected set; }
@@ -68,11 +68,11 @@ namespace Atomex.Core
             CancellationToken cancellationToken = default);
 
         public abstract Task<decimal> GetRedeemFeeAsync(
-            WalletAddress toAddress = null,
+            WalletAddress_OLD toAddress = null,
             CancellationToken cancellationToken = default);
 
         public abstract Task<decimal> GetEstimatedRedeemFeeAsync(
-            WalletAddress toAddress = null,
+            WalletAddress_OLD toAddress = null,
             bool withRewardForRedeem = false,
             CancellationToken cancellationToken = default);
 

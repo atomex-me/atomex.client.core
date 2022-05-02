@@ -19,12 +19,12 @@ namespace Atomex.Wallet
             new StorageVersion
             {
                 Version = new Version(version: "1.0.0.0"),
-                LoadFromFile = HdKeyStorage.LoadFromFile,
+                LoadFromFile = HdKeyStorage_OLD.LoadFromFile,
                 Up = keyStorage => keyStorage
             }
         };
 
-        public static HdKeyStorage LoadFromFile(
+        public static HdKeyStorage_OLD LoadFromFile(
             string pathToFile,
             SecureString password)
         {
@@ -60,9 +60,9 @@ namespace Atomex.Wallet
             for (var i = versionIndex; i >= 0; --i)
                 keyStorage = Versions[i].Up(keyStorage);
 
-            var hdKeyStorage = (HdKeyStorage) keyStorage;
+            var hdKeyStorage = (HdKeyStorage_OLD) keyStorage;
 
-            if (storageVersion.Version != new Version(HdKeyStorage.CurrentVersion))
+            if (storageVersion.Version != new Version(HdKeyStorage_OLD.CurrentVersion))
             {
                 hdKeyStorage.Encrypt(password);
                 hdKeyStorage.SaveToFile(pathToFile, password);

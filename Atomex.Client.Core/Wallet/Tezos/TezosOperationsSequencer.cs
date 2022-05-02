@@ -19,9 +19,9 @@ namespace Atomex.Wallet.Tezos
 
             var unconfirmedTxs = (await tezosAccount
                 .DataRepository
-                .GetUnconfirmedTransactionsAsync("XTZ", typeof(TezosTransaction))
+                .GetUnconfirmedTransactionsAsync("XTZ", typeof(TezosTransaction_OLD))
                 .ConfigureAwait(false))
-                .Cast<TezosTransaction>()
+                .Cast<TezosTransaction_OLD>()
                 .Where(t => t.From == fromAddress &&
                             t.CreationTime != null &&
                             t.CreationTime.Value.ToUniversalTime() + TimeSpan.FromHours(1) > DateTime.UtcNow);

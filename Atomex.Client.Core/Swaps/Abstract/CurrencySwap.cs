@@ -76,7 +76,7 @@ namespace Atomex.Swaps.Abstract
             Swap swap,
             CancellationToken cancellationToken = default);
 
-        public abstract Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public abstract Task<Result<IBlockchainTransaction_OLD>> TryToFindPaymentAsync(
             Swap swap,
             CancellationToken cancellationToken = default);
 
@@ -110,9 +110,9 @@ namespace Atomex.Swaps.Abstract
         protected Task TrackTransactionConfirmationAsync(
             Swap swap,
             CurrencyConfig currency,
-            IAccountDataRepository dataRepository,
+            IAccountDataRepository_OLD dataRepository,
             string txId,
-            Func<Swap, IBlockchainTransaction, CancellationToken, Task> confirmationHandler,
+            Func<Swap, IBlockchainTransaction_OLD, CancellationToken, Task> confirmationHandler,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -278,7 +278,7 @@ namespace Atomex.Swaps.Abstract
 
         protected async Task RedeemConfirmedEventHandler(
             Swap swap,
-            IBlockchainTransaction tx,
+            IBlockchainTransaction_OLD tx,
             CancellationToken cancellationToken = default)
         {
             swap.StateFlags |= SwapStateFlags.IsRedeemConfirmed;
@@ -324,7 +324,7 @@ namespace Atomex.Swaps.Abstract
 
         protected async Task RefundConfirmedEventHandler(
             Swap swap,
-            IBlockchainTransaction tx,
+            IBlockchainTransaction_OLD tx,
             CancellationToken cancellationToken = default)
         {
             swap.StateFlags |= SwapStateFlags.IsRefundConfirmed;

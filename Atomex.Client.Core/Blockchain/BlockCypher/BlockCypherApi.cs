@@ -18,7 +18,7 @@ using Atomex.Core;
 
 namespace Atomex.Blockchain.BlockCypher
 {
-    public class BlockCypherApi : BitcoinBasedBlockchainApi
+    public class BlockCypherApi : BitcoinBasedBlockchainApi_OLD
     {
         public const string BitcoinMainNet = "https://api.blockcypher.com/v1/btc/main";
 
@@ -45,14 +45,14 @@ namespace Atomex.Blockchain.BlockCypher
         }
 
         public override async Task<Result<string>> BroadcastAsync(
-            IBlockchainTransaction transaction,
+            IBlockchainTransaction_OLD transaction,
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            var tx = (IBitcoinBasedTransaction)transaction;
+            var tx = (IBitcoinBasedTransaction_OLD)transaction;
             var txHex = tx.ToBytes().ToHexString();
 
             tx.State = BlockchainTransactionState.Pending;
@@ -213,7 +213,7 @@ namespace Atomex.Blockchain.BlockCypher
             .ConfigureAwait(false);
         }
 
-        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public override async Task<Result<IBlockchainTransaction_OLD>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
@@ -223,7 +223,7 @@ namespace Atomex.Blockchain.BlockCypher
 
             var requestUri = $"/txs/{txId}?includeHex=true&instart=0&outstart=0&limit=1000" + (ApiToken != null ? $"&token={ApiToken}" : "");
 
-            return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
+            return await HttpHelper.GetAsyncResult<IBlockchainTransaction_OLD>(
                 baseUri: BaseUri,
                 requestUri: requestUri,
                 responseHandler: (response, content) =>

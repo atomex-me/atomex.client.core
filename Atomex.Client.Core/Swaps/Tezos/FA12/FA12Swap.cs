@@ -298,7 +298,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 return;
             }
 
-            var redeemTx = new TezosTransaction
+            var redeemTx = new TezosTransaction_OLD
             {
                 Currency     = XtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -418,7 +418,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 Log.Error("Insufficient funds for redeem for party");
             }
 
-            var redeemTx = new TezosTransaction
+            var redeemTx = new TezosTransaction_OLD
             {
                 Currency     = XtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -521,7 +521,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 Log.Error("Insufficient funds for refund");
             }
 
-            var refundTx = new TezosTransaction
+            var refundTx = new TezosTransaction_OLD
             {
                 Currency     = XtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -647,7 +647,7 @@ namespace Atomex.Swaps.Tezos.FA12
             return Task.CompletedTask;
         }
 
-        public override async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public override async Task<Result<IBlockchainTransaction_OLD>> TryToFindPaymentAsync(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
@@ -785,7 +785,7 @@ namespace Atomex.Swaps.Tezos.FA12
             return requiredAmountInTokens;
         }
 
-        protected async Task<TezosTransaction> CreatePaymentTxAsync(
+        protected async Task<TezosTransaction_OLD> CreatePaymentTxAsync(
             Swap swap,
             int lockTimeSeconds,
             CancellationToken cancellationToken = default)
@@ -861,7 +861,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 fa12.DigitsMultiplier,
                 fa12.DustDigitsMultiplier);
                 
-            return new TezosTransaction
+            return new TezosTransaction_OLD
             {
                 Currency     = XtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -879,9 +879,9 @@ namespace Atomex.Swaps.Tezos.FA12
             };
         }
 
-        private async Task<IList<TezosTransaction>> CreateApproveTxsAsync(
+        private async Task<IList<TezosTransaction_OLD>> CreateApproveTxsAsync(
             Swap swap,
-            TezosTransaction paymentTx,
+            TezosTransaction_OLD paymentTx,
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await Fa12Account
@@ -914,11 +914,11 @@ namespace Atomex.Swaps.Tezos.FA12
                 return null; // todo: maybe add approve 0
             }
 
-            var transactions = new List<TezosTransaction>();
+            var transactions = new List<TezosTransaction_OLD>();
 
             if (allowanceResult.Value > 0)
             {
-                transactions.Add(new TezosTransaction
+                transactions.Add(new TezosTransaction_OLD
                 {
                     Currency     = XtzConfig.Name,
                     CreationTime = DateTime.UtcNow,
@@ -944,7 +944,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 fa12.DigitsMultiplier,
                 fa12.DustDigitsMultiplier);
 
-            transactions.Add(new TezosTransaction
+            transactions.Add(new TezosTransaction_OLD
             {
                 Currency     = XtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -965,7 +965,7 @@ namespace Atomex.Swaps.Tezos.FA12
         }
 
         private async Task<bool> SignTransactionAsync(
-            TezosTransaction tx,
+            TezosTransaction_OLD tx,
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await TezosAccount
@@ -985,7 +985,7 @@ namespace Atomex.Swaps.Tezos.FA12
 
         private async Task BroadcastTxAsync(
             Swap swap,
-            TezosTransaction tx,
+            TezosTransaction_OLD tx,
             CancellationToken cancellationToken = default,
             bool updateBalance = true,
             bool notifyIfUnconfirmed = true,

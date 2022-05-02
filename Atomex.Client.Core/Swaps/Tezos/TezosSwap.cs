@@ -264,7 +264,7 @@ namespace Atomex.Swaps.Tezos
                 return;
             }
 
-            var redeemTx = new TezosTransaction
+            var redeemTx = new TezosTransaction_OLD
             {
                 Currency     = xtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -384,7 +384,7 @@ namespace Atomex.Swaps.Tezos
                 Log.Error("Insufficient funds for redeem for party");
             }
 
-            var redeemForPartyTx = new TezosTransaction
+            var redeemForPartyTx = new TezosTransaction_OLD
             {
                 Currency     = xtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -498,7 +498,7 @@ namespace Atomex.Swaps.Tezos
                 Log.Error("Insufficient funds for refund");
             }
 
-            var refundTx = new TezosTransaction
+            var refundTx = new TezosTransaction_OLD
             {
                 Currency     = xtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -622,7 +622,7 @@ namespace Atomex.Swaps.Tezos
             return Task.CompletedTask;
         }
 
-        public override async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public override async Task<Result<IBlockchainTransaction_OLD>> TryToFindPaymentAsync(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
@@ -723,7 +723,7 @@ namespace Atomex.Swaps.Tezos
 
         #region Helpers
 
-        protected virtual async Task<TezosTransaction> CreatePaymentTxAsync(
+        protected virtual async Task<TezosTransaction_OLD> CreatePaymentTxAsync(
             Swap swap,
             int lockTimeSeconds,
             CancellationToken cancellationToken = default)
@@ -784,7 +784,7 @@ namespace Atomex.Swaps.Tezos
                 return null;
             }
 
-            return new TezosTransaction
+            return new TezosTransaction_OLD
             {
                 Currency     = xtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -804,7 +804,7 @@ namespace Atomex.Swaps.Tezos
         }
 
         private async Task<bool> SignTransactionAsync(
-            TezosTransaction tx,
+            TezosTransaction_OLD tx,
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await _account
@@ -824,7 +824,7 @@ namespace Atomex.Swaps.Tezos
 
         private async Task BroadcastTxAsync(
             Swap swap,
-            TezosTransaction tx,
+            TezosTransaction_OLD tx,
             CancellationToken cancellationToken = default)
         {
             var broadcastResult = await XtzConfig.BlockchainApi

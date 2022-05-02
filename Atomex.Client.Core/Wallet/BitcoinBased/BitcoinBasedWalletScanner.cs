@@ -14,7 +14,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.BitcoinBased
 {
-    public class BitcoinBasedWalletScanner : ICurrencyHdWalletScanner
+    public class BitcoinBasedWalletScanner : ICurrencyHdWalletScanner_OLD
     {
         private const int DefaultInternalLookAhead = 3;
         private const int DefaultExternalLookAhead = 3;
@@ -56,7 +56,7 @@ namespace Atomex.Wallet.BitcoinBased
                 currency.Name,
                 address);
 
-            var outputsResult = await ((IInOutBlockchainApi)currency.BlockchainApi)
+            var outputsResult = await ((IInOutBlockchainApi_OLD)currency.BlockchainApi)
                 .TryGetOutputsAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -155,7 +155,7 @@ namespace Atomex.Wallet.BitcoinBased
                         index,
                         walletAddress.Address);
 
-                    var result = await ((IInOutBlockchainApi)currency.BlockchainApi)
+                    var result = await ((IInOutBlockchainApi_OLD)currency.BlockchainApi)
                         .TryGetOutputsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 

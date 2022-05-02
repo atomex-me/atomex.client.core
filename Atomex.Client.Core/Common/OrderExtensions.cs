@@ -13,7 +13,7 @@ namespace Atomex.Common
 {
     public static class OrderExtensions
     {
-        public static async Task CreateProofOfPossessionAsync(this Order order, IAccount account)
+        public static async Task CreateProofOfPossessionAsync(this Order order, IAccount_OLD account)
         {
             try
             {
@@ -105,7 +105,7 @@ namespace Atomex.Common
 
         public static async Task<Order> ResolveWallets(
             this Order order,
-            IAccount account,
+            IAccount_OLD account,
             CancellationToken cancellationToken = default)
         {
             if (order.FromWallets == null)

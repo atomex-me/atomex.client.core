@@ -11,7 +11,7 @@ using Serilog;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class EthereumWalletScanner : ICurrencyHdWalletScanner
+    public class EthereumWalletScanner : ICurrencyHdWalletScanner_OLD
     {
         private const int DefaultInternalLookAhead = 1;
         private const int DefaultExternalLookAhead = 1;
@@ -39,9 +39,9 @@ namespace Atomex.Wallet.Ethereum
                 new {Chain = Bip44.External, LookAhead = ExternalLookAhead},
             };
 
-            var txs = new List<EthereumTransaction>();
-            var txsById = new Dictionary<string, EthereumTransaction>();
-            var internalTxs = new List<EthereumTransaction>();
+            var txs = new List<EthereumTransaction_OLD>();
+            var txsById = new Dictionary<string, EthereumTransaction_OLD>();
+            var internalTxs = new List<EthereumTransaction_OLD>();
 
             foreach (var param in scanParams)
             {
@@ -89,7 +89,7 @@ namespace Atomex.Wallet.Ethereum
                         index,
                         walletAddress.Address);
 
-                    var txsResult = await ((IEthereumBlockchainApi)currency.BlockchainApi)
+                    var txsResult = await ((IEthereumBlockchainApi_OLD)currency.BlockchainApi)
                         .TryGetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -105,7 +105,7 @@ namespace Atomex.Wallet.Ethereum
                     }
 
                     var addressTxs = txsResult.Value
-                        ?.Cast<EthereumTransaction>()
+                        ?.Cast<EthereumTransaction_OLD>()
                         .ToList();
 
                     if (addressTxs == null || !addressTxs.Any()) // address without activity
@@ -141,7 +141,7 @@ namespace Atomex.Wallet.Ethereum
                 if (txsById.TryGetValue(internalTx.Id, out var tx))
                 {
                     if (tx.InternalTxs == null)
-                        tx.InternalTxs = new List<EthereumTransaction>();
+                        tx.InternalTxs = new List<EthereumTransaction_OLD>();
 
                     tx.InternalTxs.Add(internalTx);
                 }
@@ -172,7 +172,7 @@ namespace Atomex.Wallet.Ethereum
                 currency.Name,
                 address);
 
-            var txsResult = await ((IEthereumBlockchainApi)currency.BlockchainApi)
+            var txsResult = await ((IEthereumBlockchainApi_OLD)currency.BlockchainApi)
                 .TryGetTransactionsAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -188,15 +188,15 @@ namespace Atomex.Wallet.Ethereum
             }
 
             var addressTxs = txsResult.Value
-                ?.Cast<EthereumTransaction>()
+                ?.Cast<EthereumTransaction_OLD>()
                 .ToList();
 
             if (addressTxs == null || !addressTxs.Any()) // address without activity
                 return;
 
-            var txs = new List<EthereumTransaction>();
-            var txsById = new Dictionary<string, EthereumTransaction>();
-            var internalTxs = new List<EthereumTransaction>();
+            var txs = new List<EthereumTransaction_OLD>();
+            var txsById = new Dictionary<string, EthereumTransaction_OLD>();
+            var internalTxs = new List<EthereumTransaction_OLD>();
 
             foreach (var tx in addressTxs)
             {
@@ -212,7 +212,7 @@ namespace Atomex.Wallet.Ethereum
                 if (txsById.TryGetValue(internalTx.Id, out var tx))
                 {
                     if (tx.InternalTxs == null)
-                        tx.InternalTxs = new List<EthereumTransaction>();
+                        tx.InternalTxs = new List<EthereumTransaction_OLD>();
 
                     tx.InternalTxs.Add(internalTx);
                 }
@@ -233,7 +233,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
         }
 
-        private async Task UpsertTransactionsAsync(IEnumerable<EthereumTransaction> transactions)
+        private async Task UpsertTransactionsAsync(IEnumerable<EthereumTransaction_OLD> transactions)
         {
             foreach (var tx in transactions)
             {

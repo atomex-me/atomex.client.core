@@ -15,7 +15,7 @@ using static Atomex.Blockchain.Ethereum.EtherScanApi;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class Erc20WalletScanner : ICurrencyHdWalletScanner
+    public class Erc20WalletScanner : ICurrencyHdWalletScanner_OLD
     {
         private const int DefaultInternalLookAhead = 1;
         private const int DefaultExternalLookAhead = 1;
@@ -45,7 +45,7 @@ namespace Atomex.Wallet.Ethereum
                 new {Chain = Bip44.External, LookAhead = ExternalLookAhead},
             };
 
-            var txs = new List<EthereumTransaction>();
+            var txs = new List<EthereumTransaction_OLD>();
 
             var api = new EtherScanApi(currency);
 
@@ -127,7 +127,7 @@ namespace Atomex.Wallet.Ethereum
 
                         foreach (var ev in events)
                         {
-                            var tx = new EthereumTransaction();
+                            var tx = new EthereumTransaction_OLD();
 
                             if (ev.IsERC20ApprovalEvent())
                                 tx = ev.TransformApprovalEvent(currency, lastBlockNumber);
@@ -162,7 +162,7 @@ namespace Atomex.Wallet.Ethereum
                 Currency.Name,
                 address);
 
-            var txs = new List<EthereumTransaction>();
+            var txs = new List<EthereumTransaction_OLD>();
             var api = new EtherScanApi(currency);
 
             var lastBlockNumberResult = await api
@@ -204,7 +204,7 @@ namespace Atomex.Wallet.Ethereum
 
             foreach (var ev in events)
             {
-                var tx = new EthereumTransaction();
+                var tx = new EthereumTransaction_OLD();
     
                 if (ev.IsERC20ApprovalEvent())
                     tx = ev.TransformApprovalEvent(currency, lastBlockNumber);
@@ -325,7 +325,7 @@ namespace Atomex.Wallet.Ethereum
             return events;
         }
 
-        private async Task UpsertTransactionsAsync(IEnumerable<EthereumTransaction> transactions)
+        private async Task UpsertTransactionsAsync(IEnumerable<EthereumTransaction_OLD> transactions)
         {
             foreach (var tx in transactions)
             {

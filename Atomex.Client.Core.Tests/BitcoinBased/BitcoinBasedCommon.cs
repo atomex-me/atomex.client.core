@@ -10,7 +10,7 @@ namespace Atomex.Client.Core.Tests
 {
     public static class BitcoinBasedCommon
     {
-        public static IBitcoinBasedTransaction CreateFakeTx(BitcoinBasedConfig currency, PubKey to, params long[] outputs)
+        public static IBitcoinBasedTransaction_OLD CreateFakeTx(BitcoinBasedConfig currency, PubKey to, params long[] outputs)
         {
             var tx = Transaction.Create(currency.Network);
 
@@ -20,7 +20,7 @@ namespace Atomex.Client.Core.Tests
             return new BitcoinBasedTransaction(currency.Name, tx);
         }
 
-        public static IBitcoinBasedTransaction CreateSegwitPaymentTx(
+        public static IBitcoinBasedTransaction_OLD CreateSegwitPaymentTx(
             BitcoinBasedConfig currency,
             IEnumerable<ITxOutput> outputs,
             PubKey from,
@@ -36,7 +36,7 @@ namespace Atomex.Client.Core.Tests
                 fee: fee);
         }
 
-        public static IBitcoinBasedTransaction CreatePaymentTx(
+        public static IBitcoinBasedTransaction_OLD CreatePaymentTx(
             BitcoinBasedConfig currency,
             IEnumerable<ITxOutput> outputs,
             PubKey from,

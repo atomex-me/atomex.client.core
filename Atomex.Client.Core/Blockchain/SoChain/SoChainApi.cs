@@ -18,7 +18,7 @@ using Atomex.Common;
 
 namespace Atomex.Blockchain.SoChain
 {
-    public class SoChainApi : BitcoinBasedBlockchainApi
+    public class SoChainApi : BitcoinBasedBlockchainApi_OLD
     {
         internal class SendTx
         {
@@ -594,7 +594,7 @@ namespace Atomex.Blockchain.SoChain
                 .ConfigureAwait(false);
         }
 
-        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public override async Task<Result<IBlockchainTransaction_OLD>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
@@ -604,7 +604,7 @@ namespace Atomex.Blockchain.SoChain
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
+            return await HttpHelper.GetAsyncResult<IBlockchainTransaction_OLD>(
                     baseUri: BaseUrl,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
@@ -679,10 +679,10 @@ namespace Atomex.Blockchain.SoChain
         }
 
         public override async Task<Result<string>> BroadcastAsync(
-            IBlockchainTransaction transaction,
+            IBlockchainTransaction_OLD transaction,
             CancellationToken cancellationToken = default)
         {
-            var tx = (IBitcoinBasedTransaction)transaction;
+            var tx = (IBitcoinBasedTransaction_OLD)transaction;
 
             var requestUri = $"api/v2/send_tx/{NetworkAcronym}";
 

@@ -83,7 +83,7 @@ namespace Atomex
             };
         }
 
-        private IBlockchainApi ResolveBlockchainApi(IConfiguration configuration)
+        private IBlockchainApi_OLD ResolveBlockchainApi(IConfiguration configuration)
         {
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();

@@ -16,14 +16,14 @@ namespace Atomex.Swaps.Ethereum.Helpers
     {
         private const int BlocksAhead = 10000; // >24h with block time 10-30 seconds
 
-        public static async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public static async Task<Result<IBlockchainTransaction_OLD>> TryToFindPaymentAsync(
             Swap swap,
             CurrencyConfig currency,
             CancellationToken cancellationToken = default)
         {
             var ethereum = currency as Atomex.EthereumConfig;
 
-            var api = ethereum.BlockchainApi as IEthereumBlockchainApi;
+            var api = ethereum.BlockchainApi as IEthereumBlockchainApi_OLD;
 
             var fromBlockNoResult = await api
                 .TryGetBlockByTimeStampAsync(swap.TimeStamp.ToUniversalTime().ToUnixTime(), cancellationToken: cancellationToken)
@@ -49,9 +49,9 @@ namespace Atomex.Swaps.Ethereum.Helpers
             if (txsResult.HasError)
                 return txsResult.Error;
 
-            var savedTx = swap.PaymentTx as EthereumTransaction;
+            var savedTx = swap.PaymentTx as EthereumTransaction_OLD;
 
-            foreach (var tx in txsResult.Value.Cast<EthereumTransaction>())
+            foreach (var tx in txsResult.Value.Cast<EthereumTransaction_OLD>())
             {
                 if (tx.Amount != savedTx.Amount ||
                    !tx.Input.Equals(savedTx.Input, StringComparison.OrdinalIgnoreCase) ||
@@ -65,7 +65,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
                 return tx;
             }
 
-            return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
+            return new Result<IBlockchainTransaction_OLD>((IBlockchainTransaction_OLD)null);
         }
 
         public static async Task<Result<bool>> IsInitiatedAsync(

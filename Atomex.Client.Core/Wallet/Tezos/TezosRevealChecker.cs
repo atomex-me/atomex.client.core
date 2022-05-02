@@ -36,7 +36,7 @@ namespace Atomex.Wallet.Tezos
                 }
             }
 
-            var isRevealedResult = await new TzktApi(_tezos)
+            var isRevealedResult = await new TzktApi_OLD(_tezos)
                 .IsRevealedAsync(address, cancellationToken)
                 .ConfigureAwait(false);
 

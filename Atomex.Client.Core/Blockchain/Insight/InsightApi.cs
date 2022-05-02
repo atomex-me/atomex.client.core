@@ -17,7 +17,7 @@ using Atomex.Core;
 
 namespace Atomex.Blockchain.Insight
 {
-    public class InsightApi : BitcoinBasedBlockchainApi
+    public class InsightApi : BitcoinBasedBlockchainApi_OLD
     {
         internal class RawTx
         {
@@ -199,7 +199,7 @@ namespace Atomex.Blockchain.Insight
                 .ConfigureAwait(false);
         }
 
-        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public override async Task<Result<IBlockchainTransaction_OLD>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
@@ -213,7 +213,7 @@ namespace Atomex.Blockchain.Insight
                 return rawTxResult.Error;
 
             if (string.IsNullOrEmpty(rawTxResult.Value))
-                return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
+                return new Result<IBlockchainTransaction_OLD>((IBlockchainTransaction_OLD)null);
 
             await RequestLimitControl
                 .Wait(cancellationToken)
@@ -221,7 +221,7 @@ namespace Atomex.Blockchain.Insight
 
             var requestUri = $"api/tx/{txId}";
 
-            return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
+            return await HttpHelper.GetAsyncResult<IBlockchainTransaction_OLD>(
                     baseUri: BaseUri,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
@@ -247,14 +247,14 @@ namespace Atomex.Blockchain.Insight
         }
 
         public override async Task<Result<string>> BroadcastAsync(
-            IBlockchainTransaction transaction,
+            IBlockchainTransaction_OLD transaction,
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            var tx = (IBitcoinBasedTransaction)transaction;
+            var tx = (IBitcoinBasedTransaction_OLD)transaction;
             var txHex = tx.ToBytes().ToHexString();
 
             tx.State = BlockchainTransactionState.Pending;

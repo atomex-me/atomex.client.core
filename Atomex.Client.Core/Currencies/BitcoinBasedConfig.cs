@@ -144,7 +144,7 @@ namespace Atomex
                 .ToString();
         }
 
-        public IBitcoinBasedTransaction CreatePaymentTx(
+        public IBitcoinBasedTransaction_OLD CreatePaymentTx(
             IEnumerable<ITxOutput> unspentOutputs,
             string destinationAddress,
             string changeAddress,
@@ -163,7 +163,7 @@ namespace Atomex
                 knownRedeems: knownRedeems);
         }
 
-        public IBitcoinBasedTransaction CreateP2PkhTx(
+        public IBitcoinBasedTransaction_OLD CreateP2PkhTx(
             IEnumerable<ITxOutput> unspentOutputs,
             string destinationAddress,
             string changeAddress,
@@ -193,7 +193,7 @@ namespace Atomex
                 knownRedeems: knownRedeems);
         }
 
-        public IBitcoinBasedTransaction CreateP2WPkhTx(
+        public IBitcoinBasedTransaction_OLD CreateP2WPkhTx(
             IEnumerable<ITxOutput> unspentOutputs,
             string destinationAddress,
             string changeAddress,
@@ -221,7 +221,7 @@ namespace Atomex
                 knownRedeems: knownRedeems);
         }
 
-        public virtual IBitcoinBasedTransaction CreateHtlcP2PkhScriptSwapPaymentTx(
+        public virtual IBitcoinBasedTransaction_OLD CreateHtlcP2PkhScriptSwapPaymentTx(
             IEnumerable<ITxOutput> unspentOutputs,
             string aliceRefundAddress,
             string bobAddress,

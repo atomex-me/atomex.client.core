@@ -23,8 +23,8 @@ namespace Atomex.Wallet.Tezos
             string tokenContract,
             decimal tokenId,
             ICurrencies currencies,
-            IHdWallet wallet,
-            IAccountDataRepository dataRepository,
+            IHdWallet_OLD wallet,
+            IAccountDataRepository_OLD dataRepository,
             TezosAccount tezosAccount)
             : base(currency,
                   "FA2",
@@ -97,7 +97,7 @@ namespace Atomex.Wallet.Tezos
 
             var storageLimit = Math.Max(fa2Config.TransferStorageLimit - fa2Config.ActivationStorage, 0); // without activation storage fee
 
-            var tx = new TezosTransaction
+            var tx = new TezosTransaction_OLD
             {
                 Currency     = xtzConfig.Name,
                 CreationTime = DateTime.UtcNow,

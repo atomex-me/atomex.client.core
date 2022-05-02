@@ -12,7 +12,7 @@ using Atomex.Wallet.Abstract;
 
 namespace Atomex.Wallet.Tezos
 {
-    public abstract class TezosTokenAccount : ICurrencyAccount
+    public abstract class TezosTokenAccount : ICurrencyAccount_OLD
     {
         public event EventHandler<CurrencyEventArgs> BalanceUpdated;
 
@@ -23,8 +23,8 @@ namespace Atomex.Wallet.Tezos
         public string Currency { get; }
         public string TokenType { get; }
         public ICurrencies Currencies { get; }
-        public IHdWallet Wallet { get; }
-        public IAccountDataRepository DataRepository { get; }
+        public IHdWallet_OLD Wallet { get; }
+        public IAccountDataRepository_OLD DataRepository { get; }
 
         protected decimal Balance { get; set; }
         protected decimal UnconfirmedIncome { get; set; }
@@ -37,8 +37,8 @@ namespace Atomex.Wallet.Tezos
             string tokenContract,
             decimal tokenId,
             ICurrencies currencies,
-            IHdWallet wallet,
-            IAccountDataRepository dataRepository,
+            IHdWallet_OLD wallet,
+            IAccountDataRepository_OLD dataRepository,
             TezosAccount tezosAccount)
         {
             Currency       = currency ?? throw new ArgumentNullException(nameof(currency));
@@ -60,7 +60,7 @@ namespace Atomex.Wallet.Tezos
 
         #region Balances
 
-        public virtual async Task<Balance> GetAddressBalanceAsync(
+        public virtual async Task<Balance_OLD> GetAddressBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -73,12 +73,12 @@ namespace Atomex.Wallet.Tezos
                     walletAddress.Balance,
                     walletAddress.UnconfirmedIncome,
                     walletAddress.UnconfirmedOutcome)
-                : new Balance();
+                : new Balance_OLD();
         }
 
-        public virtual Balance GetBalance()
+        public virtual Balance_OLD GetBalance()
         {
-            return new Balance(
+            return new Balance_OLD(
                 Balance,
                 UnconfirmedIncome,
                 UnconfirmedOutcome);
@@ -141,7 +141,7 @@ namespace Atomex.Wallet.Tezos
 
         #region Addresses
 
-        public Task<WalletAddress> DivideAddressAsync(
+        public Task<WalletAddress_OLD> DivideAddressAsync(
             KeyIndex keyIndex,
             int keyType)
         {
@@ -152,7 +152,7 @@ namespace Atomex.Wallet.Tezos
                 keyType: keyType);
         }
 
-        public async Task<WalletAddress> DivideAddressAsync(
+        public async Task<WalletAddress_OLD> DivideAddressAsync(
             uint account,
             uint chain,
             uint index,
@@ -183,7 +183,7 @@ namespace Atomex.Wallet.Tezos
             return walletAddress;
         }
 
-        public async Task<WalletAddress> GetAddressAsync(
+        public async Task<WalletAddress_OLD> GetAddressAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -194,21 +194,21 @@ namespace Atomex.Wallet.Tezos
             return walletAddress?.ResolvePublicKey(Currencies, Wallet);
         }
 
-        public Task<IEnumerable<WalletAddress>> GetAddressesAsync(
+        public Task<IEnumerable<WalletAddress_OLD>> GetAddressesAsync(
             CancellationToken cancellationToken = default)
         {
             return DataRepository
                 .GetTezosTokenAddressesByContractAsync(_tokenContract);
         }
 
-        public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+        public Task<IEnumerable<WalletAddress_OLD>> GetUnspentAddressesAsync(
             CancellationToken cancellationToken = default)
         {
             return DataRepository
                 .GetUnspentTezosTokenAddressesAsync(TokenType, _tokenContract, _tokenId);
         }
 
-        public async Task<WalletAddress> GetFreeExternalAddressAsync(
+        public async Task<WalletAddress_OLD> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
             // 1. try to find address with tokens

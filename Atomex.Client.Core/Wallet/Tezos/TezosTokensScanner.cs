@@ -13,7 +13,7 @@ using Atomex.Wallet.Abstract;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class TezosTokensScanner : ICurrencyHdWalletScanner
+    public class TezosTokensScanner : ICurrencyHdWalletScanner_OLD
     {
         private readonly TezosAccount _tezosAccount;
 
@@ -77,7 +77,7 @@ namespace Atomex.Wallet.Tezos
         {
             return Task.Run(async () =>
             {
-                var tzktApi = new TzktApi(_tezosAccount.Config);
+                var tzktApi = new TzktApi_OLD(_tezosAccount.Config);
 
                 var tokenContractsResult = await tzktApi
                     .GetTokenContractsAsync(address, cancellationToken)
@@ -190,7 +190,7 @@ namespace Atomex.Wallet.Tezos
             {
                 var tezosConfig = _tezosAccount.Config;
 
-                var tzktApi = new TzktApi(tezosConfig);
+                var tzktApi = new TzktApi_OLD(tezosConfig);
 
                 var tokenContractsResult = await tzktApi
                     .GetTokenContractsAsync(address, cancellationToken)
@@ -233,7 +233,7 @@ namespace Atomex.Wallet.Tezos
             {
                 var tezosConfig = _tezosAccount.Config;
 
-                var tzktApi = new TzktApi(tezosConfig);
+                var tzktApi = new TzktApi_OLD(tezosConfig);
 
                 var contractType = contractWithMetadata?.Type ?? "FA2";
 
@@ -292,7 +292,7 @@ namespace Atomex.Wallet.Tezos
                     .ConfigureAwait(false);
 
                 var newTokenAddresses = tokenBalanceDict.Values
-                    .Select(tb => new WalletAddress
+                    .Select(tb => new WalletAddress_OLD
                     {
                         Address      = address,
                         Balance      = tb.GetTokenBalance(),

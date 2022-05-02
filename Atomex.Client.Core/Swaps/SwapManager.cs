@@ -27,7 +27,7 @@ namespace Atomex.Swaps
 
         public event EventHandler<SwapEventArgs> SwapUpdated;
 
-        private readonly IAccount _account;
+        private readonly IAccount_OLD _account;
         private readonly ISwapClient _swapClient;
         private readonly ICurrencyQuotesProvider _quotesProvider;
         private readonly IMarketDataRepository _marketDataRepository;
@@ -58,7 +58,7 @@ namespace Atomex.Swaps
         }
 
         public SwapManager(
-            IAccount account,
+            IAccount_OLD account,
             ISwapClient swapClient,
             ICurrencyQuotesProvider quotesProvider,
             IMarketDataRepository marketDataRepository)

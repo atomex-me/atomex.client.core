@@ -18,7 +18,7 @@ namespace Atomex.Services
     {
         protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(48 * 60);
 
-        private readonly IAccount _account;
+        private readonly IAccount_OLD _account;
         private CancellationTokenSource _cts;
 
         public bool IsRunning { get; private set; }
@@ -28,7 +28,7 @@ namespace Atomex.Services
                 ? TimeSpan.FromSeconds(120)
                 : TimeSpan.FromSeconds(45);
 
-        public TransactionsTracker(IAccount account)
+        public TransactionsTracker(IAccount_OLD account)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
@@ -93,7 +93,7 @@ namespace Atomex.Services
         }
 
         private Task TrackTransactionAsync(
-            IBlockchainTransaction tx,
+            IBlockchainTransaction_OLD tx,
             CancellationToken cancellationToken)
         {
             return Task.Run(async () =>
@@ -153,7 +153,7 @@ namespace Atomex.Services
         }
 
         private async void TransactionProcessedHandler(
-            IBlockchainTransaction tx,
+            IBlockchainTransaction_OLD tx,
             CancellationToken cancellationToken)
         {
             try
@@ -187,7 +187,7 @@ namespace Atomex.Services
         }
 
         private async Task UpdateTokenBalanceAsync(
-            IBlockchainTransaction tx,
+            IBlockchainTransaction_OLD tx,
             CancellationToken cancellationToken)
         {
             if (tx.Currency == EthereumConfig.Eth)
@@ -196,7 +196,7 @@ namespace Atomex.Services
             }
             else if (tx.Currency == TezosConfig.Xtz)
             {
-                var tezosTx = tx as TezosTransaction;
+                var tezosTx = tx as TezosTransaction_OLD;
 
                 if (tezosTx.Params == null)
                     return;

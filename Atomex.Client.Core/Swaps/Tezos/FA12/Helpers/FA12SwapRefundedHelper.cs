@@ -28,7 +28,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
 
                 var contractAddress = fa12.SwapContractAddress;
 
-                var blockchainApi = (ITezosBlockchainApi)tezos.BlockchainApi;
+                var blockchainApi = (ITezosBlockchainApi_OLD)tezos.BlockchainApi;
 
                 var txsResult = await blockchainApi
                     .TryGetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
@@ -48,7 +48,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
                 }
 
                 var txs = txsResult.Value
-                    ?.Cast<TezosTransaction>()
+                    ?.Cast<TezosTransaction_OLD>()
                     .ToList();
 
                 if (txs != null)
@@ -113,7 +113,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
             return new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for refund check");
         }
 
-        public static bool IsSwapRefund(TezosTransaction tx, byte[] secretHash)
+        public static bool IsSwapRefund(TezosTransaction_OLD tx, byte[] secretHash)
         {
             try
             {

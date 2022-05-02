@@ -9,7 +9,7 @@ namespace Atomex.Swaps.BitcoinBased
 {
     public interface IBitcoinBasedSwapTransactionFactory
     {
-        Task<IBitcoinBasedTransaction> CreateSwapPaymentTxAsync(
+        Task<IBitcoinBasedTransaction_OLD> CreateSwapPaymentTxAsync(
             IEnumerable<BitcoinBasedTxOutput> fromOutputs,
             long amount,
             string refundAddress,
@@ -20,16 +20,16 @@ namespace Atomex.Swaps.BitcoinBased
             BitcoinBasedConfig currencyConfig,
             CancellationToken cancellationToken = default);
 
-        Task<IBitcoinBasedTransaction> CreateSwapRefundTxAsync(
-            IBitcoinBasedTransaction paymentTx,
+        Task<IBitcoinBasedTransaction_OLD> CreateSwapRefundTxAsync(
+            IBitcoinBasedTransaction_OLD paymentTx,
             long amount,
             string refundAddress,
             byte[] redeemScript,
             DateTimeOffset lockTime,
             BitcoinBasedConfig currency);
 
-        Task<IBitcoinBasedTransaction> CreateSwapRedeemTxAsync(
-            IBitcoinBasedTransaction paymentTx,
+        Task<IBitcoinBasedTransaction_OLD> CreateSwapRedeemTxAsync(
+            IBitcoinBasedTransaction_OLD paymentTx,
             long amount,
             string redeemAddress,
             byte[] redeemScript,

@@ -19,7 +19,7 @@ namespace Atomex.Swaps
     {
         public static ICurrencySwap Create(
             CurrencyConfig currency,
-            IAccount account)
+            IAccount_OLD account)
         {
             return currency switch
             {

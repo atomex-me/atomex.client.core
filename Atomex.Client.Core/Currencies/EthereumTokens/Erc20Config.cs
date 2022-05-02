@@ -90,7 +90,7 @@ namespace Atomex.EthereumTokens
 
             TxExplorerUri              = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri         = configuration[nameof(AddressExplorerUri)];
-            TransactionType            = typeof(EthereumTransaction);
+            TransactionType            = typeof(EthereumTransaction_OLD);
 
             IsSwapAvailable            = true;
             Bip44Code                  = Bip44.Ethereum;  //TODO ?

@@ -14,8 +14,8 @@ namespace Atomex.Client.Core.Tests
             {
                 LeaveQty = leaveQty,
                 Status = status,
-                FromWallets = new List<WalletAddress> {
-                    new WalletAddress { Address = "1234" }
+                FromWallets = new List<WalletAddress_OLD> {
+                    new WalletAddress_OLD { Address = "1234" }
                 }
             };
         }

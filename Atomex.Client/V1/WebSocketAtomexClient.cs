@@ -12,10 +12,7 @@ using Atomex.Client.V1;
 using Atomex.Client.V1.Common;
 using Atomex.Client.V1.Entities;
 using Atomex.Client.V1.Proto;
-using Atomex.MarketData;
-using Atomex.MarketData.Abstract;
 using Atomex.MarketData.Common;
-using Atomex.MarketData.Entities;
 using Error = Atomex.Common.Error;
 
 namespace Atomex.Services
@@ -28,7 +25,9 @@ namespace Atomex.Services
         public event EventHandler<ServiceErrorEventArgs> Error;
         public event EventHandler<OrderEventArgs> OrderReceived;
         public event EventHandler<SwapEventArgs> SwapReceived;
-        public event EventHandler<MarketDataEventArgs> QuotesUpdated;
+        public event EventHandler<QuotesEventArgs> QuotesReceived;
+        public event EventHandler<EntriesEventArgs> EntriesReceived;
+        public event EventHandler<SnapshotEventArgs> SnapshotReceived;
 
         private CancellationTokenSource _exchangeCts;
         private CancellationTokenSource _marketDataCts;
@@ -41,14 +40,9 @@ namespace Atomex.Services
         private readonly string _marketDataUrl;
         private readonly Func<AuthNonce, Task<Auth>> _signAuthDataCallback;
 
-        //public IExchangeDataRepository ExchangeDataRepository { get; private set; }
-        //public IMarketDataRepository MarketDataRepository { get; private set; }
-
         public WebSocketAtomexClient(
             string exchangeUrl,
             string marketDataUrl,
-            //IExchangeDataRepository exchangeDataRepository,
-            IMarketDataRepository marketDataRepository,
             Func<AuthNonce, Task<Auth>> signAuthData,
             ILogger log = null)
         {
@@ -56,11 +50,6 @@ namespace Atomex.Services
             _marketDataUrl = marketDataUrl ?? throw new ArgumentNullException(nameof(marketDataUrl));
             _signAuthDataCallback = signAuthData ?? throw new ArgumentNullException(nameof(signAuthData));
             _log = log;
-
-            //ExchangeDataRepository = exchangeDataRepository
-            //    ?? throw new ArgumentNullException(nameof(exchangeDataRepository));
-            //MarketDataRepository = marketDataRepository
-            //    ?? throw new ArgumentNullException(nameof(marketDataRepository));
         }
 
         public bool IsServiceConnected(Service service)
@@ -148,8 +137,6 @@ namespace Atomex.Services
                 _marketDataClient.QuotesReceived   -= OnQuotesReceivedEventHandler;
                 _marketDataClient.EntriesReceived  -= OnEntriesReceivedEventHandler;
                 _marketDataClient.SnapshotReceived -= OnSnapshotReceivedEventHandler;
-
-                MarketDataRepository.Clear();
             }
             catch (Exception e)
             {
@@ -157,16 +144,10 @@ namespace Atomex.Services
             }
         }
 
-        public async void OrderSendAsync(Order order)
+        public void OrderSendAsync(Order order)
         {
-            //order.ClientOrderId = Guid.NewGuid().ToString();
-
             try
             {
-                //await ExchangeDataRepository
-                //    .UpsertOrderAsync(order)
-                //    .ConfigureAwait(false);
-
                 _exchangeClient.OrderSendAsync(order);
             }
             catch (Exception e)
@@ -183,11 +164,6 @@ namespace Atomex.Services
                 new Subscription { Type = type }
             });
 
-        public OrderBook GetOrderBook(string symbol) =>
-            MarketDataRepository?.OrderBookBySymbol(symbol);
-
-        public Quote GetQuote(string symbol) =>
-            MarketDataRepository?.QuoteBySymbol(symbol);
 
         #region ExchangeEventHandlers
 
@@ -376,32 +352,21 @@ namespace Atomex.Services
         {
             _log.LogTrace("Quotes: {@quotes}", args.Quotes);
 
-            MarketDataRepository.ApplyQuotes(args.Quotes);
-
-            var symbolsIds = new HashSet<string>();
-
-            foreach (var quote in args.Quotes)
-                if (!symbolsIds.Contains(quote.Symbol))
-                    symbolsIds.Add(quote.Symbol);
-
-            foreach (var symbolId in symbolsIds)
-                QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbolId));
+            QuotesReceived?.Invoke(this, args);
         }
 
         private void OnEntriesReceivedEventHandler(object sender, EntriesEventArgs args)
         {
             _log.LogTrace("Entries: {@entries}", args.Entries);
 
-            MarketDataRepository.ApplyEntries(args.Entries);
+            EntriesReceived?.Invoke(this, args);
         }
 
         private void OnSnapshotReceivedEventHandler(object sender, SnapshotEventArgs args)
         {
             _log.LogTrace("Snapshot: {@snapshot}", args.Snapshot);
 
-            MarketDataRepository.ApplySnapshot(args.Snapshot);
-
-            QuotesUpdated?.Invoke(this, new MarketDataEventArgs(args.Snapshot.Symbol));
+            SnapshotReceived?.Invoke(this, args);
         }
 
         #endregion
@@ -412,12 +377,6 @@ namespace Atomex.Services
         {
             try
             {
-                if (args.Swap == null)
-                {
-                    OnError(Service.Exchange, "Null swap received");
-                    return;
-                }
-
                 SwapReceived?.Invoke(this, args);
             }
             catch (Exception e)
@@ -427,15 +386,6 @@ namespace Atomex.Services
         }
 
         #endregion
-
-        private void OnError(Service service, string description)
-        {
-            _log.LogError(description);
-
-            Error?.Invoke(this, new ServiceErrorEventArgs(
-                error: new Error(Errors.InternalError, description),
-                service: service));
-        }
 
         private void OnError(Service service, Exception exception)
         {

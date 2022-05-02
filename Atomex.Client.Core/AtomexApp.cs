@@ -14,8 +14,8 @@ namespace Atomex
     {
         public event EventHandler<AtomexClientChangedEventArgs> AtomexClientChanged;
 
-        public IAtomexClient AtomexClient { get; private set; }
-        public IAccount Account => AtomexClient?.Account;
+        public IAtomexClient_OLD AtomexClient { get; private set; }
+        public IAccount_OLD Account => AtomexClient?.Account;
         public ICurrencyQuotesProvider QuotesProvider { get; private set; }
         public ICurrencyOrderBookProvider OrderBooksProvider { get; private set; }
         public ICurrenciesProvider CurrenciesProvider { get; private set; }
@@ -94,7 +94,7 @@ namespace Atomex
                 .ConfigureAwait(false);
         }
 
-        public IAtomexApp UseAtomexClient(IAtomexClient atomexClient, bool restart = false)
+        public IAtomexApp UseAtomexClient(IAtomexClient_OLD atomexClient, bool restart = false)
         {
             if (AtomexClient != null)
             {

@@ -12,7 +12,7 @@ namespace Atomex.Wallet.Abstract
         event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded;
 
         Task UpsertTransactionAsync(
-            IBlockchainTransaction tx,
+            IBlockchainTransaction_OLD tx,
             bool updateBalance = false,
             bool notifyIfUnconfirmed = true,
             bool notifyIfBalanceUpdated = true,

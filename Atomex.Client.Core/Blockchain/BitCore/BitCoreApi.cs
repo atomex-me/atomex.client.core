@@ -16,7 +16,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Atomex.Blockchain.BitCore
 {
-    public class BitCoreApi : BitcoinBasedBlockchainApi
+    public class BitCoreApi : BitcoinBasedBlockchainApi_OLD
     {
         internal class RawTx
         {
@@ -159,7 +159,7 @@ namespace Atomex.Blockchain.BitCore
                 .ConfigureAwait(false);
         }
 
-        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public override async Task<Result<IBlockchainTransaction_OLD>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
@@ -178,7 +178,7 @@ namespace Atomex.Blockchain.BitCore
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
+            return await HttpHelper.GetAsyncResult<IBlockchainTransaction_OLD>(
                     baseUri: BaseUri,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
@@ -203,14 +203,14 @@ namespace Atomex.Blockchain.BitCore
         }
 
         public override async Task<Result<string>> BroadcastAsync(
-            IBlockchainTransaction transaction,
+            IBlockchainTransaction_OLD transaction,
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
                 .Wait(cancellationToken)
                 .ConfigureAwait(false);
 
-            var tx = (IBitcoinBasedTransaction)transaction;
+            var tx = (IBitcoinBasedTransaction_OLD)transaction;
             var txHex = tx.ToBytes().ToHexString();
 
             tx.State = BlockchainTransactionState.Pending;

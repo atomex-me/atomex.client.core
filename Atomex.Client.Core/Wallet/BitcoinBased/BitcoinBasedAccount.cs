@@ -19,15 +19,15 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.BitcoinBased
 {
-    public class BitcoinBasedAccount : CurrencyAccount, IAddressResolver, IEstimatable
+    public class BitcoinBasedAccount : CurrencyAccount_OLD, IAddressResolver, IEstimatable
     {
         public BitcoinBasedConfig Config => Currencies.Get<BitcoinBasedConfig>(Currency);
 
         public BitcoinBasedAccount(
             string currency,
             ICurrencies currencies,
-            IHdWallet wallet,
-            IAccountDataRepository dataRepository)
+            IHdWallet_OLD wallet,
+            IAccountDataRepository_OLD dataRepository)
                 : base(currency, currencies, wallet, dataRepository)
         {
         }
@@ -299,7 +299,7 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         protected override async Task<bool> ResolveTransactionTypeAsync(
-            IBlockchainTransaction tx,
+            IBlockchainTransaction_OLD tx,
             CancellationToken cancellationToken = default)
         {
             var currency = Config;
@@ -317,7 +317,7 @@ namespace Atomex.Wallet.BitcoinBased
 
             var indexedOutputs = outputs.ToDictionary(o => $"{o.TxId}:{o.Index}");
 
-            var btcBasedTx = (IBitcoinBasedTransaction) tx;
+            var btcBasedTx = (IBitcoinBasedTransaction_OLD) tx;
 
             var selfInputs = btcBasedTx.Inputs
                 .Where(i => indexedOutputs.ContainsKey($"{i.Hash}:{i.Index}"))
@@ -372,7 +372,7 @@ namespace Atomex.Wallet.BitcoinBased
                     var totalBalance = 0m;
                     var totalUnconfirmedIncome = 0m;
                     var totalUnconfirmedOutcome = 0m;
-                    var addressBalances = new Dictionary<string, WalletAddress>();
+                    var addressBalances = new Dictionary<string, WalletAddress_OLD>();
 
                     foreach (var o in outputs)
                     {
@@ -522,7 +522,7 @@ namespace Atomex.Wallet.BitcoinBased
 
         #region Addresses
 
-        public virtual async Task<WalletAddress> GetFreeInternalAddressAsync(
+        public virtual async Task<WalletAddress_OLD> GetFreeInternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
             var lastActiveAddress = await DataRepository
@@ -540,7 +540,7 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public async Task<WalletAddress> GetRefundAddressAsync(
+        public async Task<WalletAddress_OLD> GetRefundAddressAsync(
             CancellationToken cancellationToken = default)
         {
             var refundAddress = await GetFreeInternalAddressAsync(cancellationToken)
@@ -554,13 +554,13 @@ namespace Atomex.Wallet.BitcoinBased
         #region Transactions
 
         public override async Task UpsertTransactionAsync(
-            IBlockchainTransaction tx,
+            IBlockchainTransaction_OLD tx,
             bool updateBalance = false,
             bool notifyIfUnconfirmed = true,
             bool notifyIfBalanceUpdated = true,
             CancellationToken cancellationToken = default)
         {
-            if (tx is not IBitcoinBasedTransaction btcBasedTx)
+            if (tx is not IBitcoinBasedTransaction_OLD btcBasedTx)
                 throw new NotSupportedException("Transaction has incorrect type");
 
             await UpsertOutputsAsync(
@@ -592,7 +592,7 @@ namespace Atomex.Wallet.BitcoinBased
                 RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
         }
 
-        public Task<IBlockchainTransaction> GetTransactionByIdAsync(string txId)
+        public Task<IBlockchainTransaction_OLD> GetTransactionByIdAsync(string txId)
         {
             var currency = Currencies.GetByName(Currency);
 
@@ -621,7 +621,7 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         private async Task UpsertOutputsAsync(
-            IInOutTransaction tx,
+            IInOutTransaction_OLD tx,
             CancellationToken cancellationToken = default)
         {
             // update & save self outputs
@@ -734,7 +734,7 @@ namespace Atomex.Wallet.BitcoinBased
 
         #region AddressResolver
 
-        public Task<WalletAddress> GetAddressAsync(
+        public Task<WalletAddress_OLD> GetAddressAsync(
             string currency,
             string address,
             CancellationToken cancellationToken = default)

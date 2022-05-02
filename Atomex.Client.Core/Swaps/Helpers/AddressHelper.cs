@@ -12,14 +12,14 @@ namespace Atomex.Swaps.Helpers
             TCurrencyAccount account,
             string address,
             CancellationToken cancellationToken = default)
-                where TWalletScanner : ICurrencyHdWalletScanner
-                where TCurrencyAccount : ICurrencyAccount
+                where TWalletScanner : ICurrencyHdWalletScanner_OLD
+                where TCurrencyAccount : ICurrencyAccount_OLD
         {
             return Task.Run(async () =>
             {
                 try
                 {
-                    var scanner = (ICurrencyHdWalletScanner)Activator.CreateInstance(typeof(TWalletScanner), account);
+                    var scanner = (ICurrencyHdWalletScanner_OLD)Activator.CreateInstance(typeof(TWalletScanner), account);
 
                     await scanner
                         .ScanAsync(address, cancellationToken)
@@ -42,15 +42,15 @@ namespace Atomex.Swaps.Helpers
             TBaseCurrencyAccount baseAccount,
             string address,
             CancellationToken cancellationToken = default)
-                where TWalletScanner : ICurrencyHdWalletScanner
-                where TCurrencyAccount : ICurrencyAccount
-                where TBaseCurrencyAccount : ICurrencyAccount
+                where TWalletScanner : ICurrencyHdWalletScanner_OLD
+                where TCurrencyAccount : ICurrencyAccount_OLD
+                where TBaseCurrencyAccount : ICurrencyAccount_OLD
         {
             return Task.Run(async () =>
             {
                 try
                 {
-                    var scanner = (ICurrencyHdWalletScanner)Activator.CreateInstance(
+                    var scanner = (ICurrencyHdWalletScanner_OLD)Activator.CreateInstance(
                         typeof(TWalletScanner),
                         account,
                         baseAccount);

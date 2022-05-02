@@ -111,29 +111,29 @@ namespace Atomex.Core
             set { _secretHash = value; StateFlags |= SwapStateFlags.HasSecretHash; }
         }
 
-        private IBlockchainTransaction _paymentTx;
-        public IBlockchainTransaction PaymentTx
+        private IBlockchainTransaction_OLD _paymentTx;
+        public IBlockchainTransaction_OLD PaymentTx
         {
             get => _paymentTx;
             set { _paymentTx = value; if (_paymentTx != null) StateFlags |= SwapStateFlags.HasPayment; }
         }
 
-        private IBlockchainTransaction _refundTx;
-        public IBlockchainTransaction RefundTx
+        private IBlockchainTransaction_OLD _refundTx;
+        public IBlockchainTransaction_OLD RefundTx
         {
             get => _refundTx;
             set { _refundTx = value; if (_refundTx != null) StateFlags |= SwapStateFlags.HasRefund; }
         }
 
-        private IBlockchainTransaction _redeemTx;
-        public IBlockchainTransaction RedeemTx
+        private IBlockchainTransaction_OLD _redeemTx;
+        public IBlockchainTransaction_OLD RedeemTx
         {
             get => _redeemTx;
             set { _redeemTx = value; if (_redeemTx != null) StateFlags |= SwapStateFlags.HasRedeem; }
         }
 
-        private IBlockchainTransaction _partyPaymentTx;
-        public IBlockchainTransaction PartyPaymentTx
+        private IBlockchainTransaction_OLD _partyPaymentTx;
+        public IBlockchainTransaction_OLD PartyPaymentTx
         {
             get => _partyPaymentTx;
             set { _partyPaymentTx = value; if (_partyPaymentTx != null) StateFlags |= SwapStateFlags.HasPartyPayment; }

@@ -12,12 +12,12 @@ namespace Atomex.Wallet
 {
     public static class CurrencyAccountCreator
     {
-        public static IDictionary<string, ICurrencyAccount> Create(
+        public static IDictionary<string, ICurrencyAccount_OLD> Create(
             ICurrencies currencies,
-            IHdWallet wallet,
-            IAccountDataRepository dataRepository)
+            IHdWallet_OLD wallet,
+            IAccountDataRepository_OLD dataRepository)
         {
-            var accounts = new Dictionary<string, ICurrencyAccount>();
+            var accounts = new Dictionary<string, ICurrencyAccount_OLD>();
 
             foreach (var currency in currencies)
             {
@@ -54,16 +54,16 @@ namespace Atomex.Wallet
             return accounts;
         }
 
-        public static ICurrencyAccount CreateCurrencyAccount(
+        public static ICurrencyAccount_OLD CreateCurrencyAccount(
             string currency,
-            IHdWallet wallet,
-            IAccountDataRepository dataRepository,
+            IHdWallet_OLD wallet,
+            IAccountDataRepository_OLD dataRepository,
             ICurrencies currencies,
-            ICurrencyAccount baseChainAccount = null)
+            ICurrencyAccount_OLD baseChainAccount = null)
         {
             return currency switch
             {
-                "BTC" or "LTC" => (ICurrencyAccount) new BitcoinBasedAccount(
+                "BTC" or "LTC" => (ICurrencyAccount_OLD) new BitcoinBasedAccount(
                     currency,
                     currencies,
                     wallet,
@@ -101,13 +101,13 @@ namespace Atomex.Wallet
             };
         }
 
-        public static ICurrencyAccount CreateTezosTokenAccount(
+        public static ICurrencyAccount_OLD CreateTezosTokenAccount(
             string tokenType,
             string tokenContract,
             decimal tokenId,
             ICurrencies currencies,
-            IHdWallet wallet,
-            IAccountDataRepository dataRepository,
+            IHdWallet_OLD wallet,
+            IAccountDataRepository_OLD dataRepository,
             TezosAccount tezosAccount)
         {
             return tokenType switch

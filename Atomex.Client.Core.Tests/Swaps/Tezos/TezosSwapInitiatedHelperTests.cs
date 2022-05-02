@@ -16,7 +16,7 @@ namespace Atomex.Client.Core.Tests
         {
             var swap = new Swap
             {
-                PaymentTx            = new TezosTransaction { From = "tz1aKTCbAUuea2RV9kxqRVRg3HT7f1RKnp6a" },
+                PaymentTx            = new TezosTransaction_OLD { From = "tz1aKTCbAUuea2RV9kxqRVRg3HT7f1RKnp6a" },
                 IsInitiative         = true,
                 TimeStamp            = new DateTime(637778613995020000),
                 Side                 = Side.Sell,

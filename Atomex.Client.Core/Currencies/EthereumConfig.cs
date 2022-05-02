@@ -126,7 +126,7 @@ namespace Atomex
 
             TxExplorerUri              = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri         = configuration[nameof(AddressExplorerUri)];
-            TransactionType            = typeof(EthereumTransaction);
+            TransactionType            = typeof(EthereumTransaction_OLD);
 
             IsSwapAvailable            = true;
             Bip44Code                  = Bip44.Ethereum;
@@ -145,7 +145,7 @@ namespace Atomex
             };
         }
 
-        protected static IBlockchainApi ResolveBlockchainApi(
+        protected static IBlockchainApi_OLD ResolveBlockchainApi(
             IConfiguration configuration,
             EthereumConfig currency)
         {

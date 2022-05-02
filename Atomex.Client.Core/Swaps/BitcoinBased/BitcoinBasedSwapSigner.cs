@@ -20,8 +20,8 @@ namespace Atomex.Swaps.BitcoinBased
             Account = account ?? throw new ArgumentNullException(nameof(account));
         }
 
-        public async Task<IBitcoinBasedTransaction> SignPaymentTxAsync(
-            IBitcoinBasedTransaction paymentTx)
+        public async Task<IBitcoinBasedTransaction_OLD> SignPaymentTxAsync(
+            IBitcoinBasedTransaction_OLD paymentTx)
         {
             var tx = paymentTx.Clone();
 
@@ -56,19 +56,19 @@ namespace Atomex.Swaps.BitcoinBased
             return tx;
         }
 
-        public Task<IBitcoinBasedTransaction> SignRefundTxAsync(
-            IBitcoinBasedTransaction refundTx,
-            IBitcoinBasedTransaction paymentTx,
-            WalletAddress refundAddress,
+        public Task<IBitcoinBasedTransaction_OLD> SignRefundTxAsync(
+            IBitcoinBasedTransaction_OLD refundTx,
+            IBitcoinBasedTransaction_OLD paymentTx,
+            WalletAddress_OLD refundAddress,
             byte[] redeemScript)
         {
             return SignHtlcSwapRefundForP2ShTxAsync(refundTx, paymentTx, refundAddress, redeemScript);
         }
 
-        public async Task<IBitcoinBasedTransaction> SignHtlcSwapRefundForP2ShTxAsync(
-            IBitcoinBasedTransaction refundTx,
-            IBitcoinBasedTransaction paymentTx,
-            WalletAddress refundAddress,
+        public async Task<IBitcoinBasedTransaction_OLD> SignHtlcSwapRefundForP2ShTxAsync(
+            IBitcoinBasedTransaction_OLD refundTx,
+            IBitcoinBasedTransaction_OLD paymentTx,
+            WalletAddress_OLD refundAddress,
             byte[] redeemScript)
         {
             var tx = refundTx.Clone();
@@ -127,20 +127,20 @@ namespace Atomex.Swaps.BitcoinBased
             return tx;
         }
 
-        public Task<IBitcoinBasedTransaction> SignRedeemTxAsync(
-            IBitcoinBasedTransaction redeemTx,
-            IBitcoinBasedTransaction paymentTx,
-            WalletAddress redeemAddress,
+        public Task<IBitcoinBasedTransaction_OLD> SignRedeemTxAsync(
+            IBitcoinBasedTransaction_OLD redeemTx,
+            IBitcoinBasedTransaction_OLD paymentTx,
+            WalletAddress_OLD redeemAddress,
             byte[] secret,
             byte[] redeemScript)
         {
             return SignHtlcSwapRedeemForP2ShTxAsync(redeemTx, paymentTx, redeemAddress, secret, redeemScript);
         }
 
-        public async Task<IBitcoinBasedTransaction> SignHtlcSwapRedeemForP2ShTxAsync(
-            IBitcoinBasedTransaction redeemTx,
-            IBitcoinBasedTransaction paymentTx,
-            WalletAddress redeemAddress,
+        public async Task<IBitcoinBasedTransaction_OLD> SignHtlcSwapRedeemForP2ShTxAsync(
+            IBitcoinBasedTransaction_OLD redeemTx,
+            IBitcoinBasedTransaction_OLD paymentTx,
+            WalletAddress_OLD redeemAddress,
             byte[] secret,
             byte[] redeemScript)
         {

@@ -5,6 +5,7 @@ using Atomex.Client.Common;
 using Atomex.Client.V1.Common;
 using Atomex.Client.V1.Entities;
 using Atomex.Common;
+using Atomex.MarketData.Common;
 
 namespace Atomex.Client.Abstract
 {
@@ -14,7 +15,9 @@ namespace Atomex.Client.Abstract
         event EventHandler<ServiceErrorEventArgs> Error;
         event EventHandler<OrderEventArgs> OrderReceived;
         event EventHandler<SwapEventArgs> SwapReceived;
-        event EventHandler<MarketDataEventArgs> QuotesUpdated;
+        event EventHandler<QuotesEventArgs> QuotesReceived;
+        event EventHandler<EntriesEventArgs> EntriesReceived;
+        event EventHandler<SnapshotEventArgs> SnapshotReceived;
 
         bool IsServiceConnected(Service service);
         Task StartAsync();

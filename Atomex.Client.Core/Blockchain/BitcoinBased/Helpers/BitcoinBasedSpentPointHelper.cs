@@ -19,7 +19,7 @@ namespace Atomex.Blockchain.BitcoinBased.Helpers
         {
             try
             {
-                if (!(currency.BlockchainApi is BitcoinBasedBlockchainApi api))
+                if (!(currency.BlockchainApi is BitcoinBasedBlockchainApi_OLD api))
                 {
                     Log.Error("Api is null for currency {@currency}", currency.Name);
                     return new Error(Errors.InternalError, $"Api is null for currency {currency.Name}");

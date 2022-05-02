@@ -8,7 +8,7 @@ namespace Atomex.Wallet.Abstract
 {
     public interface IHasTokens
     {
-        Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+        Task<IEnumerable<WalletAddress_OLD>> GetUnspentTokenAddressesAsync(
             CancellationToken cancellationToken = default);
     }
 }

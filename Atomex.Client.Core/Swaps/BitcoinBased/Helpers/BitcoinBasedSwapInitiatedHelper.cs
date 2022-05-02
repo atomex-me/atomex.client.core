@@ -15,7 +15,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
 {
     public class BitcoinBasedSwapInitiatedHelper
     {
-        public static async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public static async Task<Result<IBlockchainTransaction_OLD>> TryToFindPaymentAsync(
             Swap swap,
             CurrencyConfig currency,
             Side side,
@@ -50,7 +50,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                     .GetDestinationAddress(bitcoinBased.Network)
                     .ToString();
 
-                var api = bitcoinBased.BlockchainApi as BitcoinBasedBlockchainApi;
+                var api = bitcoinBased.BlockchainApi as BitcoinBasedBlockchainApi_OLD;
 
                 var outputsResult = await api
                     .GetOutputsAsync(redeemScriptAddress, null, cancellationToken)
@@ -90,7 +90,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                     return txResult.Value as BitcoinBasedTransaction;
                 }
 
-                return new Result<IBlockchainTransaction>((IBitcoinBasedTransaction)null);
+                return new Result<IBlockchainTransaction_OLD>((IBitcoinBasedTransaction_OLD)null);
             }
             catch (Exception e)
             {

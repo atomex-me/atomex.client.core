@@ -113,7 +113,7 @@ namespace Atomex.TezosTokens
             TxExplorerUri           = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
             SwapContractAddress     = configuration["SwapContract"];
-            TransactionType         = typeof(TezosTransaction);
+            TransactionType         = typeof(TezosTransaction_OLD);
 
             IsSwapAvailable         = false;
             Bip44Code               = Bip44.Tezos; 

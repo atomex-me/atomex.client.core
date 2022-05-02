@@ -16,14 +16,14 @@ namespace Atomex.Swaps.Tezos.Helpers
 {
     public static class TezosSwapInitiatedHelper
     {
-        public static async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public static async Task<Result<IBlockchainTransaction_OLD>> TryToFindPaymentAsync(
             Swap swap,
             CurrencyConfig currency,
             CancellationToken cancellationToken = default)
         {
             var tezos = currency as TezosConfig;
 
-            if (swap.PaymentTx is not TezosTransaction paymentTx)
+            if (swap.PaymentTx is not TezosTransaction_OLD paymentTx)
                 return new Error(Errors.SwapError, "Saved tx is null");
 
             var lockTimeInSeconds = swap.IsInitiator
@@ -43,7 +43,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                 $"&parameter.settings.hashed_secret={swap.SecretHash.ToHexString()}" +
                 $"&parameter.settings.payoff={(long)rewardForRedeemInMtz}";
 
-            var api = tezos.BlockchainApi as ITezosBlockchainApi;
+            var api = tezos.BlockchainApi as ITezosBlockchainApi_OLD;
 
             var txsResult = await api
                 .TryGetTransactionsAsync(
@@ -63,7 +63,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                 if (tx.State != BlockchainTransactionState.Failed)
                     return tx;
 
-            return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
+            return new Result<IBlockchainTransaction_OLD>((IBlockchainTransaction_OLD)null);
         }
 
         public static async Task<Result<bool>> IsInitiatedAsync(
@@ -92,7 +92,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                 var detectedAmountInMtz = 0m;
                 var detectedRedeemFeeAmountInMtz = 0m;
 
-                var blockchainApi = (ITezosBlockchainApi)tezos.BlockchainApi;
+                var blockchainApi = (ITezosBlockchainApi_OLD)tezos.BlockchainApi;
 
                 var txsResult = await blockchainApi
                     .TryGetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
@@ -112,7 +112,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                 }
 
                 var txs = txsResult.Value
-                    ?.Cast<TezosTransaction>()
+                    ?.Cast<TezosTransaction_OLD>()
                     .ToList();
 
                 if (txs == null || !txs.Any())
@@ -239,7 +239,7 @@ namespace Atomex.Swaps.Tezos.Helpers
             }, cancellationToken);
         }
 
-        public static bool IsSwapInit(TezosTransaction tx, long refundTimestamp, byte[] secretHash, string participant)
+        public static bool IsSwapInit(TezosTransaction_OLD tx, long refundTimestamp, byte[] secretHash, string participant)
         {
             try
             {
@@ -296,7 +296,7 @@ namespace Atomex.Swaps.Tezos.Helpers
             return true;
         }
 
-        public static bool IsSwapAdd(TezosTransaction tx, byte[] secretHash)
+        public static bool IsSwapAdd(TezosTransaction_OLD tx, byte[] secretHash)
         {
             try
             {
@@ -324,7 +324,7 @@ namespace Atomex.Swaps.Tezos.Helpers
             return addParams?["bytes"]?.Value<string>() == secretHash;
         }
 
-        public static decimal GetRedeemFee(TezosTransaction tx)
+        public static decimal GetRedeemFee(TezosTransaction_OLD tx)
         {
             var entrypoint = tx.Params?["entrypoint"]?.ToString();
 
