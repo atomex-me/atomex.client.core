@@ -671,7 +671,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             string address,
             string contractAddress = null,
             decimal? tokenId = null,
-            int count = 100,
+            int count = 80,
             CancellationToken cancellationToken = default)
         {
             var offset = 0;
@@ -683,11 +683,11 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 var limit = Math.Min(count - transfers.Count, PageSize);
 
                 var requestUri = $"tokens/transfers?" +
-                    $"anyof.from.to={address}" +
-                    $"&offset={offset}" +
-                    $"&limit={limit}" +
-                    (contractAddress != null ? $"&token.contract={contractAddress}" : "") +
-                    (tokenId != null ? $"&token.tokenId={tokenId}" : "");
+                                 $"anyof.from.to={address}" +
+                                 $"&offset={offset}" +
+                                 $"&limit={limit}" +
+                                 (contractAddress != null ? $"&token.contract={contractAddress}" : "") +
+                                 (tokenId != null ? $"&token.tokenId={tokenId}" : "");
 
                 var res = await HttpHelper
                     .GetAsyncResult<List<TokenTransferResponse>>(
@@ -717,10 +717,10 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     
                     transfers.AddRange(res.Value.Select(
                         (x, index) => x.ToTokenTransfer(
-                            tokenOperationRes.Value[index].Hash,
-                            tokenOperationRes.Value[index].Counter, 
-                            tokenOperationRes.Value[index].Nonce)
-                        )
+                            tokenOperationRes.Value.ElementAtOrDefault(index)?.Hash ?? string.Empty,
+                            tokenOperationRes.Value.ElementAtOrDefault(index)?.Counter ?? 0,
+                            tokenOperationRes.Value.ElementAtOrDefault(index)?.Nonce
+                        ))
                     );
                     
                     offset += res.Value.Count;
