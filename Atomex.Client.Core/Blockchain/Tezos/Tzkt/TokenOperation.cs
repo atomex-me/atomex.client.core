@@ -6,6 +6,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
     {
         [JsonPropertyName("hash")] public string Hash { get; set; }
         [JsonPropertyName("counter")] public int Counter { get; set; }
+        [JsonPropertyName("id")] public int? Id { get; set; }
         [JsonPropertyName("nonce")] public int? Nonce { get; set; }
     }
 }
