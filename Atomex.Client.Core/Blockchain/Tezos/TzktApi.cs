@@ -671,7 +671,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             string address,
             string contractAddress = null,
             decimal? tokenId = null,
-            int count = 80,
+            int count = 100,
             CancellationToken cancellationToken = default)
         {
             var offset = 0;
