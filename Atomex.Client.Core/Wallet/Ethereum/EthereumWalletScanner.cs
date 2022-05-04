@@ -19,7 +19,7 @@ namespace Atomex.Wallet.Ethereum
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
         private EthereumAccount Account { get; }
-        private CurrencyConfig Currency => Account.Currencies.GetByName(Account.Currency);
+        private CurrencyConfig_OLD Currency => Account.Currencies.GetByName(Account.Currency);
 
 
         public EthereumWalletScanner(EthereumAccount account)
@@ -57,7 +57,7 @@ namespace Atomex.Wallet.Ethereum
                             account: Bip44.DefaultAccount,
                             chain: param.Chain,
                             index: index,
-                            keyType: CurrencyConfig.StandardKey)
+                            keyType: CurrencyConfig_OLD.StandardKey)
                         .ConfigureAwait(false);
 
                     if (walletAddress == null)

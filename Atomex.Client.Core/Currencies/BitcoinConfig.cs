@@ -18,7 +18,7 @@ using FeeRate = Atomex.Blockchain.BitcoinBased.FeeRate;
 
 namespace Atomex
 {
-    public class BitcoinConfig : BitcoinBasedConfig
+    public class BitcoinConfig : BitcoinBasedConfig_OLD
     {
         private const long BtcDigitsMultiplier = 100_000_000;
 

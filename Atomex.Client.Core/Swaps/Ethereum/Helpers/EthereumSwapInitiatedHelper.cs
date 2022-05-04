@@ -18,7 +18,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
         public static async Task<Result<IBlockchainTransaction_OLD>> TryToFindPaymentAsync(
             Swap swap,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             CancellationToken cancellationToken = default)
         {
             var ethereum = currency as Atomex.EthereumConfig;
@@ -70,7 +70,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
         public static async Task<Result<bool>> IsInitiatedAsync(
             Swap swap,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             long refundTimeStamp,
             CancellationToken cancellationToken = default)
         {
@@ -196,7 +196,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
         public static Task StartSwapInitiatedControlAsync(
             Swap swap,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             long refundTimeStamp,
             TimeSpan interval,
             Func<Swap, CancellationToken, Task> initiatedHandler = null,

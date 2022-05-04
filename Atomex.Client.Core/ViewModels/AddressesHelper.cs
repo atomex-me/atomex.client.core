@@ -15,7 +15,7 @@ namespace Atomex.ViewModels
 
         public static async Task<IEnumerable<WalletAddressViewModel>> GetReceivingAddressesAsync(
             IAccount_OLD account,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             string tokenContract = null)
         {
             var isTezosToken = Currencies.IsTezosToken(currency.Name) || tokenContract != null;

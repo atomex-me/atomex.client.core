@@ -21,8 +21,6 @@ namespace Atomex.Common
 
         public static IList<T> ForEachDo<T>(this IList<T> list, Action<T> action)
         {
-            //list.ForEach(action);
-
             foreach (var item in list)
                 action(item);
 

@@ -18,13 +18,13 @@ namespace Atomex.Swaps
     public static class CurrencySwapCreator
     {
         public static ICurrencySwap Create(
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             IAccount_OLD account)
         {
             return currency switch
             {
-                BitcoinBasedConfig _ => new BitcoinBasedSwap(
-                    account: account.GetCurrencyAccount<BitcoinBasedAccount>(currency.Name),
+                BitcoinBasedConfig_OLD _ => new BitcoinBasedSwap(
+                    account: account.GetCurrencyAccount<BitcoinBasedAccount_OLD>(currency.Name),
                     currencies: account.Currencies),
 
                 Erc20Config _ => new Erc20Swap(

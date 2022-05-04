@@ -51,7 +51,7 @@ namespace Atomex.Blockchain.Bitcoin
                     signature: new TransactionSignature(signature, SigHash)),
 
                 _ => Signer?.CreateSignatureScript(signature, publicKey, KnownRedeemScript)
-                    ?? throw new Exception("Signer not specified for P2SH or P2WSH output.")
+                    ?? throw new Exception("Signer not specified for P2SH or P2WSH output")
             };
         }
 

@@ -312,12 +312,12 @@ namespace Atomex.Blockchain.SoChain
 
         private readonly bool _useProxy = false;
 
-        public BitcoinBasedConfig Currency { get; }
+        public BitcoinBasedConfig_OLD Currency { get; }
         public string NetworkAcronym { get; }
         public string BaseUrl { get; } = "https://sochain.com/";
         public string ProxyUrl { get; } = "https://test.atomex.me/";
 
-        public SoChainApi(BitcoinBasedConfig currency, string baseUri)
+        public SoChainApi(BitcoinBasedConfig_OLD currency, string baseUri)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
 
@@ -330,7 +330,7 @@ namespace Atomex.Blockchain.SoChain
             BaseUrl = baseUri;
         }
 
-        public SoChainApi(BitcoinBasedConfig currency, IConfiguration configuration)
+        public SoChainApi(BitcoinBasedConfig_OLD currency, IConfiguration configuration)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
 

@@ -74,26 +74,26 @@ namespace Atomex.Client.Core.Tests
         public static Symbol EthBtcTestNet => SymbolsTestNet.GetByName("ETH/BTC");
         public static Symbol LtcBtcTestNet => SymbolsTestNet.GetByName("LTC/BTC");
 
-        public static string AliceAddress(BitcoinBasedConfig currency)
+        public static string AliceAddress(BitcoinBasedConfig_OLD currency)
         {
             return Alice.PubKey
                 .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
                 .ToString();
         }
 
-        public static string BobAddress(BitcoinBasedConfig currency)
+        public static string BobAddress(BitcoinBasedConfig_OLD currency)
         {
             return Bob.PubKey
                 .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
                 .ToString();
         }
 
-        public static string AliceSegwitAddress(BitcoinBasedConfig currency) =>
+        public static string AliceSegwitAddress(BitcoinBasedConfig_OLD currency) =>
             Alice.PubKey
                 .GetAddress(ScriptPubKeyType.Segwit, currency.Network)
                 .ToString();
 
-        public static string BobSegwitAddress(BitcoinBasedConfig currency) =>
+        public static string BobSegwitAddress(BitcoinBasedConfig_OLD currency) =>
             Bob.PubKey
                 .GetAddress(ScriptPubKeyType.Segwit, currency.Network)
                 .ToString();

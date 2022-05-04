@@ -46,7 +46,7 @@ namespace Atomex.Wallet.Abstract
         Task EncryptAsync(SecureString password);
 
         WalletAddress_OLD GetAddress(
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             KeyIndex keyIndex,
             int keyType);
 
@@ -60,7 +60,7 @@ namespace Atomex.Wallet.Abstract
         /// <param name="keyType">Key type</param>
         /// <returns>Address</returns>
         WalletAddress_OLD GetAddress(
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             uint account,
             uint chain,
             uint index,
@@ -74,7 +74,7 @@ namespace Atomex.Wallet.Abstract
         /// <param name="keyType">Key type</param>
         /// <returns>Public key bytes</returns>
         SecureBytes GetPublicKey(
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             KeyIndex keyIndex,
             int keyType);
 
@@ -95,7 +95,7 @@ namespace Atomex.Wallet.Abstract
         Task<byte[]> SignAsync(
             byte[] data,
             WalletAddress_OLD address,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -110,7 +110,7 @@ namespace Atomex.Wallet.Abstract
             IInOutTransaction_OLD tx,
             IEnumerable<ITxOutput> spentOutputs,
             IAddressResolver addressResolver,
-            CurrencyConfig currencyConfig,
+            CurrencyConfig_OLD currencyConfig,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -123,7 +123,7 @@ namespace Atomex.Wallet.Abstract
         Task<bool> SignAsync(
             IAddressBasedTransaction_OLD tx,
             WalletAddress_OLD address,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -136,7 +136,7 @@ namespace Atomex.Wallet.Abstract
         Task<byte[]> SignHashAsync(
             byte[] hash,
             WalletAddress_OLD address,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             CancellationToken cancellationToken = default);
 
         /// <summary>
@@ -152,7 +152,7 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default);
 
         byte[] GetDeterministicSecret(
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             DateTime timeStamp);
     }
 }

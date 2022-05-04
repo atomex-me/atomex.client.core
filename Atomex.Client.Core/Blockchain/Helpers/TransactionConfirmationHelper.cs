@@ -28,7 +28,7 @@ namespace Atomex.Blockchain.Helpers
         private const int NumberOfConfirmations = 1;
 
         public static async Task<Result<ConfirmationCheckResult>> IsTransactionConfirmed(
-            this CurrencyConfig currency,
+            this CurrencyConfig_OLD currency,
             string txId,
             CancellationToken cancellationToken = default)
         {

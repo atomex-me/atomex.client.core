@@ -9,7 +9,7 @@ using Atomex.Wallets;
 
 namespace Atomex.Core
 {
-    public abstract class CurrencyConfig
+    public abstract class CurrencyConfig_OLD
     {
         public const decimal MaxRewardForRedeemDeviation = 0.05m;
 

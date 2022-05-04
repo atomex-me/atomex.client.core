@@ -29,7 +29,7 @@ namespace Atomex
         };
 
         private readonly object _sync = new();
-        private IDictionary<string, CurrencyConfig> _currencies;
+        private IDictionary<string, CurrencyConfig_OLD> _currencies;
 
         public Currencies(IConfiguration configuration)
         {
@@ -40,7 +40,7 @@ namespace Atomex
         {
             lock (_sync)
             {
-                var currencies = new List<CurrencyConfig>();
+                var currencies = new List<CurrencyConfig_OLD>();
 
                 foreach (var section in configuration.GetChildren())
                 {
@@ -72,7 +72,7 @@ namespace Atomex
             }
         }
 
-        public CurrencyConfig GetByName(string name)
+        public CurrencyConfig_OLD GetByName(string name)
         {
             lock (_sync)
             {
@@ -82,14 +82,14 @@ namespace Atomex
             }
         }
 
-        public T Get<T>(string name) where T : CurrencyConfig =>
+        public T Get<T>(string name) where T : CurrencyConfig_OLD =>
             GetByName(name) as T;
 
-        private CurrencyConfig GetFromSection(IConfigurationSection configurationSection)
+        private CurrencyConfig_OLD GetFromSection(IConfigurationSection configurationSection)
         {
             return configurationSection.Key switch
             {
-                "BTC" => (CurrencyConfig)new BitcoinConfig(configurationSection),
+                "BTC" => (CurrencyConfig_OLD)new BitcoinConfig(configurationSection),
                 "LTC" => new LitecoinConfig(configurationSection),
                 "ETH" => new EthereumConfig(configurationSection),
                 "XTZ" => new TezosConfig(configurationSection),
@@ -105,11 +105,11 @@ namespace Atomex
             };
         }
 
-        public IEnumerator<CurrencyConfig> GetEnumerator()
+        public IEnumerator<CurrencyConfig_OLD> GetEnumerator()
         {
             lock (_sync)
             {
-                var result = new List<CurrencyConfig>(_currencies.Values.Count);
+                var result = new List<CurrencyConfig_OLD>(_currencies.Values.Count);
 
                 foreach (var currencyByOrder in _currenciesOrder)
                     if (_currencies.TryGetValue(currencyByOrder, out var currency))

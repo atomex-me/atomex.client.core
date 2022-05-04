@@ -22,7 +22,7 @@ namespace Atomex.Wallet.Tezos
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
         private TezosAccount Account { get; }
-        private CurrencyConfig Currency => Account.Currencies.GetByName(Account.Currency);
+        private CurrencyConfig_OLD Currency => Account.Currencies.GetByName(Account.Currency);
 
         public TezosWalletScanner(TezosAccount account)
         {
@@ -53,11 +53,11 @@ namespace Atomex.Wallet.Tezos
                 {
                     (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.Internal, LookAhead : OldLookAhead),
                     (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.External, LookAhead : OldLookAhead),
-                    (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : InternalLookAhead)
+                    (KeyType : CurrencyConfig_OLD.StandardKey, Chain : Bip44.External, LookAhead : InternalLookAhead)
                 }
                 : new[]
                 {
-                    (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : ExternalLookAhead),
+                    (KeyType : CurrencyConfig_OLD.StandardKey, Chain : Bip44.External, LookAhead : ExternalLookAhead),
                 };
 
             var txs = new List<TezosTransaction_OLD>();

@@ -146,7 +146,7 @@ namespace Atomex.Blockchain.Ethereum
         public async Task<bool> SignAsync(
             IKeyStorage_OLD keyStorage,
             WalletAddress_OLD address,
-            CurrencyConfig currencyConfig,
+            CurrencyConfig_OLD currencyConfig,
             CancellationToken cancellationToken = default)
         {
             if (address.KeyIndex == null)

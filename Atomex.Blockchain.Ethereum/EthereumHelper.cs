@@ -12,13 +12,13 @@ namespace Atomex.Blockchain.Ethereum
             (decimal)wei / WeiInEth;
 
         public static BigInteger EthToWei(decimal eth) =>
-            new BigInteger(eth * WeiInEth);
+            new(eth * WeiInEth);
 
         public static BigInteger GweiToWei(decimal gwei) =>
-            new BigInteger(gwei * WeiInGwei);
+            new(gwei * WeiInGwei);
 
         public static BigInteger TokensToBaseTokenUnits(decimal tokens, decimal decimalsMultiplier) =>
-            new BigInteger(tokens * decimalsMultiplier);
+            new(tokens * decimalsMultiplier);
 
         public static decimal BaseTokenUnitsToTokens(BigInteger tokenUnits, decimal decimalsMultiplier) =>
             (decimal)tokenUnits / decimalsMultiplier; // todo: use BigInteger or BigDecimal

@@ -15,11 +15,11 @@ namespace Atomex.Swaps.Helpers
             IAccount_OLD account,
             ICurrencyQuotesProvider quotesProvider,
             Func<string, Quote> feeCurrencyQuotesProvider,
-            CurrencyConfig redeemableCurrency,
+            CurrencyConfig_OLD redeemableCurrency,
             WalletAddress_OLD redeemFromAddress = null,
             CancellationToken cancellationToken = default)
         {
-            if (redeemableCurrency is BitcoinBasedConfig)
+            if (redeemableCurrency is BitcoinBasedConfig_OLD)
                 return 0m;
 
             var feeCurrency = redeemableCurrency.FeeCurrencyName;

@@ -14,17 +14,17 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.BitcoinBased
 {
-    public class BitcoinBasedWalletScanner : ICurrencyHdWalletScanner_OLD
+    public class BitcoinBasedWalletScanner_OLD : ICurrencyHdWalletScanner_OLD
     {
         private const int DefaultInternalLookAhead = 3;
         private const int DefaultExternalLookAhead = 3;
 
-        private BitcoinBasedAccount Account { get; }
-        private CurrencyConfig Currency => Account.Currencies.GetByName(Account.Currency);
+        private BitcoinBasedAccount_OLD Account { get; }
+        private CurrencyConfig_OLD Currency => Account.Currencies.GetByName(Account.Currency);
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
 
-        public BitcoinBasedWalletScanner(BitcoinBasedAccount account)
+        public BitcoinBasedWalletScanner_OLD(BitcoinBasedAccount_OLD account)
         {
             Account = account ?? throw new ArgumentNullException(nameof(account));
         }
@@ -125,7 +125,7 @@ namespace Atomex.Wallet.BitcoinBased
                             account: Bip44.DefaultAccount,
                             chain: param.Chain,
                             index: index,
-                            keyType: CurrencyConfig.StandardKey)
+                            keyType: CurrencyConfig_OLD.StandardKey)
                         .ConfigureAwait(false);
 
                     if (walletAddress == null)

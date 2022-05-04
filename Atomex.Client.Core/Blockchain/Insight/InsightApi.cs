@@ -167,15 +167,15 @@ namespace Atomex.Blockchain.Insight
         private static readonly RequestLimitControl RequestLimitControl
             = new RequestLimitControl(MinDelayBetweenRequestMs);
 
-        public BitcoinBasedConfig Currency { get; }
+        public BitcoinBasedConfig_OLD Currency { get; }
 
-        public InsightApi(BitcoinBasedConfig currency, IConfiguration configuration)
+        public InsightApi(BitcoinBasedConfig_OLD currency, IConfiguration configuration)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
             BaseUri = configuration["BlockchainApiBaseUri"];
         }
 
-        public InsightApi(BitcoinBasedConfig currency, string baseUri)
+        public InsightApi(BitcoinBasedConfig_OLD currency, string baseUri)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
             BaseUri = baseUri ?? throw new ArgumentNullException(nameof(baseUri));

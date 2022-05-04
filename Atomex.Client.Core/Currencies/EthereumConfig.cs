@@ -21,7 +21,7 @@ using Atomex.Wallets.Ethereum;
 
 namespace Atomex
 {
-    public class EthereumConfig : CurrencyConfig
+    public class EthereumConfig : CurrencyConfig_OLD
     {
         public const string Eth = "ETH";
         protected const long WeiInEth = 1000000000000000000;

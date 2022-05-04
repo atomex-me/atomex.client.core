@@ -94,11 +94,11 @@ namespace Atomex.Wallet
         {
             return currency switch
             {
-                "BTC" => (ICurrencyHdWalletScanner_OLD)new BitcoinBasedWalletScanner(
-                    Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
+                "BTC" => (ICurrencyHdWalletScanner_OLD)new BitcoinBasedWalletScanner_OLD(
+                    Account.GetCurrencyAccount<BitcoinBasedAccount_OLD>(currency)),
 
-                "LTC" => new BitcoinBasedWalletScanner(
-                    Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
+                "LTC" => new BitcoinBasedWalletScanner_OLD(
+                    Account.GetCurrencyAccount<BitcoinBasedAccount_OLD>(currency)),
 
                 "USDT" or
                 "TBTC" or

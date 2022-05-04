@@ -7,9 +7,10 @@ using System.Threading.Tasks;
 using NBitcoin;
 
 using Atomex.Common;
-using Atomex.Wallet.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
+using Atomex.Blockchain.Bitcoin.Common;
 
-namespace Atomex.Blockchain.BitcoinBased
+namespace Atomex.Wallets.Bitcoin
 {
     public class BitcoinTransactionParams
     {
@@ -23,43 +24,44 @@ namespace Atomex.Blockchain.BitcoinBased
         public decimal InputInSatoshi => InputsToSign.Sum(i => i.Output.Value);
         public decimal ChangeInSatoshi => InputInSatoshi - FeeInSatoshi;
 
-        public static async Task<BitcoinTransactionParams> SelectTransactionParamsByFeeRateAsync(
-            IEnumerable<BitcoinBasedTxOutput> availableOutputs,
-            string to,
-            decimal amount,
-            decimal feeRate,
-            BitcoinBasedAccount account,
-            CancellationToken cancellationToken = default)
-        {
-            var config = account.Config;
+        //public static async Task<BitcoinTransactionParams> SelectTransactionParamsByFeeRateAsync(
+        //    IEnumerable<BitcoinTxOutput> availableOutputs,
+        //    string to,
+        //    decimal amount,
+        //    decimal feeRate,
+        //    BitcoinAccount account,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    var config = account.Configuration;
 
-            var freeInternalAddress = await account
-                .GetFreeInternalAddressAsync()
-                .ConfigureAwait(false);
+        //    var freeInternalAddress = await account
+        //        //.GetFreeAddressAsync()
+        //        .GetFreeInternalAddressAsync()
+        //        .ConfigureAwait(false);
 
-            return await SelectTransactionParamsByFeeRateAsync(
-                    availableInputs: availableOutputs.Select(o => new BitcoinInputToSign { Output = o }),
-                    destinations: new BitcoinDestination[]
-                    {
-                        new BitcoinDestination
-                        {
-                            AmountInSatoshi = config.CoinToSatoshi(amount),
-                            Script = BitcoinAddress.Create(to, config.Network).ScriptPubKey,
-                        }
-                    },
-                    changeAddress: freeInternalAddress.Address,
-                    feeRate: feeRate,
-                    currencyConfig: config,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
+        //    return await SelectTransactionParamsByFeeRateAsync(
+        //            availableInputs: availableOutputs.Select(o => new BitcoinInputToSign { Output = o }),
+        //            destinations: new BitcoinDestination[]
+        //            {
+        //                new BitcoinDestination
+        //                {
+        //                    AmountInSatoshi = config.CoinToSatoshi(amount),
+        //                    Script = BitcoinAddress.Create(to, config.Network).ScriptPubKey,
+        //                }
+        //            },
+        //            changeAddress: freeInternalAddress.Address,
+        //            feeRate: feeRate,
+        //            currencyConfig: config,
+        //            cancellationToken: cancellationToken)
+        //        .ConfigureAwait(false);
+        //}
 
         public static Task<BitcoinTransactionParams> SelectTransactionParamsByFeeRateAsync(
             IEnumerable<BitcoinInputToSign> availableInputs,
             IEnumerable<BitcoinDestination> destinations,
             string changeAddress,
             decimal feeRate,
-            BitcoinBasedConfig currencyConfig,
+            BitcoinConfig currencyConfig,
             CancellationToken cancellationToken = default)
         {
             return SelectTransactionParamsByFeeRateAsync(
@@ -76,7 +78,7 @@ namespace Atomex.Blockchain.BitcoinBased
             IEnumerable<(decimal AmountInSatoshi, int Size)> destinations,
             string changeAddress,
             decimal feeRate,
-            BitcoinBasedConfig currencyConfig,
+            BitcoinConfig currencyConfig,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(() =>
@@ -90,8 +92,8 @@ namespace Atomex.Blockchain.BitcoinBased
                     .SortList((i1, i2) => i1.Output.Value.CompareTo(i2.Output.Value));
 
                 var requiredAmountInSatoshi = destinations.Sum(d => d.AmountInSatoshi);
-                var outputsSize             = destinations.Sum(d => d.Size);
-                var changeOutputSize        = CalculateChangeOutputSize(changeAddress, currencyConfig.Network);
+                var outputsSize = destinations.Sum(d => d.Size);
+                var changeOutputSize = CalculateChangeOutputSize(changeAddress, currencyConfig.Network);
 
                 // try to use one input
                 if (sortedInputs.Last().Output.Value >= requiredAmountInSatoshi)
@@ -116,7 +118,7 @@ namespace Atomex.Blockchain.BitcoinBased
                             inputsInSatoshi: input.Output.Value,
                             requiredAmountInSatoshi: requiredAmountInSatoshi,
                             requiredFeeRate: feeRate,
-                            dustInSatoshi: currencyConfig.GetDust());
+                            dustInSatoshi: currencyConfig.DustInSatoshi);
 
                         if (calculatedFeeInSatoshi <= 0) // insufficient funds
                             continue;
@@ -137,13 +139,13 @@ namespace Atomex.Blockchain.BitcoinBased
                     }
                 }
 
-                var usedInputs     = new LinkedList<BitcoinInputToSign>();
-                var usedInSatoshi  = 0m;
+                var usedInputs = new LinkedList<BitcoinInputToSign>();
+                var usedInSatoshi = 0m;
                 var usedInputsSize = 0;
-                var witnessCount   = 0;
+                var witnessCount = 0;
 
-                var resultTransactionSize   = 0m;
-                var resultFeeInSatoshi      = 0m;
+                var resultTransactionSize = 0m;
+                var resultFeeInSatoshi = 0m;
                 var resultChangeAddressUsed = false;
 
                 // skip inputs that are less than the fee for adding them
@@ -167,7 +169,7 @@ namespace Atomex.Blockchain.BitcoinBased
                         continue;
 
                     var (size, sizeWithChange) = CalculateTxSize(
-                        inputsCount: usedInputs.Count(),
+                        inputsCount: usedInputs.Count,
                         inputsSize: usedInputsSize,
                         outputsCount: destinations.Count(),
                         outputsSize: outputsSize,
@@ -180,14 +182,14 @@ namespace Atomex.Blockchain.BitcoinBased
                         inputsInSatoshi: usedInSatoshi,
                         requiredAmountInSatoshi: requiredAmountInSatoshi,
                         requiredFeeRate: feeRate,
-                        dustInSatoshi: currencyConfig.GetDust());
+                        dustInSatoshi: currencyConfig.DustInSatoshi);
 
                     if (calculatedFeeInSatoshi <= 0) // insufficient funds
                         continue;
 
-                    resultFeeInSatoshi      = calculatedFeeInSatoshi;
+                    resultFeeInSatoshi = calculatedFeeInSatoshi;
                     resultChangeAddressUsed = useChangeAddress;
-                    resultTransactionSize   = useChangeAddress ? sizeWithChange : size;
+                    resultTransactionSize = useChangeAddress ? sizeWithChange : size;
                     break;
                 }
 
@@ -212,7 +214,7 @@ namespace Atomex.Blockchain.BitcoinBased
                         break;
 
                     var (size, sizeWithChange) = CalculateTxSize(
-                        inputsCount: usedInputs.Count() - i - 1,
+                        inputsCount: usedInputs.Count - i - 1,
                         inputsSize: usedInputsSize,
                         outputsCount: destinations.Count(),
                         outputsSize: outputsSize,
@@ -225,14 +227,14 @@ namespace Atomex.Blockchain.BitcoinBased
                         inputsInSatoshi: usedInSatoshi,
                         requiredAmountInSatoshi: requiredAmountInSatoshi,
                         requiredFeeRate: feeRate,
-                        dustInSatoshi: currencyConfig.GetDust());
+                        dustInSatoshi: currencyConfig.DustInSatoshi);
 
                     if (reducedFeeInSatoshi <= 0) // insufficient funds
                         break;
 
-                    resultFeeInSatoshi      = reducedFeeInSatoshi;
+                    resultFeeInSatoshi = reducedFeeInSatoshi;
                     resultChangeAddressUsed = useChangeAddress;
-                    resultTransactionSize   = useChangeAddress ? sizeWithChange : size;
+                    resultTransactionSize = useChangeAddress ? sizeWithChange : size;
 
                     skip = i + 1;
                 }
@@ -250,43 +252,43 @@ namespace Atomex.Blockchain.BitcoinBased
             }, cancellationToken);
         }
 
-        public static async Task<BitcoinTransactionParams> SelectTransactionParamsByFeeAsync(
-            IEnumerable<BitcoinBasedTxOutput> availableOutputs,
-            string to,
-            decimal amount,
-            decimal fee,
-            BitcoinBasedAccount account,
-            CancellationToken cancellationToken = default)
-        {
-            var config = account.Config;
+        //public static async Task<BitcoinTransactionParams> SelectTransactionParamsByFeeAsync(
+        //    IEnumerable<BitcoinTxOutput> availableOutputs,
+        //    string to,
+        //    decimal amount,
+        //    decimal fee,
+        //    BitcoinAccount account,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    var config = account.Configuration;
 
-            var freeInternalAddress = await account
-                .GetFreeInternalAddressAsync()
-                .ConfigureAwait(false);
+        //    var freeInternalAddress = await account
+        //        .GetFreeInternalAddressAsync()
+        //        .ConfigureAwait(false);
 
-            return await SelectTransactionParamsByFeeAsync(
-                    availableInputs: availableOutputs.Select(o => new BitcoinInputToSign { Output = o }),
-                    destinations: new BitcoinDestination[]
-                    {
-                        new BitcoinDestination
-                        {
-                            AmountInSatoshi = config.CoinToSatoshi(amount),
-                            Script = BitcoinAddress.Create(to, config.Network).ScriptPubKey,
-                        }
-                    },
-                    changeAddress: freeInternalAddress.Address,
-                    feeInSatoshi: config.CoinToSatoshi(fee),
-                    currencyConfig: config,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
+        //    return await SelectTransactionParamsByFeeAsync(
+        //            availableInputs: availableOutputs.Select(o => new BitcoinInputToSign { Output = o }),
+        //            destinations: new BitcoinDestination[]
+        //            {
+        //                new BitcoinDestination
+        //                {
+        //                    AmountInSatoshi = config.CoinToSatoshi(amount),
+        //                    Script = BitcoinAddress.Create(to, config.Network).ScriptPubKey,
+        //                }
+        //            },
+        //            changeAddress: freeInternalAddress.Address,
+        //            feeInSatoshi: config.CoinToSatoshi(fee),
+        //            currencyConfig: config,
+        //            cancellationToken: cancellationToken)
+        //        .ConfigureAwait(false);
+        //}
 
         public static Task<BitcoinTransactionParams> SelectTransactionParamsByFeeAsync(
             IEnumerable<BitcoinInputToSign> availableInputs,
             IEnumerable<BitcoinDestination> destinations,
             string changeAddress,
             decimal feeInSatoshi,
-            BitcoinBasedConfig currencyConfig,
+            BitcoinConfig currencyConfig,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(() =>
@@ -300,11 +302,11 @@ namespace Atomex.Blockchain.BitcoinBased
                     .SortList((i1, i2) => i1.Output.Value.CompareTo(i2.Output.Value));
 
                 var requiredAmountInSatoshi = destinations.Sum(d => d.AmountInSatoshi);
-                var outputsSize             = destinations.Sum(d => d.Size());
-                var changeOutputSize        = CalculateChangeOutputSize(changeAddress, currencyConfig.Network);
+                var outputsSize = destinations.Sum(d => d.Size());
+                var changeOutputSize = CalculateChangeOutputSize(changeAddress, currencyConfig.Network);
 
-                var resultTransactionSize  = 0m;
-                var resultFeeInSatoshi     = 0m;
+                var resultTransactionSize = 0m;
+                var resultFeeInSatoshi = 0m;
                 var resultUseChangeAddress = false;
 
                 // try to use one input
@@ -317,7 +319,7 @@ namespace Atomex.Blockchain.BitcoinBased
                             continue;
 
                         var changeInSatoshi = input.Output.Value - requiredAmountInSatoshi - feeInSatoshi;
-                        resultUseChangeAddress = changeInSatoshi >= currencyConfig.GetDust();
+                        resultUseChangeAddress = changeInSatoshi >= currencyConfig.DustInSatoshi;
 
                         var (size, sizeWithChange) = CalculateTxSize(
                             inputsCount: 1,
@@ -347,11 +349,11 @@ namespace Atomex.Blockchain.BitcoinBased
                     }
                 }
 
-                var usedInputs     = new LinkedList<BitcoinInputToSign>();
-                var usedInSatoshi  = 0m;
+                var usedInputs = new LinkedList<BitcoinInputToSign>();
+                var usedInSatoshi = 0m;
                 var usedInputsSize = 0;
-                var witnessCount   = 0;
-                var success        = false;
+                var witnessCount = 0;
+                var success = false;
 
                 // try to use several inputs
                 for (var i = 0; i < sortedInputs.Count; ++i)
@@ -369,10 +371,10 @@ namespace Atomex.Blockchain.BitcoinBased
                         continue;
 
                     var changeInSatoshi = usedInSatoshi - requiredAmountInSatoshi - feeInSatoshi;
-                    resultUseChangeAddress = changeInSatoshi >= currencyConfig.GetDust();
+                    resultUseChangeAddress = changeInSatoshi >= currencyConfig.DustInSatoshi;
 
                     var (size, sizeWithChange) = CalculateTxSize(
-                        inputsCount: usedInputs.Count(),
+                        inputsCount: usedInputs.Count,
                         inputsSize: usedInputsSize,
                         outputsCount: destinations.Count(),
                         outputsSize: outputsSize,
@@ -412,10 +414,10 @@ namespace Atomex.Blockchain.BitcoinBased
                         break;
 
                     var changeInSatoshi = usedInSatoshi - requiredAmountInSatoshi - feeInSatoshi;
-                    resultUseChangeAddress = changeInSatoshi >= currencyConfig.GetDust();
+                    resultUseChangeAddress = changeInSatoshi >= currencyConfig.DustInSatoshi;
 
                     var (size, sizeWithChange) = CalculateTxSize(
-                        inputsCount: usedInputs.Count() - i - 1,
+                        inputsCount: usedInputs.Count - i - 1,
                         inputsSize: usedInputsSize,
                         outputsCount: destinations.Count(),
                         outputsSize: outputsSize,
@@ -458,7 +460,7 @@ namespace Atomex.Blockchain.BitcoinBased
                 + inputsCount.CompactSize()        // inputs count compact size
                 + outputsCount.CompactSize()       // outputs count compact size (without change output)
                 + 4                                // nlockTime
-                + ((witnessCount > 0)              // segwit marker + witness count compact size
+                + (witnessCount > 0                // segwit marker + witness count compact size
                     ? 0.5m + witnessCount.CompactSize() / 4
                     : 0)
                 + inputsSize                       // tx inputs size
@@ -469,7 +471,7 @@ namespace Atomex.Blockchain.BitcoinBased
 
             return (size, sizeWithChange);
         }
-            
+
         public static (decimal feeInSatoshi, bool useChangeAddress) CalculateFee(
             decimal size,
             decimal sizeWithChange,
@@ -494,7 +496,7 @@ namespace Atomex.Blockchain.BitcoinBased
             var changeInSatoshi = inputsInSatoshi - requiredAmountInSatoshi - feeInSatoshi;
 
             if (changeInSatoshi == 0)
-                return (feeInSatoshi: feeInSatoshi, useChangeAddress: false);
+                return (feeInSatoshi, useChangeAddress: false);
 
             // if the change is less than dust, then add it to the fee
             if (changeInSatoshi < dustInSatoshi)

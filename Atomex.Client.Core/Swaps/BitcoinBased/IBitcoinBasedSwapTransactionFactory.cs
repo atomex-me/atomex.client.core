@@ -17,7 +17,7 @@ namespace Atomex.Swaps.BitcoinBased
             DateTimeOffset lockTime,
             byte[] secretHash,
             int secretSize,
-            BitcoinBasedConfig currencyConfig,
+            BitcoinBasedConfig_OLD currencyConfig,
             CancellationToken cancellationToken = default);
 
         Task<IBitcoinBasedTransaction_OLD> CreateSwapRefundTxAsync(
@@ -26,14 +26,14 @@ namespace Atomex.Swaps.BitcoinBased
             string refundAddress,
             byte[] redeemScript,
             DateTimeOffset lockTime,
-            BitcoinBasedConfig currency);
+            BitcoinBasedConfig_OLD currency);
 
         Task<IBitcoinBasedTransaction_OLD> CreateSwapRedeemTxAsync(
             IBitcoinBasedTransaction_OLD paymentTx,
             long amount,
             string redeemAddress,
             byte[] redeemScript,
-            BitcoinBasedConfig currency,
+            BitcoinBasedConfig_OLD currency,
             uint sequenceNumber = 0);
     }
 }

@@ -23,7 +23,7 @@ namespace Atomex.Swaps.BitcoinBased
             DateTimeOffset lockTime,
             byte[] secretHash,
             int secretSize,
-            BitcoinBasedConfig currencyConfig,
+            BitcoinBasedConfig_OLD currencyConfig,
             CancellationToken cancellationToken = default)
         {
             var availableAmountInSatoshi = fromOutputs.Sum(o => o.Value);
@@ -57,7 +57,7 @@ namespace Atomex.Swaps.BitcoinBased
                 }
             };
 
-            var txParams = await BitcoinTransactionParams.SelectTransactionParamsByFeeRateAsync(
+            var txParams = await BitcoinTransactionParams_OLD.SelectTransactionParamsByFeeRateAsync(
                     availableInputs: inputsToSign,
                     destinations: destinations,
                     changeAddress: refundAddress,
@@ -70,13 +70,13 @@ namespace Atomex.Swaps.BitcoinBased
             {
                 var maxFeeInSatoshi = availableAmountInSatoshi - amount;
 
-                var (txSize, txSizeWithChange) = BitcoinTransactionParams.CalculateTxSize(
+                var (txSize, txSizeWithChange) = BitcoinTransactionParams_OLD.CalculateTxSize(
                     inputsCount: fromOutputs.Count(),
                     inputsSize: inputsToSign.Sum(i => i.SizeWithSignature()),
                     outputsCount: destinations.Length,
                     outputsSize: destinations.Sum(d => d.Size()),
                     witnessCount: fromOutputs.Sum(o => o.IsSegWit ? 1 : 0),
-                    changeOutputSize: BitcoinTransactionParams.CalculateChangeOutputSize(
+                    changeOutputSize: BitcoinTransactionParams_OLD.CalculateChangeOutputSize(
                         changeAddress: refundAddress,
                         network: currencyConfig.Network));
 
@@ -113,7 +113,7 @@ namespace Atomex.Swaps.BitcoinBased
             string refundAddress,
             byte[] redeemScript,
             DateTimeOffset lockTime,
-            BitcoinBasedConfig currencyConfig)
+            BitcoinBasedConfig_OLD currencyConfig)
         {
             var swapOutput = paymentTx.Outputs
                 .Cast<BitcoinBasedTxOutput>()
@@ -140,7 +140,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             }.Size();
 
-            var (txSize, _) = BitcoinTransactionParams.CalculateTxSize(
+            var (txSize, _) = BitcoinTransactionParams_OLD.CalculateTxSize(
                     inputsCount: 1,
                     inputsSize: inputSize,
                     outputsCount: 1,
@@ -168,7 +168,7 @@ namespace Atomex.Swaps.BitcoinBased
             long amount,
             string redeemAddress,
             byte[] redeemScript,
-            BitcoinBasedConfig currencyConfig,
+            BitcoinBasedConfig_OLD currencyConfig,
             uint sequenceNumber = 0)
         {
             var swapOutput = paymentTx.Outputs
@@ -196,7 +196,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             }.Size();
 
-            var (txSize, _) = BitcoinTransactionParams.CalculateTxSize(
+            var (txSize, _) = BitcoinTransactionParams_OLD.CalculateTxSize(
                     inputsCount: 1,
                     inputsSize: inputSize,
                     outputsCount: 1,

@@ -18,7 +18,7 @@ namespace Atomex.Blockchain.Abstract
             IAddressResolver addressResolver,
             IKeyStorage_OLD keyStorage,
             IEnumerable<ITxOutput> spentOutputs,
-            CurrencyConfig currencyConfig,
+            CurrencyConfig_OLD currencyConfig,
             CancellationToken cancellationToken = default);
     }
 }

@@ -23,7 +23,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 
         public static async Task<Result<IBlockchainTransaction_OLD>> TryToFindPaymentAsync(
             Swap swap,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             CancellationToken cancellationToken = default)
         {
             var erc20 = currency as Erc20Config;
@@ -75,7 +75,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 
         public static async Task<Result<bool>> IsInitiatedAsync(
             Swap swap,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             long lockTimeInSec,
             CancellationToken cancellationToken = default)
         {
@@ -274,7 +274,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
         }
 
         public static async Task<List<BigInteger>> GetTransferValuesAsync(
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             string from,
             string to,
             string blockNumber,
@@ -322,7 +322,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 
         public static Task StartSwapInitiatedControlAsync(
             Swap swap,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             long lockTimeInSec,
             TimeSpan interval,
             Func<Swap, CancellationToken, Task> initiatedHandler,

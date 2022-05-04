@@ -509,8 +509,8 @@ namespace Atomex.ViewModels
             IFromSource from,
             decimal fromAmount,
             string redeemFromAddress,
-            CurrencyConfig fromCurrency,
-            CurrencyConfig toCurrency,
+            CurrencyConfig_OLD fromCurrency,
+            CurrencyConfig_OLD toCurrency,
             IAccount_OLD account,
             IAtomexClient_OLD atomexClient,
             ISymbolsProvider symbolsProvider,
@@ -655,8 +655,8 @@ namespace Atomex.ViewModels
         public static Task<SwapPriceEstimation> EstimateSwapPriceAsync(
             decimal amount,
             AmountType amountType, 
-            CurrencyConfig fromCurrency,
-            CurrencyConfig toCurrency,
+            CurrencyConfig_OLD fromCurrency,
+            CurrencyConfig_OLD toCurrency,
             IAccount_OLD account,
             IAtomexClient_OLD atomexClient,
             ISymbolsProvider symbolsProvider,
@@ -729,7 +729,7 @@ namespace Atomex.ViewModels
         public static async Task<decimal> GetAmountReservedForSwapsAsync(
             IFromSource from,
             IAccount_OLD account,
-            CurrencyConfig currency)
+            CurrencyConfig_OLD currency)
         {
             var swaps = await account
                 .GetSwapsAsync()
@@ -750,7 +750,7 @@ namespace Atomex.ViewModels
                 }
                 else if (from is FromOutputs fromOutputs)
                 {
-                    if (currency is not BitcoinBasedConfig bitcoinBasedConfig)
+                    if (currency is not BitcoinBasedConfig_OLD bitcoinBasedConfig)
                         continue;
 
                     foreach (var fromOutput in fromOutputs.Outputs)
@@ -767,8 +767,8 @@ namespace Atomex.ViewModels
         }
 
         public static async Task<decimal> EstimateMakerNetworkFeeAsync(
-            CurrencyConfig fromCurrency,
-            CurrencyConfig toCurrency,
+            CurrencyConfig_OLD fromCurrency,
+            CurrencyConfig_OLD toCurrency,
             IAccount_OLD account,
             IAtomexClient_OLD atomexClient,
             ISymbolsProvider symbolsProvider,

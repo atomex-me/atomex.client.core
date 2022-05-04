@@ -728,14 +728,14 @@ namespace Atomex.Wallet.Ethereum
                 .GetLastActiveWalletAddressAsync(
                     currency: "ETH",
                     chain: Bip44.External,
-                    keyType: CurrencyConfig.StandardKey)
+                    keyType: CurrencyConfig_OLD.StandardKey)
                 .ConfigureAwait(false);
 
             return await DivideAddressAsync(
                     account: Bip44.DefaultAccount,
                     chain: Bip44.External,
                     index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    keyType: CurrencyConfig.StandardKey)
+                    keyType: CurrencyConfig_OLD.StandardKey)
                 .ConfigureAwait(false);
         }
 
@@ -770,7 +770,7 @@ namespace Atomex.Wallet.Ethereum
                     .GetLastActiveWalletAddressAsync(
                         currency: Currency,
                         chain: chain,
-                        keyType: CurrencyConfig.StandardKey)
+                        keyType: CurrencyConfig_OLD.StandardKey)
                     .ConfigureAwait(false);
 
                 if (lastActiveAddress != null)

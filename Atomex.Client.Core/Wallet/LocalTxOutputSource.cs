@@ -9,9 +9,9 @@ namespace Atomex.Wallet
 {
     public class LocalTxOutputSource : ITxOutputSource
     {
-        private readonly BitcoinBasedAccount _account;
+        private readonly BitcoinBasedAccount_OLD _account;
 
-        public LocalTxOutputSource(BitcoinBasedAccount account)
+        public LocalTxOutputSource(BitcoinBasedAccount_OLD account)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
         }

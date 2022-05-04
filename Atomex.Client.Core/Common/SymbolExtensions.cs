@@ -11,7 +11,7 @@ namespace Atomex.Common
             return OrderSideForBuyCurrency(symbol.Name, currency);
         }
 
-        public static Side OrderSideForBuyCurrency(this Symbol symbol, CurrencyConfig currency)
+        public static Side OrderSideForBuyCurrency(this Symbol symbol, CurrencyConfig_OLD currency)
         {
             return OrderSideForBuyCurrency(symbol.Name, currency.Name);
         }
@@ -89,8 +89,8 @@ namespace Atomex.Common
 
         public static Symbol SymbolByCurrencies(
             this IEnumerable<Symbol> symbols,
-            CurrencyConfig from,
-            CurrencyConfig to)
+            CurrencyConfig_OLD from,
+            CurrencyConfig_OLD to)
         {
             return SymbolByCurrencies(symbols, from.Name, to.Name);
         }

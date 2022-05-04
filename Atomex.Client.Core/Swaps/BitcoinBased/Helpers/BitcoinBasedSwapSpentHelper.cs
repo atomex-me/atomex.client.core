@@ -19,7 +19,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
     {
         public static Task StartSwapSpentControlAsync(
             Swap swap,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             DateTime refundTimeUtc,
             TimeSpan interval,
             Func<Swap, ITxPoint, CancellationToken, Task> completionHandler = null,
@@ -30,7 +30,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
             {
                 try
                 {
-                    var bitcoinBased = (BitcoinBasedConfig)currency;
+                    var bitcoinBased = (BitcoinBasedConfig_OLD)currency;
 
                     var side = swap.Symbol
                         .OrderSideForBuyCurrency(swap.PurchasedCurrency);

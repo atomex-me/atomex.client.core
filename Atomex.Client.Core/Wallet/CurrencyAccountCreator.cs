@@ -63,7 +63,7 @@ namespace Atomex.Wallet
         {
             return currency switch
             {
-                "BTC" or "LTC" => (ICurrencyAccount_OLD) new BitcoinBasedAccount(
+                "BTC" or "LTC" => (ICurrencyAccount_OLD) new BitcoinBasedAccount_OLD(
                     currency,
                     currencies,
                     wallet,

@@ -8,35 +8,57 @@ namespace Atomex.Wallets.Abstract
     public interface IWalletScanner
     {
         /// <summary>
+        /// Update balances for all account's wallets
+        /// </summary>
+        /// <param name="forceUpdate">If flag is set, address usage policy will be ignored</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Null if success, otherwise error</returns>
+        Task<Error> UpdateBalanceAsync(
+            bool forceUpdate = false,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Update balances for wallet with id <paramref name="walletId"/>
+        /// </summary>
+        /// <param name="walletId">Wallet ID</param>
+        /// <param name="forceUpdate">If flag is set, address usage policy will be ignored</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Null if success, otherwise error</returns>
+        Task<Error> UpdateBalanceAsync(
+            int walletId,
+            bool forceUpdate = false,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Update address balance. Address must be stored in local db
+        /// </summary>
+        /// <param name="address">Address to update</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Null if success, otherwise error</returns>
+        Task<Error> UpdateAddressBalanceAsync(
+            string address,
+            CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Scan balances for all account's wallets
         /// </summary>
-        /// <param name="skipUsedAddresses">If flag is set, addresses with activity and zero balance are skipped</param>
+        /// <param name="forceUpdate">If flag is set, address usage policy will be ignored</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Null if success, otherwise error</returns>
         Task<Error> ScanAsync(
-            bool skipUsedAddresses = false,
+            bool forceUpdate = false,
             CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Scan balances for wallet with id <paramref name="walletId"/>
         /// </summary>
         /// <param name="walletId">Wallet ID</param>
-        /// <param name="skipUsedAddresses">If flag is set, addresses with activity and zero balance are skipped</param>
+        /// <param name="forceUpdate">If flag is set, address usage policy will be ignored</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Null if success, otherwise error</returns>
         Task<Error> ScanAsync(
             int walletId,
-            bool skipUsedAddresses = false,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Scan address balance. Address must be stored in local db
-        /// </summary>
-        /// <param name="address">Address to scan</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Null if success, otherwise error</returns>
-        Task<Error> ScanAsync(
-            string address,
+            bool forceUpdate = false,
             CancellationToken cancellationToken = default);
     }
 }

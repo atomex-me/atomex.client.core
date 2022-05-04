@@ -85,7 +85,7 @@ namespace Atomex.Wallet.Ethereum
                             account: Bip44.DefaultAccount,
                             chain: param.Chain,
                             index: index,
-                            keyType: CurrencyConfig.StandardKey)
+                            keyType: CurrencyConfig_OLD.StandardKey)
                         .ConfigureAwait(false);
 
                     if (walletAddress == null)

@@ -1,5 +1,12 @@
 ﻿namespace Atomex.Wallets
 {
+    public enum WalletAddressUsageType
+    {
+        AlwaysUsed,
+        NoLongerUsed,
+        Disposable
+    }
+
     public class WalletAddress
     {
         public string Id => Address;
@@ -11,6 +18,6 @@
         public uint KeyIndex { get; set; }
         public bool HasActivity { get; set; }
         public long Counter { get; set; }
-        public bool IsNoLongerUsed { get; set; }
+        public WalletAddressUsageType UsageType { get; set; }
     }
 }

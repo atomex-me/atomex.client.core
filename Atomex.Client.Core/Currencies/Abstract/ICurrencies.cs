@@ -6,10 +6,10 @@ using Atomex.Core;
 
 namespace Atomex.Abstract
 {
-    public interface ICurrencies : IEnumerable<CurrencyConfig>
+    public interface ICurrencies : IEnumerable<CurrencyConfig_OLD>
     {
         void Update(IConfiguration configuration);
-        CurrencyConfig GetByName(string name);
-        T Get<T>(string name) where T : CurrencyConfig;
+        CurrencyConfig_OLD GetByName(string name);
+        T Get<T>(string name) where T : CurrencyConfig_OLD;
     }
 }

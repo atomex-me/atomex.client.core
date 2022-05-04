@@ -197,14 +197,14 @@ namespace Atomex.Wallet.Abstract
                 var lastActiveAccountAddress = await DataRepository
                     .GetLastActiveWalletAddressByAccountAsync(
                         currency: Currency,
-                        keyType: CurrencyConfig.StandardKey)
+                        keyType: CurrencyConfig_OLD.StandardKey)
                     .ConfigureAwait(false);
 
                 return await DivideAddressAsync(
                         account: lastActiveAccountAddress?.KeyIndex.Account + 1 ?? Bip44.DefaultAccount,
                         chain: Bip44.External,
                         index: Bip44.DefaultIndex,
-                        keyType: CurrencyConfig.StandardKey)
+                        keyType: CurrencyConfig_OLD.StandardKey)
                     .ConfigureAwait(false);
             }
 
@@ -212,14 +212,14 @@ namespace Atomex.Wallet.Abstract
                 .GetLastActiveWalletAddressAsync(
                     currency: Currency,
                     chain: Bip44.External,
-                    keyType: CurrencyConfig.StandardKey)
+                    keyType: CurrencyConfig_OLD.StandardKey)
                 .ConfigureAwait(false);
 
             return await DivideAddressAsync(
                     account: Bip44.DefaultAccount,
                     chain: Bip44.External,
                     index: lastActiveAddress?.KeyIndex.Index + 1 ?? Bip44.DefaultIndex,
-                    keyType: CurrencyConfig.StandardKey)
+                    keyType: CurrencyConfig_OLD.StandardKey)
                 .ConfigureAwait(false);
         }
 

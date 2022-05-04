@@ -8,8 +8,6 @@ using Serilog;
 
 namespace Atomex.Common
 {
-    public class HttpRequestHeaders : List<KeyValuePair<string, IEnumerable<string>>> { };
-
     public static class HttpHelper
     {
         public const int SslHandshakeFailed = 525;

@@ -20,7 +20,7 @@ using Atomex.Wallets;
 
 namespace Atomex
 {
-    public class TezosConfig : CurrencyConfig
+    public class TezosConfig : CurrencyConfig_OLD
     {
         public const string Xtz = "XTZ";
         public const long XtzDigitsMultiplier = 1_000_000;

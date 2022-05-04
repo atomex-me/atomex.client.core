@@ -5,7 +5,7 @@ using Atomex.Abstract;
 
 namespace Atomex.Common.Bson
 {
-    public class CurrencyToBsonSerializer : BsonSerializer<CurrencyConfig>
+    public class CurrencyToBsonSerializer : BsonSerializer<CurrencyConfig_OLD>
     {
         private readonly ICurrencies _currencies;
 
@@ -14,10 +14,10 @@ namespace Atomex.Common.Bson
             _currencies = currencies;
         }
 
-        public override CurrencyConfig Deserialize(BsonValue bsonValue) =>
+        public override CurrencyConfig_OLD Deserialize(BsonValue bsonValue) =>
             _currencies.GetByName(bsonValue.AsString);
 
-        public override BsonValue Serialize(CurrencyConfig currency) =>
+        public override BsonValue Serialize(CurrencyConfig_OLD currency) =>
             currency.Name;
     }
 }

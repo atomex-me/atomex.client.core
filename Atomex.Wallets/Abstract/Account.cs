@@ -142,7 +142,7 @@ namespace Atomex.Wallets.Abstract
             CancellationToken cancellationToken = default)
         {
             var error = await GetWalletScanner()
-                .ScanAsync(address, cancellationToken)
+                .UpdateAddressBalanceAsync(address, cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)

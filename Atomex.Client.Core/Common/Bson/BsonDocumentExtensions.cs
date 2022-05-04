@@ -6,9 +6,9 @@ namespace Atomex.Common.Bson
 {
     public static class CurrencyExtensions
     {
-        public static Type OutputType(this CurrencyConfig currency)
+        public static Type OutputType(this CurrencyConfig_OLD currency)
         {
-            if (currency is BitcoinBasedConfig)
+            if (currency is BitcoinBasedConfig_OLD)
                 return typeof(BitcoinBasedTxOutput);
 
             throw new NotSupportedException($"Not supported currency {currency.Name}");

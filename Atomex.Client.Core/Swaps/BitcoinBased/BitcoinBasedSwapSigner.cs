@@ -13,9 +13,9 @@ namespace Atomex.Swaps.BitcoinBased
 {
     public class BitcoinBasedSwapSigner
     {
-        private BitcoinBasedAccount Account { get; }
+        private BitcoinBasedAccount_OLD Account { get; }
 
-        public BitcoinBasedSwapSigner(BitcoinBasedAccount account)
+        public BitcoinBasedSwapSigner(BitcoinBasedAccount_OLD account)
         {
             Account = account ?? throw new ArgumentNullException(nameof(account));
         }

@@ -304,10 +304,10 @@ namespace Atomex.Swaps
                 .ConfigureAwait(false);
 
             // select refund address for bitcoin based currency
-            if (soldCurrency is BitcoinBasedConfig && swap.RefundAddress == null)
+            if (soldCurrency is BitcoinBasedConfig_OLD && swap.RefundAddress == null)
             {
                 swap.RefundAddress = (await _account
-                    .GetCurrencyAccount<BitcoinBasedAccount>(soldCurrency.Name)
+                    .GetCurrencyAccount<BitcoinBasedAccount_OLD>(soldCurrency.Name)
                     .GetRefundAddressAsync(cancellationToken)
                     .ConfigureAwait(false))
                     ?.Address;
@@ -440,10 +440,10 @@ namespace Atomex.Swaps
             var soldCurrency = _account.Currencies.GetByName(swap.SoldCurrency);
 
             // select refund address for bitcoin based currency
-            if (soldCurrency is BitcoinBasedConfig && swap.RefundAddress == null)
+            if (soldCurrency is BitcoinBasedConfig_OLD && swap.RefundAddress == null)
             {
                 swap.RefundAddress = (await _account
-                    .GetCurrencyAccount<BitcoinBasedAccount>(soldCurrency.Name)
+                    .GetCurrencyAccount<BitcoinBasedAccount_OLD>(soldCurrency.Name)
                     .GetRefundAddressAsync(cancellationToken)
                     .ConfigureAwait(false))
                     ?.Address;

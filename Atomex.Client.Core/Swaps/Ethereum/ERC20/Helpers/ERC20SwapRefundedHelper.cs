@@ -15,7 +15,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
     {
         public static async Task<Result<bool>> IsRefundedAsync(
             Swap swap,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             CancellationToken cancellationToken = default)
         {
             try
@@ -60,7 +60,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 
         public static async Task<Result<bool>> IsRefundedAsync(
             Swap swap,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             int attempts,
             int attemptIntervalInSec,
             CancellationToken cancellationToken = default)

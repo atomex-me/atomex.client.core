@@ -36,7 +36,7 @@ namespace Atomex.Client.Core.Tests
         }
 
         private Error Send(
-            BitcoinBasedConfig currency,
+            BitcoinBasedConfig_OLD currency,
             decimal available,
             decimal amount,
             decimal fee,
@@ -56,7 +56,7 @@ namespace Atomex.Client.Core.Tests
                 account: 0,
                 chain: 0,
                 index: 0,
-                keyType: CurrencyConfig.StandardKey);
+                keyType: CurrencyConfig_OLD.StandardKey);
 
             var fromOutputs = GetOutputs(fromAddress.Address, NBitcoin.Network.TestNet, currency.CoinToSatoshi(available)).ToList();
 
@@ -66,7 +66,7 @@ namespace Atomex.Client.Core.Tests
             var currencies = Common.CurrenciesTestNet;
             currencies.GetByName(currency.Name).BlockchainApi = apiMock.Object;
 
-            var account = new BitcoinBasedAccount(
+            var account = new BitcoinBasedAccount_OLD(
                 currency: currency.Name,
                 currencies: currencies,
                 wallet: wallet,
@@ -92,7 +92,7 @@ namespace Atomex.Client.Core.Tests
         [Theory]
         [MemberData(nameof(SendTestData))]
         public void SendTest(
-            BitcoinBasedConfig currency,
+            BitcoinBasedConfig_OLD currency,
             decimal available,
             decimal amount,
             decimal fee,
@@ -128,7 +128,7 @@ namespace Atomex.Client.Core.Tests
         [Theory]
         [MemberData(nameof(SendDustAmountFailTestData))]
         public void SendDustAmountFailTest(
-            BitcoinBasedConfig currency,
+            BitcoinBasedConfig_OLD currency,
             decimal available,
             decimal amount,
             decimal fee,
@@ -155,7 +155,7 @@ namespace Atomex.Client.Core.Tests
         [Theory]
         [MemberData(nameof(SendInsufficientFundsFailTestData))]
         public void SendInsufficientFundsFailTest(
-            BitcoinBasedConfig currency,
+            BitcoinBasedConfig_OLD currency,
             decimal available,
             decimal amount,
             decimal fee,
@@ -182,7 +182,7 @@ namespace Atomex.Client.Core.Tests
         [Theory]
         [MemberData(nameof(SendDustChangeFailTestData))]
         public void SendDustChangeFailTest(
-            BitcoinBasedConfig currency,
+            BitcoinBasedConfig_OLD currency,
             decimal available,
             decimal amount,
             decimal fee,
@@ -209,7 +209,7 @@ namespace Atomex.Client.Core.Tests
         [Theory]
         [MemberData(nameof(SendDustAsAmountTestData))]
         public void SendDustAsAmountTest(
-            BitcoinBasedConfig currency,
+            BitcoinBasedConfig_OLD currency,
             decimal available,
             decimal amount,
             decimal fee,
@@ -254,7 +254,7 @@ namespace Atomex.Client.Core.Tests
         [Theory]
         [MemberData(nameof(SendDustAsFeeTestData))]
         public void SendDustAsFeeTest(
-            BitcoinBasedConfig currency,
+            BitcoinBasedConfig_OLD currency,
             decimal available,
             decimal amount,
             decimal fee,

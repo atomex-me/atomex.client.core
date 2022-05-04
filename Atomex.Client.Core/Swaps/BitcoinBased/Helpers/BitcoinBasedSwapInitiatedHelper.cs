@@ -17,7 +17,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
     {
         public static async Task<Result<IBlockchainTransaction_OLD>> TryToFindPaymentAsync(
             Swap swap,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             Side side,
             string toAddress,
             string refundAddress,
@@ -29,7 +29,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
             {
                 Log.Debug("BitcoinBased: try to find payment tx");
 
-                var bitcoinBased = (BitcoinBasedConfig)currency;
+                var bitcoinBased = (BitcoinBasedConfig_OLD)currency;
 
                 var requiredAmount = AmountHelper.QtyToSellAmount(side, swap.Qty, swap.Price, bitcoinBased.DigitsMultiplier);
                 var requiredAmountInSatoshi = bitcoinBased.CoinToSatoshi(requiredAmount);
@@ -102,7 +102,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
 
         public static async Task<Result<bool>> IsInitiatedAsync(
             Swap swap,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             long refundTimeStamp,
             CancellationToken cancellationToken = default)
         {
@@ -146,7 +146,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
 
         public static Task StartSwapInitiatedControlAsync(
             Swap swap,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             long refundTimeStamp,
             TimeSpan interval,
             Func<Swap, CancellationToken, Task> initiatedHandler = null,

@@ -16,7 +16,7 @@ using BitcoinExtKey = Atomex.Wallets.Bitcoin.BitcoinExtKey;
 
 namespace Atomex
 {
-    public abstract class BitcoinBasedConfig : CurrencyConfig
+    public abstract class BitcoinBasedConfig_OLD : CurrencyConfig_OLD
     {
         public const int P2PkhTxSize = 182;
         public const int DefaultPaymentTxSize = 372; // 2 inputs and 2 outputs
@@ -30,7 +30,7 @@ namespace Atomex
         public decimal MinRelayTxFeeRate { get; set; }
         public NBitcoin.Network Network { get; protected set; }
 
-        protected BitcoinBasedConfig()
+        protected BitcoinBasedConfig_OLD()
         {
             TransactionType = typeof(BitcoinBasedTransaction);
         }

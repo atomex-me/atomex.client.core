@@ -19,19 +19,19 @@ namespace Atomex.Blockchain.BitcoinBased
             SigHash sigHash = SigHash.All);
         Script GetScriptSig(int inputNo);
 
-        void Sign(SecureBytes privateKey, ITxOutput[] spentOutputs, BitcoinBasedConfig bitcoinBasedConfig);
-        void Sign(Key privateKey, ITxOutput spentOutput, BitcoinBasedConfig bitcoinBasedConfig);
-        void Sign(Key privateKey, ITxOutput[] spentOutputs, BitcoinBasedConfig bitcoinBasedConfig);
+        void Sign(SecureBytes privateKey, ITxOutput[] spentOutputs, BitcoinBasedConfig_OLD bitcoinBasedConfig);
+        void Sign(Key privateKey, ITxOutput spentOutput, BitcoinBasedConfig_OLD bitcoinBasedConfig);
+        void Sign(Key privateKey, ITxOutput[] spentOutputs, BitcoinBasedConfig_OLD bitcoinBasedConfig);
         void NonStandardSign(byte[] sigScript, ITxOutput spentOutput);
         void NonStandardSign(Script sigScript, ITxOutput spentOutput);
         void NonStandardSign(byte[] sigScript, int inputNo);
         void NonStandardSign(Script sigScript, int inputNo);
 
         bool Check();
-        bool Verify(ITxOutput spentOutput, BitcoinBasedConfig bitcoinBasedConfig, bool checkScriptPubKey = true);
-        bool Verify(ITxOutput spentOutput, out Error[] errors, BitcoinBasedConfig bitcoinBasedConfig, bool checkScriptPubKey = true);
-        bool Verify(IEnumerable<ITxOutput> spentOutputs, BitcoinBasedConfig bitcoinBasedConfig, bool checkScriptPubKey = true);
-        bool Verify(IEnumerable<ITxOutput> spentOutputs, out Error[] errors, BitcoinBasedConfig bitcoinBasedConfig, bool checkScriptPubKey = true);
+        bool Verify(ITxOutput spentOutput, BitcoinBasedConfig_OLD bitcoinBasedConfig, bool checkScriptPubKey = true);
+        bool Verify(ITxOutput spentOutput, out Error[] errors, BitcoinBasedConfig_OLD bitcoinBasedConfig, bool checkScriptPubKey = true);
+        bool Verify(IEnumerable<ITxOutput> spentOutputs, BitcoinBasedConfig_OLD bitcoinBasedConfig, bool checkScriptPubKey = true);
+        bool Verify(IEnumerable<ITxOutput> spentOutputs, out Error[] errors, BitcoinBasedConfig_OLD bitcoinBasedConfig, bool checkScriptPubKey = true);
 
         int VirtualSize();
         IBitcoinBasedTransaction_OLD Clone();

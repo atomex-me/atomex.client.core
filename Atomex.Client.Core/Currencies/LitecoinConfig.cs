@@ -13,7 +13,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex
 {
-    public class LitecoinConfig : BitcoinBasedConfig
+    public class LitecoinConfig : BitcoinBasedConfig_OLD
     {
         private const long LtcDigitsMultiplier = 100_000_000;
 

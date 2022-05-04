@@ -19,11 +19,11 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.BitcoinBased
 {
-    public class BitcoinBasedAccount : CurrencyAccount_OLD, IAddressResolver, IEstimatable
+    public class BitcoinBasedAccount_OLD : CurrencyAccount_OLD, IAddressResolver, IEstimatable
     {
-        public BitcoinBasedConfig Config => Currencies.Get<BitcoinBasedConfig>(Currency);
+        public BitcoinBasedConfig_OLD Config => Currencies.Get<BitcoinBasedConfig_OLD>(Currency);
 
-        public BitcoinBasedAccount(
+        public BitcoinBasedAccount_OLD(
             string currency,
             ICurrencies currencies,
             IHdWallet_OLD wallet,
@@ -154,11 +154,11 @@ namespace Atomex.Wallet.BitcoinBased
             decimal feeRate,
             CancellationToken cancellationToken = default)
         {
-            var txParams = await BitcoinTransactionParams.SelectTransactionParamsByFeeRateAsync(
+            var txParams = await BitcoinTransactionParams_OLD.SelectTransactionParamsByFeeRateAsync(
                     availableInputs: from,
                     destinations: new (decimal AmountInSatoshi, int Size)[]
                     {
-                        (AmountInSatoshi: Config.CoinToSatoshi(amount), Size: BitcoinBasedConfig.LegacyTxOutputSize)
+                        (AmountInSatoshi: Config.CoinToSatoshi(amount), Size: BitcoinBasedConfig_OLD.LegacyTxOutputSize)
                     },
                     changeAddress: changeTo,
                     feeRate: feeRate,
@@ -183,7 +183,7 @@ namespace Atomex.Wallet.BitcoinBased
             var outputs = (from as FromOutputs)?.Outputs;
 
             if (outputs == null || !outputs.Any())
-                return Config.SatoshiToCoin((long)(feeRate * BitcoinBasedConfig.OneInputTwoOutputTxSize));
+                return Config.SatoshiToCoin((long)(feeRate * BitcoinBasedConfig_OLD.OneInputTwoOutputTxSize));
 
             var changeAddress = await GetFreeInternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -263,18 +263,18 @@ namespace Atomex.Wallet.BitcoinBased
 
             var destinationSize = to != null
                 ? new BitcoinDestination { Script = BitcoinAddress.Create(to, Config.Network).ScriptPubKey }.Size()
-                : BitcoinBasedConfig.LegacyTxOutputSize;
+                : BitcoinBasedConfig_OLD.LegacyTxOutputSize;
 
             var changeAddress = await GetFreeInternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var (size, sizeWithChange) = BitcoinTransactionParams.CalculateTxSize(
+            var (size, sizeWithChange) = BitcoinTransactionParams_OLD.CalculateTxSize(
                 inputsCount: inputsToSign.Count(),
                 inputsSize: inputsSize,
                 outputsCount: 1,
                 outputsSize: destinationSize,
                 witnessCount: witnessCount,
-                changeOutputSize: BitcoinTransactionParams.CalculateChangeOutputSize(changeAddress.Address, Config.Network));
+                changeOutputSize: BitcoinTransactionParams_OLD.CalculateChangeOutputSize(changeAddress.Address, Config.Network));
 
             var estimatedFeeInSatoshi = (long)(feeRate * size);
 
@@ -529,14 +529,14 @@ namespace Atomex.Wallet.BitcoinBased
                 .GetLastActiveWalletAddressAsync(
                     currency: Currency,
                     chain: Bip44.Internal,
-                    keyType: CurrencyConfig.StandardKey)
+                    keyType: CurrencyConfig_OLD.StandardKey)
                 .ConfigureAwait(false);
 
             return await DivideAddressAsync(
                     account: Bip44.DefaultAccount,
                     chain: Bip44.Internal,
                     index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    keyType: CurrencyConfig.StandardKey)
+                    keyType: CurrencyConfig_OLD.StandardKey)
                 .ConfigureAwait(false);
         }
 
@@ -672,7 +672,7 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         private async Task UpsertOutputAsync(
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             ITxOutput output,
             string address)
         {

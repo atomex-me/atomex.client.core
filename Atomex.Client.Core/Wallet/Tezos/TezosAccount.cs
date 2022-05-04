@@ -722,7 +722,7 @@ namespace Atomex.Wallet.Tezos
                     .GetLastActiveWalletAddressAsync(
                         currency: Currency,
                         chain: chain,
-                        keyType: CurrencyConfig.StandardKey)
+                        keyType: CurrencyConfig_OLD.StandardKey)
                     .ConfigureAwait(false);
 
                 if (lastActiveAddress != null)

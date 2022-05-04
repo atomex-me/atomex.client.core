@@ -16,7 +16,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
     {
         public static async Task<Result<bool>> IsRefundedAsync(
             Swap swap,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             TezosConfig tezos,
             CancellationToken cancellationToken = default)
         {
@@ -81,7 +81,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
 
         public static async Task<Result<bool>> IsRefundedAsync(
             Swap swap,
-            CurrencyConfig currency,
+            CurrencyConfig_OLD currency,
             TezosConfig tezos,
             int attempts,
             int attemptIntervalInSec,
