@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,6 +23,8 @@ namespace Atomex.Services
 
         private CancellationTokenSource _cts;
         private bool _isRunning;
+
+        private ISet<string> _tezosAddresses;
 
         public BalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, ILogger log)
         {
@@ -107,19 +110,31 @@ namespace Atomex.Services
                 await _tzktEvents.StartAsync(baseUri).ConfigureAwait(false);
 
                 var account = _account.GetCurrencyAccount(currency.Name);
-                var addresses = (await account
-                        .GetAddressesAsync())
-                    .Select(wa => wa.Address);
-
-
+                _tezosAddresses = await GetAddressesAsync().ConfigureAwait(false);
+                
                 await _tzktEvents
-                    .NotifyOnAccountsAsync(addresses, TezosBalanceUpdateHandler)
+                    .NotifyOnAccountsAsync(_tezosAddresses, TezosBalanceUpdateHandler)
                     .ConfigureAwait(false);
             }
             catch (Exception e)
             {
                 _log.Error(e, "Error on starting Tezos balance updater");
             }
+        }
+
+        private async Task<ISet<string>> GetAddressesAsync()
+        {
+            var account = _account.GetCurrencyAccount(TezosConfig.Xtz);
+            var addresses = await account
+                .GetAddressesAsync().ConfigureAwait(false);
+
+            var freeAddress = await account
+                .GetFreeExternalAddressAsync()
+                .ConfigureAwait(false);
+
+            return addresses.Concat(new[] { freeAddress })
+                            .Select(wa => wa.Address)
+                            .ToHashSet();
         }
 
         private async void TezosBalanceUpdateHandler(string address)
@@ -129,6 +144,19 @@ namespace Atomex.Services
                 await _walletScanner
                     .ScanAddressAsync(TezosConfig.Xtz, address)
                     .ConfigureAwait(false);
+                
+                var newAddresses = await GetAddressesAsync().ConfigureAwait(false);
+                newAddresses.ExceptWith(_tezosAddresses);
+
+                if (newAddresses.Any())
+                {
+                    Log.Information("Added new addresses {@Addresses}", newAddresses);
+                    await _tzktEvents
+                        .NotifyOnAccountsAsync(newAddresses, TezosBalanceUpdateHandler)
+                        .ConfigureAwait(false);
+
+                    _tezosAddresses.UnionWith(newAddresses);
+                }
             }
             catch (Exception e)
             {

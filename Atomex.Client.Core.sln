@@ -11,15 +11,15 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.TzktEvents", "Atomex
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Cryptography", "Atomex.Cryptography\Atomex.Cryptography.csproj", "{08D0B06C-2F07-40BF-A698-18D81724E132}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atomex.Wallets", "Atomex.Wallets\Atomex.Wallets.csproj", "{10282AA4-DD24-454E-AF08-032133AA9909}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Wallets", "Atomex.Wallets\Atomex.Wallets.csproj", "{10282AA4-DD24-454E-AF08-032133AA9909}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atomex.Wallets.Bitcoin", "Atomex.Wallets.Bitcoin\Atomex.Wallets.Bitcoin.csproj", "{52687507-508D-4739-8E07-B6EE9E406959}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Wallets.Bitcoin", "Atomex.Wallets.Bitcoin\Atomex.Wallets.Bitcoin.csproj", "{52687507-508D-4739-8E07-B6EE9E406959}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atomex.Common", "Atomex.Common\Atomex.Common.csproj", "{79679F66-2573-4196-A2A8-4734CA5532B5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Common", "Atomex.Common\Atomex.Common.csproj", "{79679F66-2573-4196-A2A8-4734CA5532B5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atomex.Wallets.Ethereum", "Atomex.Wallets.Ethereum\Atomex.Wallets.Ethereum.csproj", "{8EB8FD4F-D904-4862-8A8A-6996B4A0DCC6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Wallets.Ethereum", "Atomex.Wallets.Ethereum\Atomex.Wallets.Ethereum.csproj", "{8EB8FD4F-D904-4862-8A8A-6996B4A0DCC6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atomex.Wallets.Tezos", "Atomex.Wallets.Tezos\Atomex.Wallets.Tezos.csproj", "{5626DF41-8C15-4DE7-85A4-CDF04D1A5500}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Wallets.Tezos", "Atomex.Wallets.Tezos\Atomex.Wallets.Tezos.csproj", "{5626DF41-8C15-4DE7-85A4-CDF04D1A5500}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
