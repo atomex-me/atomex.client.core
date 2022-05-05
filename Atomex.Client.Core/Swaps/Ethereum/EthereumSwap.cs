@@ -29,7 +29,7 @@ namespace Atomex.Swaps.Ethereum
         public const int RefundCheckAttemptIntervalInSec = 5;
         public static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(20);
         public static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(30);
-        private EthereumConfig EthConfig => Currencies.Get<EthereumConfig>(Currency);
+        private EthereumConfig_ETH EthConfig => Currencies.Get<EthereumConfig_ETH>(Currency);
         protected readonly EthereumAccount _account;
 
         public EthereumSwap(
@@ -264,7 +264,7 @@ namespace Atomex.Swaps.Ethereum
                     HashedSecret = swap.SecretHash,
                     Secret       = swap.Secret,
                     Nonce        = nonceResult.Value,
-                    GasPrice     = EthereumConfig.GweiToWei(gasPrice),
+                    GasPrice     = EthereumConfig_ETH.GweiToWei(gasPrice),
                 };
 
                 message.Gas = await EstimateGasAsync(message, new BigInteger(ethConfig.RedeemGasLimit))
@@ -383,7 +383,7 @@ namespace Atomex.Swaps.Ethereum
                 HashedSecret = swap.SecretHash,
                 Secret       = swap.Secret,
                 Nonce        = nonceResult.Value,
-                GasPrice     = EthereumConfig.GweiToWei(gasPrice),
+                GasPrice     = EthereumConfig_ETH.GweiToWei(gasPrice),
             };
 
             message.Gas = await EstimateGasAsync(message, new BigInteger(ethConfig.RedeemGasLimit))
@@ -512,7 +512,7 @@ namespace Atomex.Swaps.Ethereum
                 {
                     FromAddress  = walletAddress.Address,
                     HashedSecret = swap.SecretHash,
-                    GasPrice     = EthereumConfig.GweiToWei(gasPrice),
+                    GasPrice     = EthereumConfig_ETH.GweiToWei(gasPrice),
                     Nonce        = nonceResult.Value,
                 };
 
@@ -777,11 +777,11 @@ namespace Atomex.Swaps.Ethereum
                 HashedSecret    = swap.SecretHash,
                 Participant     = swap.PartyAddress,
                 RefundTimestamp = refundTimeStampUtcInSec,
-                AmountToSend    = EthereumConfig.EthToWei(requiredAmountInEth),
+                AmountToSend    = EthereumConfig_ETH.EthToWei(requiredAmountInEth),
                 FromAddress     = walletAddress.Address,
-                GasPrice        = EthereumConfig.GweiToWei(gasPrice),
+                GasPrice        = EthereumConfig_ETH.GweiToWei(gasPrice),
                 Nonce           = nonceResult.Value,
-                RedeemFee       = EthereumConfig.EthToWei(rewardForRedeemInEth)
+                RedeemFee       = EthereumConfig_ETH.EthToWei(rewardForRedeemInEth)
             };
 
             var initiateGasLimit = rewardForRedeemInEth == 0

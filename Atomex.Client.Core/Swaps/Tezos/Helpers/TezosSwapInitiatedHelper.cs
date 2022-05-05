@@ -21,7 +21,7 @@ namespace Atomex.Swaps.Tezos.Helpers
             CurrencyConfig_OLD currency,
             CancellationToken cancellationToken = default)
         {
-            var tezos = currency as TezosConfig;
+            var tezos = currency as TezosConfig_OLD;
 
             if (swap.PaymentTx is not TezosTransaction_OLD paymentTx)
                 return new Error(Errors.SwapError, "Saved tx is null");
@@ -76,7 +76,7 @@ namespace Atomex.Swaps.Tezos.Helpers
             {
                 Log.Debug("Tezos: check initiated event");
 
-                var tezos = (TezosConfig)currency;
+                var tezos = (TezosConfig_OLD)currency;
 
                 var side = swap.Symbol
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
@@ -273,14 +273,14 @@ namespace Atomex.Swaps.Tezos.Helpers
 
             try
             {
-                var timestamp = TezosConfig.ParseTimestamp(initParams?["args"]?[1]?["args"]?[0]?["args"]?[1]);
+                var timestamp = TezosConfig_OLD.ParseTimestamp(initParams?["args"]?[1]?["args"]?[0]?["args"]?[1]);
                 if (timestamp < refundTimeStamp)
                 {
                     Log.Debug($"IsSwapInit: refundTimeStamp is less than expected (should be at least {refundTimeStamp})");
                     return false;
                 }
 
-                var address = TezosConfig.ParseAddress(initParams?["args"]?[0]);
+                var address = TezosConfig_OLD.ParseAddress(initParams?["args"]?[0]);
                 if (address != participantAddress)
                 {
                     Log.Debug($"IsSwapInit: participantAddress is unexpected (should be {participantAddress})");

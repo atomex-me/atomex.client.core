@@ -137,10 +137,10 @@ namespace Atomex.ViewModels
                         Text = "transaction confirmed",
                         Url = purchaseCurrencyConfig switch
                         {
-                            EthereumConfig ethereumConfig =>
+                            EthereumConfig_ETH ethereumConfig =>
                                 $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                            TezosConfig tezosConfig =>
+                            TezosConfig_OLD tezosConfig =>
                                 $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                             _ => null
                         }
@@ -163,10 +163,10 @@ namespace Atomex.ViewModels
                             Text = "transaction failed",
                             Url = purchaseCurrencyConfig switch
                             {
-                                EthereumConfig ethereumConfig =>
+                                EthereumConfig_ETH ethereumConfig =>
                                     $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                                TezosConfig tezosConfig =>
+                                TezosConfig_OLD tezosConfig =>
                                     $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                                 _ => null
                             }
@@ -189,10 +189,10 @@ namespace Atomex.ViewModels
                             Text = "payment transaction",
                             Url = purchaseCurrencyConfig switch
                             {
-                                EthereumConfig ethereumConfig =>
+                                EthereumConfig_ETH ethereumConfig =>
                                     $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                                TezosConfig tezosConfig =>
+                                TezosConfig_OLD tezosConfig =>
                                     $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                                 _ => null
                             }
@@ -217,10 +217,10 @@ namespace Atomex.ViewModels
                         Text = "transaction confirmed",
                         Url = soldCurrencyConfig switch
                         {
-                            EthereumConfig ethereumConfig =>
+                            EthereumConfig_ETH ethereumConfig =>
                                 $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                            TezosConfig tezosConfig =>
+                            TezosConfig_OLD tezosConfig =>
                                 $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                             _ => null
                         }
@@ -244,10 +244,10 @@ namespace Atomex.ViewModels
                             Text = "transaction failed",
                             Url = soldCurrencyConfig switch
                             {
-                                EthereumConfig ethereumConfig =>
+                                EthereumConfig_ETH ethereumConfig =>
                                     $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                                TezosConfig tezosConfig =>
+                                TezosConfig_OLD tezosConfig =>
                                     $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                                 _ => null
                             }
@@ -271,10 +271,10 @@ namespace Atomex.ViewModels
                             Text = "payment transaction",
                             Url = soldCurrencyConfig switch
                             {
-                                EthereumConfig ethereumConfig =>
+                                EthereumConfig_ETH ethereumConfig =>
                                     $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                                TezosConfig tezosConfig =>
+                                TezosConfig_OLD tezosConfig =>
                                     $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                                 _ => null
                             }
@@ -308,10 +308,10 @@ namespace Atomex.ViewModels
                         Text = "transaction confirmed",
                         Url = soldCurrencyConfig switch
                         {
-                            EthereumConfig ethereumConfig =>
+                            EthereumConfig_ETH ethereumConfig =>
                                 $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                            TezosConfig tezosConfig =>
+                            TezosConfig_OLD tezosConfig =>
                                 $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                             _ => null
                         }
@@ -334,10 +334,10 @@ namespace Atomex.ViewModels
                             Text = "transaction failed",
                             Url = soldCurrencyConfig switch
                             {
-                                EthereumConfig ethereumConfig =>
+                                EthereumConfig_ETH ethereumConfig =>
                                     $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                                TezosConfig tezosConfig =>
+                                TezosConfig_OLD tezosConfig =>
                                     $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                                 _ => null
                             }
@@ -359,10 +359,10 @@ namespace Atomex.ViewModels
                             Text = "redeem transaction",
                             Url = soldCurrencyConfig switch
                             {
-                                EthereumConfig ethereumConfig =>
+                                EthereumConfig_ETH ethereumConfig =>
                                     $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                                TezosConfig tezosConfig =>
+                                TezosConfig_OLD tezosConfig =>
                                     $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                                 _ => null
                             }
@@ -386,10 +386,10 @@ namespace Atomex.ViewModels
                         Text = "transaction confirmed",
                         Url = purchaseCurrencyConfig switch
                         {
-                            EthereumConfig ethereumConfig =>
+                            EthereumConfig_ETH ethereumConfig =>
                                 $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                            TezosConfig tezosConfig =>
+                            TezosConfig_OLD tezosConfig =>
                                 $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                             _ => null
                         }
@@ -413,10 +413,10 @@ namespace Atomex.ViewModels
                             Text = "transaction confirmed",
                             Url = soldCurrencyConfig switch
                             {
-                                EthereumConfig ethereumConfig =>
+                                EthereumConfig_ETH ethereumConfig =>
                                     $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                                TezosConfig tezosConfig =>
+                                TezosConfig_OLD tezosConfig =>
                                     $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                                 _ => null
                             }
@@ -437,10 +437,10 @@ namespace Atomex.ViewModels
                             Text = "refund transaction",
                             Url = soldCurrencyConfig switch
                             {
-                                EthereumConfig ethereumConfig =>
+                                EthereumConfig_ETH ethereumConfig =>
                                     $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                                TezosConfig tezosConfig =>
+                                TezosConfig_OLD tezosConfig =>
                                     $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                                 _ => null
                             }
@@ -463,10 +463,10 @@ namespace Atomex.ViewModels
                                 Text = "transaction failed",
                                 Url = purchaseCurrencyConfig switch
                                 {
-                                    EthereumConfig ethereumConfig =>
+                                    EthereumConfig_ETH ethereumConfig =>
                                         $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                                    TezosConfig tezosConfig =>
+                                    TezosConfig_OLD tezosConfig =>
                                         $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                                     _ => null
                                 }
@@ -487,10 +487,10 @@ namespace Atomex.ViewModels
                                 Text = "redeem transaction",
                                 Url = purchaseCurrencyConfig switch
                                 {
-                                    EthereumConfig ethereumConfig =>
+                                    EthereumConfig_ETH ethereumConfig =>
                                         $"{ethereumConfig.AddressExplorerUri}{ethereumConfig.SwapContractAddress}",
 
-                                    TezosConfig tezosConfig =>
+                                    TezosConfig_OLD tezosConfig =>
                                         $"{tezosConfig.AddressExplorerUri}{tezosConfig.SwapContractAddress}",
                                     _ => null
                                 }

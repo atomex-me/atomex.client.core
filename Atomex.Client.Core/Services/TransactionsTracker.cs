@@ -190,11 +190,11 @@ namespace Atomex.Services
             IBlockchainTransaction_OLD tx,
             CancellationToken cancellationToken)
         {
-            if (tx.Currency == EthereumConfig.Eth)
+            if (tx.Currency == EthereumConfig_ETH.Eth)
             {
                 // 
             }
-            else if (tx.Currency == TezosConfig.Xtz)
+            else if (tx.Currency == TezosConfig_OLD.Xtz)
             {
                 var tezosTx = tx as TezosTransaction_OLD;
 
@@ -202,7 +202,7 @@ namespace Atomex.Services
                     return;
 
                 var tezosAccount = _account
-                    .GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz);
+                    .GetCurrencyAccount<TezosAccount>(TezosConfig_OLD.Xtz);
 
                 var tezosTokensScanner = new TezosTokensScanner(tezosAccount);
 

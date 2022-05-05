@@ -18,7 +18,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
         public static async Task<Result<byte[]>> IsRedeemedAsync(
             Swap swap,
             CurrencyConfig_OLD currency,
-            TezosConfig tezos,
+            TezosConfig_OLD tezos,
             CancellationToken cancellationToken = default)
         {
             try
@@ -90,7 +90,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
         public static async Task<Result<byte[]>> IsRedeemedAsync(
             Swap swap,
             CurrencyConfig_OLD currency,
-            TezosConfig tezos,
+            TezosConfig_OLD tezos,
             int attempts,
             int attemptIntervalInSec,
             CancellationToken cancellationToken = default)
@@ -124,7 +124,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
         public static Task StartSwapRedeemedControlAsync(
             Swap swap,
             CurrencyConfig_OLD currency,
-            TezosConfig tezos,
+            TezosConfig_OLD tezos,
             DateTime refundTimeUtc,
             TimeSpan interval,
             bool cancelOnlyIfRefundTimeReached = true,

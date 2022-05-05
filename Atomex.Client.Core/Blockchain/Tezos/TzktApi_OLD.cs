@@ -20,13 +20,13 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 {
     public class TzktApi_OLD : BlockchainApi_OLD, ITezosBlockchainApi_OLD, ITokenBlockchainApi
     {
-        private readonly TezosConfig _currency;
+        private readonly TezosConfig_OLD _currency;
         private readonly string _baseUri;
         private readonly string _rpcNodeUri;
         private readonly HttpRequestHeaders _headers;
         public const int PageSize = 10000;
 
-        public TzktApi_OLD(TezosConfig currency)
+        public TzktApi_OLD(TezosConfig_OLD currency)
         {
             _currency = currency;
             _baseUri = currency.BaseUri;

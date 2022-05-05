@@ -21,7 +21,7 @@ using Atomex.Wallets.Ethereum;
 
 namespace Atomex
 {
-    public class EthereumConfig : CurrencyConfig_OLD
+    public class EthereumConfig_ETH : CurrencyConfig_OLD
     {
         public const string Eth = "ETH";
         protected const long WeiInEth = 1000000000000000000;
@@ -66,11 +66,11 @@ namespace Atomex
         public string SwapContractAddress { get; protected set; }
         public ulong SwapContractBlockNumber { get; protected set; }
 
-        public EthereumConfig()
+        public EthereumConfig_ETH()
         {
         }
 
-        public EthereumConfig(IConfiguration configuration)
+        public EthereumConfig_ETH(IConfiguration configuration)
         {
             Update(configuration);
         }
@@ -147,7 +147,7 @@ namespace Atomex
 
         protected static IBlockchainApi_OLD ResolveBlockchainApi(
             IConfiguration configuration,
-            EthereumConfig currency)
+            EthereumConfig_ETH currency)
         {
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();

@@ -80,7 +80,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             QueryJ($"chains/{_chain}/blocks/head/context/contracts/{address}/manager_key");
 
         public async Task<bool> AutoFillOperations(
-            TezosConfig tezosConfig,
+            TezosConfig_OLD tezosConfig,
             JObject head,
             JArray operations,
             bool useSafeStorageLimit = false,

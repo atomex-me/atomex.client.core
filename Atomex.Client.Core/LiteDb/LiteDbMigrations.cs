@@ -368,7 +368,7 @@ namespace Atomex.LiteDb
                 .ToList();
 
             foreach (var xtzAddress in xtzAddresses)
-                xtzAddress.Add("KeyType", TezosConfig.Bip32Ed25519Key);
+                xtzAddress.Add("KeyType", TezosConfig_OLD.Bip32Ed25519Key);
 
             var upserted = addressesCollection.Upsert(xtzAddresses);
 
@@ -378,7 +378,7 @@ namespace Atomex.LiteDb
                 .ToList();
 
             foreach (var tezosTokenAddress in tezosTokensAddresses)
-                tezosTokenAddress.Add("KeyType", TezosConfig.Bip32Ed25519Key);
+                tezosTokenAddress.Add("KeyType", TezosConfig_OLD.Bip32Ed25519Key);
 
             upserted = tezosTokensAddressesCollection.Upsert(tezosTokensAddresses);
            

@@ -23,15 +23,15 @@ namespace Atomex.Wallet
             {
                 if (Currencies.IsTezosToken(currency.Name))
                 {
-                    if (!accounts.TryGetValue(TezosConfig.Xtz, out var tezosAccount))
+                    if (!accounts.TryGetValue(TezosConfig_OLD.Xtz, out var tezosAccount))
                     {
                         tezosAccount = CreateCurrencyAccount(
-                            currency: TezosConfig.Xtz,
+                            currency: TezosConfig_OLD.Xtz,
                             wallet: wallet,
                             dataRepository: dataRepository,
                             currencies: currencies);
 
-                        accounts.Add(TezosConfig.Xtz, tezosAccount);
+                        accounts.Add(TezosConfig_OLD.Xtz, tezosAccount);
                     }
 
                     accounts.Add(currency.Name, CreateCurrencyAccount(

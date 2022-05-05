@@ -26,7 +26,7 @@ namespace Atomex.Swaps.Tezos
         public static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(10);
         public static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(15);
 
-        private TezosConfig XtzConfig => Currencies.Get<TezosConfig>(Currency);
+        private TezosConfig_OLD XtzConfig => Currencies.Get<TezosConfig_OLD>(Currency);
         protected readonly TezosAccount _account;
 
         public TezosSwap(
@@ -82,7 +82,7 @@ namespace Atomex.Swaps.Tezos
                         .FillOperationsAsync(
                             securePublicKey: securePublicKey,
                             tezosConfig: XtzConfig,
-                            headOffset: TezosConfig.HeadOffset,
+                            headOffset: TezosConfig_OLD.HeadOffset,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -301,7 +301,7 @@ namespace Atomex.Swaps.Tezos
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
                         tezosConfig: xtzConfig,
-                        headOffset: TezosConfig.HeadOffset,
+                        headOffset: TezosConfig_OLD.HeadOffset,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -421,7 +421,7 @@ namespace Atomex.Swaps.Tezos
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
                         tezosConfig: xtzConfig,
-                        headOffset: TezosConfig.HeadOffset,
+                        headOffset: TezosConfig_OLD.HeadOffset,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -534,7 +534,7 @@ namespace Atomex.Swaps.Tezos
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
                         tezosConfig: xtzConfig,
-                        headOffset: TezosConfig.HeadOffset,
+                        headOffset: TezosConfig_OLD.HeadOffset,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

@@ -42,7 +42,7 @@ namespace Atomex.Wallet.Tezos
             var isFirstScan = tezosAddresses.Count() <= 1;
 
             var scanBip32Ed25519 = isFirstScan || tezosAddresses
-                .FirstOrDefault(w => w.KeyType == TezosConfig.Bip32Ed25519Key &&
+                .FirstOrDefault(w => w.KeyType == TezosConfig_OLD.Bip32Ed25519Key &&
                                      (w.HasActivity ||
                                      w.Balance != 0 ||
                                      w.UnconfirmedIncome != 0 ||
@@ -51,8 +51,8 @@ namespace Atomex.Wallet.Tezos
             var scanParams = scanBip32Ed25519
                 ? new[]
                 {
-                    (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.Internal, LookAhead : OldLookAhead),
-                    (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.External, LookAhead : OldLookAhead),
+                    (KeyType : TezosConfig_OLD.Bip32Ed25519Key, Chain : Bip44.Internal, LookAhead : OldLookAhead),
+                    (KeyType : TezosConfig_OLD.Bip32Ed25519Key, Chain : Bip44.External, LookAhead : OldLookAhead),
                     (KeyType : CurrencyConfig_OLD.StandardKey, Chain : Bip44.External, LookAhead : InternalLookAhead)
                 }
                 : new[]
@@ -122,7 +122,7 @@ namespace Atomex.Wallet.Tezos
                         }
                     }
 
-                    if (keyType == TezosConfig.Bip32Ed25519Key)
+                    if (keyType == TezosConfig_OLD.Bip32Ed25519Key)
                     {
                         index++;
                     }
@@ -169,7 +169,7 @@ namespace Atomex.Wallet.Tezos
             var addresses = (await Account.DataRepository
                 .GetAddressesAsync(currency.Name)
                 .ConfigureAwait(false))
-                .Where(a => a.KeyType == TezosConfig.Bip32Ed25519Key);
+                .Where(a => a.KeyType == TezosConfig_OLD.Bip32Ed25519Key);
 
             // if there is at least one address with activity => leave bip32ed25519 addresses in db
             if (addresses.Any(w => w.HasActivity || w.Balance > 0 || w.UnconfirmedIncome > 0 || w.UnconfirmedOutcome > 0))

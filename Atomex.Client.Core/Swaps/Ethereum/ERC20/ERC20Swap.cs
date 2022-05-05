@@ -29,7 +29,7 @@ namespace Atomex.Swaps.Ethereum
         private Erc20Account Erc20Account { get; }
         private EthereumAccount EthereumAccount { get; }
         private Erc20Config Erc20Config => Currencies.Get<Erc20Config>(Currency);
-        private EthereumConfig EthConfig => Currencies.Get<EthereumConfig>(EthereumAccount.Currency);
+        private EthereumConfig_ETH EthConfig => Currencies.Get<EthereumConfig_ETH>(EthereumAccount.Currency);
 
         public Erc20Swap(
             Erc20Account account,
@@ -287,7 +287,7 @@ namespace Atomex.Swaps.Ethereum
                     HashedSecret = swap.SecretHash,
                     Secret       = swap.Secret,
                     Nonce        = nonceResult.Value,
-                    GasPrice     = EthereumConfig.GweiToWei(gasPrice),
+                    GasPrice     = EthereumConfig_ETH.GweiToWei(gasPrice),
                 };
 
                 message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.RedeemGasLimit))
@@ -406,7 +406,7 @@ namespace Atomex.Swaps.Ethereum
                 HashedSecret = swap.SecretHash,
                 Secret       = swap.Secret,
                 Nonce        = nonceResult.Value,
-                GasPrice     = EthereumConfig.GweiToWei(gasPrice),
+                GasPrice     = EthereumConfig_ETH.GweiToWei(gasPrice),
             };
 
             message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.RedeemGasLimit))
@@ -535,7 +535,7 @@ namespace Atomex.Swaps.Ethereum
                 {
                     FromAddress  = walletAddress.Address,
                     HashedSecret = swap.SecretHash,
-                    GasPrice     = EthereumConfig.GweiToWei(gasPrice),
+                    GasPrice     = EthereumConfig_ETH.GweiToWei(gasPrice),
                     Nonce        = nonceResult.Value,
                 };
 
@@ -839,7 +839,7 @@ namespace Atomex.Swaps.Ethereum
                 RedeemFee       = erc20Config.TokensToTokenDigits(rewardForRedeemInERC20),
                 Active          = true,
                 FromAddress     = walletAddress.Address,
-                GasPrice        = EthereumConfig.GweiToWei(gasPrice),
+                GasPrice        = EthereumConfig_ETH.GweiToWei(gasPrice),
                 Nonce           = nonceResult.Value
             };
 
@@ -947,7 +947,7 @@ namespace Atomex.Swaps.Ethereum
                 Spender     = erc20Config.SwapContractAddress,
                 Value       = value,
                 FromAddress = walletAddress,
-                GasPrice    = EthereumConfig.GweiToWei(gasPrice),
+                GasPrice    = EthereumConfig_ETH.GweiToWei(gasPrice),
                 Nonce       = nonce,
             };
 

@@ -13,17 +13,17 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex
 {
-    public class LitecoinConfig : BitcoinBasedConfig_OLD
+    public class LitecoinConfig_OLD : BitcoinBasedConfig_OLD
     {
         private const long LtcDigitsMultiplier = 100_000_000;
 
         public long DustThreshold { get; set; }
 
-        public LitecoinConfig()
+        public LitecoinConfig_OLD()
         {
         }
 
-        public LitecoinConfig(IConfiguration configuration)
+        public LitecoinConfig_OLD(IConfiguration configuration)
         {
             Update(configuration);
         }

@@ -36,7 +36,7 @@ namespace Atomex.Wallet.Ethereum
         #region Common
 
         private Erc20Config Erc20Config => Currencies.Get<Erc20Config>(Currency);
-        private EthereumConfig EthConfig => Currencies.Get<EthereumConfig>("ETH");
+        private EthereumConfig_ETH EthConfig => Currencies.Get<EthereumConfig_ETH>("ETH");
 
         public async Task<Error> SendAsync(
             string from,
@@ -112,7 +112,7 @@ namespace Atomex.Wallet.Ethereum
                 Value       = erc20Config.TokensToTokenDigits(addressFeeUsage.UsedAmount),
                 FromAddress = addressFeeUsage.WalletAddress.Address,
                 Gas         = new BigInteger(gasLimit),
-                GasPrice    = new BigInteger(EthereumConfig.GweiToWei(gasPrice)),
+                GasPrice    = new BigInteger(EthereumConfig_ETH.GweiToWei(gasPrice)),
                 Nonce       = nonceResult.Value
             };
 

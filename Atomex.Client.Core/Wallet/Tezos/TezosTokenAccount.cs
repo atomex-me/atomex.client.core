@@ -29,7 +29,7 @@ namespace Atomex.Wallet.Tezos
         protected decimal Balance { get; set; }
         protected decimal UnconfirmedIncome { get; set; }
         protected decimal UnconfirmedOutcome { get; set; }
-        protected TezosConfig XtzConfig => Currencies.Get<TezosConfig>(TezosConfig.Xtz);
+        protected TezosConfig_OLD XtzConfig => Currencies.Get<TezosConfig_OLD>(TezosConfig_OLD.Xtz);
 
         public TezosTokenAccount(
             string currency,
@@ -223,7 +223,7 @@ namespace Atomex.Wallet.Tezos
 
             // 2. try to find xtz address with max balance
             var unspentTezosAddresses = await DataRepository
-                .GetUnspentAddressesAsync(TezosConfig.Xtz)
+                .GetUnspentAddressesAsync(TezosConfig_OLD.Xtz)
                 .ConfigureAwait(false);
 
             if (unspentTezosAddresses.Any())

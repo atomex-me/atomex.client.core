@@ -5,10 +5,10 @@ namespace Atomex.Blockchain.Tezos
     public static class NumberExtensions
     {
         public static decimal ToMicroTez(this decimal tz) =>
-            Math.Floor(tz * TezosConfig.XtzDigitsMultiplier);
+            Math.Floor(tz * TezosConfig_OLD.XtzDigitsMultiplier);
 
         public static decimal ToTez(this decimal mtz) =>
-            mtz / TezosConfig.XtzDigitsMultiplier;
+            mtz / TezosConfig_OLD.XtzDigitsMultiplier;
 
         public static decimal ToTokenDigits(this decimal tokens, decimal tokenDigitsMultiplier) =>
             Math.Floor(tokens * tokenDigitsMultiplier);

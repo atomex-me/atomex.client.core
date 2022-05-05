@@ -89,10 +89,10 @@ namespace Atomex
         {
             return configurationSection.Key switch
             {
-                "BTC" => (CurrencyConfig_OLD)new BitcoinConfig(configurationSection),
-                "LTC" => new LitecoinConfig(configurationSection),
-                "ETH" => new EthereumConfig(configurationSection),
-                "XTZ" => new TezosConfig(configurationSection),
+                "BTC" => (CurrencyConfig_OLD)new BitcoinConfig_OLD(configurationSection),
+                "LTC" => new LitecoinConfig_OLD(configurationSection),
+                "ETH" => new EthereumConfig_ETH(configurationSection),
+                "XTZ" => new TezosConfig_OLD(configurationSection),
                 "USDT" => new Erc20Config(configurationSection),
                 "TBTC" => new Erc20Config(configurationSection),
                 "WBTC" => new Erc20Config(configurationSection),

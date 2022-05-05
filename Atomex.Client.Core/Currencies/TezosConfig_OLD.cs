@@ -20,7 +20,7 @@ using Atomex.Wallets;
 
 namespace Atomex
 {
-    public class TezosConfig : CurrencyConfig_OLD
+    public class TezosConfig_OLD : CurrencyConfig_OLD
     {
         public const string Xtz = "XTZ";
         public const long XtzDigitsMultiplier = 1_000_000;
@@ -83,11 +83,11 @@ namespace Atomex
         public string IpfsGatewayUri { get; protected set; }
         public string CatavaApiUri { get; protected set; }
 
-        public TezosConfig()
+        public TezosConfig_OLD()
         {
         }
 
-        public TezosConfig(IConfiguration configuration)
+        public TezosConfig_OLD(IConfiguration configuration)
         {
             Update(configuration);
         }
@@ -178,7 +178,7 @@ namespace Atomex
 
         protected static IBlockchainApi_OLD ResolveBlockchainApi(
             IConfiguration configuration,
-            TezosConfig tezos)
+            TezosConfig_OLD tezos)
         {
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();

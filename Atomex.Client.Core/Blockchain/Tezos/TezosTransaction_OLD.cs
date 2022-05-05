@@ -118,7 +118,7 @@ namespace Atomex.Blockchain.Tezos
 
             var privateKey = securePrivateKey.ToUnsecuredBytes();
 
-            var xtz = currencyConfig as TezosConfig;
+            var xtz = currencyConfig as TezosConfig_OLD;
 
             var rpc = new Rpc(xtz.RpcNodeUri);
 
@@ -149,7 +149,7 @@ namespace Atomex.Blockchain.Tezos
 
         public async Task<(bool result, bool isRunSuccess, bool hasReveal)> FillOperationsAsync(
             SecureBytes securePublicKey,
-            TezosConfig tezosConfig,
+            TezosConfig_OLD tezosConfig,
             int headOffset = 0,
             bool isAlreadyRevealed = false,
             CancellationToken cancellationToken = default)

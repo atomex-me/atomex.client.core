@@ -10,7 +10,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.TezosTokens
 {
-    public class Fa2Config : TezosConfig
+    public class Fa2Config : TezosConfig_OLD
     {
         public decimal TransferFee { get; private set; }
         public decimal TransferGasLimit { get; private set; }

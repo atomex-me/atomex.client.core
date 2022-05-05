@@ -34,5 +34,14 @@
         public const int NullGasPriceError = 1400;
         public const int NullGasLimitError = 1401;
         public const int NullNonceError = 1402;
+
+        // tezos errors
+        public const int GetAccountError = 1501;
+        public const int GetHeadError = 1502;
+        public const int IsRevealedError = 1503;
+        public const int GetCounterError = 1504;
+        public const int RunOperationsError = 1505;
+        public const int AutoFillError = 1506;
+        public const int GetOperationsError = 1507;
     }
 }

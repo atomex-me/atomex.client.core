@@ -25,7 +25,7 @@ namespace Atomex.Swaps.Tezos.FA12
         private Fa12Account Fa12Account { get; }
         private TezosAccount TezosAccount { get; }
         private Fa12Config Fa12Config => Currencies.Get<Fa12Config>(Currency);
-        private TezosConfig XtzConfig => Currencies.Get<TezosConfig>(TezosAccount.Currency);
+        private TezosConfig_OLD XtzConfig => Currencies.Get<TezosConfig_OLD>(TezosAccount.Currency);
         public static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(10);
         public static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(15);
 
@@ -96,7 +96,7 @@ namespace Atomex.Swaps.Tezos.FA12
                             .FillOperationsAsync(
                                 securePublicKey: securePublicKey,
                                 tezosConfig: TezosAccount.Config,
-                                headOffset: TezosConfig.HeadOffset,
+                                headOffset: TezosConfig_OLD.HeadOffset,
                                 isAlreadyRevealed: isAlreadyRevealed,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
@@ -335,7 +335,7 @@ namespace Atomex.Swaps.Tezos.FA12
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
                         tezosConfig: XtzConfig,
-                        headOffset: TezosConfig.HeadOffset,
+                        headOffset: TezosConfig_OLD.HeadOffset,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -453,7 +453,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 .FillOperationsAsync(
                     securePublicKey: securePublicKey,
                     tezosConfig: XtzConfig,
-                    headOffset: TezosConfig.HeadOffset,
+                    headOffset: TezosConfig_OLD.HeadOffset,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -557,7 +557,7 @@ namespace Atomex.Swaps.Tezos.FA12
                     .FillOperationsAsync(
                         securePublicKey: securePublicKey,
                         tezosConfig: XtzConfig,
-                        headOffset: TezosConfig.HeadOffset,
+                        headOffset: TezosConfig_OLD.HeadOffset,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

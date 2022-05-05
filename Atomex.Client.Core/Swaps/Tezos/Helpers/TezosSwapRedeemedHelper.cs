@@ -24,7 +24,7 @@ namespace Atomex.Swaps.Tezos.Helpers
             {
                 Log.Debug("Tezos: check redeem event");
 
-                var tezos = (Atomex.TezosConfig)currency;
+                var tezos = (Atomex.TezosConfig_OLD)currency;
 
                 var contractAddress = tezos.SwapContractAddress;
 

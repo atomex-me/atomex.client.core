@@ -12,7 +12,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.EthereumTokens
 {
-    public class Erc20Config : EthereumConfig
+    public class Erc20Config : EthereumConfig_ETH
     {
         public decimal TransferGasLimit { get; private set; }
         public decimal ApproveGasLimit { get; private set; }

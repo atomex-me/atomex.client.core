@@ -20,7 +20,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
             {
                 Log.Debug("Ethereum: check refund event");
 
-                var ethereum = (Atomex.EthereumConfig)currency;
+                var ethereum = (Atomex.EthereumConfig_ETH)currency;
 
                 var api = new EtherScanApi(ethereum);
 

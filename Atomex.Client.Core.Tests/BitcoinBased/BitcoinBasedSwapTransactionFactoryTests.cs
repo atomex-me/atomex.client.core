@@ -46,10 +46,10 @@ namespace Atomex.Client.Core.Tests
             var tempCurrencies = new CurrenciesProvider(Common.CurrenciesConfigurationString)
                 .GetCurrencies(Atomex.Core.Network.TestNet);
 
-            var bitcoin = tempCurrencies.Get<BitcoinConfig>("BTC");
+            var bitcoin = tempCurrencies.Get<BitcoinConfig_OLD>("BTC");
             bitcoin.BlockchainApi = bitcoinApi.Object;
 
-            var litecoin = tempCurrencies.Get<LitecoinConfig>("LTC");
+            var litecoin = tempCurrencies.Get<LitecoinConfig_OLD>("LTC");
             litecoin.BlockchainApi = litecoinApi.Object;
 
             var aliceBtcAddress = Common.Alice.PubKey

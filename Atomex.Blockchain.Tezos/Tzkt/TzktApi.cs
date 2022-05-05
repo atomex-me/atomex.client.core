@@ -32,6 +32,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
     public class TzktApi : ITezosApi, IBlockchainSwapApi
     {
         public const string Uri = "https://api.tzkt.io/v1/";
+        public const int PageSize = 10000;
 
         public TzktSettings Settings { get; set; }
 
@@ -212,7 +213,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 (result: null,
                  error: new Error(
                     code: Errors.NotSupportedError,
-                    description: "tzkt.io not supported run operations. Please use node rpc call instead."))
+                    description: "tzkt.io not supported run operations. Please use node rpc call instead"))
             );
         }
 
@@ -357,16 +358,16 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     .ReadAsStringAsync(cancellationToken)
                     .ConfigureAwait(false);
 
-                var operations = response.IsSuccessStatusCode
-                    ? JsonSerializer.Deserialize<IEnumerable<Operation>>(content)
-                    : null;
-
                 var error = !response.IsSuccessStatusCode
-                    ? new Error((int)response.StatusCode, "Error status code received.")
+                    ? new Error((int)response.StatusCode, "Error status code received")
                     : null;
 
                 if (error != null)
                     return (ops: null, error);
+
+                var operations = response.IsSuccessStatusCode
+                    ? JsonSerializer.Deserialize<IEnumerable<Operation>>(content)
+                    : null;
 
                 received = operations.Count();
 
@@ -382,6 +383,84 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     .GroupBy(o => o.Hash)
                     .Select((og) => new TezosOperation(og)),
                 error: null);
+        }
+
+        public async Task<(IEnumerable<TokenContract> contracts, Error error)> GetTokenContractsAsync(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            var offset = 0;
+            var hasPages = true;
+            var contractAddresses = new HashSet<string>();
+
+            while (hasPages)
+            {
+                var response = await HttpHelper
+                    .GetAsync(
+                        baseUri: Settings.BaseUri,
+                        relativeUri: $"tokens/balances?account={address}&select=token.contract.address",
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                var content = await response
+                    .Content
+                    .ReadAsStringAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                var error = !response.IsSuccessStatusCode
+                    ? new Error((int)response.StatusCode, "Error status code received")
+                    : null;
+
+                if (error != null)
+                    return (contracts: null, error);
+
+                var addresses = response.IsSuccessStatusCode
+                    ? JsonSerializer.Deserialize<List<string>>(content)
+                    : null;
+
+                if (addresses.Any())
+                {
+                    contractAddresses.UnionWith(addresses);
+                    offset += addresses.Count;
+
+                    if (addresses.Count < PageSize)
+                        hasPages = false;
+                }
+                else
+                {
+                    hasPages = false;
+                }
+            }
+
+            var contracts = new List<TokenContract>();
+
+            foreach (var contractAddress in contractAddresses)
+            {
+                var response = await HttpHelper
+                    .GetAsync(
+                        baseUri: Settings.BaseUri,
+                        relativeUri: $"contracts/{contractAddress}",
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                var content = await response
+                    .Content
+                    .ReadAsStringAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                var error = !response.IsSuccessStatusCode
+                    ? new Error((int)response.StatusCode, "Error status code received")
+                    : null;
+
+                if (error != null)
+                    return (contracts: null, error);
+
+                var tokenContractResponse = JsonSerializer.Deserialize<TokenContractResponse>(content);
+
+                contracts.Add(tokenContractResponse.ToTokenContract());
+            }
+
+            return (contracts, null);
         }
     }
 }

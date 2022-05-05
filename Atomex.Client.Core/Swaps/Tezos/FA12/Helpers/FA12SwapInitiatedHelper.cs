@@ -74,7 +74,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
         public static async Task<Result<bool>> IsInitiatedAsync(
             Swap swap,
             CurrencyConfig_OLD currency,
-            TezosConfig tezos,
+            TezosConfig_OLD tezos,
             long refundTimeStamp,
             CancellationToken cancellationToken = default)
         {
@@ -200,7 +200,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
         public static Task StartSwapInitiatedControlAsync(
             Swap swap,
             CurrencyConfig_OLD currency,
-            TezosConfig tezos,
+            TezosConfig_OLD tezos,
             long refundTimeStamp,
             TimeSpan interval,
             Func<Swap, CancellationToken, Task> initiatedHandler,
@@ -304,21 +304,21 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
 
             try
             {
-                var timestamp = TezosConfig.ParseTimestamp(initParams?["args"]?[0]?["args"]?[1]?["args"]?[1]);
+                var timestamp = TezosConfig_OLD.ParseTimestamp(initParams?["args"]?[0]?["args"]?[1]?["args"]?[1]);
                 if (timestamp < refundTimeStamp)
                 {
                     Log.Debug($"IsSwapInit: refundTimeStamp is less than expected (should be at least {refundTimeStamp})");
                     return false;
                 }
 
-                var address = TezosConfig.ParseAddress(initParams?["args"]?[0]?["args"]?[0]?["args"]?[1]);
+                var address = TezosConfig_OLD.ParseAddress(initParams?["args"]?[0]?["args"]?[0]?["args"]?[1]);
                 if (address != participantAddress)
                 {
                     Log.Debug($"IsSwapInit: participantAddress is unexpected (should be {participantAddress})");
                     return false;
                 }
 
-                var tokenAddress = TezosConfig.ParseAddress(initParams?["args"]?[1]?["args"]?[0]);
+                var tokenAddress = TezosConfig_OLD.ParseAddress(initParams?["args"]?[1]?["args"]?[0]);
                 if (tokenAddress != tokenContractAddress)
                 {
                     Log.Debug($"IsSwapInit: tokenContractAddress is unexpected (should be {tokenContractAddress})");

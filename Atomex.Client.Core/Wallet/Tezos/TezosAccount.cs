@@ -28,7 +28,7 @@ namespace Atomex.Wallet.Tezos
             ICurrencies currencies,
             IHdWallet_OLD wallet,
             IAccountDataRepository_OLD dataRepository)
-                : base(TezosConfig.Xtz, currencies, wallet, dataRepository)
+                : base(TezosConfig_OLD.Xtz, currencies, wallet, dataRepository)
         {
             var xtz = Config;
 
@@ -40,7 +40,7 @@ namespace Atomex.Wallet.Tezos
 
         #region Common
 
-        public TezosConfig Config => Currencies.Get<TezosConfig>(Currency);
+        public TezosConfig_OLD Config => Currencies.Get<TezosConfig_OLD>(Currency);
 
         public async Task<Error> SendAsync(
             string from,
@@ -125,7 +125,7 @@ namespace Atomex.Wallet.Tezos
                 .FillOperationsAsync(
                     securePublicKey: securePublicKey,
                     tezosConfig: xtzConfig,
-                    headOffset: TezosConfig.HeadOffset,
+                    headOffset: TezosConfig_OLD.HeadOffset,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -525,11 +525,11 @@ namespace Atomex.Wallet.Tezos
                             var isFailed = tx.State == BlockchainTransactionState.Failed;
 
                             var income = isIncome && !isFailed
-                                ? TezosConfig.MtzToTz(tx.Amount)
+                                ? TezosConfig_OLD.MtzToTz(tx.Amount)
                                 : 0;
 
                             var outcome = isOutcome && !isFailed
-                                ? -TezosConfig.MtzToTz(tx.Amount + tx.Fee + tx.Burn)
+                                ? -TezosConfig_OLD.MtzToTz(tx.Amount + tx.Fee + tx.Burn)
                                 : 0;
 
                             if (addresses.TryGetValue(address, out var walletAddress))
@@ -661,10 +661,10 @@ namespace Atomex.Wallet.Tezos
                         var isFailed = utx.State == BlockchainTransactionState.Failed;
 
                         unconfirmedIncome += address == utx.To && !isFailed
-                            ? TezosConfig.MtzToTz(utx.Amount)
+                            ? TezosConfig_OLD.MtzToTz(utx.Amount)
                             : 0;
                         unconfirmedOutcome += address == utx.From && !isFailed
-                            ? -TezosConfig.MtzToTz(utx.Amount + utx.Fee + utx.Burn)
+                            ? -TezosConfig_OLD.MtzToTz(utx.Amount + utx.Fee + utx.Burn)
                             : 0;
                     }
 

@@ -63,14 +63,14 @@ namespace Atomex.Client.Core.Tests
         public static ISymbols SymbolsMainNet
             => new Symbols(SymbolsConfiguration.GetSection(Atomex.Core.Network.MainNet.ToString()));
 
-        public static BitcoinConfig BtcMainNet => CurrenciesMainNet.Get<BitcoinConfig>("BTC");
-        public static LitecoinConfig LtcMainNet => CurrenciesMainNet.Get<LitecoinConfig>("LTC");
-        public static TezosConfig XtzMainNet => CurrenciesMainNet.Get<TezosConfig>("XTZ");
-        public static TezosConfig TzbtcMainNet => CurrenciesMainNet.Get<Fa12Config>("TZBTC");
-        public static BitcoinConfig BtcTestNet => CurrenciesTestNet.Get<BitcoinConfig>("BTC");
-        public static LitecoinConfig LtcTestNet => CurrenciesTestNet.Get<LitecoinConfig>("LTC");
-        public static TezosConfig XtzTestNet => CurrenciesTestNet.Get<TezosConfig>("XTZ");
-        public static EthereumConfig EthTestNet => CurrenciesTestNet.Get<EthereumConfig>("ETH");
+        public static BitcoinConfig_OLD BtcMainNet => CurrenciesMainNet.Get<BitcoinConfig_OLD>("BTC");
+        public static LitecoinConfig_OLD LtcMainNet => CurrenciesMainNet.Get<LitecoinConfig_OLD>("LTC");
+        public static TezosConfig_OLD XtzMainNet => CurrenciesMainNet.Get<TezosConfig_OLD>("XTZ");
+        public static TezosConfig_OLD TzbtcMainNet => CurrenciesMainNet.Get<Fa12Config>("TZBTC");
+        public static BitcoinConfig_OLD BtcTestNet => CurrenciesTestNet.Get<BitcoinConfig_OLD>("BTC");
+        public static LitecoinConfig_OLD LtcTestNet => CurrenciesTestNet.Get<LitecoinConfig_OLD>("LTC");
+        public static TezosConfig_OLD XtzTestNet => CurrenciesTestNet.Get<TezosConfig_OLD>("XTZ");
+        public static EthereumConfig_ETH EthTestNet => CurrenciesTestNet.Get<EthereumConfig_ETH>("ETH");
         public static Symbol EthBtcTestNet => SymbolsTestNet.GetByName("ETH/BTC");
         public static Symbol LtcBtcTestNet => SymbolsTestNet.GetByName("LTC/BTC");
 

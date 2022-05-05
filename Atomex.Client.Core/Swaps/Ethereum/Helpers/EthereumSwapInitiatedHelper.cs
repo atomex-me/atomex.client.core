@@ -21,7 +21,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
             CurrencyConfig_OLD currency,
             CancellationToken cancellationToken = default)
         {
-            var ethereum = currency as Atomex.EthereumConfig;
+            var ethereum = currency as Atomex.EthereumConfig_ETH;
 
             var api = ethereum.BlockchainApi as IEthereumBlockchainApi_OLD;
 
@@ -78,15 +78,15 @@ namespace Atomex.Swaps.Ethereum.Helpers
             {
                 Log.Debug("Ethereum: check initiated event");
 
-                var ethereum = (Atomex.EthereumConfig)currency;
+                var ethereum = (Atomex.EthereumConfig_ETH)currency;
 
                 var sideOpposite = swap.Symbol
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
                     .Opposite();
 
                 var requiredAmountInEth = AmountHelper.QtyToSellAmount(sideOpposite, swap.Qty, swap.Price, ethereum.DigitsMultiplier);
-                var requiredAmountInWei = Atomex.EthereumConfig.EthToWei(requiredAmountInEth);
-                var requiredRewardForRedeemInWei = Atomex.EthereumConfig.EthToWei(swap.RewardForRedeem);
+                var requiredAmountInWei = Atomex.EthereumConfig_ETH.EthToWei(requiredAmountInEth);
+                var requiredRewardForRedeemInWei = Atomex.EthereumConfig_ETH.EthToWei(swap.RewardForRedeem);
 
                 var api = new EtherScanApi(ethereum);
 

@@ -251,7 +251,7 @@ namespace Atomex.Wallet
                 Currencies,
                 Wallet,
                 DataRepository,
-                CurrencyAccounts[TezosConfig.Xtz] as TezosAccount);
+                CurrencyAccounts[TezosConfig_OLD.Xtz] as TezosAccount);
         }
 
         public T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount_OLD =>

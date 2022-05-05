@@ -49,7 +49,7 @@ namespace Atomex.Wallet.Ethereum
 
         #region Common
 
-        private EthereumConfig EthConfig => Currencies.Get<EthereumConfig>(Currency);
+        private EthereumConfig_ETH EthConfig => Currencies.Get<EthereumConfig_ETH>(Currency);
         private Erc20Config Erc20Config => Currencies.Get<Erc20Config>("USDT");
 
         public async Task<Error> SendAsync(
@@ -120,9 +120,9 @@ namespace Atomex.Wallet.Ethereum
                 CreationTime = DateTime.UtcNow,
                 From         = addressFeeUsage.WalletAddress.Address,
                 To           = to.ToLowerInvariant(),
-                Amount       = EthereumConfig.EthToWei(addressFeeUsage.UsedAmount),
+                Amount       = EthereumConfig_ETH.EthToWei(addressFeeUsage.UsedAmount),
                 Nonce        = nonceAsyncResult.Value,
-                GasPrice     = new BigInteger(EthereumConfig.GweiToWei(gasPrice)),
+                GasPrice     = new BigInteger(EthereumConfig_ETH.GweiToWei(gasPrice)),
                 GasLimit     = new BigInteger(gasLimit),
             };
 
@@ -420,13 +420,13 @@ namespace Atomex.Wallet.Ethereum
                             var isFailed = tx.State == BlockchainTransactionState.Failed;
 
                             var income = isIncome && !isFailed
-                                ? EthereumConfig.WeiToEth(tx.Amount)
+                                ? EthereumConfig_ETH.WeiToEth(tx.Amount)
                                 : 0;
 
                             var outcome = isOutcome
                                 ? (!isFailed
-                                    ? -EthereumConfig.WeiToEth(tx.Amount + tx.GasPrice * (tx.GasUsed != 0 ? tx.GasUsed : tx.GasLimit))
-                                    : -EthereumConfig.WeiToEth(tx.GasPrice * tx.GasUsed))
+                                    ? -EthereumConfig_ETH.WeiToEth(tx.Amount + tx.GasPrice * (tx.GasUsed != 0 ? tx.GasUsed : tx.GasLimit))
+                                    : -EthereumConfig_ETH.WeiToEth(tx.GasPrice * tx.GasUsed))
                                 : 0;
 
                             if (addressBalances.TryGetValue(address, out var walletAddress))
@@ -560,10 +560,10 @@ namespace Atomex.Wallet.Ethereum
                         var isFailed = utx.State == BlockchainTransactionState.Failed;
 
                         unconfirmedIncome += address == utx.To && !isFailed
-                            ? EthereumConfig.WeiToEth(utx.Amount)
+                            ? EthereumConfig_ETH.WeiToEth(utx.Amount)
                             : 0;
                         unconfirmedOutcome += address == utx.From && !isFailed
-                            ? -EthereumConfig.WeiToEth(utx.Amount + utx.GasPrice * (utx.GasUsed != 0 ? utx.GasUsed : utx.GasLimit))
+                            ? -EthereumConfig_ETH.WeiToEth(utx.Amount + utx.GasPrice * (utx.GasUsed != 0 ? utx.GasUsed : utx.GasLimit))
                             : 0;
                     }
 

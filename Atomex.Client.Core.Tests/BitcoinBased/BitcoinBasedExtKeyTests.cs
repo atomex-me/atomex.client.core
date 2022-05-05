@@ -34,7 +34,7 @@ namespace Atomex.Client.Core.Tests
             var signature = childKey.Sign(messageBytes);
             Assert.True(childKey.Verify(messageBytes, signature));
 
-            var address = Common.CurrenciesTestNet.Get<BitcoinConfig>("BTC").AddressFromKey(childPublicKey);
+            var address = Common.CurrenciesTestNet.Get<BitcoinConfig_OLD>("BTC").AddressFromKey(childPublicKey);
             Assert.NotNull(address);
         }
     }

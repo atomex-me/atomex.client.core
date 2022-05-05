@@ -12,7 +12,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.TezosTokens
 {
-    public class Fa12Config : TezosConfig
+    public class Fa12Config : TezosConfig_OLD
     {
         public decimal GetBalanceFee { get; private set; }
         public decimal GetBalanceGasLimit { get; private set; }

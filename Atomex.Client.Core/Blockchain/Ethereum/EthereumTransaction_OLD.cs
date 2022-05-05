@@ -160,13 +160,13 @@ namespace Atomex.Blockchain.Ethereum
                 keyIndex: address.KeyIndex,
                 keyType: address.KeyType);
 
-            return await SignAsync(privateKey, currencyConfig as EthereumConfig)
+            return await SignAsync(privateKey, currencyConfig as EthereumConfig_ETH)
                 .ConfigureAwait(false);
         }
 
         private Task<bool> SignAsync(
             SecureBytes privateKey,
-            EthereumConfig ethereumConfig)
+            EthereumConfig_ETH ethereumConfig)
         {
             if (privateKey == null)
                 throw new ArgumentNullException(nameof(privateKey));

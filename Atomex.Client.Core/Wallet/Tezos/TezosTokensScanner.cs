@@ -30,7 +30,7 @@ namespace Atomex.Wallet.Tezos
             {
                 // all tezos addresses
                 var xtzAddresses = await _tezosAccount.DataRepository
-                    .GetAddressesAsync(TezosConfig.Xtz)
+                    .GetAddressesAsync(TezosConfig_OLD.Xtz)
                     .ConfigureAwait(false);
 
                 if (xtzAddresses.Count() <= 1)
@@ -41,7 +41,7 @@ namespace Atomex.Wallet.Tezos
                         .ConfigureAwait(false);
 
                     xtzAddresses = await _tezosAccount.DataRepository
-                        .GetAddressesAsync(TezosConfig.Xtz)
+                        .GetAddressesAsync(TezosConfig_OLD.Xtz)
                         .ConfigureAwait(false);
                 }
 
@@ -142,7 +142,7 @@ namespace Atomex.Wallet.Tezos
 
                 // all tezos addresses
                 var xtzAddresses = await _tezosAccount.DataRepository
-                    .GetAddressesAsync(TezosConfig.Xtz)
+                    .GetAddressesAsync(TezosConfig_OLD.Xtz)
                     .ConfigureAwait(false);
 
                 if (xtzAddresses.Count() <= 1)
@@ -153,7 +153,7 @@ namespace Atomex.Wallet.Tezos
                         .ConfigureAwait(false);
 
                     xtzAddresses = await _tezosAccount.DataRepository
-                        .GetAddressesAsync(TezosConfig.Xtz)
+                        .GetAddressesAsync(TezosConfig_OLD.Xtz)
                         .ConfigureAwait(false);
                 }
 

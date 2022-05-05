@@ -122,7 +122,7 @@ namespace Atomex.Wallet.Tezos
                 .FillOperationsAsync(
                     securePublicKey: securePublicKey,
                     tezosConfig: xtzConfig,
-                    headOffset: TezosConfig.HeadOffset,
+                    headOffset: TezosConfig_OLD.HeadOffset,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 

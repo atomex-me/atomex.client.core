@@ -85,8 +85,8 @@ namespace Atomex.Client.Core.Tests
         public static IEnumerable<object[]> SendTestData =>
             new List<object[]>
             {
-                new object[] {Common.CurrenciesTestNet.Get<BitcoinConfig>("BTC"), 0.001m, 0.0009m, 0.0001m, DustUsagePolicy.Warning},
-                new object[] {Common.CurrenciesTestNet.Get<LitecoinConfig>("LTC"), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.Warning}
+                new object[] {Common.CurrenciesTestNet.Get<BitcoinConfig_OLD>("BTC"), 0.001m, 0.0009m, 0.0001m, DustUsagePolicy.Warning},
+                new object[] {Common.CurrenciesTestNet.Get<LitecoinConfig_OLD>("LTC"), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.Warning}
             };
 
         [Theory]
@@ -121,8 +121,8 @@ namespace Atomex.Client.Core.Tests
         public static IEnumerable<object[]> SendDustAmountFailTestData =>
             new List<object[]>
             {
-                new object[] {Common.CurrenciesTestNet.Get<BitcoinConfig>("BTC"), 0.001m, 0.0000009m, 0.0001m, DustUsagePolicy.Warning},
-                new object[] {Common.CurrenciesTestNet.Get<LitecoinConfig>("LTC"), 0.001m, 0.0000009m, 0.0001m, DustUsagePolicy.Warning}
+                new object[] {Common.CurrenciesTestNet.Get<BitcoinConfig_OLD>("BTC"), 0.001m, 0.0000009m, 0.0001m, DustUsagePolicy.Warning},
+                new object[] {Common.CurrenciesTestNet.Get<LitecoinConfig_OLD>("LTC"), 0.001m, 0.0000009m, 0.0001m, DustUsagePolicy.Warning}
             };
 
         [Theory]
@@ -148,8 +148,8 @@ namespace Atomex.Client.Core.Tests
         public static IEnumerable<object[]> SendInsufficientFundsFailTestData =>
             new List<object[]>
             {
-                new object[] {Common.CurrenciesTestNet.Get<BitcoinConfig>("BTC"), 0.001m, 0.00090001m, 0.0001m, DustUsagePolicy.Warning},
-                new object[] {Common.CurrenciesTestNet.Get<LitecoinConfig>("LTC"), 0.0011m, 0.0010001m, 0.0001m, DustUsagePolicy.Warning}
+                new object[] {Common.CurrenciesTestNet.Get<BitcoinConfig_OLD>("BTC"), 0.001m, 0.00090001m, 0.0001m, DustUsagePolicy.Warning},
+                new object[] {Common.CurrenciesTestNet.Get<LitecoinConfig_OLD>("LTC"), 0.0011m, 0.0010001m, 0.0001m, DustUsagePolicy.Warning}
             };
 
         [Theory]
@@ -175,8 +175,8 @@ namespace Atomex.Client.Core.Tests
         public static IEnumerable<object[]> SendDustChangeFailTestData =>
             new List<object[]>
             {
-                new object[] {Common.CurrenciesTestNet.Get<BitcoinConfig>("BTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.Warning},
-                new object[] {Common.CurrenciesTestNet.Get<LitecoinConfig>("LTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.Warning}
+                new object[] {Common.CurrenciesTestNet.Get<BitcoinConfig_OLD>("BTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.Warning},
+                new object[] {Common.CurrenciesTestNet.Get<LitecoinConfig_OLD>("LTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.Warning}
             };
 
         [Theory]
@@ -202,8 +202,8 @@ namespace Atomex.Client.Core.Tests
         public static IEnumerable<object[]> SendDustAsAmountTestData =>
             new List<object[]>
             {
-                new object[] {Common.CurrenciesTestNet.Get<BitcoinConfig>("BTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.AddToDestination},
-                new object[] {Common.CurrenciesTestNet.Get<LitecoinConfig>("LTC"), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.AddToDestination}
+                new object[] {Common.CurrenciesTestNet.Get<BitcoinConfig_OLD>("BTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.AddToDestination},
+                new object[] {Common.CurrenciesTestNet.Get<LitecoinConfig_OLD>("LTC"), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.AddToDestination}
             };
 
         [Theory]
@@ -247,8 +247,8 @@ namespace Atomex.Client.Core.Tests
         public static IEnumerable<object[]> SendDustAsFeeTestData =>
             new List<object[]>
             {
-                new object[] {Common.CurrenciesTestNet.Get<BitcoinConfig>("BTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.AddToFee},
-                new object[] {Common.CurrenciesTestNet.Get<LitecoinConfig>("LTC"), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.AddToFee}
+                new object[] {Common.CurrenciesTestNet.Get<BitcoinConfig_OLD>("BTC"), 0.001m, 0.0009m, 0.000095m, DustUsagePolicy.AddToFee},
+                new object[] {Common.CurrenciesTestNet.Get<LitecoinConfig_OLD>("LTC"), 0.0011m, 0.001m, 0.0001m, DustUsagePolicy.AddToFee}
             };
 
         [Theory]

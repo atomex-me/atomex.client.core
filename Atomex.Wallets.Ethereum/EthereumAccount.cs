@@ -6,10 +6,10 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 using Atomex.Blockchain.Ethereum;
-using Atomex.Blockchain.Ethereum.Abstract;
 using Atomex.Common;
 using Atomex.Wallets.Abstract;
 using Atomex.Wallets.Common;
+using Atomex.Wallets.Ethereum.Common;
 
 namespace Atomex.Wallets.Ethereum
 {
@@ -85,10 +85,9 @@ namespace Atomex.Wallets.Ethereum
                         logger: Logger);
 
                     // gas price
-                    var (gasPriceValue, gasPriceError) = await GetGasPriceAsync(
+                    var (gasPriceValue, gasPriceError) = await gasPrice
+                        .ResolveGasPriceAsync(
                             api,
-                            Configuration,
-                            gasPrice,
                             cancellationToken)
                         .ConfigureAwait(false);
 
@@ -99,9 +98,9 @@ namespace Atomex.Wallets.Ethereum
                         return (tx: null, error: new Error(Errors.NullGasPriceError, "Gas price is null"));
 
                     // gas limit
-                    var (gasLimitValue, gasLimitError) = await GetGasLimitAsync(
+                    var (gasLimitValue, gasLimitError) = await gasLimit
+                        .GetGasLimitAsync(
                             api: api,
-                            gasLimit: gasLimit,
                             to: to,
                             from: from,
                             value: EthereumHelper.EthToWei(amount),
@@ -176,9 +175,9 @@ namespace Atomex.Wallets.Ethereum
                                 .LockAsync(tx.From, cancellationToken)
                                 .ConfigureAwait(false);
 
-                        var (nonceValue, nonceError) = await GetNonceAsync(
+                        var (nonceValue, nonceError) = await nonce
+                            .GetNonceAsync(
                                 api: api,
-                                nonce: nonce,
                                 from: tx.From,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
@@ -320,109 +319,6 @@ namespace Atomex.Wallets.Ethereum
             CancellationToken cancellationToken = default)
         {
             return AddressLocker.GetLockAsync(address, cancellationToken);
-        }
-
-        public static async Task<(decimal? gasPrice, Error error)> GetGasPriceAsync(
-            IEthereumApi api,
-            EthereumConfig ethereumConfig,
-            GasPrice gasPrice,
-            CancellationToken cancellationToken = default)
-        {
-            Error error = null;
-
-            if (gasPrice.UseNetwork)
-            {
-                var (fastGasPrice, gasPriceError) = await api
-                    .GetFastGasPriceAsync(cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (gasPriceError == null && fastGasPrice != null)
-                    return (gasPrice: fastGasPrice, error: null);
-
-                error = gasPriceError ?? (fastGasPrice == null
-                    ? new Error(Errors.GetFastGasPriceError, "Gas price is null")
-                    : null);
-            }
-
-            if (gasPrice.UseConfig)
-                return (gasPrice: ethereumConfig.DefaultGasPrice, error: null);
-
-            if (gasPrice.UseValue)
-                return (gasPrice: gasPrice.Value, error: null);
-
-            return (gasPrice: null, error);
-        }
-
-        public static async Task<(int? gasLimit, Error error)> GetGasLimitAsync(
-            IEthereumApi api,
-            GasLimit gasLimit,
-            string to,
-            string from = null,
-            BigInteger? value = null,
-            BigInteger? gasPrice = null,
-            string data = null,
-            CancellationToken cancellationToken = default)
-        {
-            Error error = null;
-
-            if (gasLimit.UseNetwork)
-            {
-                var (estimatedGas, gasLimitError) = await api
-                    .EstimateGasAsync(to, from, value, gasPrice, gasLimit: 0, data, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (gasLimitError == null && estimatedGas != null)
-                    return (gasLimit: estimatedGas, error: null);
-
-                error = gasLimitError ?? (estimatedGas == null
-                    ? new Error(Errors.GetGasLimitError, "Gas limit is null")
-                    : null);
-            }
-
-            if (gasLimit.UseValue)
-                return (gasLimit: gasLimit.Value, error: null);
-
-            return (gasLimit: null, error);
-        }
-
-        public static async Task<(long? nonce, Error error)> GetNonceAsync(
-            IEthereumApi api,
-            Nonce nonce,
-            string from,
-            CancellationToken cancellationToken = default)
-        {
-            Error error = null;
-
-            if (nonce.UseNetwork)
-            {
-                var (nonceFromNetwork, nonceError) = await api
-                    .GetTransactionsCountAsync(from, nonce.UsePending, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (nonceFromNetwork != null && nonceError == null)
-                {
-                    if (nonce.UseOffline)
-                    {
-                        var offlineNonce = EthereumOfflineNonce.Instance.GetOfflineNonce(
-                            address: from,
-                            nonceFromNetwork: nonceFromNetwork.Value,
-                            isPendingNonce: nonce.UsePending);
-
-                        return (nonce: offlineNonce, error: null);
-                    }
-
-                    return (nonce: nonceFromNetwork, error: null);
-                }
-
-                error = nonceError ?? (nonceFromNetwork == null
-                    ? new Error(Errors.GetTransactionsCountError, "Transactions count is null")
-                    : null);
-            }
-
-            if (nonce.UseValue)
-                return (nonce: nonce.Value, error: null);
-
-            return (nonce: null, error);
         }
 
         #endregion Common
