@@ -71,11 +71,11 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         [JsonPropertyName("migrationId")]
         public int? MigrationId { get; set; }
 
-        public TokenTransfer ToTokenTransfer()
+        public TezosTokenTransfer ToTokenTransfer()
         {
             var token = Token.ToToken();
 
-            return new TokenTransfer()
+            return new TezosTokenTransfer()
             {
                 Id            = Id.ToString(),
                 Currency      = token.Symbol,

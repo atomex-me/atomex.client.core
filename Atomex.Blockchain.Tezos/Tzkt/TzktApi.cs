@@ -72,6 +72,13 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
+            var error = !response.IsSuccessStatusCode
+                ? new Error((int)response.StatusCode, "Error status code received")
+                : null;
+
+            if (error != null)
+                return (tx: null, error);
+
             var content = await response
                 .Content
                 .ReadAsStringAsync(cancellationToken)
@@ -81,11 +88,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 ? new TezosOperation(JsonSerializer.Deserialize<IEnumerable<Operation>>(content))
                 : null;
 
-            var error = !response.IsSuccessStatusCode
-                ? new Error((int)response.StatusCode, "Error status code received")
-                : null;
-
-            return (tx, error);
+            return (tx, error: null);
         }
 
         public Task<(string txId, Error error)> BroadcastAsync(
@@ -131,6 +134,13 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
+            var error = !response.IsSuccessStatusCode
+                ? new Error((int)response.StatusCode, "Error status code received")
+                : null;
+
+            if (error != null)
+                return (account: null, error);
+
             var content = await response
                 .Content
                 .ReadAsStringAsync(cancellationToken)
@@ -140,11 +150,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 ? JsonSerializer.Deserialize<TezosAccount>(content)
                 : null;
 
-            var error = !response.IsSuccessStatusCode
-                ? new Error((int)response.StatusCode, "Error status code received")
-                : null;
-
-            return (account, error);
+            return (account, error: null);
         }
 
         public async Task<(string hash, Error error)> GetHeaderAsync(
@@ -159,6 +165,13 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
+            var error = !response.IsSuccessStatusCode
+                ? new Error((int)response.StatusCode, "Error status code received")
+                : null;
+
+            if (error != null)
+                return (hash: null, error);
+
             var content = await response
                 .Content
                 .ReadAsStringAsync(cancellationToken)
@@ -170,11 +183,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     .GetString()
                 : null;
 
-            var error = !response.IsSuccessStatusCode
-                ? new Error((int)response.StatusCode, "Error status code received")
-                : null;
-
-            return (hash, error);
+            return (hash, error: null);
         }
 
         public async Task<(bool isRevealed, Error error)> IsRevealedAsync(
@@ -353,17 +362,17 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     requestLimitControl: null,
                     cancellationToken: cancellationToken);
 
-                var content = await response
-                    .Content
-                    .ReadAsStringAsync(cancellationToken)
-                    .ConfigureAwait(false);
-
                 var error = !response.IsSuccessStatusCode
                     ? new Error((int)response.StatusCode, "Error status code received")
                     : null;
 
                 if (error != null)
                     return (ops: null, error);
+
+                var content = await response
+                    .Content
+                    .ReadAsStringAsync(cancellationToken)
+                    .ConfigureAwait(false);
 
                 var operations = response.IsSuccessStatusCode
                     ? JsonSerializer.Deserialize<IEnumerable<Operation>>(content)
@@ -402,17 +411,17 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                var content = await response
-                    .Content
-                    .ReadAsStringAsync(cancellationToken)
-                    .ConfigureAwait(false);
-
                 var error = !response.IsSuccessStatusCode
                     ? new Error((int)response.StatusCode, "Error status code received")
                     : null;
 
                 if (error != null)
                     return (contracts: null, error);
+
+                var content = await response
+                    .Content
+                    .ReadAsStringAsync(cancellationToken)
+                    .ConfigureAwait(false);
 
                 var addresses = response.IsSuccessStatusCode
                     ? JsonSerializer.Deserialize<List<string>>(content)
@@ -443,11 +452,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                var content = await response
-                    .Content
-                    .ReadAsStringAsync(cancellationToken)
-                    .ConfigureAwait(false);
-
                 var error = !response.IsSuccessStatusCode
                     ? new Error((int)response.StatusCode, "Error status code received")
                     : null;
@@ -455,12 +459,131 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 if (error != null)
                     return (contracts: null, error);
 
+                var content = await response
+                    .Content
+                    .ReadAsStringAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
                 var tokenContractResponse = JsonSerializer.Deserialize<TokenContractResponse>(content);
 
                 contracts.Add(tokenContractResponse.ToTokenContract());
             }
 
             return (contracts, null);
+        }
+
+        public async Task<(IEnumerable<TokenBalance> balances, Error error)> GetTokenBalancesAsync(
+            string address,
+            string contractAddress = null,
+            CancellationToken cancellationToken = default)
+        {
+            var offset = 0;
+            var hasPages = true;
+            var tokenBalances = new List<TokenBalance>();
+
+            while (hasPages)
+            {
+                var requestUri = $"tokens/balances?" +
+                    $"account={address}" +
+                    $"&offset={offset}" +
+                    (contractAddress != null ? $"&token.contract={contractAddress}" : "");
+
+                var response = await HttpHelper
+                    .GetAsync(
+                        baseUri: Settings.BaseUri,
+                        relativeUri: requestUri,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                var error = !response.IsSuccessStatusCode
+                    ? new Error((int)response.StatusCode, "Error status code received")
+                    : null;
+
+                if (error != null)
+                    return (balances: null, error);
+
+                var content = await response
+                    .Content
+                    .ReadAsStringAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                var balances = JsonSerializer.Deserialize<List<TokenBalanceResponse>>(content);
+
+                if (balances.Any())
+                {
+                    tokenBalances.AddRange(balances.Select(x => x.ToTokenBalance()));
+                    offset += balances.Count;
+
+                    if (balances.Count < PageSize)
+                        hasPages = false;
+                }
+                else
+                {
+                    hasPages = false;
+                }
+            }
+
+            return (balances: tokenBalances, error: null);
+        }
+
+        public async Task<(IEnumerable<TokenTransfer> transfers, Error error)> GetTokenTransfersAsync(
+            string address,
+            string contractAddress = null,
+            decimal? tokenId = null,
+            int count = 20,
+            CancellationToken cancellationToken = default)
+        {
+            var offset = 0;
+            var hasPages = true;
+            var transfers = new List<TokenTransfer>();
+
+            while (hasPages && transfers.Count < count)
+            {
+                var limit = Math.Min(count - transfers.Count, PageSize);
+
+                var requestUri = $"tokens/transfers?" +
+                    $"anyof.from.to={address}" +
+                    $"&offset={offset}" +
+                    $"&limit={limit}" +
+                    (contractAddress != null ? $"&token.contract={contractAddress}" : "") +
+                    (tokenId != null ? $"&token.tokenId={tokenId}" : "");
+
+                var response = await HttpHelper
+                    .GetAsync(
+                        baseUri: Settings.BaseUri,
+                        relativeUri: requestUri,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                var error = !response.IsSuccessStatusCode
+                    ? new Error((int)response.StatusCode, "Error status code received")
+                    : null;
+
+                if (error != null)
+                    return (transfers: null, error);
+
+                var content = await response
+                    .Content
+                    .ReadAsStringAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                var transfersResponses = JsonSerializer.Deserialize<List<TokenTransferResponse>>(content);
+
+                if (transfersResponses.Any())
+                {
+                    transfers.AddRange(transfersResponses.Select(x => x.ToTokenTransfer()));
+                    offset += transfersResponses.Count;
+
+                    if (transfersResponses.Count < limit)
+                        hasPages = false;
+                }
+                else
+                {
+                    hasPages = false;
+                }
+            }
+
+            return transfers;
         }
     }
 }

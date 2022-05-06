@@ -59,7 +59,8 @@ namespace Atomex.Blockchain.Tezos
         }
 
         public TezosOperation(
-            IEnumerable<Operation> operations, int recentBlockLevel = 0)
+            IEnumerable<Operation> operations,
+            int recentBlockLevel = 0)
         {
             if (operations == null)
                 throw new ArgumentNullException(nameof(operations));
