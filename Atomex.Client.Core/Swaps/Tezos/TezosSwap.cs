@@ -43,8 +43,6 @@ namespace Atomex.Swaps.Tezos
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            Log.Error("DEBUG: Tezos before pay relevance check for swap {@swapId}", swap.Id);
-
             if (!await CheckPayRelevanceAsync(swap, cancellationToken))
                 return;
 
@@ -55,8 +53,6 @@ namespace Atomex.Swaps.Tezos
             var paymentTxs = (await CreatePaymentTxsAsync(swap, lockTimeInSeconds, cancellationToken)
                 .ConfigureAwait(false))
                 .ToList();
-
-            Log.Error("DEBUG: Tezos payment tx created for swap {@swapId}", swap.Id);
 
             if (paymentTxs.Count == 0)
             {
@@ -76,14 +72,10 @@ namespace Atomex.Swaps.Tezos
                             .LockAsync(paymentTx.From, cancellationToken)
                             .ConfigureAwait(false);
 
-                        Log.Error("DEBUG: Tezos payment lock for swap {@swapId}", swap.Id);
-
                         // temporary fix: check operation sequence
                         await TezosOperationsSequencer
                             .WaitAsync(paymentTx.From, _account, cancellationToken)
                             .ConfigureAwait(false);
-
-                        Log.Error("DEBUG: Tezos payment TezosOperationsSequencer wait success for swap {@swapId}", swap.Id);
 
                         var address = await _account
                             .GetAddressAsync(paymentTx.From, cancellationToken)
@@ -100,8 +92,6 @@ namespace Atomex.Swaps.Tezos
                                 headOffset: TezosConfig.HeadOffset,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
-
-                        Log.Error("DEBUG: Tezos payment FillOperationsAsync success for swap {@swapId}", swap.Id);
 
                         var signResult = await SignTransactionAsync(paymentTx, cancellationToken)
                             .ConfigureAwait(false);
@@ -120,8 +110,6 @@ namespace Atomex.Swaps.Tezos
                             await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentSigned, cancellationToken)
                                 .ConfigureAwait(false);
                         }
-
-                        Log.Error("DEBUG: Tezos payment Sign success for swap {@swapId}", swap.Id);
 
                         await BroadcastTxAsync(swap, paymentTx, cancellationToken)
                             .ConfigureAwait(false);

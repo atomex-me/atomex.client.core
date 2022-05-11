@@ -8,6 +8,7 @@ using NBitcoin;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
+using Serilog;
 
 namespace Atomex.Swaps.BitcoinBased
 {
@@ -80,13 +81,14 @@ namespace Atomex.Swaps.BitcoinBased
                          fee: maxFeeInSatoshi,
                          redeemScript: out _);
 
-                var estimatedSigSize       = BitcoinBasedConfig.EstimateSigSize(availableOutputs);
+                var estimatedSigSize = BitcoinBasedConfig.EstimateSigSize(availableOutputs);
                 var estimatedTxVirtualSize = estimatedTx.VirtualSize();
-                var estimatedTxSize        = estimatedTxVirtualSize + estimatedSigSize;
-                var estimatedFeeRate       = maxFeeInSatoshi / estimatedTxSize;
+                var estimatedTxSize = estimatedTxVirtualSize + estimatedSigSize;
+                var estimatedFeeRate = maxFeeInSatoshi / estimatedTxSize;
 
                 if (Math.Abs(feeRate - estimatedFeeRate) / feeRate > 0.1m)
-                    throw new Exception($"Insufficient funds. Available {availableOutputs.Sum(o => o.Value)}, required: {amount}. Probably feeRate has changed a lot.");
+                    Log.Error($"Insufficient funds. Available {availableAmountInSatoshi}, required: {amount}. Probably feeRate has changed a lot. FeeRate: {feeRate}, estimatedFeeRate: {estimatedFeeRate}");
+                    //throw new Exception($"Insufficient funds. Available {availableOutputs.Sum(o => o.Value)}, required: {amount}. Probably feeRate has changed a lot.");
 
                 // sent tx with estimatedFeeRate without change
                 selectedOutputs = availableOutputs;
