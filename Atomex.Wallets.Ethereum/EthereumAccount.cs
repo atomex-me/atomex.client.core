@@ -316,10 +316,8 @@ namespace Atomex.Wallets.Ethereum
 
         public static Task<ResourceLock<string>> LockAddressAsync(
             string address,
-            CancellationToken cancellationToken = default)
-        {
-            return AddressLocker.GetLockAsync(address, cancellationToken);
-        }
+            CancellationToken cancellationToken = default) =>
+            AddressLocker.GetLockAsync(address, cancellationToken);
 
         #endregion Common
     }

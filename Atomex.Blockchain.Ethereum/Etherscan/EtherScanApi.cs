@@ -177,8 +177,6 @@ namespace Atomex.Blockchain.Ethereum.Etherscan
                     ? new Error(Errors.BroadcastError, "TxId is null")
                     : null;
 
-                //return (txId, error);
-
                 if (error == null)
                 {
                     transactionId = txId; // save tx id

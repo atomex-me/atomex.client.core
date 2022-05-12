@@ -35,7 +35,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// **[sortable]**
         /// </summary>
         [JsonProperty("metadata")]
-        [JsonConverter(typeof(ObjectAsRawStringJsonConverter))]
+        [JsonConverter(typeof(ObjectAsRawStringJsonConverter_OLD))]
         public string Metadata { get; set; }
 
         public Token ToToken()

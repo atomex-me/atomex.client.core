@@ -5,7 +5,7 @@ using Newtonsoft.Json.Linq;
 
 namespace Atomex.Common
 {
-    public class ObjectAsRawStringJsonConverter : JsonConverter
+    public class ObjectAsRawStringJsonConverter_OLD : JsonConverter
     {
         public override bool CanConvert(Type objectType) => true;
 

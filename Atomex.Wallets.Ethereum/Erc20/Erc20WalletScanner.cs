@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -8,96 +7,45 @@ using Microsoft.Extensions.Logging;
 
 using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Abstract;
+using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Common;
 using Atomex.Wallets.Abstract;
 using Atomex.Wallets.Common;
 
-namespace Atomex.Wallets.Ethereum
+namespace Atomex.Wallets.Ethereum.Erc20
 {
-    public class EthereumWalletScanner : WalletScanner<IEthereumApi>
+    public class Erc20WalletScanner : WalletScanner<IErc20Api>
     {
         public List<(string address, DateTimeOffset lastUpdateTime)> ChangedAddresses { get; } =
             new List<(string address, DateTimeOffset lastUpdateTime)>();
 
-        private EthereumAccount Account => _account as EthereumAccount;
+        private Erc20Account Account => _account as Erc20Account;
 
-        public EthereumWalletScanner(
-            EthereumAccount account,
+        public Erc20WalletScanner(
+            Erc20Account account,
             IWalletProvider walletProvider,
             ILogger logger = null)
             : base(account, walletProvider, logger)
         {
         }
 
-        public Task<(IEnumerable<EthereumTransaction> txs, Error error)> GetTransactionsAsync(
-            IEnumerable<(string address, DateTimeOffset lastUpdateTime)> addresses,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.Run<(IEnumerable<EthereumTransaction> txs, Error error)>(async () =>
-            {
-                var api = GetBlockchainApi();
+        protected override IErc20Api GetBlockchainApi() => new Erc20Api(
+            settings: Account.Configuration.ApiSettings,
+            logger: _logger);
 
-                var txs = new List<EthereumTransaction>();
-
-                foreach (var (address, lastUpdateTime) in addresses)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var (addressTxs, error) = await api
-                        .GetTransactionsAsync(address, lastUpdateTime, cancellationToken)
-                        .ConfigureAwait(false);
-
-                    txs.AddRange(addressTxs);
-                }
-
-                return (txs, error: null);
-
-            }, cancellationToken);
-        }
-
-        public Task<Error> ScanTransactionsAsync(
-            IEnumerable<(string address, DateTimeOffset lastUpdateTime)> addresses,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.Run(async () =>
-            {
-                var (txs, error) = await GetTransactionsAsync(
-                        addresses: addresses,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (error != null)
-                    return error;
-
-                var upserted = await Account
-                    .UpsertTransactionsAsync(txs, cancellationToken)
-                    .ConfigureAwait(false);
-
-                return null;
-
-            }, cancellationToken);
-        }
-
-        public async Task<Error> ScanTransactionsAsync(
-            IEnumerable<string> addresses,
-            CancellationToken cancellationToken = default)
-        {
-            return await ScanTransactionsAsync(
-                    addresses: addresses.Select(a => (address: a, lastUpdateTime: DateTimeOffset.MinValue)),
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
+        protected override CurrencyConfig GetCurrencyConfig() =>
+            Account.Configuration;
 
         protected override async Task<(bool hasActivity, Error error)> UpdateAddressBalanceAsync(
             string address,
             string keyPath,
             WalletInfo walletInfo,
             WalletAddress storedAddress,
-            IEthereumApi api,
+            IErc20Api api,
             CancellationToken cancellationToken = default)
         {
-            var (balance, error) = await api
-                .GetBalanceAsync(address, cancellationToken)
+            var (balanceInUnits, error) = await api
+                .GetErc20BalanceAsync(address, token: Account.Currency, cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)
@@ -105,6 +53,10 @@ namespace Atomex.Wallets.Ethereum
                 _logger.LogError("[{currency}] Error while get balance for {address}", Account.Currency, address);
                 return (hasActivity: false, error);
             }
+
+            var balance = EthereumHelper.BaseTokenUnitsToTokens(
+                tokenUnits: balanceInUnits,
+                decimalsMultiplier: Account.Configuration.DecimalsMultiplier);
 
             var (txsCount, txsCountError) = await api
                 .GetTransactionsCountAsync(
@@ -153,12 +105,5 @@ namespace Atomex.Wallets.Ethereum
 
             return (hasActivity, error: null); // no errors
         }
-
-        protected override CurrencyConfig GetCurrencyConfig() =>
-            Account.Configuration;
-
-        protected override IEthereumApi GetBlockchainApi() => new EthereumApi(
-            settings: Account.Configuration.ApiSettings,
-            logger: _logger);
     }
 }

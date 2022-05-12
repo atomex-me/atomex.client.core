@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Tzkt;
+using Atomex.Common;
 
 namespace Atomex.Blockchain.Tezos
 {
@@ -25,13 +22,5 @@ namespace Atomex.Blockchain.Tezos
             Amount.TryParseWithRound(Token.Decimals, out var result)
                 ? result
                 : 0;
-
-        public string GetAlias() => Type.HasFlag(BlockchainTransactionType.Input)
-            ? !string.IsNullOrEmpty(FromAlias)
-                ? FromAlias
-                : From.TruncateAddress()
-            : !string.IsNullOrEmpty(ToAlias)
-                ? ToAlias
-                : To.TruncateAddress();
     }
 }

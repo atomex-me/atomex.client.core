@@ -77,7 +77,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
             return new TezosTokenTransfer()
             {
-                Id            = Id.ToString(),
+                TxId          = Id.ToString(),
                 Currency      = token.Symbol,
                 TimeStamp     = Timestamp,
                 Level         = Level,

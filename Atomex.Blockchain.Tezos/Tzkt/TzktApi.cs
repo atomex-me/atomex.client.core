@@ -526,7 +526,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             return (balances: tokenBalances, error: null);
         }
 
-        public async Task<(IEnumerable<TokenTransfer> transfers, Error error)> GetTokenTransfersAsync(
+        public async Task<(IEnumerable<TezosTokenTransfer> transfers, Error error)> GetTokenTransfersAsync(
             string address,
             string contractAddress = null,
             decimal? tokenId = null,
@@ -535,7 +535,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         {
             var offset = 0;
             var hasPages = true;
-            var transfers = new List<TokenTransfer>();
+            var transfers = new List<TezosTokenTransfer>();
 
             while (hasPages && transfers.Count < count)
             {
@@ -583,7 +583,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 }
             }
 
-            return transfers;
+            return (transfers, error: null);
         }
     }
 }
