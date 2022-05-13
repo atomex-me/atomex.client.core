@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using NBitcoin;
+using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
@@ -13,7 +14,8 @@ namespace Atomex.Swaps.BitcoinBased
 {
     public class BitcoinBasedSwapTransactionFactory : IBitcoinBasedSwapTransactionFactory
     {
-        public const decimal MaxFeeRateChangePercent = 0.1m;
+        //public const decimal MaxFeeRateChangePercent = 0.5m;
+        public const int MinFeeRate = 1;
 
         public async Task<IBitcoinBasedTransaction> CreateSwapPaymentTxAsync(
             IEnumerable<BitcoinBasedTxOutput> fromOutputs,
@@ -29,10 +31,10 @@ namespace Atomex.Swaps.BitcoinBased
             var availableAmountInSatoshi = fromOutputs.Sum(o => o.Value);
 
             if (availableAmountInSatoshi <= amount)
-                throw new Exception($"Insufficient funds. Available {fromOutputs.Sum(o => o.Value)}, required: {amount}");
+                throw new Exception($"Insufficient funds. Available {availableAmountInSatoshi}, required: {amount}");
 
             var feeRate = await currencyConfig
-                .GetFeeRateAsync()
+                .GetFeeRateAsync(cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             var lockScript = BitcoinBasedSwapTemplate.GenerateHtlcP2PkhSwapPayment(
@@ -82,8 +84,14 @@ namespace Atomex.Swaps.BitcoinBased
 
                 var estimatedFeeRate = maxFeeInSatoshi / txSizeWithChange;
 
-                if (Math.Abs(feeRate - estimatedFeeRate) / feeRate > MaxFeeRateChangePercent)
-                    throw new Exception($"Insufficient funds. Available {fromOutputs.Sum(o => o.Value)}, required: {amount}. Probably feeRate has changed a lot.");
+                if (estimatedFeeRate > feeRate)
+                    Log.Error($"EstimatedFeeRate changed: {estimatedFeeRate}, old fee rate: {feeRate}");
+
+                if (estimatedFeeRate < MinFeeRate)
+                    throw new Exception($"Insufficient funds, estimated fee rate less than {MinFeeRate} satoshi/byte");
+
+                //if (Math.Abs(feeRate - estimatedFeeRate) / feeRate > MaxFeeRateChangePercent)
+                //    throw new Exception($"Insufficient funds. Available {availableAmountInSatoshi}, required: {amount}. Probably feeRate has changed a lot.");
 
                 feeInSatoshi = maxFeeInSatoshi;
             }
