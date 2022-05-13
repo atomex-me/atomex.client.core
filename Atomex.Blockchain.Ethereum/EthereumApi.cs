@@ -24,7 +24,9 @@ namespace Atomex.Blockchain.Ethereum
         {
         }
 
-        public Task<(string txId, Error error)> BroadcastAsync(Transaction transaction, CancellationToken cancellationToken = default)
+        public Task<(string txId, Error error)> BroadcastAsync(
+            Transaction transaction,
+            CancellationToken cancellationToken = default)
         {
             throw new NotImplementedException();
         }
