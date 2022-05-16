@@ -21,7 +21,7 @@ namespace Atomex.Common.Memory
         static UnmanagedMemoryManager()
         {
             _implFactory = Sodium.IsInitialized
-                ? new LibsodiumUnmanagedMemoryManagerFactory<T>()
+                ? (IUnmanagedMemoryManagerFactory<T>)new LibsodiumUnmanagedMemoryManagerFactory<T>()
                 : new DotNetUnmanagedMemoryManagerFactory<T>();
         }
 

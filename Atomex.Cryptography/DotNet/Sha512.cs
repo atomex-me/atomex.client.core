@@ -16,14 +16,28 @@ namespace Atomex.Cryptography.DotNet
         public override byte[] Hash(
             ReadOnlySpan<byte> data)
         {
-            return NetSha512.HashData(data);
+            using var sha512 = NetSha512.Create();
+
+            var hash = new byte[HashSize];
+
+            if (!sha512.TryComputeHash(data, hash, out var written))
+                throw new Exception("Can't compute hash");
+
+            return hash;
+// NET5_0
+//            return NetSha512.HashData(data);
         }
 
         public override void Hash(
             ReadOnlySpan<byte> data,
             Span<byte> hash)
         {
-            NetSha512.HashData(data, hash);
+            using var sha512 = NetSha512.Create();
+
+            if (!sha512.TryComputeHash(data, hash, out var written))
+                throw new Exception("Can't compute hash");
+// NET5_0
+//            NetSha512.HashData(data, hash);
         }
 
         public unsafe override bool Verify(
@@ -35,7 +49,12 @@ namespace Atomex.Cryptography.DotNet
             var temp = stackalloc byte[HashSize];
             var tempHash = new Span<byte>(temp, HashSize);
 
-            NetSha512.HashData(data, tempHash);
+            using var sha512 = NetSha512.Create();
+
+            if (!sha512.TryComputeHash(data, tempHash, out var written))
+                throw new Exception("Can't compute hash");
+// NET5_0
+//            NetSha512.HashData(data, tempHash);
 
             fixed (byte* @out = hash)
                 return FixedTimeEqual.Equals(temp, @out, hash.Length);
@@ -73,7 +92,7 @@ namespace Atomex.Cryptography.DotNet
         public void Finalize(Span<byte> hash)
         {
             if (!_sha512.TryGetHashAndReset(hash, out _))
-                Debug.Fail("Can't finalize hash");
+                throw new Exception("Can't finalize hash");
         }
 
         public byte[] Finalize()

@@ -12,7 +12,7 @@ namespace Atomex.Cryptography
         public Sha512()
         {
             _impl = Sodium.IsInitialized
-                ? new Libsodium.Sha512()
+                ? (HashAlgorithm)new Libsodium.Sha512()
                 : new DotNet.Sha512();
         }
 
