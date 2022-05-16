@@ -101,7 +101,22 @@ namespace Atomex.Blockchain.SoChain
 
         private void ConnectionStateChangedHandler(object sender, ConnectionState state)
         {
-            throw new NotImplementedException();
+            _log.Debug("SoChainRealtimeApi connection state changed to {State}", state);
+
+            switch (state)
+            {
+                case ConnectionState.Connected:
+                    Connected?.Invoke(this, EventArgs.Empty);
+                    break;
+
+                case ConnectionState.Disconnected:
+                    Disconnected?.Invoke(this, EventArgs.Empty);
+                    break;
+
+                case ConnectionState.WaitingToReconnect:
+                    Reconnecting?.Invoke(this, EventArgs.Empty);
+                    break;
+            }
         }
     }
 }
