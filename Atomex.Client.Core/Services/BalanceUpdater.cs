@@ -108,8 +108,6 @@ namespace Atomex.Services
                 var baseUri = currency.BaseUri;
 
                 await _tzktEvents.StartAsync(baseUri).ConfigureAwait(false);
-
-                var account = _account.GetCurrencyAccount(currency.Name);
                 _tezosAddresses = await GetAddressesAsync().ConfigureAwait(false);
                 
                 await _tzktEvents
@@ -118,7 +116,7 @@ namespace Atomex.Services
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error on starting Tezos balance updater");
+                _log.Error(e, "Error on starting TezosBalanceUpdater updater");
             }
         }
 
@@ -126,7 +124,8 @@ namespace Atomex.Services
         {
             var account = _account.GetCurrencyAccount(TezosConfig.Xtz);
             var addresses = await account
-                .GetAddressesAsync().ConfigureAwait(false);
+                .GetAddressesAsync()
+                .ConfigureAwait(false);
 
             var freeAddress = await account
                 .GetFreeExternalAddressAsync()
@@ -150,7 +149,7 @@ namespace Atomex.Services
 
                 if (newAddresses.Any())
                 {
-                    Log.Information("Added new addresses {@Addresses}", newAddresses);
+                    Log.Information("TezosBalanceUpdater adds new addresses {@Addresses}", newAddresses);
                     await _tzktEvents
                         .NotifyOnAccountsAsync(newAddresses, TezosBalanceUpdateHandler)
                         .ConfigureAwait(false);
