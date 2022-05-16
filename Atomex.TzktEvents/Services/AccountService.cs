@@ -122,9 +122,9 @@ namespace Atomex.TzktEvents.Services
                     {
                         updatedAccount.Handler(address);
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
-                        _log.Error(ex, ex.Message);
+                        _log.Error(e,"Error while calling subscriber handler on Data message");
                     }
                 }
             }
@@ -151,9 +151,9 @@ namespace Atomex.TzktEvents.Services
                     {
                         updatedAccount.Handler(address);
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
-                        _log.Error(ex, ex.Message);
+                        _log.Error(e, "Error while calling subscriber handler on Reorg message");
                     }
                 }
             }
