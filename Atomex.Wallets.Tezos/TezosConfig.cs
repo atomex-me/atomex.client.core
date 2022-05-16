@@ -34,7 +34,7 @@ namespace Atomex.Wallets.Tezos
                 TezosWalletType.Tz1 => TezosPrefixes.Tz1,
                 TezosWalletType.Tz2 => TezosPrefixes.Tz2,
                 TezosWalletType.Tz3 => TezosPrefixes.Tz3,
-                _ => throw new NotSupportedException($"Tezos wallet type {walletInfo.AdditionalType} not supported.")
+                _ => throw new NotSupportedException($"Tezos wallet type {walletInfo.AdditionalType} not supported")
             };
 
             using var pubKey = publicKey.ToUnmanagedBytes();

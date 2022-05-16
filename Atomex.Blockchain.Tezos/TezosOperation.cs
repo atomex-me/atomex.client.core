@@ -49,7 +49,7 @@ namespace Atomex.Blockchain.Tezos
                 throw new ArgumentNullException(nameof(operationsContents));
 
             if (!operationsContents.Any())
-                throw new ArgumentException("At least one operation content is required.", nameof(operationsContents));
+                throw new ArgumentException("At least one operation content is required", nameof(operationsContents));
 
             _operationsContents = operationsContents;
 
@@ -66,7 +66,7 @@ namespace Atomex.Blockchain.Tezos
                 throw new ArgumentNullException(nameof(operations));
 
             if (!operations.Any())
-                throw new ArgumentException("At least one operation is required.", nameof(operations));
+                throw new ArgumentException("At least one operation is required", nameof(operations));
 
             Operations = operations;
 
@@ -105,7 +105,7 @@ namespace Atomex.Blockchain.Tezos
                         content: _operationsContents.First())
                     .ConfigureAwait(false);
             }
-            else throw new NotSupportedException("Can't forge several non manager operatrions.");
+            else throw new NotSupportedException("Can't forge several non manager operatrions");
 
             return addOperationPrefix
                 ? new byte[] { 3 }
