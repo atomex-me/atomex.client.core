@@ -1,10 +1,11 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Abstract;
 using Atomex.Services.Abstract;
-using Atomex.TzktEvents;
+using Atomex.Services.BalanceUpdaters;
 using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Serilog;
@@ -17,20 +18,21 @@ namespace Atomex.Services
         private readonly IAccount _account;
         private readonly ICurrenciesProvider _currenciesProvider;
         private readonly ILogger _log;
-        private readonly ITzktEventsClient _tzktEvents;
         private readonly IHdWalletScanner _walletScanner;
 
         private CancellationTokenSource _cts;
         private bool _isRunning;
+        
+        private readonly IList<IChainBalanceUpdater> _balanceUpdaters = new List<IChainBalanceUpdater>();
 
         public BalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, ILogger log)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _currenciesProvider = currenciesProvider;
             _log = log ?? throw new ArgumentNullException(nameof(log));
-
-            _tzktEvents = new TzktEventsClient(_log);
             _walletScanner = new HdWalletScanner(_account);
+            
+            InitChainBalanceUpdaters();
         }
 
         public void Start()
@@ -47,7 +49,9 @@ namespace Atomex.Services
             {
                 try
                 {
-                    await StartTezosBalanceUpdater().ConfigureAwait(false);
+                    var startTasks = _balanceUpdaters
+                        .Select(x => x.StartAsync());
+                    await Task.WhenAll(startTasks).ConfigureAwait(false);
 
                     _log.Information("BalanceUpdater successfully started");
                 }
@@ -74,7 +78,9 @@ namespace Atomex.Services
             {
                 try
                 {
-                    await StopTezosBalanceUpdater().ConfigureAwait(false);
+                    var stopTasks = _balanceUpdaters
+                        .Select(x => x.StopAsync());
+                    await Task.WhenAll(stopTasks).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
@@ -87,60 +93,16 @@ namespace Atomex.Services
             _log.Information("BalanceUpdater stopped");
         }
 
-
-        #region Tezos
-
-        private async Task StartTezosBalanceUpdater()
-        {
-            if (_currenciesProvider == null)
-            {
-                throw new InvalidOperationException("StartTezosBalanceUpdater was called before CurrenciesProvider initialization");
-            }
-
-            try
-            {
-                var currency = _currenciesProvider
-                    .GetCurrencies(_account.Network)
-                    .Get<TezosConfig>(TezosConfig.Xtz);
-                var baseUri = currency.BaseUri;
-
-                await _tzktEvents.StartAsync(baseUri).ConfigureAwait(false);
-
-                var account = _account.GetCurrencyAccount(currency.Name);
-                var addresses = (await account
-                        .GetAddressesAsync())
-                    .Select(wa => wa.Address);
-
-
-                await _tzktEvents
-                    .NotifyOnAccountsAsync(addresses, TezosBalanceUpdateHandler)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                _log.Error(e, "Error on starting Tezos balance updater");
-            }
-        }
-
-        private async void TezosBalanceUpdateHandler(string address)
+        private void InitChainBalanceUpdaters()
         {
             try
             {
-                await _walletScanner
-                    .ScanAddressAsync(TezosConfig.Xtz, address)
-                    .ConfigureAwait(false);
+                _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, _log));
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error on handling Tezos balance update");
+                _log.Error(e, "Error while initializing chain balance updaters");
             }
         }
-
-        private async Task StopTezosBalanceUpdater()
-        {
-            await _tzktEvents.StopAsync().ConfigureAwait(false);
-        }
-
-        #endregion Tezos
     }
 }
