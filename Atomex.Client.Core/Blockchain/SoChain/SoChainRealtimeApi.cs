@@ -8,6 +8,10 @@ using PusherClient;
 
 namespace Atomex.Blockchain.SoChain
 {
+    internal record NetAddress(string Network, string Address);
+    internal record Subscription(Channel Channel, IList<Action<string>> Handlers);
+
+
     public class SoChainRealtimeApi : ISoChainRealtimeApi
     {
         public string HostUrl { get; }
@@ -18,7 +22,9 @@ namespace Atomex.Blockchain.SoChain
 
         private bool _isStarted;
         private Pusher _pusher;
-        private readonly ConcurrentDictionary<string, Channel> _channels = new();
+        private readonly ConcurrentDictionary<NetAddress, Subscription> _subscriptions = new();
+        private readonly Func<NetAddress, Subscription> _willNotBeCalled = _ => null;
+
 
         private readonly ILogger _log;
 
@@ -83,9 +89,31 @@ namespace Atomex.Blockchain.SoChain
             throw new NotImplementedException();
         }
 
-        private void ConnectedHandler(object sender)
+        private async void ConnectedHandler(object sender)
         {
-            throw new NotImplementedException();
+            try
+            {
+                foreach (var pair in _subscriptions.Keys)
+                {
+                    var chanelName = $"address_{pair.Network}_{pair.Address}";
+                    var _channel = await _pusher.SubscribeAsync(chanelName);
+                    _channel.Bind("balance_update", OnBalanceUpdated);
+                    
+                    _subscriptions.AddOrUpdate(
+                        pair,
+                        (_) => new Subscription(_channel, new List<Action<string>>()),
+                        (_, sub) => sub with { Channel = _channel });
+                }
+            }
+            catch (Exception e)
+            {
+                _log.Error(e, "SoChainRealtimeApi error while subscribing on channels");
+            }
+        }
+
+        private void OnBalanceUpdated(PusherEvent @event)
+        {
+            _log.Debug("[BalanceUpdated] SoChainRealtimeApi got {@Event}", @event);
         }
 
         private void ErrorHandler(object sender, PusherException error)
