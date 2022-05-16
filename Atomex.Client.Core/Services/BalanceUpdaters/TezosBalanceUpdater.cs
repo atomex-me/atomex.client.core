@@ -55,13 +55,20 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error on starting TezosBalanceUpdater updater");
+                _log.Error(e, "Error on starting TezosBalanceUpdater");
             }
         }
 
         public async Task StopAsync()
         {
-            await _tzktEvents.StopAsync().ConfigureAwait(false);
+            try
+            {
+                await _tzktEvents.StopAsync().ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                _log.Error(e, "Error on stopping TezosBalanceUpdater");
+            }
         }
 
 

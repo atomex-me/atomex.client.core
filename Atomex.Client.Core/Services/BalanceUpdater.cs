@@ -97,7 +97,14 @@ namespace Atomex.Services
 
         private void InitChainBalanceUpdaters()
         {
-            _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, _log));
+            try
+            {
+                _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, _log));
+            }
+            catch (Exception e)
+            {
+                _log.Error(e, "Error while initializing chain balance updaters");
+            }
         }
     }
 }
