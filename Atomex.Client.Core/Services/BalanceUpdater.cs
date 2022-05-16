@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Abstract;
@@ -50,10 +51,9 @@ namespace Atomex.Services
             {
                 try
                 {
-                    foreach (var chainBalanceUpdater in _balanceUpdaters)
-                    {
-                        await chainBalanceUpdater.StartAsync().ConfigureAwait(false);
-                    }
+                    var startTasks = _balanceUpdaters
+                        .Select(x => x.StartAsync());
+                    await Task.WhenAll(startTasks).ConfigureAwait(false);
 
                     _log.Information("BalanceUpdater successfully started");
                 }
@@ -80,10 +80,9 @@ namespace Atomex.Services
             {
                 try
                 {
-                    foreach (var chainBalanceUpdater in _balanceUpdaters)
-                    {
-                        await chainBalanceUpdater.StopAsync().ConfigureAwait(false);
-                    }
+                    var stopTasks = _balanceUpdaters
+                        .Select(x => x.StopAsync());
+                    await Task.WhenAll(stopTasks).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
