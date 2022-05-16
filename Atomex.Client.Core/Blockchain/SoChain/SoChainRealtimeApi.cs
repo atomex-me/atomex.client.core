@@ -56,6 +56,8 @@ namespace Atomex.Blockchain.SoChain
                 _pusher.Connected += ConnectedHandler;
 
                 await _pusher.ConnectAsync().ConfigureAwait(false);
+
+                _log.Information("SoChainRealtimeApi successfully started");
             }
             catch (Exception e)
             {
@@ -64,9 +66,33 @@ namespace Atomex.Blockchain.SoChain
             }
         }
 
-        public Task StopAsync()
+        public async Task StopAsync()
         {
-            throw new NotImplementedException();
+            if (!_isStarted)
+            {
+                _log.Warning("SoChainRealtimeApi was not started");
+                return;
+            }
+
+            try
+            {
+                _pusher.ConnectionStateChanged -= ConnectionStateChangedHandler;
+                _pusher.Error -= ErrorHandler;
+                _pusher.Connected -= ConnectedHandler;
+
+                await _pusher.DisconnectAsync().ConfigureAwait(false);
+                _subscriptions.Clear();
+
+                _log.Information("SoChainRealtimeApi successfully stopped");
+            }
+            catch (Exception e)
+            {
+                _log.Error(e, "SoChainRealtimeApi was stopped with error");
+            }
+            finally
+            {
+                _isStarted = false;
+            }
         }
 
         public Task SubscribeOnBalanceUpdateAsync(string network, string address, Action<string> handler)
@@ -96,13 +122,13 @@ namespace Atomex.Blockchain.SoChain
                 foreach (var pair in _subscriptions.Keys)
                 {
                     var chanelName = $"address_{pair.Network}_{pair.Address}";
-                    var _channel = await _pusher.SubscribeAsync(chanelName);
-                    _channel.Bind("balance_update", OnBalanceUpdated);
+                    var channel = await _pusher.SubscribeAsync(chanelName);
+                    channel.Bind("balance_update", OnBalanceUpdated);
                     
                     _subscriptions.AddOrUpdate(
                         pair,
-                        (_) => new Subscription(_channel, new List<Action<string>>()),
-                        (_, sub) => sub with { Channel = _channel });
+                        (_) => new Subscription(channel, new List<Action<string>>()),
+                        (_, sub) => sub with { Channel = channel });
                 }
             }
             catch (Exception e)
@@ -113,6 +139,7 @@ namespace Atomex.Blockchain.SoChain
 
         private void OnBalanceUpdated(PusherEvent @event)
         {
+            // TODO: Implement
             _log.Debug("[BalanceUpdated] SoChainRealtimeApi got {@Event}", @event);
         }
 
