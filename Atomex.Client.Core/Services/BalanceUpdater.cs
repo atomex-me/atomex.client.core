@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Atomex.Abstract;
 using Atomex.Services.Abstract;
 using Atomex.Services.BalanceUpdaters;
-using Atomex.TzktEvents;
 using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Serilog;
@@ -19,7 +18,6 @@ namespace Atomex.Services
         private readonly IAccount _account;
         private readonly ICurrenciesProvider _currenciesProvider;
         private readonly ILogger _log;
-        private readonly ITzktEventsClient _tzktEvents;
         private readonly IHdWalletScanner _walletScanner;
 
         private CancellationTokenSource _cts;
