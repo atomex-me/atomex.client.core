@@ -230,7 +230,8 @@ namespace Atomex.Blockchain.Tezos
             }
             else if (OperationType == Internal.OperationType.Delegation)
             {
-                operation["delegate"] = To;
+                if (To != null)
+                    operation["delegate"] = To;
             }
             else throw new NotSupportedException($"Operation type {OperationType} not supporeted yet.");
 
