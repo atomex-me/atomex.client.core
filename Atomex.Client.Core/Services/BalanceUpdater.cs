@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Abstract;
@@ -24,20 +23,16 @@ namespace Atomex.Services
 
         private CancellationTokenSource _cts;
         private bool _isRunning;
-
-        private ISet<string> _tezosAddresses;
-        private readonly IList<IChainBalanceUpdater> _balanceUpdaters;
+        
+        private readonly IList<IChainBalanceUpdater> _balanceUpdaters = new List<IChainBalanceUpdater>();
 
         public BalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, ILogger log)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _currenciesProvider = currenciesProvider;
             _log = log ?? throw new ArgumentNullException(nameof(log));
-
-            _tzktEvents = new TzktEventsClient(_log);
             _walletScanner = new HdWalletScanner(_account);
-
-            _balanceUpdaters = new List<IChainBalanceUpdater>();
+            
             InitChainBalanceUpdaters();
         }
 
@@ -105,85 +100,5 @@ namespace Atomex.Services
         {
             _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, _log));
         }
-
-
-        #region Tezos
-
-        private async Task StartTezosBalanceUpdater()
-        {
-            if (_currenciesProvider == null)
-            {
-                throw new InvalidOperationException("StartTezosBalanceUpdater was called before CurrenciesProvider initialization");
-            }
-
-            try
-            {
-                var currency = _currenciesProvider
-                    .GetCurrencies(_account.Network)
-                    .Get<TezosConfig>(TezosConfig.Xtz);
-                var baseUri = currency.BaseUri;
-
-                await _tzktEvents.StartAsync(baseUri).ConfigureAwait(false);
-                _tezosAddresses = await GetAddressesAsync().ConfigureAwait(false);
-                
-                await _tzktEvents
-                    .NotifyOnAccountsAsync(_tezosAddresses, TezosBalanceUpdateHandler)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                _log.Error(e, "Error on starting TezosBalanceUpdater updater");
-            }
-        }
-
-        private async Task<ISet<string>> GetAddressesAsync()
-        {
-            var account = _account.GetCurrencyAccount(TezosConfig.Xtz);
-            var addresses = await account
-                .GetAddressesAsync()
-                .ConfigureAwait(false);
-
-            var freeAddress = await account
-                .GetFreeExternalAddressAsync()
-                .ConfigureAwait(false);
-
-            return addresses.Concat(new[] { freeAddress })
-                            .Select(wa => wa.Address)
-                            .ToHashSet();
-        }
-
-        private async void TezosBalanceUpdateHandler(string address)
-        {
-            try
-            {
-                await _walletScanner
-                    .ScanAddressAsync(TezosConfig.Xtz, address)
-                    .ConfigureAwait(false);
-                
-                var newAddresses = await GetAddressesAsync().ConfigureAwait(false);
-                newAddresses.ExceptWith(_tezosAddresses);
-
-                if (newAddresses.Any())
-                {
-                    Log.Information("TezosBalanceUpdater adds new addresses {@Addresses}", newAddresses);
-                    await _tzktEvents
-                        .NotifyOnAccountsAsync(newAddresses, TezosBalanceUpdateHandler)
-                        .ConfigureAwait(false);
-
-                    _tezosAddresses.UnionWith(newAddresses);
-                }
-            }
-            catch (Exception e)
-            {
-                _log.Error(e, "Error on handling Tezos balance update");
-            }
-        }
-
-        private async Task StopTezosBalanceUpdater()
-        {
-            await _tzktEvents.StopAsync().ConfigureAwait(false);
-        }
-
-        #endregion Tezos
     }
 }
