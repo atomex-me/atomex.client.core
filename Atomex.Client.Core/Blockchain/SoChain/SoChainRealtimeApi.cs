@@ -3,6 +3,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Serilog;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using PusherClient;
 
 
@@ -23,6 +25,7 @@ namespace Atomex.Blockchain.SoChain
         private bool _isStarted;
         private Pusher _pusher;
         private readonly ConcurrentDictionary<NetAddress, Subscription> _subscriptions = new();
+        private readonly ConcurrentDictionary<string, string> _addressToNetwork = new();
         private readonly Func<NetAddress, Subscription> _willNotBeCalled = _ => null;
 
 
@@ -45,7 +48,7 @@ namespace Atomex.Blockchain.SoChain
             try
             {
                 _isStarted = true;
-                _pusher = new Pusher("e9f5cc20074501ca7395", new PusherOptions()
+                _pusher = new Pusher("e9f5cc20074501ca7395", new PusherOptions
                 {
                     Host = HostUrl,
                     Encrypted = true,
@@ -139,8 +142,34 @@ namespace Atomex.Blockchain.SoChain
 
         private void OnBalanceUpdated(PusherEvent @event)
         {
-            // TODO: Implement
             _log.Debug("[BalanceUpdated] SoChainRealtimeApi got {@Event}", @event);
+
+            if (@event.EventName != "balance_update")
+            {
+                _log.Warning("SoChainRealtimeApi OnBalanceUpdated got event with unsupported name {@EventName}", @event.EventName);
+                return;
+            }
+
+            try
+            {
+                var data = JObject.Parse(@event.Data);
+                var address = data?["value"]?["address"]?.ToString();
+
+                if (!string.IsNullOrEmpty(address) && _addressToNetwork.TryGetValue(address, out var network))
+                {
+                    if (_subscriptions.TryGetValue(new NetAddress(network, address), out var subscription))
+                    {
+                        foreach (var handler in subscription.Handlers)
+                        {
+                            handler(address);
+                        }
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                _log.Error(e, "SoChainRealtimeApi error on handling balance update event");
+            }
         }
 
         private void ErrorHandler(object sender, PusherException error)
