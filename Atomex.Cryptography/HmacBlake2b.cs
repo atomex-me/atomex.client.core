@@ -20,7 +20,7 @@ namespace Atomex.Cryptography
         public HmacBlake2b(int keySize, int macSize)
         {
             _impl = Sodium.IsInitialized
-                ? new Libsodium.HmacBlake2b(keySize, macSize)
+                ? (MacAlgorithm)new Libsodium.HmacBlake2b(keySize, macSize)
                 : new BouncyCastle.HmacBlake2b(keySize, macSize);
         }
 
