@@ -72,7 +72,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
 
             var content = await response
                 .Content
-                .ReadAsStringAsync(cancellationToken)
+                .ReadAsStringAsync()
                 .ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
@@ -115,7 +115,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
 
             var content = await response
                 .Content
-                .ReadAsStringAsync(cancellationToken)
+                .ReadAsStringAsync()
                 .ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
@@ -183,7 +183,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
 
             var content = await response
                 .Content
-                .ReadAsStringAsync(cancellationToken)
+                .ReadAsStringAsync()
                 .ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
@@ -217,7 +217,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
 
             var content = await response
                 .Content
-                .ReadAsStringAsync(cancellationToken)
+                .ReadAsStringAsync()
                 .ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)

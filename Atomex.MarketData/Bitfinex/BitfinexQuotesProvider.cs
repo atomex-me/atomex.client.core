@@ -113,7 +113,7 @@ namespace Atomex.MarketData.Bitfinex
 
             var responseContent = await response
                 .Content
-                .ReadAsStringAsync(cancellationToken)
+                .ReadAsStringAsync()
                 .ConfigureAwait(false);
 
             using var tickers = JsonDocument.Parse(responseContent);

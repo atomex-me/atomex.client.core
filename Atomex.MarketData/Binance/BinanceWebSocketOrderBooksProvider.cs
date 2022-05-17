@@ -143,7 +143,7 @@ namespace Atomex.MarketData.Binance
 
             var responseContent = response
                 .Content
-                .ReadAsStringAsync(cancellationToken)
+                .ReadAsStringAsync()
                 .WaitForResult();
 
             var snapshot = JsonSerializer.Deserialize<BinancePartialOrderBookUpdates>(responseContent);

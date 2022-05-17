@@ -81,7 +81,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
             var content = await response
                 .Content
-                .ReadAsStringAsync(cancellationToken)
+                .ReadAsStringAsync()
                 .ConfigureAwait(false);
 
             var tx = response.IsSuccessStatusCode
@@ -143,7 +143,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
             var content = await response
                 .Content
-                .ReadAsStringAsync(cancellationToken)
+                .ReadAsStringAsync()
                 .ConfigureAwait(false);
 
             var account = response.IsSuccessStatusCode
@@ -174,7 +174,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
             var content = await response
                 .Content
-                .ReadAsStringAsync(cancellationToken)
+                .ReadAsStringAsync()
                 .ConfigureAwait(false);
 
             var hash = response.IsSuccessStatusCode
@@ -371,7 +371,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
                 var content = await response
                     .Content
-                    .ReadAsStringAsync(cancellationToken)
+                    .ReadAsStringAsync()
                     .ConfigureAwait(false);
 
                 var operations = response.IsSuccessStatusCode
@@ -420,7 +420,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
                 var content = await response
                     .Content
-                    .ReadAsStringAsync(cancellationToken)
+                    .ReadAsStringAsync()
                     .ConfigureAwait(false);
 
                 var addresses = response.IsSuccessStatusCode
@@ -461,7 +461,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
                 var content = await response
                     .Content
-                    .ReadAsStringAsync(cancellationToken)
+                    .ReadAsStringAsync()
                     .ConfigureAwait(false);
 
                 var tokenContractResponse = JsonSerializer.Deserialize<TokenContractResponse>(content);
@@ -504,7 +504,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
                 var content = await response
                     .Content
-                    .ReadAsStringAsync(cancellationToken)
+                    .ReadAsStringAsync()
                     .ConfigureAwait(false);
 
                 var balances = JsonSerializer.Deserialize<List<TokenBalanceResponse>>(content);
@@ -564,7 +564,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
                 var content = await response
                     .Content
-                    .ReadAsStringAsync(cancellationToken)
+                    .ReadAsStringAsync()
                     .ConfigureAwait(false);
 
                 var transfersResponses = JsonSerializer.Deserialize<List<TokenTransferResponse>>(content);

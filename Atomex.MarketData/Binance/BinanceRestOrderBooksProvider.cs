@@ -125,7 +125,7 @@ namespace Atomex.MarketData.Binance
 
                         var responseContent = await response
                             .Content
-                            .ReadAsStringAsync(_cts.Token)
+                            .ReadAsStringAsync()
                             .ConfigureAwait(false);
 
                         var bookTicker = JsonSerializer.Deserialize<BinanceBookTicker>(responseContent);// JsonConvert.DeserializeObject<JObject>(responseContent);
