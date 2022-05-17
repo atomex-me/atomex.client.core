@@ -107,12 +107,28 @@ namespace Atomex.Blockchain.SoChain
             return Task.WhenAll(subscribeTasks);
         }
 
-        public Task UnsubscribeOnBalanceUpdateAsync(string network, string address, Action<string> handler = null)
+        public void UnsubscribeOnBalanceUpdate(string network, string address, Action<string> handler = null)
         {
-            throw new NotImplementedException();
+            var fullAddress = new FullAddress(network, address);
+            if (_subscriptions.TryGetValue(fullAddress, out var subscription))
+            {
+                if (handler == null)
+                {
+                    subscription.Channel.UnbindAll();
+                    _subscriptions.TryRemove(fullAddress, out _);
+                }
+                else
+                {
+                    //subscription.Handlers.De
+                }
+            }
+            else
+            {
+                _log.Warning("SoChainRealtimeApi Unsubscribe was called with unregistered {@Address} on {@Network} network", address, network);
+            }
         }
 
-        public Task UnsubscribeOnBalanceUpdateAsync(string network, IEnumerable<string> addresses,
+        public void UnsubscribeOnBalanceUpdate(string network, IEnumerable<string> addresses,
             Action<string> handler = null)
         {
             throw new NotImplementedException();
@@ -142,7 +158,7 @@ namespace Atomex.Blockchain.SoChain
             catch (Exception e)
             {
                 _log.Error(e,
-                    "SoChainRealtimeApi error while subscribing on balance update for {AAddress} on {@Network}",
+                    "SoChainRealtimeApi error while subscribing on balance update for {Address} on {@Network}",
                     address, network);
             }
         }
