@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using Serilog;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
@@ -32,7 +33,7 @@ namespace Atomex.Blockchain.SoChain
         public SoChainRealtimeApi(string hostUrl, ILogger log)
         {
             HostUrl = hostUrl ?? throw new ArgumentNullException(nameof(hostUrl));
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log?.ForContext<SoChainRealtimeApi>() ?? throw new ArgumentNullException(nameof(log));
         }
 
         public async Task StartAsync()
@@ -96,15 +97,21 @@ namespace Atomex.Blockchain.SoChain
             }
         }
 
-        public async Task SubscribeOnBalanceUpdateAsync(string network, string address, Action<string> handler)
+        public Task SubscribeOnBalanceUpdateAsync(string network, string address, Action<string> handler)
         {
             CheckAddressMapping(network, address);
-            await OnBalanceUpdateAsync(network, address, handler);
+            return OnBalanceUpdateAsync(network, address, handler);
         }
 
         public Task SubscribeOnBalanceUpdateAsync(string network, IEnumerable<string> addresses, Action<string> handler)
         {
-            throw new NotImplementedException();
+            var subscribeTasks = addresses.Select(address =>
+            {
+                CheckAddressMapping(network, address);
+                return OnBalanceUpdateAsync(network, address, handler);
+            });
+
+            return Task.WhenAll(subscribeTasks);
         }
 
         public Task UnsubscribeOnBalanceUpdateAsync(string network, string address, Action<string> handler = null)
