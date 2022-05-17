@@ -10,7 +10,7 @@ using PusherClient;
 namespace Atomex.Blockchain.SoChain
 {
     internal record NetAddress(string Network, string Address);
-    internal record Subscription(Channel Channel, IList<Action<string>> Handlers);
+    internal record Subscription(Channel Channel, ConcurrentQueue<Action<string>> Handlers);
 
 
     public class SoChainRealtimeApi : ISoChainRealtimeApi
@@ -97,9 +97,29 @@ namespace Atomex.Blockchain.SoChain
             }
         }
 
-        public Task SubscribeOnBalanceUpdateAsync(string network, string address, Action<string> handler)
+        public async Task SubscribeOnBalanceUpdateAsync(string network, string address, Action<string> handler)
         {
-            throw new NotImplementedException();
+            var mappedNetwork = _addressToNetwork.GetOrAdd(address, network);
+            if (mappedNetwork != network)
+            {
+                throw new ArgumentException($"SoChainRealtimeApi failed to register address ('{address}') in '{network}', because it was already mapped to different network ('{mappedNetwork}')");
+            }
+
+            var subKey = new NetAddress(network, address);
+            if (_subscriptions.TryGetValue(subKey, out var subscription))
+            {
+                subscription.Handlers.Enqueue(handler);
+                return;
+            }
+
+            var chanelName = $"address_{network}_{address}";
+            var channel = await _pusher.SubscribeAsync(chanelName);
+            channel.Bind("balance_update", OnBalanceUpdated);
+
+            var queue = new ConcurrentQueue<Action<string>>();
+            queue.Enqueue(handler);
+
+            _subscriptions.TryAdd(subKey, new Subscription(channel, queue));
         }
 
         public Task SubscribeOnBalanceUpdateAsync(string network, IEnumerable<string> addresses, Action<string> handler)
@@ -124,12 +144,12 @@ namespace Atomex.Blockchain.SoChain
                 foreach (var pair in _subscriptions.Keys)
                 {
                     var chanelName = $"address_{pair.Network}_{pair.Address}";
-                    var channel = await _pusher.SubscribeAsync(chanelName);
+                    var channel = await _pusher.SubscribeAsync(chanelName).ConfigureAwait(false);
                     channel.Bind("balance_update", OnBalanceUpdated);
-                    
+
                     _subscriptions.AddOrUpdate(
                         pair,
-                        (_) => new Subscription(channel, new List<Action<string>>()),
+                        (_) => new Subscription(channel, new ConcurrentQueue<Action<string>>()),
                         (_, sub) => sub with { Channel = channel });
                 }
             }
@@ -202,4 +222,9 @@ namespace Atomex.Blockchain.SoChain
             }
         }
     }
+}
+
+namespace System.Runtime.CompilerServices
+{
+    internal static class IsExternalInit { }
 }
