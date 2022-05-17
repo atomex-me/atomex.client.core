@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using Serilog;
 using System.Threading.Tasks;
@@ -11,7 +12,7 @@ using PusherClient;
 namespace Atomex.Blockchain.SoChain
 {
     internal record FullAddress(string Network, string Address);
-    internal record Subscription(Channel Channel, ConcurrentQueue<Action<string>> Handlers);
+    internal record Subscription(Channel Channel, ImmutableHashSet<Action<string>> Handlers);
 
 
     public class SoChainRealtimeApi : ISoChainRealtimeApi
@@ -141,7 +142,8 @@ namespace Atomex.Blockchain.SoChain
                 var fullAddress = new FullAddress(network, address);
                 if (_subscriptions.TryGetValue(fullAddress, out var subscription))
                 {
-                    subscription.Handlers.Enqueue(handler);
+                    _subscriptions.TryUpdate(fullAddress,
+                        subscription with {Handlers = subscription.Handlers.Add(handler)}, subscription);
                     return;
                 }
 
@@ -150,10 +152,8 @@ namespace Atomex.Blockchain.SoChain
                 var balanceUpdatedHandler = CreateOrGetBalanceUpdatedHandler(network);
                 channel.Bind("balance_update", balanceUpdatedHandler);
 
-                var queue = new ConcurrentQueue<Action<string>>();
-                queue.Enqueue(handler);
-
-                _subscriptions.TryAdd(fullAddress, new Subscription(channel, queue));
+                var handlers = ImmutableHashSet.Create(handler);
+                _subscriptions.TryAdd(fullAddress, new Subscription(channel, handlers));
             }
             catch (Exception e)
             {
@@ -176,7 +176,7 @@ namespace Atomex.Blockchain.SoChain
                 
                     _subscriptions.AddOrUpdate(
                         fullAddress,
-                        (_) => new Subscription(channel, new ConcurrentQueue<Action<string>>()),
+                        (_) => new Subscription(channel, ImmutableHashSet.Create<Action<string>>()),
                         (_, sub) => sub with {Channel = channel});
                 }
             }
