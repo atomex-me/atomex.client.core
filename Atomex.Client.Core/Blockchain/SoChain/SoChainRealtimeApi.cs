@@ -98,26 +98,8 @@ namespace Atomex.Blockchain.SoChain
 
         public async Task SubscribeOnBalanceUpdateAsync(string network, string address, Action<string> handler)
         {
-            var mappedNetwork = _addressToNetwork.GetOrAdd(address, network);
-            if (mappedNetwork != network)
-            {
-                throw new ArgumentException($"SoChainRealtimeApi failed to register address ('{address}') in '{network}', because it was already mapped to different network ('{mappedNetwork}')");
-            }
-            
-            var chanelName = $"address_{network}_{address}";
-            if (_subscriptions.TryGetValue(chanelName, out var subscription))
-            {
-                subscription.Handlers.Enqueue(handler);
-                return;
-            }
-            
-            var channel = await _pusher.SubscribeAsync(chanelName);
-            channel.Bind("balance_update", OnBalanceUpdated);
-
-            var queue = new ConcurrentQueue<Action<string>>();
-            queue.Enqueue(handler);
-
-            _subscriptions.TryAdd(chanelName, new Subscription(channel, queue));
+            CheckAddressMapping(network, address);
+            await OnBalanceUpdateAsync(network, address, handler);
         }
 
         public Task SubscribeOnBalanceUpdateAsync(string network, IEnumerable<string> addresses, Action<string> handler)
@@ -130,9 +112,47 @@ namespace Atomex.Blockchain.SoChain
             throw new NotImplementedException();
         }
 
-        public Task UnsubscribeOnBalanceUpdateAsync(string network, IEnumerable<string> addresses, Action<string> handler = null)
+        public Task UnsubscribeOnBalanceUpdateAsync(string network, IEnumerable<string> addresses,
+            Action<string> handler = null)
         {
             throw new NotImplementedException();
+        }
+
+        private void CheckAddressMapping(string network, string address)
+        {
+            var mappedNetwork = _addressToNetwork.GetOrAdd(address, network);
+            if (mappedNetwork != network)
+            {
+                throw new ArgumentException(
+                    $"SoChainRealtimeApi failed to register address ('{address}') in '{network}', because it was already mapped to different network ('{mappedNetwork}')");
+            }
+        }
+
+        private async Task OnBalanceUpdateAsync(string network, string address, Action<string> handler)
+        {
+            try
+            {
+                var chanelName = $"address_{network}_{address}";
+                if (_subscriptions.TryGetValue(chanelName, out var subscription))
+                {
+                    subscription.Handlers.Enqueue(handler);
+                    return;
+                }
+
+                var channel = await _pusher.SubscribeAsync(chanelName);
+                channel.Bind("balance_update", OnBalanceUpdated);
+
+                var queue = new ConcurrentQueue<Action<string>>();
+                queue.Enqueue(handler);
+
+                _subscriptions.TryAdd(chanelName, new Subscription(channel, queue));
+            }
+            catch (Exception e)
+            {
+                _log.Error(e,
+                    "SoChainRealtimeApi error while subscribing on balance update for {AAddress} on {@Network}",
+                    address, network);
+            }
         }
 
         private async void ConnectedHandler(object sender)
@@ -147,7 +167,7 @@ namespace Atomex.Blockchain.SoChain
                     _subscriptions.AddOrUpdate(
                         chanelName,
                         (_) => new Subscription(channel, new ConcurrentQueue<Action<string>>()),
-                        (_, sub) => sub with { Channel = channel });
+                        (_, sub) => sub with {Channel = channel});
                 }
             }
             catch (Exception e)
@@ -162,7 +182,8 @@ namespace Atomex.Blockchain.SoChain
 
             if (@event.EventName != "balance_update")
             {
-                _log.Warning("SoChainRealtimeApi OnBalanceUpdated got event with unsupported name {@EventName}", @event.EventName);
+                _log.Warning("SoChainRealtimeApi OnBalanceUpdated got event with unsupported name {@EventName}",
+                    @event.EventName);
                 return;
             }
 
@@ -224,5 +245,7 @@ namespace Atomex.Blockchain.SoChain
 
 namespace System.Runtime.CompilerServices
 {
-    internal static class IsExternalInit { }
+    internal static class IsExternalInit
+    {
+    }
 }
