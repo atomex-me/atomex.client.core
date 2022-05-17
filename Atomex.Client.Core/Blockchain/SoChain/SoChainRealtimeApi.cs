@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Linq.Expressions;
 using Serilog;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
@@ -110,29 +111,43 @@ namespace Atomex.Blockchain.SoChain
 
         public void UnsubscribeOnBalanceUpdate(string network, string address, Action<string> handler = null)
         {
-            var fullAddress = new FullAddress(network, address);
-            if (_subscriptions.TryGetValue(fullAddress, out var subscription))
+            try
             {
-                if (handler == null)
+                var fullAddress = new FullAddress(network, address);
+                if (_subscriptions.TryGetValue(fullAddress, out var subscription))
                 {
-                    subscription.Channel.UnbindAll();
-                    _subscriptions.TryRemove(fullAddress, out _);
+                    if (handler == null)
+                    {
+                        subscription.Channel.UnbindAll();
+                        _subscriptions.TryRemove(fullAddress, out _);
+                    }
+                    else
+                    {
+                        _subscriptions.TryUpdate(fullAddress,
+                            subscription with {Handlers = subscription.Handlers.Remove(handler)}, subscription);
+                    }
                 }
                 else
                 {
-                    //subscription.Handlers.De
+                    _log.Warning(
+                        "SoChainRealtimeApi Unsubscribe was called with unregistered {@Address} on {@Network} network",
+                        address, network);
                 }
             }
-            else
+            catch (Exception e)
             {
-                _log.Warning("SoChainRealtimeApi Unsubscribe was called with unregistered {@Address} on {@Network} network", address, network);
+                _log.Error(e, "SoChainRealtimeApi error while unsubscribing {@Address} on {@Network} network",
+                    address, network);
             }
         }
 
         public void UnsubscribeOnBalanceUpdate(string network, IEnumerable<string> addresses,
             Action<string> handler = null)
         {
-            throw new NotImplementedException();
+            foreach (var address in addresses)
+            {
+                UnsubscribeOnBalanceUpdate(network, address, handler);
+            }
         }
 
         private async Task OnBalanceUpdateAsync(string network, string address, Action<string> handler)
