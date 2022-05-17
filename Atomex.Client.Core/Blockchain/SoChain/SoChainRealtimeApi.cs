@@ -10,6 +10,7 @@ using PusherClient;
 
 namespace Atomex.Blockchain.SoChain
 {
+    internal record FullAddress(string Network, string Address);
     internal record Subscription(Channel Channel, ConcurrentQueue<Action<string>> Handlers);
 
 
@@ -23,10 +24,9 @@ namespace Atomex.Blockchain.SoChain
 
         private bool _isStarted;
         private Pusher _pusher;
-        private readonly ConcurrentDictionary<string, Subscription> _subscriptions = new();
+        private readonly ConcurrentDictionary<FullAddress, Subscription> _subscriptions = new();
         private readonly ConcurrentDictionary<string, string> _addressToNetwork = new();
-        private readonly Func<string, Subscription> _willNotBeCalled = _ => null;
-
+        private readonly ConcurrentDictionary<string, Action<PusherEvent>> _balanceUpdatedHandlers = new();
 
         private readonly ILogger _log;
 
@@ -107,6 +107,7 @@ namespace Atomex.Blockchain.SoChain
         {
             var subscribeTasks = addresses.Select(address =>
             {
+                // TODO: catch errors, and better set each handler per network
                 CheckAddressMapping(network, address);
                 return OnBalanceUpdateAsync(network, address, handler);
             });
@@ -139,20 +140,21 @@ namespace Atomex.Blockchain.SoChain
         {
             try
             {
-                var chanelName = $"address_{network}_{address}";
-                if (_subscriptions.TryGetValue(chanelName, out var subscription))
+                var fullAddress = new FullAddress(network, address);
+                if (_subscriptions.TryGetValue(fullAddress, out var subscription))
                 {
                     subscription.Handlers.Enqueue(handler);
                     return;
                 }
 
+                var chanelName = $"address_{network}_{address}";
                 var channel = await _pusher.SubscribeAsync(chanelName);
                 channel.Bind("balance_update", OnBalanceUpdated);
 
                 var queue = new ConcurrentQueue<Action<string>>();
                 queue.Enqueue(handler);
 
-                _subscriptions.TryAdd(chanelName, new Subscription(channel, queue));
+                _subscriptions.TryAdd(fullAddress, new Subscription(channel, queue));
             }
             catch (Exception e)
             {
@@ -166,13 +168,14 @@ namespace Atomex.Blockchain.SoChain
         {
             try
             {
-                foreach (var chanelName in _subscriptions.Keys)
+                foreach (var fullAddress in _subscriptions.Keys)
                 {
+                    var chanelName = $"address_{fullAddress.Network}_{fullAddress.Address}";
                     var channel = await _pusher.SubscribeAsync(chanelName).ConfigureAwait(false);
                     channel.Bind("balance_update", OnBalanceUpdated);
 
                     _subscriptions.AddOrUpdate(
-                        chanelName,
+                        fullAddress,
                         (_) => new Subscription(channel, new ConcurrentQueue<Action<string>>()),
                         (_, sub) => sub with {Channel = channel});
                 }
@@ -201,8 +204,8 @@ namespace Atomex.Blockchain.SoChain
 
                 if (!string.IsNullOrEmpty(address) && _addressToNetwork.TryGetValue(address, out var network))
                 {
-                    var chanelName = $"address_{network}_{address}";
-                    if (_subscriptions.TryGetValue(chanelName, out var subscription))
+                    var fullAddress = new FullAddress(network, address);
+                    if (_subscriptions.TryGetValue(fullAddress, out var subscription))
                     {
                         foreach (var handler in subscription.Handlers)
                         {
