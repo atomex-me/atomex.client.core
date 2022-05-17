@@ -3,7 +3,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Linq.Expressions;
 using Serilog;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
@@ -26,10 +25,10 @@ namespace Atomex.Blockchain.SoChain
 
         private bool _isStarted;
         private Pusher _pusher;
-        private readonly ConcurrentDictionary<FullAddress, Subscription> _subscriptions = new();
-        private readonly ConcurrentDictionary<string, Action<PusherEvent>> _balanceUpdatedHandlers = new();
 
         private readonly ILogger _log;
+        private readonly ConcurrentDictionary<FullAddress, Subscription> _subscriptions = new();
+        private readonly ConcurrentDictionary<string, Action<PusherEvent>> _balanceUpdatedHandlers = new();
 
         public SoChainRealtimeApi(string hostUrl, ILogger log)
         {
@@ -275,6 +274,7 @@ namespace Atomex.Blockchain.SoChain
     }
 }
 
+// DISCUSS: If we could not move to .NET 5+, maybe we have some place to put that hack globally?
 namespace System.Runtime.CompilerServices
 {
     internal static class IsExternalInit
