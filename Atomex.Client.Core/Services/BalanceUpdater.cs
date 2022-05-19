@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Atomex.Abstract;
+using Atomex.Blockchain.SoChain;
 using Atomex.Services.Abstract;
 using Atomex.Services.BalanceUpdaters;
 using Atomex.Wallet;
@@ -24,6 +25,7 @@ namespace Atomex.Services
         private bool _isRunning;
         
         private readonly IList<IChainBalanceUpdater> _balanceUpdaters = new List<IChainBalanceUpdater>();
+        private const string SoChainRealtimeApiHost = "pusher.chain.so";
 
         public BalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, ILogger log)
         {
@@ -31,7 +33,7 @@ namespace Atomex.Services
             _currenciesProvider = currenciesProvider;
             _log = log ?? throw new ArgumentNullException(nameof(log));
             _walletScanner = new HdWalletScanner(_account);
-            
+
             InitChainBalanceUpdaters();
         }
 
@@ -97,6 +99,9 @@ namespace Atomex.Services
         {
             try
             {
+                var soChainRealtimeApi = new SoChainRealtimeApi(SoChainRealtimeApiHost, _log);
+                _balanceUpdaters.Add(new BitcoinBalanceUpdater(_account, _walletScanner, soChainRealtimeApi, _log));
+
                 _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, _log));
             }
             catch (Exception e)

@@ -25,6 +25,7 @@ namespace Atomex.Blockchain.SoChain
 
         private bool _isStarted;
         private Pusher _pusher;
+        private const string ApiKey = "e9f5cc20074501ca7395";
 
         private readonly ILogger _log;
         private readonly ConcurrentDictionary<FullAddress, Subscription> _subscriptions = new();
@@ -47,7 +48,7 @@ namespace Atomex.Blockchain.SoChain
             try
             {
                 _isStarted = true;
-                _pusher = new Pusher("e9f5cc20074501ca7395", new PusherOptions
+                _pusher = new Pusher(ApiKey, new PusherOptions
                 {
                     Host = HostUrl,
                     Encrypted = true,
