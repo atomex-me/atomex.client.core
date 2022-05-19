@@ -63,7 +63,7 @@ namespace Atomex.TzktEvents.Services
         {
             if (!_accounts.IsEmpty)
             {
-                var addresses = _accounts.Keys.ToArray();
+                var addresses = _accounts.Select(a => a.Key).ToArray();
                 await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
                 {
                     addresses

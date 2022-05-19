@@ -118,12 +118,22 @@ namespace Atomex.Blockchain.SoChain
                     if (handler == null)
                     {
                         subscription.Channel.UnbindAll();
-                        _subscriptions.TryRemove(fullAddress, out _);
+                        var removed = _subscriptions.TryRemove(fullAddress, out _);
+
+                        if (!removed)
+                        {
+                            _log.Warning("SoChainRealtimeApi couldn't remove subscription for {@Address} at {@Network}", address, network);
+                        }
                     }
                     else
                     {
-                        _subscriptions.TryUpdate(fullAddress,
+                        var updated = _subscriptions.TryUpdate(fullAddress,
                             subscription with {Handlers = subscription.Handlers.Remove(handler)}, subscription);
+
+                        if (!updated)
+                        {
+                            _log.Warning("SoChainRealtimeApi couldn't remove subscription for handler on {@Address} at {@Network}", address, network);
+                        }
                     }
                 }
                 else
@@ -156,8 +166,16 @@ namespace Atomex.Blockchain.SoChain
                 var fullAddress = new FullAddress(network, address);
                 if (_subscriptions.TryGetValue(fullAddress, out var subscription))
                 {
-                    _subscriptions.TryUpdate(fullAddress,
+                    var updated = _subscriptions.TryUpdate(fullAddress,
                         subscription with {Handlers = subscription.Handlers.Add(handler)}, subscription);
+
+                    if (!updated)
+                    {
+                        _log.Warning(
+                            "SoChainRealtimeApi couldn't update subscription with new handler for {@Address} on {@Network} network",
+                            address, network);
+                    }
+
                     return;
                 }
 
@@ -167,7 +185,14 @@ namespace Atomex.Blockchain.SoChain
                 channel.Bind("balance_update", balanceUpdatedHandler);
 
                 var handlers = ImmutableHashSet.Create(handler);
-                _subscriptions.TryAdd(fullAddress, new Subscription(channel, handlers));
+                var added = _subscriptions.TryAdd(fullAddress, new Subscription(channel, handlers));
+
+                if (!added)
+                {
+                    _log.Warning(
+                        "SoChainRealtimeApi couldn't add new subscription for {@Address} on {@Network} network",
+                        address, network);
+                }
             }
             catch (Exception e)
             {
@@ -181,7 +206,7 @@ namespace Atomex.Blockchain.SoChain
         {
             try
             {
-                foreach (var fullAddress in _subscriptions.Keys)
+                foreach (var fullAddress in _subscriptions.Select(sub => sub.Key))
                 {
                     var chanelName = $"address_{fullAddress.Network}_{fullAddress.Address}";
                     var channel = await _pusher.SubscribeAsync(chanelName).ConfigureAwait(false);
