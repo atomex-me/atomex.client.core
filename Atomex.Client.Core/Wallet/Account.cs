@@ -65,7 +65,7 @@ namespace Atomex.Wallet
         public Network Network => Wallet.Network;
         public IHdWallet Wallet { get; }
         public ICurrencies Currencies { get; }
-        public UserSettings UserSettings { get; private set; }
+        public UserData UserData { get; private set; }
 
         private readonly ClientType _clientType;
         private IAccountDataRepository DataRepository { get; }
@@ -105,8 +105,8 @@ namespace Atomex.Wallet
 
             CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, DataRepository);
 
-            UserSettings = UserSettings.TryLoadFromFile(
-                pathToFile: SettingsFilePath) ?? UserSettings.GetDefaultSettings(Currencies);
+            UserData = UserData.TryLoadFromFile(
+                pathToFile: SettingsFilePath) ?? UserData.GetDefaultSettings(Currencies);
 
             _clientType = clientType;
         }
@@ -123,8 +123,8 @@ namespace Atomex.Wallet
             Currencies = currenciesProvider.GetCurrencies(Network);
             CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, DataRepository);
 
-            UserSettings = UserSettings.TryLoadFromFile(
-                pathToFile: SettingsFilePath) ?? UserSettings.GetDefaultSettings(Currencies);
+            UserData = UserData.TryLoadFromFile(
+                pathToFile: SettingsFilePath) ?? UserData.GetDefaultSettings(Currencies);
 
             _clientType = clientType;
         }
@@ -138,7 +138,7 @@ namespace Atomex.Wallet
             hdWallet.KeyStorage.Encrypt(newPassword);
             hdWallet.SaveToFile(Wallet.PathToWallet, newPassword);
 
-            UserSettings.SaveToFile(SettingsFilePath);
+            UserData.SaveToFile(SettingsFilePath);
             DataRepository.ChangePassword(newPassword);
         }
 
@@ -156,9 +156,9 @@ namespace Atomex.Wallet
             Unlocked?.Invoke(this, EventArgs.Empty);
         }
 
-        public IAccount UseUserSettings(UserSettings userSettings)
+        public IAccount UseUserSettings(UserData userData)
         {
-            UserSettings = userSettings;
+            UserData = userData;
             return this;
         }
 

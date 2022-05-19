@@ -885,7 +885,7 @@ namespace Atomex.ViewModels
         public static string GetUserId(IAccount account)
         {
             using var servicePublicKey =
-                account.Wallet.GetServicePublicKey(account.UserSettings.AuthenticationKeyIndex);
+                account.Wallet.GetServicePublicKey(account.UserData.AuthenticationKeyIndex);
             var publicKey = servicePublicKey.ToUnsecuredBytes();
 
             return HashAlgorithm.Sha256.Hash(publicKey, iterations: 2).ToHexString();
