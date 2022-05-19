@@ -50,7 +50,7 @@ namespace Atomex.Services.BalanceUpdaters
                 _tezosAddresses = await GetAddressesAsync().ConfigureAwait(false);
 
                 await _tzktEvents
-                    .NotifyOnAccountsAsync(_tezosAddresses, TezosBalanceUpdateHandler)
+                    .NotifyOnAccountsAsync(_tezosAddresses, BalanceUpdatedHandler)
                     .ConfigureAwait(false);
             }
             catch (Exception e)
@@ -88,7 +88,7 @@ namespace Atomex.Services.BalanceUpdaters
                 .ToHashSet();
         }
 
-        private async void TezosBalanceUpdateHandler(string address)
+        private async void BalanceUpdatedHandler(string address)
         {
             try
             {
@@ -103,7 +103,7 @@ namespace Atomex.Services.BalanceUpdaters
                 {
                     Log.Information("TezosBalanceUpdater adds new addresses {@Addresses}", newAddresses);
                     await _tzktEvents
-                        .NotifyOnAccountsAsync(newAddresses, TezosBalanceUpdateHandler)
+                        .NotifyOnAccountsAsync(newAddresses, BalanceUpdatedHandler)
                         .ConfigureAwait(false);
 
                     _tezosAddresses.UnionWith(newAddresses);
