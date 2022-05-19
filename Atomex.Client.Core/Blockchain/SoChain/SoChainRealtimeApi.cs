@@ -298,11 +298,3 @@ namespace Atomex.Blockchain.SoChain
         }
     }
 }
-
-// DISCUSS: If we could not move to .NET 5+, maybe we have some place to put that hack globally?
-namespace System.Runtime.CompilerServices
-{
-    internal static class IsExternalInit
-    {
-    }
-}

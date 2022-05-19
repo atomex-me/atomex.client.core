@@ -160,8 +160,3 @@ namespace Atomex.TzktEvents.Services
         }
     }
 }
-
-namespace System.Runtime.CompilerServices
-{
-    internal static class IsExternalInit { }
-}
