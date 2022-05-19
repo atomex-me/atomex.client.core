@@ -101,6 +101,7 @@ namespace Atomex.Services
             {
                 var soChainRealtimeApi = new SoChainRealtimeApi(SoChainRealtimeApiHost, _log);
                 _balanceUpdaters.Add(new BitcoinBalanceUpdater(_account, _walletScanner, soChainRealtimeApi, _log));
+                _balanceUpdaters.Add(new LitecoinBalanceUpdater(_account, _walletScanner, soChainRealtimeApi, _log));
 
                 _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, _log));
             }
