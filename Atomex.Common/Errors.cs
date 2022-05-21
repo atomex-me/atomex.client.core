@@ -43,5 +43,6 @@
         public const int RunOperationsError = 1505;
         public const int AutoFillError = 1506;
         public const int GetOperationsError = 1507;
+        public const int OperationBatchingError = 1508;
     }
 }

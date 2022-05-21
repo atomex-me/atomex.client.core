@@ -11,20 +11,20 @@ namespace Atomex.Wallets.Abstract
     {
         string Currency { get; }
 
-        #region Wallets
+        //#region Wallets
 
-        Task<WalletInfo> GetWalletByIdAsync(
-            int walletId,
-            CancellationToken cancellationToken);
+        //Task<WalletInfo> GetWalletByIdAsync(
+        //    int walletId,
+        //    CancellationToken cancellationToken);
 
-        Task<IEnumerable<WalletInfo>> GetWalletsAsync(
-            CancellationToken cancellationToken = default);
+        //Task<IEnumerable<WalletInfo>> GetWalletsAsync(
+        //    CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<WalletInfo>> GetWalletsAsync(
-            string currency,
-            CancellationToken cancellationToken = default);
+        //Task<IEnumerable<WalletInfo>> GetWalletsAsync(
+        //    string currency,
+        //    CancellationToken cancellationToken = default);
 
-        #endregion Wallets
+        //#endregion Wallets
 
         #region Balances
 
@@ -58,9 +58,9 @@ namespace Atomex.Wallets.Abstract
 
         #region Addresses
 
-        Task<bool> UpsertAddressAsync(
-            WalletAddress walletAddress,
-            CancellationToken cancellationToken = default);
+        //Task<bool> UpsertAddressAsync(
+        //    WalletAddress walletAddress,
+        //    CancellationToken cancellationToken = default);
 
         Task<WalletAddress> GetAddressAsync(
             string address,
@@ -80,18 +80,24 @@ namespace Atomex.Wallets.Abstract
 
         #region Transactions
 
-        Task<bool> UpsertTransactionAsync<T>(
-            T tx,
-            CancellationToken cancellationToken = default)
-            where T : Transaction;
+        //Task<bool> UpsertTransactionAsync<T>(
+        //    T tx,
+        //    CancellationToken cancellationToken = default)
+        //    where T : Transaction;
 
-        Task<int> UpsertTransactionsAsync<T>(
-            IEnumerable<T> txs,
-            CancellationToken cancellationToken = default)
-            where T : Transaction;
+        //Task<int> UpsertTransactionsAsync<T>(
+        //    IEnumerable<T> txs,
+        //    CancellationToken cancellationToken = default)
+        //    where T : Transaction;
 
         Task<T> GetTransactionByIdAsync<T>(
             string txId,
+            CancellationToken cancellationToken = default)
+            where T : Transaction;
+
+        Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(
+            int offset = 0,
+            int limit = int.MaxValue,
             CancellationToken cancellationToken = default)
             where T : Transaction;
 

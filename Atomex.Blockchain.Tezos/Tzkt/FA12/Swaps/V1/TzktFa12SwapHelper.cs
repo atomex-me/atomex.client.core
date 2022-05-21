@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Tezos.Common;
 using Atomex.Common;
 
-namespace Atomex.Blockchain.Tezos.Tzkt.FA12.Swaps.V1
+namespace Atomex.Blockchain.Tezos.Tzkt.Fa12.Swaps.V1
 {
     public class TzktFa12SwapHelper
     {

@@ -5,10 +5,10 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Tezos.Tzkt.FA12.Swaps.V1;
+using Atomex.Blockchain.Tezos.Tzkt.Fa12.Swaps.V1;
 using Atomex.Common;
 
-namespace Atomex.Blockchain.Tezos.Tzkt.FA12.Swaps
+namespace Atomex.Blockchain.Tezos.Tzkt.Fa12.Swaps
 {
     public class TzktFa12SwapApi : IBlockchainSwapApi
     {

@@ -17,8 +17,8 @@ namespace Atomex.Wallets.Abstract
         public string Currency { get; }
         protected IWalletProvider WalletProvider { get; set; }
         protected ICurrencyConfigProvider CurrencyConfigProvider { get; set; }
-        protected IWalletDataRepository DataRepository { get; }
-        protected ILogger Logger { get; }
+        public IWalletDataRepository DataRepository { get; }
+        public ILogger Logger { get; }
 
         public Account(
             string currency,
@@ -39,32 +39,32 @@ namespace Atomex.Wallets.Abstract
             Logger = logger;
         }
 
-        #region Wallets
+        //#region Wallets
 
-        public Task<WalletInfo> GetWalletByIdAsync(
-            int walletId,
-            CancellationToken cancellationToken)
-        {
-            return DataRepository
-                .GetWalletInfoByIdAsync(walletId, cancellationToken);
-        }
+        //public Task<WalletInfo> GetWalletByIdAsync(
+        //    int walletId,
+        //    CancellationToken cancellationToken)
+        //{
+        //    return DataRepository
+        //        .GetWalletInfoByIdAsync(walletId, cancellationToken);
+        //}
 
-        public Task<IEnumerable<WalletInfo>> GetWalletsAsync(
-            CancellationToken cancellationToken = default)
-        {
-            return DataRepository
-                .GetWalletsInfoAsync(cancellationToken);
-        }
+        //public Task<IEnumerable<WalletInfo>> GetWalletsAsync(
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return DataRepository
+        //        .GetWalletsInfoAsync(cancellationToken);
+        //}
 
-        public Task<IEnumerable<WalletInfo>> GetWalletsAsync(
-            string currency,
-            CancellationToken cancellationToken = default)
-        {
-            return DataRepository
-                .GetWalletsInfoAsync(currency, cancellationToken);
-        }
+        //public Task<IEnumerable<WalletInfo>> GetWalletsAsync(
+        //    string currency,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return DataRepository
+        //        .GetWalletsInfoAsync(currency, cancellationToken);
+        //}
 
-        #endregion Wallets
+        //#endregion Wallets
 
         #region Balances
 
@@ -158,13 +158,13 @@ namespace Atomex.Wallets.Abstract
 
         #region Addresses
 
-        public virtual Task<bool> UpsertAddressAsync(
-            WalletAddress walletAddress,
-            CancellationToken cancellationToken = default)
-        {
-            return DataRepository
-                .UpsertAddressAsync(walletAddress, cancellationToken);
-        }
+        //public virtual Task<bool> UpsertAddressAsync(
+        //    WalletAddress walletAddress,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    return DataRepository
+        //        .UpsertAddressAsync(walletAddress, cancellationToken);
+        //}
 
         public virtual Task<WalletAddress> GetAddressAsync(
             string address,
@@ -280,23 +280,23 @@ namespace Atomex.Wallets.Abstract
 
         #region Transactions
 
-        public Task<bool> UpsertTransactionAsync<T>(
-            T tx,
-            CancellationToken cancellationToken = default)
-            where T : Transaction
-        {
-            return DataRepository
-                .UpsertTransactionAsync(tx, cancellationToken);
-        }
+        //public Task<bool> UpsertTransactionAsync<T>(
+        //    T tx,
+        //    CancellationToken cancellationToken = default)
+        //    where T : Transaction
+        //{
+        //    return DataRepository
+        //        .UpsertTransactionAsync(tx, cancellationToken);
+        //}
 
-        public Task<int> UpsertTransactionsAsync<T>(
-            IEnumerable<T> txs,
-            CancellationToken cancellationToken = default)
-            where T : Transaction
-        {
-            return DataRepository
-                .UpsertTransactionsAsync(txs, cancellationToken);
-        }
+        //public Task<int> UpsertTransactionsAsync<T>(
+        //    IEnumerable<T> txs,
+        //    CancellationToken cancellationToken = default)
+        //    where T : Transaction
+        //{
+        //    return DataRepository
+        //        .UpsertTransactionsAsync(txs, cancellationToken);
+        //}
 
         public Task<T> GetTransactionByIdAsync<T>(
             string txId,
@@ -305,6 +305,16 @@ namespace Atomex.Wallets.Abstract
         {
             return DataRepository
                 .GetTransactionByIdAsync<T>(Currency, txId, cancellationToken);
+        }
+
+        public Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default)
+            where T : Transaction
+        {
+            return DataRepository
+                .GetUnconfirmedTransactionsAsync<T>(Currency, offset, limit, cancellationToken);
         }
 
         public Task<bool> RemoveTransactionByIdAsync(
