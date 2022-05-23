@@ -241,7 +241,7 @@ namespace Atomex.Services
                 var auth = await Account
                     .CreateAuthRequestAsync(
                         nonce: ExchangeClient.Nonce,
-                        keyIndex: Account.UserSettings.AuthenticationKeyIndex)
+                        keyIndex: Account.UserData.AuthenticationKeyIndex)
                     .ConfigureAwait(false);
 
                 ExchangeClient.AuthAsync(auth);
@@ -347,7 +347,7 @@ namespace Atomex.Services
                 var auth = await Account
                     .CreateAuthRequestAsync(
                         nonce: MarketDataClient.Nonce,
-                        keyIndex: Account.UserSettings.AuthenticationKeyIndex)
+                        keyIndex: Account.UserData.AuthenticationKeyIndex)
                     .ConfigureAwait(false);
 
                 MarketDataClient.AuthAsync(auth);

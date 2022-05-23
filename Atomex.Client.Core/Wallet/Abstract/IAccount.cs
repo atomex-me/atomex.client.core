@@ -39,7 +39,7 @@ namespace Atomex.Wallet.Abstract
         /// <summary>
         /// Get user settings
         /// </summary>
-        UserSettings UserSettings { get; }
+        UserData UserData { get; }
         
         /// <summary>
         /// Get user settings file path
@@ -64,9 +64,9 @@ namespace Atomex.Wallet.Abstract
         /// <summary>
         /// Use user settings
         /// </summary>
-        /// <param name="userSettings">User settings</param>
+        /// <param name="userData">User settings</param>
         /// <returns>this</returns>
-        IAccount UseUserSettings(UserSettings userSettings);
+        IAccount UseUserSettings(UserData userData);
 
         /// <summary>
         /// Create auth request for service key with <paramref name="keyIndex"/>, which can be used for authentication using server <paramref name="nonce"/>

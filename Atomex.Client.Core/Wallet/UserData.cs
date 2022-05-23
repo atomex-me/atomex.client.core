@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -8,7 +9,24 @@ using Serilog;
 
 namespace Atomex.Wallet
 {
-    public class UserSettings
+    public enum AtomexNotificationType
+    {
+        Income,
+        Outcome,
+        Swap,
+        Info
+    }
+
+    public class AtomexNotification
+    {
+        public string Id { get; set; }
+        public string Message { get; set; }
+        public DateTime Time { get; set; }
+        public bool IsRead { get; set; }
+        public AtomexNotificationType AtomexNotificationType { get; set; }   
+    }
+
+    public class UserData
     {
         private const int MaxFileSizeInBytes = 1 * 1024 * 1024; // 1  MB
         // private const int AesKeySize = 256;
@@ -21,26 +39,28 @@ namespace Atomex.Wallet
         public bool ShowActiveSwapWarning { get; set; }
         public int BalanceUpdateIntervalInSec { get; set; }
         public string[] InitializedCurrencies { get; set; }
+        public List<AtomexNotification> Notifications { get; set; }
 
-        public static UserSettings GetDefaultSettings(ICurrencies currencies)
+        public static UserData GetDefaultSettings(ICurrencies currencies)
         {
-            return new UserSettings
+            return new UserData
             {
                 AutoSignOut = true,
                 PeriodOfInactivityInMin = 5,
                 AuthenticationKeyIndex = 0,
                 ShowActiveSwapWarning = true,
                 BalanceUpdateIntervalInSec = 120,
-                InitializedCurrencies = currencies.Select(curr => curr.Name).ToArray()
+                InitializedCurrencies = currencies.Select(curr => curr.Name).ToArray(),
+                Notifications = new List<AtomexNotification>()
             };
         }
 
-        public UserSettings Clone()
+        public UserData Clone()
         {
-            return (UserSettings)MemberwiseClone();
+            return (UserData)MemberwiseClone();
         }
 
-        public static UserSettings TryLoadFromFile(string pathToFile)
+        public static UserData TryLoadFromFile(string pathToFile)
         {
             if (!File.Exists(pathToFile))
                 return null;
@@ -51,7 +71,7 @@ namespace Atomex.Wallet
             try
             {
                 var json = File.ReadAllText(pathToFile);
-                return JsonConvert.DeserializeObject<UserSettings>(json);
+                return JsonConvert.DeserializeObject<UserData>(json);
             }
             catch (Exception e)
             {
