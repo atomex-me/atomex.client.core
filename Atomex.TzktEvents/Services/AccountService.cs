@@ -11,19 +11,17 @@ using Serilog;
 
 namespace Atomex.TzktEvents.Services
 {
-    internal record AccountSubscription(Action<string> Handler, int LastState = 0);
-
     public class AccountService : IAccountService
     {
-        private readonly HubConnection _connection;
+        private readonly HubConnection _hub;
         private readonly ILogger _log;
 
         private readonly ConcurrentDictionary<string, AccountSubscription> _accounts = new();
         private readonly Func<string, AccountSubscription> _willNotBeCalled = _ => null;
 
-        public AccountService(HubConnection connection, ILogger log)
+        public AccountService(HubConnection hub, ILogger log)
         {
-            _connection = connection ?? throw new ArgumentNullException(nameof(connection));
+            _hub = hub ?? throw new ArgumentNullException(nameof(hub));
             _log = log ?? throw new ArgumentNullException(nameof(log));
         }
 
@@ -32,7 +30,7 @@ namespace Atomex.TzktEvents.Services
             var account = new AccountSubscription(handler);
             _accounts.AddOrUpdate(address, account, (_, _) => account);
 
-            await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
+            await _hub.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
             {
                 addresses = new[] { address }
             }).ConfigureAwait(false);
@@ -53,27 +51,10 @@ namespace Atomex.TzktEvents.Services
                 _accounts.AddOrUpdate(address, account, (_, _) => account);
             }
 
-            await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
+            await _hub.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
             {
                 addresses = addressesList
             }).ConfigureAwait(false);
-        }
-
-        public async Task InitAsync()
-        {
-            if (!_accounts.IsEmpty)
-            {
-                var addresses = _accounts.Select(a => a.Key).ToArray();
-                await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
-                {
-                    addresses
-                }).ConfigureAwait(false);
-            }
-        }
-
-        public void SetSubscriptions()
-        {
-            _connection.On<JObject>(SubscriptionMethod.SubscribeToAccounts.Channel, Handler);
         }
 
         private void Handler(JObject msg)
