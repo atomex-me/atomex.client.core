@@ -119,6 +119,16 @@ namespace Atomex.TzktEvents
             }
         }
 
+        public async Task NotifyOnTokenBalancesAsync(string address, Action<string> handler)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task NotifyOnTokenBalancesAsync(IEnumerable<string> address, Action<string> handler)
+        {
+            throw new NotImplementedException();
+        }
+
         private bool CheckIsStarted(string methodName)
         {
             if (!_isStarted)
