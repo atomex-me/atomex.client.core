@@ -19,7 +19,7 @@ namespace Atomex.Services.BalanceUpdaters
         private readonly ITzktEventsClient _tzktEvents;
         private readonly IHdWalletScanner _walletScanner;
 
-        private ISet<string> _tezosAddresses;
+        private ISet<string> _addresses;
 
 
         public TezosBalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, IHdWalletScanner walletScanner, ILogger log)
@@ -47,10 +47,10 @@ namespace Atomex.Services.BalanceUpdaters
                 var baseUri = currency.BaseUri;
 
                 await _tzktEvents.StartAsync(baseUri).ConfigureAwait(false);
-                _tezosAddresses = await GetAddressesAsync().ConfigureAwait(false);
+                _addresses = await GetAddressesAsync().ConfigureAwait(false);
 
                 await _tzktEvents
-                    .NotifyOnAccountsAsync(_tezosAddresses, BalanceUpdatedHandler)
+                    .NotifyOnAccountsAsync(_addresses, BalanceUpdatedHandler)
                     .ConfigureAwait(false);
             }
             catch (Exception e)
@@ -97,7 +97,7 @@ namespace Atomex.Services.BalanceUpdaters
                     .ConfigureAwait(false);
 
                 var newAddresses = await GetAddressesAsync().ConfigureAwait(false);
-                newAddresses.ExceptWith(_tezosAddresses);
+                newAddresses.ExceptWith(_addresses);
 
                 if (newAddresses.Any())
                 {
@@ -106,7 +106,7 @@ namespace Atomex.Services.BalanceUpdaters
                         .NotifyOnAccountsAsync(newAddresses, BalanceUpdatedHandler)
                         .ConfigureAwait(false);
 
-                    _tezosAddresses.UnionWith(newAddresses);
+                    _addresses.UnionWith(newAddresses);
                 }
             }
             catch (Exception e)
