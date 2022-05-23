@@ -37,6 +37,11 @@ namespace Atomex.TzktEvents
         {
             if (_isStarted)
             {
+                if (baseUri == _baseUri)
+                {
+                    return;
+                }
+
                 _log.Warning("Trying to start new connection with baseUri = {BaseUri} while TzktEventsClient is already connected to {EventsUrl}",
                     _baseUri, EventsUrl);
                 return;
