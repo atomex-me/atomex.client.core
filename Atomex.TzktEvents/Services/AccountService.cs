@@ -25,6 +25,23 @@ namespace Atomex.TzktEvents.Services
             _log = log ?? throw new ArgumentNullException(nameof(log));
         }
 
+        public async Task InitAsync()
+        {
+            if (_accounts.Skip(0).Count() != 0)
+            {
+                var addresses = _accounts.Select(a => a.Key).ToArray();
+                await _hub.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
+                {
+                    addresses
+                }).ConfigureAwait(false);
+            }
+        }
+
+        public void SetSubscriptions()
+        {
+            _hub.On<JObject>(SubscriptionMethod.SubscribeToAccounts.Channel, Handler);
+        }
+
         public async Task NotifyOnAccountAsync(string address, Action<string> handler)
         {
             var account = new AccountSubscription(handler);
@@ -41,13 +58,13 @@ namespace Atomex.TzktEvents.Services
             var addressesList = addresses.ToList();
             if (addressesList.Count == 0)
             {
-                _log.Error("NotifyOnAccountsAsync was called with empty list of addresses");
+                _log.Warning("NotifyOnAccountsAsync was called with empty list of addresses");
                 return;
             }
 
+            var account = new AccountSubscription(handler);
             foreach (var address in addressesList)
             {
-                var account = new AccountSubscription(handler);
                 _accounts.AddOrUpdate(address, account, (_, _) => account);
             }
 

@@ -41,14 +41,36 @@ namespace Atomex.TzktEvents.Services
             _hub.On<JObject>(SubscriptionMethod.SubscribeToTokenBalances.Channel, Handler);
         }
 
-        public Task NotifyOnTokenBalancesAsync(string address, Action<string> handler)
+        public async Task NotifyOnTokenBalancesAsync(string address, Action<string> handler)
         {
-            throw new NotImplementedException();
+            var account = new AccountSubscription(handler);
+            _accounts.AddOrUpdate(address, account, (_, _) => account);
+
+            await _hub.InvokeAsync(SubscriptionMethod.SubscribeToTokenBalances.Method, new
+            {
+                addresses = new[] { address }
+            }).ConfigureAwait(false);
         }
 
-        public Task NotifyOnTokenBalancesAsync(IEnumerable<string> addresses, Action<string> handler)
+        public async Task NotifyOnTokenBalancesAsync(IEnumerable<string> addresses, Action<string> handler)
         {
-            throw new NotImplementedException();
+            var addressesList = addresses.ToList();
+            if (addressesList.Count == 0)
+            {
+                _log.Warning("NotifyOnTokenBalancesAsync was called with empty list of addresses");
+                return;
+            }
+
+            var account = new AccountSubscription(handler);
+            foreach (var address in addressesList)
+            {
+                _accounts.AddOrUpdate(address, account, (_, _) => account);
+            }
+
+            await _hub.InvokeAsync(SubscriptionMethod.SubscribeToTokenBalances.Method, new
+            {
+                addresses = addressesList
+            }).ConfigureAwait(false);
         }
 
         private void Handler(JObject obj)
