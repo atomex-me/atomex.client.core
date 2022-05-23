@@ -104,26 +104,40 @@ namespace Atomex.TzktEvents.Services
         {
             foreach (var @event in data)
             {
-                var address = @event["address"]?.ToString();
-                if (address == null || !_addressSubs.TryGetValue(address, out var account)) continue;
+                var addressFrom = @event["from"]?["address"]?.ToString();
+                var addressTo = @event["to"]?["address"]?.ToString();
+                var level = @event["level"]?.Value<int>() ?? 0;
 
-                var lastActivity = @event["lastActivity"]?.Value<int>() ?? 0;
-
-                if (lastActivity > account.LastState)
+                if (addressFrom == addressTo)
                 {
-                    var updatedAccount = _addressSubs.AddOrUpdate(address, _willNotBeCalled, (_, existing) => existing with
-                    {
-                        LastState = lastActivity
-                    });
+                    DataAddressHandler(addressFrom, level);
+                }
+                else
+                {
+                    DataAddressHandler(addressFrom, level);
+                    DataAddressHandler(addressTo, level);
+                }
+            }
+        }
 
-                    try
-                    {
-                        updatedAccount.Handler(address);
-                    }
-                    catch (Exception e)
-                    {
-                        _log.Error(e,"Error while calling subscriber handler on Data message");
-                    }
+        private void DataAddressHandler(string address, int level)
+        {
+            if (address == null || !_addressSubs.TryGetValue(address, out var account)) return;
+
+            if (level > account.LastState)
+            {
+                var updatedAccount = _addressSubs.AddOrUpdate(address, _willNotBeCalled, (_, existing) => existing with
+                {
+                    LastState = level
+                });
+
+                try
+                {
+                    updatedAccount.Handler(address);
+                }
+                catch (Exception e)
+                {
+                    _log.Error(e,"Error while calling subscriber handler on Data message");
                 }
             }
         }
