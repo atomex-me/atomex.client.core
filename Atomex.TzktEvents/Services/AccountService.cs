@@ -16,8 +16,8 @@ namespace Atomex.TzktEvents.Services
         private readonly HubConnection _hub;
         private readonly ILogger _log;
 
-        private readonly ConcurrentDictionary<string, AccountSubscription> _accounts = new();
-        private readonly Func<string, AccountSubscription> _willNotBeCalled = _ => null;
+        private readonly ConcurrentDictionary<string, ServiceSubscription> _accounts = new();
+        private readonly Func<string, ServiceSubscription> _willNotBeCalled = _ => null;
 
         public AccountService(HubConnection hub, ILogger log)
         {
@@ -44,8 +44,8 @@ namespace Atomex.TzktEvents.Services
 
         public async Task NotifyOnAccountAsync(string address, Action<string> handler)
         {
-            var account = new AccountSubscription(handler);
-            _accounts.AddOrUpdate(address, account, (_, _) => account);
+            var subscription = new ServiceSubscription(handler);
+            _accounts.AddOrUpdate(address, subscription, (_, _) => subscription);
 
             await _hub.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
             {
@@ -62,7 +62,7 @@ namespace Atomex.TzktEvents.Services
                 return;
             }
 
-            var account = new AccountSubscription(handler);
+            var account = new ServiceSubscription(handler);
             foreach (var address in addressesList)
             {
                 _accounts.AddOrUpdate(address, account, (_, _) => account);
@@ -133,12 +133,9 @@ namespace Atomex.TzktEvents.Services
             var state = msg["state"]?.Value<int>();
             if (state == null) return;
 
-            foreach (var pair in _accounts)
+            foreach (var (address, subscription) in _accounts)
             {
-                var account = pair.Value;
-                var address = pair.Key;
-
-                if (account.LastState != state)
+                if (subscription.LastState != state)
                 {
                     var updatedAccount = _accounts.AddOrUpdate(address, _willNotBeCalled, (_, existing) => existing with
                     {
