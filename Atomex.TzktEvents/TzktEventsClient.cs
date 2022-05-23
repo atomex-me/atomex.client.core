@@ -191,12 +191,17 @@ namespace Atomex.TzktEvents
         {
             try
             {
-                await _accountService.InitAsync().ConfigureAwait(false);
-                await _tokensService.InitAsync().ConfigureAwait(false);
+                var initTasks = new []
+                {
+                    _accountService.InitAsync(),
+                    _tokensService.InitAsync()
+                };
+
+                await Task.WhenAll(initTasks).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _log.Error(ex, ex.Message);
+                _log.Error(e, "TzktEvents caught error on initialization");
             }
         }
 
@@ -207,9 +212,9 @@ namespace Atomex.TzktEvents
                 _accountService.SetSubscriptions();
                 _tokensService.SetSubscriptions();
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _log.Error(ex, ex.Message);
+                _log.Error(e, "TzktEvents caught error while setting subscription");
             }
         }
     }
