@@ -194,7 +194,7 @@ namespace Atomex.TzktEvents
                 var initTasks = new []
                 {
                     _accountService.InitAsync(),
-                    _tokensService.InitAsync()
+                    _tokensService.InitAsync(),
                 };
 
                 await Task.WhenAll(initTasks).ConfigureAwait(false);

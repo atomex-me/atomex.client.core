@@ -16,20 +16,19 @@ namespace Atomex.Services.BalanceUpdaters
         private readonly IAccount _account;
         private readonly ICurrenciesProvider _currenciesProvider;
         private readonly ILogger _log;
-        private readonly ITzktEventsClient _tzktEvents;
+        private readonly ITzktEventsClient _tzkt;
         private readonly IHdWalletScanner _walletScanner;
 
         private ISet<string> _addresses;
 
 
-        public TezosBalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, IHdWalletScanner walletScanner, ILogger log)
+        public TezosBalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, IHdWalletScanner walletScanner, ITzktEventsClient tzkt, ILogger log)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _currenciesProvider = currenciesProvider;
-            _log = log ?? throw new ArgumentNullException(nameof(log));
             _walletScanner = walletScanner ?? throw new ArgumentNullException(nameof(walletScanner));
-
-            _tzktEvents = new TzktEventsClient(_log);
+            _tzkt = tzkt ?? throw new ArgumentNullException(nameof(tzkt));
+            _log = log ?? throw new ArgumentNullException(nameof(log));
         }
 
         public async Task StartAsync()
@@ -46,10 +45,10 @@ namespace Atomex.Services.BalanceUpdaters
                     .Get<TezosConfig>(TezosConfig.Xtz);
                 var baseUri = currency.BaseUri;
 
-                await _tzktEvents.StartAsync(baseUri).ConfigureAwait(false);
+                await _tzkt.StartAsync(baseUri).ConfigureAwait(false);
                 _addresses = await GetAddressesAsync().ConfigureAwait(false);
 
-                await _tzktEvents
+                await _tzkt
                     .NotifyOnAccountsAsync(_addresses, BalanceUpdatedHandler)
                     .ConfigureAwait(false);
             }
@@ -63,7 +62,7 @@ namespace Atomex.Services.BalanceUpdaters
         {
             try
             {
-                await _tzktEvents.StopAsync().ConfigureAwait(false);
+                await _tzkt.StopAsync().ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -102,7 +101,7 @@ namespace Atomex.Services.BalanceUpdaters
                 if (newAddresses.Any())
                 {
                     Log.Information("TezosBalanceUpdater adds new addresses {@Addresses}", newAddresses);
-                    await _tzktEvents
+                    await _tzkt
                         .NotifyOnAccountsAsync(newAddresses, BalanceUpdatedHandler)
                         .ConfigureAwait(false);
 
