@@ -21,8 +21,10 @@ namespace Atomex.TzktEvents
         private bool _isStarted;
 
         private readonly ILogger _log;
-        private HubConnection _connection;
+        private HubConnection _hub;
+
         private IAccountService _accountService;
+        private ITokensService _tokensService;
 
 
         public TzktEventsClient(ILogger log)
@@ -44,21 +46,22 @@ namespace Atomex.TzktEvents
 
             try
             {
-                _connection = new HubConnectionBuilder()
+                _hub = new HubConnectionBuilder()
                     .WithUrl(EventsUrl)
                     .AddNewtonsoftJsonProtocol()
                     .WithAutomaticReconnect(new RetryPolicy())
                     .Build();
 
-                _accountService = new AccountService(_connection, _log);
+                _accountService = new AccountService(_hub, _log);
+                _tokensService = new TokensService(_hub, _log);
 
-                _connection.Reconnecting += ReconnectingHandler;
-                _connection.Reconnected += ReconnectedHandler;
-                _connection.Closed += ClosedHandler;
+                _hub.Reconnecting += ReconnectingHandler;
+                _hub.Reconnected += ReconnectedHandler;
+                _hub.Closed += ClosedHandler;
 
                 SetSubscriptions();
 
-                await _connection.StartAsync().ConfigureAwait(false);
+                await _hub.StartAsync().ConfigureAwait(false);
                 _isStarted = true;
 
                 await InitAsync().ConfigureAwait(false);
@@ -81,14 +84,14 @@ namespace Atomex.TzktEvents
                 return;
             }
             
-            _connection.Reconnecting -= ReconnectingHandler;
-            _connection.Reconnected -= ReconnectedHandler;
-            _connection.Closed -= ClosedHandler;
+            _hub.Reconnecting -= ReconnectingHandler;
+            _hub.Reconnected -= ReconnectedHandler;
+            _hub.Closed -= ClosedHandler;
 
             try
             {
-                await _connection.StopAsync().ConfigureAwait(false);
-                await _connection.DisposeAsync().ConfigureAwait(false);
+                await _hub.StopAsync().ConfigureAwait(false);
+                await _hub.DisposeAsync().ConfigureAwait(false);
 
                 Disconnected?.Invoke(this, EventArgs.Empty);
                 _log.Information("TzktEventsClient stopped");
@@ -189,6 +192,7 @@ namespace Atomex.TzktEvents
             try
             {
                 await _accountService.InitAsync().ConfigureAwait(false);
+                await _tokensService.InitAsync().ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -201,6 +205,7 @@ namespace Atomex.TzktEvents
             try
             {
                 _accountService.SetSubscriptions();
+                _tokensService.SetSubscriptions();
             }
             catch (Exception ex)
             {
