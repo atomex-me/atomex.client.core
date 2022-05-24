@@ -107,18 +107,18 @@ namespace Atomex.TzktEvents.Services
                 var address = @event["account"]?["address"]?.ToString();
                 var level = @event["lastLevel"]?.Value<int>() ?? 0;
 
-                if (address == null || !_addressSubs.TryGetValue(address, out var account)) continue;
+                if (address == null || !_addressSubs.TryGetValue(address, out var subscription)) continue;
 
-                if (level > account.LastState)
+                if (level > subscription.LastState)
                 {
-                    var updatedAccount = _addressSubs.AddOrUpdate(address, _willNotBeCalled, (_, existing) => existing with
+                    var updatedSubscription = _addressSubs.AddOrUpdate(address, _willNotBeCalled, (_, existing) => existing with
                     {
                         LastState = level
                     });
 
                     try
                     {
-                        updatedAccount.Handler(address);
+                        updatedSubscription.Handler(address);
                     }
                     catch (Exception e)
                     {
