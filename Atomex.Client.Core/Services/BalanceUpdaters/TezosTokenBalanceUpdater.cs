@@ -120,9 +120,18 @@ namespace Atomex.Services.BalanceUpdaters
         {
             try
             {
-                await _walletScanner
-                    .ScanAddressAsync(TezosConfig.Xtz, address)
-                    .ConfigureAwait(false);
+                foreach (var currency in _account.Currencies)
+                {
+                    if (Currencies.IsTezosToken(currency.Name))
+                    {
+                        await _walletScanner.ScanAddressAsync(currency.Name, address)
+                            .ConfigureAwait(false);
+
+                        _account
+                            .GetCurrencyAccount<TezosTokenAccount>(currency.Name)
+                            .ReloadBalances();
+                    }
+                }
 
                 var newAddresses = await GetAddressesAsync().ConfigureAwait(false);
                 newAddresses.ExceptWith(_addresses);
