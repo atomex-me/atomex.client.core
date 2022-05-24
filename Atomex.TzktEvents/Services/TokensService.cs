@@ -49,7 +49,7 @@ namespace Atomex.TzktEvents.Services
 
             await _hub.InvokeAsync(SubscriptionMethod.SubscribeToTokenBalances.Method, new
             {
-                addresses = new[] { address }
+                account = address
             }).ConfigureAwait(false);
         }
 
@@ -68,10 +68,13 @@ namespace Atomex.TzktEvents.Services
                 _addressSubs.AddOrUpdate(address, subscription, (_, _) => subscription);
             }
 
-            await _hub.InvokeAsync(SubscriptionMethod.SubscribeToTokenBalances.Method, new
-            {
-                addresses = addressesList
-            }).ConfigureAwait(false);
+            var subscriptionTasks = addressesList.Select(address => _hub.InvokeAsync(
+                SubscriptionMethod.SubscribeToTokenBalances.Method, new
+                {
+                    account = address
+                }));
+            
+            await Task.WhenAll(subscriptionTasks).ConfigureAwait(false);
         }
 
         private void Handler(JObject msg)
