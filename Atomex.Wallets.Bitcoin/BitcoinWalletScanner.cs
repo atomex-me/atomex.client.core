@@ -11,6 +11,7 @@ using Atomex.Blockchain.Bitcoin.Abstract;
 using Atomex.Common;
 using Atomex.Wallets.Abstract;
 using Atomex.Wallets.Common;
+using Atomex.Common.Memory;
 
 namespace Atomex.Wallets.Bitcoin
 {
@@ -159,10 +160,12 @@ namespace Atomex.Wallets.Bitcoin
             return (hasActivity, error: null); // no errors
         }
 
-        protected override CurrencyConfig GetCurrencyConfig() =>
-            Account.Configuration;
-
+        protected override string AddressFromKey(
+            SecureBytes publicKey,
+            WalletInfo walletInfo = null) =>
+            Account.Configuration.AddressFromKey(publicKey, walletInfo);
         protected override IBitcoinApi GetBlockchainApi() => new BitcoinApi(
+            currency: Account.Currency,
             settings: Account.Configuration.ApiSettings,
             logger: _logger);
 

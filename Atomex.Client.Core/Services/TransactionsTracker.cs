@@ -204,7 +204,7 @@ namespace Atomex.Services
                 var tezosAccount = _account
                     .GetCurrencyAccount<TezosAccount>(TezosConfig_OLD.Xtz);
 
-                var tezosTokensScanner = new TezosTokensScanner(tezosAccount);
+                var tezosTokensScanner = new TezosTokensScanner_OLD(tezosAccount);
 
                 await tezosTokensScanner.ScanAsync(
                     skipUsed: false,

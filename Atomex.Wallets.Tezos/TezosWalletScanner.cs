@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Abstract;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Wallets.Abstract;
 using Atomex.Wallets.Common;
 
@@ -110,7 +111,9 @@ namespace Atomex.Wallets.Tezos
             if (account == null)
             {
                 _logger.LogError("[{currency}] Null account info received for {address}", Account.Currency, address);
-                return (hasActivity: false, error: new Error(Errors.GetAccountError, $"Null account info received for {address}"));
+                return (
+                    hasActivity: false,
+                    error: new Error(Errors.GetAccountError, $"Null account info received for {address}"));
             }
 
             if (storedAddress == null ||
@@ -142,7 +145,10 @@ namespace Atomex.Wallets.Tezos
             return (account.HasActivity, error: null); // no errors
         }
 
-        protected override CurrencyConfig GetCurrencyConfig() => Account.Configuration;
+        protected override string AddressFromKey(
+            SecureBytes publicKey,
+            WalletInfo walletInfo = null) =>
+            Account.Configuration.AddressFromKey(publicKey, walletInfo);
 
         protected override ITezosApi GetBlockchainApi() => new TezosApi(
             settings: Account.Configuration.ApiSettings,

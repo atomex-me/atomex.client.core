@@ -9,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Abstract;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Wallets.Abstract;
 using Atomex.Wallets.Common;
 
@@ -156,8 +157,10 @@ namespace Atomex.Wallets.Ethereum
             return (hasActivity, error: null); // no errors
         }
 
-        protected override CurrencyConfig GetCurrencyConfig() =>
-            Account.Configuration;
+        protected override string AddressFromKey(
+            SecureBytes publicKey,
+            WalletInfo walletInfo = null) =>
+            Account.Configuration.AddressFromKey(publicKey, walletInfo);
 
         protected override IEthereumApi GetBlockchainApi() => new EthereumApi(
             settings: Account.Configuration.ApiSettings,

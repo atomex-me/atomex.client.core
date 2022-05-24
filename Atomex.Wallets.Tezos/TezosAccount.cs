@@ -11,6 +11,8 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Wallets.Abstract;
+using Atomex.Wallets.Tezos.Fa12;
+using Atomex.Wallets.Tezos.Fa2;
 
 namespace Atomex.Wallets.Tezos
 {
@@ -106,6 +108,51 @@ namespace Atomex.Wallets.Tezos
                     .ConfigureAwait(false);
 
             }, cancellationToken);
+        }
+
+        public Task<(TezosOperation tx, Error error)> SendFa12TransferAsync(
+            string from,
+            string to,
+            string tokenContract,
+            decimal amount,
+            Fee fee,
+            GasLimit gasLimit,
+            StorageLimit storageLimit,
+            CancellationToken cancellationToken = default)
+        {
+            return SendTransactionAsync(
+                from: from,
+                to: tokenContract,
+                amount: 0,
+                fee: fee,
+                gasLimit: gasLimit,
+                storageLimit: storageLimit,
+                entrypoint: "transfer",
+                parameters: Fa12Helper.TransferParameters(from, to, amount),
+                cancellationToken: cancellationToken);
+        }
+
+        public Task<(TezosOperation tx, Error error)> SendFa2TransferAsync(
+            string from,
+            string to,
+            string tokenContract,
+            int tokenId,
+            decimal amount,
+            Fee fee,
+            GasLimit gasLimit,
+            StorageLimit storageLimit,
+            CancellationToken cancellationToken = default)
+        {
+            return SendTransactionAsync(
+                from: from,
+                to: tokenContract,
+                amount: 0,
+                fee: fee,
+                gasLimit: gasLimit,
+                storageLimit: storageLimit,
+                entrypoint: "transfer",
+                parameters: Fa2Helper.TransferParameters(tokenId, from, to, amount),
+                cancellationToken: cancellationToken);
         }
 
         public async Task<(TezosOperation tx, Error error)> SendUnmanagedOperationAsync(

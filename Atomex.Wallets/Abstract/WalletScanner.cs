@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Wallets.Common;
 using Atomex.Wallets.Bips;
 
@@ -70,13 +71,6 @@ namespace Atomex.Wallets.Abstract
                         code: Errors.WalletNotFoundError,
                         description: $"[{_account.Currency}] Wallet with id {walletId} not found");
 
-                var wallet = _walletProvider.GetWallet(walletInfo);
-
-                if (wallet == null)
-                    return new Error(
-                        code: Errors.WalletError,
-                        description: $"[{_account.Currency}] Error creation wallet [{walletId};{walletInfo.Name};{walletInfo.Type}]");
-
                 _logger.LogInformation("[{currency}] Update balance for wallet [{wallet}]",
                     _account.Currency,
                     $"{walletId};{walletInfo.Name};{walletInfo.Type}");
@@ -132,13 +126,6 @@ namespace Atomex.Wallets.Abstract
                     return new Error(
                         code: Errors.WalletNotFoundError,
                         description: $"[{_account.Currency}] Wallet with id {walletAddress.WalletId} not found");
-
-                var wallet = _walletProvider.GetWallet(walletInfo);
-
-                if (wallet == null)
-                    return new Error(
-                        code: Errors.WalletError,
-                        description: $"[{_account.Currency}] Error creation wallet [{walletAddress.WalletId};{walletInfo.Name};{walletInfo.Type}]");
 
                 var (_, error) = await UpdateAddressBalanceAsync(
                         address: address,
@@ -234,14 +221,11 @@ namespace Atomex.Wallets.Abstract
         {
             return Task.Run(async () =>
             {
-                var currencyConfig = GetCurrencyConfig();
-
                 using var publicKey = await wallet
                     .GetPublicKeyAsync(keyPath, cancellationToken)
                     .ConfigureAwait(false);
 
-                var address = currencyConfig
-                    .AddressFromKey(publicKey, walletInfo);
+                var address = AddressFromKey(publicKey, walletInfo);
 
                 _logger.LogInformation("[{currency}] Scan balance for {address}",
                     _account.Currency,
@@ -287,7 +271,7 @@ namespace Atomex.Wallets.Abstract
                 ? new int[] { Bip44.External, Bip44.Internal }
                 : new int[] { Bip44.External };
 
-            var currencyConfig = GetCurrencyConfig();
+            //var currencyConfig = GetCurrencyConfig();
 
             foreach (var chain in chains)
             {
@@ -306,8 +290,7 @@ namespace Atomex.Wallets.Abstract
                         .GetPublicKeyAsync(keyPath, cancellationToken)
                         .ConfigureAwait(false);
 
-                    var address = currencyConfig
-                        .AddressFromKey(publicKey, walletInfo);
+                    var address = AddressFromKey(publicKey, walletInfo);
 
                     // check if the address is in the stored addresses
                     if (storedAddresses.TryGetValue(address, out var storedAddress))
@@ -365,7 +348,9 @@ namespace Atomex.Wallets.Abstract
             TBlockchainApi api,
             CancellationToken cancellationToken = default);
 
-        protected abstract CurrencyConfig GetCurrencyConfig();
+        protected abstract string AddressFromKey(
+            SecureBytes publicKey,
+            WalletInfo walletInfo = null);
 
         protected abstract TBlockchainApi GetBlockchainApi();
     }

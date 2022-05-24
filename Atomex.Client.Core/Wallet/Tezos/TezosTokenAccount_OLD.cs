@@ -89,7 +89,7 @@ namespace Atomex.Wallet.Tezos
         {
             return Task.Run(async () =>
             {
-                var scanner = new TezosTokensScanner(_tezosAccount);
+                var scanner = new TezosTokensScanner_OLD(_tezosAccount);
 
                 await scanner
                     .ScanContractAsync(_tokenContract, cancellationToken)
@@ -106,7 +106,7 @@ namespace Atomex.Wallet.Tezos
         {
             return Task.Run(async () =>
             {
-                var scanner = new TezosTokensScanner(_tezosAccount);
+                var scanner = new TezosTokensScanner_OLD(_tezosAccount);
 
                 await scanner
                     .ScanContractAsync(address, _tokenContract, cancellationToken)

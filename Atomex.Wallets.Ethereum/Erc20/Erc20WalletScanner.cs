@@ -9,6 +9,7 @@ using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Abstract;
 using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Wallets.Abstract;
 using Atomex.Wallets.Common;
 
@@ -29,12 +30,14 @@ namespace Atomex.Wallets.Ethereum.Erc20
         {
         }
 
+        protected override string AddressFromKey(
+            SecureBytes publicKey,
+            WalletInfo walletInfo = null) =>
+            Account.Configuration.AddressFromKey(publicKey, walletInfo);
+
         protected override IErc20Api GetBlockchainApi() => new Erc20Api(
             settings: Account.Configuration.ApiSettings,
             logger: _logger);
-
-        protected override CurrencyConfig GetCurrencyConfig() =>
-            Account.Configuration;
 
         protected override async Task<(bool hasActivity, Error error)> UpdateAddressBalanceAsync(
             string address,

@@ -114,6 +114,7 @@ namespace Atomex.Wallets.Bitcoin
 
                     // transaction broadcast
                     var (txId, broadcastError) = await new BitcoinApi(
+                            currency: Currency,
                             settings: currencyConfig.ApiSettings,
                             logger: Logger)
                         .BroadcastAsync(tx, cancellationToken)

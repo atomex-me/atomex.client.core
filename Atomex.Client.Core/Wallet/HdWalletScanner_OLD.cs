@@ -115,7 +115,7 @@ namespace Atomex.Wallet
                 "TZBTC" or
                 "KUSD" or
                 "FA12" or
-                "FA2" => new TezosTokensScanner(
+                "FA2" => new TezosTokensScanner_OLD(
                     Account.GetCurrencyAccount<TezosAccount>(TezosConfig_OLD.Xtz)),
 
                 _ => throw new NotSupportedException($"Currency {currency} not supported")
