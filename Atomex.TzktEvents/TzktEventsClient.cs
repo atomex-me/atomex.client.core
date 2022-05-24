@@ -66,9 +66,9 @@ namespace Atomex.TzktEvents
                 Connected?.Invoke(this, EventArgs.Empty);
                 _log.Information("TzktEventsClient started with events url: {EventsUrl}", EventsUrl);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _log.Error(ex, ex.Message);
+                _log.Error(e, "TzktEventsClient failed to start");
                 _isStarted = false;
             }
         }
@@ -93,9 +93,9 @@ namespace Atomex.TzktEvents
                 Disconnected?.Invoke(this, EventArgs.Empty);
                 _log.Information("TzktEventsClient stopped");
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _log.Error(ex, ex.Message);
+                _log.Error(e, "TzktEventsClient was stopped with error");
             }
             finally
             {

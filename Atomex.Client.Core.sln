@@ -21,6 +21,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Wallets.Ethereum", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Wallets.Tezos", "Atomex.Wallets.Tezos\Atomex.Wallets.Tezos.csproj", "{5626DF41-8C15-4DE7-85A4-CDF04D1A5500}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Sandbox", "tmp\Sandbox\Sandbox.csproj", "{5320CD06-C3AE-447F-A734-523175CC8BD3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -139,6 +141,18 @@ Global
 		{5626DF41-8C15-4DE7-85A4-CDF04D1A5500}.Release|x64.Build.0 = Release|Any CPU
 		{5626DF41-8C15-4DE7-85A4-CDF04D1A5500}.Release|x86.ActiveCfg = Release|Any CPU
 		{5626DF41-8C15-4DE7-85A4-CDF04D1A5500}.Release|x86.Build.0 = Release|Any CPU
+		{5320CD06-C3AE-447F-A734-523175CC8BD3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5320CD06-C3AE-447F-A734-523175CC8BD3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5320CD06-C3AE-447F-A734-523175CC8BD3}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5320CD06-C3AE-447F-A734-523175CC8BD3}.Debug|x64.Build.0 = Debug|Any CPU
+		{5320CD06-C3AE-447F-A734-523175CC8BD3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5320CD06-C3AE-447F-A734-523175CC8BD3}.Debug|x86.Build.0 = Debug|Any CPU
+		{5320CD06-C3AE-447F-A734-523175CC8BD3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5320CD06-C3AE-447F-A734-523175CC8BD3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5320CD06-C3AE-447F-A734-523175CC8BD3}.Release|x64.ActiveCfg = Release|Any CPU
+		{5320CD06-C3AE-447F-A734-523175CC8BD3}.Release|x64.Build.0 = Release|Any CPU
+		{5320CD06-C3AE-447F-A734-523175CC8BD3}.Release|x86.ActiveCfg = Release|Any CPU
+		{5320CD06-C3AE-447F-A734-523175CC8BD3}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

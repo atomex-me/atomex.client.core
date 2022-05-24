@@ -63,7 +63,7 @@ namespace Atomex.TzktEvents.Services
         {
             if (!_accounts.IsEmpty)
             {
-                var addresses = _accounts.Keys.ToArray();
+                var addresses = _accounts.Select(a => a.Key).ToArray();
                 await _connection.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
                 {
                     addresses
@@ -122,9 +122,9 @@ namespace Atomex.TzktEvents.Services
                     {
                         updatedAccount.Handler(address);
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
-                        _log.Error(ex, ex.Message);
+                        _log.Error(e,"Error while calling subscriber handler on Data message");
                     }
                 }
             }
@@ -151,17 +151,12 @@ namespace Atomex.TzktEvents.Services
                     {
                         updatedAccount.Handler(address);
                     }
-                    catch (Exception ex)
+                    catch (Exception e)
                     {
-                        _log.Error(ex, ex.Message);
+                        _log.Error(e, "Error while calling subscriber handler on Reorg message");
                     }
                 }
             }
         }
     }
-}
-
-namespace System.Runtime.CompilerServices
-{
-    internal static class IsExternalInit { }
 }
