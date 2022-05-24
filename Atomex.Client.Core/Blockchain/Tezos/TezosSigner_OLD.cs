@@ -8,7 +8,7 @@ using Atomex.Cryptography.BouncyCastle;
 
 namespace Atomex.Blockchain.Tezos
 {
-    public static class TezosSigner
+    public static class TezosSigner_OLD
     {
         public static byte[] Sign(
             byte[] data,

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,8 +16,8 @@ namespace Atomex.Wallets.Tezos
 {
     public class TezosAccount : Account
     {
-        private static TezosOperationsBatcher _operationsBatcher;
-        public static TezosOperationsBatcher OperationsBatcher
+        private static TezosOperationPerBlockManager _operationsBatcher;
+        public static TezosOperationPerBlockManager OperationsBatcher
         {
             get
             {
@@ -24,7 +25,7 @@ namespace Atomex.Wallets.Tezos
 
                 if (instance == null)
                 {
-                    Interlocked.CompareExchange(ref _operationsBatcher, new TezosOperationsBatcher(), null);
+                    Interlocked.CompareExchange(ref _operationsBatcher, new TezosOperationPerBlockManager(), null);
                     instance = _operationsBatcher;
                 }
 
@@ -37,13 +38,13 @@ namespace Atomex.Wallets.Tezos
 
         public TezosAccount(
             string currency,
-            IWalletProvider walletFactory,
+            IWalletProvider walletProvider,
             ICurrencyConfigProvider currencyConfigProvider,
             IWalletDataRepository dataRepository,
             ILogger logger = null)
             : base(
                   currency,
-                  walletFactory,
+                  walletProvider,
                   currencyConfigProvider,
                   dataRepository,
                   logger)
@@ -59,35 +60,115 @@ namespace Atomex.Wallets.Tezos
             Fee fee,
             GasLimit gasLimit,
             StorageLimit storageLimit,
-            Counter counter,
             string entrypoint = null,
             string parameters = null,
             CancellationToken cancellationToken = default)
         {
+            if (fee == null)
+                throw new ArgumentNullException(nameof(fee), "Fee must be not null. Please use Fee.FromValue() or Fee.FromNetwork()");
+
+            if (gasLimit == null)
+                throw new ArgumentNullException(nameof(gasLimit), "GasLimit must be not null. Please use GasLimit.FromValue() or GasLimit.FromNetwork()");
+
+            if (storageLimit == null)
+                throw new ArgumentNullException(nameof(storageLimit), "StorageLimit must be not null. Please use StorageLimit.FromValue() or StorageLimit.FromNetwork()");
+
             return Task.Run(async () =>
             {
                 return await OperationsBatcher
-                    .SendOperationAsync(
+                    .SendOperationsAsync(
                         account: this,
-                        content: new TransactionContent
-                        {
-                            Amount = amount,
-                            Destination = to,
-                            Parameters = parameters != null
-                                ? new Parameters
+                        operationsParameters: new List<TezosOperationParameters> {
+                            new TezosOperationParameters {
+                                Content = new TransactionContent
                                 {
-                                    Entrypoint = entrypoint,
-                                    Value = Micheline.FromJson(parameters)
-                                }
-                                : null
+                                    Source       = from,
+                                    Amount       = amount,
+                                    Destination  = to,
+                                    Fee          = fee.Value,
+                                    GasLimit     = gasLimit.Value,
+                                    StorageLimit = storageLimit.Value,
+                                    Parameters   = parameters != null
+                                        ? new Parameters
+                                        {
+                                            Entrypoint = entrypoint,
+                                            Value = Micheline.FromJson(parameters)
+                                        }
+                                        : null
+                                },
+                                From         = from,
+                                Fee          = fee,
+                                GasLimit     = gasLimit,
+                                StorageLimit = storageLimit
+                            }
                         },
-                        from: from,
-                        fee: fee,
-                        gasLimit: gasLimit,
-                        storageLimit: storageLimit,
-                        counter: counter,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
+
+            }, cancellationToken);
+        }
+
+        public async Task<(TezosOperation tx, Error error)> SendUnmanagedOperationAsync(
+            TezosOperation operation,
+            CancellationToken cancellationToken = default)
+        {
+            if (operation.IsManaged())
+                throw new InvalidOperationException("Method must be used for sending unmanaged operations only");
+
+            return await SendOperationAsync(operation, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        /// <summary>
+        /// Send managed operation without single per block operation control. If the replaced operation has already been confirmed, the method will return an error.
+        /// </summary>
+        /// <param name="operation">Replacement operation</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Operation if success, otherwise error</returns>
+        public async Task<(TezosOperation tx, Error error)> ReplaceOperationAsync(
+            TezosOperation operation,
+            CancellationToken cancellationToken = default)
+        {
+            if (!operation.IsManaged())
+                throw new InvalidOperationException("Method must be used for sending managed operations only");
+
+            return await SendOperationAsync(operation, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        internal Task<(TezosOperation tx, Error error)> SendOperationAsync(
+            TezosOperation operation,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.Run<(TezosOperation tx, Error error)>(async () =>
+            {
+                // sign the operation
+                var error = await SignAsync(operation, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (error != null)
+                    return (tx: null, error);
+
+                // broadcast the operation
+                var currencyConfig = Configuration;
+
+                var api = new TezosApi(
+                    settings: currencyConfig.ApiSettings,
+                    logger: Logger);
+
+                var (txId, broadcastError) = await api
+                    .BroadcastAsync(operation, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (broadcastError != null)
+                    return (tx: null, error: broadcastError);
+
+                // save operation in local db
+                var upsertResult = DataRepository
+                    .UpsertTransactionAsync(operation, cancellationToken)
+                    .ConfigureAwait(false);
+
+                return (tx: operation, error: null);
 
             }, cancellationToken);
         }

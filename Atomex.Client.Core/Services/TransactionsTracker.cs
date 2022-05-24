@@ -213,7 +213,7 @@ namespace Atomex.Services
                 // reload balances for all tezos tokens account
                 foreach (var currency in _account.Currencies)
                     if (Currencies.IsTezosToken(currency.Name))
-                        _account.GetCurrencyAccount<TezosTokenAccount>(currency.Name)
+                        _account.GetCurrencyAccount<TezosTokenAccount_OLD>(currency.Name)
                             .ReloadBalances();
             }
         }

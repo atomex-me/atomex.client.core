@@ -84,6 +84,7 @@ namespace Atomex.Wallets.Bitcoin
                         }
 
                         var upsertResult = await Account
+                            .DataRepository
                             .UpsertTransactionAsync(
                                 tx: tx as BitcoinTransaction,
                                 cancellationToken: cancellationToken)
@@ -138,6 +139,7 @@ namespace Atomex.Wallets.Bitcoin
                 : Balance.Zero;
 
             await Account
+                .DataRepository
                 .UpsertAddressAsync(
                     walletAddress: new WalletAddress
                     {

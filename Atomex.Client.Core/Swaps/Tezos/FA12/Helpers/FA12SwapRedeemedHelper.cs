@@ -25,7 +25,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
             {
                 Log.Debug("Tezos FA12: check redeem event");
 
-                var fa12 = (Fa12Config)currency;
+                var fa12 = (Fa12Config_OLD)currency;
 
                 var contractAddress = fa12.SwapContractAddress;
 

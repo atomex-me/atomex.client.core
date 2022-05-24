@@ -36,8 +36,8 @@ namespace Atomex.Swaps
                     account: account.GetCurrencyAccount<EthereumAccount>(currency.Name),
                     currencies: account.Currencies),
 
-                Fa12Config _ => new Fa12Swap(
-                    account: account.GetCurrencyAccount<Fa12Account>(currency.Name),
+                Fa12Config_OLD _ => new Fa12Swap(
+                    account: account.GetCurrencyAccount<Fa12Account_OLD>(currency.Name),
                     tezosAccount: account.GetCurrencyAccount<TezosAccount>(TezosConfig_OLD.Xtz),
                     currencies: account.Currencies),
 

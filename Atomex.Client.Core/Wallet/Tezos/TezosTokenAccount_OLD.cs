@@ -12,7 +12,7 @@ using Atomex.Wallet.Abstract;
 
 namespace Atomex.Wallet.Tezos
 {
-    public abstract class TezosTokenAccount : ICurrencyAccount_OLD
+    public abstract class TezosTokenAccount_OLD : ICurrencyAccount_OLD
     {
         public event EventHandler<CurrencyEventArgs> BalanceUpdated;
 
@@ -31,7 +31,7 @@ namespace Atomex.Wallet.Tezos
         protected decimal UnconfirmedOutcome { get; set; }
         protected TezosConfig_OLD XtzConfig => Currencies.Get<TezosConfig_OLD>(TezosConfig_OLD.Xtz);
 
-        public TezosTokenAccount(
+        public TezosTokenAccount_OLD(
             string currency,
             string tokenType,
             string tokenContract,

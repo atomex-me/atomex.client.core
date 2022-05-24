@@ -130,13 +130,13 @@ namespace Atomex.Blockchain.Tezos
 
             var dataToSign = Hex.FromString(forgedOpGroup.ToString());
 
-            SignedMessage = TezosSigner.SignHash(
+            SignedMessage = TezosSigner_OLD.SignHash(
                 data: dataToSign,
                 privateKey: privateKey,
                 watermark: Watermark.Generic,
                 isExtendedKey: privateKey.Length == 64);
 
-            var verifyResult = TezosSigner.VerifyHash(
+            var verifyResult = TezosSigner_OLD.VerifyHash(
                 data: Watermark.Generic.ConcatArrays(dataToSign),
                 signature: SignedMessage.SignedHash,
                 publicKey: keyStorage.GetPublicKey(

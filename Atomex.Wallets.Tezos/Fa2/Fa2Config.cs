@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace Atomex.Wallets.Tezos.Fa2
 {
-    internal class Fa2Config
+    public class Fa2Config : TezosConfig
     {
+        public string TokenContract { get; set; }
+        public int TokenId { get; set; }
     }
 }

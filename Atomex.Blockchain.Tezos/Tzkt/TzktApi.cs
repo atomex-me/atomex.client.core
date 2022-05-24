@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Tezos.Abstract;
 using Atomex.Blockchain.Tezos.Common;
 using Atomex.Blockchain.Tezos.Operations;
 using Atomex.Blockchain.Tezos.Tzkt.Swaps.V1;
@@ -29,7 +28,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             TokenContracts?.FirstOrDefault(s => s.Token == token)?.Address;
     }
 
-    public class TzktApi : ITezosApi, IBlockchainSwapApi
+    public class TzktApi : IBlockchainSwapApi
     {
         public const string Uri = "https://api.tzkt.io/v1/";
         public const int PageSize = 10000;
@@ -91,18 +90,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             return (tx, error: null);
         }
 
-        public Task<(string txId, Error error)> BroadcastAsync(
-            Transaction transaction,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<(string txId, Error error)>(
-                (txId: null,
-                 error: new Error(
-                    code: Errors.NotSupportedError,
-                    description: "tzkt.io not supported operations broadcast. Please use node rpc call instead"))
-            );
-        }
-
         #endregion IBlockchainApi
 
         #region ITezosApi
@@ -154,7 +141,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         }
 
         public async Task<(string hash, Error error)> GetHeaderAsync(
-            int offset = 0,
             CancellationToken cancellationToken = default)
         {
             var response = await HttpHelper
@@ -210,20 +196,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 return (counter: null, error);
 
             return (counter: account.Counter, error: null);
-        }
-
-        public Task<(string result, Error error)> RunOperationsAsync(
-            string branch,
-            string chainId,
-            string operations,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult<(string result, Error error)>(
-                (result: null,
-                 error: new Error(
-                    code: Errors.NotSupportedError,
-                    description: "tzkt.io not supported run operations. Please use node rpc call instead"))
-            );
         }
 
         #endregion ITezosApi

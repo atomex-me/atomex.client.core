@@ -66,7 +66,7 @@ namespace Atomex.Client.Core.Tests
         public static BitcoinConfig_OLD BtcMainNet => CurrenciesMainNet.Get<BitcoinConfig_OLD>("BTC");
         public static LitecoinConfig_OLD LtcMainNet => CurrenciesMainNet.Get<LitecoinConfig_OLD>("LTC");
         public static TezosConfig_OLD XtzMainNet => CurrenciesMainNet.Get<TezosConfig_OLD>("XTZ");
-        public static TezosConfig_OLD TzbtcMainNet => CurrenciesMainNet.Get<Fa12Config>("TZBTC");
+        public static TezosConfig_OLD TzbtcMainNet => CurrenciesMainNet.Get<Fa12Config_OLD>("TZBTC");
         public static BitcoinConfig_OLD BtcTestNet => CurrenciesTestNet.Get<BitcoinConfig_OLD>("BTC");
         public static LitecoinConfig_OLD LtcTestNet => CurrenciesTestNet.Get<LitecoinConfig_OLD>("LTC");
         public static TezosConfig_OLD XtzTestNet => CurrenciesTestNet.Get<TezosConfig_OLD>("XTZ");

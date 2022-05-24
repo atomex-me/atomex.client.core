@@ -39,32 +39,32 @@ namespace Atomex.Wallets.Abstract
             Logger = logger;
         }
 
-        //#region Wallets
+        #region Wallets
 
-        //public Task<WalletInfo> GetWalletByIdAsync(
-        //    int walletId,
-        //    CancellationToken cancellationToken)
-        //{
-        //    return DataRepository
-        //        .GetWalletInfoByIdAsync(walletId, cancellationToken);
-        //}
+        public Task<WalletInfo> GetWalletByIdAsync(
+            int walletId,
+            CancellationToken cancellationToken)
+        {
+            return DataRepository
+                .GetWalletInfoByIdAsync(walletId, cancellationToken);
+        }
 
-        //public Task<IEnumerable<WalletInfo>> GetWalletsAsync(
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return DataRepository
-        //        .GetWalletsInfoAsync(cancellationToken);
-        //}
+        public Task<IEnumerable<WalletInfo>> GetWalletsAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return DataRepository
+                .GetWalletsInfoAsync(cancellationToken);
+        }
 
-        //public Task<IEnumerable<WalletInfo>> GetWalletsAsync(
-        //    string currency,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return DataRepository
-        //        .GetWalletsInfoAsync(currency, cancellationToken);
-        //}
+        public Task<IEnumerable<WalletInfo>> GetWalletsAsync(
+            string currency,
+            CancellationToken cancellationToken = default)
+        {
+            return DataRepository
+                .GetWalletsInfoAsync(currency, cancellationToken);
+        }
 
-        //#endregion Wallets
+        #endregion Wallets
 
         #region Balances
 

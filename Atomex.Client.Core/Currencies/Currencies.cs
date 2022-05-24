@@ -96,10 +96,10 @@ namespace Atomex
                 "USDT" => new Erc20Config(configurationSection),
                 "TBTC" => new Erc20Config(configurationSection),
                 "WBTC" => new Erc20Config(configurationSection),
-                "TZBTC" => new Fa12Config(configurationSection),
-                "KUSD" => new Fa12Config(configurationSection),
+                "TZBTC" => new Fa12Config_OLD(configurationSection),
+                "KUSD" => new Fa12Config_OLD(configurationSection),
 
-                "FA12" => new Fa12Config(configurationSection),
+                "FA12" => new Fa12Config_OLD(configurationSection),
                 "FA2" => new Fa2Config(configurationSection),
                 _ => null
             };

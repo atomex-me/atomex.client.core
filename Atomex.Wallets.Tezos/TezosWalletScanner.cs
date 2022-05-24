@@ -70,6 +70,7 @@ namespace Atomex.Wallets.Tezos
                     return error;
 
                 var upserted = await Account
+                    .DataRepository
                     .UpsertTransactionsAsync(ops, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -122,6 +123,7 @@ namespace Atomex.Wallets.Tezos
             }
 
             await Account
+                .DataRepository
                 .UpsertAddressAsync(new WalletAddress
                 {
                     Currency = Account.Currency,

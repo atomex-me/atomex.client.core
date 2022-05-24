@@ -7,6 +7,7 @@ using Netezos.Forging;
 using Netezos.Forging.Models;
 
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Tezos.Operations;
 using Operation = Atomex.Blockchain.Tezos.Operations.Operation;
 
 namespace Atomex.Blockchain.Tezos
@@ -19,8 +20,6 @@ namespace Atomex.Blockchain.Tezos
 
     public class TezosOperation : Transaction
     {
-        private readonly IEnumerable<OperationContent> _operationsContents;
-
         public override string TxId { get; set; }
         public override string Currency { get; set; } = TezosHelper.Xtz;
         public override TransactionStatus Status { get; set; }
@@ -32,6 +31,8 @@ namespace Atomex.Blockchain.Tezos
         public string From => Operations.FirstOrDefault()?.Sender?.Address;
         public string Branch { get; set; }
         public byte[] Signature { get; set; }
+
+        public IEnumerable<OperationContent> OperationsContents { get; }
         public IEnumerable<Operation> Operations { get; }
 
         public TezosOperation(
@@ -51,7 +52,7 @@ namespace Atomex.Blockchain.Tezos
             if (!operationsContents.Any())
                 throw new ArgumentException("At least one operation content is required", nameof(operationsContents));
 
-            _operationsContents = operationsContents;
+            OperationsContents = operationsContents;
 
             Branch = branch ?? throw new ArgumentNullException(nameof(branch));
 
@@ -89,20 +90,20 @@ namespace Atomex.Blockchain.Tezos
         {
             byte[] forgedOperation = null;
 
-            if (_operationsContents.Any(o => o is ManagerOperationContent))
+            if (OperationsContents.Any(o => o is ManagerOperationContent))
             {
                 forgedOperation = await new LocalForge()
                     .ForgeOperationGroupAsync(
                         branch: Branch,
-                        contents: _operationsContents.Cast<ManagerOperationContent>())
+                        contents: OperationsContents.Cast<ManagerOperationContent>())
                     .ConfigureAwait(false);
             }
-            else if (Operations.Count() == 1)
+            else if (OperationsContents.Count() == 1)
             {
                 forgedOperation = await new LocalForge()
                     .ForgeOperationAsync(
                         branch: Branch,
-                        content: _operationsContents.First())
+                        content: OperationsContents.First())
                     .ConfigureAwait(false);
             }
             else throw new NotSupportedException("Can't forge several non manager operatrions");
@@ -113,5 +114,9 @@ namespace Atomex.Blockchain.Tezos
                     .ToArray()
                 : forgedOperation;
         }
+
+        public bool IsManaged() => OperationsContents?.Any(o => o is ManagerOperationContent)
+            ?? Operations?.Any(o => o is ManagerOperation)
+            ?? false;
     }
 }

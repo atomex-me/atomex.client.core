@@ -20,7 +20,7 @@ namespace Atomex.Wallets.Tezos
     public static class TezosOperationFiller
     {
         public static Task<(TezosOperation operation, Error error)> FillOperationAsync(
-             IEnumerable<TezosOperationCreationRequest> operationsRequests,
+             IEnumerable<TezosOperationParameters> operationsRequests,
              TezosAccount account,
              int headOffset = 0,
              CancellationToken cancellationToken = default)
@@ -62,6 +62,11 @@ namespace Atomex.Wallets.Tezos
                     .GetCounterAsync(from, cancellationToken)
                     .ConfigureAwait(false);
 
+                if (counterError != null)
+                    return (operation: null, error: counterError);
+
+                var counter = counterFromNetwork.Value;
+
                 var operations = new List<ManagerOperationContent>();
 
                 if (!isRevealed)
@@ -73,48 +78,18 @@ namespace Atomex.Wallets.Tezos
                         StorageLimit = 0,
                         GasLimit     = tezosConfig.RevealGasLimit,
                         Fee          = 0,
-                        Counter      = counterValue.Value
+                        Counter      = counter
                     });
 
-                    counterValue++;
+                    counter++;
                 }
 
-                //if (operationType == TezosOperationType.Transaction)
-                //{
-                //    operations.Add(new TransactionContent
-                //    {
-                //        Source = from,
-                //        Destination = to,
-                //        Amount = amount,
-                //        StorageLimit = storageLimit.Value,
-                //        GasLimit = gasLimit.Value,
-                //        Fee = fee.Value,
-                //        Counter = counterValue.Value,
-                //        Parameters = parameters != null
-                //            ? new Parameters
-                //            {
-                //                Entrypoint = entrypoint,
-                //                Value = Micheline.FromJson(parameters)
-                //            }
-                //            : null
-                //    });
-                //}
-                //else if (operationType == TezosOperationType.Delegation)
-                //{
-                //    operations.Add(new DelegationContent
-                //    {
-                //        Source = from,
-                //        Delegate = to,
-                //        StorageLimit = storageLimit.Value,
-                //        GasLimit = gasLimit.Value,
-                //        Fee = fee.Value,
-                //        Counter = counterValue.Value
-                //    });
-                //}
-                //else
-                //{
-                //    // todo: return error: not supported tezos operation type
-                //}
+                foreach (var request in operationsRequests)
+                {
+                    request.Content.Counter = counter++;
+
+                    operations.Add(request.Content);
+                }
 
                 var (headerHash, headerError) = headOffset != 0
                     ? await api
@@ -153,7 +128,7 @@ namespace Atomex.Wallets.Tezos
         }
 
         public static async Task<Error> AutoFillAsync(
-            IEnumerable<TezosOperationCreationRequest> requests,
+            IEnumerable<TezosOperationParameters> requests,
             string blockHash,
             string chainId,
             ITezosApi api,
@@ -180,7 +155,9 @@ namespace Atomex.Wallets.Tezos
                     var operationResult = metaData?["operation_result"];
 
                     if (operationResult?["status"]?.ToString() != "applied")
-                        return new Error(Errors.AutoFillError, "At least one of the operations is not applied");
+                        return new Error(
+                            code: Errors.AutoFillError,
+                            description: "At least one of the operations is not applied");
 
                     var counter = result["counter"]?.ToString() ?? null;
 
@@ -192,7 +169,9 @@ namespace Atomex.Wallets.Tezos
                         managedOperationContent.Counter.ToString() == counter);
 
                     if (request == null)
-                        return new Error(Errors.AutoFillError, $"Can't find request with managed operation content and counter {counter}");
+                        return new Error(
+                            code: Errors.AutoFillError,
+                            description: $"Can't find request with managed operation content and counter {counter}");
 
                     var operation = request.Content as ManagerOperationContent;
 

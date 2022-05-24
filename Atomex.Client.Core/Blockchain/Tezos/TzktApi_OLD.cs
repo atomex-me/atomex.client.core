@@ -463,7 +463,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             SecureBytes securePublicKey,
             CancellationToken cancellationToken = default)
         {
-            var tokenConfig = _currency as Fa12Config;
+            var tokenConfig = _currency as Fa12Config_OLD;
 
             try
             {

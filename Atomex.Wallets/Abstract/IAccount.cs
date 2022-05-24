@@ -11,20 +11,20 @@ namespace Atomex.Wallets.Abstract
     {
         string Currency { get; }
 
-        //#region Wallets
+        #region Wallets
 
-        //Task<WalletInfo> GetWalletByIdAsync(
-        //    int walletId,
-        //    CancellationToken cancellationToken);
+        Task<WalletInfo> GetWalletByIdAsync(
+            int walletId,
+            CancellationToken cancellationToken);
 
-        //Task<IEnumerable<WalletInfo>> GetWalletsAsync(
-        //    CancellationToken cancellationToken = default);
+        Task<IEnumerable<WalletInfo>> GetWalletsAsync(
+            CancellationToken cancellationToken = default);
 
-        //Task<IEnumerable<WalletInfo>> GetWalletsAsync(
-        //    string currency,
-        //    CancellationToken cancellationToken = default);
+        Task<IEnumerable<WalletInfo>> GetWalletsAsync(
+            string currency,
+            CancellationToken cancellationToken = default);
 
-        //#endregion Wallets
+        #endregion Wallets
 
         #region Balances
 

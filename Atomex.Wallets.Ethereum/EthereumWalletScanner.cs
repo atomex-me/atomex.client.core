@@ -70,6 +70,7 @@ namespace Atomex.Wallets.Ethereum
                     return error;
 
                 var upserted = await Account
+                    .DataRepository
                     .UpsertTransactionsAsync(txs, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -148,6 +149,7 @@ namespace Atomex.Wallets.Ethereum
             };
 
             await Account
+                .DataRepository
                 .UpsertAddressAsync(updatedAddress, cancellationToken)
                 .ConfigureAwait(false);
 

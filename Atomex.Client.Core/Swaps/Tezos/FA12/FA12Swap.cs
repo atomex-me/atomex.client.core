@@ -22,15 +22,15 @@ namespace Atomex.Swaps.Tezos.FA12
 {
     public class Fa12Swap : CurrencySwap
     {
-        private Fa12Account Fa12Account { get; }
+        private Fa12Account_OLD Fa12Account { get; }
         private TezosAccount TezosAccount { get; }
-        private Fa12Config Fa12Config => Currencies.Get<Fa12Config>(Currency);
+        private Fa12Config_OLD Fa12Config => Currencies.Get<Fa12Config_OLD>(Currency);
         private TezosConfig_OLD XtzConfig => Currencies.Get<TezosConfig_OLD>(TezosAccount.Currency);
         public static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(10);
         public static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(15);
 
         public Fa12Swap(
-            Fa12Account account,
+            Fa12Account_OLD account,
             TezosAccount tezosAccount,
             ICurrencies currencies)
             : base(account.Currency, currencies)
@@ -774,7 +774,7 @@ namespace Atomex.Swaps.Tezos.FA12
             return false;
         }
 
-        public static decimal RequiredAmountInTokens(Swap swap, Fa12Config fa12)
+        public static decimal RequiredAmountInTokens(Swap swap, Fa12Config_OLD fa12)
         {
             var requiredAmountInTokens = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, fa12.DigitsMultiplier);
 

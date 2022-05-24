@@ -51,7 +51,7 @@ namespace Atomex.ViewModels
                         {
                             // tezos tokens
                             var xtzConfig = account.Currencies.Get<TezosConfig_OLD>("XTZ");
-                            var fa12Config = account.Currencies.Get<Fa12Config>(address.Currency);
+                            var fa12Config = account.Currencies.Get<Fa12Config_OLD>(address.Currency);
 
                             var tzktApi = new TzktApi_OLD(xtzConfig);
 

@@ -16,11 +16,11 @@ using Atomex.Wallet.Abstract;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class Fa12Account : TezosTokenAccount, IEstimatable
+    public class Fa12Account_OLD : TezosTokenAccount_OLD, IEstimatable
     {
-        private Fa12Config Fa12Config => Currencies.Get<Fa12Config>(Currency);
+        private Fa12Config_OLD Fa12Config => Currencies.Get<Fa12Config_OLD>(Currency);
 
-        public Fa12Account(
+        public Fa12Account_OLD(
             string currency,
             string tokenContract,
             decimal tokenId,

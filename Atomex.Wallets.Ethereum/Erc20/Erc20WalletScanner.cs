@@ -100,6 +100,7 @@ namespace Atomex.Wallets.Ethereum.Erc20
             };
 
             await Account
+                .DataRepository
                 .UpsertAddressAsync(updatedAddress, cancellationToken)
                 .ConfigureAwait(false);
 

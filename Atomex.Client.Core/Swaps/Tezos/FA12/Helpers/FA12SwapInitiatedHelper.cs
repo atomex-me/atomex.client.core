@@ -22,7 +22,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
             CurrencyConfig_OLD currency,
             CancellationToken cancellationToken = default)
         {
-            var fa12 = currency as Fa12Config;
+            var fa12 = currency as Fa12Config_OLD;
 
             if (swap.PaymentTx is not TezosTransaction_OLD paymentTx)
                 throw new ArgumentNullException("Swap payment transaction is null");
@@ -82,7 +82,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
             {
                 Log.Debug("Tezos FA12: check initiated event");
 
-                var fa12 = (Fa12Config)currency;
+                var fa12 = (Fa12Config_OLD)currency;
 
                 var side = swap.Symbol
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)

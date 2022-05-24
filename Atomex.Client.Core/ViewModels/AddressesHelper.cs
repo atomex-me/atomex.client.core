@@ -22,15 +22,15 @@ namespace Atomex.ViewModels
 
             if (isTezosToken)
             {
-                if (currency is Fa12Config fa12Config)
+                if (currency is Fa12Config_OLD fa12Config)
                 {
                     tokenContract ??= fa12Config.TokenContractAddress;
                 }
                 else
                 {
                     fa12Config = account.Currencies
-                            .FirstOrDefault(c => c is Fa12Config fa12 && fa12.TokenContractAddress == tokenContract) as
-                        Fa12Config;
+                            .FirstOrDefault(c => c is Fa12Config_OLD fa12 && fa12.TokenContractAddress == tokenContract) as
+                        Fa12Config_OLD;
                 }
 
                 if (tokenContract == null)
