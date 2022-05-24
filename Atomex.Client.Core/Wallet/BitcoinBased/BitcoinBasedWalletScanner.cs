@@ -274,7 +274,7 @@ namespace Atomex.Wallet.BitcoinBased
                         .UpsertTransactionAsync(
                             tx: tx,
                             updateBalance: false,
-                            notifyIfUnconfirmed: false,
+                            notifyIfUnconfirmed: true,
                             notifyIfBalanceUpdated: false,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
