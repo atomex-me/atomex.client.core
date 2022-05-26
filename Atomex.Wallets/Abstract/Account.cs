@@ -1,12 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
 
-using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Wallets.Common;
 
@@ -38,33 +36,6 @@ namespace Atomex.Wallets.Abstract
 
             Logger = logger;
         }
-
-        #region Wallets
-
-        public Task<WalletInfo> GetWalletByIdAsync(
-            int walletId,
-            CancellationToken cancellationToken)
-        {
-            return DataRepository
-                .GetWalletInfoByIdAsync(walletId, cancellationToken);
-        }
-
-        public Task<IEnumerable<WalletInfo>> GetWalletsAsync(
-            CancellationToken cancellationToken = default)
-        {
-            return DataRepository
-                .GetWalletsInfoAsync(cancellationToken);
-        }
-
-        public Task<IEnumerable<WalletInfo>> GetWalletsAsync(
-            string currency,
-            CancellationToken cancellationToken = default)
-        {
-            return DataRepository
-                .GetWalletsInfoAsync(currency, cancellationToken);
-        }
-
-        #endregion Wallets
 
         #region Balances
 
@@ -157,32 +128,6 @@ namespace Atomex.Wallets.Abstract
         #endregion Balances
 
         #region Addresses
-
-        //public virtual Task<bool> UpsertAddressAsync(
-        //    WalletAddress walletAddress,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return DataRepository
-        //        .UpsertAddressAsync(walletAddress, cancellationToken);
-        //}
-
-        public virtual Task<WalletAddress> GetAddressAsync(
-            string address,
-            CancellationToken cancellationToken = default)
-        {
-            return DataRepository
-                .GetWalletAddressAsync(Currency, address, cancellationToken);
-        }
-
-        public virtual Task<IEnumerable<WalletAddress>> GetAddressesAsync(
-            int walletId,
-            int offset = 0,
-            int limit = int.MaxValue,
-            CancellationToken cancellationToken = default)
-        {
-            return DataRepository
-                .GetAddressesAsync(Currency, walletId, offset, limit, cancellationToken);
-        }
 
         public async Task<WalletAddress> GetFreeAddressAsync(
             int walletId,
@@ -277,54 +222,5 @@ namespace Atomex.Wallets.Abstract
         }
 
         #endregion Addresses
-
-        #region Transactions
-
-        //public Task<bool> UpsertTransactionAsync<T>(
-        //    T tx,
-        //    CancellationToken cancellationToken = default)
-        //    where T : Transaction
-        //{
-        //    return DataRepository
-        //        .UpsertTransactionAsync(tx, cancellationToken);
-        //}
-
-        //public Task<int> UpsertTransactionsAsync<T>(
-        //    IEnumerable<T> txs,
-        //    CancellationToken cancellationToken = default)
-        //    where T : Transaction
-        //{
-        //    return DataRepository
-        //        .UpsertTransactionsAsync(txs, cancellationToken);
-        //}
-
-        public Task<T> GetTransactionByIdAsync<T>(
-            string txId,
-            CancellationToken cancellationToken = default)
-            where T : Transaction
-        {
-            return DataRepository
-                .GetTransactionByIdAsync<T>(Currency, txId, cancellationToken);
-        }
-
-        public Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(
-            int offset = 0,
-            int limit = int.MaxValue,
-            CancellationToken cancellationToken = default)
-            where T : Transaction
-        {
-            return DataRepository
-                .GetUnconfirmedTransactionsAsync<T>(Currency, offset, limit, cancellationToken);
-        }
-
-        public Task<bool> RemoveTransactionByIdAsync(
-            string txId,
-            CancellationToken cancellationToken = default)
-        {
-            return DataRepository
-                .RemoveTransactionByIdAsync(Currency, txId, cancellationToken);
-        }
-
-        #endregion Transactions
     }
 }

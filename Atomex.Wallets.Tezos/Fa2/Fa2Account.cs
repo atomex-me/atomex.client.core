@@ -1,21 +1,22 @@
-﻿using System.Numerics;
+﻿using System;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
 
-using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Tezos;
+using Atomex.Common;
 using Atomex.Wallets.Abstract;
-using Error = Atomex.Common.Error;
 
-namespace Atomex.Wallets.Ethereum.Erc20
+namespace Atomex.Wallets.Tezos.Fa2
 {
-    public class Erc20Account : Account
+    public class Fa2Account : Account
     {
-        public Erc20Config Configuration => CurrencyConfigProvider
-            .GetByName<Erc20Config>(Currency);
+        public Fa2Config Configuration => CurrencyConfigProvider
+            .GetByName<Fa2Config>(Currency);
 
-        public Erc20Account(
+        public Fa2Account(
             string currency,
             IWalletProvider walletProvider,
             ICurrencyConfigProvider currencyConfigProvider,
@@ -32,48 +33,49 @@ namespace Atomex.Wallets.Ethereum.Erc20
 
         #region Sending
 
-        public Task<(EthereumTransaction tx, Error error)> SendTransferAsync(
+        public Task<(TezosOperation tx, Error error)> SendTransferAsync(
             string from,
             string to,
             BigInteger amountInTokens,
-            GasPrice gasPrice,
+            Fee fee,
             GasLimit gasLimit,
-            Nonce nonce,
+            StorageLimit storageLimit,
             CancellationToken cancellationToken = default)
         {
-            var ethereumAccount = GetEthereumAccount();
+            var tezosAccount = GetTezosAccount();
             var currencyConfig = Configuration;
 
-            return ethereumAccount
-                .SendErc20TransferAsync(
+            return tezosAccount
+                .SendFa2TransferAsync(
                     from: from,
                     to: to,
                     tokenContract: currencyConfig.TokenContract,
+                    tokenId: currencyConfig.TokenId,
                     amountInTokens: amountInTokens,
-                    gasPrice: gasPrice,
+                    fee: fee,
                     gasLimit: gasLimit,
-                    nonce: nonce,
+                    storageLimit: storageLimit,
                     cancellationToken: cancellationToken);
         }
 
-        public Task<(EthereumTransaction tx, Error error)> SendTransferAsync(
+        public Task<(TezosOperation tx, Error error)> SendTransferAsync(
             string from,
             string to,
             decimal amount,
-            GasPrice gasPrice,
+            Fee fee,
             GasLimit gasLimit,
-            Nonce nonce,
+            StorageLimit storageLimit,
             CancellationToken cancellationToken = default)
         {
             return SendTransferAsync(
                 from: from,
                 to: to,
-                amountInTokens: EthereumHelper.TokensToBaseTokenUnits(
+                amountInTokens: TezosHelper.TokensToBaseTokenUnits(
                     amount,
                     Configuration.DecimalsMultiplier),
-                gasPrice: gasPrice,
+                fee: fee,
                 gasLimit: gasLimit,
-                nonce: nonce,
+                storageLimit: storageLimit,
                 cancellationToken: cancellationToken);
         }
 
@@ -81,15 +83,17 @@ namespace Atomex.Wallets.Ethereum.Erc20
 
         #region Balances
 
-        public override IWalletScanner GetWalletScanner() =>
-            new Erc20WalletScanner(this, WalletProvider, Logger);
+        public override IWalletScanner GetWalletScanner()
+        {
+            throw new NotImplementedException();
+        }
 
         #endregion Balances
 
         #region Common
 
-        public EthereumAccount GetEthereumAccount() => new(
-            currency: EthereumHelper.Eth,
+        public TezosAccount GetTezosAccount() => new(
+            currency: TezosHelper.Xtz,
             walletProvider: WalletProvider,
             currencyConfigProvider: CurrencyConfigProvider,
             dataRepository: DataRepository,

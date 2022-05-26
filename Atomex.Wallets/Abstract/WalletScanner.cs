@@ -36,7 +36,8 @@ namespace Atomex.Wallets.Abstract
             CancellationToken cancellationToken = default)
         {
             var wallets = await _account
-                .GetWalletsAsync(cancellationToken)
+                .DataRepository
+                .GetWalletsInfoAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             foreach (var wallet in wallets)
@@ -63,7 +64,8 @@ namespace Atomex.Wallets.Abstract
             return Task.Run(async () =>
             {
                 var walletInfo = await _account
-                    .GetWalletByIdAsync(walletId, cancellationToken)
+                    .DataRepository
+                    .GetWalletInfoByIdAsync(walletId, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (walletInfo == null)
@@ -76,7 +78,9 @@ namespace Atomex.Wallets.Abstract
                     $"{walletId};{walletInfo.Name};{walletInfo.Type}");
 
                 var addresses = await _account
+                    .DataRepository
                     .GetAddressesAsync(
+                        currency: _account.Currency,
                         walletId: walletId,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
@@ -110,7 +114,8 @@ namespace Atomex.Wallets.Abstract
             return Task.Run(async () =>
             {
                 var walletAddress = await _account
-                    .GetAddressAsync(address, cancellationToken)
+                    .DataRepository
+                    .GetWalletAddressAsync(_account.Currency, address, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (walletAddress == null)
@@ -119,7 +124,8 @@ namespace Atomex.Wallets.Abstract
                         description: $"[{_account.Currency}] Wallet address with {address} not found");
 
                 var walletInfo = await _account
-                    .GetWalletByIdAsync(walletAddress.WalletId, cancellationToken)
+                    .DataRepository
+                    .GetWalletInfoByIdAsync(walletAddress.WalletId, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (walletInfo == null)
@@ -146,7 +152,8 @@ namespace Atomex.Wallets.Abstract
             CancellationToken cancellationToken = default)
         {
             var wallets = await _account
-                .GetWalletsAsync(cancellationToken)
+                .DataRepository
+                .GetWalletsInfoAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             foreach (var wallet in wallets)
@@ -173,7 +180,8 @@ namespace Atomex.Wallets.Abstract
             return Task.Run(async () =>
             {
                 var walletInfo = await _account
-                    .GetWalletByIdAsync(walletId, cancellationToken)
+                    .DataRepository
+                    .GetWalletInfoByIdAsync(walletId, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (walletInfo == null)
@@ -232,7 +240,8 @@ namespace Atomex.Wallets.Abstract
                     address);
 
                 var storedAddress = await _account
-                    .GetAddressAsync(address, cancellationToken)
+                    .DataRepository
+                    .GetWalletAddressAsync(_account.Currency, address, cancellationToken)
                     .ConfigureAwait(false);
 
                 var (_, error) = await UpdateAddressBalanceAsync(
@@ -257,7 +266,9 @@ namespace Atomex.Wallets.Abstract
             CancellationToken cancellationToken = default)
         {
             var storedAddresses = (await _account
+                .DataRepository
                 .GetAddressesAsync(
+                    currency: _account.Currency,
                     walletId: walletInfo.Id,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false))
@@ -270,8 +281,6 @@ namespace Atomex.Wallets.Abstract
             var chains = isMultiChain
                 ? new int[] { Bip44.External, Bip44.Internal }
                 : new int[] { Bip44.External };
-
-            //var currencyConfig = GetCurrencyConfig();
 
             foreach (var chain in chains)
             {

@@ -1,4 +1,6 @@
-﻿using Atomex.Blockchain.Abstract;
+﻿using System.Numerics;
+
+using Atomex.Blockchain.Abstract;
 
 namespace Atomex.Blockchain.Tezos
 {
@@ -12,6 +14,9 @@ namespace Atomex.Blockchain.Tezos
 
         public static long ToMicroTez(this decimal tz) =>
             (long)(tz * MtzInTz);
+
+        public static BigInteger TokensToBaseTokenUnits(decimal tokens, decimal decimalsMultiplier) =>
+            new(tokens * decimalsMultiplier);
 
         public static TransactionStatus ParseOperationStatus(this string status) =>
             status switch

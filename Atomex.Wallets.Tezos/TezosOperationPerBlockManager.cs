@@ -90,7 +90,9 @@ namespace Atomex.Wallets.Tezos
                 {
                     // check if there are unconfirmed operations
                     var unconfirmedOperations = await _account
+                        .DataRepository
                         .GetUnconfirmedTransactionsAsync<TezosOperation>(
+                            currency: _account.Currency,
                             cancellationToken: _cts.Token)
                         .ConfigureAwait(false);
 
@@ -103,7 +105,9 @@ namespace Atomex.Wallets.Tezos
 
                         // check again if there are unconfirmed operations
                         unconfirmedOperations = await _account
+                            .DataRepository
                             .GetUnconfirmedTransactionsAsync<TezosOperation>(
+                                currency: _account.Currency,
                                 cancellationToken: _cts.Token)
                             .ConfigureAwait(false);
                     }
@@ -205,6 +209,11 @@ namespace Atomex.Wallets.Tezos
     {
         private readonly ConcurrentDictionary<string, Lazy<TezosAddressOperatioPerBlockManager>> _batchers;
         private bool _disposedValue;
+
+        public TezosOperationPerBlockManager()
+        {
+            _batchers = new ConcurrentDictionary<string, Lazy<TezosAddressOperatioPerBlockManager>>();
+        }
 
         public async Task<(TezosOperation tx, Error error)> SendOperationsAsync(
             TezosAccount account,

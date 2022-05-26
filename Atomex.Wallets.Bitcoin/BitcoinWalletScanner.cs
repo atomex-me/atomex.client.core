@@ -9,9 +9,9 @@ using Microsoft.Extensions.Logging;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Bitcoin.Abstract;
 using Atomex.Common;
+using Atomex.Common.Memory;
 using Atomex.Wallets.Abstract;
 using Atomex.Wallets.Common;
-using Atomex.Common.Memory;
 
 namespace Atomex.Wallets.Bitcoin
 {
@@ -53,7 +53,9 @@ namespace Atomex.Wallets.Bitcoin
                     foreach (var txId in txIds)
                     {
                         var localTx = await Account
+                            .DataRepository
                             .GetTransactionByIdAsync<BitcoinTransaction>(
+                                currency: Account.Currency,
                                 txId: txId,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
@@ -164,6 +166,7 @@ namespace Atomex.Wallets.Bitcoin
             SecureBytes publicKey,
             WalletInfo walletInfo = null) =>
             Account.Configuration.AddressFromKey(publicKey, walletInfo);
+
         protected override IBitcoinApi GetBlockchainApi() => new BitcoinApi(
             currency: Account.Currency,
             settings: Account.Configuration.ApiSettings,

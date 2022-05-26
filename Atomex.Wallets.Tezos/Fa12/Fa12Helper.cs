@@ -1,8 +1,13 @@
-﻿namespace Atomex.Wallets.Tezos.Fa12
+﻿using System.Numerics;
+
+namespace Atomex.Wallets.Tezos.Fa12
 {
     public static class Fa12Helper
     {
-        public static string TransferParameters(string from, string to, decimal amount)
+        public static string TransferParameters(
+            string from,
+            string to,
+            BigInteger amount)
         {
             return "{" +
                 $"\"prim\":\"Pair\"," +

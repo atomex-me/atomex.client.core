@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -114,7 +115,7 @@ namespace Atomex.Wallets.Tezos
             string from,
             string to,
             string tokenContract,
-            decimal amount,
+            BigInteger amountInTokens,
             Fee fee,
             GasLimit gasLimit,
             StorageLimit storageLimit,
@@ -128,7 +129,7 @@ namespace Atomex.Wallets.Tezos
                 gasLimit: gasLimit,
                 storageLimit: storageLimit,
                 entrypoint: "transfer",
-                parameters: Fa12Helper.TransferParameters(from, to, amount),
+                parameters: Fa12Helper.TransferParameters(from, to, amountInTokens),
                 cancellationToken: cancellationToken);
         }
 
@@ -137,7 +138,7 @@ namespace Atomex.Wallets.Tezos
             string to,
             string tokenContract,
             int tokenId,
-            decimal amount,
+            BigInteger amountInTokens,
             Fee fee,
             GasLimit gasLimit,
             StorageLimit storageLimit,
@@ -151,7 +152,7 @@ namespace Atomex.Wallets.Tezos
                 gasLimit: gasLimit,
                 storageLimit: storageLimit,
                 entrypoint: "transfer",
-                parameters: Fa2Helper.TransferParameters(tokenId, from, to, amount),
+                parameters: Fa2Helper.TransferParameters(tokenId, from, to, amountInTokens),
                 cancellationToken: cancellationToken);
         }
 
@@ -232,7 +233,8 @@ namespace Atomex.Wallets.Tezos
             {
                 try
                 {
-                    var walletAddress = await GetAddressAsync(operation.From, cancellationToken)
+                    var walletAddress = await DataRepository
+                        .GetWalletAddressAsync(Currency, operation.From, cancellationToken)
                         .ConfigureAwait(false);
 
                     var walletInfo = await DataRepository
@@ -291,7 +293,8 @@ namespace Atomex.Wallets.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            var walletAddress = await GetAddressAsync(address, cancellationToken)
+            var walletAddress = await DataRepository
+                .GetWalletAddressAsync(Currency, address, cancellationToken)
                 .ConfigureAwait(false);
 
             if (walletAddress == null)

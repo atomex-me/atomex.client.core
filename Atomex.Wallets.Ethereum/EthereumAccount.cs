@@ -3,13 +3,16 @@ using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Nethereum.Contracts;
 using Microsoft.Extensions.Logging;
 
 using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Ethereum.Messages.Erc20;
 using Atomex.Common;
 using Atomex.Wallets.Abstract;
 using Atomex.Wallets.Common;
 using Atomex.Wallets.Ethereum.Common;
+using Error = Atomex.Common.Error;
 
 namespace Atomex.Wallets.Ethereum
 {
@@ -75,7 +78,8 @@ namespace Atomex.Wallets.Ethereum
             {
                 try
                 {
-                    var walletAddress = await GetAddressAsync(from, cancellationToken)
+                    var walletAddress = await DataRepository
+                        .GetWalletAddressAsync(Currency, from, cancellationToken)
                         .ConfigureAwait(false);
 
                     var currencyConfig = Configuration;
@@ -251,6 +255,37 @@ namespace Atomex.Wallets.Ethereum
             }, cancellationToken);
         }
 
+        public Task<(EthereumTransaction tx, Error error)> SendErc20TransferAsync(
+            string from,
+            string to,
+            string tokenContract,
+            BigInteger amountInTokens,
+            GasPrice gasPrice,
+            GasLimit gasLimit,
+            Nonce nonce,
+            CancellationToken cancellationToken = default)
+        {
+            var message = new Erc20TransferMessage
+            {
+                To = to,
+                Value = amountInTokens,
+                FromAddress = from
+            };
+
+            var input = message
+                .CreateTransactionInput(tokenContract);
+
+            return SendAsync(
+                from: input.From,
+                to: input.To,
+                amount: EthereumHelper.WeiToEth(input.Value.Value),
+                gasPrice: gasPrice,
+                gasLimit: gasLimit,
+                nonce: nonce,
+                data: input.Data,
+                cancellationToken: cancellationToken);
+        }
+
         #endregion Sending
 
         #region Signing
@@ -263,7 +298,8 @@ namespace Atomex.Wallets.Ethereum
             {
                 try
                 {
-                    var walletAddress = await GetAddressAsync(tx.From, cancellationToken)
+                    var walletAddress = await DataRepository
+                        .GetWalletAddressAsync(Currency, tx.From, cancellationToken)
                         .ConfigureAwait(false);
 
                     var walletInfo = await DataRepository

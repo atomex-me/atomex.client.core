@@ -1,4 +1,6 @@
-﻿namespace Atomex.Wallets.Tezos.Fa2
+﻿using System.Numerics;
+
+namespace Atomex.Wallets.Tezos.Fa2
 {
     public class Fa2Helper
     {
@@ -6,7 +8,7 @@
             int tokenId,
             string from,
             string to,
-            decimal amount)
+            BigInteger amount)
         {
             return "{" +
                 $"\"prim\":\"Pair\"," +
@@ -28,7 +30,7 @@
                                             $"\"int\":\"{tokenId}\"" +
                                         "}," +
                                         "{" +
-                                            $"\"int\":\"{string.Format("{0:0}", amount)}\"" +
+                                            $"\"int\":\"{amount}\"" +
                                         "}" +
                                     "]" +
                                 "}" +
