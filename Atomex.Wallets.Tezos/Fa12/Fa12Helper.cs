@@ -9,15 +9,18 @@ namespace Atomex.Wallets.Tezos.Fa12
             string to,
             BigInteger amount)
         {
-            return "{" +
+            return
+            "{" +
                 $"\"prim\":\"Pair\"," +
-                $"\"args\":[" +
+                $"\"args\":" +
+                $"[" +
                     "{" +
                         $"\"string\":\"{from}\"" +
                     "}," +
                     "{" +
                         $"\"prim\":\"Pair\"," +
-                        $"\"args\":[" +
+                        $"\"args\":" +
+                        $"[" +
                             "{" +
                                 $"\"string\":\"{to}\"" +
                             "}," +
