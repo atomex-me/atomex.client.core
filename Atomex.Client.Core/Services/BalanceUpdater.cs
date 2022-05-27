@@ -7,6 +7,7 @@ using Atomex.Abstract;
 using Atomex.Blockchain.SoChain;
 using Atomex.Services.Abstract;
 using Atomex.Services.BalanceUpdaters;
+using Atomex.TzktEvents;
 using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Serilog;
@@ -103,7 +104,9 @@ namespace Atomex.Services
                 _balanceUpdaters.Add(new BitcoinBalanceUpdater(_account, _walletScanner, soChainRealtimeApi, _log));
                 _balanceUpdaters.Add(new LitecoinBalanceUpdater(_account, _walletScanner, soChainRealtimeApi, _log));
 
-                _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, _log));
+                var tzkt = new TzktEventsClient(_log);
+                _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, tzkt, _log));
+                _balanceUpdaters.Add(new TezosTokenBalanceUpdater(_account, _currenciesProvider, _walletScanner, tzkt, _log));
             }
             catch (Exception e)
             {

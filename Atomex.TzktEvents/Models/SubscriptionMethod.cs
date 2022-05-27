@@ -21,5 +21,6 @@
         public static readonly SubscriptionMethod SubscribeToOperations = new("SubscribeToOperations", "operations");
         public static readonly SubscriptionMethod SubscribeToBigMaps = new("SubscribeToBigMaps", "bigmaps");
         public static readonly SubscriptionMethod SubscribeToTokenTransfers = new("SubscribeToTokenTransfers", "transfers");
+        public static readonly SubscriptionMethod SubscribeToTokenBalances = new("SubscribeToTokenBalances", "token_balances");
     }
 }

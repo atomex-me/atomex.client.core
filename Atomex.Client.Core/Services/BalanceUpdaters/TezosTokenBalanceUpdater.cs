@@ -6,14 +6,16 @@ using Atomex.Abstract;
 using Atomex.Services.Abstract;
 using Atomex.TzktEvents;
 using Atomex.Wallet.Abstract;
+using Atomex.Wallet.Tezos;
 using Serilog;
 
 
 namespace Atomex.Services.BalanceUpdaters
 {
-    public class TezosBalanceUpdater : IChainBalanceUpdater
+    public class TezosTokenBalanceUpdater : IChainBalanceUpdater
     {
         private readonly IAccount _account;
+        private readonly TezosAccount _tezosAccount;
         private readonly ICurrenciesProvider _currenciesProvider;
         private readonly ILogger _log;
         private readonly ITzktEventsClient _tzkt;
@@ -22,9 +24,10 @@ namespace Atomex.Services.BalanceUpdaters
         private ISet<string> _addresses;
 
 
-        public TezosBalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, IHdWalletScanner walletScanner, ITzktEventsClient tzkt, ILogger log)
+        public TezosTokenBalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, IHdWalletScanner walletScanner, ITzktEventsClient tzkt, ILogger log)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
+            _tezosAccount = account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz);
             _currenciesProvider = currenciesProvider;
             _walletScanner = walletScanner ?? throw new ArgumentNullException(nameof(walletScanner));
             _tzkt = tzkt ?? throw new ArgumentNullException(nameof(tzkt));
@@ -35,7 +38,7 @@ namespace Atomex.Services.BalanceUpdaters
         {
             if (_currenciesProvider == null)
             {
-                throw new InvalidOperationException("Start TezosBalanceUpdater was called before CurrenciesProvider initialization");
+                throw new InvalidOperationException("Start TezosTokenBalanceUpdater was called before CurrenciesProvider initialization");
             }
 
             try
@@ -49,12 +52,12 @@ namespace Atomex.Services.BalanceUpdaters
                 _addresses = await GetAddressesAsync().ConfigureAwait(false);
 
                 await _tzkt
-                    .NotifyOnAccountsAsync(_addresses, BalanceUpdatedHandler)
+                    .NotifyOnTokenBalancesAsync(_addresses, BalanceUpdatedHandler)
                     .ConfigureAwait(false);
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error on starting TezosBalanceUpdater");
+                _log.Error(e, "Error on starting TezosTokenBalanceUpdater");
             }
         }
 
@@ -66,43 +69,78 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error on stopping TezosBalanceUpdater");
+                _log.Error(e, "Error on stopping TezosTokenBalanceUpdater");
             }
         }
 
 
         private async Task<ISet<string>> GetAddressesAsync()
         {
-            var account = _account.GetCurrencyAccount(TezosConfig.Xtz);
-            var addresses = await account
-                .GetAddressesAsync()
+            // all tezos addresses
+            var xtzAddresses = await _tezosAccount.DataRepository
+                .GetAddressesAsync(TezosConfig.Xtz)
                 .ConfigureAwait(false);
 
-            var freeAddress = await account
+            if (xtzAddresses.Count() <= 1)
+            {
+                // firstly scan xtz
+                await new TezosWalletScanner(_tezosAccount)
+                    .ScanAsync()
+                    .ConfigureAwait(false);
+
+                xtzAddresses = await _tezosAccount.DataRepository
+                    .GetAddressesAsync(TezosConfig.Xtz)
+                    .ConfigureAwait(false);
+            }
+
+            var walletAddresses = xtzAddresses.ToList();
+
+            var freeAddress = await _tezosAccount
                 .GetFreeExternalAddressAsync()
                 .ConfigureAwait(false);
 
-            return addresses.Concat(new[] { freeAddress })
-                .Select(wa => wa.Address)
+            walletAddresses.Add(freeAddress);
+
+            // addresses from local db
+            var localAddresses = await _tezosAccount.DataRepository
+                .GetTezosTokenAddressesAsync()
+                .ConfigureAwait(false);
+
+            var addresses = localAddresses
+                .Select(a => a.Address)
                 .ToHashSet();
+
+            if (walletAddresses.Any())
+                addresses.UnionWith(walletAddresses.Select(a => a.Address));
+
+            return addresses;
         }
 
         private async void BalanceUpdatedHandler(string address)
         {
             try
             {
-                await _walletScanner
-                    .ScanAddressAsync(TezosConfig.Xtz, address)
-                    .ConfigureAwait(false);
+                foreach (var currency in _account.Currencies)
+                {
+                    if (Currencies.IsTezosToken(currency.Name))
+                    {
+                        await _walletScanner.ScanAddressAsync(currency.Name, address)
+                            .ConfigureAwait(false);
+
+                        _account
+                            .GetCurrencyAccount<TezosTokenAccount>(currency.Name)
+                            .ReloadBalances();
+                    }
+                }
 
                 var newAddresses = await GetAddressesAsync().ConfigureAwait(false);
                 newAddresses.ExceptWith(_addresses);
 
                 if (newAddresses.Any())
                 {
-                    Log.Information("TezosBalanceUpdater adds new addresses {@Addresses}", newAddresses);
+                    Log.Information("TezosTokenBalanceUpdater adds new addresses {@Addresses}", newAddresses);
                     await _tzkt
-                        .NotifyOnAccountsAsync(newAddresses, BalanceUpdatedHandler)
+                        .NotifyOnTokenBalancesAsync(newAddresses, BalanceUpdatedHandler)
                         .ConfigureAwait(false);
 
                     _addresses.UnionWith(newAddresses);

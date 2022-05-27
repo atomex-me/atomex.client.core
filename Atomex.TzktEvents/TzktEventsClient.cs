@@ -21,8 +21,10 @@ namespace Atomex.TzktEvents
         private bool _isStarted;
 
         private readonly ILogger _log;
-        private HubConnection _connection;
+        private HubConnection _hub;
+
         private IAccountService _accountService;
+        private ITokensService _tokensService;
 
 
         public TzktEventsClient(ILogger log)
@@ -35,6 +37,11 @@ namespace Atomex.TzktEvents
         {
             if (_isStarted)
             {
+                if (baseUri == _baseUri)
+                {
+                    return;
+                }
+
                 _log.Warning("Trying to start new connection with baseUri = {BaseUri} while TzktEventsClient is already connected to {EventsUrl}",
                     _baseUri, EventsUrl);
                 return;
@@ -44,21 +51,22 @@ namespace Atomex.TzktEvents
 
             try
             {
-                _connection = new HubConnectionBuilder()
+                _hub = new HubConnectionBuilder()
                     .WithUrl(EventsUrl)
                     .AddNewtonsoftJsonProtocol()
                     .WithAutomaticReconnect(new RetryPolicy())
                     .Build();
 
-                _accountService = new AccountService(_connection, _log);
+                _accountService = new AccountService(_hub, _log);
+                _tokensService = new TokensService(_hub, _log);
 
-                _connection.Reconnecting += ReconnectingHandler;
-                _connection.Reconnected += ReconnectedHandler;
-                _connection.Closed += ClosedHandler;
+                _hub.Reconnecting += ReconnectingHandler;
+                _hub.Reconnected += ReconnectedHandler;
+                _hub.Closed += ClosedHandler;
 
                 SetSubscriptions();
 
-                await _connection.StartAsync().ConfigureAwait(false);
+                await _hub.StartAsync().ConfigureAwait(false);
                 _isStarted = true;
 
                 await InitAsync().ConfigureAwait(false);
@@ -81,14 +89,14 @@ namespace Atomex.TzktEvents
                 return;
             }
             
-            _connection.Reconnecting -= ReconnectingHandler;
-            _connection.Reconnected -= ReconnectedHandler;
-            _connection.Closed -= ClosedHandler;
+            _hub.Reconnecting -= ReconnectingHandler;
+            _hub.Reconnected -= ReconnectedHandler;
+            _hub.Closed -= ClosedHandler;
 
             try
             {
-                await _connection.StopAsync().ConfigureAwait(false);
-                await _connection.DisposeAsync().ConfigureAwait(false);
+                await _hub.StopAsync().ConfigureAwait(false);
+                await _hub.DisposeAsync().ConfigureAwait(false);
 
                 Disconnected?.Invoke(this, EventArgs.Empty);
                 _log.Information("TzktEventsClient stopped");
@@ -116,6 +124,22 @@ namespace Atomex.TzktEvents
             if (CheckIsStarted(nameof(NotifyOnAccountsAsync)))
             {
                 await _accountService.NotifyOnAccountsAsync(addresses, handler).ConfigureAwait(false);
+            }
+        }
+
+        public async Task NotifyOnTokenBalancesAsync(string address, Action<string> handler)
+        {
+            if (CheckIsStarted(nameof(NotifyOnTokenBalancesAsync)))
+            {
+                await _tokensService.NotifyOnTokenBalancesAsync(address, handler).ConfigureAwait(false);
+            }
+        }
+
+        public async Task NotifyOnTokenBalancesAsync(IEnumerable<string> addresses, Action<string> handler)
+        {
+            if (CheckIsStarted(nameof(NotifyOnTokenBalancesAsync)))
+            {
+                await _tokensService.NotifyOnTokenBalancesAsync(addresses, handler).ConfigureAwait(false);
             }
         }
 
@@ -178,11 +202,17 @@ namespace Atomex.TzktEvents
         {
             try
             {
-                await _accountService.InitAsync().ConfigureAwait(false);
+                var initTasks = new []
+                {
+                    _accountService.InitAsync(),
+                    _tokensService.InitAsync(),
+                };
+
+                await Task.WhenAll(initTasks).ConfigureAwait(false);
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _log.Error(ex, ex.Message);
+                _log.Error(e, "TzktEvents caught error on initialization");
             }
         }
 
@@ -191,10 +221,11 @@ namespace Atomex.TzktEvents
             try
             {
                 _accountService.SetSubscriptions();
+                _tokensService.SetSubscriptions();
             }
-            catch (Exception ex)
+            catch (Exception e)
             {
-                _log.Error(ex, ex.Message);
+                _log.Error(e, "TzktEvents caught error while setting subscription");
             }
         }
     }

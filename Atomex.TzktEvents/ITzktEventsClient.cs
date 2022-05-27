@@ -17,5 +17,8 @@ namespace Atomex.TzktEvents
         
         Task NotifyOnAccountAsync(string address, Action<string> handler);
         Task NotifyOnAccountsAsync(IEnumerable<string> addresses, Action<string> handler);
+
+        Task NotifyOnTokenBalancesAsync(string address, Action<string> handler);
+        Task NotifyOnTokenBalancesAsync(IEnumerable<string> addresses, Action<string> handler);
     }
 }
