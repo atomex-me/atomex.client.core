@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System;
+using System.Numerics;
 
 namespace Atomex.Common
 {
@@ -6,7 +7,7 @@ namespace Atomex.Common
     {
         public const int MaxDecimalPrecision = 28;
 
-        public static decimal ToDecimal(this BigInteger bigInteger, int decimals)
+        public static decimal ToDecimal(this BigInteger bigInteger, int decimals, int targetDecimals)
         {
             var divisor = BigInteger.Pow(10, decimals);
 
@@ -17,10 +18,12 @@ namespace Atomex.Common
             if (remainder.IsZero)
                 return result;
 
-            if (decimals > MaxDecimalPrecision)
+            targetDecimals = Math.Min(targetDecimals, MaxDecimalPrecision);
+
+            if (decimals > targetDecimals)
             {
-                divisor /= BigInteger.Pow(10, decimals - MaxDecimalPrecision);
-                remainder /= BigInteger.Pow(10, decimals - MaxDecimalPrecision); 
+                divisor /= BigInteger.Pow(10, decimals - targetDecimals);
+                remainder /= BigInteger.Pow(10, decimals - targetDecimals);
             }
 
             return result + (decimal)remainder / (decimal)divisor;

@@ -32,6 +32,6 @@ namespace Atomex.Wallets.Bitcoin
             coins.Multiply(BigInteger.Pow(10, Decimals));
 
         public decimal SatoshiToCoin(BigInteger satoshi) =>
-            satoshi.ToDecimal(Decimals);
+            satoshi.ToDecimal(Decimals, Decimals);
     }
 }

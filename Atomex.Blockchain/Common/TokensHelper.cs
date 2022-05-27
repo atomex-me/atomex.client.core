@@ -13,7 +13,8 @@ namespace Atomex.Blockchain.Common
 
         public static decimal TokenUnitsToTokens(
             BigInteger tokenUnits,
-            int decimals) =>
-            tokenUnits.ToDecimal(decimals);
+            int decimals,
+            int targetDecimals) =>
+            tokenUnits.ToDecimal(decimals, targetDecimals);
     }
 }

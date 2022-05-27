@@ -1,7 +1,4 @@
-﻿using System.Numerics;
-
-using Atomex.Blockchain.Abstract;
-using Atomex.Common;
+﻿using Atomex.Blockchain.Abstract;
 
 namespace Atomex.Blockchain.Tezos
 {
