@@ -18,7 +18,7 @@ namespace Atomex.Wallet.Tezos
 
         protected readonly string _tokenContract;
         protected readonly decimal _tokenId;
-        protected readonly TezosAccount _tezosAccount;
+        protected readonly TezosAccount_OLD _tezosAccount;
 
         public string Currency { get; }
         public string TokenType { get; }
@@ -39,7 +39,7 @@ namespace Atomex.Wallet.Tezos
             ICurrencies currencies,
             IHdWallet_OLD wallet,
             IAccountDataRepository_OLD dataRepository,
-            TezosAccount tezosAccount)
+            TezosAccount_OLD tezosAccount)
         {
             Currency       = currency ?? throw new ArgumentNullException(nameof(currency));
             TokenType      = tokenType ?? throw new ArgumentNullException(nameof(tokenType));

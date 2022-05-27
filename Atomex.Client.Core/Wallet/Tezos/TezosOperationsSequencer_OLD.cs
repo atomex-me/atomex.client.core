@@ -7,12 +7,12 @@ using Atomex.Blockchain.Tezos;
 
 namespace Atomex.Wallet.Tezos
 {
-    public static class TezosOperationsSequencer
+    public static class TezosOperationsSequencer_OLD
     {
         public static TimeSpan DefaultCheckingInterval = TimeSpan.FromSeconds(10);
         public static TimeSpan DefaultTimeOut = TimeSpan.FromMinutes(10);
 
-        public static async Task<bool> CanSend(string fromAddress, TezosAccount tezosAccount)
+        public static async Task<bool> CanSend(string fromAddress, TezosAccount_OLD tezosAccount)
         {
             // get unconfirmed Tezos transactions from address <fromAddress>
             // created less than an hour ago
@@ -33,7 +33,7 @@ namespace Atomex.Wallet.Tezos
 
         public static async Task<bool> WaitAsync(
             string fromAddress,
-            TezosAccount tezosAccount,
+            TezosAccount_OLD tezosAccount,
             TimeSpan timeOut,
             TimeSpan checkingInterval,
             CancellationToken cancellationToken = default)
@@ -57,7 +57,7 @@ namespace Atomex.Wallet.Tezos
 
         public static Task<bool> WaitAsync(
             string fromAddress,
-            TezosAccount tezosAccount,
+            TezosAccount_OLD tezosAccount,
             CancellationToken cancellationToken = default)
         {
             return WaitAsync(

@@ -27,10 +27,10 @@ namespace Atomex.Swaps.Tezos
         public static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(15);
 
         private TezosConfig_OLD XtzConfig => Currencies.Get<TezosConfig_OLD>(Currency);
-        protected readonly TezosAccount _account;
+        protected readonly TezosAccount_OLD _account;
 
         public TezosSwap(
-            TezosAccount account,
+            TezosAccount_OLD account,
             ICurrencies currencies)
             : base(account.Currency, currencies)
         {
@@ -66,7 +66,7 @@ namespace Atomex.Swaps.Tezos
                         .ConfigureAwait(false);
 
                     // temporary fix: check operation sequence
-                    await TezosOperationsSequencer
+                    await TezosOperationsSequencer_OLD
                         .WaitAsync(paymentTx.From, _account, cancellationToken)
                         .ConfigureAwait(false);
 
@@ -289,7 +289,7 @@ namespace Atomex.Swaps.Tezos
                     .ConfigureAwait(false);
 
                 // temporary fix: check operation sequence
-                await TezosOperationsSequencer
+                await TezosOperationsSequencer_OLD
                     .WaitAsync(redeemTx.From, _account, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -409,7 +409,7 @@ namespace Atomex.Swaps.Tezos
                     .ConfigureAwait(false);
 
                 // temporary fix: check operation sequence
-                await TezosOperationsSequencer
+                await TezosOperationsSequencer_OLD
                     .WaitAsync(redeemForPartyTx.From, _account, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -522,7 +522,7 @@ namespace Atomex.Swaps.Tezos
                     .ConfigureAwait(false);
 
                 // temporary fix: check operation sequence
-                await TezosOperationsSequencer
+                await TezosOperationsSequencer_OLD
                     .WaitAsync(refundTx.From, _account, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -691,7 +691,7 @@ namespace Atomex.Swaps.Tezos
                     .ConfigureAwait(false);
 
                 // get transactions & update balance for address async 
-                _ = AddressHelper.UpdateAddressBalanceAsync<TezosWalletScanner, TezosAccount>(
+                _ = AddressHelper.UpdateAddressBalanceAsync<TezosWalletScanner_OLD, TezosAccount_OLD>(
                     account: _account,
                     address: swap.ToAddress,
                     cancellationToken: cancellationToken);

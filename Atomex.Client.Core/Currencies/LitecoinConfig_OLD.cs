@@ -94,7 +94,7 @@ namespace Atomex
 
             return blockchainApi switch
             {
-                "sochain"     => new SoChainApi(this, configuration),
+                "sochain"     => new SoChainApi_OLD(this, configuration),
                 "blockcypher" => new BlockCypherApi(this, configuration),
                 "insight"     => new InsightApi(this, configuration),
                 _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")

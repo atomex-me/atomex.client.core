@@ -30,10 +30,10 @@ namespace Atomex.Swaps.Ethereum
         public static TimeSpan InitiationTimeout = TimeSpan.FromMinutes(20);
         public static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(30);
         private EthereumConfig_ETH EthConfig => Currencies.Get<EthereumConfig_ETH>(Currency);
-        protected readonly EthereumAccount _account;
+        protected readonly EthereumAccount_OLD _account;
 
         public EthereumSwap(
-            EthereumAccount account,
+            EthereumAccount_OLD account,
             ICurrencies currencies)
             : base(account.Currency, currencies)
         {
@@ -64,7 +64,7 @@ namespace Atomex.Swaps.Ethereum
             {
                 try
                 {
-                    await EthereumAccount.AddressLocker
+                    await EthereumAccount_OLD.AddressLocker
                         .LockAsync(paymentTx.From, cancellationToken)
                         .ConfigureAwait(false);
 
@@ -103,7 +103,7 @@ namespace Atomex.Swaps.Ethereum
                 }
                 finally
                 {
-                    EthereumAccount.AddressLocker.Unlock(paymentTx.From);
+                    EthereumAccount_OLD.AddressLocker.Unlock(paymentTx.From);
                 }
 
                 swap.PaymentTx = paymentTx;
@@ -241,7 +241,7 @@ namespace Atomex.Swaps.Ethereum
 
             try
             {
-                await EthereumAccount.AddressLocker
+                await EthereumAccount_OLD.AddressLocker
                     .LockAsync(walletAddress.Address, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -301,7 +301,7 @@ namespace Atomex.Swaps.Ethereum
             }
             finally
             {
-                EthereumAccount.AddressLocker.Unlock(walletAddress.Address);
+                EthereumAccount_OLD.AddressLocker.Unlock(walletAddress.Address);
             }
 
             swap.RedeemTx = redeemTx;
@@ -360,7 +360,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            using var addressLock = await EthereumAccount.AddressLocker
+            using var addressLock = await EthereumAccount_OLD.AddressLocker
                 .GetLockAsync(walletAddress.Address, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -491,7 +491,7 @@ namespace Atomex.Swaps.Ethereum
 
             try
             {
-                await EthereumAccount.AddressLocker
+                await EthereumAccount_OLD.AddressLocker
                     .LockAsync(walletAddress.Address, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -550,7 +550,7 @@ namespace Atomex.Swaps.Ethereum
             }
             finally
             {
-                EthereumAccount.AddressLocker.Unlock(walletAddress.Address);
+                EthereumAccount_OLD.AddressLocker.Unlock(walletAddress.Address);
             }
 
             swap.RefundTx = refundTx;
@@ -679,7 +679,7 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
 
                 // get transactions & update balance for address async
-                _ = AddressHelper.UpdateAddressBalanceAsync<EthereumWalletScanner, EthereumAccount>(
+                _ = AddressHelper.UpdateAddressBalanceAsync<EthereumWalletScanner_OLD, EthereumAccount_OLD>(
                     account: _account,
                     address: swap.ToAddress,
                     cancellationToken: cancellationToken);

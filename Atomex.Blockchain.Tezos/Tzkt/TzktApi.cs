@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -42,7 +43,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
         #region IBlockchainApi
 
-        public async Task<(decimal balance, Error error)> GetBalanceAsync(
+        public async Task<(BigInteger balance, Error error)> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -52,7 +53,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             if (error != null)
                 return (balance: 0, error);
 
-            return (balance: account.Balance.ToTez(), error: null);
+            return (balance: account.Balance, error: null);
         }
 
         public async Task<(Transaction tx, Error error)> GetTransactionAsync(

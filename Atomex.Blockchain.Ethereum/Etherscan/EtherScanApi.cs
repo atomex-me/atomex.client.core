@@ -66,7 +66,7 @@ namespace Atomex.Blockchain.Ethereum.Etherscan
 
         #region IBlockchainApi
 
-        public async Task<(decimal balance, Error error)> GetBalanceAsync(
+        public async Task<(BigInteger balance, Error error)> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -90,7 +90,7 @@ namespace Atomex.Blockchain.Ethereum.Etherscan
 
             if (!response.IsSuccessStatusCode)
                 return (
-                    balance: 0m,
+                    balance: 0,
                     error: new Error((int)response.StatusCode, "Error status code received"));
 
             var json = JsonConvert.DeserializeObject<JObject>(content);
@@ -98,8 +98,8 @@ namespace Atomex.Blockchain.Ethereum.Etherscan
             var result = json["result"];
 
             var balance = result != null
-                ? EthereumHelper.WeiToEth(BigInteger.Parse(result.Value<string>()))
-                : 0m;
+                ? BigInteger.Parse(result.Value<string>())
+                : 0;
 
             var error = result == null
                 ? new Error(Errors.GetBalanceError, "Invalid response")

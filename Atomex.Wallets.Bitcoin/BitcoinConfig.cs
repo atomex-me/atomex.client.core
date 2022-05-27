@@ -1,5 +1,8 @@
-﻿using NBitcoin;
+﻿using System.Numerics;
 
+using NBitcoin;
+
+using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Wallets.Abstract;
@@ -25,10 +28,10 @@ namespace Atomex.Wallets.Bitcoin
                 .ToString();
         }
 
-        public long CoinToSatoshi(decimal coins) =>
-            (long)(coins * DecimalsMultiplier);
+        public BigInteger CoinToSatoshi(decimal coins) =>
+            coins.Multiply(BigInteger.Pow(10, Decimals));
 
-        public decimal SatoshiToCoin(long satoshi) =>
-            satoshi / DecimalsMultiplier;
+        public decimal SatoshiToCoin(BigInteger satoshi) =>
+            satoshi.ToDecimal(Decimals);
     }
 }

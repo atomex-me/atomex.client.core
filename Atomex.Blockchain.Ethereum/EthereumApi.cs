@@ -52,7 +52,7 @@ namespace Atomex.Blockchain.Ethereum
                 .EstimateGasAsync(to, from, value, gasPrice, gasLimit, data, cancellationToken);
         }
 
-        public Task<(decimal balance, Error error)> GetBalanceAsync(
+        public Task<(BigInteger balance, Error error)> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {

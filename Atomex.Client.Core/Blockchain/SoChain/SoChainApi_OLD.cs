@@ -18,7 +18,7 @@ using Atomex.Common;
 
 namespace Atomex.Blockchain.SoChain
 {
-    public class SoChainApi : BitcoinBasedBlockchainApi_OLD
+    public class SoChainApi_OLD : BitcoinBasedBlockchainApi_OLD
     {
         internal class SendTx
         {
@@ -317,7 +317,7 @@ namespace Atomex.Blockchain.SoChain
         public string BaseUrl { get; } = "https://sochain.com/";
         public string ProxyUrl { get; } = "https://test.atomex.me/";
 
-        public SoChainApi(BitcoinBasedConfig_OLD currency, string baseUri)
+        public SoChainApi_OLD(BitcoinBasedConfig_OLD currency, string baseUri)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
 
@@ -330,7 +330,7 @@ namespace Atomex.Blockchain.SoChain
             BaseUrl = baseUri;
         }
 
-        public SoChainApi(BitcoinBasedConfig_OLD currency, IConfiguration configuration)
+        public SoChainApi_OLD(BitcoinBasedConfig_OLD currency, IConfiguration configuration)
         {
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
 

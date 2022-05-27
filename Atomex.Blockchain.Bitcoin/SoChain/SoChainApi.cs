@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Numerics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,6 +26,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
         public string BaseUri { get; set; }
         public string Network { get; set; }
         public int RequestLimitDelayMs { get; set; } = 1000;
+        public int Decimals { get; set; } = 8;
     }
 
     public class SoChainApi : IBitcoinApi, IBlockchainSwapApi
@@ -56,7 +58,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
 
         #region IBlockchainApi
 
-        public async Task<(decimal balance, Error error)> GetBalanceAsync(
+        public async Task<(BigInteger balance, Error error)> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -76,7 +78,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
                 .ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
-                return (balance: 0m, error: new Error((int)response.StatusCode, "Error status code received"));
+                return (balance: 0, error: new Error((int)response.StatusCode, "Error status code received"));
 
             var data = JsonConvert.DeserializeObject<JObject>(content)?["data"];
 
@@ -84,19 +86,21 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
                 throw new Exception($"Invalid response data");
 
             if (data?["txs"] is not JArray txs || !txs.Any())
-                return (balance: 0m, error: null);
+                return (balance: 0, error: null);
 
-            var result = 0m;
+            var balance = 0m;
 
             foreach (var tx in txs)
             {
                 var isConfirmed = tx["confirmations"]?.Value<long>() > 0;
 
                 if (isConfirmed)
-                    result += tx["value"]?.Value<decimal>() ?? 0;
+                    balance += tx["value"]?.Value<decimal>() ?? 0;
             }
 
-            return (balance: 0m, error: null);
+            var balanceInSatoshi = balance.Multiply(BigInteger.Pow(10, _settings.Decimals));
+
+            return (balance: balanceInSatoshi, error: null);
         }
 
         public async Task<(Transaction tx, Error error)> GetTransactionAsync(

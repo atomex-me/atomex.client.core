@@ -15,9 +15,9 @@ namespace Atomex.Wallet.Tezos
 {
     public class TezosTokensScanner_OLD : ICurrencyHdWalletScanner_OLD
     {
-        private readonly TezosAccount _tezosAccount;
+        private readonly TezosAccount_OLD _tezosAccount;
 
-        public TezosTokensScanner_OLD(TezosAccount tezosAccount)
+        public TezosTokensScanner_OLD(TezosAccount_OLD tezosAccount)
         {
             _tezosAccount = tezosAccount ?? throw new ArgumentNullException(nameof(tezosAccount));
         }
@@ -36,7 +36,7 @@ namespace Atomex.Wallet.Tezos
                 if (xtzAddresses.Count() <= 1)
                 {
                     // firstly scan xtz
-                    await new TezosWalletScanner(_tezosAccount)
+                    await new TezosWalletScanner_OLD(_tezosAccount)
                         .ScanAsync(cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -148,7 +148,7 @@ namespace Atomex.Wallet.Tezos
                 if (xtzAddresses.Count() <= 1)
                 {
                     // firstly scan xtz
-                    await new TezosWalletScanner(_tezosAccount)
+                    await new TezosWalletScanner_OLD(_tezosAccount)
                         .ScanAsync(cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 

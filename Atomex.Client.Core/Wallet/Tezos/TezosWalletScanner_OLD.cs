@@ -13,7 +13,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class TezosWalletScanner : ICurrencyHdWalletScanner_OLD
+    public class TezosWalletScanner_OLD : ICurrencyHdWalletScanner_OLD
     {
         private const int DefaultInternalLookAhead = 2;
         private const int DefaultExternalLookAhead = 2;
@@ -21,10 +21,10 @@ namespace Atomex.Wallet.Tezos
 
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
-        private TezosAccount Account { get; }
+        private TezosAccount_OLD Account { get; }
         private CurrencyConfig_OLD Currency => Account.Currencies.GetByName(Account.Currency);
 
-        public TezosWalletScanner(TezosAccount account)
+        public TezosWalletScanner_OLD(TezosAccount_OLD account)
         {
             Account = account ?? throw new ArgumentNullException(nameof(account));
         }

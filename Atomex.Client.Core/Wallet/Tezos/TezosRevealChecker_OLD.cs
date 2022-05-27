@@ -3,25 +3,27 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain.Tezos.Tzkt;
+
 using Serilog;
+
+using Atomex.Blockchain.Tezos.Tzkt;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class TezosAllocationChecker
+    public partial class TezosRevealChecker_OLD
     {
-        private readonly Atomex.TezosConfig_OLD _tezos;
+        private readonly TezosConfig_OLD _tezos;
         private readonly IDictionary<string, TezosAddressInfo> _addresses;
 
-        public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromSeconds(60);
+        public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromSeconds(30);
 
-        public TezosAllocationChecker(Atomex.TezosConfig_OLD tezos)
+        public TezosRevealChecker_OLD(TezosConfig_OLD tezos)
         {
             _tezos = tezos;
             _addresses = new Dictionary<string, TezosAddressInfo>();
         }
 
-        public async Task<bool> IsAllocatedAsync(
+        public async Task<bool> IsRevealedAsync(
             string address,
             CancellationToken cancellationToken)
         {
@@ -30,27 +32,27 @@ namespace Atomex.Wallet.Tezos
                 if (_addresses.TryGetValue(address, out var info))
                 {
                     if (info.LastCheckTimeUtc + UpdateInterval > DateTime.UtcNow)
-                        return info.IsAllocated;
+                        return info.IsRevealed;
                 }
             }
 
-            var isAllocatedResult = await new TzktApi_OLD(_tezos)
-                .IsAllocatedAsync(address, cancellationToken)
+            var isRevealedResult = await new TzktApi_OLD(_tezos)
+                .IsRevealedAsync(address, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (isAllocatedResult == null)
+            if (isRevealedResult == null)
             {
-                Log.Error("Error while checking allocation status for address {@address}", address);
+                Log.Error("Error while checking reveal status for address {@address}", address);
 
                 return false;
             }
 
-            if (isAllocatedResult.HasError && isAllocatedResult.Error.Code != (int)HttpStatusCode.NotFound)
+            if (isRevealedResult.HasError && isRevealedResult.Error.Code != (int)HttpStatusCode.NotFound)
             {
-                Log.Error("Error while checking allocation status for address {@address}. Code: {@code}. Description: {@desc}",
+                Log.Error("Error while checking reveal status for address {@address}. Code: {@code}. Description: {@desc}",
                     address,
-                    isAllocatedResult.Error.Code,
-                    isAllocatedResult.Error.Description);
+                    isRevealedResult.Error.Code,
+                    isRevealedResult.Error.Description);
 
                 return false;
             }
@@ -60,7 +62,7 @@ namespace Atomex.Wallet.Tezos
                 if (_addresses.TryGetValue(address, out var info))
                 {
                     info.Address = address;
-                    info.IsAllocated = isAllocatedResult.Value;
+                    info.IsRevealed = isRevealedResult.Value;
                     info.LastCheckTimeUtc = DateTime.UtcNow;
                 }
                 else
@@ -68,13 +70,13 @@ namespace Atomex.Wallet.Tezos
                     _addresses.Add(address, new TezosAddressInfo()
                     {
                         Address = address,
-                        IsAllocated = isAllocatedResult.Value,
+                        IsRevealed = isRevealedResult.Value,
                         LastCheckTimeUtc = DateTime.UtcNow
                     });
                 }
             }
 
-            return isAllocatedResult.Value;
+            return isRevealedResult.Value;
         }
     }
 }

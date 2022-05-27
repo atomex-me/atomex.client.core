@@ -104,19 +104,19 @@ namespace Atomex.Wallet
                 "TBTC" or
                 "WBTC" => new Erc20WalletScanner(
                     Account.GetCurrencyAccount<Erc20Account>(currency),
-                    Account.GetCurrencyAccount<EthereumAccount>("ETH")),
+                    Account.GetCurrencyAccount<EthereumAccount_OLD>("ETH")),
 
-                "ETH" => new EthereumWalletScanner(
-                    Account.GetCurrencyAccount<EthereumAccount>(currency)),
+                "ETH" => new EthereumWalletScanner_OLD(
+                    Account.GetCurrencyAccount<EthereumAccount_OLD>(currency)),
 
-                "XTZ" => new TezosWalletScanner(
-                    Account.GetCurrencyAccount<TezosAccount>(currency)),
+                "XTZ" => new TezosWalletScanner_OLD(
+                    Account.GetCurrencyAccount<TezosAccount_OLD>(currency)),
 
                 "TZBTC" or
                 "KUSD" or
                 "FA12" or
                 "FA2" => new TezosTokensScanner_OLD(
-                    Account.GetCurrencyAccount<TezosAccount>(TezosConfig_OLD.Xtz)),
+                    Account.GetCurrencyAccount<TezosAccount_OLD>(TezosConfig_OLD.Xtz)),
 
                 _ => throw new NotSupportedException($"Currency {currency} not supported")
             };

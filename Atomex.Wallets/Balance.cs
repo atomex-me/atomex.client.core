@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 
 namespace Atomex.Wallets
 {
@@ -15,22 +16,22 @@ namespace Atomex.Wallets
             total: 0,
             lastUpdateTime: DateTimeOffset.UtcNow);
 
-        public decimal Total { get; set; }
-        public decimal Received { get; set; }
-        public decimal Sent { get; set; }
-        public decimal UnconfirmedIncome { get; set; }
-        public decimal UnconfirmedOutcome { get; set; }
+        public BigInteger Total { get; set; }
+        public BigInteger Received { get; set; }
+        public BigInteger Sent { get; set; }
+        public BigInteger UnconfirmedIncome { get; set; }
+        public BigInteger UnconfirmedOutcome { get; set; }
         /// <summary>
         /// Last update time in UTC
         /// </summary>
         public DateTimeOffset LastUpdateTime { get; set; }
 
         public Balance(
-            decimal total,
-            decimal received,
-            decimal sent,
-            decimal unconfirmedIncome,
-            decimal unconfirmedOutcome,
+            BigInteger total,
+            BigInteger received,
+            BigInteger sent,
+            BigInteger unconfirmedIncome,
+            BigInteger unconfirmedOutcome,
             DateTimeOffset lastUpdateTime)
         {
             Total              = total;
@@ -47,7 +48,7 @@ namespace Atomex.Wallets
         }
 
         public Balance(
-            decimal total,
+            BigInteger total,
             DateTimeOffset lastUpdateTime)
             : this(total, 0, 0, 0, 0, lastUpdateTime)
         {

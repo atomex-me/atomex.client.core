@@ -176,11 +176,9 @@ namespace Atomex.Wallets.Bitcoin
         {
             var balance = new Balance(0, 0, 0, 0, 0, DateTime.UtcNow);
 
-            var digitsMultiplier = Account.Configuration.DecimalsMultiplier;
-
             foreach (var output in outputs)
             {
-                var value = output.Value / digitsMultiplier;
+                var value = output.Value;
 
                 if (output.IsConfirmed) {
                     balance.Received += value;

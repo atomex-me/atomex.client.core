@@ -47,7 +47,7 @@ namespace Atomex.Wallets.Ethereum.Erc20
             IErc20Api api,
             CancellationToken cancellationToken = default)
         {
-            var (balanceInUnits, error) = await api
+            var (balanceInTokenUnits, error) = await api
                 .GetErc20BalanceAsync(address, token: Account.Currency, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -57,9 +57,9 @@ namespace Atomex.Wallets.Ethereum.Erc20
                 return (hasActivity: false, error);
             }
 
-            var balance = EthereumHelper.BaseTokenUnitsToTokens(
-                tokenUnits: balanceInUnits,
-                decimalsMultiplier: Account.Configuration.DecimalsMultiplier);
+            //var balance = EthereumHelper.BaseTokenUnitsToTokens(
+            //    tokenUnits: balanceInUnits,
+            //    decimalsMultiplier: Account.Configuration.DecimalsMultiplier);
 
             var (txsCount, txsCountError) = await api
                 .GetTransactionsCountAsync(
@@ -77,7 +77,7 @@ namespace Atomex.Wallets.Ethereum.Erc20
             var counter = txsCount.GetValueOrDefault(0);
 
             if (storedAddress == null ||
-                storedAddress.Balance.Total != balance ||
+                storedAddress.Balance.Total != balanceInTokenUnits ||
                 storedAddress.Counter != counter) // todo: control new input transactions without balance changes
             {
                 // save changed address to be able to scan transactions later
@@ -85,14 +85,14 @@ namespace Atomex.Wallets.Ethereum.Erc20
             }
 
             var hasActivity = (storedAddress != null && (storedAddress.HasActivity || storedAddress.Balance.Total > 0 || storedAddress.Counter > 0))
-                || balance > 0
+                || balanceInTokenUnits > 0
                 || counter > 0; // todo: fix for zero balances account with input transactions only
 
             var updatedAddress = new WalletAddress
             {
                 Currency    = Account.Currency,
                 Address     = address,
-                Balance     = new Balance(balance, DateTimeOffset.UtcNow),
+                Balance     = new Balance(balanceInTokenUnits, DateTimeOffset.UtcNow),
                 WalletId    = walletInfo.Id,
                 KeyPath     = keyPath,
                 KeyIndex    = !walletInfo.IsSingleKeyWallet

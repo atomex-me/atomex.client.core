@@ -11,18 +11,18 @@ using Serilog;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class EthereumWalletScanner : ICurrencyHdWalletScanner_OLD
+    public class EthereumWalletScanner_OLD : ICurrencyHdWalletScanner_OLD
     {
         private const int DefaultInternalLookAhead = 1;
         private const int DefaultExternalLookAhead = 1;
 
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
-        private EthereumAccount Account { get; }
+        private EthereumAccount_OLD Account { get; }
         private CurrencyConfig_OLD Currency => Account.Currencies.GetByName(Account.Currency);
 
 
-        public EthereumWalletScanner(EthereumAccount account)
+        public EthereumWalletScanner_OLD(EthereumAccount_OLD account)
         {
             Account = account ?? throw new ArgumentNullException(nameof(account));
         }

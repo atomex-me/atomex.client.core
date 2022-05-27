@@ -117,7 +117,7 @@ namespace Atomex.Wallets.Tezos
             }
 
             if (storedAddress == null ||
-                storedAddress.Balance.Total != account.Balance.ToTez() ||
+                storedAddress.Balance.Total != account.Balance ||
                 storedAddress.Counter != account.Counter ||
                 storedAddress.Balance.LastUpdateTime < account.LastActivityTime)
             {
@@ -131,7 +131,7 @@ namespace Atomex.Wallets.Tezos
                 {
                     Currency = Account.Currency,
                     Address  = address,
-                    Balance  = new Balance(account.Balance.ToTez(), DateTimeOffset.UtcNow),
+                    Balance  = new Balance(account.Balance, DateTimeOffset.UtcNow),
                     WalletId = walletInfo.Id,
                     KeyPath  = keyPath,
                     KeyIndex = !walletInfo.IsSingleKeyWallet

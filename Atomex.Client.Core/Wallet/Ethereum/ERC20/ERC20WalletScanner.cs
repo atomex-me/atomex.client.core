@@ -24,9 +24,9 @@ namespace Atomex.Wallet.Ethereum
         protected int ExternalLookAhead { get; } = DefaultExternalLookAhead;
         private EthereumTokens.Erc20Config Currency => Account.Currencies.Get<EthereumTokens.Erc20Config>(Account.Currency);
         private Erc20Account Account { get; }
-        private EthereumAccount EthereumAccount { get; }
+        private EthereumAccount_OLD EthereumAccount { get; }
 
-        public Erc20WalletScanner(Erc20Account account, EthereumAccount ethereumAccount)
+        public Erc20WalletScanner(Erc20Account account, EthereumAccount_OLD ethereumAccount)
         {
             Account = account ?? throw new ArgumentNullException(nameof(account));
             EthereumAccount = ethereumAccount ?? throw new ArgumentNullException(nameof(ethereumAccount));

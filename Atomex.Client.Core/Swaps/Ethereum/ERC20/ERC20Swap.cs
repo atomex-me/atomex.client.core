@@ -27,13 +27,13 @@ namespace Atomex.Swaps.Ethereum
     public class Erc20Swap : CurrencySwap
     {
         private Erc20Account Erc20Account { get; }
-        private EthereumAccount EthereumAccount { get; }
+        private EthereumAccount_OLD EthereumAccount { get; }
         private Erc20Config Erc20Config => Currencies.Get<Erc20Config>(Currency);
         private EthereumConfig_ETH EthConfig => Currencies.Get<EthereumConfig_ETH>(EthereumAccount.Currency);
 
         public Erc20Swap(
             Erc20Account account,
-            EthereumAccount ethereumAccount,
+            EthereumAccount_OLD ethereumAccount,
             ICurrencies currencies)
             : base(account.Currency, currencies)
         {
@@ -65,7 +65,7 @@ namespace Atomex.Swaps.Ethereum
             {
                 try
                 {
-                    await EthereumAccount.AddressLocker
+                    await EthereumAccount_OLD.AddressLocker
                         .LockAsync(paymentTx.From, cancellationToken)
                         .ConfigureAwait(false);
 
@@ -127,7 +127,7 @@ namespace Atomex.Swaps.Ethereum
                 }
                 finally
                 {
-                    EthereumAccount.AddressLocker.Unlock(paymentTx.From);
+                    EthereumAccount_OLD.AddressLocker.Unlock(paymentTx.From);
                 }
 
                 swap.PaymentTx = paymentTx;
@@ -264,7 +264,7 @@ namespace Atomex.Swaps.Ethereum
 
             try
             {
-                await EthereumAccount.AddressLocker
+                await EthereumAccount_OLD.AddressLocker
                     .LockAsync(walletAddress.Address, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -324,7 +324,7 @@ namespace Atomex.Swaps.Ethereum
             }
             finally
             {
-                EthereumAccount.AddressLocker.Unlock(walletAddress.Address);
+                EthereumAccount_OLD.AddressLocker.Unlock(walletAddress.Address);
             }
 
             swap.RedeemTx = redeemTx;
@@ -383,7 +383,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            using var addressLock = await EthereumAccount.AddressLocker
+            using var addressLock = await EthereumAccount_OLD.AddressLocker
                 .GetLockAsync(walletAddress.Address, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -514,7 +514,7 @@ namespace Atomex.Swaps.Ethereum
 
             try
             {
-                await EthereumAccount.AddressLocker
+                await EthereumAccount_OLD.AddressLocker
                     .LockAsync(walletAddress.Address, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -573,7 +573,7 @@ namespace Atomex.Swaps.Ethereum
             }
             finally
             {
-                EthereumAccount.AddressLocker.Unlock(walletAddress.Address);
+                EthereumAccount_OLD.AddressLocker.Unlock(walletAddress.Address);
             }
 
             swap.RefundTx = refundTx;
@@ -704,7 +704,7 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
 
                 // get transactions & update balance for address async
-                _ = AddressHelper.UpdateAddressBalanceAsync<Erc20WalletScanner, Erc20Account, EthereumAccount>(
+                _ = AddressHelper.UpdateAddressBalanceAsync<Erc20WalletScanner, Erc20Account, EthereumAccount_OLD>(
                     account: Erc20Account,
                     baseAccount: EthereumAccount,
                     address: swap.ToAddress,

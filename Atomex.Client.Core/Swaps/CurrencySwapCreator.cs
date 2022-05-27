@@ -29,20 +29,20 @@ namespace Atomex.Swaps
 
                 Erc20Config _ => new Erc20Swap(
                     account: account.GetCurrencyAccount<Erc20Account>(currency.Name),
-                    ethereumAccount: account.GetCurrencyAccount<EthereumAccount>("ETH"),
+                    ethereumAccount: account.GetCurrencyAccount<EthereumAccount_OLD>("ETH"),
                     currencies: account.Currencies),
 
                 EthereumConfig_ETH _ => new EthereumSwap(
-                    account: account.GetCurrencyAccount<EthereumAccount>(currency.Name),
+                    account: account.GetCurrencyAccount<EthereumAccount_OLD>(currency.Name),
                     currencies: account.Currencies),
 
                 Fa12Config_OLD _ => new Fa12Swap(
                     account: account.GetCurrencyAccount<Fa12Account_OLD>(currency.Name),
-                    tezosAccount: account.GetCurrencyAccount<TezosAccount>(TezosConfig_OLD.Xtz),
+                    tezosAccount: account.GetCurrencyAccount<TezosAccount_OLD>(TezosConfig_OLD.Xtz),
                     currencies: account.Currencies),
 
                 TezosConfig_OLD _ => new TezosSwap(
-                    account:   account.GetCurrencyAccount<TezosAccount>(currency.Name),
+                    account:   account.GetCurrencyAccount<TezosAccount_OLD>(currency.Name),
                     currencies: account.Currencies),
 
                 _ => throw new NotSupportedException($"Not supported currency {currency.Name}")

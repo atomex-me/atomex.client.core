@@ -16,11 +16,5 @@ namespace Atomex.Blockchain.Ethereum
 
         public static BigInteger GweiToWei(decimal gwei) =>
             new(gwei * WeiInGwei);
-
-        public static BigInteger TokensToBaseTokenUnits(decimal tokens, decimal decimalsMultiplier) =>
-            new(tokens * decimalsMultiplier);
-
-        public static decimal BaseTokenUnitsToTokens(BigInteger tokenUnits, decimal decimalsMultiplier) =>
-            (decimal)tokenUnits / decimalsMultiplier; // todo: use BigInteger or BigDecimal
     }
 }

@@ -78,7 +78,7 @@ namespace Atomex.Wallets.Abstract
             CancellationToken cancellationToken = default)
         {
             var error = await GetWalletScanner()
-                .ScanAsync(skipUsedAddresses, cancellationToken)
+                .UpdateBalanceAsync(skipUsedAddresses, cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)
@@ -96,7 +96,7 @@ namespace Atomex.Wallets.Abstract
             CancellationToken cancellationToken = default)
         {
             var error = await GetWalletScanner()
-                .ScanAsync(walletId, skipUsedAddresses, cancellationToken)
+                .UpdateBalanceAsync(walletId, skipUsedAddresses, cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)

@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Common;
@@ -7,7 +8,7 @@ namespace Atomex.Blockchain.Abstract
 {
     public interface IBlockchainApi
     {
-        Task<(decimal balance, Error error)> GetBalanceAsync(
+        Task<(BigInteger balance, Error error)> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default);
 

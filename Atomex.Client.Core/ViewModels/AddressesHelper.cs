@@ -37,7 +37,7 @@ namespace Atomex.ViewModels
                     return Enumerable.Empty<WalletAddressViewModel>();
 
                 var tezosAccount = account
-                    .GetCurrencyAccount<TezosAccount>(TezosConfig_OLD.Xtz);
+                    .GetCurrencyAccount<TezosAccount_OLD>(TezosConfig_OLD.Xtz);
 
                 var unspentTezosAddresses = await tezosAccount
                     .GetUnspentAddressesAsync()

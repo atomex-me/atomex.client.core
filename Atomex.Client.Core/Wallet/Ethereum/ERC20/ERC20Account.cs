@@ -93,7 +93,7 @@ namespace Atomex.Wallet.Ethereum
                 addressFeeUsage.WalletAddress.Address,
                 addressFeeUsage.WalletAddress.AvailableBalance());
 
-            using var addressLock = await EthereumAccount.AddressLocker
+            using var addressLock = await EthereumAccount_OLD.AddressLocker
                 .GetLockAsync(addressFeeUsage.WalletAddress.Address, cancellationToken)
                 .ConfigureAwait(false);
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -41,7 +42,7 @@ namespace Atomex.Blockchain.Bitcoin
                 .BroadcastAsync(transaction, cancellationToken);
         }
 
-        public Task<(decimal balance, Error error)> GetBalanceAsync(
+        public Task<(BigInteger balance, Error error)> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {

@@ -5,7 +5,7 @@ namespace Atomex.Wallets.Abstract
     public abstract class CurrencyConfig
     {
         public string Name { get; }
-        public decimal DecimalsMultiplier { get; }
+        public int Decimals { get; }
 
         public abstract string AddressFromKey(
             SecureBytes publicKey,

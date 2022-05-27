@@ -25,7 +25,7 @@ namespace Atomex.Wallet.Tezos
             ICurrencies currencies,
             IHdWallet_OLD wallet,
             IAccountDataRepository_OLD dataRepository,
-            TezosAccount tezosAccount)
+            TezosAccount_OLD tezosAccount)
             : base(currency,
                   "FA2",
                   tokenContract,
@@ -119,7 +119,7 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             // temporary fix: check operation sequence
-            await TezosOperationsSequencer
+            await TezosOperationsSequencer_OLD
                 .WaitAsync(from, _tezosAccount, cancellationToken)
                 .ConfigureAwait(false);
 

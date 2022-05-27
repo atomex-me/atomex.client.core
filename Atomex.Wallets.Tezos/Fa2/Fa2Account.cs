@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
 
+using Atomex.Blockchain.Common;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Wallets.Abstract;
@@ -70,9 +71,9 @@ namespace Atomex.Wallets.Tezos.Fa2
             return SendTransferAsync(
                 from: from,
                 to: to,
-                amountInTokens: TezosHelper.TokensToBaseTokenUnits(
-                    amount,
-                    Configuration.DecimalsMultiplier),
+                amountInTokens: TokensHelper.TokensToTokenUnits(
+                    tokens: amount,
+                    decimals: Configuration.Decimals),
                 fee: fee,
                 gasLimit: gasLimit,
                 storageLimit: storageLimit,

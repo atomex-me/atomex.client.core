@@ -75,7 +75,7 @@ namespace Atomex.Wallet
                     wallet,
                     dataRepository),
 
-                "ETH" => new EthereumAccount(
+                "ETH" => new EthereumAccount_OLD(
                     currency,
                     currencies,
                     wallet,
@@ -90,9 +90,9 @@ namespace Atomex.Wallet
                     currencies: currencies,
                     wallet: wallet,
                     dataRepository: dataRepository,
-                    tezosAccount: baseChainAccount as TezosAccount),
+                    tezosAccount: baseChainAccount as TezosAccount_OLD),
 
-                "XTZ" => new TezosAccount(
+                "XTZ" => new TezosAccount_OLD(
                     currencies,
                     wallet,
                     dataRepository),
@@ -108,7 +108,7 @@ namespace Atomex.Wallet
             ICurrencies currencies,
             IHdWallet_OLD wallet,
             IAccountDataRepository_OLD dataRepository,
-            TezosAccount tezosAccount)
+            TezosAccount_OLD tezosAccount)
         {
             return tokenType switch
             {

@@ -20,7 +20,7 @@ using Atomex.Wallets.Common;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class EthereumAccount : CurrencyAccount_OLD, IEstimatable, IHasTokens
+    public class EthereumAccount_OLD : CurrencyAccount_OLD, IEstimatable, IHasTokens
     {
         private static ResourceLocker<string> _addressLocker;
         public static ResourceLocker<string> AddressLocker
@@ -38,7 +38,7 @@ namespace Atomex.Wallet.Ethereum
             }
         }
 
-        public EthereumAccount(
+        public EthereumAccount_OLD(
             string currency,
             ICurrencies currencies,
             IHdWallet_OLD wallet,

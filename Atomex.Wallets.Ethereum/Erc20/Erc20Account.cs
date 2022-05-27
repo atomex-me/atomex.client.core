@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
 
+using Atomex.Blockchain.Common;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Wallets.Abstract;
 using Error = Atomex.Common.Error;
@@ -68,9 +69,9 @@ namespace Atomex.Wallets.Ethereum.Erc20
             return SendTransferAsync(
                 from: from,
                 to: to,
-                amountInTokens: EthereumHelper.TokensToBaseTokenUnits(
-                    amount,
-                    Configuration.DecimalsMultiplier),
+                amountInTokens: TokensHelper.TokensToTokenUnits(
+                    tokens: amount,
+                    decimals: Configuration.Decimals),
                 gasPrice: gasPrice,
                 gasLimit: gasLimit,
                 nonce: nonce,

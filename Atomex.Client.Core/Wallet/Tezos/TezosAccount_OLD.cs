@@ -17,14 +17,14 @@ using Atomex.Wallets.Common;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class TezosAccount : CurrencyAccount_OLD, IEstimatable, IHasTokens
+    public class TezosAccount_OLD : CurrencyAccount_OLD, IEstimatable, IHasTokens
     {
-        private readonly TezosRevealChecker _tezosRevealChecker;
-        private readonly TezosAllocationChecker _tezosAllocationChecker;
+        private readonly TezosRevealChecker_OLD _tezosRevealChecker;
+        private readonly TezosAllocationChecker_OLD _tezosAllocationChecker;
 
         public readonly ResourceLocker<string> AddressLocker;
 
-        public TezosAccount(
+        public TezosAccount_OLD(
             ICurrencies currencies,
             IHdWallet_OLD wallet,
             IAccountDataRepository_OLD dataRepository)
@@ -32,8 +32,8 @@ namespace Atomex.Wallet.Tezos
         {
             var xtz = Config;
 
-            _tezosRevealChecker = new TezosRevealChecker(xtz);
-            _tezosAllocationChecker = new TezosAllocationChecker(xtz);
+            _tezosRevealChecker = new TezosRevealChecker_OLD(xtz);
+            _tezosAllocationChecker = new TezosAllocationChecker_OLD(xtz);
 
             AddressLocker = new ResourceLocker<string>();
         }
@@ -111,7 +111,7 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             // temporary fix: check operation sequence
-            await TezosOperationsSequencer
+            await TezosOperationsSequencer_OLD
                 .WaitAsync(addressFeeUsage.WalletAddress.Address, this, cancellationToken)
                 .ConfigureAwait(false);
 

@@ -202,7 +202,7 @@ namespace Atomex.Services
                     return;
 
                 var tezosAccount = _account
-                    .GetCurrencyAccount<TezosAccount>(TezosConfig_OLD.Xtz);
+                    .GetCurrencyAccount<TezosAccount_OLD>(TezosConfig_OLD.Xtz);
 
                 var tezosTokensScanner = new TezosTokensScanner_OLD(tezosAccount);
 
