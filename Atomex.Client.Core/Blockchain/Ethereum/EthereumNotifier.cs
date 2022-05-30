@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Atomex.Web;
@@ -11,9 +12,12 @@ namespace Atomex.Blockchain.Ethereum
     {
         public string BaseUrl { get; }
         private readonly string _eventsWs;
-        private WebSocketClient _events;
         private readonly ILogger _log;
+
+        private WebSocketClient _events;
         private bool _isConnected;
+
+        private readonly ConcurrentDictionary<string, Action<string>> _actions = new();
 
         public EthereumNotifier(string baseUrl, string eventsWs, ILogger log)
         {
@@ -52,6 +56,7 @@ namespace Atomex.Blockchain.Ethereum
             try
             {
                 await _events.CloseAsync();
+                _actions.Clear();
             }
             catch (Exception e)
             {
@@ -66,12 +71,18 @@ namespace Atomex.Blockchain.Ethereum
 
         public Task SubscribeOnBalanceUpdate(string address, Action<string> handler)
         {
-            throw new NotImplementedException();
+            _actions.AddOrUpdate(address, handler, (_, _) => handler);
+            return Task.CompletedTask;
         }
 
         public Task SubscribeOnBalanceUpdate(IEnumerable<string> addresses, Action<string> handler)
         {
-            throw new NotImplementedException();
+            foreach (var address in addresses)
+            {
+                _actions.AddOrUpdate(address, handler, (_, _) => handler);
+            }
+
+            return Task.CompletedTask;
         }
     }
 }
