@@ -33,6 +33,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.MarketData", "Atomex
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Swaps", "Atomex.Swaps\Atomex.Swaps.csproj", "{929C2541-9438-4B41-81A9-FC38653CF761}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atomex.Tests", "Atomex.Tests\Atomex.Tests.csproj", "{D4AC5576-1BDF-4D0E-9426-43D880F454B4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
