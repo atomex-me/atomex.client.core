@@ -3,15 +3,12 @@ using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
-using System.Numerics;
 using System.Threading;
 using Atomex.Common;
-using Atomex.Core;
 using Atomex.Web;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
-using static System.String;
 
 
 namespace Atomex.Blockchain.Ethereum
@@ -127,7 +124,7 @@ namespace Atomex.Blockchain.Ethereum
                         var resultLength = await HttpHelper.GetAsyncResult<int>(
                                 baseUri: BaseUrl,
                                 requestUri: requestUri,
-                                responseHandler: (response, content) =>
+                                responseHandler: (_, content) =>
                                 {
                                     var json = JsonConvert.DeserializeObject<JObject>(content);
 
