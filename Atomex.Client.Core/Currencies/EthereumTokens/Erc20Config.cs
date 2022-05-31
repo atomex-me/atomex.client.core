@@ -75,8 +75,7 @@ namespace Atomex.EthereumTokens
                 ? decimal.Parse(configuration[nameof(MaxGasPriceInGwei)], CultureInfo.InvariantCulture)
                 : 650m;
 
-            Chain                      = ResolveChain(configuration);
-
+            ChainId                    = int.Parse(configuration[nameof(ChainId)], CultureInfo.InvariantCulture);
             ERC20ContractAddress       = configuration["ERC20Contract"];
             ERC20ContractBlockNumber   = ulong.Parse(configuration[nameof(ERC20ContractBlockNumber)], CultureInfo.InvariantCulture);
 
@@ -90,6 +89,7 @@ namespace Atomex.EthereumTokens
 
             TxExplorerUri              = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri         = configuration[nameof(AddressExplorerUri)];
+            InfuraApi                  = configuration[nameof(InfuraApi)];
             TransactionType            = typeof(EthereumTransaction);
 
             IsSwapAvailable            = true;

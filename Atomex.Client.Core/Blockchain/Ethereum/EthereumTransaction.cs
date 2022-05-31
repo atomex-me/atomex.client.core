@@ -171,8 +171,6 @@ namespace Atomex.Blockchain.Ethereum
             if (privateKey == null)
                 throw new ArgumentNullException(nameof(privateKey));
 
-            var chain = ethereumConfig.Chain;
-
             var tx = new LegacyTransactionChainId(
                 to: To,
                 amount: Amount,
@@ -180,7 +178,7 @@ namespace Atomex.Blockchain.Ethereum
                 gasPrice: GasPrice,
                 gasLimit: GasLimit,
                 data: Input,
-                chainId: (int)chain);
+                chainId: ethereumConfig.ChainId);
 
             var pkKey = privateKey.ToUnsecuredBytes();
             var key = new EthECKey(pkKey, true);

@@ -97,7 +97,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
                     ? erc20.TokensToTokenDigits(swap.RewardForRedeem)
                     : 0;
 
-                var api = new EtherScanApi(erc20);
+                var api = new EtherScanApi(erc20.Name, erc20.BlockchainApiBaseUri);
 
                 var initiateEventsResult = await api
                     .GetContractEventsAsync(
@@ -286,7 +286,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 
                 var erc20 = (Erc20Config)currency;
 
-                var api = new EtherScanApi(erc20);
+                var api = new EtherScanApi(erc20.Name, erc20.BlockchainApiBaseUri);
 
                 var transferEventsResult = await api
                     .GetContractEventsAsync(

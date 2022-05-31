@@ -124,12 +124,12 @@ namespace Atomex.Blockchain.Ethereum
             }
         }
 
-        private CurrencyConfig Currency { get; }
+        private string Currency { get; }
 
-        public EtherScanApi(EthereumConfig currency)
+        public EtherScanApi(string currency, string baseUrl)
         {
             Currency = currency;
-            BaseUrl = currency.BlockchainApiBaseUri;
+            BaseUrl = baseUrl;
         }
 
         public override async Task<Result<decimal>> GetBalanceAsync(
@@ -291,7 +291,7 @@ namespace Atomex.Blockchain.Ethereum
                        return new EthereumTransaction
                        {
                            Id            = tx["hash"].Value<string>(),
-                           Currency      = Currency.Name,
+                           Currency      = Currency,
                            Type          = BlockchainTransactionType.Unknown,
                            //State = state,
                            //CreationTime = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
@@ -711,7 +711,7 @@ namespace Atomex.Blockchain.Ethereum
                 result.Add(new EthereumTransaction
                 {
                     Id            = id,
-                    Currency      = Currency.Name,
+                    Currency      = Currency,
                     Type          = BlockchainTransactionType.Unknown,
                     State         = state,
                     CreationTime  = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),

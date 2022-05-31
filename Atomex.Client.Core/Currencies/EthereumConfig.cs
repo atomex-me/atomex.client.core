@@ -32,6 +32,11 @@ namespace Atomex
         protected const string DefaultFeeCode = "GAS";
         protected const long EthDigitsMultiplier = GweiInEth; //1_000_000_000;
 
+        public const int Mainnet = 1;
+        //public const int Ropsten = 3;
+        //public const int Rinkeby = 4;
+        //public const int Goerli = 5;
+
         public decimal GasLimit { get; protected set; }
         public decimal InitiateGasLimit { get; protected set; }
         public decimal InitiateWithRewardGasLimit { get; protected set; }
@@ -61,10 +66,11 @@ namespace Atomex
         public decimal EstimatedRedeemWithRewardFeeAmount(decimal gasPrice) =>
             EstimatedRedeemWithRewardGasLimit * gasPrice / GweiInEth;
 
-        public Chain Chain { get; protected set; }
+        public int ChainId { get; protected set; }
         public string BlockchainApiBaseUri { get; protected set; }
         public string SwapContractAddress { get; protected set; }
         public ulong SwapContractBlockNumber { get; protected set; }
+        public string InfuraApi { get; protected set; }
 
         public EthereumConfig()
         {
@@ -115,7 +121,7 @@ namespace Atomex
                 ? decimal.Parse(configuration[nameof(MaxGasPriceInGwei)], CultureInfo.InvariantCulture)
                 : 650m;
 
-            Chain                      = ResolveChain(configuration);
+            ChainId                    = int.Parse(configuration[nameof(ChainId)], CultureInfo.InvariantCulture);
             SwapContractAddress        = configuration["SwapContract"];
             SwapContractBlockNumber    = ulong.Parse(configuration[nameof(SwapContractBlockNumber)], CultureInfo.InvariantCulture);
 
@@ -126,23 +132,11 @@ namespace Atomex
 
             TxExplorerUri              = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri         = configuration[nameof(AddressExplorerUri)];
+            InfuraApi                  = configuration[nameof(InfuraApi)];
             TransactionType            = typeof(EthereumTransaction);
 
             IsSwapAvailable            = true;
             Bip44Code                  = Bip44.Ethereum;
-        }
-
-        protected static Chain ResolveChain(IConfiguration configuration)
-        {
-            var chain = configuration["Chain"]
-                .ToLowerInvariant();
-
-            return chain switch
-            {
-                "mainnet" => Chain.MainNet,
-                "ropsten" => Chain.Ropsten,
-                _ => throw new NotSupportedException($"Chain {chain} not supported")
-            };
         }
 
         protected static IBlockchainApi ResolveBlockchainApi(
@@ -154,7 +148,7 @@ namespace Atomex
 
             return blockchainApi switch
             {
-                "etherscan" => new EtherScanApi(currency),
+                "etherscan" => new EtherScanApi(currency.Name, currency.BlockchainApiBaseUri),
                 _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
             };
         }
@@ -264,7 +258,7 @@ namespace Atomex
         public async Task<decimal> GetGasPriceAsync(
             CancellationToken cancellationToken = default)
         {
-            if (Chain != Chain.MainNet)
+            if (ChainId != Mainnet)
                 return GasPriceInGwei;
 
             var gasPriceProvider = BlockchainApi as IGasPriceProvider;
