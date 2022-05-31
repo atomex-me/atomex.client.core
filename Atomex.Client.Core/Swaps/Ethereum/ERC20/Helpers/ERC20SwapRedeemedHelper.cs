@@ -26,7 +26,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 
                 var erc20 = (Atomex.EthereumTokens.Erc20Config)currency;
 
-                var api = new EtherScanApi(erc20);
+                var api = new EtherScanApi(erc20.Name, erc20.BlockchainApiBaseUri);
 
                 var redeemEventsResult = await api.GetContractEventsAsync(
                         address: erc20.SwapContractAddress,

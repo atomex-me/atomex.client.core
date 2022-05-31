@@ -24,7 +24,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
                 var ethereum = (EthereumConfig)currency;
                   
-                var api = new EtherScanApi(ethereum);
+                var api = new EtherScanApi(ethereum.Name, ethereum.BlockchainApiBaseUri);
 
                 var redeemEventsResult = await api
                     .GetContractEventsAsync(

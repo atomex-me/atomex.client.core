@@ -148,7 +148,7 @@ namespace Atomex
 
             return blockchainApi switch
             {
-                "etherscan" => new EtherScanApi(currency),
+                "etherscan" => new EtherScanApi(currency.Name, currency.BlockchainApiBaseUri),
                 _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
             };
         }
