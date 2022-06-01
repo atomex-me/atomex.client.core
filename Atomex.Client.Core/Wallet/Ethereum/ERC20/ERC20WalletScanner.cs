@@ -47,7 +47,7 @@ namespace Atomex.Wallet.Ethereum
 
             var txs = new List<EthereumTransaction>();
 
-            var api = new EtherScanApi(currency);
+            var api = new EtherScanApi(currency.Name, currency.BlockchainApiBaseUri);
 
             var lastBlockNumberResult = await api
                 .GetBlockNumber()
@@ -163,7 +163,7 @@ namespace Atomex.Wallet.Ethereum
                 address);
 
             var txs = new List<EthereumTransaction>();
-            var api = new EtherScanApi(currency);
+            var api = new EtherScanApi(currency.Name, currency.BlockchainApiBaseUri);
 
             var lastBlockNumberResult = await api
                 .GetBlockNumber()
@@ -229,7 +229,7 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             var currency = Currency;
-            var api = new EtherScanApi(currency);
+            var api = new EtherScanApi(currency.Name, currency.BlockchainApiBaseUri);
 
             var approveEventsResult = await api
                 .GetContractEventsAsync(

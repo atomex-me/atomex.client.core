@@ -88,7 +88,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
                 var requiredAmountInWei = EthereumConfig.EthToWei(requiredAmountInEth);
                 var requiredRewardForRedeemInWei = EthereumConfig.EthToWei(swap.RewardForRedeem);
 
-                var api = new EtherScanApi(ethereum);
+                var api = new EtherScanApi(ethereum.Name, ethereum.BlockchainApiBaseUri);
 
                 var initiateEventsResult = await api
                     .GetContractEventsAsync(

@@ -852,7 +852,7 @@ namespace Atomex.Swaps.Ethereum
         {
             try
             {
-                var web3 = new Web3(UriByChain(EthConfig.Chain));
+                var web3 = new Web3(EthConfig.InfuraApi);
                 var txHandler = web3.Eth.GetContractTransactionHandler<TMessage>();
 
                 var estimatedGas = await txHandler
@@ -873,18 +873,6 @@ namespace Atomex.Swaps.Ethereum
             }
 
             return defaultGas;
-        }
-
-        // todo: use etherscan instead
-        public static string UriByChain(Chain chain)
-        {
-            return chain switch
-            {
-                Chain.MainNet => "https://mainnet.infura.io/v3/df01d4ef450640a2a48d9af4c2078eaf",
-                Chain.Ropsten => "https://rinkeby.infura.io/v3/df01d4ef450640a2a48d9af4c2078eaf",
-                Chain.Rinkeby => "https://ropsten.infura.io/v3/df01d4ef450640a2a48d9af4c2078eaf",
-                _ => null,
-            };
         }
 
         private async Task<bool> WaitPaymentConfirmationAsync(

@@ -24,7 +24,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 
                 var ethereum = (EthereumConfig)currency;
 
-                var api = new EtherScanApi(ethereum);
+                var api = new EtherScanApi(ethereum.Name, ethereum.BlockchainApiBaseUri);
 
                 var refundEventsResult = await api.GetContractEventsAsync(
                         address: ethereum.SwapContractAddress,

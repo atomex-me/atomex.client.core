@@ -1037,7 +1037,7 @@ namespace Atomex.Swaps.Ethereum
         {
             try
             {
-                var web3 = new Web3(EthereumSwap.UriByChain(EthConfig.Chain));
+                var web3 = new Web3(EthConfig.InfuraApi);
                 var txHandler = web3.Eth.GetContractTransactionHandler<TMessage>();
 
                 var estimatedGas = await txHandler

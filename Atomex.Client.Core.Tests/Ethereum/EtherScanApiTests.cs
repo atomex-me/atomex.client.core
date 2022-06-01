@@ -10,7 +10,7 @@ namespace Atomex.Client.Core.Tests
         [Fact]
         public async void GetBalanceAsyncTest()
         {
-            var api = new EtherScanApi(Common.EthTestNet);
+            var api = new EtherScanApi("ETH", "https://api-ropsten.etherscan.io/");
 
             var asyncResult = await api
                 .GetBalanceAsync("0xe4aec93f3c0807b66b3fd043623e21dbbb0a3a82")
@@ -22,13 +22,13 @@ namespace Atomex.Client.Core.Tests
         [Fact]
         public async void GetInitiatedEventTest()
         {
-            var api = new EtherScanApi(Common.EthTestNet);
+            var api = new EtherScanApi("ETH", "https://api-ropsten.etherscan.io/");
 
             var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<InitiatedEventDTO>();
 
             var eventsAsyncResult = await api.GetContractEventsAsync(
                     address: "0x527d1049837edf5f99c287a41a87702686082bf8",
-                    fromBlock: Common.EthTestNet.SwapContractBlockNumber,
+                    fromBlock: 6000466,
                     toBlock: ulong.MaxValue,
                     topic0: eventSignatureHash,
                     topic1: "0x87639bcb4d5e61e52398acb13181ddec825744f8fd90a3f8efa68c129a968d0f")
@@ -55,13 +55,13 @@ namespace Atomex.Client.Core.Tests
         [Fact]
         public async void GetAddedEventTest()
         {
-            var api = new EtherScanApi(Common.EthTestNet);
+            var api = new EtherScanApi("ETH", "https://api-ropsten.etherscan.io/");
 
             var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<AddedEventDTO>();
 
             var eventsAsyncResult = await api.GetContractEventsAsync(
                     address: "0x527d1049837edf5f99c287a41a87702686082bf8",
-                    fromBlock: Common.EthTestNet.SwapContractBlockNumber,
+                    fromBlock: 6000466,
                     toBlock: ulong.MaxValue,
                     topic0: eventSignatureHash,
                     topic1: "0xbe51acca480dba043159355d597e39744ad7140d325f6cb3c1554db6b33947d6")
@@ -85,13 +85,13 @@ namespace Atomex.Client.Core.Tests
         [Fact]
         public async void GetRedeemedEventTest()
         {
-            var api = new EtherScanApi(Common.EthTestNet);
+            var api = new EtherScanApi("ETH", "https://api-ropsten.etherscan.io/");
 
             var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<RedeemedEventDTO>();
 
             var eventsAsyncResult = await api.GetContractEventsAsync(
                     address: "0x527d1049837edf5f99c287a41a87702686082bf8",
-                    fromBlock: Common.EthTestNet.SwapContractBlockNumber,
+                    fromBlock: 6000466,
                     toBlock: ulong.MaxValue,
                     topic0: eventSignatureHash,
                     topic1: "0x7ca4344b5d8e624917b6b0cee015bab65397349062ec2fcdbaebc25d5e1cbb4d")
@@ -114,13 +114,13 @@ namespace Atomex.Client.Core.Tests
         [Fact]
         public async void GetRefundedEventTest()
         {
-            var api = new EtherScanApi(Common.EthTestNet);
+            var api = new EtherScanApi("ETH", "https://api-ropsten.etherscan.io/");
 
             var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<RefundedEventDTO>();
 
             var eventsAsyncResult = await api.GetContractEventsAsync(
                     address: "0x527d1049837edf5f99c287a41a87702686082bf8",
-                    fromBlock: Common.EthTestNet.SwapContractBlockNumber,
+                    fromBlock: 6000466,
                     toBlock: ulong.MaxValue,
                     topic0: eventSignatureHash,
                     topic1: "0xbe51acca480dba043159355d597e39744ad7140d325f6cb3c1554db6b33947d6")
