@@ -78,16 +78,15 @@ namespace Atomex.Blockchain.Ethereum
             }
         }
 
-        public Task SubscribeOnBalanceUpdate(string address, Action<string> handler)
+        public void SubscribeOnBalanceUpdate(string address, Action<string> handler)
         {
             _subscriptions.AddOrUpdate(address, 
                 (_) => new Subscription(handler), 
                 (_, sub) => sub with { Handler = handler }
             );
-            return Task.CompletedTask;
         }
 
-        public Task SubscribeOnBalanceUpdate(IEnumerable<string> addresses, Action<string> handler)
+        public void SubscribeOnBalanceUpdate(IEnumerable<string> addresses, Action<string> handler)
         {
             var subscription = new Subscription(handler);
 
@@ -98,8 +97,6 @@ namespace Atomex.Blockchain.Ethereum
                     (_, sub) => sub with { Handler = handler }
                 );
             }
-
-            return Task.CompletedTask;
         }
 
         private void RunBalanceChecker()

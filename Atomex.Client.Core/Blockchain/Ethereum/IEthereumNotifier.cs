@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading.Tasks;
 using System.Collections.Generic;
 
 
@@ -13,7 +12,7 @@ namespace Atomex.Blockchain.Ethereum
         void Stop();
 
 
-        Task SubscribeOnBalanceUpdate(string address, Action<string> handler);
-        Task SubscribeOnBalanceUpdate(IEnumerable<string> addresses, Action<string> handler);
+        void SubscribeOnBalanceUpdate(string address, Action<string> handler);
+        void SubscribeOnBalanceUpdate(IEnumerable<string> addresses, Action<string> handler);
     }
 }
