@@ -3,6 +3,9 @@ using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Runtime.CompilerServices;
+using System.Text;
 using System.Threading;
 using Atomex.Common;
 using Atomex.Web;
@@ -115,42 +118,50 @@ namespace Atomex.Blockchain.Ethereum
         {
             Task.Run(async () =>
             {
-                while (true)
+                try
                 {
-                    foreach (var (address, subscription) in _subscriptions)
+                    while (true)
                     {
-                        await RequestLimitControl
-                            .Wait(_cts.Token)
-                            .ConfigureAwait(false);
-                        
-                        var requestUri = $"api?module=account" +
-                                         "&action=txlist" +
-                                         $"&address={address}" +
-                                         "&tag=latest" +
-                                         "&page=1" +
-                                         $"&startBlock={subscription.StartBlock}";
-                        
-                        var resultLength = await HttpHelper.GetAsyncResult<int>(
-                                baseUri: BaseUrl,
-                                requestUri: requestUri,
-                                responseHandler: (_, content) =>
-                                {
-                                    _log.Information("Got from etherscan.io: {@Content}", content);
-                                    var json = JsonConvert.DeserializeObject<JObject>(content);
+                        foreach (var (address, subscription) in _subscriptions)
+                        {
+                            await RequestLimitControl
+                                .Wait(_cts.Token)
+                                .ConfigureAwait(false);
 
-                                    if (json.ContainsKey("status") && json["status"]!.ToString() != "1")
-                                    {
-                                        _log.Warning("Status is NOTOK from Etherscan, response: {@Response}", json.ToString());
-                                    }
+                            var requestBuilder = new StringBuilder("api?module=account&action=txlist");
+                            requestBuilder.Append("&address=");
+                            requestBuilder.Append(address);
+                            requestBuilder.Append("&tag=latest&page=1&startBlock=");
+                            requestBuilder.Append(subscription.StartBlock);
 
-                                    if (json.ContainsKey("result"))
+                            var requestUri = requestBuilder.ToString();
+
+                            var resultLength = await HttpHelper.GetAsyncResult<int>(
+                                    baseUri: BaseUrl,
+                                    requestUri: requestUri,
+                                    responseHandler: (_, content) =>
                                     {
+                                        _log.Information(
+                                            "EthereumNotifier.RunBalanceChecker got from etherscan.io: {@Content}",
+                                            content);
+                                        var json = JsonConvert.DeserializeObject<JObject>(content);
+
+                                        if (json.ContainsKey("status")
+                                            && json["status"]!.ToString() != "1"
+                                            && json["message"]?.ToString()?.Contains("NOTOK") == true
+                                           )
+                                        {
+                                            _log.Warning("Status is NOTOK from Etherscan, response: {@Response}",
+                                                json.ToString());
+                                        }
+
+                                        if (!json.ContainsKey("result")) return 0;
+
                                         var length = json["result"]!.Count();
                                         var blockNumber = length > 0
                                             ? json["result"]![length - 1]!["blockNumber"]!.Value<int>()
                                             : subscription.StartBlock;
-
-                                        _log.Information("Length: {length}, blockNumber: {blockNumber}, current startBlock: {startBlock}", length, blockNumber, subscription.StartBlock);
+                                        
                                         var updateResult = _subscriptions.TryUpdate(address,
                                             subscription with {StartBlock = blockNumber + 1},
                                             subscription
@@ -158,20 +169,19 @@ namespace Atomex.Blockchain.Ethereum
 
                                         if (!updateResult)
                                         {
-                                            _log.Warning("Could not update start block of subscription for address {Address}", address);
+                                            _log.Warning(
+                                                "Could not update start block of subscription for address {Address}",
+                                                address);
                                         }
 
                                         return length;
-                                    }
-                                    
-                                    return 0;
-                                },
-                                cancellationToken: _cts.Token)
-                            .ConfigureAwait(false);
 
-                        _log.Information("Got resultLength = {ResultLength}", resultLength.Value);
-                        if (resultLength.Value > 0)
-                        {
+                                    },
+                                    cancellationToken: _cts.Token)
+                                .ConfigureAwait(false);
+
+                            if (resultLength.Value <= 0) continue;
+
                             try
                             {
                                 subscription.Handler(address);
@@ -181,9 +191,17 @@ namespace Atomex.Blockchain.Ethereum
                                 _log.Error(e, "Caught error on ether balance updated handler call");
                             }
                         }
-                    }
 
-                    await Task.Delay(_transactionsDelay);
+                        await Task.Delay(_transactionsDelay);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("EthereumNotifier.RunBalanceChecker canceled");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "EthereumNotifier.RunBalanceChecker caught error");
                 }
             }, _cts.Token);
         }
