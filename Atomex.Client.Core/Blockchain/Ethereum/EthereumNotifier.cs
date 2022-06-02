@@ -165,6 +165,13 @@ namespace Atomex.Blockchain.Ethereum
                                     cancellationToken: _cts.Token)
                                 .ConfigureAwait(false);
 
+
+                            if (resultLength == null)
+                            {
+                                await Task.Delay(_transactionsDelay.Multiply(3));
+                                continue;
+                            }
+
                             if (resultLength.Value <= 0) continue;
 
                             try
