@@ -46,7 +46,7 @@ namespace Atomex.Services.BalanceUpdaters
 
                 _notifier = new EthereumNotifier(baseUri, _log);
 
-                _notifier.Start();
+                await _notifier.StartAsync().ConfigureAwait(false);
                 _addresses = await GetAddressesAsync().ConfigureAwait(false);
 
                 _notifier.SubscribeOnBalanceUpdate(_addresses, BalanceUpdatedHandler);
@@ -57,18 +57,16 @@ namespace Atomex.Services.BalanceUpdaters
             }
         }
 
-        public Task StopAsync()
+        public async Task StopAsync()
         {
             try
             {
-                _notifier.Stop();
+                await _notifier.StopAsync().ConfigureAwait(false);
             }
             catch (Exception e)
             {
                 _log.Error(e, "Error on stopping EthereumBalanceUpdater");
             }
-
-            return Task.CompletedTask;
         }
 
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 using System.Collections.Generic;
 
 
@@ -8,8 +9,8 @@ namespace Atomex.Blockchain.Ethereum
     {
         string BaseUrl { get; }
 
-        void Start();
-        void Stop();
+        Task StartAsync();
+        Task StopAsync();
 
 
         void SubscribeOnBalanceUpdate(string address, Action<string> handler);

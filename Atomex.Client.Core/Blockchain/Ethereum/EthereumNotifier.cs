@@ -13,7 +13,7 @@ using Serilog;
 
 namespace Atomex.Blockchain.Ethereum
 {
-    internal record Subscription(Action<string> Handler, int StartBlock = 6980640); // TODO: Get current last block as initial value
+    internal record Subscription(Action<string> Handler, long StartBlock);
 
     public class EthereumNotifier : IEthereumNotifier
     {
@@ -29,13 +29,15 @@ namespace Atomex.Blockchain.Ethereum
         private static readonly RequestLimitControl RequestLimitControl 
             = new(MinDelayBetweenRequestMs);
 
+        private long _lastBlockNumber = 6980640;
+
         public EthereumNotifier(string baseUrl, ILogger log)
         {
             BaseUrl = baseUrl;
             _log = log ?? throw new ArgumentNullException(nameof(log));
         }
 
-        public void Start()
+        public async Task StartAsync()
         {
             if (_isRunning)
             {
@@ -47,7 +49,13 @@ namespace Atomex.Blockchain.Ethereum
                 _isRunning = true;
                 _cts = new CancellationTokenSource();
 
+                await GetLastBlockNumber();
+
                 RunBalanceChecker();
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("EthereumNotifier.StartAsync canceled");
             }
             catch (Exception e)
             {
@@ -55,11 +63,11 @@ namespace Atomex.Blockchain.Ethereum
             }
         }
 
-        public void Stop()
+        public Task StopAsync()
         {
             if (!_isRunning)
             {
-                return;
+                return Task.CompletedTask;
             }
 
             try
@@ -70,25 +78,26 @@ namespace Atomex.Blockchain.Ethereum
             catch (Exception e)
             {
                 _log.Error(e, "Error on stopping EthereumNotifier");
-
             }
             finally
             {
                 _isRunning = false;
             }
+
+            return Task.CompletedTask;
         }
 
         public void SubscribeOnBalanceUpdate(string address, Action<string> handler)
         {
             _subscriptions.AddOrUpdate(address, 
-                (_) => new Subscription(handler), 
+                (_) => new Subscription(handler, _lastBlockNumber), 
                 (_, sub) => sub with { Handler = handler }
             );
         }
 
         public void SubscribeOnBalanceUpdate(IEnumerable<string> addresses, Action<string> handler)
         {
-            var subscription = new Subscription(handler);
+            var subscription = new Subscription(handler, _lastBlockNumber);
 
             foreach (var address in addresses)
             {
@@ -168,7 +177,20 @@ namespace Atomex.Blockchain.Ethereum
 
                             if (resultLength == null)
                             {
-                                await Task.Delay(_transactionsDelay.Multiply(3));
+                                Log.Error("Connection error while getting txlist for ether address {@Address}", address);
+                                await Task.Delay(_transactionsDelay.Multiply(4));
+
+                                continue;
+                            }
+
+                            if (resultLength.HasError)
+                            {
+                                Log.Error(
+                                    "Error while getting txlist for ether address {@Address} with code {@code} and description {@description}",
+                                    address,
+                                    resultLength.Error.Code,
+                                    resultLength.Error.Description);
+
                                 continue;
                             }
 
@@ -196,6 +218,48 @@ namespace Atomex.Blockchain.Ethereum
                     Log.Error(e, "EthereumNotifier.RunBalanceChecker caught error");
                 }
             }, _cts.Token);
+        }
+
+        private async Task GetLastBlockNumber()
+        {
+            const string requestUri = "api?module=proxy&action=eth_blockNumber";
+
+            await RequestLimitControl
+                .Wait(_cts.Token)
+                .ConfigureAwait(false);
+
+            var lastBlockResult = await HttpHelper.GetAsyncResult(
+                    baseUri: BaseUrl,
+                    requestUri: requestUri,
+                    responseHandler: (_, content) =>
+                    {
+                        var json = JsonConvert.DeserializeObject<JObject>(content);
+                        var blockNumber = json.ContainsKey("result")
+                            ? long.Parse(json["result"]!.ToString()[2..], System.Globalization.NumberStyles.HexNumber)
+                            : 6980640; // Value that is bigger than 0 and definitely less then current block number of any Ether network. 
+
+                        return new Result<long>(blockNumber);
+                    },
+                    cancellationToken: _cts.Token)
+                .ConfigureAwait(false);
+
+            if (lastBlockResult == null)
+            {
+                Log.Error("Connection error while get block number");
+                return;
+            }
+
+            if (lastBlockResult.HasError)
+            {
+                Log.Error(
+                    "Error while getting last block number with code {@code} and description {@description}",
+                    lastBlockResult.Error.Code,
+                    lastBlockResult.Error.Description);
+
+                return;
+            }
+
+            _lastBlockNumber = lastBlockResult.Value;
         }
     }
 }
