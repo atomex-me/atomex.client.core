@@ -3,12 +3,9 @@ using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using Atomex.Common;
-using Atomex.Web;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -21,28 +18,24 @@ namespace Atomex.Blockchain.Ethereum
     public class EthereumNotifier : IEthereumNotifier
     {
         public string BaseUrl { get; }
-        private readonly string _eventsWs;
         private readonly ILogger _log;
-
-        private WebSocketClient _events;
-        private bool _isRunning;
-
         private readonly ConcurrentDictionary<string, Subscription> _subscriptions = new();
+
+        private bool _isRunning;
+        private CancellationTokenSource _cts;
 
         private readonly TimeSpan _transactionsDelay = TimeSpan.FromSeconds(15);
         private const int MinDelayBetweenRequestMs = 6000;
         private static readonly RequestLimitControl RequestLimitControl 
             = new(MinDelayBetweenRequestMs);
-        private CancellationTokenSource _cts;
 
-        public EthereumNotifier(string baseUrl, string eventsWs, ILogger log)
+        public EthereumNotifier(string baseUrl, ILogger log)
         {
             BaseUrl = baseUrl;
-            _eventsWs = eventsWs;
             _log = log ?? throw new ArgumentNullException(nameof(log));
         }
 
-        public async Task StartAsync()
+        public void Start()
         {
             if (_isRunning)
             {
@@ -54,9 +47,6 @@ namespace Atomex.Blockchain.Ethereum
                 _isRunning = true;
                 _cts = new CancellationTokenSource();
 
-                _events = new WebSocketClient(_eventsWs);
-                await _events.ConnectAsync();
-
                 RunBalanceChecker();
             }
             catch (Exception e)
@@ -65,7 +55,7 @@ namespace Atomex.Blockchain.Ethereum
             }
         }
 
-        public async Task StopAsync()
+        public void Stop()
         {
             if (!_isRunning)
             {
@@ -75,8 +65,6 @@ namespace Atomex.Blockchain.Ethereum
             try
             {
                 _cts.Cancel();
-
-                await _events.CloseAsync();
                 _subscriptions.Clear();
             }
             catch (Exception e)

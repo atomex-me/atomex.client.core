@@ -9,8 +9,8 @@ namespace Atomex.Blockchain.Ethereum
     {
         string BaseUrl { get; }
 
-        Task StartAsync();
-        Task StopAsync();
+        void Start();
+        void Stop();
 
 
         Task SubscribeOnBalanceUpdate(string address, Action<string> handler);
