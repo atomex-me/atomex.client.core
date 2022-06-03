@@ -14,6 +14,7 @@ using Newtonsoft.Json.Serialization;
 using System;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 #nullable enable
@@ -49,6 +50,7 @@ namespace Atomex.Services
         };
 
         private readonly Lazy<string> _accountUserIdLazy;
+        private readonly CancellationTokenSource _cts = new();
         private bool _isConnected = false;
         private AuthenticationData? _authenticationData;
 
@@ -87,15 +89,17 @@ namespace Atomex.Services
                 MarketDataRepository.Initialize(SymbolsProvider.GetSymbols(Account.Network));
                 Logger.LogDebug("MarketDataRepository is initialized");
 
-                var isAuthenticated = await AuthenticateAsync();
-                if (!isAuthenticated)
-                    throw new Exception("Authentication is failed");
+                await AuthenticateAsync();
 
                 ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
                 ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
 
                 _isConnected = true;
                 Logger.LogInformation("{atomexClientName} has been started for the {userId} [{network}] user", nameof(RestAtomexClient), AccountUserId, Account.Network);
+
+                await Task.WhenAll(
+                    RunAutoAuthorization()
+                ).ConfigureAwait(false); ;
             }
             catch (Exception ex)
             {
@@ -109,6 +113,8 @@ namespace Atomex.Services
             try
             {
                 Logger.LogInformation("{atomexClientName} is stopping for the {userId} [{network}] user", nameof(RestAtomexClient), AccountUserId, Account.Network);
+
+                _cts.Cancel();
 
                 ServiceDisconnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
                 ServiceDisconnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
@@ -162,7 +168,7 @@ namespace Atomex.Services
             throw new NotImplementedException();
         }
 
-        protected async Task<bool> AuthenticateAsync()
+        protected async Task AuthenticateAsync()
         {
             using var securePublicKey = Account.Wallet.GetServicePublicKey(AuthenticationAccountIndex);
             var publicKey = securePublicKey.ToUnsecuredBytes();
@@ -185,6 +191,8 @@ namespace Atomex.Services
                 Algorithm: "Sha256WithEcdsa:BtcMsg"
             );
 
+            ClearAuthenticationData();
+
             var response = await HttpClient
                 .PostAsync(
                     "token",
@@ -202,33 +210,69 @@ namespace Atomex.Services
             if (!response.IsSuccessStatusCode)
             {
                 Logger.LogError("Authentication is failed for the {userId} user. Response: {responseMessage} [{responseStatusCode}]", AccountUserId, responseContent, response.StatusCode);
-                return false;
+
+                throw GetAuthenticationFailedException();
             }
 
             var authenticationData = JsonConvert.DeserializeObject<AuthenticationData>(responseContent, JsonSerializerSettings);
             if (authenticationData == null)
             {
                 Logger.LogError("Authentication is failed for the {userId} user. It's not possible to parse authentication data", AccountUserId);
-                return false;
+
+                throw GetAuthenticationFailedException();
             }
             if (string.IsNullOrWhiteSpace(authenticationData.Token))
             {
                 Logger.LogError("Authentication is failed for the {userId} user. Authentication token is invalid", AccountUserId);
-                return false;
+
+                throw GetAuthenticationFailedException();
             }
 
-            _authenticationData = authenticationData;
-
-            if (HttpClient.DefaultRequestHeaders.Contains("Authorization"))
-                HttpClient.DefaultRequestHeaders.Remove("Authorization");
-
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {authenticationData.Token}");
+            _authenticationData = authenticationData;
 
             Logger.LogInformation("The {userId} user is authenticated until {authTokenExpiredDate}",
                 AccountUserId, DateTimeOffset.FromUnixTimeMilliseconds(authenticationData.Expires).UtcDateTime);
-
-            return true;
         }
+
+        protected async Task RunAutoAuthorization(CancellationToken cancellationToken = default)
+        {
+            static TimeSpan GetDelay(long authTokenExpiredTimeStamp)
+            {
+                var delay = DateTimeOffset.FromUnixTimeMilliseconds(authTokenExpiredTimeStamp - 10L * 60L * 1000L) - DateTimeOffset.UtcNow;
+                return delay >= TimeSpan.Zero ? delay : TimeSpan.Zero;
+            }
+
+            var delay = GetDelay(_authenticationData != null ? _authenticationData.Expires : 0L);
+
+            try
+            {
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    await Task.Delay(delay, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    await AuthenticateAsync();
+                    delay = GetDelay(_authenticationData!.Expires);
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogInformation("Auto authorization has been canceled");
+            }
+        }
+
+        private void ClearAuthenticationData()
+        {
+            _authenticationData = null;
+            if (HttpClient.DefaultRequestHeaders.Contains("Authorization"))
+                HttpClient.DefaultRequestHeaders.Remove("Authorization");
+
+        }
+
+        private static Exception GetAuthenticationFailedException() => new("Authentication is failed");
 
         private record AuthenticationRequestContent(
             string Message,
