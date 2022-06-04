@@ -3,10 +3,12 @@ using Atomex.Api.Rest;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography.Abstract;
+using Atomex.EthereumTokens;
 using Atomex.MarketData;
 using Atomex.MarketData.Abstract;
 using Atomex.Services.Abstract;
 using Atomex.Swaps;
+using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -14,6 +16,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -144,7 +147,7 @@ public partial class RestAtomexClient : IAtomexClient
     {
         try
         {
-            Logger.LogInformation("Canceling an order: {orderId}, \"{symbol}\", {side}. User is {userId}",
+            Logger.LogInformation("Canceling an order: {orderId}, \"{symbol}\", {side}. User is {userId}.",
                 orderId, symbol, side, AccountUserId);
 
             var queryParameters = new Dictionary<string, string>(2)
@@ -167,7 +170,7 @@ public partial class RestAtomexClient : IAtomexClient
             if (result?.Result != true)
             {
                 Logger.LogError("Order [{orderId}, \"{symbol}\", {side}] cancelation is failed for the {userId} user. " +
-                    "Response: {responseMessage} [{responseStatusCode}]", orderId, symbol, side, AccountUserId, responseContent, response.StatusCode);
+                    "Response: {responseMessage} [{responseStatusCode}].", orderId, symbol, side, AccountUserId, responseContent, response.StatusCode);
 
                 return;
             }
@@ -175,7 +178,7 @@ public partial class RestAtomexClient : IAtomexClient
             var dbOrder = Account.GetOrderById(orderId);
             if (dbOrder == null)
             {
-                Logger.LogWarning("Order [{orderId}, \"{symbol}\", {side}] not found in the local database", orderId, symbol, side);
+                Logger.LogWarning("Order [{orderId}, \"{symbol}\", {side}] not found in the local database.", orderId, symbol, side);
 
                 return;
             }
@@ -187,19 +190,88 @@ public partial class RestAtomexClient : IAtomexClient
 
             OrderReceived?.Invoke(this, new OrderEventArgs(dbOrder));
 
-            Logger.LogInformation("Order [{orderId}, \"{symbol}\", {side}] is canceled. User is {userId}",
+            Logger.LogInformation("Order [{orderId}, \"{symbol}\", {side}] is canceled. User is {userId}.",
                 orderId, symbol, side, AccountUserId);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Order [{orderId}, \"{symbol}\", {side}] cancelation is failed for the {userId} user. ", 
+            Logger.LogError(ex, "Order [{orderId}, \"{symbol}\", {side}] cancelation is failed for the {userId} user.",
                 orderId, symbol, side, AccountUserId);
         }
     }
 
-    public void OrderSendAsync(Order order)
+    public async void OrderSendAsync(Order order)
     {
-        throw new NotImplementedException();
+        try
+        {
+            Logger.LogInformation("Sending the order...: {@order}", order);
+
+            await Account.UpsertOrderAsync(order)
+                .ConfigureAwait(false);
+
+            var baseCurrencyContract = GetSwapContract(order.Symbol.BaseCurrency());
+            var quoteCurrencyContract = GetSwapContract(order.Symbol.QuoteCurrency());
+
+            var newOrderDto = new NewOrderDto(
+                ClientOrderId: order.ClientOrderId,
+                Symbol: order.Symbol,
+                Price: order.Price,
+                Qty: order.Qty,
+                Side: order.Side,
+                Type: order.Type,
+                ProofsOfFunds: null,
+                //ProofsOfFunds: order.FromWallets.Select(walletAddress => new ProofOfFundsDto(
+                //    Address: walletAddress.Address,
+                //    Currency: walletAddress.Currency,
+                //    TimeStamp: order.TimeStamp,
+                //    ...
+                //)),
+                Requisites: new(
+                    BaseCurrencyContract: baseCurrencyContract,
+                    QuoteCurrencyContract: quoteCurrencyContract
+                )
+            );
+
+            var response = await HttpClient.PostAsync(
+                "orders",
+                new StringContent(
+                    content: JsonConvert.SerializeObject(newOrderDto),
+                    encoding: Encoding.UTF8,
+                    mediaType: "application/json"
+                )
+            ).ConfigureAwait(false);
+
+            var responseContent = await response.Content
+                .ReadAsStringAsync()
+                .ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Logger.LogError("Sending the order is failed for the {userId} user. New Order DTO: {@newOrderDto}." +
+                    "Response: {responseMessage} [{responseStatusCode}]", AccountUserId, newOrderDto, responseContent, response.StatusCode);
+
+                return;
+            }
+
+            order.Id = JsonConvert.DeserializeObject<NewOrderResponseDto>(responseContent)?.OrderId ?? 0L;
+            if (order.Id == 0)
+            {
+                Logger.LogWarning("Response of the sent order has invalid order id. It's not possible to add the order to the local DB. " +
+                    "New Order DTO: {@newOrderDto}. Response: {responseMessage} [{responseStatusCode}]", newOrderDto, responseContent, response.StatusCode);
+
+                return;
+            }
+
+            order.Status = OrderStatus.Placed;
+            await Account.UpsertOrderAsync(order)
+                .ConfigureAwait(false);
+
+            OrderReceived?.Invoke(this, new OrderEventArgs(order));
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Sending the order is failed for the {userId} user. Order: {@order}", AccountUserId, order);
+        }
     }
 
     public void SubscribeToMarketData(SubscriptionType type)
@@ -326,8 +398,21 @@ public partial class RestAtomexClient : IAtomexClient
         _authenticationData = null;
         if (HttpClient.DefaultRequestHeaders.Contains("Authorization"))
             HttpClient.DefaultRequestHeaders.Remove("Authorization");
-
     }
+
+    private string? GetSwapContract(string currency) => currency switch
+    {
+        "ETH" => Account.Currencies.Get<EthereumConfig>(currency).SwapContractAddress,
+        "USDT" or "TBTC" or "WBTC" => Account.Currencies.Get<Erc20Config>(currency).SwapContractAddress,
+
+        "XTZ" => Account.Currencies.Get<TezosConfig>(currency).SwapContractAddress,
+        "FA12" or "TZBTC" or "KUSD" => Account.Currencies.Get<Fa12Config>(currency).SwapContractAddress,
+        "FA2" => Account.Currencies.Get<Fa2Config>(currency).SwapContractAddress,
+        _ => null
+
+    };
+
+    private static string GenerateOrderClientId() => Guid.NewGuid().ToByteArray().ToHexString(0, 16);
 
     private static Exception GetAuthenticationFailedException() => new("Authentication is failed");
 
