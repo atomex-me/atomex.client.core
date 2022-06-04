@@ -1,4 +1,5 @@
 ﻿using Atomex.Abstract;
+using Atomex.Api.Rest;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography.Abstract;
@@ -12,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
+using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -52,7 +54,7 @@ public partial class RestAtomexClient : IAtomexClient
     private readonly Lazy<string> _accountUserIdLazy;
     private readonly CancellationTokenSource _cts = new();
     private bool _isConnected = false;
-    private AuthenticationData? _authenticationData;
+    private AuthenticationResponseData? _authenticationData;
 
     public RestAtomexClient(
         IAccount account,
@@ -138,9 +140,61 @@ public partial class RestAtomexClient : IAtomexClient
 
     public Quote GetQuote(Symbol symbol) => MarketDataRepository.QuoteBySymbol(symbol.Name);
 
-    public void OrderCancelAsync(long id, string symbol, Side side)
+    public async void OrderCancelAsync(long orderId, string symbol, Side side)
     {
-        throw new NotImplementedException();
+        try
+        {
+            Logger.LogInformation("Canceling an order: {orderId}, \"{symbol}\", {side}. User is {userId}",
+                orderId, symbol, side, AccountUserId);
+
+            var queryParameters = new Dictionary<string, string>(2)
+            {
+                ["symbol"] = symbol,
+                ["side"] = side.ToString(),
+            };
+
+            var response = await HttpClient
+                .DeleteAsync($"orders/{orderId}?{ConvertQueryParamsToStringAsync(queryParameters)}")
+                .ConfigureAwait(false);
+            var responseContent = await response.Content
+                .ReadAsStringAsync()
+                .ConfigureAwait(false);
+
+            var result = response.IsSuccessStatusCode
+                ? JsonConvert.DeserializeObject<OrderCancelationDto>(responseContent, JsonSerializerSettings)
+                : null;
+
+            if (result?.Result != true)
+            {
+                Logger.LogError("Order [{orderId}, \"{symbol}\", {side}] cancelation is failed for the {userId} user. " +
+                    "Response: {responseMessage} [{responseStatusCode}]", orderId, symbol, side, AccountUserId, responseContent, response.StatusCode);
+
+                return;
+            }
+
+            var dbOrder = Account.GetOrderById(orderId);
+            if (dbOrder == null)
+            {
+                Logger.LogWarning("Order [{orderId}, \"{symbol}\", {side}] not found in the local database", orderId, symbol, side);
+
+                return;
+            }
+
+            dbOrder.Status = OrderStatus.Canceled;
+
+            await Account.UpsertOrderAsync(dbOrder)
+                .ConfigureAwait(false);
+
+            OrderReceived?.Invoke(this, new OrderEventArgs(dbOrder));
+
+            Logger.LogInformation("Order [{orderId}, \"{symbol}\", {side}] is canceled. User is {userId}",
+                orderId, symbol, side, AccountUserId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Order [{orderId}, \"{symbol}\", {side}] cancelation is failed for the {userId} user. ", 
+                orderId, symbol, side, AccountUserId);
+        }
     }
 
     public void OrderSendAsync(Order order)
@@ -183,7 +237,7 @@ public partial class RestAtomexClient : IAtomexClient
             .SignByServiceKeyAsync(signingMessagePayload, AuthenticationAccountIndex)
             .ConfigureAwait(false);
 
-        var authenticationRequestContent = new AuthenticationRequestContent(
+        var authenticationRequestContent = new AuthenticationRequestData(
             Message: AuthenticationMessage,
             TimeStamp: timeStamp,
             PublicKey: Hex.ToHexString(publicKey),
@@ -214,7 +268,7 @@ public partial class RestAtomexClient : IAtomexClient
             throw GetAuthenticationFailedException();
         }
 
-        var authenticationData = JsonConvert.DeserializeObject<AuthenticationData>(responseContent, JsonSerializerSettings);
+        var authenticationData = JsonConvert.DeserializeObject<AuthenticationResponseData>(responseContent, JsonSerializerSettings);
         if (authenticationData == null)
         {
             Logger.LogError("Authentication is failed for the {userId} user. It's not possible to parse authentication data", AccountUserId);
@@ -249,9 +303,12 @@ public partial class RestAtomexClient : IAtomexClient
         {
             while (!cancellationToken.IsCancellationRequested)
             {
+                Logger.LogDebug("Waiting for the authentication token to expire. Wait {delay} ms", delay.TotalMilliseconds);
+
                 await Task.Delay(delay, cancellationToken)
                     .ConfigureAwait(false);
 
+                Logger.LogDebug("The authentication token will expire soon. Making a new request of authentication");
                 await AuthenticateAsync();
                 delay = GetDelay(_authenticationData!.Expires);
             }
@@ -273,4 +330,11 @@ public partial class RestAtomexClient : IAtomexClient
     }
 
     private static Exception GetAuthenticationFailedException() => new("Authentication is failed");
+
+    private static async Task<string> ConvertQueryParamsToStringAsync(Dictionary<string, string> urlParams)
+    {
+        using var content = new FormUrlEncodedContent(urlParams);
+
+        return await content.ReadAsStringAsync();
+    }
 }
