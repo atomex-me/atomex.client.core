@@ -295,7 +295,7 @@ namespace Atomex.Services
             throw new NotImplementedException();
         }
 
-        protected async Task AuthenticateAsync()
+        protected async Task AuthenticateAsync(CancellationToken cancellationToken = default)
         {
             using var securePublicKey = Account.Wallet.GetServicePublicKey(AuthenticationAccountIndex);
             var publicKey = securePublicKey.ToUnsecuredBytes();
@@ -307,7 +307,7 @@ namespace Atomex.Services
                 iterations: 2
             );
             var signature = await Account.Wallet
-                .SignByServiceKeyAsync(signingMessagePayload, AuthenticationAccountIndex)
+                .SignByServiceKeyAsync(signingMessagePayload, AuthenticationAccountIndex, cancellationToken)
                 .ConfigureAwait(false);
 
             var authenticationRequestContent = new AuthenticationRequestData(
@@ -327,7 +327,8 @@ namespace Atomex.Services
                         content: JsonConvert.SerializeObject(authenticationRequestContent, JsonSerializerSettings),
                         encoding: Encoding.UTF8,
                         mediaType: "application/json"
-                    )
+                    ),
+                    cancellationToken
                 ).ConfigureAwait(false);
 
             var responseContent = await response.Content
@@ -382,7 +383,7 @@ namespace Atomex.Services
                         .ConfigureAwait(false);
 
                     Logger.LogDebug("The authentication token will expire soon. Making a new request of authentication");
-                    await AuthenticateAsync();
+                    await AuthenticateAsync(cancellationToken);
                     delay = GetDelay(_authenticationData!.Expires);
                 }
 
