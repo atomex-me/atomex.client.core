@@ -220,18 +220,20 @@ namespace Atomex.Services
                     Qty: order.Qty,
                     Side: order.Side,
                     Type: order.Type,
-                    ProofsOfFunds: null,
-                    //ProofsOfFunds: order.FromWallets.Select(walletAddress => new ProofOfFundsDto(
+                    Requisites: new(
+                        BaseCurrencyContract: baseCurrencyContract,
+                        QuoteCurrencyContract: quoteCurrencyContract
+                    )
+                )
+                {
+                    ProofsOfFunds = null,
+                    //ProofsOfFunds = order.FromWallets.Select(walletAddress => new ProofOfFundsDto(
                     //    Address: walletAddress.Address,
                     //    Currency: walletAddress.Currency,
                     //    TimeStamp: order.TimeStamp,
                     //    ...
                     //)),
-                    Requisites: new(
-                        BaseCurrencyContract: baseCurrencyContract,
-                        QuoteCurrencyContract: quoteCurrencyContract
-                    )
-                );
+                };
 
                 var response = await HttpClient.PostAsync(
                     "orders",
