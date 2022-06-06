@@ -299,7 +299,7 @@ namespace Atomex.Services
 
         public void SwapStatusAsync(string requestId, long swapId)
         {
-            throw new NotImplementedException();
+            _ = Task.Run(() => TrackSwapAsync(swapId), _cts.Token);
         }
 
         protected async Task AuthenticateAsync(CancellationToken cancellationToken = default)
@@ -385,16 +385,16 @@ namespace Atomex.Services
 
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    var (isSucces, swapInfos) = await FetchUserSwapsAsync(lastSwapId, cancellationToken)
+                    var (isSuccess, swapInfos) = await FetchUserSwapsAsync(lastSwapId, cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (isSucces && swapInfos != null)
+                    if (isSuccess && swapInfos != null)
                     {
                         tryCount = 0u;
                         foreach (var (swap, needToWait) in swapInfos)
                         {
                             lastSwapId = Math.Max(lastSwapId, swap.Id);
-                            _ = Task.Run(() => TrackSwapAsync(swap, needToWait, cancellationToken));
+                            _ = Task.Run(() => HandleSwapAsync(swap, needToWait, cancellationToken));
                         }
                     }
                     else
@@ -414,6 +414,28 @@ namespace Atomex.Services
             catch (Exception ex)
             {
                 Logger.LogError(ex, "Swaps tracking failed");
+            }
+        }
+
+        protected async Task TrackSwapAsync(long swapId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var (swap, needToWait) = await FetchUserSwapAsync(swapId, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (swap == null)
+                    throw new Exception("It's not possible to fetch user swap");
+
+                await HandleSwapAsync(swap, needToWait, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogInformation("Swap tracking has been canceled");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Swap tracking failed");
             }
         }
 
@@ -444,6 +466,28 @@ namespace Atomex.Services
                 swaps.Add((MapSwapDtoToSwap(swapDto), IsNeedToWaitSwap(swapDto)));
 
             return (true, swaps);
+        }
+
+        protected async Task<(Swap? swap, bool needToWait)> FetchUserSwapAsync(long swapId, CancellationToken cancellationToken = default)
+        {
+            var response = await HttpClient.GetAsync($"swaps/{swapId}", cancellationToken)
+                .ConfigureAwait(false);
+            var responseContent = await response.Content
+                .ReadAsStringAsync()
+                .ConfigureAwait(false);
+
+            var swapDto = response.IsSuccessStatusCode
+                ? JsonConvert.DeserializeObject<SwapDto>(responseContent, JsonSerializerSettings)
+                : null;
+
+            if (swapDto == null)
+            {
+                Logger.LogError("Failed to fetch user swaps. Response: {responseMessage} [{responseStatusCode}].", responseContent, response.StatusCode);
+
+                return (null, false);
+            }
+
+            return (MapSwapDtoToSwap(swapDto), IsNeedToWaitSwap(swapDto));
         }
 
         protected async Task RunAutoAuthorizationAsync(CancellationToken cancellationToken = default)
@@ -502,7 +546,7 @@ namespace Atomex.Services
 
         };
 
-        private async Task TrackSwapAsync(Swap swap, bool neetToWait = false, CancellationToken cancellationToken = default)
+        private async Task HandleSwapAsync(Swap swap, bool neetToWait = false, CancellationToken cancellationToken = default)
         {
             if (neetToWait)
                 await Task.Delay(TimeSpan.FromSeconds(3d), cancellationToken)
