@@ -162,7 +162,7 @@ namespace Atomex.Services
                     ["side"] = side.ToString(),
                 };
 
-                var response = await HttpClient
+                using var response = await HttpClient
                     .DeleteAsync($"orders/{orderId}?{ConvertQueryParamsToStringAsync(queryParameters)}")
                     .ConfigureAwait(false);
                 var responseContent = await response.Content
@@ -284,17 +284,16 @@ namespace Atomex.Services
 
         public void SubscribeToMarketData(SubscriptionType type)
         {
-            throw new NotImplementedException();
+            // nothing to do...
         }
 
         public void SwapAcceptAsync(long id, string symbol, string toAddress, decimal rewardForRedeem, string refundAddress)
         {
-            throw new NotImplementedException();
+            // nothing to do...
         }
 
         public void SwapInitiateAsync(long id, byte[] secretHash, string symbol, string toAddress, decimal rewardForRedeem, string refundAddress)
         {
-            throw new NotImplementedException();
         }
 
         public void SwapStatusAsync(string requestId, long swapId)
@@ -327,7 +326,7 @@ namespace Atomex.Services
 
             ClearAuthenticationData();
 
-            var response = await HttpClient
+            using var response = await HttpClient
                 .PostAsync(
                     "token",
                     new StringContent(
@@ -444,7 +443,7 @@ namespace Atomex.Services
             CancellationToken cancellationToken = default
         )
         {
-            var response = await HttpClient.GetAsync($"swaps?afterId={lastSwapId}", cancellationToken)
+            using var response = await HttpClient.GetAsync($"swaps?afterId={lastSwapId}", cancellationToken)
                 .ConfigureAwait(false);
             var responseContent = await response.Content
                 .ReadAsStringAsync()
@@ -470,7 +469,7 @@ namespace Atomex.Services
 
         protected async Task<(Swap? swap, bool needToWait)> FetchUserSwapAsync(long swapId, CancellationToken cancellationToken = default)
         {
-            var response = await HttpClient.GetAsync($"swaps/{swapId}", cancellationToken)
+            using var response = await HttpClient.GetAsync($"swaps/{swapId}", cancellationToken)
                 .ConfigureAwait(false);
             var responseContent = await response.Content
                 .ReadAsStringAsync()
