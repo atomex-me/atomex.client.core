@@ -163,7 +163,7 @@ namespace Atomex.Services
                 };
 
                 using var response = await HttpClient
-                    .DeleteAsync($"orders/{orderId}?{ConvertQueryParamsToStringAsync(queryParameters)}")
+                    .DeleteAsync($"orders/{orderId}?{ConvertQueryParamsToStringAsync(queryParameters)}", _cts.Token)
                     .ConfigureAwait(false);
                 var responseContent = await response.Content
                     .ReadAsStringAsync()
@@ -198,6 +198,10 @@ namespace Atomex.Services
 
                 Logger.LogInformation("Order [{orderId}, \"{symbol}\", {side}] is canceled. User is {userId}.",
                     orderId, symbol, side, AccountUserId);
+            }
+            catch (OperationCanceledException)
+            {
+                // TODO: log
             }
             catch (Exception ex)
             {
@@ -246,7 +250,8 @@ namespace Atomex.Services
                         content: JsonConvert.SerializeObject(newOrderDto),
                         encoding: Encoding.UTF8,
                         mediaType: "application/json"
-                    )
+                    ),
+                    _cts.Token
                 ).ConfigureAwait(false);
 
                 var responseContent = await response.Content
@@ -275,6 +280,10 @@ namespace Atomex.Services
                     .ConfigureAwait(false);
 
                 OrderReceived?.Invoke(this, new OrderEventArgs(order));
+            }
+            catch (OperationCanceledException)
+            {
+                // TODO: log
             }
             catch (Exception ex)
             {
