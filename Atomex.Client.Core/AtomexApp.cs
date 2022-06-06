@@ -77,13 +77,9 @@ namespace Atomex
             var error = await SwapManager
                 .HandleSwapAsync(e.Swap)
                 .ConfigureAwait(false);
-            if (error == null)
-                return;
 
-            if (e.CancellationToken != default)
+            if (error != null)
                 Log.Logger.Error(error.Description);
-            else
-                throw new Exception(error.Description);
         }
 
         private async void StopAtomexClient()
