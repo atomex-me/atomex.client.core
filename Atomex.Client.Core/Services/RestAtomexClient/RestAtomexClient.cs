@@ -31,6 +31,8 @@ namespace Atomex.Services
     {
         const string DEFAULT_AUTHENTICATION_MESSAGE = "Signing in ";
         const uint DEFAULT_AUTHENTICATION_ACCOUNT_INDEX = 0u;
+        const uint DEFAULT_MAX_FETCHING_SWAPS_TRY_COUNT = 3u;
+        static readonly TimeSpan DefaultFetchingSwapsInterval = TimeSpan.FromSeconds(10);
 
         public event EventHandler<AtomexClientServiceEventArgs>? ServiceConnected;
         public event EventHandler<AtomexClientServiceEventArgs>? ServiceDisconnected;
@@ -95,17 +97,18 @@ namespace Atomex.Services
                 MarketDataRepository.Initialize(SymbolsProvider.GetSymbols(Account.Network));
                 Logger.LogDebug("MarketDataRepository is initialized");
 
-                await AuthenticateAsync();
+                await AuthenticateAsync(_cts.Token)
+                    .ConfigureAwait(false);
 
+                _isConnected = true;
                 ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
                 ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
 
-                _isConnected = true;
                 Logger.LogInformation("{atomexClientName} has been started for the {userId} [{network}] user", nameof(RestAtomexClient), AccountUserId, Account.Network);
 
-                await Task.WhenAll(
-                    RunAutoAuthorization()
-                ).ConfigureAwait(false); ;
+                // _ = Task.Run(() => CancelAllUserOrdersAsync(_cts.Token), _cts.Token);
+                _ = Task.Run(() => TrackSwapsAsync(_cts.Token), _cts.Token);
+                _ = Task.Run(() => RunAutoAuthorizationAsync(_cts.Token), _cts.Token);
             }
             catch (Exception ex)
             {
@@ -114,7 +117,7 @@ namespace Atomex.Services
             }
         }
 
-        public async Task StopAsync()
+        public Task StopAsync()
         {
             try
             {
@@ -122,13 +125,13 @@ namespace Atomex.Services
 
                 _cts.Cancel();
 
+                _isConnected = false;
                 ServiceDisconnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
                 ServiceDisconnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
 
                 MarketDataRepository.Clear();
                 Logger.LogDebug("MarketDataRepository has been cleared");
 
-                _isConnected = false;
                 Logger.LogInformation("{atomexClientName} has been stopped for the {userId} [{network}] user", nameof(RestAtomexClient), AccountUserId, Account.Network);
             }
             catch (Exception ex)
@@ -136,6 +139,8 @@ namespace Atomex.Services
                 Logger.LogError(ex, "An exception has been occurred when the {atomexClientName} client is stopped for the {userId} [{network}] user",
                     nameof(RestAtomexClient), AccountUserId, Account.Network);
             }
+
+            return Task.CompletedTask;
         }
 
         public MarketDataOrderBook GetOrderBook(string symbol) => MarketDataRepository.OrderBookBySymbol(symbol);
@@ -365,7 +370,83 @@ namespace Atomex.Services
                 AccountUserId, DateTimeOffset.FromUnixTimeMilliseconds(authenticationData.Expires).UtcDateTime);
         }
 
-        protected async Task RunAutoAuthorization(CancellationToken cancellationToken = default)
+        protected async Task TrackSwapsAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var localSwaps = await Account.GetSwapsAsync()
+                    .ConfigureAwait(false);
+
+                var lastSwapId = localSwaps.Any()
+                    ? localSwaps.MaxBy(s => s.Id).Id
+                    : 0L;
+
+                var tryCount = 0u;
+
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    var (isSucces, swapInfos) = await FetchUserSwapsAsync(lastSwapId, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (isSucces && swapInfos != null)
+                    {
+                        tryCount = 0u;
+                        foreach (var (swap, needToWait) in swapInfos)
+                        {
+                            lastSwapId = Math.Max(lastSwapId, swap.Id);
+                            _ = Task.Run(() => TrackSwapAsync(swap, needToWait, cancellationToken));
+                        }
+                    }
+                    else
+                    {
+                        if (++tryCount >= DEFAULT_MAX_FETCHING_SWAPS_TRY_COUNT)
+                            throw new Exception("It's not possible to fetch user swaps");
+                    }
+
+                    await Task.Delay(DefaultFetchingSwapsInterval, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.LogInformation("Swaps tracking has been canceled");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Swaps tracking failed");
+            }
+        }
+
+        protected async Task<(bool isSuccess, List<(Swap swap, bool needToWait)>? result)> FetchUserSwapsAsync(
+            long lastSwapId = default,
+            CancellationToken cancellationToken = default
+        )
+        {
+            var response = await HttpClient.GetAsync($"swaps?afterId={lastSwapId}", cancellationToken)
+                .ConfigureAwait(false);
+            var responseContent = await response.Content
+                .ReadAsStringAsync()
+                .ConfigureAwait(false);
+
+            var swapDtos = response.IsSuccessStatusCode
+                ? JsonConvert.DeserializeObject<List<SwapDto>>(responseContent, JsonSerializerSettings)
+                : null;
+
+            if (swapDtos == null)
+            {
+                Logger.LogError("Failed to fetch user swaps. Response: {responseMessage} [{responseStatusCode}].", responseContent, response.StatusCode);
+
+                return (false, null);
+            }
+
+            var swaps = new List<(Swap, bool)>(swapDtos.Count);
+            foreach (var swapDto in swapDtos)
+                swaps.Add((MapSwapDtoToSwap(swapDto), IsNeedToWaitSwap(swapDto)));
+
+            return (true, swaps);
+        }
+
+        protected async Task RunAutoAuthorizationAsync(CancellationToken cancellationToken = default)
         {
             static TimeSpan GetDelay(long authTokenExpiredTimeStamp)
             {
@@ -385,7 +466,8 @@ namespace Atomex.Services
                         .ConfigureAwait(false);
 
                     Logger.LogDebug("The authentication token will expire soon. Making a new request of authentication");
-                    await AuthenticateAsync(cancellationToken);
+                    await AuthenticateAsync(cancellationToken)
+                        .ConfigureAwait(false);
                     delay = GetDelay(_authenticationData!.Expires);
                 }
 
@@ -394,6 +476,10 @@ namespace Atomex.Services
             catch (OperationCanceledException)
             {
                 Logger.LogInformation("Auto authorization has been canceled");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Auto authorization failed");
             }
         }
 
@@ -416,6 +502,52 @@ namespace Atomex.Services
 
         };
 
+        private async Task TrackSwapAsync(Swap swap, bool neetToWait = false, CancellationToken cancellationToken = default)
+        {
+            if (neetToWait)
+                await Task.Delay(TimeSpan.FromSeconds(3d), cancellationToken)
+                    .ConfigureAwait(false);
+
+            SwapReceived?.Invoke(this, new SwapEventArgs(swap, cancellationToken));
+        }
+
+        private bool IsNeedToWaitSwap(SwapDto swapDto)
+            => swapDto.User?.Status == PartyStatus.Created || swapDto.CounterParty?.Status == PartyStatus.Created;
+
+        private Swap MapSwapDtoToSwap(SwapDto swapDto)
+        {
+            var swapStatus = SwapStatus.Empty;
+
+            if (swapDto.User?.Status > PartyStatus.Created)
+                swapStatus |= SwapStatus.Initiated;
+
+            if (swapDto.CounterParty?.Status > PartyStatus.Created)
+                swapStatus |= SwapStatus.Accepted;
+
+            return new Swap()
+            {
+                Id = swapDto.Id,
+                SecretHash = !string.IsNullOrWhiteSpace(swapDto.SecretHash)
+                    ? Hex.FromString(swapDto.SecretHash)
+                    : null,
+                Status = swapStatus,
+
+                TimeStamp = swapDto.TimeStamp,
+                Symbol = swapDto.Symbol,
+                Side = swapDto.Side,
+                Price = swapDto.Price,
+                Qty = swapDto.Qty,
+                IsInitiative = swapDto.IsInitiator,
+
+                ToAddress = swapDto.User?.Requisites?.ReceivingAddress,
+                RewardForRedeem = swapDto.User?.Requisites?.RewardForRedeem ?? 0m,
+                OrderId = swapDto.User?.Trades?.FirstOrDefault()?.OrderId ?? 0L,
+
+                PartyAddress = swapDto.CounterParty?.Requisites?.ReceivingAddress,
+                PartyRewardForRedeem = swapDto.CounterParty?.Requisites?.RewardForRedeem ?? 0m,
+            };
+        }
+
         private static string GenerateOrderClientId() => Guid.NewGuid().ToByteArray().ToHexString(0, 16);
 
         private static Exception GetAuthenticationFailedException() => new("Authentication is failed");
@@ -424,7 +556,8 @@ namespace Atomex.Services
         {
             using var content = new FormUrlEncodedContent(urlParams);
 
-            return await content.ReadAsStringAsync();
+            return await content.ReadAsStringAsync()
+                .ConfigureAwait(false);
         }
     }
 }
