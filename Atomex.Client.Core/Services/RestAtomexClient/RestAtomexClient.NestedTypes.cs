@@ -122,6 +122,19 @@ namespace Atomex.Services
             public SwapPartyDto? CounterParty { get; set; }
         }
 
+
+        private record InitiateSwapDto(
+            string ReceivingAddress,
+            decimal RewardForRedeem,
+            ulong LockTime
+        )
+        {
+            public string? SecretHash { get; set; }
+            public string? RefundAddress { get; set; }
+        }
+
+        private record InitiateSwapResponseDto(bool Result);
+
         private enum PartyStatus
         {
             /// <summary>

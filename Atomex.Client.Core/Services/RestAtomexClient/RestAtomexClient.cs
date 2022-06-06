@@ -8,6 +8,7 @@ using Atomex.MarketData;
 using Atomex.MarketData.Abstract;
 using Atomex.Services.Abstract;
 using Atomex.Swaps;
+using Atomex.Swaps.Abstract;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
 using Microsoft.Extensions.Configuration;
@@ -301,8 +302,55 @@ namespace Atomex.Services
             // nothing to do...
         }
 
-        public void SwapInitiateAsync(long id, byte[] secretHash, string symbol, string toAddress, decimal rewardForRedeem, string refundAddress)
+        public async void SwapInitiateAsync(long swapId, byte[] secretHash, string symbol, string toAddress, decimal rewardForRedeem, string refundAddress)
         {
+            try
+            {
+                var initiateSwapDto = new InitiateSwapDto(
+                    ReceivingAddress: toAddress,
+                    RewardForRedeem: rewardForRedeem,
+                    LockTime: CurrencySwap.DefaultInitiatorLockTimeInSeconds
+                )
+                {
+                    RefundAddress = refundAddress,
+                    SecretHash = secretHash.ToHexString(),
+                };
+
+                var response = await HttpClient.PostAsync(
+                    $"swaps/{swapId}/requisites",
+                    new StringContent(
+                        content: JsonConvert.SerializeObject(initiateSwapDto),
+                        encoding: Encoding.UTF8,
+                        mediaType: "application/json"
+                    ),
+                    _cts.Token
+                ).ConfigureAwait(false);
+
+                var responseContent = await response.Content
+                    .ReadAsStringAsync()
+                    .ConfigureAwait(false);
+
+                var result = response.IsSuccessStatusCode
+                    ? JsonConvert.DeserializeObject<InitiateSwapResponseDto>(responseContent, JsonSerializerSettings)
+                    : null;
+
+                if (result?.Result != true)
+                {
+                    Logger.LogError("Sending the swap requisites is failed for the {userId} user. Swap Initiation DTO: {@initiateSwapDto}." +
+                        "Response: {responseMessage} [{responseStatusCode}]", AccountUserId, initiateSwapDto, responseContent, response.StatusCode);
+
+                    return;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // TODO: log
+            }
+            catch (Exception ex)
+            {
+
+                Logger.LogError(ex, "Swap initiation failed");
+            }
         }
 
         public void SwapStatusAsync(string requestId, long swapId)
