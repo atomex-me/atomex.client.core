@@ -59,8 +59,9 @@ namespace Atomex.Blockchain.Tezos
     {
         [JsonPropertyName("balance")]
         public string Balance { get; set; } = "0";
+        public decimal? ParsedBalance { get; set; }
 
-        public decimal GetTokenBalance() =>
+        public decimal GetTokenBalance() => ParsedBalance ??=
             Balance.TryParseWithRound(Decimals, out var result)
                 ? result
                 : 0;

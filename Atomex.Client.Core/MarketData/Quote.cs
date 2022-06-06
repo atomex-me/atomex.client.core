@@ -5,6 +5,7 @@ namespace Atomex.MarketData
     public class Quote
     {
         public string Symbol { get; set; }
+        public bool IsToken { get; set; }
         public DateTime TimeStamp { get; set; }
         public decimal Bid { get; set; }
         public decimal Ask { get; set; }
