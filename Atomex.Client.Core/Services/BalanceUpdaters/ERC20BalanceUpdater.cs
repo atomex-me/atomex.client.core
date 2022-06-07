@@ -43,7 +43,7 @@ namespace Atomex.Services.BalanceUpdaters
                 var ethCurrency = _currenciesProvider
                     .GetCurrencies(_account.Network)
                     .Get<EthereumConfig>(EthereumConfig.Eth);
-                var baseUri = ethCurrency.InfuraApi;
+                var baseUri = ethCurrency.InfuraWsApi;
 
                 foreach (var currency in _account.Currencies)
                 {

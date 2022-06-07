@@ -297,6 +297,7 @@
       "TxExplorerUri": "https://goerli.etherscan.io/tx/",
       "AddressExplorerUri": "https://goerli.etherscan.io/address/",
       "InfuraApi": "https://goerli.infura.io/v3/df01d4ef450640a2a48d9af4c2078eaf",
+      "InfuraWsApi": "wss://goerli.infura.io/ws/v3/df01d4ef450640a2a48d9af4c2078eaf",
       "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "ETH/USD",

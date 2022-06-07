@@ -71,6 +71,7 @@ namespace Atomex
         public string SwapContractAddress { get; protected set; }
         public ulong SwapContractBlockNumber { get; protected set; }
         public string InfuraApi { get; protected set; }
+        public string InfuraWsApi { get; protected set; }
 
         public EthereumConfig()
         {
@@ -133,6 +134,7 @@ namespace Atomex
             TxExplorerUri              = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri         = configuration[nameof(AddressExplorerUri)];
             InfuraApi                  = configuration[nameof(InfuraApi)];
+            InfuraWsApi                = configuration[nameof(InfuraWsApi)];
             TransactionType            = typeof(EthereumTransaction);
 
             IsSwapAvailable            = true;
