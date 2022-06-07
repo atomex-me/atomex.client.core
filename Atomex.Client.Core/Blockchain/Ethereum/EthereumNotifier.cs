@@ -152,9 +152,6 @@ namespace Atomex.Blockchain.Ethereum
                         requestUri: requestUri,
                         responseHandler: (_, content) =>
                         {
-                            _log.Information(
-                                "EthereumNotifier.RunBalanceChecker got from etherscan.io: {@Content}",
-                                content);
                             var json = JsonConvert.DeserializeObject<JObject>(content);
 
                             if (json.ContainsKey("status")

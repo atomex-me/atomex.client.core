@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Numerics;
 using System.Threading;
 using Atomex.EthereumTokens;
@@ -17,7 +18,7 @@ using Serilog;
 
 namespace Atomex.Blockchain.Ethereum
 {
-    public class ERC20Notifier : IERC20Notifier
+    public class Erc20Notifier : IErc20Notifier
     {
         public string BaseUrl { get; }
         public Erc20Config Currency { get; }
@@ -35,7 +36,7 @@ namespace Atomex.Blockchain.Ethereum
         private EthLogsObservableSubscription _subscriptionFrom;
         private EthLogsObservableSubscription _subscriptionTo;
 
-        public ERC20Notifier(string baseUrl, Erc20Config currency, ILogger log)
+        public Erc20Notifier(string baseUrl, Erc20Config currency, ILogger log)
         {
             BaseUrl = baseUrl ?? throw new ArgumentNullException(nameof(baseUrl));
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
@@ -56,14 +57,6 @@ namespace Atomex.Blockchain.Ethereum
                 _client = new StreamingWebSocketClient(BaseUrl);
                 
                 await _client.StartAsync();
-
-                _subscriptionFrom = new EthLogsObservableSubscription(_client);
-                _subscriptionTo = new EthLogsObservableSubscription(_client);
-
-                // attach a handler for Transfer event logs
-                _subscriptionFrom.GetSubscriptionDataResponsesAsObservable().Subscribe(LogEventHandler);
-                _subscriptionTo.GetSubscriptionDataResponsesAsObservable().Subscribe(LogEventHandler);
-                
                 await InitiateSubscriptions();
 
                 _log.Debug("ERC20Notifier({Currency}) successfully started", Currency.Name);
@@ -83,7 +76,7 @@ namespace Atomex.Blockchain.Ethereum
             try
             {
                 _log.Information("ERC20Notifier: Got log event for address {Address}", log.Address);
-                var decoded = Event<TransferEventDto>.DecodeEvent(log);
+                var decoded = Event<TransferEventDTO>.DecodeEvent(log);
                 if (decoded != null)
                 {
                     InvokeHandler(decoded.Event.From);
@@ -112,25 +105,31 @@ namespace Atomex.Blockchain.Ethereum
 
         private async Task InitiateSubscriptions()
         {
-            if (_subscriptionFrom.SubscriptionState == SubscriptionState.Subscribed)
+            if (_subscriptionFrom?.SubscriptionState == SubscriptionState.Subscribed)
             {
                 await _subscriptionFrom.UnsubscribeAsync();
             }
 
-            if (_subscriptionTo.SubscriptionState == SubscriptionState.Subscribed)
+            if (_subscriptionTo?.SubscriptionState == SubscriptionState.Subscribed)
             {
                 await _subscriptionTo.UnsubscribeAsync();
             }
 
+            _subscriptionFrom = new EthLogsObservableSubscription(_client);
+            _subscriptionTo = new EthLogsObservableSubscription(_client);
+                
+            _subscriptionFrom.GetSubscriptionDataResponsesAsObservable().Subscribe(LogEventHandler);
+            _subscriptionTo.GetSubscriptionDataResponsesAsObservable().Subscribe(LogEventHandler);
+
             // create a log filter specific to Transfers
             // this filter will match any Transfer (matching the signature) 
-            var filterTransfersFrom = Event<TransferEventDto>
+            var filterTransfersFrom = Event<TransferEventDTO>
                 .GetEventABI()
-                .CreateFilterInput(Currency.ERC20ContractAddress, _empty, _addresses, _empty);
+                .CreateFilterInput(Currency.ERC20ContractAddress, _empty, _addresses.ToArray(), _empty);
 
-            var filterTransfersTo = Event<TransferEventDto>
+            var filterTransfersTo = Event<TransferEventDTO>
                 .GetEventABI()
-                .CreateFilterInput(Currency.ERC20ContractAddress, _empty, _empty, _addresses);
+                .CreateFilterInput(Currency.ERC20ContractAddress, _empty, _empty, _addresses.ToArray());
 
             await _subscriptionFrom.SubscribeAsync(filterTransfersFrom);
             await _subscriptionTo.SubscribeAsync(filterTransfersTo);
@@ -194,12 +193,15 @@ namespace Atomex.Blockchain.Ethereum
         }
     }
 
-    internal class TransferEventDto : IEventDTO
+    [Event("Transfer")]
+    public class TransferEventDTO : IEventDTO
     {
         [Parameter("address", "_from", 1, true)]
         public virtual string From { get; set; }
+
         [Parameter("address", "_to", 2, true)]
         public virtual string To { get; set; }
+
         [Parameter("uint256", "_value", 3, false)]
         public virtual BigInteger Value { get; set; }
     }

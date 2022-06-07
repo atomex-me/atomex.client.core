@@ -90,6 +90,7 @@ namespace Atomex.EthereumTokens
             TxExplorerUri              = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri         = configuration[nameof(AddressExplorerUri)];
             InfuraApi                  = configuration[nameof(InfuraApi)];
+            InfuraWsApi                = configuration[nameof(InfuraWsApi)];
             TransactionType            = typeof(EthereumTransaction);
 
             IsSwapAvailable            = true;

@@ -6,7 +6,7 @@ using Atomex.EthereumTokens;
 
 namespace Atomex.Blockchain.Ethereum
 {
-    public interface IERC20Notifier
+    public interface IErc20Notifier
     {
         string BaseUrl { get; }
         Erc20Config Currency { get; }

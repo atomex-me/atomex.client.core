@@ -12,18 +12,18 @@ using Serilog;
 
 namespace Atomex.Services.BalanceUpdaters
 {
-    public class ERC20BalanceUpdater : IChainBalanceUpdater
+    public class Erc20BalanceUpdater : IChainBalanceUpdater
     {
         private readonly IAccount _account;
         private readonly ICurrenciesProvider _currenciesProvider;
         private readonly ILogger _log;
         private readonly IHdWalletScanner _walletScanner;
 
-        private readonly IList<IERC20Notifier> _notifiers = new List<IERC20Notifier>();
+        private readonly IList<IErc20Notifier> _notifiers = new List<IErc20Notifier>();
         private ISet<string> _addresses;
 
 
-        public ERC20BalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, IHdWalletScanner walletScanner, ILogger log)
+        public Erc20BalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, IHdWalletScanner walletScanner, ILogger log)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _currenciesProvider = currenciesProvider;
@@ -43,13 +43,14 @@ namespace Atomex.Services.BalanceUpdaters
                 var ethCurrency = _currenciesProvider
                     .GetCurrencies(_account.Network)
                     .Get<EthereumConfig>(EthereumConfig.Eth);
-                var baseUri = ethCurrency.InfuraWsApi;
+                // var baseUri = ethCurrency.InfuraWsApi;
+                var baseUri = ethCurrency.InfuraApi.Replace("https", "wss").Replace("v3", "ws/v3");
 
                 foreach (var currency in _account.Currencies)
                 {
                     if (currency is Erc20Config erc20Currency)
                     {
-                        _notifiers.Add(new ERC20Notifier(baseUri, erc20Currency, _log));
+                        _notifiers.Add(new Erc20Notifier(baseUri, erc20Currency, _log));
                     }
                 }
 
