@@ -99,7 +99,7 @@ namespace Atomex.Blockchain.Ethereum
         {
             var subscription = new Subscription(handler, _lastBlockNumber);
 
-            foreach (var address in addresses)
+            foreach (var address in addresses) 
             {
                 _subscriptions.AddOrUpdate(address,
                     subscription, 
