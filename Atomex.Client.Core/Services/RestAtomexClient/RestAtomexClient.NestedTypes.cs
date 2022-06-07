@@ -87,7 +87,7 @@ namespace Atomex.Services
             /// <summary>
             /// Reward for redeem
             /// </summary>
-            public decimal? RewardForRedeem { get; set; }
+            public decimal RewardForRedeem { get; set; }
             /// <summary>
             /// Lock time
             /// </summary>
