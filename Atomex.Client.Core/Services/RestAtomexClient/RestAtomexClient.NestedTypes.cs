@@ -9,6 +9,23 @@ namespace Atomex.Services
 
     public partial class RestAtomexClient
     {
+        private record OrderDto(
+            long Id,
+            string ClientOrderId,
+            string Symbol,
+            Side Side,
+            DateTime TimeStamp,
+            decimal Price,
+            decimal Qty,
+            decimal LeaveQty,
+            OrderType Type,
+            OrderStatus Status
+        )
+        {
+            public List<TradeDto>? Trades { get; set; }
+            public List<SwapDto>? Swaps { get; set; }
+        }
+
         /// <summary>
         /// 
         /// </summary>

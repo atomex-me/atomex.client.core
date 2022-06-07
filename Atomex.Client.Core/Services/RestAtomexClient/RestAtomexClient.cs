@@ -110,7 +110,7 @@ namespace Atomex.Services
 
                 Logger.LogInformation("{atomexClientName} has been started for the {userId} [{network}] user", nameof(RestAtomexClient), AccountUserId, Account.Network);
 
-                // _ = CancelAllUserOrdersAsync(_cts.Token);
+                _ = CancelAllUserOrdersAsync(_cts.Token);
                 _ = TrackSwapsAsync(_cts.Token);
                 _ = RunAutoAuthorizationAsync(_cts.Token);
             }
@@ -156,6 +156,62 @@ namespace Atomex.Services
         public MarketDataOrderBook GetOrderBook(Symbol symbol) => MarketDataRepository.OrderBookBySymbol(symbol.Name);
 
         public Quote GetQuote(Symbol symbol) => MarketDataRepository.QuoteBySymbol(symbol.Name);
+
+        public Task CancelAllUserOrdersAsync(CancellationToken cancellationToken = default) => Task.Run(
+            async () =>
+            {
+                try
+                {
+                    Logger.LogInformation("Canceling orders of the {userId} user.", AccountUserId);
+
+                    var queryParameters = new Dictionary<string, string>(2)
+                    {
+                        ["limit"] = "1000",
+                        ["active"] = "true",
+                    };
+
+                    // TODO: use the CancelAllOrders API method
+                    using var response = await HttpClient
+                        .GetAsync($"orders?{ConvertQueryParamsToStringAsync(queryParameters)}", _cts.Token)
+                        .ConfigureAwait(false);
+                    var responseContent = await response.Content
+                        .ReadAsStringAsync()
+                        .ConfigureAwait(false);
+
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        Logger.LogError("Failed to fetch active orders of the {userId} user. " +
+                            "Response: {responseMessage} [{responseStatusCode}].", AccountUserId, responseContent, response.StatusCode);
+
+                        return;
+                    }
+
+                    var orderDtos = JsonConvert.DeserializeObject<IEnumerable<OrderDto>?>(responseContent, JsonSerializerSettings);
+                    var activeOrdersCount = orderDtos?.Count() ?? 0;
+
+                    if (activeOrdersCount == 0)
+                    {
+                        Logger.LogInformation("The {userId} user doesn't have active swaps. Cancel nothing", AccountUserId);
+
+                        return;
+                    }
+
+                    Logger.LogInformation("The {userId} user has {count} active swaps. Canceling...", AccountUserId, activeOrdersCount);
+
+                    foreach (var order in orderDtos!)
+                        OrderCancelAsync(order.Id, order.Symbol, order.Side);
+                }
+                catch (OperationCanceledException)
+                {
+                    Logger.LogDebug("The {taskName} task has been canceled.", nameof(CancelAllUserOrdersAsync));
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "Orders cancelation is failed for the {userId} user.", AccountUserId);
+                }
+            },
+            cancellationToken
+        );
 
         public async void OrderCancelAsync(long orderId, string symbol, Side side)
         {
