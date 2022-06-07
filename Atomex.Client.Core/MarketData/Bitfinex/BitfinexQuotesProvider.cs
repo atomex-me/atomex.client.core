@@ -16,7 +16,7 @@ namespace Atomex.MarketData.Bitfinex
 {
     public class BitfinexQuotesProvider : QuotesProvider
     {
-        private readonly Dictionary<string, string> QuoteSymbols = new Dictionary<string, string>()
+        private readonly Dictionary<string, string> QuoteSymbols = new()
         {
             { "BTCUSD", "tBTCUSD" },
             { "LTCUSD", "tLTCUSD" },
@@ -66,62 +66,8 @@ namespace Atomex.MarketData.Bitfinex
         protected override async Task UpdateAsync(
             CancellationToken cancellationToken = default)
         {
-            Log.Debug("Start of update");
-
-            bool isAvailable;
-
-            try
-            {
-                var symbols = string.Join(",", Quotes.Select(q => q.Key));
-
-                var request = $"tickers/?symbols={symbols}";
-
-                isAvailable = await HttpHelper.GetAsync(
-                        baseUri: BaseUrl,
-                        requestUri: request,
-                        responseHandler: response =>
-                        {
-                            if (!response.IsSuccessStatusCode)
-                                return false;
-
-                            var responseContent = response.Content
-                                .ReadAsStringAsync()
-                                .WaitForResult();
-
-                            var tickers = JsonConvert.DeserializeObject<JArray>(responseContent);
-
-                            foreach (var tickerToken in tickers)
-                            {
-                                if (!(tickerToken is JArray ticker))
-                                    continue;
-
-                                var symbol = ticker[0].Value<string>();
-
-                                var bid = ticker[1].Value<decimal>();
-                                var ask = ticker[3].Value<decimal>();
-                                var dailyChangePercent = ticker[6].Value<decimal>();
-
-                                Quotes[symbol] = new Quote
-                                {
-                                    Bid = bid,
-                                    Ask = ask,
-                                    DailyChangePercent = dailyChangePercent
-                                };
-                            }
-
-                            return true;
-                        },
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-                Log.Debug("Update finished");
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, e.Message);
-
-                isAvailable = false;
-            }
+            var isAvailable = await UpdateQuotesAsync(cancellationToken)
+                .ConfigureAwait(false);
 
             LastUpdateTime = DateTime.Now;
 
@@ -136,6 +82,63 @@ namespace Atomex.MarketData.Bitfinex
 
             if (IsAvailable)
                 RiseQuotesUpdatedEvent(EventArgs.Empty);
+        }
+
+        private async Task<bool> UpdateQuotesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                Log.Debug("Start of update");
+
+                var symbols = string.Join(",", Quotes.Select(q => q.Key));
+
+                var request = $"tickers/?symbols={symbols}";
+
+                using var response = await HttpHelper.GetAsync(
+                        baseUri: BaseUrl,
+                        relativeUri: request,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                    return false;
+
+                var responseContent = response.Content
+                    .ReadAsStringAsync()
+                    .WaitForResult();
+
+                var tickers = JsonConvert.DeserializeObject<JArray>(responseContent);
+
+                foreach (var tickerToken in tickers)
+                {
+                    if (tickerToken is not JArray ticker)
+                        continue;
+
+                    var symbol = ticker[0].Value<string>();
+
+                    var bid = ticker[1].Value<decimal>();
+                    var ask = ticker[3].Value<decimal>();
+                    var dailyChangePercent = ticker[6].Value<decimal>();
+
+                    Quotes[symbol] = new Quote
+                    {
+                        Bid = bid,
+                        Ask = ask,
+                        DailyChangePercent = dailyChangePercent
+                    };
+                }
+
+                Log.Debug("Update finished");
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, e.Message);
+
+                return false;
+            }
         }
     }
 }

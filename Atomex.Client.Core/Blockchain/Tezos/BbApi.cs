@@ -4,11 +4,12 @@ using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Newtonsoft.Json;
 using Serilog;
+
 using Atomex.Common;
 using Atomex.Core;
-
 
 namespace Atomex.Blockchain.Tezos
 {
@@ -22,17 +23,19 @@ namespace Atomex.Blockchain.Tezos
             if (network == Network.TestNet)
                 return new List<BakerData>();
 
-            var result = await HttpHelper.GetAsync(
+            using var response = await HttpHelper.GetAsync(
                     baseUri: ApiBaseUrl,
-                    requestUri: "v2/bakers",
-                    responseHandler: response =>
-                        ParseBakersToViewModel(
-                            JsonConvert.DeserializeObject<List<Baker>>(response.Content.ReadAsStringAsync()
-                                .WaitForResult())),
+                    relativeUri: "v2/bakers",
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (result != null) return result;
+            var result = ParseBakersToViewModel(
+                JsonConvert.DeserializeObject<List<Baker>>(response.Content
+                    .ReadAsStringAsync()
+                    .WaitForResult()));
+
+            if (result != null)
+                return result;
 
             Log.Error("Error while trying to fetch bakers list");
             return new List<BakerData>();
@@ -45,20 +48,19 @@ namespace Atomex.Blockchain.Tezos
             if (network == Network.TestNet)
                 return new BakerData();
 
-            return await HttpHelper.GetAsync(
+            using var response = await HttpHelper.GetAsync(
                     baseUri: ApiBaseUrl,
-                    requestUri: $"v2/bakers/{address}",
-                    responseHandler: response =>
-                        response.StatusCode == HttpStatusCode.OK
-                            ? ParseBakerToViewModel(
-                                JsonConvert.DeserializeObject<Baker>(
-                                    response
-                                        .Content
-                                        .ReadAsStringAsync()
-                                        .WaitForResult()))
-                            : new BakerData(),
+                    relativeUri: $"v2/bakers/{address}",
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            return response.StatusCode == HttpStatusCode.OK
+                ? ParseBakerToViewModel(
+                    JsonConvert.DeserializeObject<Baker>(
+                        response.Content
+                        .ReadAsStringAsync()
+                        .WaitForResult()))
+                : new BakerData();
         }
 
         private static IEnumerable<BakerData> ParseBakersToViewModel(List<Baker> bakers)

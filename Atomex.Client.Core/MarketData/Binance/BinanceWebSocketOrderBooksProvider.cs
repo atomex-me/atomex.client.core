@@ -132,23 +132,21 @@ namespace Atomex.MarketData.Binance
 
         private async Task UpdateSnapshotAsync(string symbol, int updateSpeed)
         {
-            var snapshot = await HttpHelper.GetAsync(
+            using var response = await HttpHelper.GetAsync(
                 baseUri: BaseUrl,
-                requestUri: $"depth?symbol={symbol.ToUpper()}&limit={SnapshotLimit}",
-                responseHandler: (response) =>
-                {
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        Log.Error($"Invalid status code: {response.StatusCode}");
-                        return null;
-                    }
+                relativeUri: $"depth?symbol={symbol.ToUpper()}&limit={SnapshotLimit}");
 
-                    var responseContent = response.Content
-                        .ReadAsStringAsync()
-                        .WaitForResult();
+            if (!response.IsSuccessStatusCode)
+            {
+                Log.Error($"Invalid status code: {response.StatusCode}");
+                return;
+            }
 
-                    return JsonConvert.DeserializeObject<BinancePartialOrderBookUpdates>(responseContent);
-                });
+            var responseContent = await response.Content
+                .ReadAsStringAsync()
+                .ConfigureAwait(false);
+
+            var snapshot = JsonConvert.DeserializeObject<BinancePartialOrderBookUpdates>(responseContent);
 
             if (snapshot == null)
             {
