@@ -54,6 +54,9 @@ namespace Atomex.Blockchain.Tezos
 
         public bool HasDescription =>
             !string.IsNullOrEmpty(Description);
+
+        public bool IsNft =>
+            !string.IsNullOrEmpty(ArtifactUri);
     }
     public class TokenBalance : Token
     {
