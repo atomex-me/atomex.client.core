@@ -53,14 +53,14 @@ namespace Atomex.MarketData.Bitfinex
         {
             if (QuoteSymbols.TryGetValue($"{currency}{baseCurrency}", out var symbol))
                 return Quotes.TryGetValue(symbol, out var rate) ? rate : null;
-            return null;
+            return Quotes.TryGetValue(currency.ToLower(), out var tokenRate) ? tokenRate : null;
         }
 
         public override Quote GetQuote(string symbol)
         {
             if (QuoteSymbols.TryGetValue(symbol.Replace("/", ""), out var s))
                 return Quotes.TryGetValue(s, out var rate) ? rate : null;
-            return Quotes.TryGetValue(symbol, out var tokenRate) ? tokenRate : null;
+            return Quotes.TryGetValue(symbol.ToLower(), out var tokenRate) ? tokenRate : null;
         }
 
 
