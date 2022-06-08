@@ -481,6 +481,12 @@ namespace Atomex.Wallet.Ethereum
                                         .GetWalletAddressAsync(Currency, address)
                                         .ConfigureAwait(false);
 
+                                    if (walletAddress == null)
+                                    {
+                                        Log.Error("WalletAddress {Address} for {Currency} was not found in local database", address, Currency);
+                                        continue;
+                                    }
+
                                     //walletAddress.Balance = isConfirmed ? income + outcome : 0;
                                     walletAddress.UnconfirmedIncome = !isConfirmed ? income : 0;
                                     walletAddress.UnconfirmedOutcome = !isConfirmed ? outcome : 0;
