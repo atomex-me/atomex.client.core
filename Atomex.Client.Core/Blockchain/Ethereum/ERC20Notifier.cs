@@ -79,8 +79,8 @@ namespace Atomex.Blockchain.Ethereum
                 var decoded = Event<TransferEventDTO>.DecodeEvent(log);
                 if (decoded != null)
                 {
-                    InvokeHandler(decoded.Event.From);
-                    InvokeHandler(decoded.Event.To);
+                    InvokeHandler(decoded.Event.From.ToLower());
+                    InvokeHandler(decoded.Event.To.ToLower());
                 }
             }
             catch (Exception e)
@@ -167,7 +167,7 @@ namespace Atomex.Blockchain.Ethereum
 
         public Task SubscribeOnEventsAsync(string address, Action<string, string> handler)
         {
-            _subscriptions.AddOrUpdate(address, 
+            _subscriptions.AddOrUpdate(address.ToUpper(), 
                 (_) => handler, 
                 (_, _) => handler
             );
@@ -179,7 +179,8 @@ namespace Atomex.Blockchain.Ethereum
 
         public Task SubscribeOnEventsAsync(IEnumerable<string> addresses, Action<string, string> handler)
         {
-            foreach (var address in addresses) 
+            var addressesList = addresses.Select(a => a.ToLower()).ToList();
+            foreach (var address in addressesList) 
             {
                 _subscriptions.AddOrUpdate(address,
                     handler, 
@@ -187,7 +188,7 @@ namespace Atomex.Blockchain.Ethereum
                 );
             }
 
-            _addresses = _addresses.Union(addresses);
+            _addresses = _addresses.Union(addressesList);
 
             return InitiateSubscriptions();
         }
