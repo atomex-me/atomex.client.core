@@ -12,6 +12,9 @@ namespace Atomex.Common
         public static DateTime ToUtcDateTime(this long unixTime) =>
             UnixStartTime.AddSeconds(unixTime);
 
+        public static DateTime ToUtcDateTimeFromMs(this long unixTimeInMs) =>
+            UnixStartTime.AddMilliseconds(unixTimeInMs);
+
         public static long ToUnixTime(this DateTime dt) =>
             (long)Math.Floor((dt - UnixStartTime).TotalSeconds);
 

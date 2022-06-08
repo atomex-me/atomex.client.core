@@ -11,12 +11,14 @@ using Newtonsoft.Json.Linq;
 using Serilog;
 using Websocket.Client;
 
+using Atomex.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.MarketData;
 using Atomex.MarketData.Abstract;
 using Atomex.Services.Abstract;
 using Atomex.Swaps;
+using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Web;
 
@@ -46,6 +48,7 @@ namespace Atomex.Services
 
         public IAccount Account { get; private set; }
         public IMarketDataRepository MarketDataRepository { get; private set; }
+        private ISymbolsProvider SymbolsProvider { get; set; }
 
         private readonly string _authTokenBaseUrl;
         private readonly string _exchangeUrl;
@@ -62,12 +65,14 @@ namespace Atomex.Services
             string authTokenBaseUrl,
             string exchangeUrl,
             string marketDataUrl,
-            IAccount account)
+            IAccount account,
+            ISymbolsProvider symbolsProvider)
         {
-            _authTokenBaseUrl = authTokenBaseUrl ?? throw new ArgumentNullException(nameof(authTokenBaseUrl));
-            _exchangeUrl = exchangeUrl ?? throw new ArgumentNullException(nameof(exchangeUrl));
-            _marketDataUrl = marketDataUrl ?? throw new ArgumentNullException(nameof(marketDataUrl));
-            Account = account ?? throw new ArgumentNullException(nameof(account));
+            _authTokenBaseUrl    = authTokenBaseUrl ?? throw new ArgumentNullException(nameof(authTokenBaseUrl));
+            _exchangeUrl         = exchangeUrl ?? throw new ArgumentNullException(nameof(exchangeUrl));
+            _marketDataUrl       = marketDataUrl ?? throw new ArgumentNullException(nameof(marketDataUrl));
+            Account              = account ?? throw new ArgumentNullException(nameof(account));
+            SymbolsProvider      = symbolsProvider ?? throw new ArgumentNullException(nameof(symbolsProvider));
             MarketDataRepository = new MarketDataRepository();
         }
 
@@ -161,15 +166,15 @@ namespace Atomex.Services
 
                 switch (@event)
                 {
-                    case "pong": break;
-                    case "error": break;
-                    case "order": break;
-                    case "swap": break;
+                    case "pong": HandlePong(AtomexClientService.Exchange); break;
+                    case "error": HandleError(response, AtomexClientService.Exchange); break;
+                    case "order": HandleOrder(response); break;
+                    case "swap": HandleSwap(response); break;
                     //case "orderSendReply": break;
                     //case "orderCancelReply": break;
                     //case "getOrderReply": break;
                     //case "getOrdersReply" break;
-                    //case "getSwapReply": break;
+                    case "getSwapReply": HandleSwap(response); break;
                     //case "getSwapsReply": break;
                     //case "addRequisitesReply": break;
                 };
@@ -222,11 +227,11 @@ namespace Atomex.Services
 
                 switch (@event)
                 {
-                    case "pong": break;
-                    case "error": break;
-                    case "topOfBook": break;
-                    case "entries": break;
-                    case "snapshot": break;
+                    case "pong": HandlePong(AtomexClientService.MarketData); break;
+                    case "error": HandleError(response, AtomexClientService.MarketData); break;
+                    case "topOfBook": HandleTopOfBook(response); break;
+                    case "entries": HandleEntries(response); break;
+                    case "snapshot": HandleSnapshot(response); break;
                 };
             }
             else throw new NotImplementedException();
@@ -234,19 +239,30 @@ namespace Atomex.Services
 
         public void OrderSendAsync(Order order)
         {
+            order.ClientOrderId = Guid.NewGuid().ToByteArray().ToHexString(0, 16);
+
             var request = new
             {
                 method = "orderSend",
                 data = new
                 {
                     clientOrderId = order.ClientOrderId,
-                    symbol = order.Symbol,
-                    price = order.Price,
-                    qty = order.Qty,
-                    side = order.Side,
-                    type = (int)order.Type,
+                    symbol        = order.Symbol,
+                    price         = order.Price,
+                    qty           = order.Qty,
+                    side          = order.Side,
+                    type          = (int)order.Type,
+                    requisites    = new
+                    {
+                        baseCurrencyContract = GetSwapContract(order.Symbol.BaseCurrency()),
+                        quoteCurrencyContrac = GetSwapContract(order.Symbol.QuoteCurrency()),
+                        // secretHash =,
+                        // receivingAddress =,
+                        // refundAddress =,
+                        // rewardForRedeem =,
+                        // lockTime =,
+                    },
                     //proofOfFunds =
-                    //requisites = 
                 },
                 requestId = 0
             };
@@ -261,9 +277,9 @@ namespace Atomex.Services
                 method = "orderCancel",
                 data = new
                 {
-                    id = id,
+                    id     = id,
                     symbol = symbol,
-                    side = (int)side
+                    side   = (int)side
                 },
                 requestId = 0
             };
@@ -275,16 +291,16 @@ namespace Atomex.Services
         {
             var stream = type switch
             {
-                SubscriptionType.TopOfBook => "topOfBook",
+                SubscriptionType.TopOfBook   => "topOfBook",
                 SubscriptionType.DepthTwenty => "orderBook",
-                SubscriptionType.OrderLog => throw new NotSupportedException("Full OrderLog stream not supported"),
+                SubscriptionType.OrderLog    => throw new NotSupportedException("Full OrderLog stream not supported"),
                 _ => throw new NotSupportedException($"Type {type} not supported"),
             };
 
             var request = new
             {
-                method = "subscribe",
-                data = stream,
+                method    = "subscribe",
+                data      = stream,
                 requestId = 0
             };
 
@@ -308,7 +324,22 @@ namespace Atomex.Services
             decimal rewardForRedeem,
             string refundAddress)
         {
-            throw new NotImplementedException();
+            var request = new
+            {
+                method = "addRequisites",
+                data = new
+                {
+                    id               = id,
+                    secretHash       = secretHash.ToHexString(),
+                    receivingAddress = toAddress,
+                    refundAddress    = refundAddress,
+                    rewardForRedeem  = rewardForRedeem,
+                    lockTime         = CurrencySwap.DefaultInitiatorLockTimeInSeconds
+                },
+                requestId = 0
+            };
+
+            _exchangeWs.Send(JsonConvert.SerializeObject(request));
         }
 
         public void SwapAcceptAsync(
@@ -318,14 +349,38 @@ namespace Atomex.Services
             decimal rewardForRedeem,
             string refundAddress)
         {
-            throw new NotImplementedException();
+            var request = new
+            {
+                method = "addRequisites",
+                data = new
+                {
+                    id               = id,
+                    receivingAddress = toAddress,
+                    refundAddress    = refundAddress,
+                    rewardForRedeem  = rewardForRedeem,
+                    lockTime         = CurrencySwap.DefaultAcceptorLockTimeInSeconds
+                },
+                requestId = 0
+            };
+
+            _exchangeWs.Send(JsonConvert.SerializeObject(request));
         }
 
         public void SwapStatusAsync(
             string requestId,
             long swapId)
         {
-            throw new NotImplementedException();
+            var request = new
+            {
+                method = "getSwap",
+                data = new
+                {
+                    id = swapId,
+                },
+                requestId = 0
+            };
+
+            _exchangeWs.Send(JsonConvert.SerializeObject(request));
         }
 
         private async Task<string> AuthAsync(CancellationToken cancellationToken = default)
@@ -347,7 +402,7 @@ namespace Atomex.Services
                 var body = new
                 {
                     timeStamp = timeStamp,
-                    message = message,
+                    message   = message,
                     publicKey = Hex.ToHexString(publicKey),
                     signature = Hex.ToHexString(signature),
                     algorithm = "Sha256WithEcdsa:BtcMsg"
@@ -424,5 +479,218 @@ namespace Atomex.Services
             task.IsCompleted ||
             task.IsCanceled ||
             task.IsFaulted;
+
+        private void HandlePong(AtomexClientService service)
+        {
+            Log.Verbose($"Pong received from {service}");
+        }
+
+        private void HandleError(JObject response, AtomexClientService service)
+        {
+            Error?.Invoke(
+                sender: this,
+                e: new AtomexClientErrorEventArgs(
+                    service: service,
+                    error: new Error(
+                        code: Errors.RequestError,
+                        description: response["data"].Value<string>())));
+        }
+
+        private void HandleOrder(JObject response)
+        {
+            var totalQty = 0m;
+            var totalAmount = 0m;
+
+            if (response.ContainsKey("trades"))
+            {
+                foreach (var trade in response["trades"])
+                {
+                    var price = trade["price"].Value<decimal>();
+                    var qty = trade["qty"].Value<decimal>();
+
+                    totalQty += qty;
+                    totalAmount += price * qty;
+                }
+            }
+
+            var order = new Order
+            {
+                Id            = response["id"].Value<long>(),
+                ClientOrderId = response["clientOrderId"].Value<string>(),
+                Symbol        = response["symbol"].Value<string>(),
+                Side          = (Side)Enum.Parse(typeof(Side), response["side"].Value<string>()),
+                TimeStamp     = response["timeStamp"].Value<DateTime>(),
+                Price         = response["price"].Value<decimal>(),
+                Qty           = response["qty"].Value<decimal>(),
+                LeaveQty      = response["leaveQty"].Value<decimal>(),
+                LastPrice     = totalQty != 0 ? totalAmount / totalQty : 0, // currently average price used
+                LastQty       = totalQty,                                   // currently total qty used
+                Type          = (OrderType)Enum.Parse(typeof(OrderType), response["type"].Value<string>()),
+                Status        = (OrderStatus)Enum.Parse(typeof(OrderStatus), response["status"].Value<string>())
+            };
+
+            OrderReceived?.Invoke(
+                sender: this,
+                e: new OrderEventArgs(order));
+        }
+
+        public enum PartyStatus
+        {
+            Created,
+            Involved,
+            PartiallyInitiated,
+            Initiated,
+            Redeemed,
+            Refunded,
+            Lost,
+            Jackpot
+        }
+
+        private void HandleSwap(JObject response)
+        {
+            var IsInitiator = response["isInitiator"].Value<bool>();
+
+            var status = SwapStatus.Empty;
+            var userStatus = (PartyStatus)Enum.Parse(typeof(PartyStatus), response["user"]["status"].Value<string>());
+            var partyStatus = (PartyStatus)Enum.Parse(typeof(PartyStatus), response["counterParty"]["status"].Value<string>());
+
+            if (userStatus > PartyStatus.Created)
+                status |= IsInitiator
+                    ? SwapStatus.Initiated
+                    : SwapStatus.Accepted;
+
+            if (partyStatus > PartyStatus.Created)
+                status |= IsInitiator
+                    ? SwapStatus.Accepted
+                    : SwapStatus.Initiated;
+
+            var swap = new Swap
+            {
+                Id           = response["id"].Value<long>(),
+                Status       = status,
+                SecretHash   = Hex.FromString(response["symbol"].Value<string>()),
+                TimeStamp    = response["timeStamp"].Value<DateTime>(),
+                OrderId      = response["user"]?["trades"]?[0]?["orderId"]?.Value<long>() ?? 0,
+                Symbol       = response["symbol"].Value<string>(),
+                Side         = (Side)Enum.Parse(typeof(Side), response["side"].Value<string>()),
+                Price        = response["price"].Value<decimal>(),
+                Qty          = response["qty"].Value<decimal>(),
+                IsInitiative = IsInitiator,
+
+                ToAddress       = response["user"]?["requisites"]?["receivingAddress"]?.Value<string>(),
+                RewardForRedeem = response["user"]?["requisites"]?["rewardForRedeem"]?.Value<decimal>() ?? 0,
+                RefundAddress   = response["user"]?["requisites"]?["refundAddress"]?.Value<string>(),
+
+                PartyAddress         = response["counterParty"]?["requisites"]?["receivingAddress"]?.Value<string>(),
+                PartyRewardForRedeem = response["counterParty"]?["requisites"]?["rewardForRedeem"]?.Value<decimal>() ?? 0,
+                PartyRefundAddress   = response["counterParty"]?["requisites"]?["refundAddress"]?.Value<string>(),
+            };
+
+            SwapReceived?.Invoke(
+                sender: this,
+                e: new SwapEventArgs(swap));
+        }
+
+        private void HandleTopOfBook(JObject response)
+        {
+            var quotes = new List<Quote>();
+
+            foreach (var quote in response["data"])
+            {
+                quotes.Add(new Quote
+                {
+                    Ask       = quote["Ask"].Value<decimal>(),
+                    Bid       = quote["Bid"].Value<decimal>(),
+                    Symbol    = quote["Symbol"].Value<string>(),
+                    TimeStamp = quote["TimeStamp"].Value<long>().ToUtcDateTimeFromMs()
+                });
+            }
+
+            Log.Verbose("Quotes: {@quotes}", quotes);
+
+            MarketDataRepository.ApplyQuotes(quotes);
+
+            var symbolsIds = new HashSet<string>();
+
+            foreach (var quote in quotes)
+                if (!symbolsIds.Contains(quote.Symbol))
+                    symbolsIds.Add(quote.Symbol);
+
+            foreach (var symbolId in symbolsIds)
+            {
+                var symbol = SymbolsProvider
+                    .GetSymbols(Account.Network)
+                    .GetByName(symbolId);
+
+                if (symbol != null)
+                    QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));
+            }
+        }
+
+        private void HandleSnapshot(JObject response)
+        {
+            foreach (var s in response["data"])
+            {
+                var entries = new List<Entry>();
+
+                foreach (var entry in s["Entries"])
+                {
+                    entries.Add(new Entry
+                    {
+                        Price         = entry["Price"].Value<decimal>(),
+                        QtyProfile    = entry["QtyProfile"].ToObject<List<decimal>>(),
+                        Side          = (Side)Enum.Parse(typeof(Side), entry["side"].Value<string>()),
+                    });
+                }
+
+                var snapshot = new Snapshot
+                {
+                    Entries           = entries,
+                    LastTransactionId = s["UpdateId"].Value<long>(),
+                    Symbol            = s["Symbol"].Value<string>()
+                };
+
+                Log.Verbose("Snapshot: {@snapshot}", snapshot);
+
+                MarketDataRepository.ApplySnapshot(snapshot);
+
+                var symbol = SymbolsProvider
+                    .GetSymbols(Account.Network)
+                    .GetByName(snapshot.Symbol);
+
+                if (symbol != null)
+                    QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));
+            }
+        }
+
+        private void HandleEntries(JObject response)
+        {
+            var entries = new List<Entry>();
+
+            foreach (var entry in response["data"])
+            {
+                entries.Add(new Entry
+                {
+                    TransactionId = entry["UpdateId"].Value<long>(),
+                    Symbol        = entry["Symbol"].Value<string>(),
+                    Price         = entry["Price"].Value<decimal>(),
+                    QtyProfile    = entry["QtyProfile"].ToObject<List<decimal>>(),
+                    Side          = (Side)Enum.Parse(typeof(Side), entry["side"].Value<string>()),
+                });
+            }
+
+            MarketDataRepository.ApplyEntries(entries);
+        }
+
+        private string GetSwapContract(string currency)
+        {
+            if (currency == "ETH" || Currencies.IsEthereumToken(currency))
+                return Account.Currencies.Get<EthereumConfig>(currency).SwapContractAddress;
+
+            if (currency == "XTZ" || Currencies.IsTezosToken(currency))
+                return Account.Currencies.Get<TezosConfig>(currency).SwapContractAddress;
+
+            return null;
+        }
     }
 }

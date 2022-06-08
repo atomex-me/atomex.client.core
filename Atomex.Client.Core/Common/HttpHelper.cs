@@ -4,8 +4,6 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Serilog;
-
 using Atomex.Core;
 
 namespace Atomex.Common
@@ -54,23 +52,6 @@ namespace Atomex.Common
                 : responseHandler(response, responseContent);
         }
 
-        //public static Task<T> PostAsync<T>(
-        //    string baseUri,
-        //    string requestUri,
-        //    HttpContent content,
-        //    Func<HttpResponseMessage, T> responseHandler,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return SendRequestAsync(
-        //        baseUri: baseUri,
-        //        requestUri: requestUri,
-        //        method: HttpMethod.Post,
-        //        content: content,
-        //        headers: null,
-        //        responseHandler: responseHandler,
-        //        cancellationToken: cancellationToken);
-        //}
-
         public static async Task<Result<T>> PostAsyncResult<T>(
             string baseUri,
             string requestUri,
@@ -117,55 +98,6 @@ namespace Atomex.Common
             return !response.IsSuccessStatusCode
                 ? new Error((int)response.StatusCode, responseContent)
                 : responseHandler(response, responseContent);
-        }
-
-        private static async Task<T> SendRequestAsync<T>(
-            string baseUri,
-            string requestUri,
-            HttpMethod method,
-            HttpContent content,
-            HttpRequestHeaders headers,
-            Func<HttpResponseMessage, T> responseHandler,
-            CancellationToken cancellationToken = default)
-        {
-            Log.Debug("Send {@method} request: {@baseUri}{@request}", 
-                method.ToString(),
-                baseUri,
-                requestUri);
-
-            try
-            {
-                using var response = await SendRequestAsync(
-                        baseUri: baseUri, 
-                        relativeUri: requestUri,
-                        method: method,
-                        content: content, 
-                        headers: headers,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-                Log.Debug(
-                    response.IsSuccessStatusCode ? "Success status code: {@code}" : "Http error code: {@code}",
-                    response.StatusCode);
-
-                return responseHandler(response);
-            }
-            catch (HttpRequestException e)
-            {
-                Log.Error("SendRequestAsync error: {@message}", e.Message);
-            }
-            catch (OperationCanceledException)
-            {
-                Log.Warning("SendRequestAsync operation canceled");
-
-                throw;
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "SendRequestAsync error");
-            }
-
-            return default;
         }
 
         public static async Task<HttpResponseMessage> SendRequestAsync(
