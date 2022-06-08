@@ -2,7 +2,6 @@
 using System.Collections.Concurrent;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
@@ -29,8 +28,6 @@ namespace Atomex.Blockchain.Ethereum
         private bool _isRunning;
         private CancellationTokenSource _cts;
         private StreamingWebSocketClient _client;
-
-        private ImmutableHashSet<string> _addresses = ImmutableHashSet<string>.Empty;
         private readonly object[] _empty = {};
 
         private EthLogsObservableSubscription _subscriptionFrom;
@@ -121,15 +118,16 @@ namespace Atomex.Blockchain.Ethereum
             _subscriptionFrom.GetSubscriptionDataResponsesAsObservable().Subscribe(LogEventHandler);
             _subscriptionTo.GetSubscriptionDataResponsesAsObservable().Subscribe(LogEventHandler);
 
+            var addresses = _subscriptions.Select(s => s.Key).ToArray();
             // create a log filter specific to Transfers
             // this filter will match any Transfer (matching the signature) 
             var filterTransfersFrom = Event<TransferEventDTO>
                 .GetEventABI()
-                .CreateFilterInput(Currency.ERC20ContractAddress, _empty, _addresses.ToArray(), _empty);
+                .CreateFilterInput(Currency.ERC20ContractAddress, _empty, addresses, _empty);
 
             var filterTransfersTo = Event<TransferEventDTO>
                 .GetEventABI()
-                .CreateFilterInput(Currency.ERC20ContractAddress, _empty, _empty, _addresses.ToArray());
+                .CreateFilterInput(Currency.ERC20ContractAddress, _empty, _empty, addresses);
 
             await _subscriptionFrom.SubscribeAsync(filterTransfersFrom);
             await _subscriptionTo.SubscribeAsync(filterTransfersTo);
@@ -172,23 +170,18 @@ namespace Atomex.Blockchain.Ethereum
                 (_, _) => handler
             );
 
-            _addresses = _addresses.Add(address);
-
             return InitiateSubscriptions();
         }
 
         public Task SubscribeOnEventsAsync(IEnumerable<string> addresses, Action<string, string> handler)
         {
-            var addressesList = addresses.Select(a => a.ToLower()).ToList();
-            foreach (var address in addressesList) 
+            foreach (var address in addresses) 
             {
-                _subscriptions.AddOrUpdate(address,
+                _subscriptions.AddOrUpdate(address.ToLower(),
                     handler, 
                     (_, _) => handler
                 );
             }
-
-            _addresses = _addresses.Union(addressesList);
 
             return InitiateSubscriptions();
         }
