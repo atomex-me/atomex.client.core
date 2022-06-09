@@ -91,7 +91,7 @@ namespace Atomex.Services
         {
             try
             {
-                Logger.LogInformation("{atomexClientName} is starting for the {userId} [{network}] user", nameof(RestAtomexClient), AccountUserId, Account.Network);
+                Logger.LogInformation("{atomexClientName} is starting for the {userId} user [{network}]", nameof(RestAtomexClient), AccountUserId, Account.Network);
 
                 MarketDataRepository.Initialize(SymbolsProvider.GetSymbols(Account.Network));
                 Logger.LogDebug("MarketDataRepository is initialized");
@@ -108,15 +108,15 @@ namespace Atomex.Services
                     ServiceConnected.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
                 }
 
-                Logger.LogInformation("{atomexClientName} has been started for the {userId} [{network}] user", nameof(RestAtomexClient), AccountUserId, Account.Network);
-
                 _ = CancelAllUserOrdersAsync(_cts.Token);
                 _ = TrackSwapsAsync(_cts.Token);
                 _ = RunAutoAuthorizationAsync(_cts.Token);
+
+                Logger.LogInformation("{atomexClientName} has been started for the {userId} user [{network}]", nameof(RestAtomexClient), AccountUserId, Account.Network);
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "An exception has been occurred when the {atomexClientName} client is started for the {userId} [{network}] user",
+                Logger.LogError(ex, "An exception has been occurred when the {atomexClientName} client is started for the {userId} user [{network}]",
                     nameof(RestAtomexClient), AccountUserId, Account.Network);
             }
         }
@@ -125,7 +125,7 @@ namespace Atomex.Services
         {
             try
             {
-                Logger.LogInformation("{atomexClientName} is stopping for the {userId} [{network}] user", nameof(RestAtomexClient), AccountUserId, Account.Network);
+                Logger.LogInformation("{atomexClientName} is stopping for the {userId} user [{network}]", nameof(RestAtomexClient), AccountUserId, Account.Network);
 
                 _cts.Cancel();
 
@@ -140,11 +140,11 @@ namespace Atomex.Services
                 MarketDataRepository.Clear();
                 Logger.LogDebug("MarketDataRepository has been cleared");
 
-                Logger.LogInformation("{atomexClientName} has been stopped for the {userId} [{network}] user", nameof(RestAtomexClient), AccountUserId, Account.Network);
+                Logger.LogInformation("{atomexClientName} has been stopped for the {userId} user [{network}] ", nameof(RestAtomexClient), AccountUserId, Account.Network);
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "An exception has been occurred when the {atomexClientName} client is stopped for the {userId} [{network}] user",
+                Logger.LogError(ex, "An exception has been occurred when the {atomexClientName} client is stopped for the {userId} user [{network}]",
                     nameof(RestAtomexClient), AccountUserId, Account.Network);
             }
 
@@ -191,12 +191,12 @@ namespace Atomex.Services
 
                     if (activeOrdersCount == 0)
                     {
-                        Logger.LogInformation("The {userId} user doesn't have active swaps. Cancel nothing", AccountUserId);
+                        Logger.LogInformation("The {userId} user doesn't have active orders. Cancel nothing", AccountUserId);
 
                         return;
                     }
 
-                    Logger.LogInformation("The {userId} user has {count} active swaps. Canceling...", AccountUserId, activeOrdersCount);
+                    Logger.LogInformation("The {userId} user has {count} active orders. Canceling...", AccountUserId, activeOrdersCount);
 
                     foreach (var order in orderDtos!)
                         OrderCancelAsync(order.Id, order.Symbol, order.Side);
@@ -248,7 +248,7 @@ namespace Atomex.Services
                 var dbOrder = Account.GetOrderById(orderId);
                 if (dbOrder == null)
                 {
-                    Logger.LogWarning("Order [{orderId}, \"{symbol}\", {side}] not found in the local database", orderId, symbol, side);
+                    Logger.LogWarning("Canceled order [{orderId}, \"{symbol}\", {side}] not found in the local database", orderId, symbol, side);
 
                     return;
                 }
@@ -330,7 +330,7 @@ namespace Atomex.Services
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    Logger.LogError("Sending the order is failed for the {userId} user. New Order DTO: {@newOrderDto}" +
+                    Logger.LogError("Sending the order is failed for the {userId} user. New Order DTO: {@newOrderDto}. " +
                         "Response: {responseMessage} [{responseStatusCode}].", AccountUserId, newOrderDto, responseContent, response.StatusCode);
 
                     return;
@@ -575,7 +575,7 @@ namespace Atomex.Services
                         return;
                     }
 
-                    Logger.LogDebug("The {swapId} swap has been received. Handle it again");
+                    Logger.LogDebug("The {swapId} swap has been received. Handle it again", swapId);
                     await HandleSwapAsync(swap, needToWait, cancellationToken);
                 }
                 catch (OperationCanceledException)
@@ -660,7 +660,7 @@ namespace Atomex.Services
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        Logger.LogDebug("Waiting for the authentication token to expire. Wait {delay} ms", delay.TotalMilliseconds);
+                        Logger.LogDebug("Waiting for the authentication token to expire. Wait {delay}", delay);
 
                         await Task.Delay(delay, cancellationToken)
                             .ConfigureAwait(false);
