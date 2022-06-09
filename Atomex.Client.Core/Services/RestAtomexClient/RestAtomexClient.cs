@@ -278,6 +278,8 @@ namespace Atomex.Services
         {
             try
             {
+                order.ClientOrderId = GenerateOrderClientId();
+
                 Logger.LogInformation("Sending the order...: {@order}", order);
 
                 await Account.UpsertOrderAsync(order)
@@ -368,7 +370,7 @@ namespace Atomex.Services
 
         public void SwapAcceptAsync(long id, string symbol, string toAddress, decimal rewardForRedeem, string refundAddress)
         {
-            // nothing to do...
+            throw new NotImplementedException();
         }
 
         public async void SwapInitiateAsync(long swapId, byte[] secretHash, string symbol, string toAddress, decimal rewardForRedeem, string refundAddress)
@@ -413,6 +415,8 @@ namespace Atomex.Services
 
                     return;
                 }
+
+                await RequestActualSwapState(swapId, _cts.Token);
             }
             catch (OperationCanceledException)
             {
@@ -427,8 +431,8 @@ namespace Atomex.Services
 
         public void SwapStatusAsync(string requestId, long swapId)
         {
-            Logger.LogDebug("Getting actual status of the {swapId} swap [{requestId}]", swapId, requestId);
-            _ = RetrackSwapAsync(swapId, _cts.Token);
+            Logger.LogDebug("Requesting the actual status of the {swapId} swap [{requestId}]", swapId, requestId);
+            _ = RequestActualSwapState(swapId, _cts.Token);
         }
 
         protected async Task AuthenticateAsync(CancellationToken cancellationToken = default)
@@ -499,6 +503,12 @@ namespace Atomex.Services
             HttpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {authenticationData.Token}");
             _authenticationData = authenticationData;
 
+            if (ServiceAuthenticated != null)
+            {
+                ServiceAuthenticated.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
+                ServiceAuthenticated.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
+            }
+
             Logger.LogInformation("The {userId} user is authenticated until {authTokenExpiredDate}",
                 AccountUserId, DateTimeOffset.FromUnixTimeMilliseconds(authenticationData.Expires).UtcDateTime);
         }
@@ -558,12 +568,12 @@ namespace Atomex.Services
             cancellationToken
         );
 
-        protected Task RetrackSwapAsync(long swapId, CancellationToken cancellationToken = default) => Task.Run(
+        protected Task RequestActualSwapState(long swapId, CancellationToken cancellationToken = default) => Task.Run(
             async () =>
             {
                 try
                 {
-                    Logger.LogDebug("Retracking the {swapId} swap", swapId);
+                    Logger.LogDebug("Requesting the actual state of the {swapId} swap", swapId);
 
                     var (swap, needToWait) = await FetchUserSwapAsync(swapId, cancellationToken)
                         .ConfigureAwait(false);
@@ -575,16 +585,16 @@ namespace Atomex.Services
                         return;
                     }
 
-                    Logger.LogDebug("The {swapId} swap has been received. Handle it again", swapId);
+                    Logger.LogDebug("The {swapId} swap has been received. Apply its' state locally (handle this swap again)", swapId);
                     await HandleSwapAsync(swap, needToWait, cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
-                    Logger.LogDebug("The {taskName} task has been canceled", nameof(RetrackSwapAsync));
+                    Logger.LogDebug("The {taskName} task has been canceled", nameof(RequestActualSwapState));
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, "Retracking the {swapId} swap failed", swapId);
+                    Logger.LogError(ex, "Requesting the actual state of the {swapId} swap failed", swapId);
                 }
             },
             cancellationToken
@@ -685,6 +695,8 @@ namespace Atomex.Services
             cancellationToken
         );
 
+        protected virtual string GenerateClientOrderId() => Guid.NewGuid().ToByteArray().ToHexString(0, 16);
+
         private void ClearAuthenticationData()
         {
             var currentAuthorizationHeaderExists = HttpClient.DefaultRequestHeaders.Contains("Authorization");
@@ -704,7 +716,6 @@ namespace Atomex.Services
             "FA12" or "TZBTC" or "KUSD" => Account.Currencies.Get<Fa12Config>(currency).SwapContractAddress,
             "FA2" => Account.Currencies.Get<Fa2Config>(currency).SwapContractAddress,
             _ => null
-
         };
 
         private Task HandleSwapAsync(
@@ -746,10 +757,10 @@ namespace Atomex.Services
             var swapStatus = SwapStatus.Empty;
 
             if (swapDto.User?.Status > PartyStatus.Created)
-                swapStatus |= SwapStatus.Initiated;
+                swapStatus |= (swapDto.IsInitiator ? SwapStatus.Accepted : SwapStatus.Initiated);
 
             if (swapDto.CounterParty?.Status > PartyStatus.Created)
-                swapStatus |= SwapStatus.Accepted;
+                swapStatus |= (swapDto.IsInitiator ? SwapStatus.Initiated : SwapStatus.Accepted);
 
             return new Swap()
             {
