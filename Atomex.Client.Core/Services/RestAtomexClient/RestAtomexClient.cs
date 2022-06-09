@@ -164,15 +164,15 @@ namespace Atomex.Services
                 {
                     Logger.LogInformation("Canceling orders of the {userId} user", AccountUserId);
 
-                    var queryParameters = new Dictionary<string, string>(2)
+                    var queryParameters = await ConvertQueryParamsToStringAsync(new Dictionary<string, string>(2)
                     {
                         ["limit"] = "1000",
                         ["active"] = "true",
-                    };
+                    });
 
                     // TODO: use the CancelAllOrders API method
                     using var response = await HttpClient
-                        .GetAsync($"orders?{ConvertQueryParamsToStringAsync(queryParameters)}", _cts.Token)
+                        .GetAsync($"orders?{queryParameters}", _cts.Token)
                         .ConfigureAwait(false);
                     var responseContent = await response.Content
                         .ReadAsStringAsync()
@@ -220,14 +220,14 @@ namespace Atomex.Services
                 Logger.LogInformation("Canceling an order: {orderId}, \"{symbol}\", {side}. User is {userId}",
                     orderId, symbol, side, AccountUserId);
 
-                var queryParameters = new Dictionary<string, string>(2)
+                var queryParameters = await ConvertQueryParamsToStringAsync(new Dictionary<string, string>(2)
                 {
                     ["symbol"] = symbol,
                     ["side"] = side.ToString(),
-                };
+                });
 
                 using var response = await HttpClient
-                    .DeleteAsync($"orders/{orderId}?{ConvertQueryParamsToStringAsync(queryParameters)}", _cts.Token)
+                    .DeleteAsync($"orders/{orderId}?{queryParameters}", _cts.Token)
                     .ConfigureAwait(false);
                 var responseContent = await response.Content
                     .ReadAsStringAsync()
