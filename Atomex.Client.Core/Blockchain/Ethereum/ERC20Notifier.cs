@@ -54,7 +54,6 @@ namespace Atomex.Blockchain.Ethereum
                 _client = new StreamingWebSocketClient(BaseUrl);
                 
                 await _client.StartAsync();
-                await InitiateSubscriptions();
 
                 _log.Debug("ERC20Notifier({Currency}) successfully started", Currency.Name);
             }
@@ -118,6 +117,10 @@ namespace Atomex.Blockchain.Ethereum
             _subscriptionFrom.GetSubscriptionDataResponsesAsObservable().Subscribe(LogEventHandler);
             _subscriptionTo.GetSubscriptionDataResponsesAsObservable().Subscribe(LogEventHandler);
 
+            if (!_subscriptions.Skip(0).Any())
+            {
+                return;
+            }
             var addresses = _subscriptions.Select(s => s.Key).ToArray();
             // create a log filter specific to Transfers
             // this filter will match any Transfer (matching the signature) 
