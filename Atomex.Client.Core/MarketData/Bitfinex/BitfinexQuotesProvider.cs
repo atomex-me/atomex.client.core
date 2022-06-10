@@ -34,7 +34,7 @@ namespace Atomex.MarketData.Bitfinex
         public const string Usd = "USD";
 
         //private string BaseUrl { get; } = "https://api.bitfinex.com/v2/";
-        private string BaseUrl { get; } = "https://test.atomex.me/v2/";
+        private string BaseUrl { get; } = "https://test.atomex.me/";
 
         public BitfinexQuotesProvider(params string[] symbols) //todo: check before use
         {
@@ -53,15 +53,16 @@ namespace Atomex.MarketData.Bitfinex
         {
             if (QuoteSymbols.TryGetValue($"{currency}{baseCurrency}", out var symbol))
                 return Quotes.TryGetValue(symbol, out var rate) ? rate : null;
-            else return null;
+            return Quotes.TryGetValue(currency.ToLower(), out var tokenRate) ? tokenRate : null;
         }
 
         public override Quote GetQuote(string symbol)
         {
             if (QuoteSymbols.TryGetValue(symbol.Replace("/", ""), out var s))
                 return Quotes.TryGetValue(s, out var rate) ? rate : null;
-            else return null;
+            return Quotes.TryGetValue(symbol.ToLower(), out var tokenRate) ? tokenRate : null;
         }
+
 
         protected override async Task UpdateAsync(
             CancellationToken cancellationToken = default)
@@ -72,47 +73,95 @@ namespace Atomex.MarketData.Bitfinex
 
             try
             {
-                var symbols = string.Join(",", Quotes.Select(q => q.Key));
+                var symbols = string.Join(",", Quotes
+                    .Where(q => !q.Value.IsToken)
+                    .Select(q => q.Key));
+                
+                var bitfinexTask = HttpHelper.GetAsync(
+                    baseUri: BaseUrl,
+                    requestUri: $"v2/tickers/?symbols={symbols}",
+                    responseHandler: response =>
+                    {
+                        if (!response.IsSuccessStatusCode)
+                            return false;
 
-                var request = $"tickers/?symbols={symbols}";
+                        var responseContent = response.Content
+                            .ReadAsStringAsync()
+                            .WaitForResult();
 
-                isAvailable = await HttpHelper.GetAsync(
-                        baseUri: BaseUrl,
-                        requestUri: request,
-                        responseHandler: response =>
+                        var tickers = JsonConvert.DeserializeObject<JArray>(responseContent);
+
+                        foreach (var tickerToken in tickers)
                         {
-                            if (!response.IsSuccessStatusCode)
-                                return false;
+                            if (tickerToken is not JArray ticker)
+                                continue;
 
-                            var responseContent = response.Content
-                                .ReadAsStringAsync()
-                                .WaitForResult();
+                            var symbol = ticker[0].Value<string>();
 
-                            var tickers = JsonConvert.DeserializeObject<JArray>(responseContent);
+                            var bid = ticker[1].Value<decimal>();
+                            var ask = ticker[3].Value<decimal>();
+                            var dailyChangePercent = ticker[6].Value<decimal>();
 
-                            foreach (var tickerToken in tickers)
+                            Quotes[symbol] = new Quote
                             {
-                                if (!(tickerToken is JArray ticker))
+                                Bid = bid,
+                                Ask = ask,
+                                DailyChangePercent = dailyChangePercent
+                            };
+                        }
+
+                        return true;
+                    },
+                    cancellationToken: cancellationToken);
+                
+                var tezToolsTask = HttpHelper.GetAsync(
+                    baseUri: BaseUrl,
+                    requestUri: "token/prices",
+                    responseHandler: response =>
+                    {
+                        if (!response.IsSuccessStatusCode)
+                            return false;
+
+                        var responseContent = response.Content
+                            .ReadAsStringAsync()
+                            .WaitForResult();
+
+                        var data = JsonConvert.DeserializeObject<JObject>(responseContent);
+
+                        if (data["contracts"] is not JArray contracts) return false;
+
+                        foreach (var token in contracts)
+                        {
+                            try
+                            {
+                                var symbol = token["symbol"]?.Value<string>();
+                                if (symbol == null)
                                     continue;
+                            
+                                var bid = token["usdValue"]!.Value<decimal>();
+                                var ask = token["usdValue"]!.Value<decimal>();
 
-                                var symbol = ticker[0].Value<string>();
-
-                                var bid = ticker[1].Value<decimal>();
-                                var ask = ticker[3].Value<decimal>();
-                                var dailyChangePercent = ticker[6].Value<decimal>();
-
-                                Quotes[symbol] = new Quote
+                                Quotes[symbol.ToLower()] = new Quote
                                 {
                                     Bid = bid,
                                     Ask = ask,
-                                    DailyChangePercent = dailyChangePercent
+                                    IsToken = true
                                 };
                             }
+                            catch
+                            {
+                                Log.Error("Can't update tezos tokens quotes");
+                            }
+                        }
 
-                            return true;
-                        },
-                        cancellationToken: cancellationToken)
+                        return true;
+                    },
+                    cancellationToken: cancellationToken);
+                
+                var result = await Task.WhenAll(bitfinexTask, tezToolsTask)
                     .ConfigureAwait(false);
+
+                isAvailable = result.All(r => r);
 
                 Log.Debug("Update finished");
             }
