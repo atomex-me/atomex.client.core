@@ -71,7 +71,7 @@ namespace Atomex.Blockchain.Ethereum
         {
             try
             {
-                _log.Information("ERC20Notifier: Got log event for address {Address}", log.Address);
+                _log.Information("ERC20Notifier({Currency}): Got log event for address {Address}", Currency.Name, log.Address);
                 var decoded = Event<TransferEventDTO>.DecodeEvent(log);
                 if (decoded != null)
                 {
