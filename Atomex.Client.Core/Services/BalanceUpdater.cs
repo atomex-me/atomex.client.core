@@ -109,7 +109,10 @@ namespace Atomex.Services
 
                 var tzkt = new TzktEventsClient(_log);
                 _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, tzkt, _log));
+                /*
+                 Tezos tokens balance updater temporally disabled cause of big amount of requests.
                 _balanceUpdaters.Add(new TezosTokenBalanceUpdater(_account, _currenciesProvider, _walletScanner, tzkt, _log));
+                */
             }
             catch (Exception e)
             {
