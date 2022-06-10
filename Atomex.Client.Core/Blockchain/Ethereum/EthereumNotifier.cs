@@ -25,7 +25,7 @@ namespace Atomex.Blockchain.Ethereum
         private CancellationTokenSource _cts;
 
         private readonly TimeSpan _transactionsDelay = TimeSpan.FromSeconds(15);
-        private const int MinDelayBetweenRequestMs = 6000;
+        private const int MinDelayBetweenRequestMs = 7000;
         private static readonly RequestLimitControl RequestLimitControl 
             = new(MinDelayBetweenRequestMs);
 
