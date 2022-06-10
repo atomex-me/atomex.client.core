@@ -104,6 +104,8 @@ namespace Atomex.Services
                 _balanceUpdaters.Add(new BitcoinBalanceUpdater(_account, _walletScanner, soChainRealtimeApi, _log));
                 _balanceUpdaters.Add(new LitecoinBalanceUpdater(_account, _walletScanner, soChainRealtimeApi, _log));
 
+                _balanceUpdaters.Add(new EthereumBalanceUpdater(_account, _currenciesProvider, _walletScanner, _log));
+
                 var tzkt = new TzktEventsClient(_log);
                 _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, tzkt, _log));
                 _balanceUpdaters.Add(new TezosTokenBalanceUpdater(_account, _currenciesProvider, _walletScanner, tzkt, _log));

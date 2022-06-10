@@ -2,5 +2,5 @@
 
 namespace Atomex.TzktEvents.Models
 {
-    public record ServiceSubscription(Action<string> Handler, int LastState = 0);
+    public record ServiceSubscription(Action<string> Handler, long LastState = 0);
 }
