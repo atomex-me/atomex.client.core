@@ -90,6 +90,8 @@ namespace Atomex.Services
             _authToken = await AuthAsync()
                 .ConfigureAwait(false);
 
+            Log.Debug($"Auth token: {_authToken}");
+
             var authHeaders = new HttpRequestHeaders
             {
                 new KeyValuePair<string, IEnumerable<string>>("Authorization", new string[] { $"Bearer {_authToken}" }),
@@ -134,6 +136,11 @@ namespace Atomex.Services
             }
 
             ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
+
+            // set orders auto cancel flag, after disconnect all orders will be canceled
+            SetOrdersAutoCancel(autoCancel: true);
+
+            ServiceAuthenticated?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
         }
 
         private void ExchangeDisconnected(object sender, EventArgs e)
@@ -172,11 +179,13 @@ namespace Atomex.Services
                     case "swap": HandleSwap(response); break;
                     //case "orderSendReply": break;
                     //case "orderCancelReply": break;
+                    case "cancelAllOrdersReply": break;
                     //case "getOrderReply": break;
                     //case "getOrdersReply" break;
                     case "getSwapReply": HandleSwap(response); break;
                     //case "getSwapsReply": break;
                     //case "addRequisitesReply": break;
+                    case "setOrdersAutoCancelReply": break;
                 };
             }
             else throw new NotImplementedException();
@@ -195,6 +204,7 @@ namespace Atomex.Services
             }
 
             ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
+            ServiceAuthenticated?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
         }
 
         private void MarketDataDisconnected(object sender, EventArgs e)
@@ -383,6 +393,41 @@ namespace Atomex.Services
             _exchangeWs.Send(JsonConvert.SerializeObject(request));
         }
 
+        private void SetOrdersAutoCancel(bool autoCancel)
+        {
+            var request = new
+            {
+                method = "setOrdersAutoCancel",
+                data = new
+                {
+                    autoCancel = autoCancel
+                },
+                requestId = 0
+            };
+
+            _exchangeWs.Send(JsonConvert.SerializeObject(request));
+        }
+
+        private void CancelAllOrders(
+            string symbol = null,
+            Side? side = null,
+            bool forAllConnections = false)
+        {
+            var request = new
+            {
+                method = "cancelAllOrders",
+                data = new
+                {
+                    symbol = symbol,
+                    side = side == null ? "All" : side.ToString(),
+                    forAllConnections = forAllConnections
+                },
+                requestId = 0
+            };
+
+            _exchangeWs.Send(JsonConvert.SerializeObject(request));
+        }
+
         private async Task<string> AuthAsync(CancellationToken cancellationToken = default)
         {
             try
@@ -501,9 +546,11 @@ namespace Atomex.Services
             var totalQty = 0m;
             var totalAmount = 0m;
 
-            if (response.ContainsKey("trades"))
+            var data = response["data"] as JObject;
+
+            if (data.ContainsKey("trades"))
             {
-                foreach (var trade in response["trades"])
+                foreach (var trade in data["trades"])
                 {
                     var price = trade["price"].Value<decimal>();
                     var qty = trade["qty"].Value<decimal>();
@@ -515,18 +562,18 @@ namespace Atomex.Services
 
             var order = new Order
             {
-                Id            = response["id"].Value<long>(),
-                ClientOrderId = response["clientOrderId"].Value<string>(),
-                Symbol        = response["symbol"].Value<string>(),
-                Side          = (Side)Enum.Parse(typeof(Side), response["side"].Value<string>()),
-                TimeStamp     = response["timeStamp"].Value<DateTime>(),
-                Price         = response["price"].Value<decimal>(),
-                Qty           = response["qty"].Value<decimal>(),
-                LeaveQty      = response["leaveQty"].Value<decimal>(),
+                Id            = data["id"].Value<long>(),
+                ClientOrderId = data["clientOrderId"].Value<string>(),
+                Symbol        = data["symbol"].Value<string>(),
+                Side          = (Side)Enum.Parse(typeof(Side), data["side"].Value<string>()),
+                TimeStamp     = data["timeStamp"].Value<DateTime>(),
+                Price         = data["price"].Value<decimal>(),
+                Qty           = data["qty"].Value<decimal>(),
+                LeaveQty      = data["leaveQty"].Value<decimal>(),
                 LastPrice     = totalQty != 0 ? totalAmount / totalQty : 0, // currently average price used
                 LastQty       = totalQty,                                   // currently total qty used
-                Type          = (OrderType)Enum.Parse(typeof(OrderType), response["type"].Value<string>()),
-                Status        = (OrderStatus)Enum.Parse(typeof(OrderStatus), response["status"].Value<string>())
+                Type          = (OrderType)Enum.Parse(typeof(OrderType), data["type"].Value<string>()),
+                Status        = (OrderStatus)Enum.Parse(typeof(OrderStatus), data["status"].Value<string>())
             };
 
             OrderReceived?.Invoke(
@@ -548,11 +595,13 @@ namespace Atomex.Services
 
         private void HandleSwap(JObject response)
         {
-            var IsInitiator = response["isInitiator"].Value<bool>();
+            var data = response["data"] as JObject;
+
+            var IsInitiator = data["isInitiator"].Value<bool>();
 
             var status = SwapStatus.Empty;
-            var userStatus = (PartyStatus)Enum.Parse(typeof(PartyStatus), response["user"]["status"].Value<string>());
-            var partyStatus = (PartyStatus)Enum.Parse(typeof(PartyStatus), response["counterParty"]["status"].Value<string>());
+            var userStatus = (PartyStatus)Enum.Parse(typeof(PartyStatus), data["user"]["status"].Value<string>());
+            var partyStatus = (PartyStatus)Enum.Parse(typeof(PartyStatus), data["counterParty"]["status"].Value<string>());
 
             if (userStatus > PartyStatus.Created)
                 status |= IsInitiator
@@ -566,24 +615,24 @@ namespace Atomex.Services
 
             var swap = new Swap
             {
-                Id           = response["id"].Value<long>(),
+                Id           = data["id"].Value<long>(),
                 Status       = status,
-                SecretHash   = Hex.FromString(response["symbol"].Value<string>()),
-                TimeStamp    = response["timeStamp"].Value<DateTime>(),
-                OrderId      = response["user"]?["trades"]?[0]?["orderId"]?.Value<long>() ?? 0,
-                Symbol       = response["symbol"].Value<string>(),
-                Side         = (Side)Enum.Parse(typeof(Side), response["side"].Value<string>()),
-                Price        = response["price"].Value<decimal>(),
-                Qty          = response["qty"].Value<decimal>(),
+                SecretHash   = Hex.FromString(data["symbol"].Value<string>()),
+                TimeStamp    = data["timeStamp"].Value<DateTime>(),
+                OrderId      = data["user"]?["trades"]?[0]?["orderId"]?.Value<long>() ?? 0,
+                Symbol       = data["symbol"].Value<string>(),
+                Side         = (Side)Enum.Parse(typeof(Side), data["side"].Value<string>()),
+                Price        = data["price"].Value<decimal>(),
+                Qty          = data["qty"].Value<decimal>(),
                 IsInitiative = IsInitiator,
 
-                ToAddress       = response["user"]?["requisites"]?["receivingAddress"]?.Value<string>(),
-                RewardForRedeem = response["user"]?["requisites"]?["rewardForRedeem"]?.Value<decimal>() ?? 0,
-                RefundAddress   = response["user"]?["requisites"]?["refundAddress"]?.Value<string>(),
+                ToAddress       = data["user"]?["requisites"]?["receivingAddress"]?.Value<string>(),
+                RewardForRedeem = data["user"]?["requisites"]?["rewardForRedeem"]?.Value<decimal>() ?? 0,
+                RefundAddress   = data["user"]?["requisites"]?["refundAddress"]?.Value<string>(),
 
-                PartyAddress         = response["counterParty"]?["requisites"]?["receivingAddress"]?.Value<string>(),
-                PartyRewardForRedeem = response["counterParty"]?["requisites"]?["rewardForRedeem"]?.Value<decimal>() ?? 0,
-                PartyRefundAddress   = response["counterParty"]?["requisites"]?["refundAddress"]?.Value<string>(),
+                PartyAddress         = data["counterParty"]?["requisites"]?["receivingAddress"]?.Value<string>(),
+                PartyRewardForRedeem = data["counterParty"]?["requisites"]?["rewardForRedeem"]?.Value<decimal>() ?? 0,
+                PartyRefundAddress   = data["counterParty"]?["requisites"]?["refundAddress"]?.Value<string>(),
             };
 
             SwapReceived?.Invoke(
