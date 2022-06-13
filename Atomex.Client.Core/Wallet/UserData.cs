@@ -39,6 +39,7 @@ namespace Atomex.Wallet
         public bool ShowActiveSwapWarning { get; set; }
         public int BalanceUpdateIntervalInSec { get; set; }
         public string[] InitializedCurrencies { get; set; }
+        public string[] DisabledTokens { get; set; }
         public List<AtomexNotification> Notifications { get; set; }
 
         public static UserData GetDefaultSettings(ICurrencies currencies)

@@ -32,7 +32,7 @@ namespace Atomex.MarketData.Bitfinex
         public const string Usd = "USD";
 
         //private string BaseUrl { get; } = "https://api.bitfinex.com/v2/";
-        private string BaseUrl { get; } = "https://test.atomex.me/v2/";
+        private string BaseUrl { get; } = "https://test.atomex.me/";
 
         public BitfinexQuotesProvider(params string[] symbols) //todo: check before use
         {
@@ -49,19 +49,19 @@ namespace Atomex.MarketData.Bitfinex
 
         public override Quote GetQuote(string currency, string baseCurrency)
         {
-            if (QuoteSymbols.TryGetValue($"{currency}{baseCurrency}", out var symbol))
-                return Quotes.TryGetValue(symbol, out var rate) ? rate : null;
-            else return null;
+            return QuoteSymbols.TryGetValue($"{currency}{baseCurrency}", out var symbol)
+                ? Quotes.TryGetValue(symbol, out var rate) ? rate : null
+                : null;
         }
 
         public override Quote GetQuote(string symbol)
         {
-            if (QuoteSymbols.TryGetValue(symbol.Replace("/", ""), out var s))
-                return Quotes.TryGetValue(s, out var rate) ? rate : null;
-            else return null;
+            return QuoteSymbols.TryGetValue(symbol.Replace("/", ""), out var s)
+                ? Quotes.TryGetValue(s, out var rate) ? rate : null
+                : null;
         }
 
-        protected override async Task UpdateAsync(
+        public override async Task UpdateAsync(
             CancellationToken cancellationToken = default)
         {
             var isAvailable = await UpdateQuotesAsync(cancellationToken)
@@ -87,17 +87,14 @@ namespace Atomex.MarketData.Bitfinex
         {
             try
             {
-                Log.Debug("Start of update");
-
-                var symbols = string.Join(",", Quotes.Select(q => q.Key));
-
-                var request = $"tickers/?symbols={symbols}";
-
-                using var response = await HttpHelper.GetAsync(
-                        baseUri: BaseUrl,
-                        relativeUri: request,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
+                var symbols = string.Join(",", Quotes
+                    .Where(q => !q.Value.IsToken)
+                    .Select(q => q.Key));
+                
+                var response = await HttpHelper.GetAsync(
+                    baseUri: BaseUrl,
+                    relativeUri: $"v2/tickers/?symbols={symbols}",
+                    cancellationToken: cancellationToken);
 
                 if (!response.IsSuccessStatusCode)
                     return false;

@@ -16,7 +16,8 @@ namespace Atomex.ViewModels
         public static async Task<IEnumerable<WalletAddressViewModel>> GetReceivingAddressesAsync(
             IAccount account,
             CurrencyConfig currency,
-            string tokenContract = null)
+            string tokenContract = null,
+            decimal? tokenId = null)
         {
             var isTezosToken = Currencies.IsTezosToken(currency.Name) || tokenContract != null;
 
@@ -57,6 +58,9 @@ namespace Atomex.ViewModels
                         .GetTezosTokenAddressesByContractAsync(tokenContract)
                         .ConfigureAwait(false))
                     .Where(w => w.Currency == "FA12" || w.Currency == "FA2");
+
+                if (tokenId != null)
+                    tokenAddresses = tokenAddresses.Where(wa => wa.TokenBalance?.TokenId == tokenId);
 
                 var tezosAddressesWithoutTokens = tezosAddresses
                     .Where(w => !tokenAddresses.Any(ta => ta.Address == w.Address));
