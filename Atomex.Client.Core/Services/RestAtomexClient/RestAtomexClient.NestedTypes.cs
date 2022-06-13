@@ -96,6 +96,8 @@ namespace Atomex.Services
 
         private record NewOrderResponseDto(long OrderId);
 
+        private record OrdersCancelatonDto(int Count);
+
         private record OrderCancelationDto(bool Result);
 
         /// <summary>

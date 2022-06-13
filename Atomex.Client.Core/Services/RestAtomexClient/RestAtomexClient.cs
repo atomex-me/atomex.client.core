@@ -104,7 +104,9 @@ namespace Atomex.Services
                     ServiceConnected.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
                 }
 
-                _ = CancelAllUserOrdersAsync(_cts.Token);
+                await CancelAllOrdersAsync(_cts.Token)
+                    .ConfigureAwait(false);
+
                 _ = TrackSwapsAsync(_cts.Token);
                 _ = RunAutoAuthorizationAsync(_cts.Token);
 
@@ -114,6 +116,8 @@ namespace Atomex.Services
             {
                 Logger.Error(ex, "An exception has been occurred when the {atomexClientName} client is started for the {userId} user [{network}]",
                     nameof(RestAtomexClient), AccountUserId, Account.Network);
+
+                await StopAsync();
             }
         }
 
@@ -153,61 +157,42 @@ namespace Atomex.Services
 
         public Quote GetQuote(Symbol symbol) => MarketDataRepository.QuoteBySymbol(symbol.Name);
 
-        public Task CancelAllUserOrdersAsync(CancellationToken cancellationToken = default) => Task.Run(
-            async () =>
+        public async Task CancelAllOrdersAsync(CancellationToken cancellationToken = default)
+        {
+            try
             {
-                try
-                {
-                    Logger.Information("Canceling orders of the {userId} user", AccountUserId);
+                Logger.Information("Canceling orders of the {userId} user", AccountUserId);
 
-                    var queryParameters = await ConvertQueryParamsToStringAsync(new Dictionary<string, string>(2)
-                    {
-                        ["limit"] = "1000",
-                        ["active"] = "true",
-                    });
+                using var response = await HttpClient
+                    .DeleteAsync("orders", _cts.Token)
+                    .ConfigureAwait(false);
+                var responseContent = await response.Content
+                    .ReadAsStringAsync()
+                    .ConfigureAwait(false);
 
-                    // TODO: use the CancelAllOrders API method
-                    using var response = await HttpClient
-                        .GetAsync($"orders?{queryParameters}", _cts.Token)
-                        .ConfigureAwait(false);
-                    var responseContent = await response.Content
-                        .ReadAsStringAsync()
-                        .ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+                var responseResult = JsonConvert.DeserializeObject<OrdersCancelatonDto>(responseContent, JsonSerializerSettings);
 
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        Logger.Error("Failed to fetch active orders of the {userId} user. " +
-                            "Response: {responseMessage} [{responseStatusCode}].", AccountUserId, responseContent, response.StatusCode);
+                Logger.Debug("{Count} orders of the {userId} user are canceled", responseResult?.Count ?? 0, AccountUserId);
 
-                        return;
-                    }
+                var localDeletingResult = await Account.RemoveAllOrdersAsync()
+                    .ConfigureAwait(false);
 
-                    var orderDtos = JsonConvert.DeserializeObject<IEnumerable<OrderDto>?>(responseContent, JsonSerializerSettings);
-                    var activeOrdersCount = orderDtos?.Count() ?? 0;
-
-                    if (activeOrdersCount == 0)
-                    {
-                        Logger.Information("The {userId} user doesn't have active orders. Cancel nothing", AccountUserId);
-
-                        return;
-                    }
-
-                    Logger.Information("The {userId} user has {count} active orders. Canceling...", AccountUserId, activeOrdersCount);
-
-                    foreach (var order in orderDtos!)
-                        OrderCancelAsync(order.Id, order.Symbol, order.Side);
-                }
-                catch (OperationCanceledException)
-                {
-                    Logger.Debug("The {taskName} task has been canceled", nameof(CancelAllUserOrdersAsync));
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error(ex, "Orders cancelation is failed for the {userId} user", AccountUserId);
-                }
-            },
-            cancellationToken
-        );
+                if (!localDeletingResult)
+                    Logger.Warning("The local \"Orders\" collection is not cleared");
+                else
+                    Logger.Debug("The local \"Orders\" collection is cleared");
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Debug("The {taskName} task has been canceled", nameof(CancelAllOrdersAsync));
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "Orders cancelation is failed for the {userId} user", AccountUserId);
+                throw;
+            }
+        }
 
         public async void OrderCancelAsync(long orderId, string symbol, Side side)
         {
