@@ -138,12 +138,12 @@ namespace Atomex.Swaps
             if (!IsRunning)
                 throw new InvalidOperationException("SwapManager not started");
 
-            Log.Debug("Handle swap {@swap}", receivedSwap.ToString());
+            Log.Debug("Handle swap {@swap}", receivedSwap);
 
             await LockSwapAsync(receivedSwap.Id, _cts.Token)
                 .ConfigureAwait(false);
 
-            Log.Debug("Swap {@swap} locked", receivedSwap.Id);
+            Log.Debug("Swap {swapId} locked", receivedSwap.Id);
 
             try
             {
