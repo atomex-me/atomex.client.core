@@ -179,13 +179,13 @@ namespace Atomex.Services
                     case "swap": HandleSwap(response); break;
                     //case "orderSendReply": break;
                     //case "orderCancelReply": break;
-                    case "cancelAllOrdersReply": break;
+                    //case "cancelAllOrdersReply": break;
                     //case "getOrderReply": break;
                     //case "getOrdersReply" break;
                     case "getSwapReply": HandleSwap(response); break;
                     //case "getSwapsReply": break;
                     //case "addRequisitesReply": break;
-                    case "setOrdersAutoCancelReply": break;
+                    //case "setOrdersAutoCancelReply": break;
                 };
             }
             else throw new NotImplementedException();
@@ -265,7 +265,7 @@ namespace Atomex.Services
                     requisites    = new
                     {
                         baseCurrencyContract = GetSwapContract(order.Symbol.BaseCurrency()),
-                        quoteCurrencyContrac = GetSwapContract(order.Symbol.QuoteCurrency()),
+                        quoteCurrencyContract = GetSwapContract(order.Symbol.QuoteCurrency()),
                         // secretHash =,
                         // receivingAddress =,
                         // refundAddress =,

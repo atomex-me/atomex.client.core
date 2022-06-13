@@ -19,7 +19,7 @@ using Atomex.Web;
 
 namespace Atomex.Services
 {
-    public class WebSocketAtomexClientV1 : IAtomexClient
+    public class WebSocketAtomexClientLegacy : IAtomexClient
     {
         private static TimeSpan HeartBeatInterval = TimeSpan.FromSeconds(10);
 
@@ -45,7 +45,7 @@ namespace Atomex.Services
         private ISymbolsProvider SymbolsProvider { get; set; }
         private IConfiguration Configuration { get; }
 
-        public WebSocketAtomexClientV1(
+        public WebSocketAtomexClientLegacy(
             IConfiguration configuration,
             IAccount account,
             ISymbolsProvider symbolsProvider)
