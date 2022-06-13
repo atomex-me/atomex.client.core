@@ -293,7 +293,7 @@
       "ChainId": 5,
       "BlockchainApi": "EtherScan",
       "BlockchainApiBaseUri": "https://api-goerli.etherscan.io/",
-      "SwapContract": "0x512fe6b803ba327dcefbf2cec7de333f761b0f2b",
+      "SwapContract": "0x512fe6B803bA327DCeFBF2Cec7De333f761B0f2b",
       "SwapContractBlockNumber": 6954501,
       "TxExplorerUri": "https://goerli.etherscan.io/tx/",
       "AddressExplorerUri": "https://goerli.etherscan.io/address/",

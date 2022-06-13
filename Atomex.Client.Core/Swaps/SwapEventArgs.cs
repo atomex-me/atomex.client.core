@@ -1,5 +1,5 @@
-﻿using System;
-using Atomex.Core;
+﻿using Atomex.Core;
+using System;
 
 namespace Atomex.Swaps
 {

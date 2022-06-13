@@ -60,11 +60,11 @@ namespace Atomex.Wallet
 
         public WebAccountDataRepository(ICurrencies currencies)
         {
-            _addresses            = new Dictionary<string, WalletAddress>();
-            _transactions         = new Dictionary<string, IBlockchainTransaction>();
-            _outputs              = new Dictionary<string, OutputEntity>();
-            _swaps                = new Dictionary<long, Swap>();
-            _orders               = new Dictionary<string, Order>();
+            _addresses = new Dictionary<string, WalletAddress>();
+            _transactions = new Dictionary<string, IBlockchainTransaction>();
+            _outputs = new Dictionary<string, OutputEntity>();
+            _swaps = new Dictionary<long, Swap>();
+            _orders = new Dictionary<string, Order>();
             _tezosTokensAddresses = new Dictionary<string, WalletAddress>();
             _tezosTokensTransfers = new Dictionary<string, TokenTransfer>();
             _tezosTokensContracts = new Dictionary<string, TokenContract>();
@@ -102,7 +102,7 @@ namespace Atomex.Wallet
                     string currency = parsedId[1];
 
                     BsonDocument bd = BsonSerializer.Deserialize(Convert.FromBase64String(dbObj.data));
-                    _transactions[$"{id}:{currency}"] = (IBlockchainTransaction) _bsonMapper.ToObject(doc: bd,
+                    _transactions[$"{id}:{currency}"] = (IBlockchainTransaction)_bsonMapper.ToObject(doc: bd,
                         type: _currencies.GetByName(currency).TransactionType);
                 }
                 else if (dbObj.type == AvailableDataType.Swap.ToString())
@@ -121,9 +121,9 @@ namespace Atomex.Wallet
                     BsonDocument bd = BsonSerializer.Deserialize(Convert.FromBase64String(dbObj.data));
                     BitcoinBasedConfig BtcBasedCurrency = _currencies.Get<BitcoinBasedConfig>(currency);
                     ITxOutput output =
-                        (ITxOutput) _bsonMapper.ToObject(doc: bd, type: BtcBasedCurrency.OutputType());
+                        (ITxOutput)_bsonMapper.ToObject(doc: bd, type: BtcBasedCurrency.OutputType());
 
-                    _outputs[id] = new OutputEntity {Output = output, Currency = currency, Address = address};
+                    _outputs[id] = new OutputEntity { Output = output, Currency = currency, Address = address };
                 }
                 else if (dbObj.type == AvailableDataType.Order.ToString())
                 {
@@ -197,24 +197,24 @@ namespace Atomex.Wallet
             {
                 var walletId = $"{walletAddress.Currency}:{walletAddress.Address}";
                 WalletAddress existsAddress;
-                
+
                 if (!_addresses.TryGetValue(walletId, out existsAddress))
                 {
                     _addresses[walletId] = walletAddress.Copy();
-                    
+
                     var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(walletAddress)));
                     SaveDataCallback?.Invoke(AvailableDataType.WalletAddress, walletId, data);
                     return Task.FromResult(true);
                 }
-                
+
                 if (existsAddress.KeyType != walletAddress.KeyType)
                 {
-                    existsAddress.KeyType          = walletAddress.KeyType;
-                    existsAddress.KeyIndex.Chain   = walletAddress.KeyIndex.Chain;
-                    existsAddress.KeyIndex.Index   = walletAddress.KeyIndex.Index;
+                    existsAddress.KeyType = walletAddress.KeyType;
+                    existsAddress.KeyIndex.Chain = walletAddress.KeyIndex.Chain;
+                    existsAddress.KeyIndex.Index = walletAddress.KeyIndex.Index;
                     existsAddress.KeyIndex.Account = walletAddress.KeyIndex.Account;
                     _addresses[walletId] = existsAddress.Copy();
-                    
+
                     var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(existsAddress)));
                     SaveDataCallback?.Invoke(AvailableDataType.WalletAddress, walletId, data);
                     return Task.FromResult(true);
@@ -742,6 +742,18 @@ namespace Atomex.Wallet
 
                 var data = Convert.ToBase64String(BsonSerializer.Serialize(_bsonMapper.ToDocument(order)));
                 SaveDataCallback?.Invoke(AvailableDataType.Order, order.ClientOrderId, data);
+
+                return Task.FromResult(true);
+            }
+        }
+
+        public virtual Task<bool> RemoveAllOrdersAsync()
+        {
+            lock (_sync)
+            {
+                _orders.Clear();
+
+                Log.Debug("The {Collection} collection is cleared", nameof(_orders));
 
                 return Task.FromResult(true);
             }
