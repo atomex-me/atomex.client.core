@@ -161,6 +161,7 @@ namespace Atomex.Wallet.Abstract
         #region Orders
 
         Task<bool> UpsertOrderAsync(Order order);
+        Task<bool> RemoveAllOrdersAsync();
         Order GetOrderById(string clientOrderId);
         Order GetOrderById(long id);
 

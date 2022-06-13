@@ -383,6 +383,9 @@ namespace Atomex.Wallet
         public Task<bool> UpsertOrderAsync(Order order) =>
             DataRepository.UpsertOrderAsync(order);
 
+        public Task<bool> RemoveAllOrdersAsync() =>
+            DataRepository.RemoveAllOrdersAsync();
+
         public Order GetOrderById(string clientOrderId) =>
             DataRepository.GetOrderById(clientOrderId);
 
