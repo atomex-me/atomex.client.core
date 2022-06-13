@@ -20,28 +20,28 @@ namespace Atomex.LiteDb
 {
     public class LiteDbAccountDataRepository : IAccountDataRepository
     {
-        public const string OrdersCollectionName      = "Orders";
-        public const string SwapsCollectionName       = "Swaps";
+        public const string OrdersCollectionName = "Orders";
+        public const string SwapsCollectionName = "Swaps";
         public const string TransactionCollectionName = "Transactions";
-        public const string OutputsCollectionName     = "Outputs";
-        public const string AddressesCollectionName   = "Addresses";
-        public const string TezosTokensAddresses      = "TezosTokensAddresses";
-        public const string TezosTokensTransfers      = "TezosTokensTransfers";
-        public const string TezosTokensContracts      = "TezosTokensContracts";
+        public const string OutputsCollectionName = "Outputs";
+        public const string AddressesCollectionName = "Addresses";
+        public const string TezosTokensAddresses = "TezosTokensAddresses";
+        public const string TezosTokensTransfers = "TezosTokensTransfers";
+        public const string TezosTokensContracts = "TezosTokensContracts";
 
-        private const string IdKey                 = "_id";
-        private const string CurrencyKey           = nameof(WalletAddress.Currency);
-        private const string AddressKey            = nameof(WalletAddress.Address);
-        private const string BalanceKey            = nameof(WalletAddress.Balance);
-        private const string UnconfirmedIncomeKey  = nameof(WalletAddress.UnconfirmedIncome);
+        private const string IdKey = "_id";
+        private const string CurrencyKey = nameof(WalletAddress.Currency);
+        private const string AddressKey = nameof(WalletAddress.Address);
+        private const string BalanceKey = nameof(WalletAddress.Balance);
+        private const string UnconfirmedIncomeKey = nameof(WalletAddress.UnconfirmedIncome);
         private const string UnconfirmedOutcomeKey = nameof(WalletAddress.UnconfirmedOutcome);
-        private const string ChainKey              = nameof(KeyIndex) + "." + nameof(KeyIndex.Chain);
-        private const string IndexKey              = nameof(KeyIndex) + "." + nameof(KeyIndex.Index);
-        private const string HasActivityKey        = nameof(WalletAddress.HasActivity);
-        private const string TokenContractKey      = nameof(TokenBalance) + "." + nameof(TokenBalance.Contract);
-        private const string TokenIdKey            = nameof(TokenBalance) + "." + nameof(TokenBalance.TokenId);
-        private const string TransferContract      = nameof(TokenTransfer.Contract);
-        private const string KeyTypeKey            = nameof(WalletAddress.KeyType);
+        private const string ChainKey = nameof(KeyIndex) + "." + nameof(KeyIndex.Chain);
+        private const string IndexKey = nameof(KeyIndex) + "." + nameof(KeyIndex.Index);
+        private const string HasActivityKey = nameof(WalletAddress.HasActivity);
+        private const string TokenContractKey = nameof(TokenBalance) + "." + nameof(TokenBalance.Contract);
+        private const string TokenIdKey = nameof(TokenBalance) + "." + nameof(TokenBalance.TokenId);
+        private const string TransferContract = nameof(TokenTransfer.Contract);
+        private const string KeyTypeKey = nameof(WalletAddress.KeyType);
 
         private readonly string _pathToDb;
         private string _sessionPassword;
@@ -72,7 +72,7 @@ namespace Atomex.LiteDb
 
             _sessionPassword = SessionPasswordHelper.GetSessionPassword(password);
             _bsonMapper = CreateBsonMapper(currencies);
-            
+
             LiteDbMigrationManager.Migrate(
                 pathToDb: _pathToDb,
                 sessionPassword: _sessionPassword,
@@ -191,9 +191,9 @@ namespace Atomex.LiteDb
                     else if (existsAddress.ContainsKey(KeyTypeKey) &&
                              existsAddress[KeyTypeKey].AsInt32 != walletAddress.KeyType)
                     {
-                        existsAddress[KeyTypeKey]                       = walletAddress.KeyType;
-                        existsAddress["KeyIndex"].AsDocument["Chain"]   = (int)walletAddress.KeyIndex.Chain;
-                        existsAddress["KeyIndex"].AsDocument["Index"]   = (int)walletAddress.KeyIndex.Index;
+                        existsAddress[KeyTypeKey] = walletAddress.KeyType;
+                        existsAddress["KeyIndex"].AsDocument["Chain"] = (int)walletAddress.KeyIndex.Chain;
+                        existsAddress["KeyIndex"].AsDocument["Index"] = (int)walletAddress.KeyIndex.Index;
                         existsAddress["KeyIndex"].AsDocument["Account"] = (int)walletAddress.KeyIndex.Account;
 
                         return Task.FromResult(addresses.Update(existsAddress));
@@ -411,7 +411,7 @@ namespace Atomex.LiteDb
                 {
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
                     var addresses = db.GetCollection(TezosTokensAddresses);
-                    
+
                     var document = addresses.FindById($"{address}:{currency}:{tokenContract}:{tokenId}");
 
                     var walletAddress = document != null
@@ -799,7 +799,7 @@ namespace Atomex.LiteDb
                 lock (_syncRoot)
                 {
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
-                    
+
                     var transactions = db.GetCollection(TransactionCollectionName);
                     transactions.EnsureIndex(CurrencyKey);
                     transactions.Upsert(_bsonMapper.ToDocument(tx));
@@ -855,7 +855,7 @@ namespace Atomex.LiteDb
                 lock (_syncRoot)
                 {
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
-                    
+
                     var transactions = db.GetCollection(TransactionCollectionName)
                         .Find(Query.EQ(CurrencyKey, currency))
                         .Select(d => (IBlockchainTransaction)_bsonMapper.ToObject(
@@ -917,7 +917,7 @@ namespace Atomex.LiteDb
                 lock (_syncRoot)
                 {
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
-                    
+
                     var documents = outputs
                         .Select(o =>
                         {
@@ -997,7 +997,7 @@ namespace Atomex.LiteDb
                 lock (_syncRoot)
                 {
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
-                    
+
                     var outputs = db.GetCollection(OutputsCollectionName)
                         .Find(Query.EQ(CurrencyKey, currency))
                         .Select(d => (ITxOutput)_bsonMapper.ToObject(
@@ -1026,7 +1026,7 @@ namespace Atomex.LiteDb
                 lock (_syncRoot)
                 {
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
-                    
+
                     var outputs = db
                         .GetCollection(OutputsCollectionName)
                         .Find(Query.And(
@@ -1093,7 +1093,7 @@ namespace Atomex.LiteDb
                         return Task.FromResult(false);
 
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
-                    
+
                     var document = _bsonMapper.ToDocument(order);
 
                     var orders = db.GetCollection(OrdersCollectionName);
@@ -1105,6 +1105,31 @@ namespace Atomex.LiteDb
             catch (Exception e)
             {
                 Log.Error(e, "Error adding order");
+            }
+
+            return Task.FromResult(false);
+        }
+
+        public Task<bool> RemoveAllOrdersAsync()
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+
+                    var collectionExists = db.DropCollection(OrdersCollectionName);
+                    if (collectionExists)
+                        Log.Debug("The {Collection} collection is dropped", OrdersCollectionName);
+                    else
+                        Log.Debug("The {Collection} collection does not exist. Nothing to drop", OrdersCollectionName);
+
+                    return Task.FromResult(true);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Dropping the {Collection} collection failed", OrdersCollectionName);
             }
 
             return Task.FromResult(false);
@@ -1182,11 +1207,11 @@ namespace Atomex.LiteDb
                     }
 
                     // forward local params
-                    order.IsApproved        = pendingOrder.IsApproved;
-                    order.MakerNetworkFee   = pendingOrder.MakerNetworkFee;
-                    order.FromAddress       = pendingOrder.FromAddress;
-                    order.FromOutputs       = pendingOrder.FromOutputs;
-                    order.ToAddress         = pendingOrder.ToAddress;
+                    order.IsApproved = pendingOrder.IsApproved;
+                    order.MakerNetworkFee = pendingOrder.MakerNetworkFee;
+                    order.FromAddress = pendingOrder.FromAddress;
+                    order.FromOutputs = pendingOrder.FromOutputs;
+                    order.ToAddress = pendingOrder.ToAddress;
                     order.RedeemFromAddress = pendingOrder.RedeemFromAddress;
                 }
             }
@@ -1212,11 +1237,11 @@ namespace Atomex.LiteDb
                 }
 
                 // forward local params
-                order.IsApproved        = actualOrder.IsApproved;
-                order.MakerNetworkFee   = actualOrder.MakerNetworkFee;
-                order.FromAddress       = actualOrder.FromAddress;
-                order.FromOutputs       = actualOrder.FromOutputs;
-                order.ToAddress         = actualOrder.ToAddress;
+                order.IsApproved = actualOrder.IsApproved;
+                order.MakerNetworkFee = actualOrder.MakerNetworkFee;
+                order.FromAddress = actualOrder.FromAddress;
+                order.FromOutputs = actualOrder.FromOutputs;
+                order.ToAddress = actualOrder.ToAddress;
                 order.RedeemFromAddress = actualOrder.RedeemFromAddress;
             }
 
@@ -1334,7 +1359,7 @@ namespace Atomex.LiteDb
                 lock (_syncRoot)
                 {
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
-  
+
                     swap = db.GetCollection<Swap>(SwapsCollectionName)
                         .FindById(id);
 
