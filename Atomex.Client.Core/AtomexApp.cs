@@ -79,7 +79,7 @@ namespace Atomex
                 .ConfigureAwait(false);
 
             if (error != null)
-                Log.Logger.Error(error.Description);
+                Log.Error(error.Description);
         }
 
         private async void StopAtomexClient()

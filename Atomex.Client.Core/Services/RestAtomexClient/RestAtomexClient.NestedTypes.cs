@@ -26,9 +26,6 @@ namespace Atomex.Services
             public List<SwapDto>? Swaps { get; set; }
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
         /// <param name="ClientOrderId">Client order identifier</param>
         /// <param name="Symbol">Symbol (e.g. `ETH/BTC`)</param>
         /// <param name="Price">Price</param>
@@ -62,9 +59,6 @@ namespace Atomex.Services
             string Algorithm
         );
 
-        /// <summary>
-        /// 
-        /// </summary>
         /// <param name="BaseCurrencyContract">Base currency contract address (`null` for Bitcoin based currencies)</param>
         /// <param name="QuoteCurrencyContract">Quote currency contract address (`null` for Bitcoin based currencies)</param>
         private record RequisitesDto(
@@ -100,9 +94,6 @@ namespace Atomex.Services
 
         private record OrderCancelationDto(bool Result);
 
-        /// <summary>
-        /// 
-        /// </summary>
         /// <param name="Id">Unique identifier</param>
         /// <param name="Symbol">Symbol (e.g. ETH/BTC)</param>
         /// <param name="Side">Side</param>
@@ -190,9 +181,6 @@ namespace Atomex.Services
             Jackpot
         }
 
-        /// <summary>
-        /// 
-        /// </summary>
         /// <param name="Status"></param>
         private record SwapPartyDto(
             PartyStatus Status

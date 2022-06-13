@@ -1,12 +1,7 @@
-﻿using System;
+﻿using NBitcoin;
+using NBitcoin.Protocol;
 using System.IO;
 using System.Text;
-
-using NBitcoin;
-using NBitcoin.Crypto;
-using NBitcoin.Protocol;
-
-using Atomex.Cryptography;
 
 namespace Atomex.Common
 {
