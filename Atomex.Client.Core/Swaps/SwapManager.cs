@@ -21,9 +21,9 @@ namespace Atomex.Swaps
     public class SwapManager : ISwapManager
     {
         protected static TimeSpan DefaultCredentialsExchangeTimeout = TimeSpan.FromMinutes(10);
-        protected static TimeSpan DefaultMaxSwapTimeout             = TimeSpan.FromMinutes(20); // TimeSpan.FromMinutes(40);
-        protected static TimeSpan DefaultMaxPaymentTimeout          = TimeSpan.FromMinutes(48*60);
-        protected static TimeSpan SwapTimeoutControlInterval        = TimeSpan.FromMinutes(10);
+        protected static TimeSpan DefaultMaxSwapTimeout = TimeSpan.FromMinutes(20); // TimeSpan.FromMinutes(40);
+        protected static TimeSpan DefaultMaxPaymentTimeout = TimeSpan.FromMinutes(48 * 60);
+        protected static TimeSpan SwapTimeoutControlInterval = TimeSpan.FromMinutes(10);
 
         public event EventHandler<SwapEventArgs> SwapUpdated;
 
@@ -196,20 +196,20 @@ namespace Atomex.Swaps
 
             var swap = new Swap
             {
-                Id                = receivedSwap.Id,
-                OrderId           = receivedSwap.OrderId,
-                Status            = receivedSwap.Status,
-                TimeStamp         = receivedSwap.TimeStamp,
-                Symbol            = receivedSwap.Symbol,
-                Side              = receivedSwap.Side,
-                Price             = receivedSwap.Price,
-                Qty               = receivedSwap.Qty,
-                IsInitiative      = receivedSwap.IsInitiative,
-                MakerNetworkFee   = order.MakerNetworkFee,
+                Id = receivedSwap.Id,
+                OrderId = receivedSwap.OrderId,
+                Status = receivedSwap.Status,
+                TimeStamp = receivedSwap.TimeStamp,
+                Symbol = receivedSwap.Symbol,
+                Side = receivedSwap.Side,
+                Price = receivedSwap.Price,
+                Qty = receivedSwap.Qty,
+                IsInitiative = receivedSwap.IsInitiative,
+                MakerNetworkFee = order.MakerNetworkFee,
 
-                FromAddress       = order.FromAddress,
-                FromOutputs       = order.FromOutputs,
-                ToAddress         = order.ToAddress,
+                FromAddress = order.FromAddress,
+                FromOutputs = order.FromOutputs,
+                ToAddress = order.ToAddress,
                 RedeemFromAddress = order.RedeemFromAddress
             };
 
@@ -224,7 +224,7 @@ namespace Atomex.Swaps
             }
 
             return swap;
-         }
+        }
 
         private Task<Order> GetOrderAsync(
             Swap receivedSwap,
@@ -334,13 +334,15 @@ namespace Atomex.Swaps
 
             try
             {
-                if (swap.IsAcceptor && IsInitiate(swap, receivedSwap))
+                var swapReadyForFirstTransaction = (swap.Status.HasFlag(SwapStatus.Initiated) && IsAccept(swap, receivedSwap))
+                    || (swap.Status.HasFlag(SwapStatus.Accepted) && IsInitiate(swap, receivedSwap));
+                if (swap.IsAcceptor && swapReadyForFirstTransaction)
                 {
                     // handle initiate by acceptor
                     error = await HandleInitiateAsync(swap, receivedSwap, cancellationToken)
                         .ConfigureAwait(false);
                 }
-                else if (swap.IsInitiator && IsAccept(swap, receivedSwap))
+                else if (swap.IsInitiator && swapReadyForFirstTransaction)
                 {
                     // handle accept by initiator
                     error = await HandleAcceptAsync(swap, receivedSwap, cancellationToken)
