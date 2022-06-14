@@ -41,6 +41,11 @@ namespace Atomex.Swaps
                     tezosAccount: account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz),
                     currencies: account.Currencies),
 
+                Fa2Config => new Fa2Swap(
+                    account: account.GetCurrencyAccount<Fa2Account>(currency.Name),
+                    tezosAccount: account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz),
+                    currencies: account.Currencies),
+
                 TezosConfig _ => new TezosSwap(
                     account:   account.GetCurrencyAccount<TezosAccount>(currency.Name),
                     currencies: account.Currencies),
