@@ -36,6 +36,7 @@ namespace Atomex.Services
 
     public class WebSocketAtomexClient : IAtomexClient
     {
+        private const uint DEFAULT_AUTHENTICATION_ACCOUNT_INDEX = 0u;
         private const int HeartBeatIntervalInSec = 10;
 
         public event EventHandler<AtomexClientServiceEventArgs> ServiceConnected;
@@ -48,11 +49,13 @@ namespace Atomex.Services
 
         public IAccount Account { get; private set; }
         public IMarketDataRepository MarketDataRepository { get; private set; }
+        protected string AccountUserId => _accountUserIdLazy.Value;
         private ISymbolsProvider SymbolsProvider { get; set; }
 
         private readonly string _authTokenBaseUrl;
         private readonly string _exchangeUrl;
         private readonly string _marketDataUrl;
+        private readonly Lazy<string> _accountUserIdLazy;
         private WebSocketClient _exchangeWs;
         private WebSocketClient _marketDataWs;
         private string _authToken;
@@ -73,7 +76,9 @@ namespace Atomex.Services
             _marketDataUrl       = marketDataUrl ?? throw new ArgumentNullException(nameof(marketDataUrl));
             Account              = account ?? throw new ArgumentNullException(nameof(account));
             SymbolsProvider      = symbolsProvider ?? throw new ArgumentNullException(nameof(symbolsProvider));
+
             MarketDataRepository = new MarketDataRepository();
+            _accountUserIdLazy = new Lazy<string>(() => Account.GetUserId(DEFAULT_AUTHENTICATION_ACCOUNT_INDEX));
         }
 
         public bool IsServiceConnected(AtomexClientService service) =>
@@ -137,6 +142,7 @@ namespace Atomex.Services
 
             ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
 
+            CancelAllOrders(symbol: null, side: null, forAllConnections: true);
             // set orders auto cancel flag, after disconnect all orders will be canceled
             SetOrdersAutoCancel(autoCancel: true);
 
@@ -247,37 +253,53 @@ namespace Atomex.Services
             else throw new NotImplementedException();
         }
 
-        public void OrderSendAsync(Order order)
+        public async void OrderSendAsync(Order order)
         {
-            order.ClientOrderId = Guid.NewGuid().ToByteArray().ToHexString(0, 16);
-
-            var request = new
+            try
             {
-                method = "orderSend",
-                data = new
-                {
-                    clientOrderId = order.ClientOrderId,
-                    symbol        = order.Symbol,
-                    price         = order.Price,
-                    qty           = order.Qty,
-                    side          = order.Side,
-                    type          = (int)order.Type,
-                    requisites    = new
-                    {
-                        baseCurrencyContract = GetSwapContract(order.Symbol.BaseCurrency()),
-                        quoteCurrencyContract = GetSwapContract(order.Symbol.QuoteCurrency()),
-                        // secretHash =,
-                        // receivingAddress =,
-                        // refundAddress =,
-                        // rewardForRedeem =,
-                        // lockTime =,
-                    },
-                    //proofOfFunds =
-                },
-                requestId = 0
-            };
+                order.ClientOrderId = GenerateOrderClientId();
 
-            _exchangeWs.Send(JsonConvert.SerializeObject(request));
+                Log.Information("Sending the {OrderId} [{OrderClientId}] order...", order.Id, order.ClientOrderId);
+
+                await Account.UpsertOrderAsync(order)
+                    .ConfigureAwait(false);
+
+                var request = new
+                {
+                    method = "orderSend",
+                    data = new
+                    {
+                        clientOrderId = order.ClientOrderId,
+                        symbol = order.Symbol,
+                        price = order.Price,
+                        qty = order.Qty,
+                        side = order.Side,
+                        type = (int)order.Type,
+                        requisites = new
+                        {
+                            baseCurrencyContract = GetSwapContract(order.Symbol.BaseCurrency()),
+                            quoteCurrencyContract = GetSwapContract(order.Symbol.QuoteCurrency()),
+                            // secretHash =,
+                            // receivingAddress =,
+                            // refundAddress =,
+                            // rewardForRedeem =,
+                            // lockTime =,
+                        },
+                        //proofOfFunds =
+                    },
+                    requestId = 0
+                };
+
+                _exchangeWs.Send(JsonConvert.SerializeObject(request));
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("The {TaskName} task has been canceled", nameof(OrderSendAsync));
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Sending the {OrderId} [{OrderClientId}] order is failed for the {UserId} user", AccountUserId, order.Id, order.ClientOrderId);
+            }
         }
 
         public void OrderCancelAsync(long id, string symbol, Side side)
@@ -420,7 +442,7 @@ namespace Atomex.Services
                 {
                     symbol = symbol,
                     side = side == null ? "All" : side.ToString(),
-                    forAllConnections = forAllConnections
+                    cancelForAllConnections = forAllConnections
                 },
                 requestId = 0
             };
@@ -432,7 +454,7 @@ namespace Atomex.Services
         {
             try
             {
-                using var securePublicKey = Account.Wallet.GetServicePublicKey(index: 0);
+                using var securePublicKey = Account.Wallet.GetServicePublicKey(index: DEFAULT_AUTHENTICATION_ACCOUNT_INDEX);
                 var publicKey = securePublicKey.ToUnsecuredBytes();
 
                 var timeStamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -541,44 +563,58 @@ namespace Atomex.Services
                         description: response["data"].Value<string>())));
         }
 
-        private void HandleOrder(JObject response)
+        private async void HandleOrder(JObject response)
         {
-            var totalQty = 0m;
-            var totalAmount = 0m;
-
-            var data = response["data"] as JObject;
-
-            if (data.ContainsKey("trades"))
+            try
             {
-                foreach (var trade in data["trades"])
+                var totalQty = 0m;
+                var totalAmount = 0m;
+
+                var data = response["data"] as JObject;
+
+                if (data.ContainsKey("trades"))
                 {
-                    var price = trade["price"].Value<decimal>();
-                    var qty = trade["qty"].Value<decimal>();
+                    foreach (var trade in data["trades"])
+                    {
+                        var price = trade["price"].Value<decimal>();
+                        var qty = trade["qty"].Value<decimal>();
 
-                    totalQty += qty;
-                    totalAmount += price * qty;
+                        totalQty += qty;
+                        totalAmount += price * qty;
+                    }
                 }
+
+                var order = new Order
+                {
+                    Id = data["id"].Value<long>(),
+                    ClientOrderId = data["clientOrderId"].Value<string>(),
+                    Symbol = data["symbol"].Value<string>(),
+                    Side = (Side)Enum.Parse(typeof(Side), data["side"].Value<string>()),
+                    TimeStamp = data["timeStamp"].Value<DateTime>(),
+                    Price = data["price"].Value<decimal>(),
+                    Qty = data["qty"].Value<decimal>(),
+                    LeaveQty = data["leaveQty"].Value<decimal>(),
+                    LastPrice = totalQty != 0 ? totalAmount / totalQty : 0, // currently average price used
+                    LastQty = totalQty,                                   // currently total qty used
+                    Type = (OrderType)Enum.Parse(typeof(OrderType), data["type"].Value<string>()),
+                    Status = (OrderStatus)Enum.Parse(typeof(OrderStatus), data["status"].Value<string>())
+                };
+
+                await Account.UpsertOrderAsync(order)
+                    .ConfigureAwait(false);
+
+                OrderReceived?.Invoke(
+                    sender: this,
+                    e: new OrderEventArgs(order));
             }
-
-            var order = new Order
+            catch (OperationCanceledException)
             {
-                Id            = data["id"].Value<long>(),
-                ClientOrderId = data["clientOrderId"].Value<string>(),
-                Symbol        = data["symbol"].Value<string>(),
-                Side          = (Side)Enum.Parse(typeof(Side), data["side"].Value<string>()),
-                TimeStamp     = data["timeStamp"].Value<DateTime>(),
-                Price         = data["price"].Value<decimal>(),
-                Qty           = data["qty"].Value<decimal>(),
-                LeaveQty      = data["leaveQty"].Value<decimal>(),
-                LastPrice     = totalQty != 0 ? totalAmount / totalQty : 0, // currently average price used
-                LastQty       = totalQty,                                   // currently total qty used
-                Type          = (OrderType)Enum.Parse(typeof(OrderType), data["type"].Value<string>()),
-                Status        = (OrderStatus)Enum.Parse(typeof(OrderStatus), data["status"].Value<string>())
-            };
-
-            OrderReceived?.Invoke(
-                sender: this,
-                e: new OrderEventArgs(order));
+                Log.Debug("The {TaskName} task has been canceled", nameof(HandleOrder));
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Order handling failed for the {UserId} user", AccountUserId);
+            }
         }
 
         public enum PartyStatus
@@ -613,11 +649,12 @@ namespace Atomex.Services
                     ? SwapStatus.Accepted
                     : SwapStatus.Initiated;
 
+            var secretHash = data["secretHash"].Value<string>();
             var swap = new Swap
             {
                 Id           = data["id"].Value<long>(),
                 Status       = status,
-                SecretHash   = Hex.FromString(data["symbol"].Value<string>()),
+                SecretHash   = !string.IsNullOrWhiteSpace(secretHash) ? Hex.FromString(secretHash) : null,
                 TimeStamp    = data["timeStamp"].Value<DateTime>(),
                 OrderId      = data["user"]?["trades"]?[0]?["orderId"]?.Value<long>() ?? 0,
                 Symbol       = data["symbol"].Value<string>(),
@@ -741,5 +778,7 @@ namespace Atomex.Services
 
             return null;
         }
+
+        private static string GenerateOrderClientId() => Guid.NewGuid().ToByteArray().ToHexString(0, 16);
     }
 }
