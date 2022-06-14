@@ -2,6 +2,7 @@
   "MainNet": {
     "BTC": {
       "Name": "BTC",
+      "DisplayedName": "BTC",
       "IsToken": false,
       "Description": "Bitcoin",
       "FeeRate": 80,
@@ -21,6 +22,7 @@
     },
     "ETH": {
       "Name": "ETH",
+      "DisplayedName": "ETH",
       "IsToken": false,
       "Description": "Ethereum",
       "GasLimit": 21000,
@@ -51,6 +53,7 @@
       "BasedOn": "ETH",
       "Abstract": true,
       "Name": "ERC20",
+      "DisplayedName": "ERC20",
       "Description": "ERC20",
       "IsToken": true,
       "BaseCurrencyDigitsMultiplier": 1000000000,
@@ -70,6 +73,7 @@
     "USDT": {
       "BasedOn": "ERC20",
       "Name": "USDT",
+      "DisplayedName": "USDT",
       "Description": "Tether",
       "DigitsMultiplier": 1000000,
       "InitiateGasLimit": 300000,
@@ -82,6 +86,7 @@
     "TBTC": {
       "BasedOn": "ERC20",
       "Name": "TBTC",
+      "DisplayedName": "tBTC",
       "Description": "tBTC",
       "DigitsMultiplier": 1000000000000000000,
       "ERC20Contract": "0x8dAEBADE922dF735c38C80C7eBD708Af50815fAa",
@@ -91,6 +96,7 @@
     "WBTC": {
       "BasedOn": "ERC20",
       "Name": "WBTC",
+      "DisplayedName": "wBTC",
       "Description": "wBTC",
       "DigitsMultiplier": 100000000,
       "ERC20Contract": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
@@ -99,6 +105,7 @@
     },
     "LTC": {
       "Name": "LTC",
+      "DisplayedName": "LTC",
       "IsToken": false,
       "Description": "Litecoin",
       "FeeRate": 120,
@@ -119,6 +126,7 @@
     },
     "XTZ": {
       "Name": "XTZ",
+      "DisplayedName": "XTZ",
       "IsToken": false,
       "Description": "Tezos",
       "MinimalFee": 100,
@@ -172,6 +180,7 @@
       "BasedOn": "XTZ",
       "Abstract": true,
       "Name": "FA12",
+      "DisplayedName": "fa12",
       "Description": "fa12",
       "IsToken": true,
       "Fee": 6000,
@@ -211,6 +220,7 @@
     "TZBTC": {
       "BasedOn": "FA12",
       "Name": "TZBTC",
+      "DisplayedName": "tzBTC",
       "Description": "tzBTC",
       "DigitsMultiplier": 100000000,
       "RedeemGasLimit": 180000,
@@ -221,6 +231,7 @@
     "KUSD": {
       "BasedOn": "FA12",
       "Name": "KUSD",
+      "DisplayedName": "kUSD",
       "Description": "kUSD",
       "DigitsMultiplier": 1000000000000000000,
       "RedeemGasLimit": 110000,
@@ -231,6 +242,7 @@
     "FA2": {
       "BasedOn": "XTZ",
       "Name": "FA2",
+      "DisplayedName": "fa2",
       "IsToken": true,
       "Description": "FA2",
       "DigitsMultiplier": 1,
@@ -260,6 +272,7 @@
   "TestNet": {
     "BTC": {
       "Name": "BTC",
+      "DisplayedName": "BTC",
       "IsToken": false,
       "Description": "Bitcoin",
       "FeeRate": 25,
@@ -279,6 +292,7 @@
     },
     "ETH": {
       "Name": "ETH",
+      "DisplayedName": "ETH",
       "IsToken": false,
       "Description": "Ethereum",
       "GasLimit": 21000,
@@ -308,6 +322,7 @@
       "BasedOn": "ETH",
       "Abstract": true,
       "Name": "ERC20",
+      "DisplayedName": "ERC20",
       "IsToken": true,
       "BaseCurrencyDigitsMultiplier": 1000000000,
       "DustDigitsMultiplier": 100,
@@ -325,6 +340,7 @@
     "USDT": {
       "BasedOn": "ERC20",
       "Name": "USDT",
+      "DisplayedName": "USDT",
       "Description": "Tether",
       "DigitsMultiplier": 1000000,
       "RefundGasLimit": 130000,
@@ -337,6 +353,7 @@
     "TBTC": {
       "BasedOn": "ERC20",
       "Name": "TBTC",
+      "DisplayedName": "tBTC",
       "Description": "tBTC",
       "DigitsMultiplier": 1000000000000000000,
       "ERC20Contract": "0x4fb4b4812b103b759a491fec6a8feafb6784ed8d",
@@ -348,6 +365,7 @@
     "WBTC": {
       "BasedOn": "ERC20",
       "Name": "WBTC",
+      "DisplayedName": "wBTC",
       "Description": "wBTC",
       "DigitsMultiplier": 100000000,
       "ERC20Contract": "0x906cd19c4a8d745eedfa3fcbfe7766e6f8579e9f",
@@ -358,6 +376,7 @@
     },
     "LTC": {
       "Name": "LTC",
+      "DisplayedName": "LTC",
       "IsToken": false,
       "Description": "Litecoin",
       "FeeRate": 120,
@@ -377,6 +396,7 @@
     },
     "XTZ": {
       "Name": "XTZ",
+      "DisplayedName": "XTZ",
       "IsToken": false,
       "Description": "Tezos",
       "MinimalFee": 100,
@@ -429,6 +449,7 @@
       "BasedOn": "XTZ",
       "Abstract": true,
       "Name": "FA12",
+      "DisplayedName": "fa12",
       "Description": "fa12",
       "IsToken": true,
       "Fee": 6000,
@@ -468,6 +489,7 @@
     "TZBTC": {
       "BasedOn": "FA12",
       "Name": "TZBTC",
+      "DisplayedName": "tzBTC",
       "Description": "tzBTC",
       "DigitsMultiplier": 100000000,
       "RedeemGasLimit": 180000,
@@ -478,6 +500,7 @@
     "KUSD": {
       "BasedOn": "FA12",
       "Name": "KUSD",
+      "DisplayedName": "kUSD",
       "Description": "kUSD",
       "DigitsMultiplier": 1000000000000000000,
       "RedeemGasLimit": 110000,
@@ -488,6 +511,7 @@
     "FA2": {
       "BasedOn": "XTZ",
       "Name": "FA2",
+      "DisplayedName": "fa2",
       "IsToken": true,
       "Description": "FA2",
       "DigitsMultiplier": 1,
@@ -512,6 +536,17 @@
       "RefundFee": 120000,
       "RefundGasLimit": 400000,
       "RefundSize": 20000
+    },
+    "USDT_XTZ": {
+      "BasedOn": "FA2",
+      "Name": "USDT_XTZ",
+      "DisplayedName": "USDT",
+      "IsToken": true,
+      "Description": "Tether USD",
+      "DigitsMultiplier": 1000000,
+      "SwapContract": "",
+      "TokenContract": "KT1BWvRQnVVowZZLGkct9A7sdj5YEe8CdUhR",
+      "FeeCurrencySymbol": "XTZ/USDT_XTZ"
     }
   }
 }

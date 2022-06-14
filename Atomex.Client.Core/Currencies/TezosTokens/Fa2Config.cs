@@ -22,6 +22,10 @@ namespace Atomex.TezosTokens
         public decimal ApproveStorageLimit { get; private set; }
         public decimal ApproveSize { get; private set; }
 
+        public string TokenContractAddress { get; private set; }
+        public long TokenId { get; private set; }
+        public string ViewContractAddress { get; private set; }
+
         public Fa2Config()
         {
         }
@@ -34,6 +38,7 @@ namespace Atomex.TezosTokens
         public override void Update(IConfiguration configuration)
         {
             Name                    = configuration[nameof(Name)];
+            DisplayedName           = configuration[nameof(DisplayedName)];
             Description             = configuration[nameof(Description)];
 
             if (!string.IsNullOrEmpty(configuration[nameof(DigitsMultiplier)]))
@@ -113,6 +118,13 @@ namespace Atomex.TezosTokens
             TxExplorerUri           = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
             SwapContractAddress     = configuration["SwapContract"];
+            TokenContractAddress    = configuration["TokenContract"];
+
+            TokenId = long.TryParse(configuration["TokenId"], out var tokenId)
+                ? tokenId
+                : 0;
+
+            ViewContractAddress     = configuration["ViewContract"];
             TransactionType         = typeof(TezosTransaction);
 
             IsSwapAvailable         = false;

@@ -114,6 +114,7 @@ namespace Atomex.Wallet
 
                 "TZBTC" or
                 "KUSD" or
+                "USDT_XTZ" or
                 "FA12" or
                 "FA2" => new TezosTokensScanner(
                     Account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz)),

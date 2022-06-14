@@ -46,6 +46,7 @@ namespace Atomex.TezosTokens
         public override void Update(IConfiguration configuration)
         {
             Name                    = configuration[nameof(Name)];
+            DisplayedName           = configuration[nameof(DisplayedName)];
             Description             = configuration[nameof(Description)];
 
             if (!string.IsNullOrEmpty(configuration[nameof(DigitsMultiplier)]))

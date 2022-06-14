@@ -28,7 +28,8 @@ namespace Atomex.MarketData.Bitfinex
             { "FA2USD", "tUSTUSD" },
             { "TBTCUSD", "tBTCUSD" },
             { "WBTCUSD", "tBTCUSD" },
-            { "KUSDUSD", "tUSTUSD" }
+            { "KUSDUSD", "tUSTUSD" },
+            { "USDT-XTZUSD", "tUSTUSD" },
         };
 
         public const string Usd = "USD";

@@ -53,6 +53,12 @@ namespace Atomex.MarketData.Bitfinex
             { "LTC/KUSD", "LTCUST" },
             { "XTZ/KUSD", "XTZUST" },
             { "TZBTC/KUSD", "BTCUST" },
+
+            { "BTC/USDT_XTZ", "BTCUST" },
+            { "ETH/USDT_XTZ", "ETHUST" },
+            { "LTC/USDT_XTZ", "LTCUST" },
+            { "XTZ/USDT_XTZ", "XTZUST" },
+            { "TZBTC/USDT_XTZ", "BTCUST" }
         };
 
         private const string BaseUrl = "wss://api-pub.bitfinex.com/ws/2";
