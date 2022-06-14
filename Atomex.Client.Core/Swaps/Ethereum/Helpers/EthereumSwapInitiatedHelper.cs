@@ -116,7 +116,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
                 if (initiatedEvent.Value >= requiredAmountInWei - requiredRewardForRedeemInWei)
                 {
-                    if (initiatedEvent.RefundTimestamp != refundTimeStamp)
+                    if (initiatedEvent.RefundTimestamp < refundTimeStamp)
                     {
                         Log.Debug(
                             "Invalid refund time in initiated event. Expected value is {@expected}, actual is {@actual}",

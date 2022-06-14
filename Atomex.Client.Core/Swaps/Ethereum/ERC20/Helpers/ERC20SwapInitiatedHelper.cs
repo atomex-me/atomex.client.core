@@ -126,7 +126,7 @@ namespace Atomex.Swaps.Ethereum.ERC20.Helpers
 
                 var initiatedEvent = contractInitEvent.ParseERC20InitiatedEvent();
 
-                if (initiatedEvent.RefundTimestamp != refundTimeStamp)
+                if (initiatedEvent.RefundTimestamp < refundTimeStamp)
                 {
                     Log.Debug(
                         "Invalid refund time in initiated event. Expected value is {@expected}, actual is {@actual}",
