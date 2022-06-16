@@ -311,6 +311,11 @@
       "Id": 34,
       "Name": "USDT_XTZ/USDT",
       "MinimumQty": 0.0001
+    },
+    {
+      "Id": 35,
+      "Name": "KUSD/USDT_XTZ",
+      "MinimumQty": 0.0001
     }
   ]
 }
