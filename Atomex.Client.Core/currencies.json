@@ -544,7 +544,7 @@
       "IsToken": true,
       "Description": "Tether USD",
       "DigitsMultiplier": 1000000,
-      "SwapContract": "",
+      "SwapContract": "KT1RdvbJcdjy64gfNL9Q1M9xjyn4pb68yfr3",
       "TokenContract": "KT1BWvRQnVVowZZLGkct9A7sdj5YEe8CdUhR",
       "FeeCurrencySymbol": "XTZ/USDT_XTZ"
     }
