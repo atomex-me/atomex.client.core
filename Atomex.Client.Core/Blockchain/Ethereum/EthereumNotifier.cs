@@ -29,7 +29,7 @@ namespace Atomex.Blockchain.Ethereum
         private static readonly RequestLimitControl RequestLimitControl 
             = new(MinDelayBetweenRequestMs);
 
-        private long _lastBlockNumber = 6980640;
+        private long _lastBlockNumber = 6980640; // Value that is bigger than 0 and definitely less then current block number of any Ether network. 
 
         public EthereumNotifier(string baseUrl, ILogger log)
         {
@@ -235,9 +235,14 @@ namespace Atomex.Blockchain.Ethereum
                     responseHandler: (_, content) =>
                     {
                         var json = JsonConvert.DeserializeObject<JObject>(content);
-                        var blockNumber = json.ContainsKey("result")
-                            ? long.Parse(json["result"]!.ToString()[2..], System.Globalization.NumberStyles.HexNumber)
-                            : 6980640; // Value that is bigger than 0 and definitely less then current block number of any Ether network. 
+                        var blockNumber = _lastBlockNumber;
+                        if (json != null
+                            && !json.ContainsKey("status")
+                            && json.ContainsKey("result"))
+                        {
+                            blockNumber = long.Parse(json["result"]!.ToString()[2..],
+                                System.Globalization.NumberStyles.HexNumber);
+                        }
 
                         return new Result<long>(blockNumber);
                     },
