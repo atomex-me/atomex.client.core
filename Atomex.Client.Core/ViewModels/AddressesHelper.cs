@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
@@ -55,8 +56,8 @@ namespace Atomex.ViewModels
                     .ToDictionary(w => w.Address, w => w);
 
                 var tokenAddresses = (await tezosAccount.DataRepository
-                        .GetTezosTokenAddressesByContractAsync(tokenContract)
-                        .ConfigureAwait(false))
+                    .GetTezosTokenAddressesByContractAsync(tokenContract)
+                    .ConfigureAwait(false))
                     .Where(w => w.Currency == "FA12" || w.Currency == "FA2");
 
                 if (tokenId != null)
@@ -120,7 +121,7 @@ namespace Atomex.ViewModels
                             TokenBalance = tokenBalance,
                             TokenFormat = tokenFormat,
                             TokenCode = tokenCode,
-                            TokenId = tokenId,
+                            TokenId = (int)tokenId,
                             IsTezosToken = true
                         };
                     });
@@ -128,8 +129,8 @@ namespace Atomex.ViewModels
 
             // get all nonzero addresses
             var activeAddresses = (await account
-                    .GetUnspentAddressesAsync(currency.Name)
-                    .ConfigureAwait(false))
+                .GetUnspentAddressesAsync(currency.Name)
+                .ConfigureAwait(false))
                 .ToList();
 
             // get free external address
@@ -165,8 +166,7 @@ namespace Atomex.ViewModels
             if (string.IsNullOrEmpty(address) || address.Length < 9)
                 return address;
 
-            return
-                $"{address.Substring(0, leftLength)}···{address.Substring(address.Length - rightLength, rightLength)}";
+            return $"{address[..leftLength]}···{address.Substring(address.Length - rightLength, rightLength)}";
         }
     }
 }

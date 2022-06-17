@@ -237,7 +237,7 @@ namespace Atomex.Wallet
         public ICurrencyAccount GetTezosTokenAccount(
             string currency,
             string tokenContract,
-            decimal tokenId)
+            int tokenId)
         {
             var uniqueId = $"{currency}:{tokenContract}:{tokenId}";
 
@@ -260,7 +260,7 @@ namespace Atomex.Wallet
         public T GetTezosTokenAccount<T>(
             string currency,
             string tokenContract,
-            decimal tokenId) where T : class =>
+            int tokenId) where T : class =>
             GetTezosTokenAccount(currency, tokenContract, tokenId) as T;
 
         public string GetUserId(uint keyIndex = 0)

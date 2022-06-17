@@ -18,6 +18,7 @@ namespace Atomex.TezosTokens
         public decimal ApproveSize { get; protected set; }
 
         public string TokenContractAddress { get; protected set; }
+        public int TokenId { get; protected set; }
         public string ViewContractAddress { get; protected set; }
 
         public override async Task<decimal> GetRewardForRedeemAsync(

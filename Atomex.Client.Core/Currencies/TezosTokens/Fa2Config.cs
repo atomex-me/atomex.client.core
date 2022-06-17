@@ -12,8 +12,6 @@ namespace Atomex.TezosTokens
 {
     public class Fa2Config : TezosTokenConfig
     {
-        public int TokenId { get; private set; }
-
         public Fa2Config()
         {
         }
