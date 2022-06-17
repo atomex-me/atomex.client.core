@@ -17,7 +17,7 @@ namespace Atomex.MarketData.Abstract
 
         public DateTime LastUpdateTime { get; protected set; }
         public DateTime LastSuccessUpdateTime { get; protected set; }
-        public bool IsAvailable { get; protected set; }
+        public virtual bool IsAvailable { get; protected set; }
 
         public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromMinutes(1);
         public bool IsRunning => _updaterTask != null &&

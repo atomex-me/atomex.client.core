@@ -1,8 +1,8 @@
-﻿using System;
+﻿using Atomex.MarketData.Abstract;
+using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Atomex.MarketData.Abstract;
 
 namespace Atomex.MarketData
 {
@@ -16,7 +16,11 @@ namespace Atomex.MarketData
 
             if (_providers.Length == 0)
                 throw new ArgumentException("At least one quote provider must be used");
+
+            SubscribeToAllProviderEvents();
         }
+
+        public override bool IsAvailable => _providers.All(p => p.IsAvailable);
 
         public override Quote GetQuote(string currency, string baseCurrency)
         {
@@ -44,14 +48,26 @@ namespace Atomex.MarketData
             return null;
         }
 
-        public override async Task UpdateAsync(CancellationToken cancellation = default)
+        public override Task UpdateAsync(CancellationToken cancellation = default)
         {
-            foreach(var provider in _providers)
-            {
-                await provider
-                    .UpdateAsync(cancellation)
-                    .ConfigureAwait(false);
-            }
+            var updateTasks = _providers.Select(p => p.UpdateAsync(cancellation));
+
+            return Task.WhenAll(updateTasks);
         }
+
+        private void SubscribeToAllProviderEvents()
+        {
+            foreach (var provider in _providers)
+                SubscribeToProviderEvents(provider);
+        }
+
+        private void SubscribeToProviderEvents(QuotesProvider quotesProvider)
+        {
+            quotesProvider.AvailabilityChanged += OnProviderAvailabilityChanged;
+            quotesProvider.QuotesUpdated += OnProviderQuotesUpdated;
+        }
+
+        private void OnProviderAvailabilityChanged(object sender, EventArgs args) => RiseAvailabilityChangedEvent(EventArgs.Empty);
+        private void OnProviderQuotesUpdated(object sender, EventArgs args) => RiseQuotesUpdatedEvent(EventArgs.Empty);
     }
 }
