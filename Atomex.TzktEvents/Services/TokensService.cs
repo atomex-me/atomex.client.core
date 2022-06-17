@@ -29,11 +29,14 @@ namespace Atomex.TzktEvents.Services
         {
             if (_addressSubs.Skip(0).Count() != 0)
             {
-                var addresses = _addressSubs.Select(a => a.Key).ToArray();
-                await _hub.InvokeAsync(SubscriptionMethod.SubscribeToTokenBalances.Method, new
-                {
-                    addresses
-                }).ConfigureAwait(false);
+                var addresses = _addressSubs.Select(a => a.Key);
+                var subscriptionTasks = addresses.Select(address => _hub.InvokeAsync(
+                    SubscriptionMethod.SubscribeToTokenBalances.Method, new
+                    {
+                        account = address
+                    }));
+            
+                await Task.WhenAll(subscriptionTasks).ConfigureAwait(false);
             }
         }
 
