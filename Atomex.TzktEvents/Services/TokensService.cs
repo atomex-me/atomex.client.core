@@ -45,7 +45,7 @@ namespace Atomex.TzktEvents.Services
             _hub.On<JObject>(SubscriptionMethod.SubscribeToTokenBalances.Channel, Handler);
         }
 
-        public async Task NotifyOnTokenBalancesAsync(string address, Action<string, string> handler)
+        public async Task NotifyOnTokenBalancesAsync(string address, Action<string, string, string> handler)
         {
             var subscription = new TokenServiceSubscription(handler);
             _addressSubs.AddOrUpdate(address, subscription, (_, _) => subscription);
@@ -56,7 +56,7 @@ namespace Atomex.TzktEvents.Services
             }).ConfigureAwait(false);
         }
 
-        public async Task NotifyOnTokenBalancesAsync(IEnumerable<string> addresses, Action<string, string> handler)
+        public async Task NotifyOnTokenBalancesAsync(IEnumerable<string> addresses, Action<string, string, string> handler)
         {
             var addressesList = addresses.ToList();
             if (addressesList.Count == 0)
@@ -122,15 +122,16 @@ namespace Atomex.TzktEvents.Services
                         LastState = level
                     });
 
+                    var standard = @event["token"]?["standard"]?.ToString()?.Replace(".", "")?.ToUpper() ?? string.Empty;
                     var token = @event["token"]?["metadata"]?["symbol"]?.ToString()?.ToUpper() ?? string.Empty;
 
                     try
                     {
-                        updatedSubscription.Handler(token, address);
+                        updatedSubscription.Handler(standard, token, address);
                     }
                     catch (Exception e)
                     {
-                        _log.Error(e,"Error while calling subscriber handler on Data message with {{ token: {Token}, address: {Address} }}", token, address);
+                        _log.Error(e,"Error while calling subscriber handler on Data message with {{ standard: {Standard} ,token: {Token}, address: {Address} }}", standard, token, address);
                     }
                 }
             }
@@ -152,7 +153,7 @@ namespace Atomex.TzktEvents.Services
 
                     try
                     {
-                        updatedAccount.Handler(string.Empty, address);
+                        updatedAccount.Handler(string.Empty, string.Empty, address);
                     }
                     catch (Exception e)
                     {

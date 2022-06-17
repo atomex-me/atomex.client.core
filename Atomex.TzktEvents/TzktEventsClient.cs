@@ -127,7 +127,7 @@ namespace Atomex.TzktEvents
             }
         }
 
-        public async Task NotifyOnTokenBalancesAsync(string address, Action<string, string> handler)
+        public async Task NotifyOnTokenBalancesAsync(string address, Action<string, string, string> handler)
         {
             if (CheckIsStarted(nameof(NotifyOnTokenBalancesAsync)))
             {
@@ -135,7 +135,7 @@ namespace Atomex.TzktEvents
             }
         }
 
-        public async Task NotifyOnTokenBalancesAsync(IEnumerable<string> addresses, Action<string, string> handler)
+        public async Task NotifyOnTokenBalancesAsync(IEnumerable<string> addresses, Action<string, string, string> handler)
         {
             if (CheckIsStarted(nameof(NotifyOnTokenBalancesAsync)))
             {
