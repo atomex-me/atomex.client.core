@@ -23,7 +23,7 @@ namespace Atomex.TezosTokens
         public decimal ApproveSize { get; private set; }
 
         public string TokenContractAddress { get; private set; }
-        public long TokenId { get; private set; }
+        public int TokenId { get; private set; }
         public string ViewContractAddress { get; private set; }
 
         public Fa2Config()
@@ -120,7 +120,7 @@ namespace Atomex.TezosTokens
             SwapContractAddress     = configuration["SwapContract"];
             TokenContractAddress    = configuration["TokenContract"];
 
-            TokenId = long.TryParse(configuration["TokenId"], out var tokenId)
+            TokenId = int.TryParse(configuration["TokenId"], out var tokenId)
                 ? tokenId
                 : 0;
 

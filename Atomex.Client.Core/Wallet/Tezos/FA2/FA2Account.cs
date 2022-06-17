@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,7 +15,7 @@ using Atomex.Wallet.Abstract;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class Fa2Account : TezosTokenAccount
+    public class Fa2Account : TezosTokenAccount, IEstimatable
     {
         private Fa2Config Fa2Config => Currencies.Get<Fa2Config>(Currency);
 
@@ -182,6 +183,36 @@ namespace Atomex.Wallet.Tezos
             return (txId, error: null);
         }
 
+        public async Task<decimal> EstimateFeeAsync(
+            string from,
+            BlockchainTransactionType type,
+            CancellationToken cancellationToken = default)
+        {
+            var txFeeInTez = await FeeByType(
+                    type: type,
+                    from: from,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            var storageFeeInTez = StorageFeeByType(type);
+
+            return txFeeInTez + storageFeeInTez;
+        }
+
+        public async Task<decimal?> EstimateSwapPaymentFeeAsync(
+            IFromSource from,
+            decimal amount,
+            CancellationToken cancellationToken = default)
+        {
+            var fromAddress = (from as FromAddress)?.Address;
+
+            return await EstimateFeeAsync(
+                    from: fromAddress,
+                    type: BlockchainTransactionType.SwapPayment,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         public override async Task<(decimal fee, bool isEnougth)> EstimateTransferFeeAsync(
             string from,
             CancellationToken cancellationToken = default)
@@ -208,6 +239,191 @@ namespace Atomex.Wallet.Tezos
             return (
                 fee: feeInMtz.ToTez(),
                 isEnougth: availableBalanceInTez >= feeInMtz.ToTez());
+        }
+
+        public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
+            string from,
+            BlockchainTransactionType type,
+            bool reserve = false,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(from))
+                return new MaxAmountEstimation
+                {
+                    Error = new Error(Errors.FromAddressIsNullOrEmpty, Resources.FromAddressIsNullOrEmpty)
+                };
+
+            //if (from == to)
+            //    return new MaxAmountEstimation {
+            //        Error = new Error(Errors.SendingAndReceivingAddressesAreSame, "Sending and receiving addresses are same")
+            //    };
+
+            var fromAddress = await GetAddressAsync(from, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (fromAddress == null)
+                return new MaxAmountEstimation
+                {
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        description: Resources.InsufficientFunds,
+                        details: string.Format(
+                            Resources.InsufficientFundsDetails,
+                            0,               // available tokens
+                            Fa2Config.Name)) // currency code
+                };
+
+            var reserveFee = ReserveFee();
+
+            var xtz = XtzConfig;
+
+            var feeInTez = await FeeByType(
+                    type: type,
+                    from: fromAddress.Address,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            var storageFeeInTez = StorageFeeByType(type);
+
+            var requiredFeeInTez = feeInTez +
+                storageFeeInTez +
+                (reserve ? reserveFee : 0) +
+                xtz.MicroTezReserve.ToTez();
+
+            var xtzAddress = await DataRepository
+                .GetWalletAddressAsync(xtz.Name, fromAddress.Address)
+                .ConfigureAwait(false);
+
+            if (xtzAddress == null)
+                return new MaxAmountEstimation
+                {
+                    Fee = requiredFeeInTez,
+                    Reserved = reserveFee,
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        description: Resources.InsufficientFundsToCoverFees,
+                        details: string.Format(
+                            Resources.InsufficientFundsToCoverFeesDetails,
+                            requiredFeeInTez,          // required fee
+                            Fa2Config.FeeCurrencyName, // currency code
+                            0m))                       // available
+                };
+
+            var restBalanceInTez = xtzAddress.AvailableBalance() - requiredFeeInTez;
+
+            if (restBalanceInTez < 0)
+                return new MaxAmountEstimation
+                {
+                    Fee = requiredFeeInTez,
+                    Reserved = reserveFee,
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        description: Resources.InsufficientFundsToCoverFees,
+                        details: string.Format(
+                            Resources.InsufficientFundsToCoverFeesDetails,
+                            requiredFeeInTez,               // required fee
+                            Fa2Config.FeeCurrencyName,      // currency code
+                            xtzAddress.AvailableBalance())) // available
+                };
+
+            if (fromAddress.AvailableBalance() <= 0)
+                return new MaxAmountEstimation
+                {
+                    Fee = requiredFeeInTez,
+                    Reserved = reserveFee,
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        description: Resources.InsufficientFunds,
+                        details: string.Format(
+                            Resources.InsufficientFundsDetails,
+                            fromAddress.AvailableBalance(), // available tokens
+                            Fa2Config.Name))                // currency code
+                };
+
+            return new MaxAmountEstimation
+            {
+                Amount = fromAddress.AvailableBalance(),
+                Fee = requiredFeeInTez,
+                Reserved = reserveFee
+            };
+        }
+
+        public Task<MaxAmountEstimation> EstimateMaxSwapPaymentAmountAsync(
+            IFromSource from,
+            bool reserve = false,
+            CancellationToken cancellationToken = default)
+        {
+            var fromAddress = (from as FromAddress)?.Address;
+
+            return EstimateMaxAmountToSendAsync(
+                from: fromAddress,
+                type: BlockchainTransactionType.SwapPayment,
+                reserve: reserve,
+                cancellationToken: cancellationToken);
+        }
+
+        private async Task<decimal> FeeByType(
+            BlockchainTransactionType type,
+            string from,
+            CancellationToken cancellationToken = default)
+        {
+            var fa2 = Fa2Config;
+
+            var isRevealed = from != null && await _tezosAccount
+                .IsRevealedSourceAsync(from, cancellationToken)
+                .ConfigureAwait(false);
+
+            var revealFeeInTez = !isRevealed
+                ? fa2.RevealFee.ToTez()
+                : 0;
+
+            if (type.HasFlag(BlockchainTransactionType.TokenApprove))
+                return fa2.ApproveFee.ToTez();
+
+            if (type.HasFlag(BlockchainTransactionType.SwapPayment))
+                return fa2.ApproveFee.ToTez() * 2 + fa2.InitiateFee.ToTez() + revealFeeInTez;
+
+            if (type.HasFlag(BlockchainTransactionType.SwapRefund))
+                return fa2.RefundFee.ToTez() + revealFeeInTez;
+
+            if (type.HasFlag(BlockchainTransactionType.SwapRedeem))
+                return fa2.RedeemFee.ToTez() + revealFeeInTez;
+
+            return fa2.TransferFee.ToTez() + revealFeeInTez;
+        }
+
+        private decimal ReserveFee()
+        {
+            var xtz = XtzConfig;
+            var fa2 = Fa2Config;
+
+            return new[]
+            {
+                (fa2.RedeemFee + Math.Max((fa2.RedeemStorageLimit - fa2.ActivationStorage) * fa2.StorageFeeMultiplier, 0)).ToTez(),
+                (fa2.RefundFee + Math.Max((fa2.RefundStorageLimit - fa2.ActivationStorage) * fa2.StorageFeeMultiplier, 0)).ToTez(),
+                (xtz.RedeemFee + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0)).ToTez(),
+                (xtz.RefundFee + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0)).ToTez()
+
+            }.Max() + fa2.RevealFee.ToTez() + XtzConfig.MicroTezReserve.ToTez();
+        }
+
+        private decimal StorageFeeByType(BlockchainTransactionType type)
+        {
+            var fa2 = Fa2Config;
+
+            if (type.HasFlag(BlockchainTransactionType.TokenApprove))
+                return fa2.ApproveStorageLimit.ToTez();
+
+            if (type.HasFlag(BlockchainTransactionType.SwapPayment))
+                return ((fa2.ApproveStorageLimit * 2 + fa2.InitiateStorageLimit) * fa2.StorageFeeMultiplier).ToTez();
+
+            if (type.HasFlag(BlockchainTransactionType.SwapRefund))
+                return ((fa2.RefundStorageLimit - fa2.ActivationStorage) * fa2.StorageFeeMultiplier).ToTez();
+
+            if (type.HasFlag(BlockchainTransactionType.SwapRedeem))
+                return ((fa2.RedeemStorageLimit - fa2.ActivationStorage) * fa2.StorageFeeMultiplier).ToTez();
+
+            return ((fa2.TransferStorageLimit - fa2.ActivationStorage) * fa2.StorageFeeMultiplier).ToTez();
         }
 
         #endregion Common
