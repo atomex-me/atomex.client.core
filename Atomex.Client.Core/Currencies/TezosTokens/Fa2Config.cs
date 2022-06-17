@@ -10,21 +10,9 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.TezosTokens
 {
-    public class Fa2Config : TezosConfig
+    public class Fa2Config : TezosTokenConfig
     {
-        public decimal TransferFee { get; private set; }
-        public decimal TransferGasLimit { get; private set; }
-        public decimal TransferStorageLimit { get; private set; }
-        public decimal TransferSize { get; private set; }
-
-        public decimal ApproveFee { get; private set; }
-        public decimal ApproveGasLimit { get; private set; }
-        public decimal ApproveStorageLimit { get; private set; }
-        public decimal ApproveSize { get; private set; }
-
-        public string TokenContractAddress { get; private set; }
         public int TokenId { get; private set; }
-        public string ViewContractAddress { get; private set; }
 
         public Fa2Config()
         {
@@ -130,8 +118,5 @@ namespace Atomex.TezosTokens
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Tezos; 
         }
-
-        public override decimal GetDefaultFee() =>
-            TransferGasLimit;
     }
 }

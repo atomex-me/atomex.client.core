@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Globalization;
 using System.Numerics;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Microsoft.Extensions.Configuration;
 
@@ -12,7 +10,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.TezosTokens
 {
-    public class Fa12Config : TezosConfig
+    public class Fa12Config : TezosTokenConfig
     {
         public decimal GetBalanceFee { get; private set; }
         public decimal GetBalanceGasLimit { get; private set; }
@@ -20,19 +18,6 @@ namespace Atomex.TezosTokens
         public decimal GetBalanceSize { get; private set; }
 
         public decimal GetAllowanceGasLimit { get; private set; }
-
-        public decimal TransferFee { get; private set; }
-        public decimal TransferGasLimit { get; private set; }
-        public decimal TransferStorageLimit { get; private set; }
-        public decimal TransferSize { get; private set; }
-
-        public decimal ApproveFee { get; private set; }
-        public decimal ApproveGasLimit { get; private set; }
-        public decimal ApproveStorageLimit { get; private set; }
-        public decimal ApproveSize { get; private set; }
-
-        public string TokenContractAddress { get; private set; }
-        public string ViewContractAddress { get; private set; }
 
         public Fa12Config()
         {
@@ -154,34 +139,5 @@ namespace Atomex.TezosTokens
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Tezos;
         }
-
-        public override async Task<decimal> GetRewardForRedeemAsync(
-            decimal maxRewardPercent,
-            decimal maxRewardPercentInBase,
-            string feeCurrencyToBaseSymbol,
-            decimal feeCurrencyToBasePrice,
-            string feeCurrencySymbol = null,
-            decimal feeCurrencyPrice = 0,
-            CancellationToken cancellationToken = default)
-        {
-            var rewardForRedeemInXtz = await base.GetRewardForRedeemAsync(
-                maxRewardPercent: maxRewardPercent,
-                maxRewardPercentInBase: maxRewardPercentInBase,
-                feeCurrencyToBaseSymbol: feeCurrencyToBaseSymbol,
-                feeCurrencyToBasePrice: feeCurrencyToBasePrice,
-                feeCurrencySymbol: feeCurrencySymbol,
-                feeCurrencyPrice: feeCurrencyPrice,
-                cancellationToken: cancellationToken);
-
-            if (feeCurrencySymbol == null || feeCurrencyPrice == 0)
-                return 0m;
-
-            return AmountHelper.RoundDown(feeCurrencySymbol.IsBaseCurrency(Name)
-                ? rewardForRedeemInXtz / feeCurrencyPrice
-                : rewardForRedeemInXtz * feeCurrencyPrice, DigitsMultiplier);
-        }
-
-        public override decimal GetDefaultFee() =>
-            TransferGasLimit;
     }
 }
