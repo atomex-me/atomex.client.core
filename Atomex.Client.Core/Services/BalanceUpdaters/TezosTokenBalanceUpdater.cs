@@ -116,14 +116,25 @@ namespace Atomex.Services.BalanceUpdaters
             return addresses;
         }
 
-        private async void BalanceUpdatedHandler(string address)
+        private async void BalanceUpdatedHandler(string token, string address)
         {
             try
             {
-                foreach (var currency in _account.Currencies)
+                if (!string.IsNullOrEmpty(token) && Currencies.IsTezosToken(token))
                 {
-                    if (Currencies.IsTezosToken(currency.Name))
+                    await _walletScanner.ScanAddressAsync(token, address)
+                        .ConfigureAwait(false);
+
+                    _account
+                        .GetCurrencyAccount<TezosTokenAccount>(token)
+                        .ReloadBalances();
+                }
+                else
+                {
+                    foreach (var currency in _account.Currencies)
                     {
+                        if (!Currencies.IsTezosToken(currency?.Name)) continue;
+
                         await _walletScanner.ScanAddressAsync(currency.Name, address)
                             .ConfigureAwait(false);
 
@@ -132,7 +143,7 @@ namespace Atomex.Services.BalanceUpdaters
                             .ReloadBalances();
                     }
                 }
-
+                
                 var newAddresses = await GetAddressesAsync().ConfigureAwait(false);
                 newAddresses.ExceptWith(_addresses);
 
