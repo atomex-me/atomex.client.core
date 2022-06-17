@@ -111,7 +111,7 @@ namespace Atomex.Wallet.Tezos
                 Fee          = addressFeeUsage.UsedFee.ToMicroTez(),
                 GasLimit     = tokenConfig.TransferGasLimit,
                 StorageLimit = storageLimit,
-                Params       = CreateTransferParams(from, to, amount),
+                Params       = CreateTransferParams(from, to, addressAmountInDigits),
                 Type         = BlockchainTransactionType.Output | BlockchainTransactionType.TokenCall,
 
                 UseRun              = useDefaultFee,

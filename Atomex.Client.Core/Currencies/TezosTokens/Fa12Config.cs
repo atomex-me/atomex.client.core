@@ -70,19 +70,11 @@ namespace Atomex.TezosTokens
 
             MicroTezReserve         = decimal.Parse(configuration[nameof(MicroTezReserve)], CultureInfo.InvariantCulture);
             GasReserve              = decimal.Parse(configuration[nameof(GasReserve)], CultureInfo.InvariantCulture);
-
             MaxFee                  = decimal.Parse(configuration[nameof(MaxFee)], CultureInfo.InvariantCulture);
-
-            GasLimit                = decimal.Parse(configuration[nameof(GasLimit)], CultureInfo.InvariantCulture);
             StorageLimit            = decimal.Parse(configuration[nameof(StorageLimit)], CultureInfo.InvariantCulture);
 
             RevealFee               = decimal.Parse(configuration[nameof(RevealFee)], CultureInfo.InvariantCulture);
             RevealGasLimit          = decimal.Parse(configuration[nameof(RevealGasLimit)], CultureInfo.InvariantCulture);
-
-            GetBalanceGasLimit      = decimal.Parse(configuration[nameof(GetBalanceGasLimit)], CultureInfo.InvariantCulture);
-            GetBalanceStorageLimit  = decimal.Parse(configuration[nameof(GetBalanceStorageLimit)], CultureInfo.InvariantCulture);
-            GetBalanceSize          = decimal.Parse(configuration[nameof(GetBalanceSize)], CultureInfo.InvariantCulture);
-            GetBalanceFee           = MinimalFee + (GetBalanceGasLimit + GasReserve) * MinimalNanotezPerGasUnit + GetBalanceSize * MinimalNanotezPerByte + 1;
 
             GetAllowanceGasLimit    = decimal.Parse(configuration[nameof(GetAllowanceGasLimit)], CultureInfo.InvariantCulture);
 
@@ -96,20 +88,10 @@ namespace Atomex.TezosTokens
             ApproveSize             = decimal.Parse(configuration[nameof(ApproveSize)], CultureInfo.InvariantCulture);
             ApproveFee              = MinimalFee + (ApproveGasLimit + GasReserve) * MinimalNanotezPerGasUnit + ApproveSize * MinimalNanotezPerByte + 1;
 
-            AddGasLimit             = decimal.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
-            AddStorageLimit         = decimal.Parse(configuration[nameof(AddStorageLimit)], CultureInfo.InvariantCulture);
-            AddSize                 = decimal.Parse(configuration[nameof(AddSize)], CultureInfo.InvariantCulture);
-            AddFee                  = MinimalFee + (AddGasLimit + GasReserve) * MinimalNanotezPerGasUnit + AddSize * MinimalNanotezPerByte + 1;
-
             InitiateGasLimit        = decimal.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
             InitiateStorageLimit    = decimal.Parse(configuration[nameof(InitiateStorageLimit)], CultureInfo.InvariantCulture);
             InitiateSize            = decimal.Parse(configuration[nameof(InitiateSize)], CultureInfo.InvariantCulture);
             InitiateFee             = MinimalFee + (InitiateGasLimit + GasReserve) * MinimalNanotezPerGasUnit + InitiateSize * MinimalNanotezPerByte + 1;
-
-            AddGasLimit             = decimal.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
-            AddStorageLimit         = decimal.Parse(configuration[nameof(AddStorageLimit)], CultureInfo.InvariantCulture);
-            AddSize                 = decimal.Parse(configuration[nameof(AddSize)], CultureInfo.InvariantCulture);
-            AddFee                  = MinimalFee + (AddGasLimit + GasReserve) * MinimalNanotezPerGasUnit + AddSize * MinimalNanotezPerByte + 1;
 
             RedeemGasLimit          = decimal.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
             RedeemStorageLimit      = decimal.Parse(configuration[nameof(RedeemStorageLimit)], CultureInfo.InvariantCulture);
