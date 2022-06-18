@@ -14,11 +14,11 @@ using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Helpers;
-using Atomex.Swaps.Tezos.FA12.Helpers;
+using Atomex.Swaps.Tezos.FA2.Helpers;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Tezos;
 
-namespace Atomex.Swaps.Tezos.FA12
+namespace Atomex.Swaps.Tezos.FA2
 {
     public class Fa2Swap : CurrencySwap
     {
@@ -148,7 +148,7 @@ namespace Atomex.Swaps.Tezos.FA12
 
                 var isInitiateConfirmed = await WaitPaymentConfirmationAsync(
                         txId: paymentTx.Id,
-                        timeout: Fa12Swap.InitiationTimeout,
+                        timeout: InitiationTimeout,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
                     
@@ -185,7 +185,7 @@ namespace Atomex.Swaps.Tezos.FA12
 
             var refundTimeUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();
 
-            _ = Fa12SwapInitiatedHelper.StartSwapInitiatedControlAsync(
+            _ = Fa2SwapInitiatedHelper.StartSwapInitiatedControlAsync(
                 swap: swap,
                 currency: Fa2Config,
                 tezos: XtzConfig,
@@ -204,7 +204,7 @@ namespace Atomex.Swaps.Tezos.FA12
         {
             var fa2 = Fa2Config;
             
-            var secretResult = await Fa12SwapRedeemedHelper
+            var secretResult = await Fa2SwapRedeemedHelper
                 .IsRedeemedAsync(
                     swap: swap,
                     currency: fa2,
@@ -243,7 +243,7 @@ namespace Atomex.Swaps.Tezos.FA12
             if (swap.IsAcceptor &&
                 swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultInitiatorLockTimeInSeconds) < DateTime.UtcNow)
             {
-                var isRefundedByParty = await Fa12SwapRefundedHelper
+                var isRefundedByParty = await Fa2SwapRefundedHelper
                     .IsRefundedAsync(swap, fa2, XtzConfig, cancellationToken)
                     .ConfigureAwait(false);
 
@@ -612,7 +612,7 @@ namespace Atomex.Swaps.Tezos.FA12
                 : DefaultAcceptorLockTimeInSeconds;
 
             // start redeem control async
-            _ = Fa12SwapRedeemedHelper.StartSwapRedeemedControlAsync(
+            _ = Fa2SwapRedeemedHelper.StartSwapRedeemedControlAsync(
                 swap: swap,
                 currency: Fa2Config,
                 tezos: XtzConfig,
@@ -632,7 +632,7 @@ namespace Atomex.Swaps.Tezos.FA12
             Log.Debug("Wait redeem for swap {@swapId}", swap.Id);
 
             // start redeem control async
-            _ = Fa12SwapRedeemedHelper.StartSwapRedeemedControlAsync(
+            _ = Fa2SwapRedeemedHelper.StartSwapRedeemedControlAsync(
                 swap: swap,
                 currency: Fa2Config,
                 tezos: XtzConfig,
@@ -652,7 +652,7 @@ namespace Atomex.Swaps.Tezos.FA12
             var currency = Currencies
                 .GetByName(swap.SoldCurrency);
 
-            return await Fa12SwapInitiatedHelper
+            return await Fa2SwapInitiatedHelper
                 .TryToFindPaymentAsync(
                     swap: swap,
                     currency: currency,
@@ -670,7 +670,8 @@ namespace Atomex.Swaps.Tezos.FA12
 
             try
             {
-                var isRefundedResult = await Fa12SwapRefundedHelper.IsRefundedAsync(
+                var isRefundedResult = await Fa2SwapRefundedHelper
+                    .IsRefundedAsync(
                         swap: swap,
                         currency: Fa2Config,
                         tezos: XtzConfig,
@@ -756,7 +757,7 @@ namespace Atomex.Swaps.Tezos.FA12
 
             while (DateTime.UtcNow < timeStamp + timeout)
             {
-                await Task.Delay(Fa12Swap.InitiationCheckInterval, cancellationToken)
+                await Task.Delay(InitiationCheckInterval, cancellationToken)
                     .ConfigureAwait(false);
 
                 var tx = await Fa2Account
@@ -796,10 +797,6 @@ namespace Atomex.Swaps.Tezos.FA12
             var fa2 = Fa2Config;
             var requiredAmountInTokens = RequiredAmountInTokens(swap, fa2); 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();
-
-            var rewardForRedeemInTokenDigits = swap.IsInitiator
-                ? swap.PartyRewardForRedeem.ToTokenDigits(fa2.DigitsMultiplier)
-                : 0;
 
             var walletAddress = await Fa2Account
                 .GetAddressAsync(swap.FromAddress, cancellationToken)
@@ -868,7 +865,12 @@ namespace Atomex.Swaps.Tezos.FA12
                 Fee          = feeAmountInMtz,
                 GasLimit     = fa2.InitiateGasLimit,
                 StorageLimit = fa2.InitiateStorageLimit,
-                Params       = CreateInitParams(swap, fa2.TokenContractAddress, amountInTokens.ToTokenDigits(fa2.DigitsMultiplier), refundTimeStampUtcInSec, (long)rewardForRedeemInTokenDigits),
+                Params       = CreateInitParams(
+                    swap: swap,
+                    tokenContractAddress: fa2.TokenContractAddress,
+                    tokenId: fa2.TokenId,
+                    tokenAmountInDigits: amountInTokens.ToTokenDigits(fa2.DigitsMultiplier),
+                    refundTimeStamp: refundTimeStampUtcInSec),
                 Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment,
 
                 UseRun              = true,
@@ -896,7 +898,7 @@ namespace Atomex.Swaps.Tezos.FA12
             var fa2Api = fa2.BlockchainApi as ITokenBlockchainApi;
 
             var allowanceResult = await fa2Api
-                .TryGetFa12AllowanceAsync(
+                .TryGetFa2AllowanceAsync(
                     holderAddress: walletAddress.Address,
                     spenderAddress: fa2.SwapContractAddress,
                     callingAddress: walletAddress.Address,
@@ -929,7 +931,9 @@ namespace Atomex.Swaps.Tezos.FA12
                     Fee          = fa2.ApproveFee,
                     GasLimit     = fa2.ApproveGasLimit,
                     StorageLimit = fa2.ApproveStorageLimit,
-                    Params       = CreateApproveParams(fa2.SwapContractAddress, 0),
+                    Params       = CreateApproveParams(
+                        owner: walletAddress.Address,
+                        spender: fa2.SwapContractAddress),
                     Type         = BlockchainTransactionType.TokenApprove,
 
                     UseRun              = true,
@@ -937,31 +941,6 @@ namespace Atomex.Swaps.Tezos.FA12
                     UseOfflineCounter   = true
                 });
             }
-
-            var requiredAmountInTokens = RequiredAmountInTokens(swap, fa2);
-
-            var amountInTokens = AmountHelper.DustProofMin(
-                walletAddress.Balance,
-                requiredAmountInTokens,
-                fa2.DigitsMultiplier,
-                fa2.DustDigitsMultiplier);
-
-            transactions.Add(new TezosTransaction
-            {
-                Currency     = XtzConfig.Name,
-                CreationTime = DateTime.UtcNow,
-                From         = walletAddress.Address,
-                To           = fa2.TokenContractAddress,
-                Fee          = fa2.ApproveFee,
-                GasLimit     = fa2.ApproveGasLimit,
-                StorageLimit = fa2.ApproveStorageLimit,
-                Params       = CreateApproveParams(fa2.SwapContractAddress, amountInTokens.ToTokenDigits(fa2.DigitsMultiplier)),
-                Type         = BlockchainTransactionType.TokenApprove,
-
-                UseRun              = true,
-                UseSafeStorageLimit = true,
-                UseOfflineCounter   = true
-            });
 
             return transactions;
         }
@@ -1019,20 +998,20 @@ namespace Atomex.Swaps.Tezos.FA12
         }
 
         private JObject CreateApproveParams(
-            string spender,
-            decimal amount)
+            string owner,
+            string spender)
         {
-            return JObject.Parse(@"{'entrypoint':'approve','value':{'prim':'Pair','args':[{'string':'" + spender + "'},{'int':'" + amount + "'}]}}");
+            return JObject.Parse(@"{'entrypoint':'update_operators','value':[{'prim': 'Left','args':[{'prim': 'Pair','args':[{'string': '" + owner + "'},{'string': '" + spender + "'}]}]}]}");
         }
 
         private JObject CreateInitParams(
             Swap swap,
             string tokenContractAddress,
-            decimal tokenAmountInDigigts,
-            long refundTimestamp,
-            long redeemFeeAmount)
+            long tokenId,
+            decimal tokenAmountInDigits,
+            long refundTimeStamp)
         {
-            return JObject.Parse(@"{'entrypoint':'initiate','value':{'prim':'Pair','args':[{'prim':'Pair','args':[{'prim':'Pair','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'},{'string':'" + swap.PartyAddress + "'}]},{'prim':'Pair','args':[{'int':'" + redeemFeeAmount + "'},{'int':'" + refundTimestamp + "'}]}]},{'prim':'Pair','args':[{'string':'" + tokenContractAddress + "'},{'int':'" + tokenAmountInDigigts + "'}]}]}}");
+            return JObject.Parse(@"{'entrypoint':'initiate','value':{'prim':'Pair','args':[{'prim':'Pair','args':[{'prim':'Pair','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'},{'string':'" + swap.PartyAddress + "'}]},{'prim':'Pair','args':[{'string':'" + refundTimeStamp + "'},{'string':'" + tokenContractAddress + "'}]}]},{'prim':'Pair','args':[{'int':'" + tokenId + "'},{'int':'" + tokenAmountInDigits + "'}]}]}}");
         }
 
         private JObject CreateRedeemParams(Swap swap)
