@@ -533,14 +533,17 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         public async Task<Result<bool>> IsFa2TokenOperatorActiveAsync(
             string holderAddress,
             string spenderAddress,
+            string tokenContractAddress,
             int tokenId,
             CancellationToken cancellationToken = default)
         {
             try
             {
+                var requestUri = $"contracts/{tokenContractAddress}/bigmaps/operators/keys/{{\"owner\":\"{holderAddress}\",\"operator\":\"{spenderAddress}\",\"token_id\":\"{tokenId}\"}}";
+
                 var result = await HttpHelper.GetAsyncResult<JObject>(
                     baseUri: _baseUri,
-                    requestUri: $"v1/contracts/{spenderAddress}/bigmaps/operators/keys/{{\"owner\":\"{holderAddress}\",\"operator\":\"{spenderAddress}\",\"token_id\":\"{tokenId}\"}}",
+                    requestUri: requestUri,
                     responseHandler: (response, content) => JsonConvert.DeserializeObject<JObject>(content),
                     cancellationToken: cancellationToken);
 

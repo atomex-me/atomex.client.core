@@ -901,6 +901,7 @@ namespace Atomex.Swaps.Tezos.FA2
                 .IsFa2TokenOperatorActiveAsync(
                     holderAddress: walletAddress.Address,
                     spenderAddress: fa2.SwapContractAddress,
+                    tokenContractAddress: fa2.TokenContractAddress,
                     tokenId: fa2.TokenId,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
