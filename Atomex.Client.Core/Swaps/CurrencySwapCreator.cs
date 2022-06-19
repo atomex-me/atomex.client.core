@@ -7,6 +7,7 @@ using Atomex.Swaps.BitcoinBased;
 using Atomex.Swaps.Ethereum;
 using Atomex.Swaps.Tezos;
 using Atomex.Swaps.Tezos.FA12;
+using Atomex.Swaps.Tezos.FA2;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;

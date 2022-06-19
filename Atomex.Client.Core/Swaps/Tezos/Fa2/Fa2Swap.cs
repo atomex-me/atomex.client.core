@@ -897,30 +897,29 @@ namespace Atomex.Swaps.Tezos.FA2
             var fa2 = Fa2Config;
             var fa2Api = fa2.BlockchainApi as ITokenBlockchainApi;
 
-            var allowanceResult = await fa2Api
-                .TryGetFa2AllowanceAsync(
+            var isOperatorActiveResult = await fa2Api
+                .IsFa2TokenOperatorActiveAsync(
                     holderAddress: walletAddress.Address,
                     spenderAddress: fa2.SwapContractAddress,
-                    callingAddress: walletAddress.Address,
-                    securePublicKey: callingAddressPublicKey,
+                    tokenId: fa2.TokenId,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (allowanceResult.HasError)
+            if (isOperatorActiveResult.HasError)
             {
-                Log.Error("Error while getting token allowance for {@address} with code {@code} and description {@description}",
+                Log.Error("Error while getting token operator for {@address} with code {@code} and description {@description}",
                     walletAddress.Address,
-                    allowanceResult.Error.Code,
-                    allowanceResult.Error.Description);
+                    isOperatorActiveResult.Error.Code,
+                    isOperatorActiveResult.Error.Description);
 
                 return null; // todo: maybe add approve 0
             }
 
             var transactions = new List<TezosTransaction>();
 
-            Log.Debug("Allowance: {@allowance}", allowanceResult.Value);
+            Log.Debug("Is operator active: {@allowance}", isOperatorActiveResult.Value);
 
-            if (allowanceResult.Value > 0)
+            if (!isOperatorActiveResult.Value)
             {
                 transactions.Add(new TezosTransaction
                 {
