@@ -605,6 +605,8 @@ namespace Atomex.Blockchain.Ethereum
             if (transaction is not EthereumTransaction ethTx)
                 return new Error(Errors.TransactionBroadcastError, "Invalid transaction type.");
 
+            ethTx.State = BlockchainTransactionState.Pending;
+
             var requestUri = $"api?module=proxy&action=eth_sendRawTransaction&hex=0x{ethTx.RlpEncodedTx}&apikey={ApiKey}";
 
             string txId = null;
