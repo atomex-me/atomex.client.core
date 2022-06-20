@@ -148,7 +148,7 @@ namespace Atomex.Blockchain.BitCore
             var requestUri = $"api/{Currency.Name}/{Network}/address/{address}/balance/";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult<decimal>(
@@ -175,7 +175,7 @@ namespace Atomex.Blockchain.BitCore
             var requestUri = $"api/{Currency.Name}/{Currency.Network.ToString().ToLower()}/tx/{txId}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
@@ -207,7 +207,7 @@ namespace Atomex.Blockchain.BitCore
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var tx = (IBitcoinBasedTransaction)transaction;
@@ -253,7 +253,7 @@ namespace Atomex.Blockchain.BitCore
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var requestUri = $"api/{Currency.Name}/{Currency.Network.ToString().ToLower()}/address/{address}/?unspent=true";
@@ -283,7 +283,7 @@ namespace Atomex.Blockchain.BitCore
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var requestUri = $"api/{Currency.Name}/{Currency.Network.ToString().ToLower()}/address/{address}";
@@ -320,7 +320,7 @@ namespace Atomex.Blockchain.BitCore
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var txResult = await HttpHelper.GetAsyncResult<Tx>(
@@ -381,7 +381,7 @@ namespace Atomex.Blockchain.BitCore
             var requestUri = $"v1/btc/{network}/txs/{txId}?includeHex=true";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult<string>(

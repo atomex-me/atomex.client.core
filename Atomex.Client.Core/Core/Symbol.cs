@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+
 using Microsoft.Extensions.Configuration;
 
 namespace Atomex.Core
@@ -22,8 +23,8 @@ namespace Atomex.Core
             Id         = int.Parse(configuration["Id"]);
             Name       = configuration["Name"];
             MinimumQty = decimal.Parse(configuration["MinimumQty"], CultureInfo.InvariantCulture);
-            Base       = Name.Substring(0, Name.IndexOf('/'));
-            Quote      = Name.Substring(Name.IndexOf('/') + 1);
+            Base       = Name[..Name.IndexOf('/')];
+            Quote      = Name[(Name.IndexOf('/') + 1)..];
         }
     }
 }

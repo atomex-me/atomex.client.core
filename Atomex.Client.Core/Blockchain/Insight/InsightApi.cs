@@ -186,7 +186,7 @@ namespace Atomex.Blockchain.Insight
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var requestUri = $"api/addr/{address}/balance";
@@ -216,7 +216,7 @@ namespace Atomex.Blockchain.Insight
                 return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var requestUri = $"api/tx/{txId}";
@@ -251,7 +251,7 @@ namespace Atomex.Blockchain.Insight
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var tx = (IBitcoinBasedTransaction)transaction;
@@ -278,7 +278,7 @@ namespace Atomex.Blockchain.Insight
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var requestUri = $"api/tx/{txId}";
@@ -312,7 +312,7 @@ namespace Atomex.Blockchain.Insight
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var requestUri = $"api/addr/{address}/utxo";
@@ -346,7 +346,7 @@ namespace Atomex.Blockchain.Insight
             var requestUri = $"api/txs/?address={address}"; // todo: pagination?
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult(
@@ -401,7 +401,7 @@ namespace Atomex.Blockchain.Insight
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var requestUri = $"api/tx/{txId}";
@@ -430,7 +430,7 @@ namespace Atomex.Blockchain.Insight
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var requestUri = $"api/rawtx/{txId}";

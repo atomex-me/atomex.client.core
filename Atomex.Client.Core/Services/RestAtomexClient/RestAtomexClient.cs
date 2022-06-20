@@ -742,10 +742,10 @@ namespace Atomex.Services
             var swapStatus = SwapStatus.Empty;
 
             if (swapDto.User?.Status > PartyStatus.Created)
-                swapStatus |= (swapDto.IsInitiator ? SwapStatus.Accepted : SwapStatus.Initiated);
+                swapStatus |= (swapDto.IsInitiator ? SwapStatus.Initiated : SwapStatus.Accepted);
 
             if (swapDto.CounterParty?.Status > PartyStatus.Created)
-                swapStatus |= (swapDto.IsInitiator ? SwapStatus.Initiated : SwapStatus.Accepted);
+                swapStatus |= (swapDto.IsInitiator ? SwapStatus.Accepted : SwapStatus.Initiated);
 
             return new Swap()
             {

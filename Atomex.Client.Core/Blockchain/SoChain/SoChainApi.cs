@@ -371,7 +371,7 @@ namespace Atomex.Blockchain.SoChain
             var requestUri = $"api/v2/get_tx_inputs/{NetworkAcronym}/{txId}/{inputNo}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult<ITxPoint>(
@@ -437,7 +437,7 @@ namespace Atomex.Blockchain.SoChain
             var requestUri = $"api/v2/get_tx_inputs/{NetworkAcronym}/{txId}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult(
@@ -482,7 +482,7 @@ namespace Atomex.Blockchain.SoChain
             var requestUri = $"api/v2/get_tx_unspent/{NetworkAcronym}/{addParams}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult(
@@ -518,7 +518,7 @@ namespace Atomex.Blockchain.SoChain
             var requestUri = $"api/v2/get_tx_received/{NetworkAcronym}/{addParams}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult(
@@ -553,7 +553,7 @@ namespace Atomex.Blockchain.SoChain
             var requestUri = $"api/v2/address/{NetworkAcronym}/{address}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult(
@@ -601,7 +601,7 @@ namespace Atomex.Blockchain.SoChain
             var requestUri = $"api/v2/tx/{NetworkAcronym}/{txId}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
@@ -636,7 +636,7 @@ namespace Atomex.Blockchain.SoChain
             var requestUri = $"api/v2/is_tx_confirmed/{NetworkAcronym}/{txId}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult<bool>(
@@ -660,7 +660,7 @@ namespace Atomex.Blockchain.SoChain
             var requestUri = $"api/v2/is_tx_spent/{NetworkAcronym}/{txId}/{outputNo}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult<ITxPoint>(
@@ -693,7 +693,7 @@ namespace Atomex.Blockchain.SoChain
             tx.State = BlockchainTransactionState.Pending;
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             using var requestContent = new StringContent(

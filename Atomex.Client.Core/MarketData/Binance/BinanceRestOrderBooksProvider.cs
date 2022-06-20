@@ -29,12 +29,6 @@ namespace Atomex.MarketData.Binance
             { "LTC/USDT", "LTCUSDT" },
             { "XTZ/USDT", "XTZUSDT" },
 
-            { "ETH/NYX", "ETHBTC" },
-            { "XTZ/NYX", "XTZBTC" },
-
-            { "FA2/ETH", "XTZETH" }, // syntetic
-            { "FA2/BTC", "XTZBTC" },
-
             { "ETH/TZBTC", "ETHBTC" },
             { "XTZ/TZBTC", "XTZBTC" },
             { "TZBTC/USDT", "BTCUSDT" },

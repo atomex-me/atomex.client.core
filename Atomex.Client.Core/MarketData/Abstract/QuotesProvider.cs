@@ -17,7 +17,7 @@ namespace Atomex.MarketData.Abstract
 
         public DateTime LastUpdateTime { get; protected set; }
         public DateTime LastSuccessUpdateTime { get; protected set; }
-        public bool IsAvailable { get; protected set; }
+        public virtual bool IsAvailable { get; protected set; }
 
         public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromMinutes(1);
         public bool IsRunning => _updaterTask != null &&
@@ -75,7 +75,7 @@ namespace Atomex.MarketData.Abstract
         public abstract Quote GetQuote(string currency, string baseCurrency);
         public abstract Quote GetQuote(string symbol);
 
-        protected abstract Task UpdateAsync(CancellationToken cancellation = default);
+        public abstract Task UpdateAsync(CancellationToken cancellation = default);
 
         protected void RiseQuotesUpdatedEvent(EventArgs args)
         {

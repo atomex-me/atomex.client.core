@@ -15,7 +15,7 @@ namespace Atomex.Common
             _minDelayBetweenRequestMs = minDelayBetweenRequestMs;
         }
 
-        public async Task Wait(CancellationToken cancellationToken)
+        public async Task WaitAsync(CancellationToken cancellationToken)
         {
             var isCompleted = false;
 

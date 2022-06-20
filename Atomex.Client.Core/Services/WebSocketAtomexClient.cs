@@ -1,27 +1,43 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Http;
+using System.Net.WebSockets;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using Serilog;
+using Websocket.Client;
 
 using Atomex.Abstract;
-using Atomex.Api.Proto;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.MarketData;
 using Atomex.MarketData.Abstract;
 using Atomex.Services.Abstract;
 using Atomex.Swaps;
+using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Web;
 
 namespace Atomex.Services
 {
+    public class AuthTokenResponse
+    {
+        [JsonProperty("id")]
+        public string Id { get; set; }
+        [JsonProperty("token")]
+        public string Token { get; set; }
+        [JsonProperty("expires")]
+        public long Expires { get; set; }
+    }
+
     public class WebSocketAtomexClient : IAtomexClient
     {
-        private static TimeSpan HeartBeatInterval = TimeSpan.FromSeconds(10);
+        private const uint DEFAULT_AUTHENTICATION_ACCOUNT_INDEX = 0u;
+        private const int HeartBeatIntervalInSec = 10;
 
         public event EventHandler<AtomexClientServiceEventArgs> ServiceConnected;
         public event EventHandler<AtomexClientServiceEventArgs> ServiceDisconnected;
@@ -31,153 +47,297 @@ namespace Atomex.Services
         public event EventHandler<SwapEventArgs> SwapReceived;
         public event EventHandler<MarketDataEventArgs> QuotesUpdated;
 
-        private CancellationTokenSource _exchangeCts;
-        private Task _exchangeHeartBeatTask;
-
-        private CancellationTokenSource _marketDataCts;
-        private Task _marketDataHeartBeatTask;
-
-        private ExchangeWebClient ExchangeClient { get; set; }
-        private MarketDataWebClient MarketDataClient { get; set; }
-
         public IAccount Account { get; private set; }
         public IMarketDataRepository MarketDataRepository { get; private set; }
+        protected string AccountUserId => _accountUserIdLazy.Value;
         private ISymbolsProvider SymbolsProvider { get; set; }
-        private IConfiguration Configuration { get; }
+
+        private readonly string _authTokenBaseUrl;
+        private readonly string _exchangeUrl;
+        private readonly string _marketDataUrl;
+        private readonly Lazy<string> _accountUserIdLazy;
+        private WebSocketClient _exchangeWs;
+        private WebSocketClient _marketDataWs;
+        private string _authToken;
+        private Task _exchangeHeartBeatTask;
+        private Task _marketDataHeartBeatTask;
+        private CancellationTokenSource _exchangeHeartBeatCts;
+        private CancellationTokenSource _marketDataHeartBeatCts;
 
         public WebSocketAtomexClient(
-            IConfiguration configuration,
+            string authTokenBaseUrl,
+            string exchangeUrl,
+            string marketDataUrl,
             IAccount account,
             ISymbolsProvider symbolsProvider)
         {
-            Configuration        = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _authTokenBaseUrl    = authTokenBaseUrl ?? throw new ArgumentNullException(nameof(authTokenBaseUrl));
+            _exchangeUrl         = exchangeUrl ?? throw new ArgumentNullException(nameof(exchangeUrl));
+            _marketDataUrl       = marketDataUrl ?? throw new ArgumentNullException(nameof(marketDataUrl));
             Account              = account ?? throw new ArgumentNullException(nameof(account));
             SymbolsProvider      = symbolsProvider ?? throw new ArgumentNullException(nameof(symbolsProvider));
+
             MarketDataRepository = new MarketDataRepository();
+            _accountUserIdLazy = new Lazy<string>(() => Account.GetUserId(DEFAULT_AUTHENTICATION_ACCOUNT_INDEX));
         }
 
-        public bool IsServiceConnected(AtomexClientService service)
-        {
-            return service switch
+        public bool IsServiceConnected(AtomexClientService service) =>
+            service switch
             {
-                AtomexClientService.Exchange   => ExchangeClient.IsConnected,
-                AtomexClientService.MarketData => MarketDataClient.IsConnected,
-                AtomexClientService.All        => ExchangeClient.IsConnected && MarketDataClient.IsConnected,
-                _ => throw new ArgumentOutOfRangeException(nameof(service), service, null),
+                AtomexClientService.Exchange => _exchangeWs.IsConnected,
+                AtomexClientService.MarketData => _marketDataWs.IsConnected,
+                AtomexClientService.All => _exchangeWs.IsConnected && _marketDataWs.IsConnected,
+                _ => throw new ArgumentOutOfRangeException(nameof(service), service, null)
             };
-        }
 
         public async Task StartAsync()
         {
-            try
+            _authToken = await AuthAsync()
+                .ConfigureAwait(false);
+
+            Log.Debug($"Auth token: {_authToken}");
+
+            var authHeaders = new HttpRequestHeaders
             {
-                Log.Information("Start AtomexClient services");
+                new KeyValuePair<string, IEnumerable<string>>("Authorization", new string[] { $"Bearer {_authToken}" }),
+                new KeyValuePair<string, IEnumerable<string>>("Content-Type", new string[] { "application/json" })
+            };
 
-                var configuration = Configuration.GetSection($"Services:{Account.Network}");
+            _exchangeWs = new WebSocketClient(_exchangeUrl, authHeaders);
 
-                // init schemes
-                var schemes = new ProtoSchemes();
+            _exchangeWs.Connected    += ExchangeConnected;
+            _exchangeWs.Disconnected += ExchangeDisconnected;
+            _exchangeWs.OnMessage    += ExchangeOnMessage;
 
-                // init market data repository
-                MarketDataRepository.Initialize(SymbolsProvider.GetSymbols(Account.Network));
+            _marketDataWs = new WebSocketClient(_marketDataUrl, authHeaders);
 
-                // init exchange client
-                ExchangeClient = new ExchangeWebClient(configuration, schemes);
-                ExchangeClient.Connected     += OnExchangeConnectedEventHandler;
-                ExchangeClient.Disconnected  += OnExchangeDisconnectedEventHandler;
-                ExchangeClient.AuthOk        += OnExchangeAuthOkEventHandler;
-                ExchangeClient.AuthNonce     += OnExchangeAuthNonceEventHandler;
-                ExchangeClient.Error         += OnExchangeErrorEventHandler;
-                ExchangeClient.OrderReceived += OnExchangeOrderEventHandler;
-                ExchangeClient.SwapReceived  += OnSwapReceivedEventHandler;
+            _marketDataWs.Connected    += MarketDataConnected;
+            _marketDataWs.Disconnected += MarketDataDisconnected;
+            _marketDataWs.OnMessage    += MarketDataOnMessage;
 
-                // init market data client
-                MarketDataClient = new MarketDataWebClient(configuration, schemes);
-                MarketDataClient.Connected        += OnMarketDataConnectedEventHandler;
-                MarketDataClient.Disconnected     += OnMarketDataDisconnectedEventHandler;
-                MarketDataClient.AuthOk           += OnMarketDataAuthOkEventHandler;
-                MarketDataClient.AuthNonce        += OnMarketDataAuthNonceEventHandler;
-                MarketDataClient.Error            += OnMarketDataErrorEventHandler;
-                MarketDataClient.QuotesReceived   += OnQuotesReceivedEventHandler;
-                MarketDataClient.EntriesReceived  += OnEntriesReceivedEventHandler;
-                MarketDataClient.SnapshotReceived += OnSnapshotReceivedEventHandler;
-
-                // start services
-                var exchangeConnectTask = ExchangeClient.ConnectAsync();
-                var marketDataConnectTask = MarketDataClient.ConnectAsync();
-
-                await Task.WhenAll(exchangeConnectTask, marketDataConnectTask)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "StartAsync error.");
-            }
+            await Task.WhenAll(
+                    _exchangeWs.ConnectAsync(),
+                    _marketDataWs.ConnectAsync())
+                .ConfigureAwait(false);
         }
 
-        public async Task StopAsync()
+        public Task StopAsync()
         {
-            try
+            return Task.WhenAll(
+                _exchangeWs.CloseAsync(),
+                _marketDataWs.CloseAsync());
+        }
+
+        private void ExchangeConnected(object sender, EventArgs e)
+        {
+            Log.Debug("Exchange client connected");
+
+            if (IsTaskCompleted(_exchangeHeartBeatTask))
             {
-                if (ExchangeClient == null || MarketDataClient == null)
-                    return;
+                Log.Debug("Run HeartBeat loop for Exchange service");
 
-                Log.Information("Stop AtomexClient services");
-
-                // close services
-                await Task.WhenAll(ExchangeClient.CloseAsync(), MarketDataClient.CloseAsync())
-                    .ConfigureAwait(false);
-
-                ExchangeClient.Connected     -= OnExchangeConnectedEventHandler;
-                ExchangeClient.Disconnected  -= OnExchangeDisconnectedEventHandler;
-                ExchangeClient.AuthOk        -= OnExchangeAuthOkEventHandler;
-                ExchangeClient.AuthNonce     -= OnExchangeAuthNonceEventHandler;
-                ExchangeClient.Error         -= OnExchangeErrorEventHandler;
-                ExchangeClient.OrderReceived -= OnExchangeOrderEventHandler;
-                ExchangeClient.SwapReceived  -= OnSwapReceivedEventHandler;
-
-                MarketDataClient.Connected        -= OnMarketDataConnectedEventHandler;
-                MarketDataClient.Disconnected     -= OnMarketDataDisconnectedEventHandler;
-                MarketDataClient.AuthOk           -= OnMarketDataAuthOkEventHandler;
-                MarketDataClient.AuthNonce        -= OnMarketDataAuthNonceEventHandler;
-                MarketDataClient.Error            -= OnMarketDataErrorEventHandler;
-                MarketDataClient.QuotesReceived   -= OnQuotesReceivedEventHandler;
-                MarketDataClient.EntriesReceived  -= OnEntriesReceivedEventHandler;
-                MarketDataClient.SnapshotReceived -= OnSnapshotReceivedEventHandler;
-
-                MarketDataRepository.Clear();
+                _exchangeHeartBeatCts = new CancellationTokenSource();
+                _exchangeHeartBeatTask = HeartBeatLoopAsync(_exchangeWs, _exchangeHeartBeatCts.Token);
             }
-            catch (Exception e)
+
+            ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
+
+            CancelAllOrders(symbol: null, side: null, forAllConnections: true);
+            // set orders auto cancel flag, after disconnect all orders will be canceled
+            SetOrdersAutoCancel(autoCancel: true);
+
+            ServiceAuthenticated?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
+        }
+
+        private void ExchangeDisconnected(object sender, EventArgs e)
+        {
+            Log.Debug("Exchange client disconnected");
+
+            if (!IsTaskCompleted(_exchangeHeartBeatTask))
             {
-                Log.Error(e, "StopAsync error.");
+                try
+                {
+                    Log.Debug("Cancel Exchange client heartbeat");
+                    _exchangeHeartBeatCts.Cancel();
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("Exchange heartbeat loop canceled");
+                }
             }
+
+            ServiceDisconnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
+        }
+
+        private void ExchangeOnMessage(object sender, ResponseMessage e)
+        {
+            if (e.MessageType == WebSocketMessageType.Text)
+            {
+                var response = JsonConvert.DeserializeObject<JObject>(e.Text);
+
+                var @event = response["event"].Value<string>();
+
+                switch (@event)
+                {
+                    case "pong": HandlePong(AtomexClientService.Exchange); break;
+                    case "error": HandleError(response, AtomexClientService.Exchange); break;
+                    case "order": HandleOrder(response); break;
+                    case "swap": HandleSwap(response); break;
+                    //case "orderSendReply": break;
+                    //case "orderCancelReply": break;
+                    //case "cancelAllOrdersReply": break;
+                    //case "getOrderReply": break;
+                    //case "getOrdersReply" break;
+                    case "getSwapReply": HandleSwap(response); break;
+                    //case "getSwapsReply": break;
+                    //case "addRequisitesReply": break;
+                    //case "setOrdersAutoCancelReply": break;
+                };
+            }
+            else throw new NotImplementedException();
+        }
+
+        private void MarketDataConnected(object sender, EventArgs e)
+        {
+            Log.Debug("MarketData client connected");
+
+            if (IsTaskCompleted(_marketDataHeartBeatTask))
+            {
+                Log.Debug("Run HeartBeat loop for MarketData service");
+
+                _marketDataHeartBeatCts = new CancellationTokenSource();
+                _marketDataHeartBeatTask = HeartBeatLoopAsync(_marketDataWs, _marketDataHeartBeatCts.Token);
+            }
+
+            ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
+            ServiceAuthenticated?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
+        }
+
+        private void MarketDataDisconnected(object sender, EventArgs e)
+        {
+            Log.Debug("MarketData client disconnected");
+
+            if (!IsTaskCompleted(_marketDataHeartBeatTask))
+            {
+                try
+                {
+                    Log.Debug("Cancel MarketData client heartbeat");
+                    _marketDataHeartBeatCts.Cancel();
+                }
+                catch (OperationCanceledException)
+                {
+                    Log.Debug("MarketData heart beat loop canceled");
+                }
+            }
+
+            ServiceDisconnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
+        }
+
+        private void MarketDataOnMessage(object sender, ResponseMessage e)
+        {
+            if (e.MessageType == WebSocketMessageType.Text)
+            {
+                var response = JsonConvert.DeserializeObject<JObject>(e.Text);
+
+                var @event = response["event"].Value<string>();
+
+                switch (@event)
+                {
+                    case "pong": HandlePong(AtomexClientService.MarketData); break;
+                    case "error": HandleError(response, AtomexClientService.MarketData); break;
+                    case "topOfBook": HandleTopOfBook(response); break;
+                    case "entries": HandleEntries(response); break;
+                    case "snapshot": HandleSnapshot(response); break;
+                };
+            }
+            else throw new NotImplementedException();
         }
 
         public async void OrderSendAsync(Order order)
         {
-            // todo: mark used outputs as warranty outputs
-
-            order.ClientOrderId = Guid.NewGuid().ToString();
-
             try
             {
-                await Account
-                    .UpsertOrderAsync(order)
+                order.ClientOrderId = GenerateOrderClientId();
+
+                Log.Information("Sending the {OrderId} [{OrderClientId}] order...", order.Id, order.ClientOrderId);
+
+                await Account.UpsertOrderAsync(order)
                     .ConfigureAwait(false);
 
-                ExchangeClient.OrderSendAsync(order);
+                var request = new
+                {
+                    method = "orderSend",
+                    data = new
+                    {
+                        clientOrderId = order.ClientOrderId,
+                        symbol = order.Symbol,
+                        price = order.Price,
+                        qty = order.Qty,
+                        side = order.Side,
+                        type = (int)order.Type,
+                        requisites = new
+                        {
+                            baseCurrencyContract = GetSwapContract(order.Symbol.BaseCurrency()),
+                            quoteCurrencyContract = GetSwapContract(order.Symbol.QuoteCurrency()),
+                            // secretHash =,
+                            // receivingAddress =,
+                            // refundAddress =,
+                            // rewardForRedeem =,
+                            // lockTime =,
+                        },
+                        //proofOfFunds =
+                    },
+                    requestId = 0
+                };
+
+                _exchangeWs.Send(JsonConvert.SerializeObject(request));
             }
-            catch (Exception e)
+            catch (OperationCanceledException)
             {
-                Log.Error(e, "Order send error");
+                Log.Debug("The {TaskName} task has been canceled", nameof(OrderSendAsync));
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Sending the {OrderId} [{OrderClientId}] order is failed for the {UserId} user", AccountUserId, order.Id, order.ClientOrderId);
             }
         }
 
-        public void OrderCancelAsync(long id, string symbol, Side side) =>
-            ExchangeClient.OrderCancelAsync(id, symbol, side);
+        public void OrderCancelAsync(long id, string symbol, Side side)
+        {
+            var request = new
+            {
+                method = "orderCancel",
+                data = new
+                {
+                    id     = id,
+                    symbol = symbol,
+                    side   = (int)side
+                },
+                requestId = 0
+            };
 
-        public void SubscribeToMarketData(SubscriptionType type) =>
-            MarketDataClient.SubscribeAsync(new List<Subscription> { new Subscription { Type = type } });
+            _exchangeWs.Send(JsonConvert.SerializeObject(request));
+        }
+
+        public void SubscribeToMarketData(SubscriptionType type)
+        {
+            var stream = type switch
+            {
+                SubscriptionType.TopOfBook   => "topOfBook",
+                SubscriptionType.DepthTwenty => "orderBook",
+                SubscriptionType.OrderLog    => throw new NotSupportedException("Full OrderLog stream not supported"),
+                _ => throw new NotSupportedException($"Type {type} not supported"),
+            };
+
+            var request = new
+            {
+                method    = "subscribe",
+                data      = stream,
+                requestId = 0
+            };
+
+            _marketDataWs.Send(JsonConvert.SerializeObject(request));
+        }
 
         public MarketDataOrderBook GetOrderBook(string symbol) =>
             MarketDataRepository?.OrderBookBySymbol(symbol);
@@ -188,196 +348,359 @@ namespace Atomex.Services
         public Quote GetQuote(Symbol symbol) =>
             MarketDataRepository?.QuoteBySymbol(symbol.Name);
 
-        #region ExchangeEventHandlers
-
-        private void OnExchangeConnectedEventHandler(object sender, EventArgs args)
+        public void SwapInitiateAsync(
+            long id,
+            byte[] secretHash,
+            string symbol,
+            string toAddress,
+            decimal rewardForRedeem,
+            string refundAddress)
         {
-            Log.Debug("Exchange client connected.");
-
-            if (_exchangeHeartBeatTask == null ||
-                _exchangeHeartBeatTask.IsCompleted ||
-                _exchangeHeartBeatTask.IsCanceled ||
-                _exchangeHeartBeatTask.IsFaulted)
+            var request = new
             {
-                Log.Debug("Run heartbeat for Exchange client.");
+                method = "addRequisites",
+                data = new
+                {
+                    id               = id,
+                    secretHash       = secretHash.ToHexString(),
+                    receivingAddress = toAddress,
+                    refundAddress    = refundAddress,
+                    rewardForRedeem  = rewardForRedeem,
+                    lockTime         = CurrencySwap.DefaultInitiatorLockTimeInSeconds
+                },
+                requestId = 0
+            };
 
-                _exchangeCts = new CancellationTokenSource();
-                _exchangeHeartBeatTask = RunHeartBeatLoopAsync(ExchangeClient, _exchangeCts.Token);
-            }
-
-            ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
+            _exchangeWs.Send(JsonConvert.SerializeObject(request));
         }
 
-        private void OnExchangeDisconnectedEventHandler(object sender, EventArgs args)
+        public void SwapAcceptAsync(
+            long id,
+            string symbol,
+            string toAddress,
+            decimal rewardForRedeem,
+            string refundAddress)
         {
-            Log.Debug("Exchange client disconnected.");
+            var request = new
+            {
+                method = "addRequisites",
+                data = new
+                {
+                    id               = id,
+                    receivingAddress = toAddress,
+                    refundAddress    = refundAddress,
+                    rewardForRedeem  = rewardForRedeem,
+                    lockTime         = CurrencySwap.DefaultAcceptorLockTimeInSeconds
+                },
+                requestId = 0
+            };
 
-            if (_exchangeHeartBeatTask != null &&
-                !_exchangeHeartBeatTask.IsCompleted &&
-                !_exchangeHeartBeatTask.IsCanceled &&
-                !_exchangeHeartBeatTask.IsFaulted)
+            _exchangeWs.Send(JsonConvert.SerializeObject(request));
+        }
+
+        public void SwapStatusAsync(
+            string requestId,
+            long swapId)
+        {
+            var request = new
+            {
+                method = "getSwap",
+                data = new
+                {
+                    id = swapId,
+                },
+                requestId = 0
+            };
+
+            _exchangeWs.Send(JsonConvert.SerializeObject(request));
+        }
+
+        private void SetOrdersAutoCancel(bool autoCancel)
+        {
+            var request = new
+            {
+                method = "setOrdersAutoCancel",
+                data = new
+                {
+                    autoCancel = autoCancel
+                },
+                requestId = 0
+            };
+
+            _exchangeWs.Send(JsonConvert.SerializeObject(request));
+        }
+
+        private void CancelAllOrders(
+            string symbol = null,
+            Side? side = null,
+            bool forAllConnections = false)
+        {
+            var request = new
+            {
+                method = "cancelAllOrders",
+                data = new
+                {
+                    symbol = symbol,
+                    side = side == null ? "All" : side.ToString(),
+                    cancelForAllConnections = forAllConnections
+                },
+                requestId = 0
+            };
+
+            _exchangeWs.Send(JsonConvert.SerializeObject(request));
+        }
+
+        private async Task<string> AuthAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                using var securePublicKey = Account.Wallet.GetServicePublicKey(index: DEFAULT_AUTHENTICATION_ACCOUNT_INDEX);
+                var publicKey = securePublicKey.ToUnsecuredBytes();
+
+                var timeStamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                var message = "Hello, Atomex!";
+                var messageToSignBytes = Encoding.UTF8.GetBytes($"{message}{timeStamp}");
+                var hash = BitcoinSignHelper.MessageHash(messageToSignBytes);
+
+                var signature = await Account.Wallet
+                    .SignByServiceKeyAsync(hash, keyIndex: 0, cancellationToken)
+                    .ConfigureAwait(false);
+
+                var body = new
+                {
+                    timeStamp = timeStamp,
+                    message   = message,
+                    publicKey = Hex.ToHexString(publicKey),
+                    signature = Hex.ToHexString(signature),
+                    algorithm = "Sha256WithEcdsa:BtcMsg"
+                };
+
+                var content = new StringContent(
+                    content: JsonConvert.SerializeObject(body),
+                    encoding: Encoding.UTF8,
+                    mediaType: "application/json");
+
+                using var response= await HttpHelper
+                    .PostAsync(
+                        baseUri: _authTokenBaseUrl,
+                        relativeUri: "token",
+                        content: content,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    Log.Error($"Can't get Auth token. Error code: {response.StatusCode}");
+                    return null;
+                }
+
+                var responseContent = await response.Content
+                    .ReadAsStringAsync()
+                    .ConfigureAwait(false);
+
+                return JsonConvert
+                    .DeserializeObject<AuthTokenResponse>(responseContent)
+                    ?.Token;
+            }
+            catch (Exception ex)
+            {
+                Log.Error($"Get Auth token error: {ex.Message}");
+                return null;
+            }
+        }
+
+        private async Task HeartBeatLoopAsync(
+            WebSocketClient ws,
+            CancellationToken cancellationToken = default)
+        {
+            while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    Log.Debug("Cancel Exchange client heartbeat.");
-                    _exchangeCts.Cancel();
+                    var ping = new
+                    {
+                        method = "ping",
+                        requestId = 0
+                    };
+
+                    ws.Send(JsonConvert.SerializeObject(ping));
+
+                    await Task.Delay(TimeSpan.FromSeconds(HeartBeatIntervalInSec), cancellationToken)
+                        .ConfigureAwait(false);
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("Exchange heart beat loop canceled.");
+                    Log.Debug("HeartBeat loop canceled");
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Error while sending heartbeat");
                 }
             }
 
-            ServiceDisconnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
+            Log.Debug("Heartbeat stopped");
         }
 
-        private void OnExchangeAuthOkEventHandler(object sender, EventArgs e) =>
-            ServiceAuthenticated?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
+        private static bool IsTaskCompleted(Task task) =>
+            task == null ||
+            task.IsCompleted ||
+            task.IsCanceled ||
+            task.IsFaulted;
 
-        private async void OnExchangeAuthNonceEventHandler(object sender, EventArgs args)
+        private void HandlePong(AtomexClientService service)
+        {
+            Log.Verbose($"Pong received from {service}");
+        }
+
+        private void HandleError(JObject response, AtomexClientService service)
+        {
+            Error?.Invoke(
+                sender: this,
+                e: new AtomexClientErrorEventArgs(
+                    service: service,
+                    error: new Error(
+                        code: Errors.RequestError,
+                        description: response["data"].Value<string>())));
+        }
+
+        private async void HandleOrder(JObject response)
         {
             try
             {
-                var auth = await Account
-                    .CreateAuthRequestAsync(
-                        nonce: ExchangeClient.Nonce,
-                        keyIndex: Account.UserData.AuthenticationKeyIndex)
-                    .ConfigureAwait(false);
+                var totalQty = 0m;
+                var totalAmount = 0m;
 
-                ExchangeClient.AuthAsync(auth);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Exchange auth error");
-            }
-        }
+                var data = response["data"] as JObject;
 
-        private void OnExchangeErrorEventHandler(object sender, ErrorEventArgs args)
-        {
-            Log.Error("Exchange service error {@Error}", args.Error);
-            Error?.Invoke(this, new AtomexClientErrorEventArgs(AtomexClientService.Exchange, args.Error));
-        }
-
-        private async void OnExchangeOrderEventHandler(object sender, OrderEventArgs args)
-        {
-            // todo: remove warranty outputs if cancel/rejected/partially_filled/filled
-
-            var order = args.Order;
-
-            try
-            {
-                if (order.Status == OrderStatus.Pending)
+                if (data.ContainsKey("trades"))
                 {
-                    OnError(AtomexClientService.Exchange, $"Invalid order status {order.Status}");
-                    return;
+                    foreach (var trade in data["trades"])
+                    {
+                        var price = trade["price"].Value<decimal>();
+                        var qty = trade["qty"].Value<decimal>();
+
+                        totalQty += qty;
+                        totalAmount += price * qty;
+                    }
                 }
 
-                // resolve order wallets
-                await order
-                    .ResolveWallets(Account)
-                    .ConfigureAwait(false);
-
-                var result = await Account
-                    .UpsertOrderAsync(order)
-                    .ConfigureAwait(false);
-
-                if (!result)
-                    OnError(AtomexClientService.Exchange, "Error adding order");
-
-                OrderReceived?.Invoke(this, args);
-            }
-            catch (Exception e)
-            {
-                OnError(AtomexClientService.Exchange, e);
-            }
-        }
-
-        #endregion
-
-        #region MarketDataEventHandlers
-
-        private void OnMarketDataConnectedEventHandler(object sender, EventArgs args)
-        {
-            Log.Debug("MarketData client connected.");
-
-            if (_marketDataHeartBeatTask == null ||
-                _marketDataHeartBeatTask.IsCompleted ||
-                _marketDataHeartBeatTask.IsCanceled ||
-                _marketDataHeartBeatTask.IsFaulted)
-            {
-                Log.Debug("Run heartbeat for MarketData client.");
-
-                _marketDataCts = new CancellationTokenSource();
-                _marketDataHeartBeatTask = RunHeartBeatLoopAsync(MarketDataClient, _marketDataCts.Token);
-            }
-
-            ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
-        }
-
-        private void OnMarketDataDisconnectedEventHandler(object sender, EventArgs args)
-        {
-            Log.Debug("MarketData client disconnected.");
-
-            if (_marketDataHeartBeatTask != null &&
-                !_marketDataHeartBeatTask.IsCompleted &&
-                !_marketDataHeartBeatTask.IsCanceled &&
-                !_marketDataHeartBeatTask.IsFaulted)
-            {
-                try
+                var order = new Order
                 {
-                    Log.Debug("Cancel MarketData client heartbeat.");
-                    _marketDataCts.Cancel();
-                }
-                catch (OperationCanceledException)
-                {
-                    Log.Debug("Exchange heart beat loop canceled.");
-                }
-            }
+                    Id = data["id"].Value<long>(),
+                    ClientOrderId = data["clientOrderId"].Value<string>(),
+                    Symbol = data["symbol"].Value<string>(),
+                    Side = (Side)Enum.Parse(typeof(Side), data["side"].Value<string>()),
+                    TimeStamp = data["timeStamp"].Value<DateTime>(),
+                    Price = data["price"].Value<decimal>(),
+                    Qty = data["qty"].Value<decimal>(),
+                    LeaveQty = data["leaveQty"].Value<decimal>(),
+                    LastPrice = totalQty != 0 ? totalAmount / totalQty : 0, // currently average price used
+                    LastQty = totalQty,                                   // currently total qty used
+                    Type = (OrderType)Enum.Parse(typeof(OrderType), data["type"].Value<string>()),
+                    Status = (OrderStatus)Enum.Parse(typeof(OrderStatus), data["status"].Value<string>())
+                };
 
-            ServiceDisconnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
-        }
-
-        private void OnMarketDataAuthOkEventHandler(object sender, EventArgs e) =>
-            ServiceAuthenticated?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
-
-        private async void OnMarketDataAuthNonceEventHandler(object sender, EventArgs args)
-        {
-            try
-            {
-                var auth = await Account
-                    .CreateAuthRequestAsync(
-                        nonce: MarketDataClient.Nonce,
-                        keyIndex: Account.UserData.AuthenticationKeyIndex)
+                await Account.UpsertOrderAsync(order)
                     .ConfigureAwait(false);
 
-                MarketDataClient.AuthAsync(auth);
+                OrderReceived?.Invoke(
+                    sender: this,
+                    e: new OrderEventArgs(order));
             }
-            catch (Exception e)
+            catch (OperationCanceledException)
             {
-                Log.Error(e, "MarketData auth error");
+                Log.Debug("The {TaskName} task has been canceled", nameof(HandleOrder));
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Order handling failed for the {UserId} user", AccountUserId);
             }
         }
 
-        private void OnMarketDataErrorEventHandler(object sender, ErrorEventArgs args)
+        public enum PartyStatus
         {
-            Log.Warning("Market data service error {@Error}", args.Error);
-
-            Error?.Invoke(this, new AtomexClientErrorEventArgs(AtomexClientService.Exchange, args.Error));
+            Created,
+            Involved,
+            PartiallyInitiated,
+            Initiated,
+            Redeemed,
+            Refunded,
+            Lost,
+            Jackpot
         }
 
-        private void OnQuotesReceivedEventHandler(object sender, QuotesEventArgs args)
+        private void HandleSwap(JObject response)
         {
-            Log.Verbose("Quotes: {@quotes}", args.Quotes);
+            var data = response["data"] as JObject;
 
-            MarketDataRepository.ApplyQuotes(args.Quotes);
+            var IsInitiator = data["isInitiator"].Value<bool>();
+
+            var status = SwapStatus.Empty;
+            var userStatus = (PartyStatus)Enum.Parse(typeof(PartyStatus), data["user"]["status"].Value<string>());
+            var partyStatus = (PartyStatus)Enum.Parse(typeof(PartyStatus), data["counterParty"]["status"].Value<string>());
+
+            if (userStatus > PartyStatus.Created)
+                status |= IsInitiator
+                    ? SwapStatus.Initiated
+                    : SwapStatus.Accepted;
+
+            if (partyStatus > PartyStatus.Created)
+                status |= IsInitiator
+                    ? SwapStatus.Accepted
+                    : SwapStatus.Initiated;
+
+            var secretHash = data["secretHash"].Value<string>();
+            var swap = new Swap
+            {
+                Id           = data["id"].Value<long>(),
+                Status       = status,
+                SecretHash   = !string.IsNullOrWhiteSpace(secretHash) ? Hex.FromString(secretHash) : null,
+                TimeStamp    = data["timeStamp"].Value<DateTime>(),
+                OrderId      = data["user"]?["trades"]?[0]?["orderId"]?.Value<long>() ?? 0,
+                Symbol       = data["symbol"].Value<string>(),
+                Side         = (Side)Enum.Parse(typeof(Side), data["side"].Value<string>()),
+                Price        = data["price"].Value<decimal>(),
+                Qty          = data["qty"].Value<decimal>(),
+                IsInitiative = IsInitiator,
+
+                ToAddress       = data["user"]?["requisites"]?["receivingAddress"]?.Value<string>(),
+                RewardForRedeem = data["user"]?["requisites"]?["rewardForRedeem"]?.Value<decimal>() ?? 0,
+                RefundAddress   = data["user"]?["requisites"]?["refundAddress"]?.Value<string>(),
+
+                PartyAddress         = data["counterParty"]?["requisites"]?["receivingAddress"]?.Value<string>(),
+                PartyRewardForRedeem = data["counterParty"]?["requisites"]?["rewardForRedeem"]?.Value<decimal>() ?? 0,
+                PartyRefundAddress   = data["counterParty"]?["requisites"]?["refundAddress"]?.Value<string>(),
+            };
+
+            SwapReceived?.Invoke(
+                sender: this,
+                e: new SwapEventArgs(swap));
+        }
+
+        private void HandleTopOfBook(JObject response)
+        {
+            var quotes = new List<Quote>();
+
+            foreach (var quote in response["data"])
+            {
+                quotes.Add(new Quote
+                {
+                    Ask       = quote["Ask"].Value<decimal>(),
+                    Bid       = quote["Bid"].Value<decimal>(),
+                    Symbol    = quote["Symbol"].Value<string>(),
+                    TimeStamp = quote["TimeStamp"].Value<long>().ToUtcDateTimeFromMs()
+                });
+            }
+
+            Log.Verbose("Quotes: {@quotes}", quotes);
+
+            MarketDataRepository.ApplyQuotes(quotes);
 
             var symbolsIds = new HashSet<string>();
 
-            foreach (var quote in args.Quotes)
-            {
+            foreach (var quote in quotes)
                 if (!symbolsIds.Contains(quote.Symbol))
                     symbolsIds.Add(quote.Symbol);
-            }
 
             foreach (var symbolId in symbolsIds)
             {
@@ -390,115 +713,72 @@ namespace Atomex.Services
             }
         }
 
-        private void OnEntriesReceivedEventHandler(object sender, EntriesEventArgs args)
+        private void HandleSnapshot(JObject response)
         {
-            Log.Verbose("Entries: {@entries}", args.Entries);
-
-            MarketDataRepository.ApplyEntries(args.Entries);
-        }
-
-        private void OnSnapshotReceivedEventHandler(object sender, SnapshotEventArgs args)
-        {
-            Log.Verbose("Snapshot: {@snapshot}", args.Snapshot);
-
-            MarketDataRepository.ApplySnapshot(args.Snapshot);
-
-            var symbol = SymbolsProvider
-                .GetSymbols(Account.Network)
-                .GetByName(args.Snapshot.Symbol);
-
-            if (symbol != null)
-                QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));
-        }
-
-        #endregion
-
-        #region SwapEventHandlers
-
-        private void OnSwapReceivedEventHandler(object sender, SwapEventArgs args)
-        {
-            try
+            foreach (var s in response["data"])
             {
-                if (args.Swap == null)
+                var entries = new List<Entry>();
+
+                foreach (var entry in s["Entries"])
                 {
-                    OnError(AtomexClientService.Exchange, "Null swap received.");
-                    return;
+                    entries.Add(new Entry
+                    {
+                        Price         = entry["Price"].Value<decimal>(),
+                        QtyProfile    = entry["QtyProfile"].ToObject<List<decimal>>(),
+                        Side          = (Side)Enum.Parse(typeof(Side), entry["side"].Value<string>()),
+                    });
                 }
 
-                SwapReceived?.Invoke(this, args);
-            }
-            catch (Exception e)
-            {
-                OnError(AtomexClientService.Exchange, e);
+                var snapshot = new Snapshot
+                {
+                    Entries           = entries,
+                    LastTransactionId = s["UpdateId"].Value<long>(),
+                    Symbol            = s["Symbol"].Value<string>()
+                };
+
+                Log.Verbose("Snapshot: {@snapshot}", snapshot);
+
+                MarketDataRepository.ApplySnapshot(snapshot);
+
+                var symbol = SymbolsProvider
+                    .GetSymbols(Account.Network)
+                    .GetByName(snapshot.Symbol);
+
+                if (symbol != null)
+                    QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));
             }
         }
 
-        #endregion
-
-        private void OnError(AtomexClientService service, string description)
+        private void HandleEntries(JObject response)
         {
-            Log.Error(description);
-            Error?.Invoke(this, new AtomexClientErrorEventArgs(service, new Error(Errors.InternalError, description)));
-        }
+            var entries = new List<Entry>();
 
-        private void OnError(AtomexClientService service, Exception exception)
-        {
-            Log.Error(exception, exception.Message);
-            Error?.Invoke(this, new AtomexClientErrorEventArgs(service, new Error(Errors.InternalError, exception.Message)));
-        }
-
-        private async Task RunHeartBeatLoopAsync(
-            BinaryWebSocketClient webSocketClient,
-            CancellationToken cancellationToken = default)
-        {
-            while (!cancellationToken.IsCancellationRequested)
+            foreach (var entry in response["data"])
             {
-                try
+                entries.Add(new Entry
                 {
-                    webSocketClient.SendHeartBeatAsync();
-
-                    await Task.Delay(HeartBeatInterval, cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                catch (OperationCanceledException)
-                {
-                    Log.Debug("HeartBeat loop canceled.");
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "Error while sending heartbeat.");
-                }
+                    TransactionId = entry["UpdateId"].Value<long>(),
+                    Symbol        = entry["Symbol"].Value<string>(),
+                    Price         = entry["Price"].Value<decimal>(),
+                    QtyProfile    = entry["QtyProfile"].ToObject<List<decimal>>(),
+                    Side          = (Side)Enum.Parse(typeof(Side), entry["side"].Value<string>()),
+                });
             }
 
-            Log.Debug("Heartbeat stopped.");
+            MarketDataRepository.ApplyEntries(entries);
         }
 
-        public void SwapInitiateAsync(
-            long id,
-            byte[] secretHash,
-            string symbol,
-            string toAddress,
-            decimal rewardForRedeem,
-            string refundAddress)
+        private string GetSwapContract(string currency)
         {
-            ExchangeClient.SwapInitiateAsync(id, secretHash, symbol, toAddress, rewardForRedeem, refundAddress);
+            if (currency == "ETH" || Currencies.IsEthereumToken(currency))
+                return Account.Currencies.Get<EthereumConfig>(currency).SwapContractAddress;
+
+            if (currency == "XTZ" || Currencies.IsTezosToken(currency))
+                return Account.Currencies.Get<TezosConfig>(currency).SwapContractAddress;
+
+            return null;
         }
 
-        public void SwapAcceptAsync(
-            long id,
-            string symbol,
-            string toAddress,
-            decimal rewardForRedeem,
-            string refundAddress)
-        {
-            ExchangeClient.SwapAcceptAsync(id, symbol, toAddress, rewardForRedeem, refundAddress);
-        }
-
-        public void SwapStatusAsync(
-            string requestId,
-            long swapId)
-        {
-            ExchangeClient.SwapStatusAsync(requestId, swapId);
-        }
+        private static string GenerateOrderClientId() => Guid.NewGuid().ToByteArray().ToHexString(0, 16);
     }
 }

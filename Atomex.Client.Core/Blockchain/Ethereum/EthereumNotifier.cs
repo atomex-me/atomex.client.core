@@ -136,7 +136,7 @@ namespace Atomex.Blockchain.Ethereum
             foreach (var (address, subscription) in _subscriptions)
             {
                 await RequestLimitControl
-                    .Wait(_cts.Token)
+                    .WaitAsync(_cts.Token)
                     .ConfigureAwait(false);
 
                 var requestBuilder = new StringBuilder("api?module=account&action=txlist");
@@ -226,7 +226,7 @@ namespace Atomex.Blockchain.Ethereum
             const string requestUri = "api?module=proxy&action=eth_blockNumber";
 
             await RequestLimitControl
-                .Wait(_cts.Token)
+                .WaitAsync(_cts.Token)
                 .ConfigureAwait(false);
 
             var lastBlockResult = await HttpHelper.GetAsyncResult(
