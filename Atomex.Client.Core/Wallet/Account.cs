@@ -24,8 +24,8 @@ namespace Atomex.Wallet
     public class Account : IAccount
     {
         public const string DefaultUserSettingsFileName = "user.config";
+        public const string DefaultDataFileName = "data.db";
 
-        private const string DefaultDataFileName = "data.db";
         private const string DefaultAccountKey = "Account:Default";
         private const string ApiVersion = "1.5";
         public string SettingsFilePath => $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}";
