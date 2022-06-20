@@ -933,7 +933,8 @@ namespace Atomex.Swaps.Tezos.FA2
                     StorageLimit = fa2.ApproveStorageLimit,
                     Params       = CreateApproveParams(
                         owner: walletAddress.Address,
-                        spender: fa2.SwapContractAddress),
+                        spender: fa2.SwapContractAddress,
+                        tokenId: fa2.TokenId),
                     Type         = BlockchainTransactionType.TokenApprove,
 
                     UseRun              = true,
@@ -999,9 +1000,11 @@ namespace Atomex.Swaps.Tezos.FA2
 
         private JObject CreateApproveParams(
             string owner,
-            string spender)
+            string spender,
+            int tokenId)
         {
-            return JObject.Parse(@"{'entrypoint':'update_operators','value':[{'prim': 'Left','args':[{'prim': 'Pair','args':[{'string': '" + owner + "'},{'string': '" + spender + "'}]}]}]}");
+            //return JObject.Parse(@"{'entrypoint':'update_operators','value':[{'prim': 'Left','args':[{'prim': 'Pair','args':[{'string': '" + owner + "'},{'string': '" + spender + "'}]}]}]}");
+            return JObject.Parse(@"{'entrypoint':'update_operators','value':[{'prim':'Left','args':[{'prim':'Pair','args':[{'string':'" + owner + "'},{'prim':'Pair','args':[{'string':'" + spender + "'},{'int':'" + tokenId + "'}]}]}]}]}");
         }
 
         private JObject CreateInitParams(
