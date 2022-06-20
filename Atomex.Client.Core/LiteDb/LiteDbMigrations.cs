@@ -10,7 +10,7 @@ namespace Atomex.LiteDb
 {
     public static class LiteDbMigrations
     {
-        public const ushort LastVersion = Version9;
+        public const ushort LastVersion = Version10;
 
         public const ushort Version0 = 0;
         public const ushort Version1 = 1;
@@ -22,6 +22,7 @@ namespace Atomex.LiteDb
         public const ushort Version7 = 7;
         public const ushort Version8 = 8;
         public const ushort Version9 = 9;
+        public const ushort Version10 = 10;
 
         public static ushort MigrateFrom_0_to_1(
             string pathToDb,
@@ -441,6 +442,26 @@ namespace Atomex.LiteDb
             return Version9;
         }
 
+        public static ushort MigrateFrom_9_to_10(string pathToDb, string sessionPassword)
+        {
+            var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
+
+            using (var dbVer = new LiteDatabase(connectionString))
+                if (dbVer.Engine.UserVersion != Version9)
+                    throw new Exception("Invalid db version");
+
+            Backup(pathToDb);
+
+            using var db = new LiteDatabase(connectionString);
+            
+            db.GetCollection(LiteDbAccountDataRepository.TezosTokensAddresses)
+                .Delete(Query.All());
+            
+            Shrink(db, sessionPassword);
+            UpdateVersion(db: db, fromVersion: Version9, toVersion: Version10);
+
+            return Version10;
+        }
 
         private static void Backup(string pathToDb)
         {
