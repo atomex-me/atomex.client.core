@@ -30,12 +30,6 @@ namespace Atomex.MarketData.Bitfinex
             { "LTC/USDT", "LTCUST" },
             { "XTZ/USDT", "XTZUST" },
 
-            { "ETH/NYX", "ETHBTC" },
-            { "XTZ/NYX", "XTZBTC" },
-
-            { "FA2/ETH", "XTZETH" },
-            { "FA2/BTC", "XTZBTC" },
-
             { "ETH/TZBTC", "ETHBTC" },
             { "XTZ/TZBTC", "XTZBTC" },
             { "TZBTC/USDT", "BTCUST" },
@@ -45,7 +39,7 @@ namespace Atomex.MarketData.Bitfinex
             { "TBTC/USDT", "BTCUST" },
 
             { "ETH/WBTC", "ETHBTC" },
-            { "XTZW/BTC", "XTZBTC" },
+            { "XTZ/WBTC", "XTZBTC" },
             { "WBTC/USDT", "BTCUST" },
 
             { "BTC/KUSD", "BTCUST" },

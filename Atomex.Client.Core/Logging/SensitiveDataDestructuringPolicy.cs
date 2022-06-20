@@ -2,6 +2,7 @@
 using Serilog.Core;
 using Serilog.Events;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -12,13 +13,13 @@ namespace Atomex.Logging
     {
         private const string HIDDEN_PROPERTY_MASK = "***";
 
-        private static readonly Dictionary<Type, ISet<string>> sensitiveDataPropertyNames = new()
+        private static readonly IReadOnlyDictionary<Type, ISet<string>> sensitiveDataPropertyNames = new Dictionary<Type, ISet<string>>()
         {
             [typeof(Swap)] = new HashSet<string>() {
                 nameof(Swap.Secret)
             }
         };
-        private static readonly Dictionary<Type, IEnumerable<(bool hidden, PropertyInfo propertyInfo)>> loggedPropertyInfos = new();
+        private static readonly ConcurrentDictionary<Type, IEnumerable<(bool hidden, PropertyInfo propertyInfo)>> loggedPropertyInfos = new();
 
         public bool TryDestructure(
             object value,
@@ -58,7 +59,7 @@ namespace Atomex.Logging
                         && sensitiveProperties.Contains(p.Name),
                     propertyInfo: p
                 ));
-            loggedPropertyInfos.Add(valueType, result);
+            loggedPropertyInfos.TryAdd(valueType, result);
 
             return result;
         }

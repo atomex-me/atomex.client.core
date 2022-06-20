@@ -16,7 +16,7 @@ namespace Atomex.MarketData.Bitfinex
 {
     public class BitfinexQuotesProvider : QuotesProvider
     {
-        private readonly Dictionary<string, string> QuoteSymbols = new Dictionary<string, string>()
+        private readonly Dictionary<string, string> QuoteSymbols = new()
         {
             { "BTCUSD", "tBTCUSD" },
             { "LTCUSD", "tLTCUSD" },
@@ -24,8 +24,6 @@ namespace Atomex.MarketData.Bitfinex
             { "XTZUSD", "tXTZUSD" },
             { "USDTUSD", "tUSTUSD" },
             { "TZBTCUSD", "tBTCUSD" },
-            { "NYXUSD", "tBTCUSD" },
-            { "FA2USD", "tUSTUSD" },
             { "TBTCUSD", "tBTCUSD" },
             { "WBTCUSD", "tBTCUSD" },
             { "KUSDUSD", "tUSTUSD" }
@@ -51,126 +49,23 @@ namespace Atomex.MarketData.Bitfinex
 
         public override Quote GetQuote(string currency, string baseCurrency)
         {
-            if (QuoteSymbols.TryGetValue($"{currency}{baseCurrency}", out var symbol))
-                return Quotes.TryGetValue(symbol, out var rate) ? rate : null;
-            return Quotes.TryGetValue(currency?.ToLower() ?? string.Empty, out var tokenRate) ? tokenRate : null;
+            return QuoteSymbols.TryGetValue($"{currency}{baseCurrency}", out var symbol)
+                ? Quotes.TryGetValue(symbol, out var rate) ? rate : null
+                : null;
         }
 
         public override Quote GetQuote(string symbol)
         {
-            if (QuoteSymbols.TryGetValue(symbol.Replace("/", ""), out var s))
-                return Quotes.TryGetValue(s, out var rate) ? rate : null;
-            return Quotes.TryGetValue(symbol?.ToLower() ?? string.Empty, out var tokenRate) ? tokenRate : null;
+            return QuoteSymbols.TryGetValue(symbol.Replace("/", ""), out var s)
+                ? Quotes.TryGetValue(s, out var rate) ? rate : null
+                : null;
         }
 
-
-        protected override async Task UpdateAsync(
+        public override async Task UpdateAsync(
             CancellationToken cancellationToken = default)
         {
-            Log.Debug("Start of update");
-
-            bool isAvailable;
-
-            try
-            {
-                var symbols = string.Join(",", Quotes
-                    .Where(q => !q.Value.IsToken)
-                    .Select(q => q.Key));
-                
-                var bitfinexTask = HttpHelper.GetAsync(
-                    baseUri: BaseUrl,
-                    requestUri: $"v2/tickers/?symbols={symbols}",
-                    responseHandler: response =>
-                    {
-                        if (!response.IsSuccessStatusCode)
-                            return false;
-
-                        var responseContent = response.Content
-                            .ReadAsStringAsync()
-                            .WaitForResult();
-
-                        var tickers = JsonConvert.DeserializeObject<JArray>(responseContent);
-
-                        foreach (var tickerToken in tickers)
-                        {
-                            if (tickerToken is not JArray ticker)
-                                continue;
-
-                            var symbol = ticker[0].Value<string>();
-
-                            var bid = ticker[1].Value<decimal>();
-                            var ask = ticker[3].Value<decimal>();
-                            var dailyChangePercent = ticker[6].Value<decimal>();
-
-                            Quotes[symbol] = new Quote
-                            {
-                                Bid = bid,
-                                Ask = ask,
-                                DailyChangePercent = dailyChangePercent
-                            };
-                        }
-
-                        return true;
-                    },
-                    cancellationToken: cancellationToken);
-                
-                var tezToolsTask = HttpHelper.GetAsync(
-                    baseUri: BaseUrl,
-                    requestUri: "token/prices",
-                    responseHandler: response =>
-                    {
-                        if (!response.IsSuccessStatusCode)
-                            return false;
-
-                        var responseContent = response.Content
-                            .ReadAsStringAsync()
-                            .WaitForResult();
-
-                        var data = JsonConvert.DeserializeObject<JObject>(responseContent);
-
-                        if (data["contracts"] is not JArray contracts) return false;
-
-                        foreach (var token in contracts)
-                        {
-                            try
-                            {
-                                var symbol = token["symbol"]?.Value<string>();
-                                if (symbol == null)
-                                    continue;
-                            
-                                var bid = token["usdValue"]!.Value<decimal>();
-                                var ask = token["usdValue"]!.Value<decimal>();
-
-                                Quotes[symbol.ToLower()] = new Quote
-                                {
-                                    Bid = bid,
-                                    Ask = ask,
-                                    IsToken = true
-                                };
-                            }
-                            catch
-                            {
-                                Log.Error("Can't update tezos tokens quotes");
-                            }
-                        }
-
-                        return true;
-                    },
-                    cancellationToken: cancellationToken);
-                
-                var result = await Task.WhenAll(bitfinexTask, tezToolsTask)
-                    .ConfigureAwait(false);
-
-                isAvailable = result.All(r => r);
-
-                Log.Debug("Update finished");
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, e.Message);
-
-                isAvailable = false;
-            }
+            var isAvailable = await UpdateQuotesAsync(cancellationToken)
+                .ConfigureAwait(false);
 
             LastUpdateTime = DateTime.Now;
 
@@ -185,6 +80,60 @@ namespace Atomex.MarketData.Bitfinex
 
             if (IsAvailable)
                 RiseQuotesUpdatedEvent(EventArgs.Empty);
+        }
+
+        private async Task<bool> UpdateQuotesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var symbols = string.Join(",", Quotes
+                    .Where(q => !q.Value.IsToken)
+                    .Select(q => q.Key));
+                
+                var response = await HttpHelper.GetAsync(
+                    baseUri: BaseUrl,
+                    relativeUri: $"v2/tickers/?symbols={symbols}",
+                    cancellationToken: cancellationToken);
+
+                if (!response.IsSuccessStatusCode)
+                    return false;
+
+                var responseContent = response.Content
+                    .ReadAsStringAsync()
+                    .WaitForResult();
+
+                var tickers = JsonConvert.DeserializeObject<JArray>(responseContent);
+
+                foreach (var tickerToken in tickers)
+                {
+                    if (tickerToken is not JArray ticker)
+                        continue;
+
+                    var symbol = ticker[0].Value<string>();
+
+                    var bid = ticker[1].Value<decimal>();
+                    var ask = ticker[3].Value<decimal>();
+                    var dailyChangePercent = ticker[6].Value<decimal>();
+
+                    Quotes[symbol] = new Quote
+                    {
+                        Bid = bid,
+                        Ask = ask,
+                        DailyChangePercent = dailyChangePercent
+                    };
+                }
+
+                Log.Debug("Update finished");
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, e.Message);
+
+                return false;
+            }
         }
     }
 }

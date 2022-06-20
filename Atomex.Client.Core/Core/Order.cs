@@ -27,7 +27,8 @@ namespace Atomex.Core
     {
         Return,
         FillOrKill,
-        ImmediateOrCancel
+        ImmediateOrCancel,
+        SolidFillOrKill
     }
 
     public class Order

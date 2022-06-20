@@ -49,7 +49,7 @@ namespace Atomex.Blockchain.BlockCypher
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var tx = (IBitcoinBasedTransaction)transaction;
@@ -87,7 +87,7 @@ namespace Atomex.Blockchain.BlockCypher
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var requestUri = $"/addrs/{address}/balance" + (ApiToken != null ? $"?token={ApiToken}" : "");
@@ -116,7 +116,7 @@ namespace Atomex.Blockchain.BlockCypher
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var tx = await GetTransactionAsync(txId, cancellationToken)
@@ -139,7 +139,7 @@ namespace Atomex.Blockchain.BlockCypher
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var requestUri = $"/addrs/{address}/full?txlimit=1000" + (ApiToken != null ? $"&token={ApiToken}" : "");
@@ -218,7 +218,7 @@ namespace Atomex.Blockchain.BlockCypher
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var requestUri = $"/txs/{txId}?includeHex=true&instart=0&outstart=0&limit=1000" + (ApiToken != null ? $"&token={ApiToken}" : "");
@@ -281,7 +281,7 @@ namespace Atomex.Blockchain.BlockCypher
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var requestUri = $"/txs/{txId}" + (ApiToken != null ? $"?token={ApiToken}" : "");

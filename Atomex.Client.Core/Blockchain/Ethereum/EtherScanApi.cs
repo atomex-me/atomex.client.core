@@ -139,7 +139,7 @@ namespace Atomex.Blockchain.Ethereum
             var requestUri = $"api?module=account&action=balance&address={address}&apikey={ApiKey}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult<decimal>(
@@ -170,7 +170,7 @@ namespace Atomex.Blockchain.Ethereum
                 $"&apikey={ApiKey}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult<BigInteger>(
@@ -208,7 +208,7 @@ namespace Atomex.Blockchain.Ethereum
             var requestUri = $"api?module=proxy&action=eth_blockNumber&apikey={ApiKey}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult(
@@ -236,7 +236,7 @@ namespace Atomex.Blockchain.Ethereum
             var requestUri = $"api?module=proxy&action=eth_getTransactionCount&address={address}&tag={tag}&apikey={ApiKey}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult<BigInteger>(
@@ -275,7 +275,7 @@ namespace Atomex.Blockchain.Ethereum
             var requestUri = $"api?module=proxy&action=eth_getTransactionByHash&txhash={txId}&apikey={ApiKey}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var txResult = await HttpHelper.GetAsyncResult<EthereumTransaction>(
@@ -419,7 +419,7 @@ namespace Atomex.Blockchain.Ethereum
             var requestUri = $"api?module=account&action=txlistinternal&txhash={txId}&apikey={ApiKey}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult(
@@ -438,7 +438,7 @@ namespace Atomex.Blockchain.Ethereum
             CancellationToken cancellationToken = default)
         {
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             // todo: add pagination support
@@ -457,7 +457,7 @@ namespace Atomex.Blockchain.Ethereum
                 return result;
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             var internalResult = await HttpHelper.GetAsyncResult(
@@ -551,7 +551,7 @@ namespace Atomex.Blockchain.Ethereum
             var uri = $"api?module=logs&action=getLogs&address={address}&fromBlock={fromBlockStr}&toBlock={toBlockStr}{topicsStr}&apikey={ApiKey}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult(
@@ -617,7 +617,7 @@ namespace Atomex.Blockchain.Ethereum
             for (var i = 0; i < attempts; ++i)
             {
                 await RequestLimitControl
-                    .Wait(cancellationToken)
+                    .WaitAsync(cancellationToken)
                     .ConfigureAwait(false);
 
                 var txIdResult = await HttpHelper.PostAsyncResult<string>(
@@ -800,7 +800,7 @@ namespace Atomex.Blockchain.Ethereum
             var requestUri = $"api?module=gastracker&action=gasoracle&apikey={ApiKey}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult(
@@ -834,7 +834,7 @@ namespace Atomex.Blockchain.Ethereum
             var uri = $"api?module=block&action=getblocknobytime&timestamp={unixTimeStamp}&closest=before&apikey={ApiKey}";
 
             await RequestLimitControl
-                .Wait(cancellationToken)
+                .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             return await HttpHelper.GetAsyncResult(
