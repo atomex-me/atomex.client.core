@@ -339,6 +339,8 @@
       "DisplayedName": "USDT",
       "Description": "Tether (ERC20)",
       "DigitsMultiplier": 1000000,
+      "InitiateGasLimit": 300000,
+      "InitiateWithRewardGasLimit": 310000,
       "RefundGasLimit": 130000,
       "ERC20Contract": "0x2b33e8490a4e87e4ab313ab6785d06fc54cf2e98",
       "ERC20ContractBlockNumber": 6981687,
