@@ -147,7 +147,7 @@ namespace Atomex.TzktEvents.Services
 
             foreach (var (address, subscription) in _addressSubs)
             {
-                if (subscription.LastState != state)
+                if (state < subscription.LastState)
                 {
                     var updatedAccount = _addressSubs.AddOrUpdate(address, _willNotBeCalled, (_, existing) => existing with
                     {
