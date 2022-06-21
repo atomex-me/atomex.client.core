@@ -193,7 +193,7 @@ namespace Atomex.Blockchain.Ethereum
 
                 if (resultLength == null)
                 {
-                    Log.Error("Connection error while getting txlist for ether address {@Address}", address);
+                    Log.Error("Error while getting txlist for ether address {@Address}", address);
                     await Task.Delay(_transactionsDelay.Multiply(4));
 
                     continue;
