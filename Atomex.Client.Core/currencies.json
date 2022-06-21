@@ -73,7 +73,7 @@
     "USDT": {
       "BasedOn": "ERC20",
       "Name": "USDT",
-      "DisplayedName": "USDT",
+      "DisplayedName": "USDt",
       "Description": "Tether",
       "DigitsMultiplier": 1000000,
       "InitiateGasLimit": 300000,
@@ -336,7 +336,7 @@
     "USDT": {
       "BasedOn": "ERC20",
       "Name": "USDT",
-      "DisplayedName": "USDT",
+      "DisplayedName": "USDt",
       "Description": "Tether (ERC20)",
       "DigitsMultiplier": 1000000,
       "InitiateGasLimit": 300000,
@@ -528,7 +528,7 @@
     "USDT_XTZ": {
       "BasedOn": "FA2",
       "Name": "USDT_XTZ",
-      "DisplayedName": "USDT",
+      "DisplayedName": "USDt",
       "IsToken": true,
       "Description": "Tether (FA2)",
       "DigitsMultiplier": 1000000,
