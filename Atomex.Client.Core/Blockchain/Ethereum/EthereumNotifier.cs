@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using Atomex.Common;
+using Atomex.Core;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Serilog;
@@ -29,7 +30,7 @@ namespace Atomex.Blockchain.Ethereum
         private static readonly RequestLimitControl RequestLimitControl 
             = new(MinDelayBetweenRequestMs);
 
-        private long _lastBlockNumber = 6980640; // Value that is bigger than 0 and definitely less then current block number of any Ether network. 
+        private long _lastBlockNumber = 7096734; // Value that is bigger than 0 and definitely less then current block number of any Ether network. 
 
         public EthereumNotifier(string baseUrl, ILogger log)
         {
@@ -161,6 +162,7 @@ namespace Atomex.Blockchain.Ethereum
                             {
                                 _log.Warning("Status is NOTOK from Etherscan, response: {@Response}",
                                     json.ToString());
+                                return null;
                             }
 
                             if (!json.ContainsKey("result")) return 0;
