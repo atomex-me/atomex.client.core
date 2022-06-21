@@ -31,6 +31,7 @@ namespace Atomex.Blockchain.Ethereum
             = new(MinDelayBetweenRequestMs);
 
         private long _lastBlockNumber = 7096734; // Value that is bigger than 0 and definitely less then current block number of any Ether network. 
+        private const string ApiKey = "YUIREI3IDPD48WD6ZB9M1SYNAGPYEKAZ8H"; // Free ApiKey to increase rate limits
 
         public EthereumNotifier(string baseUrl, ILogger log)
         {
@@ -143,6 +144,8 @@ namespace Atomex.Blockchain.Ethereum
                 var requestBuilder = new StringBuilder("api?module=account&action=txlist");
                 requestBuilder.Append("&address=");
                 requestBuilder.Append(address);
+                requestBuilder.Append("&apikey=");
+                requestBuilder.Append(ApiKey);
                 requestBuilder.Append("&tag=latest&page=1&startBlock=");
                 requestBuilder.Append(subscription.StartBlock);
 
@@ -225,7 +228,7 @@ namespace Atomex.Blockchain.Ethereum
 
         private async Task GetLastBlockNumber()
         {
-            const string requestUri = "api?module=proxy&action=eth_blockNumber";
+            const string requestUri = $"api?module=proxy&action=eth_blockNumber&apikey={ApiKey}";
 
             await RequestLimitControl
                 .Wait(_cts.Token)
