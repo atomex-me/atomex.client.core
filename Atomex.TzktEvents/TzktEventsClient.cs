@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Atomex.TzktEvents.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 using Serilog;
 using Atomex.TzktEvents.Services;
@@ -127,7 +128,7 @@ namespace Atomex.TzktEvents
             }
         }
 
-        public async Task NotifyOnTokenBalancesAsync(string address, Action<string, string, string> handler)
+        public async Task NotifyOnTokenBalancesAsync(string address, Action<TezosTokenEvent> handler)
         {
             if (CheckIsStarted(nameof(NotifyOnTokenBalancesAsync)))
             {
@@ -135,7 +136,7 @@ namespace Atomex.TzktEvents
             }
         }
 
-        public async Task NotifyOnTokenBalancesAsync(IEnumerable<string> addresses, Action<string, string, string> handler)
+        public async Task NotifyOnTokenBalancesAsync(IEnumerable<string> addresses, Action<TezosTokenEvent> handler)
         {
             if (CheckIsStarted(nameof(NotifyOnTokenBalancesAsync)))
             {

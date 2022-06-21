@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Atomex.Abstract;
 using Atomex.Services.Abstract;
 using Atomex.TzktEvents;
+using Atomex.TzktEvents.Models;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Tezos;
 using Serilog;
@@ -116,23 +117,28 @@ namespace Atomex.Services.BalanceUpdaters
             return addresses;
         }
 
-        private async void BalanceUpdatedHandler(string standard, string token, string address)
+        private async void BalanceUpdatedHandler(TezosTokenEvent @event)
         {
             try
             {
-                if (!string.IsNullOrEmpty(token) && Currencies.IsTezosToken(token))
+                if (!string.IsNullOrEmpty(@event.Token) && Currencies.IsTezosToken(@event.Token))
                 {
-                    await ScanAndReloadAddress(token, address).ConfigureAwait(false);
+                    await ScanAndReloadAddress(@event.Token, @event.Address).ConfigureAwait(false);
                 }
-                else if (!string.IsNullOrEmpty(standard) && Currencies.IsTezosToken(standard))
+                else if (!string.IsNullOrEmpty(@event.Standard) && Currencies.IsTezosToken(@event.Standard))
                 {
-                    await ScanAndReloadAddress(standard, address).ConfigureAwait(false);
+                    await _walletScanner.ScanAddressAsync(@event.Standard, @event.Address)
+                                        .ConfigureAwait(false);
+
+                    _account
+                        .GetTezosTokenAccount<TezosTokenAccount>(@event.Standard, @event.Contract, @event.TokenId)
+                        .ReloadBalances();
                 }
                 else
                 {
                     var scanAndReloadTasks = _account.Currencies
                         .Where(c => Currencies.IsTezosToken(c.Name))
-                        .Select(c => ScanAndReloadAddress(c.Name, address));
+                        .Select(c => ScanAndReloadAddress(c.Name, @event.Address));
 
                     await Task.WhenAll(scanAndReloadTasks).ConfigureAwait(false);
                 }
@@ -159,7 +165,7 @@ namespace Atomex.Services.BalanceUpdaters
         private async Task ScanAndReloadAddress(string token, string address)
         {
             await _walletScanner.ScanAddressAsync(token, address)
-                .ConfigureAwait(false);
+                                .ConfigureAwait(false);
 
             _account
                 .GetCurrencyAccount<TezosTokenAccount>(token)

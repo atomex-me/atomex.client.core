@@ -45,7 +45,7 @@ namespace Atomex.TzktEvents.Services
             _hub.On<JObject>(SubscriptionMethod.SubscribeToTokenBalances.Channel, Handler);
         }
 
-        public async Task NotifyOnTokenBalancesAsync(string address, Action<string, string, string> handler)
+        public async Task NotifyOnTokenBalancesAsync(string address, Action<TezosTokenEvent> handler)
         {
             var subscription = new TokenServiceSubscription(handler);
             _addressSubs.AddOrUpdate(address, subscription, (_, _) => subscription);
@@ -56,7 +56,7 @@ namespace Atomex.TzktEvents.Services
             }).ConfigureAwait(false);
         }
 
-        public async Task NotifyOnTokenBalancesAsync(IEnumerable<string> addresses, Action<string, string, string> handler)
+        public async Task NotifyOnTokenBalancesAsync(IEnumerable<string> addresses, Action<TezosTokenEvent> handler)
         {
             var addressesList = addresses.ToList();
             if (addressesList.Count == 0)
@@ -121,17 +121,20 @@ namespace Atomex.TzktEvents.Services
                     {
                         LastState = level
                     });
-
-                    var standard = @event["token"]?["standard"]?.ToString()?.Replace(".", "")?.ToUpper() ?? string.Empty;
-                    var token = @event["token"]?["metadata"]?["symbol"]?.ToString()?.ToUpper() ?? string.Empty;
-
+                    
                     try
                     {
-                        updatedSubscription.Handler(standard, token, address);
+                        var standard = @event["token"]?["standard"]?.ToString()?.Replace(".", "")?.ToUpper() ?? string.Empty;
+                        var contract = @event["token"]?["contract"]?["address"]?.ToString() ?? string.Empty;
+                        decimal.TryParse(@event["token"]?["tokenId"]?.ToString(), out var tokenId);
+                        var token = @event["token"]?["metadata"]?["symbol"]?.ToString()?.ToUpper() ?? string.Empty;
+
+                        var tezosTokenEvent = new TezosTokenEvent(standard, contract, tokenId, token, address);
+                        updatedSubscription.Handler(tezosTokenEvent);
                     }
                     catch (Exception e)
                     {
-                        _log.Error(e,"Error while calling subscriber handler on Data message with {{ standard: {Standard} ,token: {Token}, address: {Address} }}", standard, token, address);
+                        _log.Error(e,"Error while calling subscriber handler on Data message for address {Address}", address);
                     }
                 }
             }
@@ -153,7 +156,8 @@ namespace Atomex.TzktEvents.Services
 
                     try
                     {
-                        updatedAccount.Handler(string.Empty, string.Empty, address);
+                        var tezosTokenEvent = new TezosTokenEvent(address);
+                        updatedAccount.Handler(tezosTokenEvent);
                     }
                     catch (Exception e)
                     {
