@@ -143,8 +143,8 @@ namespace Atomex.Blockchain.Ethereum
                 var requestBuilder = new StringBuilder("api?module=account&action=txlist");
                 requestBuilder.Append("&address=");
                 requestBuilder.Append(address);
-                requestBuilder.Append("&apikey=");
-                requestBuilder.Append(ApiKey);
+                // requestBuilder.Append("&apikey=");
+                // requestBuilder.Append(ApiKey);
                 requestBuilder.Append("&tag=latest&page=1&startBlock=");
                 requestBuilder.Append(subscription.StartBlock);
 
