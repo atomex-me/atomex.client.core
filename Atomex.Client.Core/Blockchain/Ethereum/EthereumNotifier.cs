@@ -227,7 +227,7 @@ namespace Atomex.Blockchain.Ethereum
 
         private async Task GetLastBlockNumber()
         {
-            const string requestUri = $"api?module=proxy&action=eth_blockNumber&apikey={ApiKey}";
+            var requestUri = $"api?module=proxy&action=eth_blockNumber&apikey={ApiKey}";
 
             await RequestLimitControl
                 .Wait(_cts.Token)
