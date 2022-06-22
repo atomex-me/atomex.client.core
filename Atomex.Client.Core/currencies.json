@@ -532,7 +532,7 @@
       "IsToken": true,
       "Description": "Tether (FA2)",
       "DigitsMultiplier": 1000000,
-      "SwapContract": "KT1RdvbJcdjy64gfNL9Q1M9xjyn4pb68yfr3",
+      "SwapContract": "KT1HHjNxi3okxxGJT1SPPhpcs3gMQt8hqixY",
       "TokenContract": "KT1BWvRQnVVowZZLGkct9A7sdj5YEe8CdUhR",
       "FeeCurrencySymbol": "XTZ/USDT_XTZ"
     }
