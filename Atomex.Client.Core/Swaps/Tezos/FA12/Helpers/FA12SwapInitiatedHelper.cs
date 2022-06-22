@@ -92,7 +92,9 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
                     .QtyToSellAmount(side, swap.Qty, swap.Price, fa12.DigitsMultiplier)
                     .ToTokenDigits(fa12.DigitsMultiplier);
 
-                var requiredRewardForRedeemInTokenDigits = swap.IsAcceptor ? swap.RewardForRedeem.ToTokenDigits(fa12.DigitsMultiplier) : 0;
+                var requiredRewardForRedeemInTokenDigits = swap.IsAcceptor
+                    ? swap.RewardForRedeem.ToTokenDigits(fa12.DigitsMultiplier)
+                    : 0;
 
                 var contractAddress = fa12.SwapContractAddress;
                 var detectedAmountInTokenDigits = 0m;
@@ -167,7 +169,7 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
                                     description: $"Invalid refund timestamp in initiated event. Expected value is {refundTimeStamp}, actual is {detectedRefundTimestamp}");
                             }
 
-                            return true;   // todo: check also token contract transfers
+                            return true; // todo: check also token contract transfers
                         }
                     }
 
@@ -327,17 +329,62 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
 
         public static decimal GetAmount(TezosTransaction tx)
         {
-            return tx.Params?["value"]?["args"]?[1]?["args"]?[1]?["int"].ToObject<decimal>() ?? 0;
+            if (tx.Params == null)
+                return 0;
+
+            var entrypoint = tx.Params?["entrypoint"]?.ToString();
+
+            return entrypoint switch
+            {
+                "default" => GetAmount(tx.Params?["value"]?["args"]?[0]?["args"]?[0]),
+                "initiate" => GetAmount(tx.Params?["value"]),
+                _ => 0
+            };
+        }
+
+        private static decimal GetAmount(JToken initParams)
+        {
+            return decimal.Parse(initParams?["args"]?[1]?["args"]?[1]?["int"].ToString());
         }
 
         public static decimal GetRedeemFee(TezosTransaction tx)
         {
-            return decimal.Parse(tx.Params["value"]["args"][0]["args"][1]["args"][0]["int"].ToString());
+            if (tx.Params == null)
+                return 0;
+
+            var entrypoint = tx.Params?["entrypoint"]?.ToString();
+
+            return entrypoint switch
+            {
+                "default" => GetRedeemFee(tx.Params?["value"]?["args"]?[0]?["args"]?[0]),
+                "initiate" => GetRedeemFee(tx.Params?["value"]),
+                _ => 0
+            };
+        }
+
+        private static decimal GetRedeemFee(JToken initParams)
+        {
+            return decimal.Parse(initParams?["args"][0]["args"][1]["args"][0]["int"].ToString());
         }
 
         public static long GetRefundTimestamp(TezosTransaction tx)
         {
-            return tx.Params["value"]["args"][0]["args"][1]["args"][1]["int"].ToObject<long>();
+            if (tx.Params == null)
+                return 0;
+
+            var entrypoint = tx.Params?["entrypoint"]?.ToString();
+
+            return entrypoint switch
+            {
+                "default" => GetRefundTimestamp(tx.Params?["value"]?["args"]?[0]?["args"]?[0]),
+                "initiate" => GetRefundTimestamp(tx.Params?["value"]),
+                _ => 0
+            };
+        }
+
+        public static long GetRefundTimestamp(JToken initParams)
+        {
+            return initParams?["args"]?[0]?["args"]?[1]?["args"]?[1]?["int"]?.ToObject<long>() ?? 0;
         }
     }
 }

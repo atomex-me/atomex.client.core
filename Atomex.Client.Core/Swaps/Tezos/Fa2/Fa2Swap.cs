@@ -798,6 +798,10 @@ namespace Atomex.Swaps.Tezos.FA2
             var requiredAmountInTokens = RequiredAmountInTokens(swap, fa2); 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();
 
+            var rewardForRedeemInTokenDigits = swap.IsInitiator
+                ? swap.PartyRewardForRedeem.ToTokenDigits(fa2.DigitsMultiplier)
+                : 0;
+
             var walletAddress = await Fa2Account
                 .GetAddressAsync(swap.FromAddress, cancellationToken)
                 .ConfigureAwait(false);
@@ -870,7 +874,8 @@ namespace Atomex.Swaps.Tezos.FA2
                     tokenContractAddress: fa2.TokenContractAddress,
                     tokenId: fa2.TokenId,
                     tokenAmountInDigits: amountInTokens.ToTokenDigits(fa2.DigitsMultiplier),
-                    refundTimeStamp: refundTimeStampUtcInSec),
+                    refundTimeStamp: refundTimeStampUtcInSec,
+                    redeemFeeAmount: (long)rewardForRedeemInTokenDigits),
                 Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment,
 
                 UseRun              = true,
@@ -1012,9 +1017,10 @@ namespace Atomex.Swaps.Tezos.FA2
             string tokenContractAddress,
             long tokenId,
             decimal tokenAmountInDigits,
-            long refundTimeStamp)
+            long refundTimeStamp,
+            long redeemFeeAmount)
         {
-            return JObject.Parse(@"{'entrypoint':'initiate','value':{'prim':'Pair','args':[{'prim':'Pair','args':[{'prim':'Pair','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'},{'string':'" + swap.PartyAddress + "'}]},{'prim':'Pair','args':[{'string':'" + refundTimeStamp + "'},{'string':'" + tokenContractAddress + "'}]}]},{'prim':'Pair','args':[{'int':'" + tokenId + "'},{'int':'" + tokenAmountInDigits + "'}]}]}}");
+            return JObject.Parse(@"{'entrypoint':'initiate','value':{'prim':'Pair','args':[{'prim':'Pair','args':[{'prim':'Pair','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'},{'string':'" + swap.PartyAddress + "'}]},{'prim':'Pair','args':[{'int':'" + redeemFeeAmount + "'},{'int':'" + refundTimeStamp + "'}]}]},{'prim':'Pair','args':[{'prim':'Pair','args':[{'string':'" + tokenContractAddress + "'},{'int':'" + tokenId + "'}]},{'int':'" + tokenAmountInDigits + "'}]}]}}");
         }
 
         private JObject CreateRedeemParams(Swap swap)
