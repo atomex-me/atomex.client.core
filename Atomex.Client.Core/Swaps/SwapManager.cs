@@ -217,6 +217,15 @@ namespace Atomex.Swaps
             else if (swap != null && (swap.Status == SwapStatus.Empty || swap.Status == SwapStatus.Initiated || swap.Status == SwapStatus.Accepted) &&
                      receivedSwap.Status == (SwapStatus.Initiated | SwapStatus.Accepted))
             {
+                if (swap.Status == SwapStatus.Empty || swap.Status == SwapStatus.Initiated)
+                {
+                    var error = await CheckAndSaveAcceptorRequisitesAsync(swap, receivedSwap, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (error != null)
+                        return error;
+                }
+
                 await UpdateStatusAsync(swap, SwapStatus.Initiated | SwapStatus.Accepted, cancellationToken)
                     .ConfigureAwait(false);
 
