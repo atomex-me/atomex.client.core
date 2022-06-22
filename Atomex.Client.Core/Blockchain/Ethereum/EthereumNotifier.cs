@@ -29,7 +29,8 @@ namespace Atomex.Blockchain.Ethereum
         private static readonly RequestLimitControl RequestLimitControl 
             = new(MinDelayBetweenRequestMs);
 
-        private long _lastBlockNumber = 6980640;
+        private long _lastBlockNumber = 7096734; // Value that is bigger than 0 and definitely less then current block number of any Ether network. 
+        private const string ApiKey = "YUIREI3IDPD48WD6ZB9M1SYNAGPYEKAZ8H"; // Free ApiKey to increase rate limits
 
         public EthereumNotifier(string baseUrl, ILogger log)
         {
@@ -142,6 +143,8 @@ namespace Atomex.Blockchain.Ethereum
                 var requestBuilder = new StringBuilder("api?module=account&action=txlist");
                 requestBuilder.Append("&address=");
                 requestBuilder.Append(address);
+                // requestBuilder.Append("&apikey=");
+                // requestBuilder.Append(ApiKey);
                 requestBuilder.Append("&tag=latest&page=1&startBlock=");
                 requestBuilder.Append(subscription.StartBlock);
 
@@ -161,6 +164,7 @@ namespace Atomex.Blockchain.Ethereum
                             {
                                 _log.Warning("Status is NOTOK from Etherscan, response: {@Response}",
                                     json.ToString());
+                                return null;
                             }
 
                             if (!json.ContainsKey("result")) return 0;
@@ -191,7 +195,7 @@ namespace Atomex.Blockchain.Ethereum
 
                 if (resultLength == null)
                 {
-                    Log.Error("Connection error while getting txlist for ether address {@Address}", address);
+                    Log.Error("Error while getting txlist for ether address {@Address}", address);
                     await Task.Delay(_transactionsDelay.Multiply(4));
 
                     continue;
@@ -223,7 +227,7 @@ namespace Atomex.Blockchain.Ethereum
 
         private async Task GetLastBlockNumber()
         {
-            const string requestUri = "api?module=proxy&action=eth_blockNumber";
+            var requestUri = $"api?module=proxy&action=eth_blockNumber&apikey={ApiKey}";
 
             await RequestLimitControl
                 .WaitAsync(_cts.Token)
@@ -235,9 +239,14 @@ namespace Atomex.Blockchain.Ethereum
                     responseHandler: (_, content) =>
                     {
                         var json = JsonConvert.DeserializeObject<JObject>(content);
-                        var blockNumber = json.ContainsKey("result")
-                            ? long.Parse(json["result"]!.ToString()[2..], System.Globalization.NumberStyles.HexNumber)
-                            : 6980640; // Value that is bigger than 0 and definitely less then current block number of any Ether network. 
+                        var blockNumber = _lastBlockNumber;
+                        if (json != null
+                            && !json.ContainsKey("status")
+                            && json.ContainsKey("result"))
+                        {
+                            blockNumber = long.Parse(json["result"]!.ToString()[2..],
+                                System.Globalization.NumberStyles.HexNumber);
+                        }
 
                         return new Result<long>(blockNumber);
                     },

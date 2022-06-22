@@ -16,8 +16,8 @@ namespace Atomex.TzktEvents.Services
         private readonly HubConnection _hub;
         private readonly ILogger _log;
 
-        private readonly ConcurrentDictionary<string, ServiceSubscription> _addressSubs = new();
-        private readonly Func<string, ServiceSubscription> _willNotBeCalled = _ => null;
+        private readonly ConcurrentDictionary<string, TokenServiceSubscription> _addressSubs = new();
+        private readonly Func<string, TokenServiceSubscription> _willNotBeCalled = _ => null;
 
         public TokensService(HubConnection hub, ILogger log)
         {
@@ -29,11 +29,14 @@ namespace Atomex.TzktEvents.Services
         {
             if (_addressSubs.Skip(0).Count() != 0)
             {
-                var addresses = _addressSubs.Select(a => a.Key).ToArray();
-                await _hub.InvokeAsync(SubscriptionMethod.SubscribeToTokenBalances.Method, new
-                {
-                    addresses
-                }).ConfigureAwait(false);
+                var addresses = _addressSubs.Select(a => a.Key);
+                var subscriptionTasks = addresses.Select(address => _hub.InvokeAsync(
+                    SubscriptionMethod.SubscribeToTokenBalances.Method, new
+                    {
+                        account = address
+                    }));
+            
+                await Task.WhenAll(subscriptionTasks).ConfigureAwait(false);
             }
         }
 
@@ -42,9 +45,9 @@ namespace Atomex.TzktEvents.Services
             _hub.On<JObject>(SubscriptionMethod.SubscribeToTokenBalances.Channel, Handler);
         }
 
-        public async Task NotifyOnTokenBalancesAsync(string address, Action<string> handler)
+        public async Task NotifyOnTokenBalancesAsync(string address, Action<TezosTokenEvent> handler)
         {
-            var subscription = new ServiceSubscription(handler);
+            var subscription = new TokenServiceSubscription(handler);
             _addressSubs.AddOrUpdate(address, subscription, (_, _) => subscription);
 
             await _hub.InvokeAsync(SubscriptionMethod.SubscribeToTokenBalances.Method, new
@@ -53,7 +56,7 @@ namespace Atomex.TzktEvents.Services
             }).ConfigureAwait(false);
         }
 
-        public async Task NotifyOnTokenBalancesAsync(IEnumerable<string> addresses, Action<string> handler)
+        public async Task NotifyOnTokenBalancesAsync(IEnumerable<string> addresses, Action<TezosTokenEvent> handler)
         {
             var addressesList = addresses.ToList();
             if (addressesList.Count == 0)
@@ -62,7 +65,7 @@ namespace Atomex.TzktEvents.Services
                 return;
             }
 
-            var subscription = new ServiceSubscription(handler);
+            var subscription = new TokenServiceSubscription(handler);
             foreach (var address in addressesList)
             {
                 _addressSubs.AddOrUpdate(address, subscription, (_, _) => subscription);
@@ -118,14 +121,20 @@ namespace Atomex.TzktEvents.Services
                     {
                         LastState = level
                     });
-
+                    
                     try
                     {
-                        updatedSubscription.Handler(address);
+                        var standard = @event["token"]?["standard"]?.ToString()?.Replace(".", "")?.ToUpper() ?? string.Empty;
+                        var contract = @event["token"]?["contract"]?["address"]?.ToString() ?? string.Empty;
+                        decimal.TryParse(@event["token"]?["tokenId"]?.ToString(), out var tokenId);
+                        var token = @event["token"]?["metadata"]?["symbol"]?.ToString()?.ToUpper() ?? string.Empty;
+
+                        var tezosTokenEvent = new TezosTokenEvent(standard, contract, tokenId, token, address);
+                        updatedSubscription.Handler(tezosTokenEvent);
                     }
                     catch (Exception e)
                     {
-                        _log.Error(e,"Error while calling subscriber handler on Data message");
+                        _log.Error(e,"Error while calling subscriber handler on Data message for address {Address}", address);
                     }
                 }
             }
@@ -138,7 +147,7 @@ namespace Atomex.TzktEvents.Services
 
             foreach (var (address, subscription) in _addressSubs)
             {
-                if (subscription.LastState != state)
+                if (state < subscription.LastState)
                 {
                     var updatedAccount = _addressSubs.AddOrUpdate(address, _willNotBeCalled, (_, existing) => existing with
                     {
@@ -147,11 +156,12 @@ namespace Atomex.TzktEvents.Services
 
                     try
                     {
-                        updatedAccount.Handler(address);
+                        var tezosTokenEvent = new TezosTokenEvent(address);
+                        updatedAccount.Handler(tezosTokenEvent);
                     }
                     catch (Exception e)
                     {
-                        _log.Error(e, "Error while calling subscriber handler on Reorg message");
+                        _log.Error(e, "Error while calling subscriber handler on Reorg message for address: {Address}", address);
                     }
                 }
             }
