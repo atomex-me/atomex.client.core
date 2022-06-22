@@ -34,7 +34,7 @@ namespace Atomex.Blockchain.Tezos
         public string Contract { get; set; }
 
         [JsonPropertyName("token_id")]
-        public decimal TokenId { get; set; } = 0;  // FA1.2 default
+        public int TokenId { get; set; } = 0;  // FA1.2 default
         [JsonPropertyName("symbol")]
         public string Symbol { get; set; }
         [JsonPropertyName("name")]

@@ -18,7 +18,7 @@ namespace Atomex.ViewModels
             IAccount account,
             CurrencyConfig currency,
             string tokenContract = null,
-            int tokenId = 0)
+            int? tokenId = 0)
         {
             var isTezosToken = Currencies.IsTezosToken(currency.Name) || tokenContract != null;
 
@@ -64,7 +64,7 @@ namespace Atomex.ViewModels
                 tokenAddresses = tokenAddresses.Where(wa => wa.TokenBalance?.TokenId == tokenId);
 
                 var tezosAddressesWithoutTokens = tezosAddresses
-                    .Where(w => !tokenAddresses.Any(ta => ta.Address == w.Address));
+                    .Where(w => tokenAddresses.All(ta => ta.Address != w.Address));
 
                 return tokenAddresses
                     .Concat(tezosAddressesWithoutTokens)
@@ -121,7 +121,7 @@ namespace Atomex.ViewModels
                             TokenBalance     = tokenBalance,
                             TokenFormat      = tokenFormat,
                             TokenCode        = tokenCode,
-                            TokenId          = (int)tokenId,
+                            TokenId          = tokenId,
                             IsTezosToken     = true
                         };
                     });

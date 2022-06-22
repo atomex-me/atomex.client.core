@@ -43,7 +43,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             var token = new Token()
             {
                 Contract = Contract.Address,
-                TokenId = decimal.Parse(TokenId),
+                TokenId = int.Parse(TokenId),
             };
 
             if (Metadata != null) 
