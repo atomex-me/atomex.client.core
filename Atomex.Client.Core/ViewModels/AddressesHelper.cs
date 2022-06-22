@@ -18,7 +18,7 @@ namespace Atomex.ViewModels
             IAccount account,
             CurrencyConfig currency,
             string tokenContract = null,
-            int? tokenId = 0)
+            int tokenId = 0)
         {
             var isTezosToken = Currencies.IsTezosToken(currency.Name) || tokenContract != null;
 
@@ -121,7 +121,7 @@ namespace Atomex.ViewModels
                             TokenBalance     = tokenBalance,
                             TokenFormat      = tokenFormat,
                             TokenCode        = tokenCode,
-                            TokenId          = tokenId,
+                            TokenId          = (int)tokenId,
                             IsTezosToken     = true
                         };
                     });

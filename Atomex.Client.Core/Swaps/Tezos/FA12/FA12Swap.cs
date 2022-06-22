@@ -868,7 +868,12 @@ namespace Atomex.Swaps.Tezos.FA12
                 Fee          = feeAmountInMtz,
                 GasLimit     = fa12.InitiateGasLimit,
                 StorageLimit = fa12.InitiateStorageLimit,
-                Params       = CreateInitParams(swap, fa12.TokenContractAddress, amountInTokens.ToTokenDigits(fa12.DigitsMultiplier), refundTimeStampUtcInSec, (long)rewardForRedeemInTokenDigits),
+                Params       = CreateInitParams(
+                    swap: swap,
+                    tokenContractAddress: fa12.TokenContractAddress,
+                    tokenAmountInDigits: amountInTokens.ToTokenDigits(fa12.DigitsMultiplier),
+                    refundTimeStamp: refundTimeStampUtcInSec,
+                    redeemFeeAmount: (long)rewardForRedeemInTokenDigits),
                 Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment,
 
                 UseRun              = true,
@@ -1028,11 +1033,11 @@ namespace Atomex.Swaps.Tezos.FA12
         private JObject CreateInitParams(
             Swap swap,
             string tokenContractAddress,
-            decimal tokenAmountInDigigts,
-            long refundTimestamp,
+            decimal tokenAmountInDigits,
+            long refundTimeStamp,
             long redeemFeeAmount)
         {
-            return JObject.Parse(@"{'entrypoint':'initiate','value':{'prim':'Pair','args':[{'prim':'Pair','args':[{'prim':'Pair','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'},{'string':'" + swap.PartyAddress + "'}]},{'prim':'Pair','args':[{'int':'" + redeemFeeAmount + "'},{'int':'" + refundTimestamp + "'}]}]},{'prim':'Pair','args':[{'string':'" + tokenContractAddress + "'},{'int':'" + tokenAmountInDigigts + "'}]}]}}");
+            return JObject.Parse(@"{'entrypoint':'initiate','value':{'prim':'Pair','args':[{'prim':'Pair','args':[{'prim':'Pair','args':[{'bytes':'" + swap.SecretHash.ToHexString() + "'},{'string':'" + swap.PartyAddress + "'}]},{'prim':'Pair','args':[{'int':'" + redeemFeeAmount + "'},{'int':'" + refundTimeStamp + "'}]}]},{'prim':'Pair','args':[{'string':'" + tokenContractAddress + "'},{'int':'" + tokenAmountInDigits + "'}]}]}}");
         }
 
         private JObject CreateRedeemParams(Swap swap)

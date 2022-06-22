@@ -34,6 +34,10 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
             var refundTime = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds))
                 .ToString("yyyy-MM-ddTHH:mm:ssZ");
 
+            var rewardForRedeemInTokenDigits = swap.IsInitiator
+                ? swap.PartyRewardForRedeem.ToTokenDigits(fa2.DigitsMultiplier)
+                : 0;
+
             var requiredAmountInTokens = Fa2Swap.RequiredAmountInTokens(swap, fa2);
 
             var parameters = "entrypoint=initiate" +
@@ -42,7 +46,8 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
                 $"&parameter.refundTime={refundTime}" +
                 $"&parameter.tokenAddress={fa2.TokenContractAddress}" +
                 $"&parameter.tokenId={fa2.TokenId}" +
-                $"&parameter.totalAmount={requiredAmountInTokens.ToTokenDigits(fa2.DigitsMultiplier)}";
+                $"&parameter.totalAmount={requiredAmountInTokens.ToTokenDigits(fa2.DigitsMultiplier)}" +
+                $"&parameter.payoffAmount={(long)rewardForRedeemInTokenDigits}";
 
             var api = fa2.BlockchainApi as ITezosBlockchainApi;
 
@@ -88,8 +93,13 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
                     .QtyToSellAmount(side, swap.Qty, swap.Price, fa2.DigitsMultiplier)
                     .ToTokenDigits(fa2.DigitsMultiplier);
 
+                var requiredRewardForRedeemInTokenDigits = swap.IsAcceptor
+                    ? swap.RewardForRedeem.ToTokenDigits(fa2.DigitsMultiplier)
+                    : 0;
+
                 var contractAddress = fa2.SwapContractAddress;
                 var detectedAmountInTokenDigits = 0m;
+                var detectedRedeemFeeAmountInTokenDigits = 0m;
 
                 long detectedRefundTimestamp = 0;
 
@@ -130,11 +140,24 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
                             // init payment to secret hash!
                             detectedPayment = true;
                             detectedAmountInTokenDigits += GetAmount(tx);
+                            detectedRedeemFeeAmountInTokenDigits = GetRedeemFee(tx);
                             detectedRefundTimestamp = GetRefundTimestamp(tx);
                         }
 
                         if (detectedPayment && detectedAmountInTokenDigits >= requiredAmountInTokenDigits)
                         {
+                            if (swap.IsAcceptor && detectedRedeemFeeAmountInTokenDigits != requiredRewardForRedeemInTokenDigits)
+                            {
+                                Log.Debug(
+                                    "Invalid redeem fee in initiated event. Expected value is {@expected}, actual is {@actual}",
+                                    requiredRewardForRedeemInTokenDigits,
+                                    detectedRedeemFeeAmountInTokenDigits);
+
+                                return new Error(
+                                    code: Errors.InvalidRewardForRedeem,
+                                    description: $"Invalid redeem fee in initiated event. Expected value is {requiredRewardForRedeemInTokenDigits}, actual is {detectedRedeemFeeAmountInTokenDigits}");
+                            }
+
                             if (detectedRefundTimestamp < refundTimeStamp)
                             {
                                 Log.Debug(
@@ -147,7 +170,7 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
                                     description: $"Invalid refund timestamp in initiated event. Expected value is {refundTimeStamp}, actual is {detectedRefundTimestamp}");
                             }
 
-                            return true;   // todo: check also token contract transfers
+                            return true; // todo: check also token contract transfers
                         }
                     }
 
@@ -289,7 +312,7 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
 
             try
             {
-                var timestamp = TezosConfig.ParseTimestamp(initParams?["args"]?[0]?["args"]?[1]?["args"]?[0]);
+                var timestamp = TezosConfig.ParseTimestamp(initParams?["args"]?[0]?["args"]?[1]?["args"]?[1]);
                 if (timestamp < refundTimeStamp)
                 {
                     Log.Debug($"IsSwapInit: refundTimeStamp is less than expected (should be at least {refundTimeStamp})");
@@ -303,14 +326,14 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
                     return false;
                 }
 
-                var tokenAddress = TezosConfig.ParseAddress(initParams?["args"]?[0]?["args"]?[1]?["args"]?[1]);
+                var tokenAddress = TezosConfig.ParseAddress(initParams?["args"]?[1]?["args"]?[0]?["args"]?[0]);
                 if (tokenAddress != tokenContractAddress)
                 {
                     Log.Debug($"IsSwapInit: tokenContractAddress is unexpected (should be {tokenContractAddress})");
                     return false;
                 }
 
-                if (initParams?["args"]?[1]?["args"]?[0]?["int"]?.Value<int>() != tokenId)
+                if (initParams?["args"]?[1]?["args"]?[0]?["args"]?[1]?["int"]?.Value<int>() != tokenId)
                 {
                     Log.Debug($"IsSwapInit: tokenId is unexpected (should be {tokenId})");
                     return false;
@@ -362,7 +385,27 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
 
         private static long GetRefundTimestamp(JToken initParams)
         {
-            return TezosConfig.ParseTimestamp(initParams?["args"]?[0]?["args"]?[1]?["args"]?[0]);
+            return TezosConfig.ParseTimestamp(initParams?["args"]?[0]?["args"]?[1]?["args"]?[1]);
+        }
+
+        public static decimal GetRedeemFee(TezosTransaction tx)
+        {
+            if (tx.Params == null)
+                return 0;
+
+            var entrypoint = tx.Params?["entrypoint"]?.ToString();
+
+            return entrypoint switch
+            {
+                "default" => GetRedeemFee(tx.Params?["value"]?["args"]?[0]?["args"]?[0]),
+                "initiate" => GetRedeemFee(tx.Params?["value"]),
+                _ => 0
+            };
+        }
+
+        public static decimal GetRedeemFee(JToken initParams)
+        {
+            return decimal.Parse(initParams["args"]?[0]?["args"]?[1]?["args"]?[0]?["int"]?.ToString());
         }
     }
 }
