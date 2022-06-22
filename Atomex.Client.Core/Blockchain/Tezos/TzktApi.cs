@@ -530,6 +530,34 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting balance after {attempts} attempts");
         }
 
+        public async Task<Result<bool>> IsFa2TokenOperatorActiveAsync(
+            string holderAddress,
+            string spenderAddress,
+            string tokenContractAddress,
+            int tokenId,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var requestUri = $"contracts/{tokenContractAddress}/bigmaps/operators/keys/{{\"owner\":\"{holderAddress}\",\"operator\":\"{spenderAddress}\",\"token_id\":\"{tokenId}\"}}";
+
+                var result = await HttpHelper.GetAsyncResult<JObject>(
+                    baseUri: _baseUri,
+                    requestUri: requestUri,
+                    responseHandler: (response, content) => JsonConvert.DeserializeObject<JObject>(content),
+                    cancellationToken: cancellationToken);
+
+                if (result.HasError)
+                    return false;
+
+                return result?.Value?["active"]?.Value<bool>() ?? false;
+            }
+            catch (Exception e)
+            {
+                return new Error(Errors.RequestError, e.Message);
+            }
+        }
+
         #endregion
 
         private JObject CreateGetAllowanceParams(

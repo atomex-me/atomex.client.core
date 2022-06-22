@@ -51,14 +51,14 @@ namespace Atomex.ViewModels
                         {
                             // tezos tokens
                             var xtzConfig = account.Currencies.Get<TezosConfig>("XTZ");
-                            var fa12Config = account.Currencies.Get<Fa12Config>(address.Currency);
+                            var tezosTokenConfig = account.Currencies.Get<TezosTokenConfig>(address.Currency);
 
                             var tzktApi = new TzktApi(xtzConfig);
 
                             var balanceResult = await tzktApi
                                 .GetTokenBalancesAsync(
                                     address: address.Address,
-                                    contractAddress: fa12Config.TokenContractAddress,
+                                    contractAddress: tezosTokenConfig.TokenContractAddress,
                                     cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
 
@@ -77,7 +77,9 @@ namespace Atomex.ViewModels
                                 continue;
                             }
 
-                            actualBalance = balanceResult.Value.First().GetTokenBalance();
+                            actualBalance = balanceResult.Value
+                                .First(tb => tb.TokenId == tezosTokenConfig.TokenId)
+                                .GetTokenBalance();
                         }
                         else if (Currencies.IsEthereumToken(address.Currency))
                         {

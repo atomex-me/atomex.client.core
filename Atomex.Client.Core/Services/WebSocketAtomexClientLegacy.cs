@@ -43,14 +43,19 @@ namespace Atomex.Services
         public IAccount Account { get; private set; }
         public IMarketDataRepository MarketDataRepository { get; private set; }
         private ISymbolsProvider SymbolsProvider { get; set; }
-        private IConfiguration Configuration { get; }
+        //private IConfiguration Configuration { get; }
+        private string _exchangeUrl;
+        private string _marketDataUrl;
 
         public WebSocketAtomexClientLegacy(
-            IConfiguration configuration,
+            string exchangeUrl,
+            string marketDataUrl,
             IAccount account,
             ISymbolsProvider symbolsProvider)
         {
-            Configuration        = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _exchangeUrl = exchangeUrl;
+            _marketDataUrl = marketDataUrl;
+
             Account              = account ?? throw new ArgumentNullException(nameof(account));
             SymbolsProvider      = symbolsProvider ?? throw new ArgumentNullException(nameof(symbolsProvider));
             MarketDataRepository = new MarketDataRepository();
@@ -73,8 +78,6 @@ namespace Atomex.Services
             {
                 Log.Information("Start AtomexClient services");
 
-                var configuration = Configuration.GetSection($"Services:{Account.Network}");
-
                 // init schemes
                 var schemes = new ProtoSchemes();
 
@@ -82,7 +85,7 @@ namespace Atomex.Services
                 MarketDataRepository.Initialize(SymbolsProvider.GetSymbols(Account.Network));
 
                 // init exchange client
-                ExchangeClient = new ExchangeWebClient(configuration, schemes);
+                ExchangeClient = new ExchangeWebClient(_exchangeUrl, schemes);
                 ExchangeClient.Connected     += OnExchangeConnectedEventHandler;
                 ExchangeClient.Disconnected  += OnExchangeDisconnectedEventHandler;
                 ExchangeClient.AuthOk        += OnExchangeAuthOkEventHandler;
@@ -92,7 +95,7 @@ namespace Atomex.Services
                 ExchangeClient.SwapReceived  += OnSwapReceivedEventHandler;
 
                 // init market data client
-                MarketDataClient = new MarketDataWebClient(configuration, schemes);
+                MarketDataClient = new MarketDataWebClient(_marketDataUrl, schemes);
                 MarketDataClient.Connected        += OnMarketDataConnectedEventHandler;
                 MarketDataClient.Disconnected     += OnMarketDataDisconnectedEventHandler;
                 MarketDataClient.AuthOk           += OnMarketDataAuthOkEventHandler;

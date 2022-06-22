@@ -13,7 +13,7 @@ namespace Atomex
 {
     public class Symbols : ISymbols
     {
-        private readonly object _sync = new object();
+        private readonly object _sync = new();
         private IDictionary<string, Symbol> _symbols;
 
         public Symbols(IConfiguration configuration)

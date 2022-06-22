@@ -10,18 +10,8 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.TezosTokens
 {
-    public class Fa2Config : TezosConfig
+    public class Fa2Config : TezosTokenConfig
     {
-        public decimal TransferFee { get; private set; }
-        public decimal TransferGasLimit { get; private set; }
-        public decimal TransferStorageLimit { get; private set; }
-        public decimal TransferSize { get; private set; }
-
-        public decimal ApproveFee { get; private set; }
-        public decimal ApproveGasLimit { get; private set; }
-        public decimal ApproveStorageLimit { get; private set; }
-        public decimal ApproveSize { get; private set; }
-
         public Fa2Config()
         {
         }
@@ -34,6 +24,7 @@ namespace Atomex.TezosTokens
         public override void Update(IConfiguration configuration)
         {
             Name                    = configuration[nameof(Name)];
+            DisplayedName           = configuration[nameof(DisplayedName)];
             Description             = configuration[nameof(Description)];
 
             if (!string.IsNullOrEmpty(configuration[nameof(DigitsMultiplier)]))
@@ -71,7 +62,6 @@ namespace Atomex.TezosTokens
 
             MicroTezReserve         = decimal.Parse(configuration[nameof(MicroTezReserve)], CultureInfo.InvariantCulture);
             GasReserve              = decimal.Parse(configuration[nameof(GasReserve)], CultureInfo.InvariantCulture);
-
             MaxFee                  = decimal.Parse(configuration[nameof(MaxFee)], CultureInfo.InvariantCulture);
 
             RevealFee               = decimal.Parse(configuration[nameof(RevealFee)], CultureInfo.InvariantCulture);
@@ -113,13 +103,17 @@ namespace Atomex.TezosTokens
             TxExplorerUri           = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
             SwapContractAddress     = configuration["SwapContract"];
+            TokenContractAddress    = configuration["TokenContract"];
+
+            TokenId = int.TryParse(configuration["TokenId"], out var tokenId)
+                ? tokenId
+                : 0;
+
+            ViewContractAddress     = configuration["ViewContract"];
             TransactionType         = typeof(TezosTransaction);
 
-            IsSwapAvailable         = false;
+            IsSwapAvailable         = true;
             Bip44Code               = Bip44.Tezos; 
         }
-
-        public override decimal GetDefaultFee() =>
-            TransferGasLimit;
     }
 }

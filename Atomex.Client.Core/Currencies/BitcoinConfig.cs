@@ -34,6 +34,7 @@ namespace Atomex
         public void Update(IConfiguration configuration)
         {
             Name                    = configuration[nameof(Name)];
+            DisplayedName           = configuration[nameof(DisplayedName)];
             Description             = configuration[nameof(Description)];
             IsToken                 = bool.Parse(configuration[nameof(IsToken)]);
  

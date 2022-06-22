@@ -7,6 +7,7 @@ using Atomex.Swaps.BitcoinBased;
 using Atomex.Swaps.Ethereum;
 using Atomex.Swaps.Tezos;
 using Atomex.Swaps.Tezos.FA12;
+using Atomex.Swaps.Tezos.FA2;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
@@ -38,6 +39,11 @@ namespace Atomex.Swaps
 
                 Fa12Config _ => new Fa12Swap(
                     account: account.GetCurrencyAccount<Fa12Account>(currency.Name),
+                    tezosAccount: account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz),
+                    currencies: account.Currencies),
+
+                Fa2Config => new Fa2Swap(
+                    account: account.GetCurrencyAccount<Fa2Account>(currency.Name),
                     tezosAccount: account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz),
                     currencies: account.Currencies),
 

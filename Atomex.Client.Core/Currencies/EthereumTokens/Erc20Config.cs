@@ -35,6 +35,7 @@ namespace Atomex.EthereumTokens
         public override void Update(IConfiguration configuration)
         {
             Name                       = configuration[nameof(Name)];
+            DisplayedName              = configuration[nameof(DisplayedName)];
             Description                = configuration[nameof(Description)];
             DigitsMultiplier           = decimal.Parse(configuration[nameof(DigitsMultiplier)]);
             DustDigitsMultiplier       = long.Parse(configuration[nameof(DustDigitsMultiplier)]);

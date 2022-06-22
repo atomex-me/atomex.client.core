@@ -85,6 +85,7 @@ namespace Atomex
         public virtual void Update(IConfiguration configuration)
         {
             Name                       = configuration[nameof(Name)];
+            DisplayedName              = configuration[nameof(DisplayedName)];
             Description                = configuration[nameof(Description)];
             DigitsMultiplier           = EthDigitsMultiplier;
             Digits                     = (int)Math.Round(Math.Log10(EthDigitsMultiplier));

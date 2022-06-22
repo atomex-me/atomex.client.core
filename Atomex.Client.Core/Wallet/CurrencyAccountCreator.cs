@@ -92,6 +92,19 @@ namespace Atomex.Wallet
                     dataRepository: dataRepository,
                     tezosAccount: baseChainAccount as TezosAccount),
 
+                "USDT_XTZ" => new Fa2Account(
+                    currency: currency,
+                    tokenContract: currencies
+                        .Get<Fa2Config>(currency)
+                        .TokenContractAddress,
+                    tokenId: currencies
+                        .Get<Fa2Config>(currency)
+                        .TokenId,
+                    currencies: currencies,
+                    wallet: wallet,
+                    dataRepository: dataRepository,
+                    tezosAccount: baseChainAccount as TezosAccount),
+
                 "XTZ" => new TezosAccount(
                     currencies,
                     wallet,
@@ -104,7 +117,7 @@ namespace Atomex.Wallet
         public static ICurrencyAccount CreateTezosTokenAccount(
             string tokenType,
             string tokenContract,
-            decimal tokenId,
+            int tokenId,
             ICurrencies currencies,
             IHdWallet wallet,
             IAccountDataRepository dataRepository,
@@ -121,7 +134,7 @@ namespace Atomex.Wallet
                     dataRepository: dataRepository,
                     tezosAccount: tezosAccount),
 
-                "FA2" => new Fa2Account(
+                "FA2" or "USDT_XTZ" => new Fa2Account(
                     currency: tokenType,
                     tokenContract: tokenContract,
                     tokenId: tokenId,

@@ -131,7 +131,7 @@ namespace Atomex.ViewModels
                 {
                     Status = SwapDetailingStatus.Exchanging,
                     IsCompleted = false,
-                    Description = $"{swap.PurchasedCurrency} counterparty payment",
+                    Description = $"{purchaseCurrencyConfig.DisplayedName} counterparty payment",
                     ExplorerLink = new DetailsLink
                     {
                         Text = "transaction confirmed",
@@ -157,7 +157,7 @@ namespace Atomex.ViewModels
                     {
                         Status = SwapDetailingStatus.Exchanging,
                         IsCompleted = false,
-                        Description = $"Counterparty {swap.PurchasedCurrency} payment",
+                        Description = $"Counterparty {purchaseCurrencyConfig.DisplayedName} payment",
                         ExplorerLink = new DetailsLink
                         {
                             Text = "transaction failed",
@@ -183,7 +183,7 @@ namespace Atomex.ViewModels
                         Status = SwapDetailingStatus.Exchanging,
                         IsCompleted = false,
                         Description =
-                            $"Waiting for confirmation counterparty {swap.PurchasedCurrency}",
+                            $"Waiting for confirmation counterparty {purchaseCurrencyConfig.DisplayedName}",
                         ExplorerLink = new DetailsLink
                         {
                             Text = "payment transaction",
@@ -211,7 +211,7 @@ namespace Atomex.ViewModels
                 {
                     Status = SwapDetailingStatus.Exchanging,
                     IsCompleted = true,
-                    Description = $"Your {swap.SoldCurrency} payment",
+                    Description = $"Your {soldCurrencyConfig.DisplayedName} payment",
                     ExplorerLink = new DetailsLink
                     {
                         Text = "transaction confirmed",
@@ -237,7 +237,7 @@ namespace Atomex.ViewModels
                     {
                         Status = SwapDetailingStatus.Exchanging,
                         IsCompleted = false,
-                        Description = $"Your {swap.SoldCurrency} payment",
+                        Description = $"Your {soldCurrencyConfig.DisplayedName} payment",
 
                         ExplorerLink = new DetailsLink
                         {
@@ -265,7 +265,7 @@ namespace Atomex.ViewModels
                     {
                         Status = SwapDetailingStatus.Exchanging,
                         IsCompleted = false,
-                        Description = $"Waiting for confirmation your {swap.SoldCurrency}",
+                        Description = $"Waiting for confirmation your {soldCurrencyConfig.DisplayedName}",
                         ExplorerLink = new DetailsLink
                         {
                             Text = "payment transaction",
@@ -290,7 +290,7 @@ namespace Atomex.ViewModels
                 {
                     Status = SwapDetailingStatus.Exchanging,
                     IsCompleted = false,
-                    Description = $"Creating your {swap.SoldCurrency} payment transaction."
+                    Description = $"Creating your {soldCurrencyConfig.DisplayedName} payment transaction."
                 });
 
                 return result;
@@ -302,7 +302,7 @@ namespace Atomex.ViewModels
                 {
                     Status = SwapDetailingStatus.Completion,
                     IsCompleted = false,
-                    Description = $"Counterparty {swap.SoldCurrency} redeem",
+                    Description = $"Counterparty {soldCurrencyConfig.DisplayedName} redeem",
                     ExplorerLink = new DetailsLink
                     {
                         Text = "transaction confirmed",
@@ -328,7 +328,7 @@ namespace Atomex.ViewModels
                     {
                         Status = SwapDetailingStatus.Completion,
                         IsCompleted = false,
-                        Description = $"Counterparty {swap.SoldCurrency} redeem",
+                        Description = $"Counterparty {soldCurrencyConfig.DisplayedName} redeem",
                         ExplorerLink = new DetailsLink
                         {
                             Text = "transaction failed",
@@ -353,7 +353,7 @@ namespace Atomex.ViewModels
                     {
                         Status = SwapDetailingStatus.Completion,
                         IsCompleted = false,
-                        Description = $"Waiting for confirmation counterparty {swap.SoldCurrency}",
+                        Description = $"Waiting for confirmation counterparty {soldCurrencyConfig.DisplayedName}",
                         ExplorerLink = new DetailsLink
                         {
                             Text = "redeem transaction",
@@ -380,7 +380,7 @@ namespace Atomex.ViewModels
                 {
                     Status = SwapDetailingStatus.Completion,
                     IsCompleted = true,
-                    Description = $"Your {swap.PurchasedCurrency} redeem",
+                    Description = $"Your {purchaseCurrencyConfig.DisplayedName} redeem",
                     ExplorerLink = new DetailsLink
                     {
                         Text = "transaction confirmed",
@@ -407,7 +407,7 @@ namespace Atomex.ViewModels
                     {
                         Status = SwapDetailingStatus.Completion,
                         IsCompleted = true,
-                        Description = $"Your {swap.SoldCurrency} refund",
+                        Description = $"Your {soldCurrencyConfig.DisplayedName} refund",
                         ExplorerLink = new DetailsLink
                         {
                             Text = "transaction confirmed",
@@ -431,7 +431,7 @@ namespace Atomex.ViewModels
                     {
                         Status = SwapDetailingStatus.Completion,
                         IsCompleted = true,
-                        Description = $"Waiting for confirmation your {swap.SoldCurrency}",
+                        Description = $"Waiting for confirmation your {soldCurrencyConfig.DisplayedName}",
                         ExplorerLink = new DetailsLink
                         {
                             Text = "refund transaction",
@@ -457,7 +457,7 @@ namespace Atomex.ViewModels
                         {
                             Status = SwapDetailingStatus.Completion,
                             IsCompleted = false,
-                            Description = $"Your {swap.PurchasedCurrency} redeem",
+                            Description = $"Your {purchaseCurrencyConfig.DisplayedName} redeem",
                             ExplorerLink = new DetailsLink
                             {
                                 Text = "transaction failed",
@@ -481,7 +481,7 @@ namespace Atomex.ViewModels
                         {
                             Status = SwapDetailingStatus.Completion,
                             IsCompleted = false,
-                            Description = $"Waiting for confirmation your {swap.PurchasedCurrency}",
+                            Description = $"Waiting for confirmation your {purchaseCurrencyConfig.DisplayedName}",
                             ExplorerLink = new DetailsLink
                             {
                                 Text = "redeem transaction",

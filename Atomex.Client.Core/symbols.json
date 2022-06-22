@@ -281,6 +281,41 @@
       "Id": 28,
       "Name": "TZBTC/WBTC",
       "MinimumQty": 0.0001
+    },
+    {
+      "Id": 29,
+      "Name": "BTC/USDT_XTZ",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 30,
+      "Name": "ETH/USDT_XTZ",
+      "MinimumQty": 0.001
+    },
+    {
+      "Id": 31,
+      "Name": "LTC/USDT_XTZ",
+      "MinimumQty": 0.01
+    },
+    {
+      "Id": 32,
+      "Name": "XTZ/USDT_XTZ",
+      "MinimumQty": 1
+    },
+    {
+      "Id": 33,
+      "Name": "TZBTC/USDT_XTZ",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 34,
+      "Name": "USDT_XTZ/USDT",
+      "MinimumQty": 0.0001
+    },
+    {
+      "Id": 35,
+      "Name": "KUSD/USDT_XTZ",
+      "MinimumQty": 0.0001
     }
   ]
 }

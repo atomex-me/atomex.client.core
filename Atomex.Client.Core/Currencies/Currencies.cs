@@ -25,7 +25,8 @@ namespace Atomex
             "TZBTC",
             "KUSD",
             "WBTC",
-            "TBTC"
+            "TBTC",
+            "USDT_XTZ"
         };
 
         private readonly object _sync = new();
@@ -89,18 +90,18 @@ namespace Atomex
         {
             return configurationSection.Key switch
             {
-                "BTC" => (CurrencyConfig)new BitcoinConfig(configurationSection),
-                "LTC" => new LitecoinConfig(configurationSection),
-                "ETH" => new EthereumConfig(configurationSection),
-                "XTZ" => new TezosConfig(configurationSection),
-                "USDT" => new Erc20Config(configurationSection),
-                "TBTC" => new Erc20Config(configurationSection),
-                "WBTC" => new Erc20Config(configurationSection),
-                "TZBTC" => new Fa12Config(configurationSection),
-                "KUSD" => new Fa12Config(configurationSection),
-
-                "FA12" => new Fa12Config(configurationSection),
-                "FA2" => new Fa2Config(configurationSection),
+                "BTC"      => (CurrencyConfig)new BitcoinConfig(configurationSection),
+                "LTC"      => new LitecoinConfig(configurationSection),
+                "ETH"      => new EthereumConfig(configurationSection),
+                "XTZ"      => new TezosConfig(configurationSection),
+                "USDT"     => new Erc20Config(configurationSection),
+                "TBTC"     => new Erc20Config(configurationSection),
+                "WBTC"     => new Erc20Config(configurationSection),
+                "TZBTC"    => new Fa12Config(configurationSection),
+                "KUSD"     => new Fa12Config(configurationSection),
+                "USDT_XTZ" => new Fa2Config(configurationSection),
+                "FA12"     => new Fa12Config(configurationSection),
+                "FA2"      => new Fa2Config(configurationSection),
                 _ => null
             };
         }
@@ -137,6 +138,6 @@ namespace Atomex
         public static bool IsEthereumToken(string name) => EthTokens.Contains(name);
 
         public static string[] EthTokens = { "USDT", "WBTC", "TBTC" };
-        public static string[] XtzTokens = { "TZBTC", "KUSD", "FA2", "FA12" };
+        public static string[] XtzTokens = { "TZBTC", "KUSD", "USDT_XTZ", "FA2", "FA12" };
     }
 }

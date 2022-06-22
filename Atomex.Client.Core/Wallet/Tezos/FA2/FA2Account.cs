@@ -1,27 +1,16 @@
-﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
-
-using Newtonsoft.Json.Linq;
-using Serilog;
+﻿using Newtonsoft.Json.Linq;
 
 using Atomex.Abstract;
-using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Tezos;
-using Atomex.Core;
-using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.Wallet.Tezos
 {
     public class Fa2Account : TezosTokenAccount
     {
-        private Fa2Config Fa2Config => Currencies.Get<Fa2Config>(Currency);
-
         public Fa2Account(
             string currency,
             string tokenContract,
-            decimal tokenId,
+            int tokenId,
             ICurrencies currencies,
             IHdWallet wallet,
             IAccountDataRepository dataRepository,
@@ -37,182 +26,15 @@ namespace Atomex.Wallet.Tezos
         {
         }
 
-        #region Common
+        #region Helpers
 
-        public async Task<(string txId, Error error)> SendAsync(
+        protected override JObject CreateTransferParams(
             string from,
             string to,
-            decimal amount,
-            string tokenContract,
-            int tokenId,
-            int fee,
-            bool useDefaultFee = true,
-            CancellationToken cancellationToken = default)
+            decimal amount)
         {
-            var fa2Config = Fa2Config;
-            var xtzConfig = XtzConfig;
-
-            var fromAddress = await DataRepository
-                .GetTezosTokenAddressAsync(TokenType, _tokenContract, _tokenId, from)
-                .ConfigureAwait(false);
-
-            var digitsMultiplier = (decimal)Math.Pow(10, fromAddress.TokenBalance.Decimals);
-
-            var availableBalance = fromAddress.AvailableBalance() * digitsMultiplier;
-
-            if (availableBalance < amount)
-                return (
-                    txId: null,
-                    error: new Error(
-                        code: Errors.InsufficientFunds,
-                        description: $"Insufficient tokens. " +
-                            $"Available: {fromAddress.AvailableBalance()}. " +
-                            $"Required: {amount}."));
-
-            var xtzAddress = await DataRepository
-                .GetWalletAddressAsync(xtzConfig.Name, from)
-                .ConfigureAwait(false);
-
-            var isRevealed = await _tezosAccount
-                .IsRevealedSourceAsync(from, cancellationToken)
-                .ConfigureAwait(false);
-
-            var storageFeeInMtz = (fa2Config.TransferStorageLimit - fa2Config.ActivationStorage) * fa2Config.StorageFeeMultiplier;
-
-            var feeInMtz = useDefaultFee
-                ? fa2Config.TransferFee + (isRevealed ? 0 : fa2Config.RevealFee) + storageFeeInMtz
-                : fee;
-
-            var availableBalanceInTz = xtzAddress.AvailableBalance().ToMicroTez() - feeInMtz - xtzConfig.MicroTezReserve;
-
-            if (availableBalanceInTz < 0)
-                return (
-                    txId: null,
-                    error: new Error(
-                        code: Errors.InsufficientFunds,
-                        description: $"Insufficient funds to pay fee for address {from}. " +
-                            $"Available: {xtzAddress.AvailableBalance()}. " +
-                            $"Required: {feeInMtz + xtzConfig.MicroTezReserve}"));
-
-            Log.Debug("Send {@amount} tokens from address {@address} with available balance {@balance}",
-                amount,
-                from,
-                fromAddress.AvailableBalance());
-
-            var storageLimit = Math.Max(fa2Config.TransferStorageLimit - fa2Config.ActivationStorage, 0); // without activation storage fee
-
-            var tx = new TezosTransaction
-            {
-                Currency     = xtzConfig.Name,
-                CreationTime = DateTime.UtcNow,
-                From         = from,
-                To           = tokenContract,
-                Fee          = feeInMtz,
-                GasLimit     = fa2Config.TransferGasLimit,
-                StorageLimit = storageLimit,
-                Params       = CreateTransferParams(tokenId, from, to, amount),
-                Type         = BlockchainTransactionType.Output | BlockchainTransactionType.TokenCall,
-
-                UseRun              = useDefaultFee,
-                UseSafeStorageLimit = true,
-                UseOfflineCounter   = true
-            };
-
-            using var addressLock = await _tezosAccount.AddressLocker
-                .GetLockAsync(from, cancellationToken)
-                .ConfigureAwait(false);
-
-            // temporary fix: check operation sequence
-            await TezosOperationsSequencer
-                .WaitAsync(from, _tezosAccount, cancellationToken)
-                .ConfigureAwait(false);
-
-            using var securePublicKey = Wallet.GetPublicKey(
-                currency: xtzConfig,
-                keyIndex: fromAddress.KeyIndex,
-                keyType: fromAddress.KeyType);
-
-            // fill operation
-            var (fillResult, isRunSuccess, hasReveal) = await tx
-                .FillOperationsAsync(
-                    securePublicKey: securePublicKey,
-                    tezosConfig: xtzConfig,
-                    headOffset: TezosConfig.HeadOffset,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            var signResult = await Wallet
-                .SignAsync(tx, xtzAddress, xtzConfig, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!signResult)
-                return (
-                    txId: null,
-                    error: new Error(
-                        code: Errors.TransactionSigningError,
-                        description: "Transaction signing error"));
-
-            var broadcastResult = await xtzConfig.BlockchainApi
-                .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            if (broadcastResult.HasError)
-                return (txId: null, error: broadcastResult.Error);
-
-            var txId = broadcastResult.Value;
-
-            if (txId == null)
-                return (
-                    txId: null,
-                    error: new Error(
-                        code: Errors.TransactionBroadcastError,
-                        description: "Transaction Id is null"));
-
-            Log.Debug("Transaction successfully sent with txId: {@id}", txId);
-
-            await _tezosAccount
-                .UpsertTransactionAsync(
-                    tx: tx,
-                    updateBalance: false,
-                    notifyIfUnconfirmed: true,
-                    notifyIfBalanceUpdated: false,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            return (txId, error: null);
+            return CreateTransferParams(_tokenId, from, to, amount);
         }
-
-        public override async Task<(decimal fee, bool isEnougth)> EstimateTransferFeeAsync(
-            string from,
-            CancellationToken cancellationToken = default)
-        {
-            var fa2Config = Fa2Config;
-            var xtzConfig = XtzConfig;
-
-            var xtzAddress = await _tezosAccount
-                .GetAddressAsync(from, cancellationToken)
-                .ConfigureAwait(false);
-
-            var isRevealed = xtzAddress?.Address != null && await _tezosAccount
-                .IsRevealedSourceAsync(xtzAddress.Address, cancellationToken)
-                .ConfigureAwait(false);
-
-            var storageFeeInMtz = (fa2Config.TransferStorageLimit - fa2Config.ActivationStorage) * fa2Config.StorageFeeMultiplier;
-
-            var feeInMtz = fa2Config.TransferFee + (isRevealed ? 0 : fa2Config.RevealFee) + storageFeeInMtz + xtzConfig.MicroTezReserve;
-
-            var availableBalanceInTez = xtzAddress != null
-                ? xtzAddress.AvailableBalance()
-                : 0m;
-
-            return (
-                fee: feeInMtz.ToTez(),
-                isEnougth: availableBalanceInTez >= feeInMtz.ToTez());
-        }
-
-        #endregion Common
-
-        #region Helpers
 
         private JObject CreateTransferParams(
             int tokenId,

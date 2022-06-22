@@ -1,8 +1,6 @@
 ﻿using System;
 using System.IO;
 
-using Microsoft.Extensions.Configuration;
-
 using Atomex.Api;
 using Atomex.Api.Proto;
 using Atomex.Core;
@@ -13,17 +11,10 @@ namespace Atomex.Web
 {
     public class ExchangeWebClient : BinaryWebSocketClient, ISwapClient
     {
-        private const string ExchangeUrlKey = "Exchange:Url";
-
         public event EventHandler<OrderEventArgs> OrderReceived;
         public event EventHandler<SwapEventArgs> SwapReceived;
 
-        public ExchangeWebClient(IConfiguration configuration, ProtoSchemes schemes)
-            : this(configuration[ExchangeUrlKey], schemes)
-        {
-        }
-
-        private ExchangeWebClient(string url, ProtoSchemes schemes)
+        public ExchangeWebClient(string url, ProtoSchemes schemes)
             : base(url, schemes)
         {
             AddHandler(Schemes.Order.MessageId, OnOrderHandler);

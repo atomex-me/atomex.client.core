@@ -23,5 +23,12 @@ namespace Atomex.Blockchain.Abstract
             int attempts = 10,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);
+
+        Task<Result<bool>> IsFa2TokenOperatorActiveAsync(
+            string holderAddress,
+            string spenderAddress,
+            string tokenContractAddress,
+            int tokenId,
+            CancellationToken cancellationToken = default);
     }
 }
