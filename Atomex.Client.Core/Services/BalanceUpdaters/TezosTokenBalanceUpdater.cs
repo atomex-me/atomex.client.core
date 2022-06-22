@@ -131,7 +131,7 @@ namespace Atomex.Services.BalanceUpdaters
                                         .ConfigureAwait(false);
 
                     _account
-                        .GetTezosTokenAccount<TezosTokenAccount>(@event.Standard, @event.Contract, @event.TokenId)
+                        .GetTezosTokenAccount<TezosTokenAccount>(@event.Standard, @event.Contract, (int)@event.TokenId)
                         .ReloadBalances();
                 }
                 else
