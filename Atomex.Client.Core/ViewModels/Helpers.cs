@@ -183,7 +183,7 @@ namespace Atomex.ViewModels
                         Status = SwapDetailingStatus.Exchanging,
                         IsCompleted = false,
                         Description =
-                            $"Waiting for confirmation counterparty {swap.PurchasedCurrency}",
+                            $"Waiting for confirmation counterparty {purchaseCurrencyConfig.DisplayedName}",
                         ExplorerLink = new DetailsLink
                         {
                             Text = "payment transaction",
