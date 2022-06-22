@@ -133,7 +133,8 @@ namespace Atomex.Swaps
 
         private ICurrencySwap GetCurrencySwap(string currency) => _currencySwaps[currency];
 
-        public async Task<Error> HandleSwapAsync(Swap receivedSwap)
+        public async Task<Error> HandleSwapAsync(
+            Swap receivedSwap)
         {
             if (!IsRunning)
                 throw new InvalidOperationException("SwapManager not started");
@@ -151,25 +152,16 @@ namespace Atomex.Swaps
                     .GetSwapByIdAsync(receivedSwap.Id)
                     .ConfigureAwait(false);
 
-                if (swap == null) // is new swap
+                if (receivedSwap.IsInitiator)
                 {
-                    swap = await AddSwapAsync(receivedSwap, _cts.Token)
+                    return await HandleSwapByInitiatorAsync(swap, receivedSwap, _cts.Token)
                         .ConfigureAwait(false);
-
-                    if (swap != null && swap.IsInitiator)
-                        await InitiateSwapAsync(swap, _cts.Token)
-                            .ConfigureAwait(false);
                 }
-                else // is exists swap
+                else
                 {
-                    var error = await HandleExistingSwapAsync(swap, receivedSwap, _cts.Token)
+                    return await HandleSwapByAcceptorAsync(swap, receivedSwap, _cts.Token)
                         .ConfigureAwait(false);
-
-                    if (error != null)
-                        return error;
                 }
-
-                return null;
             }
             catch (Exception e)
             {
@@ -179,6 +171,111 @@ namespace Atomex.Swaps
             {
                 UnlockSwap(receivedSwap.Id);
             }
+        }
+
+        private async Task<Error> HandleSwapByInitiatorAsync(
+            Swap swap,
+            Swap receivedSwap,
+            CancellationToken cancellationToken = default)
+        {
+            if (swap == null && (receivedSwap.Status == SwapStatus.Empty || receivedSwap.Status == SwapStatus.Accepted))
+            {
+                swap = await AddSwapAsync(receivedSwap, _cts.Token)
+                    .ConfigureAwait(false);
+
+                if (receivedSwap.Status == SwapStatus.Accepted)
+                {
+                    var error = await CheckAndSaveAcceptorRequisitesAsync(swap, receivedSwap, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (error != null)
+                        return error;
+
+                    await UpdateStatusAsync(swap, SwapStatus.Accepted, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                await FillAndSendInitiatorRequisitesAsync(swap, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else if (swap != null && swap.Status == SwapStatus.Empty && receivedSwap.Status == SwapStatus.Accepted)
+            {
+                var error = await CheckAndSaveAcceptorRequisitesAsync(swap, receivedSwap, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (error != null)
+                    return error;
+
+                await UpdateStatusAsync(swap, SwapStatus.Accepted, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else if (swap != null && swap.Status == SwapStatus.Empty && receivedSwap.Status == SwapStatus.Initiated)
+            {
+                await UpdateStatusAsync(swap, SwapStatus.Initiated, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else if (swap != null && (swap.Status == SwapStatus.Empty || swap.Status == SwapStatus.Initiated || swap.Status == SwapStatus.Accepted) &&
+                     receivedSwap.Status == (SwapStatus.Initiated | SwapStatus.Accepted))
+            {
+                await UpdateStatusAsync(swap, SwapStatus.Initiated | SwapStatus.Accepted, cancellationToken)
+                    .ConfigureAwait(false);
+
+                await InitiateSwapAsync(swap, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            return null; // no error
+        }
+
+        private async Task<Error> HandleSwapByAcceptorAsync(
+            Swap swap,
+            Swap receivedSwap,
+            CancellationToken cancellationToken = default)
+        {
+            if ((swap == null || (swap != null && swap.Status == SwapStatus.Empty)) &&
+                (receivedSwap.Status == SwapStatus.Empty || receivedSwap.Status == SwapStatus.Initiated))
+            {
+                if (swap == null)
+                    swap = await AddSwapAsync(receivedSwap, _cts.Token)
+                        .ConfigureAwait(false);
+
+                if (receivedSwap.Status == SwapStatus.Initiated)
+                {
+                    var error = await CheckAndSaveInitiatorRequisitesAsync(swap, receivedSwap, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (error != null)
+                        return error;
+
+                    await UpdateStatusAsync(swap, SwapStatus.Initiated, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    await FillAndSendAcceptorRequisitesAsync(swap, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
+            else if (swap != null && swap.Status == SwapStatus.Initiated && receivedSwap.Status == (SwapStatus.Initiated | SwapStatus.Accepted))
+            {
+                await UpdateStatusAsync(swap, SwapStatus.Initiated | SwapStatus.Accepted, cancellationToken)
+                    .ConfigureAwait(false);
+
+                await GetCurrencySwap(swap.PurchasedCurrency)
+                    .StartPartyPaymentControlAsync(swap, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            return null; // no error
+        }
+
+        private async Task UpdateStatusAsync(
+            Swap swap,
+            SwapStatus status,
+            CancellationToken cancellationToken = default)
+        {
+            swap.Status = status;
+
+            await UpdateSwapAsync(swap, SwapStateFlags.Empty, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         private async Task<Swap> AddSwapAsync(
@@ -196,21 +293,27 @@ namespace Atomex.Swaps
 
             var swap = new Swap
             {
-                Id = receivedSwap.Id,
-                OrderId = receivedSwap.OrderId,
-                Status = receivedSwap.Status,
-                TimeStamp = receivedSwap.TimeStamp,
-                Symbol = receivedSwap.Symbol,
-                Side = receivedSwap.Side,
-                Price = receivedSwap.Price,
-                Qty = receivedSwap.Qty,
-                IsInitiative = receivedSwap.IsInitiative,
-                MakerNetworkFee = order.MakerNetworkFee,
+                Id                = receivedSwap.Id,
+                OrderId           = receivedSwap.OrderId,
+                Status            = receivedSwap.Status,
+                TimeStamp         = receivedSwap.TimeStamp,
+                Symbol            = receivedSwap.Symbol,
+                Side              = receivedSwap.Side,
+                Price             = receivedSwap.Price,
+                Qty               = receivedSwap.Qty,
+                IsInitiative      = receivedSwap.IsInitiative,
+                MakerNetworkFee   = order.MakerNetworkFee,
 
-                FromAddress = order.FromAddress,
-                FromOutputs = order.FromOutputs,
-                ToAddress = order.ToAddress,
-                RedeemFromAddress = order.RedeemFromAddress
+                FromAddress       = order.FromAddress,
+                FromOutputs       = order.FromOutputs,
+                ToAddress         = order.ToAddress,
+                RedeemFromAddress = order.RedeemFromAddress,
+
+                // safe counterparty requisites if exists
+                PartyAddress         = receivedSwap.PartyAddress,
+                PartyRefundAddress   = receivedSwap.PartyRefundAddress,
+                PartyRewardForRedeem = receivedSwap.PartyRewardForRedeem,
+                PartyRedeemScript    = receivedSwap.PartyRedeemScript
             };
 
             var result = await _account
@@ -254,11 +357,11 @@ namespace Atomex.Swaps
             }, cancellationToken);
         }
 
-        private async Task InitiateSwapAsync(
+        private async Task FillAndSendInitiatorRequisitesAsync(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            Log.Debug("Initiate swap {@swapId}", swap.Id);
+            Log.Debug("Fill and send initiator requisites for swap {@swapId}", swap.Id);
 
             var soldCurrency = _account.Currencies.GetByName(swap.SoldCurrency);
 
@@ -325,99 +428,11 @@ namespace Atomex.Swaps
                 swap.RefundAddress);
         }
 
-        private async Task<Error> HandleExistingSwapAsync(
+        private async Task FillAndSendAcceptorRequisitesAsync(
             Swap swap,
-            Swap receivedSwap,
             CancellationToken cancellationToken = default)
         {
-            Error error = null;
-
-            try
-            {
-                var swapReadyForFirstTransaction = (swap.Status.HasFlag(SwapStatus.Initiated) && IsAccept(swap, receivedSwap))
-                    || (swap.Status.HasFlag(SwapStatus.Accepted) && IsInitiate(swap, receivedSwap));
-                if (swap.IsAcceptor && swapReadyForFirstTransaction)
-                {
-                    // handle initiate by acceptor
-                    error = await HandleInitiateAsync(swap, receivedSwap, cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                else if (swap.IsInitiator && swapReadyForFirstTransaction)
-                {
-                    // handle accept by initiator
-                    error = await HandleAcceptAsync(swap, receivedSwap, cancellationToken)
-                        .ConfigureAwait(false);
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Existing swap handle error");
-            }
-
-            // update swap status
-            swap.Status = receivedSwap.Status;
-
-            await UpdateSwapAsync(swap, SwapStateFlags.Empty, cancellationToken)
-                .ConfigureAwait(false);
-
-            return error;
-        }
-
-        private bool IsInitiate(Swap swap, Swap receivedSwap) =>
-            swap.IsStatusSet(receivedSwap.Status, SwapStatus.Initiated);
-
-        private bool IsAccept(Swap swap, Swap receivedSwap) =>
-            swap.IsStatusSet(receivedSwap.Status, SwapStatus.Accepted);
-
-        private async Task<Error> HandleInitiateAsync(
-            Swap swap,
-            Swap receivedSwap,
-            CancellationToken cancellationToken = default)
-        {
-            if (DateTime.UtcNow > swap.TimeStamp.ToUniversalTime() + DefaultCredentialsExchangeTimeout)
-            {
-                Log.Error("Handle initiate after swap {@swap} timeout", swap.Id);
-
-                swap.StateFlags |= SwapStateFlags.IsCanceled;
-
-                await UpdateSwapAsync(swap, SwapStateFlags.IsCanceled, cancellationToken)
-                    .ConfigureAwait(false);
-
-                return null; // no error
-            }
-
-            // check secret hash
-            if (swap.SecretHash != null &&
-                !swap.SecretHash.SequenceEqual(receivedSwap.SecretHash))
-                return new Error(Errors.InvalidSecretHash, $"Secret hash does not match the one already received for swap {swap.Id}");
-
-            if (receivedSwap.SecretHash == null ||
-                receivedSwap.SecretHash.Length != CurrencySwap.DefaultSecretHashSize)
-                return new Error(Errors.InvalidSecretHash, $"Incorrect secret hash length for swap {swap.Id}");
-
-            Log.Debug("Secret hash {@hash} successfully received", receivedSwap.SecretHash.ToHexString());
-
-            swap.SecretHash = receivedSwap.SecretHash;
-
-            await UpdateSwapAsync(swap, SwapStateFlags.HasSecretHash, cancellationToken)
-                .ConfigureAwait(false);
-
-            // check party address
-            if (receivedSwap.PartyAddress == null)
-                return new Error(Errors.InvalidWallets, $"Incorrect party address for swap {swap.Id}");
-
-            // check party reward for redeem
-            if (receivedSwap.RewardForRedeem < 0)
-                return new Error(Errors.InvalidRewardForRedeem, $"Incorrect reward for redeem for swap {swap.Id}");
-
-            if (swap.PartyAddress == null)
-                swap.PartyAddress = receivedSwap.PartyAddress;
-
-            if (swap.PartyRewardForRedeem == 0 && receivedSwap.PartyRewardForRedeem > 0)
-                swap.PartyRewardForRedeem = receivedSwap.PartyRewardForRedeem;
-
-            if (swap.PartyRefundAddress == null)
-                swap.PartyRefundAddress = receivedSwap.PartyRefundAddress;
+            Log.Debug("Fill and send acceptor requisites for swap {@swapId}", swap.Id);
 
             var redeemFromWalletAddress = swap.RedeemFromAddress != null
                 ? await _account
@@ -461,22 +476,69 @@ namespace Atomex.Swaps
                 swap.ToAddress,
                 swap.RewardForRedeem,
                 swap.RefundAddress);
-
-            await GetCurrencySwap(swap.PurchasedCurrency)
-                .StartPartyPaymentControlAsync(swap, cancellationToken)
-                .ConfigureAwait(false);
-
-            return null; // no error
         }
 
-        private async Task<Error> HandleAcceptAsync(
+        private async Task<Error> CheckAndSaveInitiatorRequisitesAsync(
             Swap swap,
             Swap receivedSwap,
             CancellationToken cancellationToken = default)
         {
             if (DateTime.UtcNow > swap.TimeStamp.ToUniversalTime() + DefaultCredentialsExchangeTimeout)
             {
-                Log.Error("Handle accept after swap {@swap} timeout", swap.Id);
+                Log.Error("Handle initiator requisites after swap {@swap} timeout", swap.Id);
+
+                swap.StateFlags |= SwapStateFlags.IsCanceled;
+
+                await UpdateSwapAsync(swap, SwapStateFlags.IsCanceled, cancellationToken)
+                    .ConfigureAwait(false);
+
+                return null; // no error
+            }
+
+            // check secret hash
+            if (swap.SecretHash != null &&
+                !swap.SecretHash.SequenceEqual(receivedSwap.SecretHash))
+                return new Error(Errors.InvalidSecretHash, $"Secret hash does not match the one already received for swap {swap.Id}");
+
+            if (receivedSwap.SecretHash == null ||
+                receivedSwap.SecretHash.Length != CurrencySwap.DefaultSecretHashSize)
+                return new Error(Errors.InvalidSecretHash, $"Incorrect secret hash length for swap {swap.Id}");
+
+            Log.Debug("Secret hash {@hash} successfully received", receivedSwap.SecretHash.ToHexString());
+
+            swap.SecretHash = receivedSwap.SecretHash;
+
+            await UpdateSwapAsync(swap, SwapStateFlags.HasSecretHash, cancellationToken)
+                .ConfigureAwait(false);
+
+            // check party address
+            if (receivedSwap.PartyAddress == null)
+                return new Error(Errors.InvalidWallets, $"Incorrect party address for swap {swap.Id}");
+
+            // check party reward for redeem
+            if (receivedSwap.RewardForRedeem < 0)
+                return new Error(Errors.InvalidRewardForRedeem, $"Incorrect reward for redeem for swap {swap.Id}");
+
+            if (swap.PartyAddress == null)
+                swap.PartyAddress = receivedSwap.PartyAddress;
+
+            if (swap.PartyRewardForRedeem == 0 && receivedSwap.PartyRewardForRedeem > 0)
+                swap.PartyRewardForRedeem = receivedSwap.PartyRewardForRedeem;
+
+            if (swap.PartyRefundAddress == null)
+                swap.PartyRefundAddress = receivedSwap.PartyRefundAddress;
+
+            return null; // no error
+        }
+
+        private async Task<Error> CheckAndSaveAcceptorRequisitesAsync(
+            Swap swap,
+            Swap receivedSwap,
+            CancellationToken cancellationToken = default)
+        {
+            if (DateTime.UtcNow > swap.TimeStamp.ToUniversalTime() + DefaultCredentialsExchangeTimeout)
+            {
+                Log.Error("Handle acceptpr requisites after swap {@swap} timeout", swap.Id);
 
                 swap.StateFlags |= SwapStateFlags.IsCanceled;
 
@@ -505,6 +567,13 @@ namespace Atomex.Swaps
             await UpdateSwapAsync(swap, SwapStateFlags.Empty, cancellationToken)
                 .ConfigureAwait(false);
 
+            return null; // no error
+        }
+
+        private async Task InitiateSwapAsync(
+            Swap swap,
+            CancellationToken cancellationToken)
+        {
             // broadcast initiator payment
             await GetCurrencySwap(swap.SoldCurrency)
                 .PayAsync(swap, cancellationToken)
@@ -521,8 +590,6 @@ namespace Atomex.Swaps
             await GetCurrencySwap(swap.PurchasedCurrency)
                 .StartPartyPaymentControlAsync(swap, cancellationToken)
                 .ConfigureAwait(false);
-
-            return null; // no error
         }
 
         private Task RestoreSwapsAsync(
@@ -693,8 +760,8 @@ namespace Atomex.Swaps
                 {
                     if (!swap.Status.HasFlag(SwapStatus.Initiated)) // not initiated
                     {
-                        // initiate
-                        await InitiateSwapAsync(swap)
+                        // send initiator's requisites
+                        await FillAndSendInitiatorRequisitesAsync(swap)
                             .ConfigureAwait(false);
                     }
                     else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated but not accepted
@@ -707,20 +774,7 @@ namespace Atomex.Swaps
                              swap.Status.HasFlag(SwapStatus.Accepted))
                     {
                         // broadcast initiator payment again
-                        await GetCurrencySwap(swap.SoldCurrency)
-                            .PayAsync(swap)
-                            .ConfigureAwait(false);
-
-                        if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
-                        {
-                            // start redeem control async
-                            await GetCurrencySwap(swap.SoldCurrency)
-                                .StartWaitForRedeemAsync(swap)
-                                .ConfigureAwait(false);
-                        }
-
-                        await GetCurrencySwap(swap.PurchasedCurrency)
-                            .StartPartyPaymentControlAsync(swap)
+                        await InitiateSwapAsync(swap, cancellationToken)
                             .ConfigureAwait(false);
                     }
                 }

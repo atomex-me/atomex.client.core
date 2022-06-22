@@ -754,7 +754,7 @@ namespace Atomex.Services
                     ? Hex.FromString(swapDto.SecretHash)
                     : null,
                 Status = swapStatus,
-
+                OrderId = swapDto.User?.Trades?.FirstOrDefault()?.OrderId ?? 0L,
                 TimeStamp = swapDto.TimeStamp,
                 Symbol = swapDto.Symbol,
                 Side = swapDto.Side,
@@ -764,10 +764,11 @@ namespace Atomex.Services
 
                 ToAddress = swapDto.User?.Requisites?.ReceivingAddress,
                 RewardForRedeem = swapDto.User?.Requisites?.RewardForRedeem ?? 0m,
-                OrderId = swapDto.User?.Trades?.FirstOrDefault()?.OrderId ?? 0L,
+                RefundAddress = swapDto.User?.Requisites?.RefundAddress,
 
                 PartyAddress = swapDto.CounterParty?.Requisites?.ReceivingAddress,
                 PartyRewardForRedeem = swapDto.CounterParty?.Requisites?.RewardForRedeem ?? 0m,
+                PartyRefundAddress = swapDto.CounterParty?.Requisites?.RefundAddress
             };
         }
 

@@ -4,6 +4,8 @@ using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Serilog;
+
 using Atomex.Core;
 
 namespace Atomex.Common
@@ -109,6 +111,11 @@ namespace Atomex.Common
             RequestLimitControl requestLimitControl = null,
             CancellationToken cancellationToken = default)
         {
+            Log.Debug("Send {@method} request: {@baseUri}{@request}",
+                method.ToString(),
+                baseUri,
+                relativeUri);
+
             var requestUri = new Uri(Url.Combine(baseUri, relativeUri));
 
             using var request = new HttpRequestMessage(method, requestUri);

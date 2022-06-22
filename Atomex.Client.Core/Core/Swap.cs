@@ -42,13 +42,7 @@ namespace Atomex.Core
     {
         Empty = 0,
         Initiated = 0x01,
-        Accepted = 0x02,
-        InitiatorPaymentReceived = 0x04,
-        AcceptorPaymentReceived = 0x08,
-        InitiatorRedeemReceived = 0x10,
-        AcceptorRedeemReceived = 0x20,
-        InitiatorRefundReceived = 0x40,
-        AcceptorRefundReceived = 0x80
+        Accepted = 0x02
     }
 
     public class Swap
@@ -138,9 +132,6 @@ namespace Atomex.Core
             get => _partyPaymentTx;
             set { _partyPaymentTx = value; if (_partyPaymentTx != null) StateFlags |= SwapStateFlags.HasPartyPayment; }
         }
-
-        public bool IsStatusSet(SwapStatus status, Enum flag) =>
-            !Status.HasFlag(flag) && status.HasFlag(flag);
 
         public override string ToString() =>
             $"Id: {Id}, " +
