@@ -19,6 +19,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.EthereumTokens;
 using Error = Atomex.Core.Error;
+using System.Net;
 
 namespace Atomex.Blockchain.Ethereum
 {
@@ -622,7 +623,8 @@ namespace Atomex.Blockchain.Ethereum
                     .WaitAsync(cancellationToken)
                     .ConfigureAwait(false);
 
-                var txIdResult = await HttpHelper.PostAsyncResult<string>(
+                var txIdResult = await HttpHelper
+                    .PostAsyncResult<string>(
                        baseUri: BaseUrl,
                        requestUri: requestUri,
                        content: null,
@@ -654,6 +656,12 @@ namespace Atomex.Blockchain.Ethereum
                     // received an error, but there is already a transaction id
                     ethTx.Id = txId;
                     return txId;
+                }
+                else if (txIdResult.HasError && txIdResult.Error.Code == (int)HttpStatusCode.Forbidden)
+                {
+                    // something wrong with EtherScan, try again
+                    await Task.Delay(delayIntervalMs, cancellationToken)
+                        .ConfigureAwait(false);
                 }
                 else if (txIdResult.HasError)
                 {
