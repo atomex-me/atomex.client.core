@@ -53,9 +53,6 @@ namespace Atomex.ViewModels
                 var tezosAddresses = unspentTezosAddresses
                     .Concat(new[] { freeTezosAddress });
 
-                var tezosAddressesDictionary = tezosAddresses
-                    .ToDictionary(w => w.Address, w => w);
-
                 var tokenAddresses = (await tezosAccount.DataRepository
                     .GetTezosTokenAddressesByContractAsync(tokenContract)
                     .ConfigureAwait(false))
@@ -94,7 +91,7 @@ namespace Atomex.ViewModels
                         }
                         else
                         {
-                            tezosAddress = null;
+                            tezosAddress = tezosAddresses.FirstOrDefault(a => a.Address == w.Address) ?? null;
                             tokenAddress = w;
                         }
 
@@ -112,12 +109,13 @@ namespace Atomex.ViewModels
                         return new WalletAddressViewModel
                         {
                             WalletAddress    = tokenAddress,
-                            Address          = w.Address,
+                            Address          = w?.Address,
                             AvailableBalance = tezosBalance,
                             CurrencyFormat   = currency.Format,
                             CurrencyCode     = currency.DisplayedName,
                             IsFreeAddress    = isFreeAddress,
                             ShowTokenBalance = showTokenBalance,
+                            HasActivity      = w?.HasActivity ?? false,
                             TokenBalance     = tokenBalance,
                             TokenFormat      = tokenFormat,
                             TokenCode        = tokenCode,
@@ -127,19 +125,20 @@ namespace Atomex.ViewModels
                     });
             }
 
-            // get all nonzero addresses
-            var activeAddresses = (await account
-                .GetUnspentAddressesAsync(currency.Name)
+            var addresses = (await account.GetCurrencyAccount(currency.Name)
+                .GetAddressesAsync()
                 .ConfigureAwait(false))
                 .ToList();
 
-            // get free external address
             var freeAddress = await account
                 .GetFreeExternalAddressAsync(currency.Name)
                 .ConfigureAwait(false);
 
-            return activeAddresses
-                .Concat(new[] { freeAddress })
+            if (!addresses.Any(w => w.Address == freeAddress.Address))
+                addresses.Add(freeAddress);
+
+
+            return addresses
                 .GroupBy(w => w.Address)
                 .Select(g =>
                 {
