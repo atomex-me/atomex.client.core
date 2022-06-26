@@ -38,7 +38,6 @@ namespace Atomex.Wallet.Tezos
         protected TezosTokenConfig TokenConfig => Currencies.Get<TezosTokenConfig>(Currency);
 
         public TezosTokenAccount(
-            string currency,
             string tokenType,
             string tokenContract,
             int tokenId,
@@ -47,7 +46,6 @@ namespace Atomex.Wallet.Tezos
             IAccountDataRepository dataRepository,
             TezosAccount tezosAccount)
         {
-            Currency       = currency ?? throw new ArgumentNullException(nameof(currency));
             TokenType      = tokenType ?? throw new ArgumentNullException(nameof(tokenType));
             Currencies     = currencies ?? throw new ArgumentNullException(nameof(currencies));
             Wallet         = wallet ?? throw new ArgumentNullException(nameof(wallet));
@@ -56,6 +54,10 @@ namespace Atomex.Wallet.Tezos
             _tokenContract = tokenContract ?? throw new ArgumentNullException(nameof(tokenContract));
             _tokenId       = tokenId;
             _tezosAccount  = tezosAccount ?? throw new ArgumentNullException(nameof(tezosAccount));
+
+            Currency = Currencies
+                .Where(c => c is TezosTokenConfig token && token.TokenContractAddress == tokenContract && token.TokenId == tokenId)
+                .FirstOrDefault()?.Name ?? tokenType;
 
             ReloadBalances();
         }
@@ -587,10 +589,8 @@ namespace Atomex.Wallet.Tezos
             uint index,
             int keyType)
         {
-            var currency = Currencies.GetByName(Currency);
-
             var walletAddress = Wallet.GetAddress(
-                currency: currency,
+                currency: TokenConfig,
                 account: account,
                 chain: chain,
                 index: index,
@@ -598,6 +598,8 @@ namespace Atomex.Wallet.Tezos
 
             if (walletAddress == null)
                 return null;
+
+            walletAddress.Currency = TokenType;
 
             walletAddress.TokenBalance = new TokenBalance
             {

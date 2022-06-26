@@ -82,7 +82,6 @@ namespace Atomex.Wallet
                     dataRepository),
 
                 "TZBTC" or "KUSD" => new Fa12Account(
-                    currency: currency,
                     tokenContract: currencies
                         .Get<Fa12Config>(currency)
                         .TokenContractAddress,
@@ -93,7 +92,6 @@ namespace Atomex.Wallet
                     tezosAccount: baseChainAccount as TezosAccount),
 
                 "USDT_XTZ" => new Fa2Account(
-                    currency: currency,
                     tokenContract: currencies
                         .Get<Fa2Config>(currency)
                         .TokenContractAddress,
@@ -126,7 +124,6 @@ namespace Atomex.Wallet
             return tokenType switch
             {
                 "FA12" or "KUSD" or "TZBTC" => new Fa12Account(
-                    currency: tokenType,
                     tokenContract: tokenContract,
                     tokenId: tokenId,
                     currencies: currencies,
@@ -135,7 +132,6 @@ namespace Atomex.Wallet
                     tezosAccount: tezosAccount),
 
                 "FA2" or "USDT_XTZ" => new Fa2Account(
-                    currency: tokenType,
                     tokenContract: tokenContract,
                     tokenId: tokenId,
                     currencies: currencies,

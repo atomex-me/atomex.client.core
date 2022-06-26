@@ -101,7 +101,7 @@ namespace Atomex.LiteDb
                         Query.EQ(nameof(Order.Status), OrderStatus.Canceled.ToString()),
                         Query.EQ(nameof(Order.LastQty), 0m)));
 
-                Log.Debug("{@count} cacneled orders were removed from db", removedOrdersCount);
+                Log.Debug("{@count} canceled orders were removed from db", removedOrdersCount);
             }
 
             LiteDbMigrations.Shrink(db, sessionPassword);
