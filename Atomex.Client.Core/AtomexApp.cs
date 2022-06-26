@@ -107,14 +107,14 @@ namespace Atomex
             {
                 StopAtomexClient();
 
-                AtomexClient.SwapReceived -= AtomexClient_SwapReceived;
+                AtomexClient.SwapUpdated -= AtomexClient_SwapReceived;
             }
 
             AtomexClient = atomexClient;
 
             if (AtomexClient != null)
             {
-                AtomexClient.SwapReceived += AtomexClient_SwapReceived;
+                AtomexClient.SwapUpdated += AtomexClient_SwapReceived;
 
                 // create swap manager
                 SwapManager = new SwapManager(

@@ -16,8 +16,8 @@ namespace Atomex.Services.Abstract
         event EventHandler<AtomexClientServiceEventArgs> ServiceDisconnected;
         event EventHandler<AtomexClientServiceEventArgs> ServiceAuthenticated;
         event EventHandler<AtomexClientErrorEventArgs> Error;
-        event EventHandler<OrderEventArgs> OrderReceived;
-        event EventHandler<SwapEventArgs> SwapReceived;
+        event EventHandler<OrderEventArgs> OrderUpdated;
+        event EventHandler<SwapEventArgs> SwapUpdated;
         event EventHandler<MarketDataEventArgs> QuotesUpdated;
 
         IAccount Account { get; }

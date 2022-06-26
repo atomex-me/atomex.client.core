@@ -392,6 +392,9 @@ namespace Atomex.Wallet
         public Order GetOrderById(long id) =>
             DataRepository.GetOrderById(id);
 
+        public Task<bool> RemoveOrderByIdAsync(long id) =>
+            DataRepository.RemoveOrderByIdAsync(id);
+
         #endregion Orders
 
         #region Swaps

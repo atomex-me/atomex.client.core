@@ -43,15 +43,14 @@ namespace Atomex.Services
         public event EventHandler<AtomexClientServiceEventArgs> ServiceDisconnected;
         public event EventHandler<AtomexClientServiceEventArgs> ServiceAuthenticated;
         public event EventHandler<AtomexClientErrorEventArgs> Error;
-        public event EventHandler<OrderEventArgs> OrderReceived;
-        public event EventHandler<SwapEventArgs> SwapReceived;
+        public event EventHandler<OrderEventArgs> OrderUpdated;
+        public event EventHandler<SwapEventArgs> SwapUpdated;
         public event EventHandler<MarketDataEventArgs> QuotesUpdated;
 
-        public IAccount Account { get; private set; }
-        public IMarketDataRepository MarketDataRepository { get; private set; }
+        public IAccount Account { get; init; }
+        public IMarketDataRepository MarketDataRepository { get; init; }
         protected string AccountUserId => _accountUserIdLazy.Value;
-        private ISymbolsProvider SymbolsProvider { get; set; }
-
+        private readonly ISymbolsProvider _symbolsProvider;
         private readonly string _authTokenBaseUrl;
         private readonly string _exchangeUrl;
         private readonly string _marketDataUrl;
@@ -63,19 +62,23 @@ namespace Atomex.Services
         private Task _marketDataHeartBeatTask;
         private CancellationTokenSource _exchangeHeartBeatCts;
         private CancellationTokenSource _marketDataHeartBeatCts;
+        private readonly AtomexClientOptions _options;
 
         public WebSocketAtomexClient(
             string authTokenBaseUrl,
             string exchangeUrl,
             string marketDataUrl,
             IAccount account,
-            ISymbolsProvider symbolsProvider)
+            ISymbolsProvider symbolsProvider,
+            AtomexClientOptions options = default)
         {
-            _authTokenBaseUrl    = authTokenBaseUrl ?? throw new ArgumentNullException(nameof(authTokenBaseUrl));
-            _exchangeUrl         = exchangeUrl ?? throw new ArgumentNullException(nameof(exchangeUrl));
-            _marketDataUrl       = marketDataUrl ?? throw new ArgumentNullException(nameof(marketDataUrl));
-            Account              = account ?? throw new ArgumentNullException(nameof(account));
-            SymbolsProvider      = symbolsProvider ?? throw new ArgumentNullException(nameof(symbolsProvider));
+            Account = account ?? throw new ArgumentNullException(nameof(account));
+
+            _authTokenBaseUrl = authTokenBaseUrl ?? throw new ArgumentNullException(nameof(authTokenBaseUrl));
+            _exchangeUrl      = exchangeUrl ?? throw new ArgumentNullException(nameof(exchangeUrl));
+            _marketDataUrl    = marketDataUrl ?? throw new ArgumentNullException(nameof(marketDataUrl));
+            _symbolsProvider  = symbolsProvider ?? throw new ArgumentNullException(nameof(symbolsProvider));
+            _options          = options ?? AtomexClientOptions.DefaultOptions;
 
             MarketDataRepository = new MarketDataRepository();
             _accountUserIdLazy = new Lazy<string>(() => Account.GetUserId(DEFAULT_AUTHENTICATION_ACCOUNT_INDEX));
@@ -142,9 +145,11 @@ namespace Atomex.Services
 
             ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
 
-            CancelAllOrders(symbol: null, side: null, forAllConnections: true);
-            // set orders auto cancel flag, after disconnect all orders will be canceled
-            SetOrdersAutoCancel(autoCancel: true);
+            if (_options.CancelOrdersAfterConnect)
+                CancelAllOrders(symbol: null, side: null, forAllConnections: true);
+
+            if (_options.CancelOrdersAfterDisconnect) // set orders auto cancel flag, after disconnect all orders will be canceled
+                SetOrdersAutoCancel(autoCancel: true);
 
             ServiceAuthenticated?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
         }
@@ -586,24 +591,35 @@ namespace Atomex.Services
 
                 var order = new Order
                 {
-                    Id = data["id"].Value<long>(),
+                    Id            = data["id"].Value<long>(),
                     ClientOrderId = data["clientOrderId"].Value<string>(),
-                    Symbol = data["symbol"].Value<string>(),
-                    Side = (Side)Enum.Parse(typeof(Side), data["side"].Value<string>()),
-                    TimeStamp = data["timeStamp"].Value<DateTime>(),
-                    Price = data["price"].Value<decimal>(),
-                    Qty = data["qty"].Value<decimal>(),
-                    LeaveQty = data["leaveQty"].Value<decimal>(),
-                    LastPrice = totalQty != 0 ? totalAmount / totalQty : 0, // currently average price used
-                    LastQty = totalQty,                                   // currently total qty used
-                    Type = (OrderType)Enum.Parse(typeof(OrderType), data["type"].Value<string>()),
-                    Status = (OrderStatus)Enum.Parse(typeof(OrderStatus), data["status"].Value<string>())
+                    Symbol        = data["symbol"].Value<string>(),
+                    Side          = (Side)Enum.Parse(typeof(Side), data["side"].Value<string>()),
+                    TimeStamp     = data["timeStamp"].Value<DateTime>(),
+                    Price         = data["price"].Value<decimal>(),
+                    Qty           = data["qty"].Value<decimal>(),
+                    LeaveQty      = data["leaveQty"].Value<decimal>(),
+                    LastPrice     = totalQty != 0 ? totalAmount / totalQty : 0, // currently average price used
+                    LastQty       = totalQty,                                   // currently total qty used
+                    Type          = (OrderType)Enum.Parse(typeof(OrderType), data["type"].Value<string>()),
+                    Status        = (OrderStatus)Enum.Parse(typeof(OrderStatus), data["status"].Value<string>())
                 };
 
-                await Account.UpsertOrderAsync(order)
-                    .ConfigureAwait(false);
+                // remove canceled orders without trades from local db if StoreCanceledOrders options is true
+                if (order.Status == OrderStatus.Canceled && order.LastQty == 0 && !_options.StoreCanceledOrders)
+                {
+                    await Account
+                        .RemoveOrderByIdAsync(order.Id)
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    await Account
+                        .UpsertOrderAsync(order)
+                        .ConfigureAwait(false);
+                }
 
-                OrderReceived?.Invoke(
+                OrderUpdated?.Invoke(
                     sender: this,
                     e: new OrderEventArgs(order));
             }
@@ -672,7 +688,7 @@ namespace Atomex.Services
                 PartyRefundAddress   = data["counterParty"]?["requisites"]?["refundAddress"]?.Value<string>(),
             };
 
-            SwapReceived?.Invoke(
+            SwapUpdated?.Invoke(
                 sender: this,
                 e: new SwapEventArgs(swap));
         }
@@ -704,7 +720,7 @@ namespace Atomex.Services
 
             foreach (var symbolId in symbolsIds)
             {
-                var symbol = SymbolsProvider
+                var symbol = _symbolsProvider
                     .GetSymbols(Account.Network)
                     .GetByName(symbolId);
 
@@ -740,7 +756,7 @@ namespace Atomex.Services
 
                 MarketDataRepository.ApplySnapshot(snapshot);
 
-                var symbol = SymbolsProvider
+                var symbol = _symbolsProvider
                     .GetSymbols(Account.Network)
                     .GetByName(snapshot.Symbol);
 

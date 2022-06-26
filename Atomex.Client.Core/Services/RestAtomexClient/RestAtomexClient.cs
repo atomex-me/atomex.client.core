@@ -38,8 +38,8 @@ namespace Atomex.Services
         public event EventHandler<AtomexClientServiceEventArgs>? ServiceDisconnected;
         public event EventHandler<AtomexClientServiceEventArgs>? ServiceAuthenticated;
         public event EventHandler<AtomexClientErrorEventArgs>? Error;
-        public event EventHandler<OrderEventArgs>? OrderReceived;
-        public event EventHandler<SwapEventArgs>? SwapReceived;
+        public event EventHandler<OrderEventArgs>? OrderUpdated;
+        public event EventHandler<SwapEventArgs>? SwapUpdated;
         public event EventHandler<MarketDataEventArgs>? QuotesUpdated;
 
         public IAccount Account { get; }
@@ -175,7 +175,8 @@ namespace Atomex.Services
 
                 Logger.Debug("{Count} orders of the {UserId} user are canceled", responseResult?.Count ?? 0, AccountUserId);
 
-                var localDeletingResult = await Account.RemoveAllOrdersAsync()
+                var localDeletingResult = await Account
+                    .RemoveAllOrdersAsync()
                     .ConfigureAwait(false);
 
                 if (!localDeletingResult)
@@ -239,7 +240,7 @@ namespace Atomex.Services
                 await Account.UpsertOrderAsync(dbOrder)
                     .ConfigureAwait(false);
 
-                OrderReceived?.Invoke(this, new OrderEventArgs(dbOrder));
+                OrderUpdated?.Invoke(this, new OrderEventArgs(dbOrder));
 
                 Logger.Information("Order [{OrderId}, \"{Symbol}\", {Side}] is canceled. User is {UserId}",
                     orderId, symbol, side, AccountUserId);
@@ -334,7 +335,7 @@ namespace Atomex.Services
                 await Account.UpsertOrderAsync(order)
                     .ConfigureAwait(false);
 
-                OrderReceived?.Invoke(this, new OrderEventArgs(order));
+                OrderUpdated?.Invoke(this, new OrderEventArgs(order));
             }
             catch (OperationCanceledException)
             {
@@ -722,7 +723,7 @@ namespace Atomex.Services
                     Logger.Debug("Handle the swap without waiting: {@Swap}", swap);
                 }
 
-                SwapReceived?.Invoke(this, new SwapEventArgs(swap));
+                SwapUpdated?.Invoke(this, new SwapEventArgs(swap));
             }
             catch (OperationCanceledException)
             {

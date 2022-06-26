@@ -8,15 +8,13 @@ namespace Atomex.Wallet.Tezos
     public class Fa12Account : TezosTokenAccount
     {
         public Fa12Account(
-            string currency,
             string tokenContract,
             int tokenId,
             ICurrencies currencies,
             IHdWallet wallet,
             IAccountDataRepository dataRepository,
             TezosAccount tezosAccount)
-            : base(currency,
-                  "FA12",
+            : base("FA12",
                   tokenContract,
                   tokenId,
                   currencies,

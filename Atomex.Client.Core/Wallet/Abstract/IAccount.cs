@@ -164,6 +164,7 @@ namespace Atomex.Wallet.Abstract
         Task<bool> RemoveAllOrdersAsync();
         Order GetOrderById(string clientOrderId);
         Order GetOrderById(long id);
+        Task<bool> RemoveOrderByIdAsync(long id);
 
         #endregion Orders
 
