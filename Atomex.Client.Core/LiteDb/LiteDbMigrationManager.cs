@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 
 using LiteDB;
@@ -22,6 +23,8 @@ namespace Atomex.LiteDb
             Network network,
             Action<MigrationActionType> migrationComplete = null)
         {
+            var migrationActions = new HashSet<MigrationActionType>();
+
             try
             {
                 if (!File.Exists(pathToDb))
@@ -56,13 +59,13 @@ namespace Atomex.LiteDb
                 if (currentVersion == LiteDbMigrations.Version5)
                 {
                     currentVersion = LiteDbMigrations.MigrateFrom_5_to_6(pathToDb, sessionPassword);
-                    migrationComplete?.Invoke(MigrationActionType.XtzTransactionsDeleted);
+                    migrationActions.Add(MigrationActionType.XtzTransactionsDeleted);
                 }
 
                 if (currentVersion == LiteDbMigrations.Version6)
                 {
                     currentVersion = LiteDbMigrations.MigrateFrom_6_to_7(pathToDb, sessionPassword);
-                    migrationComplete?.Invoke(MigrationActionType.XtzTokensDataDeleted);
+                    migrationActions.Add(MigrationActionType.XtzTokensDataDeleted);
                 }
 
                 if (currentVersion == LiteDbMigrations.Version7)
@@ -70,19 +73,28 @@ namespace Atomex.LiteDb
 
                 if (currentVersion == LiteDbMigrations.Version8)
                 {
-                    currentVersion = LiteDbMigrations.MigrateFrom_8_to_9(pathToDb, sessionPassword, network);
-                    migrationComplete?.Invoke(MigrationActionType.XtzTransactionsDeleted);
+                    currentVersion = LiteDbMigrations.MigrateFrom_8_to_9(pathToDb, sessionPassword);
+                    migrationActions.Add(MigrationActionType.XtzTransactionsDeleted);
                 }
 
                 if (currentVersion == LiteDbMigrations.Version9)
-                {
                     currentVersion = LiteDbMigrations.MigrateFrom_9_to_10(pathToDb, sessionPassword);
-                    migrationComplete?.Invoke(MigrationActionType.XtzTokensDataDeleted);
-                }
             }
             catch (Exception e)
             {
                 Log.Error(e, "LiteDb migration error");
+            }
+
+            foreach (var migrationAction in migrationActions)
+            {
+                try
+                {
+                    migrationComplete?.Invoke(migrationAction);
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "LiteDb migration callback error for action {@action}", migrationAction);
+                }
             }
         }
 

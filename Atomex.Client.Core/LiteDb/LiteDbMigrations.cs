@@ -174,7 +174,7 @@ namespace Atomex.LiteDb
                 {
                     if (address.EndsWith(suffix))
                     {
-                        address = address.Substring(0, address.Length - suffix.Length);
+                        address = address[..^suffix.Length];
                         addressInBson["Address"] = address;
                         break;
                     }
@@ -186,7 +186,7 @@ namespace Atomex.LiteDb
                 {
                     if (id.EndsWith(suffix))
                     {
-                        id = id.Substring(0, id.Length - suffix.Length / 2);
+                        id = id[..^(suffix.Length / 2)];
                         addressInBson["_id"] = id;
                         break;
                     }
@@ -214,7 +214,7 @@ namespace Atomex.LiteDb
                 {
                     if (txId.EndsWith(suffix))
                     {
-                        txId = txId.Substring(0, txId.Length - suffix.Length);
+                        txId = txId[..^suffix.Length];
                         transactionInBson["TxId"] = txId;
                         break;
                     }
@@ -226,7 +226,7 @@ namespace Atomex.LiteDb
                 {
                     if (id.EndsWith(suffix))
                     {
-                        id = id.Substring(0, id.Length - suffix.Length / 2);
+                        id = id[..^(suffix.Length / 2)];
                         transactionInBson["_id"] = id;
                         break;
                     }
@@ -389,8 +389,7 @@ namespace Atomex.LiteDb
 
         public static ushort MigrateFrom_8_to_9(
             string pathToDb,
-            string sessionPassword,
-            Network network)
+            string sessionPassword)
         {
             var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
 
@@ -446,16 +445,18 @@ namespace Atomex.LiteDb
         {
             var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
 
-            using (var dbVer = new LiteDatabase(connectionString))
-                if (dbVer.Engine.UserVersion != Version9)
-                    throw new Exception("Invalid db version");
-
-            Backup(pathToDb);
-
             using var db = new LiteDatabase(connectionString);
-            
-            db.GetCollection(LiteDbAccountDataRepository.TezosTokensAddresses)
-                .Delete(Query.All());
+
+            if (db.Engine.UserVersion != Version9)
+                throw new Exception("Invalid db version");
+
+            var removedAddressesCount = db.GetCollection(LiteDbAccountDataRepository.TezosTokensAddresses)
+                .Delete(Query.Or(
+                    Query.EQ("Currency", "KUSD"),
+                    Query.EQ("Currency", "TZBTC"),
+                    Query.EQ("Currency", "USDT_XTZ")));
+
+            Log.Debug("Migration from v9 to v10: {@count} invalid tezos token addresses deleted", removedAddressesCount);
             
             Shrink(db, sessionPassword);
             UpdateVersion(db: db, fromVersion: Version9, toVersion: Version10);
