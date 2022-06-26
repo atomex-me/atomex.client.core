@@ -867,6 +867,11 @@ namespace Atomex.Wallet
             }
         }
 
+        public Task<bool> RemoveOrderByIdAsync(long id)
+        {
+            throw new NotImplementedException();
+        }
+
         #endregion Orders
 
         #region Swaps

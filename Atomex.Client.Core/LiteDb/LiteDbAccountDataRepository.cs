@@ -1298,6 +1298,29 @@ namespace Atomex.LiteDb
             }
         }
 
+        public Task<bool> RemoveOrderByIdAsync(long id)
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+
+                    var orders = db.GetCollection(OrdersCollectionName);
+
+                    var removed = orders.Delete(Query.EQ("OrderId", id));
+
+                    return Task.FromResult(removed > 0);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error while remove order");
+
+                return Task.FromResult(false);
+            }
+        }
+
         #endregion Orders
 
         #region Swaps

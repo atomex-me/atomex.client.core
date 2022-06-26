@@ -92,9 +92,17 @@ namespace Atomex.LiteDb
         {
             using var db = new LiteDatabase($"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive");
 
-            var totalOrders = db.GetCollection("Orders").Count();
+            if (db.CollectionExists(LiteDbAccountDataRepository.OrdersCollectionName))
+            {
+                var orders = db.GetCollection(LiteDbAccountDataRepository.OrdersCollectionName);
 
-            var removedOrders = db.DropCollection("Orders");
+                var removedOrdersCount = orders.Delete(
+                    Query.And(
+                        Query.EQ(nameof(Order.Status), OrderStatus.Canceled.ToString()),
+                        Query.EQ(nameof(Order.LastQty), 0m)));
+
+                Log.Debug("{@count} cacneled orders were removed from db", removedOrdersCount);
+            }
 
             LiteDbMigrations.Shrink(db, sessionPassword);
         }
