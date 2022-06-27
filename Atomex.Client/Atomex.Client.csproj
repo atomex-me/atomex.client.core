@@ -12,6 +12,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Atomex.Common\Atomex.Common.csproj" />
+    <ProjectReference Include="..\Atomex.Cryptography\Atomex.Cryptography.csproj" />
     <ProjectReference Include="..\Atomex.MarketData\Atomex.MarketData.csproj" />
   </ItemGroup>
 

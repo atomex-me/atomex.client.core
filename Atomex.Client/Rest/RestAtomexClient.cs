@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Runtime.CompilerServices;
 
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -15,6 +16,7 @@ using Atomex.Client.Common;
 using Atomex.Client.V1.Common;
 using Atomex.Client.V1.Entities;
 using Atomex.Common;
+using Atomex.Cryptography.Abstract;
 using Atomex.MarketData.Common;
 
 #nullable enable
@@ -41,26 +43,32 @@ namespace Atomex.Client.Rest
         protected ILogger Logger { get; }
         protected string AuthenticationMessage { get; } = DEFAULT_AUTHENTICATION_MESSAGE;
         protected uint AuthenticationAccountIndex { get; } = DEFAULT_AUTHENTICATION_ACCOUNT_INDEX;
-        protected string AccountUserId => _accountUserIdLazy.Value;
+        protected string AccountUserId { get; private set; }
         private JsonSerializerSettings JsonSerializerSettings { get; } = new()
         {
             ContractResolver = new DefaultContractResolver { NamingStrategy = new CamelCaseNamingStrategy { OverrideSpecifiedNames = false } }
         };
 
-        //private readonly Lazy<string> _accountUserIdLazy;
         private readonly CancellationTokenSource _cts = new();
         private bool _isConnected = false;
         private AuthenticationResponseData? _authenticationData;
+        private readonly Func<string, string> _swapContractResolver;
+        private readonly Func<IEnumerable<Swap>> _localSwapProvider;
+        private readonly Func<byte[], Task<(byte[] publicKey, byte[] signature)>> _authMessageSigner;
 
         public RestAtomexClient(
             HttpClient httpClient,
+            Func<string, string> swapContractResolver,
+            Func<IEnumerable<Swap>> localSwapProvider,
+            Func<byte[], Task<(byte[] publicKey, byte[] signature)>> authMessageSigner,
             ILogger logger = null
         )
         {
             HttpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _swapContractResolver = swapContractResolver ?? throw new ArgumentNullException(nameof(swapContractResolver));
+            _localSwapProvider = localSwapProvider ?? throw new ArgumentNullException(nameof(localSwapProvider));
+            _authMessageSigner = authMessageSigner ?? throw new ArgumentNullException(nameof(authMessageSigner));
             Logger = logger;
-
-            //_accountUserIdLazy = new Lazy<string>(() => Account.GetUserId(AuthenticationAccountIndex));
         }
 
         //public bool IsAuthenticated => _authenticationData != null;
@@ -114,6 +122,7 @@ namespace Atomex.Client.Rest
                 _cts.Cancel();
 
                 _isConnected = false;
+
                 if (ServiceStatusChanged != null)
                 {
                     Logger.LogDebug("Fire the {EventName} event", nameof(ServiceStatusChanged));
@@ -151,15 +160,6 @@ namespace Atomex.Client.Rest
                 var responseResult = JsonConvert.DeserializeObject<OrdersCancelatonDto>(responseContent, JsonSerializerSettings);
 
                 Logger.LogDebug("{Count} orders of the {UserId} user are canceled", responseResult?.Count ?? 0, AccountUserId);
-
-                //var localDeletingResult = await Account
-                //    .RemoveAllOrdersAsync()
-                //    .ConfigureAwait(false);
-
-                //if (!localDeletingResult)
-                //    Logger.LogWarning("The local \"Orders\" collection is not cleared");
-                //else
-                //    Logger.LogDebug("The local \"Orders\" collection is cleared");
             }
             catch (OperationCanceledException)
             {
@@ -242,11 +242,8 @@ namespace Atomex.Client.Rest
 
                 Logger.LogInformation("Sending the {OrderId} [{OrderClientId}] order...", order.Id, order.ClientOrderId);
 
-                await Account.UpsertOrderAsync(order)
-                    .ConfigureAwait(false);
-
-                var baseCurrencyContract = GetSwapContract(order.Symbol.BaseCurrency());
-                var quoteCurrencyContract = GetSwapContract(order.Symbol.QuoteCurrency());
+                var baseCurrencyContract = _swapContractResolver.Invoke(order.Symbol.BaseCurrency());
+                var quoteCurrencyContract = _swapContractResolver.Invoke(order.Symbol.QuoteCurrency());
                 // TODO: we can only use a proof of possession when a signing algorithm can be received
                 //await order.CreateProofOfPossessionAsync(Account)
                 //    .ConfigureAwait(false);
@@ -301,6 +298,7 @@ namespace Atomex.Client.Rest
                 }
 
                 order.Id = JsonConvert.DeserializeObject<NewOrderResponseDto>(responseContent)?.OrderId ?? 0L;
+
                 if (order.Id == 0)
                 {
                     Logger.LogWarning("Response of the sent order has an invalid order id. It's not possible to add the order to the local DB. " +
@@ -310,9 +308,7 @@ namespace Atomex.Client.Rest
                 }
 
                 order.Status = OrderStatus.Placed;
-                await Account.UpsertOrderAsync(order)
-                    .ConfigureAwait(false);
-
+ 
                 OrderUpdated?.Invoke(this, new OrderEventArgs(order));
             }
             catch (OperationCanceledException)
@@ -335,7 +331,14 @@ namespace Atomex.Client.Rest
             throw new NotImplementedException();
         }
 
-        public async void SwapInitiateAsync(long swapId, byte[] secretHash, string symbol, string toAddress, decimal rewardForRedeem, string refundAddress)
+        public async void SwapInitiateAsync(
+            long swapId,
+            byte[] secretHash,
+            string symbol,
+            string toAddress,
+            decimal rewardForRedeem,
+            string refundAddress,
+            ulong lockTime)
         {
             try
             {
@@ -345,7 +348,7 @@ namespace Atomex.Client.Rest
                 var initiateSwapDto = new InitiateSwapDto(
                     ReceivingAddress: toAddress,
                     RewardForRedeem: rewardForRedeem,
-                    LockTime: CurrencySwap.DefaultInitiatorLockTimeInSeconds
+                    LockTime: lockTime
                 )
                 {
                     RefundAddress = refundAddress,
@@ -402,8 +405,6 @@ namespace Atomex.Client.Rest
         protected async Task AuthenticateAsync(CancellationToken cancellationToken = default)
         {
             const string signingAlgorithm = "Sha256WithEcdsa:BtcMsg";
-            using var securePublicKey = Account.Wallet.GetServicePublicKey(AuthenticationAccountIndex);
-            var publicKey = securePublicKey.ToUnsecuredBytes();
 
             var timeStamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             var signingMessage = AuthenticationMessage + timeStamp.ToString();
@@ -413,9 +414,13 @@ namespace Atomex.Client.Rest
             );
 
             Logger.LogDebug("Signing an authentication message using the \"{SigningAlgorithm}\" algorithm", signingAlgorithm);
-            var signature = await Account.Wallet
-                .SignByServiceKeyAsync(signingMessagePayload, AuthenticationAccountIndex, cancellationToken)
+
+            var (publicKey, signature) = await _authMessageSigner
+                .Invoke(signingMessagePayload)
                 .ConfigureAwait(false);
+
+            AccountUserId = HashAlgorithm.Sha256.Hash(publicKey, iterations: 2).ToHexString();
+
             Logger.LogDebug("The authentication message has been signed using the \"{SigningAlgorithm}\" algorithm", signingAlgorithm);
 
             var authenticationRequestContent = new AuthenticationRequestData(
@@ -484,8 +489,7 @@ namespace Atomex.Client.Rest
                 {
                     Logger.LogInformation("Start to track swaps");
 
-                    var localSwaps = await Account.GetSwapsAsync()
-                        .ConfigureAwait(false);
+                    var localSwaps = _localSwapProvider.Invoke();
 
                     var localSwapsCount = localSwaps.Count();
                     var lastSwapId = localSwapsCount > 0
@@ -550,6 +554,7 @@ namespace Atomex.Client.Rest
                     }
 
                     Logger.LogDebug("The {SwapId} swap has been received. Apply its' state locally (handle this swap again)", swapId);
+
                     await HandleSwapAsync(swap, needToWait, cancellationToken);
                 }
                 catch (OperationCanceledException)
@@ -571,8 +576,10 @@ namespace Atomex.Client.Rest
         {
             Logger.LogDebug("Fetching swaps of the {UserId} user. The start swap id is {SwapId}", AccountUserId, lastSwapId);
 
-            using var response = await HttpClient.GetAsync($"swaps?afterId={lastSwapId}", cancellationToken)
+            using var response = await HttpClient
+                .GetAsync($"swaps?afterId={lastSwapId}", cancellationToken)
                 .ConfigureAwait(false);
+
             var responseContent = await response.Content
                 .ReadAsStringAsync()
                 .ConfigureAwait(false);
@@ -589,6 +596,7 @@ namespace Atomex.Client.Rest
             }
 
             var swaps = new List<(Swap, bool)>(swapDtos.Count);
+
             foreach (var swapDto in swapDtos)
                 swaps.Add((MapSwapDtoToSwap(swapDto), IsNeedToWaitSwap(swapDto)));
 
@@ -601,6 +609,7 @@ namespace Atomex.Client.Rest
 
             using var response = await HttpClient.GetAsync($"swaps/{swapId}", cancellationToken)
                 .ConfigureAwait(false);
+
             var responseContent = await response.Content
                 .ReadAsStringAsync()
                 .ConfigureAwait(false);
@@ -640,8 +649,10 @@ namespace Atomex.Client.Rest
                             .ConfigureAwait(false);
 
                         Logger.LogDebug("The authentication token will expire soon. Making a new request of authentication");
+
                         await AuthenticateAsync(cancellationToken)
                             .ConfigureAwait(false);
+
                         delay = GetDelay(_authenticationData!.Expires);
                     }
 
@@ -671,16 +682,16 @@ namespace Atomex.Client.Rest
                 HttpClient.DefaultRequestHeaders.Remove("Authorization");
         }
 
-        private string? GetSwapContract(string currency) => currency switch
-        {
-            "ETH" => Account.Currencies.Get<EthereumConfig>(currency).SwapContractAddress,
-            "USDT" or "TBTC" or "WBTC" => Account.Currencies.Get<Erc20Config>(currency).SwapContractAddress,
+        //private string? GetSwapContract(string currency) => currency switch
+        //{
+        //    "ETH" => Account.Currencies.Get<EthereumConfig>(currency).SwapContractAddress,
+        //    "USDT" or "TBTC" or "WBTC" => Account.Currencies.Get<Erc20Config>(currency).SwapContractAddress,
 
-            "XTZ" => Account.Currencies.Get<TezosConfig>(currency).SwapContractAddress,
-            "FA12" or "TZBTC" or "KUSD" => Account.Currencies.Get<Fa12Config>(currency).SwapContractAddress,
-            "FA2" or "USDT_XTZ" => Account.Currencies.Get<Fa2Config>(currency).SwapContractAddress,
-            _ => null
-        };
+        //    "XTZ" => Account.Currencies.Get<TezosConfig>(currency).SwapContractAddress,
+        //    "FA12" or "TZBTC" or "KUSD" => Account.Currencies.Get<Fa12Config>(currency).SwapContractAddress,
+        //    "FA2" or "USDT_XTZ" => Account.Currencies.Get<Fa2Config>(currency).SwapContractAddress,
+        //    _ => null
+        //};
 
         private Task HandleSwapAsync(
             Swap swap,
@@ -693,6 +704,7 @@ namespace Atomex.Client.Rest
                 if (neetToWait)
                 {
                     Logger.LogDebug("Wait {WaitingInterval} for the swap: {@Swap}", DefaultWaitingSwapInterval, swap);
+
                     await Task.Delay(DefaultWaitingSwapInterval, cancellationToken)
                         .ConfigureAwait(false);
                 }
@@ -753,14 +765,15 @@ namespace Atomex.Client.Rest
 
         private static string GenerateOrderClientId() => Guid.NewGuid().ToByteArray().ToHexString(0, 16);
 
-        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Exception GetAuthenticationFailedException() => new("Authentication is failed");
 
         private static async Task<string> ConvertQueryParamsToStringAsync(Dictionary<string, string> urlParams)
         {
             using var content = new FormUrlEncodedContent(urlParams);
 
-            return await content.ReadAsStringAsync()
+            return await content
+                .ReadAsStringAsync()
                 .ConfigureAwait(false);
         }
     }

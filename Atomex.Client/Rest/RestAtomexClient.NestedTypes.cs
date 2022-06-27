@@ -8,7 +8,6 @@ using Atomex.Common;
 
 namespace Atomex.Client.Rest
 {
-
     public partial class RestAtomexClient
     {
         private record OrderDto(
@@ -133,7 +132,6 @@ namespace Atomex.Client.Rest
             /// </summary>
             public SwapPartyDto? CounterParty { get; set; }
         }
-
 
         private record InitiateSwapDto(
             string ReceivingAddress,
