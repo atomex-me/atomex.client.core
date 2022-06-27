@@ -7,12 +7,6 @@ using Atomex.Blockchain.BitcoinBased;
 
 namespace Atomex.Core
 {
-    public enum Side
-    {
-        Buy,
-        Sell
-    }
-
     public enum OrderStatus
     {
         Pending,

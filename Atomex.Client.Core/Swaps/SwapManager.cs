@@ -15,6 +15,7 @@ using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
+using Atomex.Client.Abstract;
 
 namespace Atomex.Swaps
 {

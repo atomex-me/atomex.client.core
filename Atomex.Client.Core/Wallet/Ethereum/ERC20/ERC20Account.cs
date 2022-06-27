@@ -18,7 +18,7 @@ using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using Error = Atomex.Core.Error;
+using Error = Atomex.Common.Error;
 
 namespace Atomex.Wallet.Ethereum
 {

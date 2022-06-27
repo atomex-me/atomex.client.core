@@ -3,8 +3,8 @@
 using NBitcoin;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Core;
 using Atomex.Common.Memory;
+using Atomex.Common;
 
 namespace Atomex.Blockchain.BitcoinBased
 {
