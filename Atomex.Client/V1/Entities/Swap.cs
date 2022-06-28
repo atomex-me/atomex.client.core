@@ -7,15 +7,9 @@ namespace Atomex.Client.V1.Entities
     [Flags]
     public enum SwapStatus
     {
-        Empty                    = 0,
-        Initiated                = 0x01,
-        Accepted                 = 0x02,
-        InitiatorPaymentReceived = 0x04,
-        AcceptorPaymentReceived  = 0x08,
-        InitiatorRedeemReceived  = 0x10,
-        AcceptorRedeemReceived   = 0x20,
-        InitiatorRefundReceived  = 0x40,
-        AcceptorRefundReceived   = 0x80
+        Empty     = 0,
+        Initiated = 0x01,
+        Accepted  = 0x02,
     }
 
     public class Swap

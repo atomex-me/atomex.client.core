@@ -3,6 +3,7 @@
 using Serilog;
 
 using Atomex.Abstract;
+using Atomex.Core;
 using Atomex.Client.Abstract;
 using Atomex.Client.Common;
 using Atomex.MarketData.Abstract;
@@ -11,6 +12,8 @@ using Atomex.Services.Abstract;
 using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
+using Atomex.MarketData;
+using SwapEventArgs = Atomex.Client.V1.Common.SwapEventArgs;
 
 namespace Atomex
 {
@@ -19,7 +22,7 @@ namespace Atomex
         public event EventHandler<AtomexClientChangedEventArgs> AtomexClientChanged;
 
         public IAtomexClient AtomexClient { get; private set; }
-        public IAccount Account => AtomexClient?.Account;
+        public IAccount Account { get; private set; }
         public IQuotesProvider QuotesProvider { get; private set; }
         public IOrderBookProvider OrderBooksProvider { get; private set; }
         public ICurrenciesProvider CurrenciesProvider { get; private set; }
@@ -28,6 +31,7 @@ namespace Atomex
         public ISymbolsUpdater SymbolsUpdater { get; private set; }
         public ISwapManager SwapManager { get; private set; }
         public ITransactionsTracker TransactionsTracker { get; private set; }
+        public IMarketDataRepository MarketDataRepository { get; private set; }
 
         public bool HasQuotesProvider => QuotesProvider != null;
 
@@ -75,10 +79,32 @@ namespace Atomex
             _balanceUpdater.Start();
         }
 
-        private async void AtomexClient_SwapReceived(object sender, Client.V1.Common.SwapEventArgs e)
+        private async void AtomexClient_SwapReceived(object sender, SwapEventArgs e)
         {
             var error = await SwapManager
-                .HandleSwapAsync(e.Swap)
+                .HandleSwapAsync(new Swap
+                {
+                    Id = e.Swap.Id,
+                    Status = e.Swap.Status,
+                    TimeStamp = e.Swap.TimeStamp,
+                    OrderId = e.Swap.OrderId,
+                    Symbol = e.Swap.Symbol,
+                    Side = e.Swap.Side,
+                    Price = e.Swap.Price,
+                    Qty = e.Swap.Qty,
+                    IsInitiative = e.Swap.IsInitiative,
+                    ToAddress = e.Swap.ToAddress,
+                    RewardForRedeem = e.Swap.RewardForRedeem,
+                    PaymentTxId = e.Swap.PaymentTxId,
+                    RedeemScript = e.Swap.RedeemScript,
+                    RefundAddress = e.Swap.RefundAddress,
+                    PartyAddress = e.Swap.PartyAddress,
+                    PartyRewardForRedeem = e.Swap.PartyRewardForRedeem,
+                    PartyPaymentTxId = e.Swap.PartyPaymentTxId,
+                    PartyRedeemScript = e.Swap.PartyRedeemScript,
+                    PartyRefundAddress = e.Swap.PartyRefundAddress,
+                    SecretHash = e.Swap.SecretHash
+                })
                 .ConfigureAwait(false);
 
             if (error != null)
@@ -96,7 +122,7 @@ namespace Atomex
             SwapManager.Stop();
 
             // lock account's wallet
-            AtomexClient.Account.Lock();
+            Account.Lock();
 
             // stop atomex client
             await AtomexClient
@@ -121,12 +147,14 @@ namespace Atomex
             {
                 AtomexClient.SwapUpdated += AtomexClient_SwapReceived;
 
+                MarketDataRepository = new MarketDataRepository();
+
                 // create swap manager
                 SwapManager = new SwapManager(
                     account: Account,
                     swapClient: AtomexClient,
                     quotesProvider: QuotesProvider,
-                    marketDataRepository: AtomexClient.MarketDataRepository);
+                    marketDataRepository: MarketDataRepository);
 
                 // create transactions tracker
                 TransactionsTracker = new TransactionsTracker(Account);

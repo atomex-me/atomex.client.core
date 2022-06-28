@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Blockchain.Helpers;
+using Atomex.Client.Abstract;
+using Atomex.Client.V1.Entities;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.MarketData.Abstract;
@@ -15,7 +17,9 @@ using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
-using Atomex.Client.Abstract;
+using Swap = Atomex.Core.Swap;
+using Order = Atomex.Core.Order;
+using Error = Atomex.Common.Error;
 
 namespace Atomex.Swaps
 {

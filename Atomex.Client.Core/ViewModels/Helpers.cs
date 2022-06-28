@@ -12,10 +12,12 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography.Abstract;
 using Atomex.MarketData.Abstract;
-using Atomex.Services.Abstract;
+using Atomex.MarketData.Common;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Abstract;
-using Atomex.Client.Abstract;
+using Atomex.Client.V1.Entities;
+using Swap = Atomex.Core.Swap;
+using Error = Atomex.Common.Error;
 
 namespace Atomex.ViewModels
 {
@@ -513,7 +515,7 @@ namespace Atomex.ViewModels
             CurrencyConfig fromCurrency,
             CurrencyConfig toCurrency,
             IAccount account,
-            IAtomexClient atomexClient,
+            IMarketDataRepository marketDataRepository,
             ISymbolsProvider symbolsProvider,
             IQuotesProvider quotesProvider,
             CancellationToken cancellationToken = default)
@@ -542,7 +544,7 @@ namespace Atomex.ViewModels
                 var rewardForRedeem = await RewardForRedeemHelper.EstimateAsync(
                     account: account,
                     quotesProvider: quotesProvider,
-                    feeCurrencyQuotesProvider: symbol => atomexClient?.GetOrderBook(symbol)?.TopOfBook(),
+                    feeCurrencyQuotesProvider: symbol => marketDataRepository?.OrderBookBySymbol(symbol)?.TopOfBook(),
                     redeemableCurrency: toCurrency,
                     redeemFromAddress: redeemFromWalletAddress,
                     cancellationToken: cancellationToken);
@@ -559,7 +561,7 @@ namespace Atomex.ViewModels
                         fromCurrency: fromCurrency,
                         toCurrency: toCurrency,
                         account: account,
-                        atomexClient: atomexClient,
+                        marketDataRepository: marketDataRepository,
                         symbolsProvider: symbolsProvider,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
@@ -659,7 +661,7 @@ namespace Atomex.ViewModels
             CurrencyConfig fromCurrency,
             CurrencyConfig toCurrency,
             IAccount account,
-            IAtomexClient atomexClient,
+            IMarketDataRepository marketDataRepository,
             ISymbolsProvider symbolsProvider,
             CancellationToken cancellationToken = default)
         {
@@ -679,7 +681,7 @@ namespace Atomex.ViewModels
                     return null;
 
                 var side = symbol.OrderSideForBuyCurrency(toCurrency);
-                var orderBook = atomexClient.GetOrderBook(symbol);
+                var orderBook = marketDataRepository.OrderBookBySymbol(symbol.Name);
 
                 if (orderBook == null)
                     return null;
@@ -771,7 +773,7 @@ namespace Atomex.ViewModels
             CurrencyConfig fromCurrency,
             CurrencyConfig toCurrency,
             IAccount account,
-            IAtomexClient atomexClient,
+            IMarketDataRepository marketDataRepository,
             ISymbolsProvider symbolsProvider,
             CancellationToken cancellationToken = default)
         {
@@ -786,7 +788,7 @@ namespace Atomex.ViewModels
                     from: toCurrency.FeeCurrencyName,
                     to: toCurrency.Name,
                     account: account,
-                    atomexClient: atomexClient,
+                    marketDataRepository: marketDataRepository,
                     symbolsProvider: symbolsProvider) ?? 0;
 
             var makerRedeemFee = await fromCurrency
@@ -803,7 +805,7 @@ namespace Atomex.ViewModels
                     from: fromCurrency.FeeCurrencyName,
                     to: fromCurrency.Name,
                     account: account,
-                    atomexClient: atomexClient,
+                    marketDataRepository: marketDataRepository,
                     symbolsProvider: symbolsProvider) ?? 0;
 
             // convert makerPaymentFee from toCurrency to fromCurrency
@@ -812,7 +814,7 @@ namespace Atomex.ViewModels
                 from: toCurrency.Name,
                 to: fromCurrency.Name,
                 account: account,
-                atomexClient: atomexClient,
+                marketDataRepository: marketDataRepository,
                 symbolsProvider: symbolsProvider) ?? 0;
 
             return makerPaymentFee + makerRedeemFee;
@@ -823,7 +825,7 @@ namespace Atomex.ViewModels
             string from,
             string to,
             IAccount account,
-            IAtomexClient atomexClient,
+            IMarketDataRepository marketDataRepository,
             ISymbolsProvider symbolsProvider)
         {
             var symbol = symbolsProvider
@@ -835,8 +837,8 @@ namespace Atomex.ViewModels
             if (symbol == null || toCurrency == null)
                 return null;
 
-            var quote = atomexClient
-                .GetOrderBook(symbol)
+            var quote = marketDataRepository
+                .OrderBookBySymbol(symbol.Name)
                 ?.TopOfBook();
 
             if (quote == null)
@@ -857,11 +859,11 @@ namespace Atomex.ViewModels
             string from,
             string to,
             IAccount account,
-            IAtomexClient atomexClient,
+            IMarketDataRepository marketDataRepository,
             ISymbolsProvider symbolsProvider)
         {
             // firstly try direct conversion first
-            var result = ConvertAmount(amount, from, to, account, atomexClient, symbolsProvider);
+            var result = ConvertAmount(amount, from, to, account, marketDataRepository, symbolsProvider);
 
             if (result != null)
                 return result;
@@ -869,12 +871,12 @@ namespace Atomex.ViewModels
             // try to use intermediate currency (BTC and ETH)
             foreach (var currency in new string[]{ "BTC", "ETH "})
             {
-                var amountInCurrency = ConvertAmount(amount, from, currency, account, atomexClient, symbolsProvider);
+                var amountInCurrency = ConvertAmount(amount, from, currency, account, marketDataRepository, symbolsProvider);
 
                 if (amountInCurrency == null)
                     continue;
 
-                result = ConvertAmount(amountInCurrency.Value, currency, to, account, atomexClient, symbolsProvider);
+                result = ConvertAmount(amountInCurrency.Value, currency, to, account, marketDataRepository, symbolsProvider);
 
                 if (result != null)
                     return result;
