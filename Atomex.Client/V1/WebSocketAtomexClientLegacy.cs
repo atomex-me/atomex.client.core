@@ -12,6 +12,7 @@ using Atomex.Client.V1;
 using Atomex.Client.V1.Common;
 using Atomex.Client.V1.Entities;
 using Atomex.Client.V1.Proto;
+using Atomex.Cryptography.Abstract;
 using Atomex.MarketData.Common;
 using Error = Atomex.Common.Error;
 
@@ -19,6 +20,7 @@ namespace Atomex.Services
 {
     public class WebSocketAtomexClientLegacy : IAtomexClient
     {
+        private const string ApiVersion = "1.5";
         private static readonly TimeSpan HeartBeatInterval = TimeSpan.FromSeconds(10);
 
         public event EventHandler<ServiceEventArgs> ServiceStatusChanged;
@@ -38,18 +40,21 @@ namespace Atomex.Services
         private readonly ILogger _log;
         private readonly string _exchangeUrl;
         private readonly string _marketDataUrl;
-        private readonly Func<AuthNonce, Task<Auth>> _signAuthDataCallback;
+        private readonly AuthMessageSigner _authMessageSigner;
+        private readonly ClientType _clientType;
 
         public WebSocketAtomexClientLegacy(
             string exchangeUrl,
             string marketDataUrl,
-            Func<AuthNonce, Task<Auth>> signAuthData,
+            ClientType clientType,
+            AuthMessageSigner authMessageSigner,
             ILogger log = null)
         {
             _exchangeUrl = exchangeUrl ?? throw new ArgumentNullException(nameof(exchangeUrl));
             _marketDataUrl = marketDataUrl ?? throw new ArgumentNullException(nameof(marketDataUrl));
-            _signAuthDataCallback = signAuthData ?? throw new ArgumentNullException(nameof(signAuthData));
+            _authMessageSigner = authMessageSigner ?? throw new ArgumentNullException(nameof(authMessageSigner));
             _log = log;
+            _clientType = clientType;
         }
 
         public bool IsServiceConnected(Service service)
@@ -222,8 +227,7 @@ namespace Atomex.Services
         {
             try
             {
-                var auth = await _signAuthDataCallback
-                    .Invoke(args.Nonce)
+                var auth = await CreateAndSignAuthRequestAsync(args.Nonce.Nonce)
                     .ConfigureAwait(false);
 
                 _exchangeClient.AuthAsync(auth);
@@ -245,21 +249,6 @@ namespace Atomex.Services
         {
             try
             {
-                //var storedOrder = await ExchangeDataRepository
-                //    .GetOrderByIdAsync(args.Order.ClientOrderId)
-                //    .ConfigureAwait(false);
-
-                //// TODO: verify order and forward new parameters
-                //// Validate(args.Order, storedOrder);
-                //// ForwardParameters(args.Order, storedOrder);
-
-                //var result = await ExchangeDataRepository
-                //    .UpsertOrderAsync(storedOrder)
-                //    .ConfigureAwait(false);
-
-                //if (!result)
-                //    OnError(Service.Exchange, "Error adding order");
-
                 OrderUpdated?.Invoke(this, args);
             }
             catch (Exception e)
@@ -328,8 +317,7 @@ namespace Atomex.Services
         {
             try
             {
-                var auth = await _signAuthDataCallback
-                    .Invoke(args.Nonce)
+                var auth = await CreateAndSignAuthRequestAsync(args.Nonce.Nonce)
                     .ConfigureAwait(false);
 
                 _marketDataClient.AuthAsync(auth);
@@ -428,7 +416,8 @@ namespace Atomex.Services
             string symbol,
             string toAddress,
             decimal rewardForRedeem,
-            string refundAddress)
+            string refundAddress,
+            ulong lockTime)
         {
             _exchangeClient.SwapInitiateAsync(
                 id,
@@ -436,7 +425,8 @@ namespace Atomex.Services
                 symbol,
                 toAddress,
                 rewardForRedeem,
-                refundAddress);
+                refundAddress,
+                lockTime);
         }
 
         public void SwapAcceptAsync(
@@ -444,14 +434,16 @@ namespace Atomex.Services
             string symbol,
             string toAddress,
             decimal rewardForRedeem,
-            string refundAddress)
+            string refundAddress,
+            ulong lockTime)
         {
             _exchangeClient.SwapAcceptAsync(
                 id,
                 symbol,
                 toAddress,
                 rewardForRedeem,
-                refundAddress);
+                refundAddress,
+                lockTime);
         }
 
         public void SwapStatusAsync(
@@ -459,6 +451,30 @@ namespace Atomex.Services
             long swapId)
         {
             _exchangeClient.SwapStatusAsync(requestId, swapId);
+        }
+
+        private async Task<Auth> CreateAndSignAuthRequestAsync(string nonce)
+        {
+            const string signingAlgorithm = "Sha256WithEcdsa:BtcMsg";
+
+            var auth = new Auth
+            {
+                TimeStamp   = DateTime.UtcNow,
+                Nonce       = nonce,
+                ClientNonce = Guid.NewGuid().ToString(),
+                Version     = $"{ApiVersion} {_clientType}"
+            };
+
+            var hashToSign = HashAlgorithm.Sha256.Hash(auth.SignedData);
+
+            var (publicKey, signature) = await _authMessageSigner
+                .Invoke(hashToSign, signingAlgorithm)
+                .ConfigureAwait(false);
+
+            auth.PublicKeyHex = publicKey.ToHexString();
+            auth.Signature = Convert.ToBase64String(signature);
+
+            return auth;
         }
     }
 }

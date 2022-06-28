@@ -52,15 +52,15 @@ namespace Atomex.Client.Rest
         private readonly CancellationTokenSource _cts = new();
         private bool _isConnected = false;
         private AuthenticationResponseData? _authenticationData;
-        private readonly Func<string, string> _swapContractResolver;
-        private readonly Func<IEnumerable<Swap>> _localSwapProvider;
-        private readonly Func<byte[], Task<(byte[] publicKey, byte[] signature)>> _authMessageSigner;
+        private readonly SwapContractResolver _swapContractResolver;
+        private readonly LocalSwapProvider _localSwapProvider;
+        private readonly AuthMessageSigner _authMessageSigner;
 
         public RestAtomexClient(
             HttpClient httpClient,
-            Func<string, string> swapContractResolver,
-            Func<IEnumerable<Swap>> localSwapProvider,
-            Func<byte[], Task<(byte[] publicKey, byte[] signature)>> authMessageSigner,
+            SwapContractResolver swapContractResolver,
+            LocalSwapProvider localSwapProvider,
+            AuthMessageSigner authMessageSigner,
             ILogger logger = null
         )
         {
@@ -205,20 +205,14 @@ namespace Atomex.Client.Rest
                     return;
                 }
 
-                //var dbOrder = Account.GetOrderById(orderId);
-                //if (dbOrder == null)
-                //{
-                //    Logger.LogWarning("Canceled order [{OrderId}, \"{Symbol}\", {Side}] not found in the local database", orderId, symbol, side);
-
-                //    return;
-                //}
-
-                //dbOrder.Status = OrderStatus.Canceled;
-
-                //await Account.UpsertOrderAsync(dbOrder)
-                //    .ConfigureAwait(false);
-
-                OrderUpdated?.Invoke(this, new OrderEventArgs(dbOrder));
+                // todo: request canceled order from server
+                OrderUpdated?.Invoke(this, new OrderEventArgs(new Order
+                {
+                    Id = orderId,
+                    Symbol = symbol,
+                    Side = side,
+                    Status = OrderStatus.Canceled
+                }));
 
                 Logger.LogInformation("Order [{OrderId}, \"{Symbol}\", {Side}] is canceled. User is {UserId}",
                     orderId, symbol, side, AccountUserId);
@@ -326,7 +320,13 @@ namespace Atomex.Client.Rest
             // nothing to do...
         }
 
-        public void SwapAcceptAsync(long id, string symbol, string toAddress, decimal rewardForRedeem, string refundAddress)
+        public void SwapAcceptAsync(
+            long id,
+            string symbol,
+            string toAddress,
+            decimal rewardForRedeem,
+            string refundAddress,
+            ulong lockTime)
         {
             throw new NotImplementedException();
         }
@@ -391,7 +391,6 @@ namespace Atomex.Client.Rest
             }
             catch (Exception ex)
             {
-
                 Logger.LogError(ex, "Swap initiation failed");
             }
         }
@@ -416,7 +415,7 @@ namespace Atomex.Client.Rest
             Logger.LogDebug("Signing an authentication message using the \"{SigningAlgorithm}\" algorithm", signingAlgorithm);
 
             var (publicKey, signature) = await _authMessageSigner
-                .Invoke(signingMessagePayload)
+                .Invoke(signingMessagePayload, signingAlgorithm)
                 .ConfigureAwait(false);
 
             AccountUserId = HashAlgorithm.Sha256.Hash(publicKey, iterations: 2).ToHexString();
@@ -536,7 +535,9 @@ namespace Atomex.Client.Rest
             cancellationToken
         );
 
-        protected Task RequestActualSwapState(long swapId, CancellationToken cancellationToken = default) => Task.Run(
+        protected Task RequestActualSwapState(
+            long swapId,
+            CancellationToken cancellationToken = default) => Task.Run(
             async () =>
             {
                 try
@@ -603,7 +604,9 @@ namespace Atomex.Client.Rest
             return (true, swaps);
         }
 
-        protected async Task<(Swap? swap, bool needToWait)> FetchUserSwapAsync(long swapId, CancellationToken cancellationToken = default)
+        protected async Task<(Swap? swap, bool needToWait)> FetchUserSwapAsync(
+            long swapId,
+            CancellationToken cancellationToken = default)
         {
             Logger.LogDebug("Fetching the {SwapId} swap of the {UserId} user", AccountUserId, swapId);
 
@@ -670,7 +673,8 @@ namespace Atomex.Client.Rest
             cancellationToken
         );
 
-        protected virtual string GenerateClientOrderId() => Guid.NewGuid().ToByteArray().ToHexString(0, 16);
+        protected virtual string GenerateClientOrderId() =>
+            Guid.NewGuid().ToByteArray().ToHexString(0, 16);
 
         private void ClearAuthenticationData()
         {
@@ -681,17 +685,6 @@ namespace Atomex.Client.Rest
             if (currentAuthorizationHeaderExists)
                 HttpClient.DefaultRequestHeaders.Remove("Authorization");
         }
-
-        //private string? GetSwapContract(string currency) => currency switch
-        //{
-        //    "ETH" => Account.Currencies.Get<EthereumConfig>(currency).SwapContractAddress,
-        //    "USDT" or "TBTC" or "WBTC" => Account.Currencies.Get<Erc20Config>(currency).SwapContractAddress,
-
-        //    "XTZ" => Account.Currencies.Get<TezosConfig>(currency).SwapContractAddress,
-        //    "FA12" or "TZBTC" or "KUSD" => Account.Currencies.Get<Fa12Config>(currency).SwapContractAddress,
-        //    "FA2" or "USDT_XTZ" => Account.Currencies.Get<Fa2Config>(currency).SwapContractAddress,
-        //    _ => null
-        //};
 
         private Task HandleSwapAsync(
             Swap swap,

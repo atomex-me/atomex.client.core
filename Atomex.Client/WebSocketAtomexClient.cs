@@ -6,20 +6,21 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Serilog;
 using Websocket.Client;
 
-using Atomex.Abstract;
+using Atomex.Client;
+using Atomex.Client.Abstract;
+using Atomex.Client.Common;
+using Atomex.Client.V1.Common;
+using Atomex.Client.V1.Entities;
 using Atomex.Common;
-using Atomex.Core;
-using Atomex.MarketData;
-using Atomex.MarketData.Abstract;
-using Atomex.Services.Abstract;
-using Atomex.Swaps;
-using Atomex.Swaps.Abstract;
-using Atomex.Wallet.Abstract;
+using Atomex.Cryptography.Abstract;
+using Atomex.MarketData.Common;
+using Atomex.MarketData.Entities;
+using Error = Atomex.Common.Error;
 
 namespace Atomex.Services
 {
@@ -38,22 +39,18 @@ namespace Atomex.Services
         private const uint DEFAULT_AUTHENTICATION_ACCOUNT_INDEX = 0u;
         private const int HeartBeatIntervalInSec = 10;
 
-        public event EventHandler<AtomexClientServiceEventArgs> ServiceConnected;
-        public event EventHandler<AtomexClientServiceEventArgs> ServiceDisconnected;
-        public event EventHandler<AtomexClientServiceEventArgs> ServiceAuthenticated;
-        public event EventHandler<AtomexClientErrorEventArgs> Error;
+        public event EventHandler<ServiceEventArgs> ServiceStatusChanged;
+        public event EventHandler<ServiceErrorEventArgs> Error;
         public event EventHandler<OrderEventArgs> OrderUpdated;
         public event EventHandler<SwapEventArgs> SwapUpdated;
-        public event EventHandler<MarketDataEventArgs> QuotesUpdated;
+        public event EventHandler<QuotesEventArgs> QuotesUpdated;
+        public event EventHandler<EntriesEventArgs> EntriesUpdated;
+        public event EventHandler<SnapshotEventArgs> SnapshotUpdated;
 
-        public IAccount Account { get; init; }
-        public IMarketDataRepository MarketDataRepository { get; init; }
-        protected string AccountUserId => _accountUserIdLazy.Value;
-        private readonly ISymbolsProvider _symbolsProvider;
+        protected string AccountUserId { get; private set; }
         private readonly string _authTokenBaseUrl;
         private readonly string _exchangeUrl;
         private readonly string _marketDataUrl;
-        private readonly Lazy<string> _accountUserIdLazy;
         private WebSocketClient _exchangeWs;
         private WebSocketClient _marketDataWs;
         private string _authToken;
@@ -62,33 +59,33 @@ namespace Atomex.Services
         private CancellationTokenSource _exchangeHeartBeatCts;
         private CancellationTokenSource _marketDataHeartBeatCts;
         private readonly AtomexClientOptions _options;
+        private readonly ILogger _log;
+        private readonly SwapContractResolver _swapContractResolver;
+        private readonly AuthMessageSigner _authMessageSigner;
 
         public WebSocketAtomexClient(
             string authTokenBaseUrl,
             string exchangeUrl,
             string marketDataUrl,
-            IAccount account,
-            ISymbolsProvider symbolsProvider,
-            AtomexClientOptions options = default)
+            SwapContractResolver swapContractResolver,
+            AuthMessageSigner authMessageSigner,
+            AtomexClientOptions options = default,
+            ILogger log = null)
         {
-            Account = account ?? throw new ArgumentNullException(nameof(account));
-
             _authTokenBaseUrl = authTokenBaseUrl ?? throw new ArgumentNullException(nameof(authTokenBaseUrl));
-            _exchangeUrl      = exchangeUrl ?? throw new ArgumentNullException(nameof(exchangeUrl));
-            _marketDataUrl    = marketDataUrl ?? throw new ArgumentNullException(nameof(marketDataUrl));
-            _symbolsProvider  = symbolsProvider ?? throw new ArgumentNullException(nameof(symbolsProvider));
-            _options          = options ?? AtomexClientOptions.DefaultOptions;
-
-            MarketDataRepository = new MarketDataRepository();
-            _accountUserIdLazy = new Lazy<string>(() => Account.GetUserId(DEFAULT_AUTHENTICATION_ACCOUNT_INDEX));
+            _exchangeUrl = exchangeUrl ?? throw new ArgumentNullException(nameof(exchangeUrl));
+            _marketDataUrl = marketDataUrl ?? throw new ArgumentNullException(nameof(marketDataUrl));
+            _options = options ?? AtomexClientOptions.DefaultOptions;
+            _swapContractResolver = swapContractResolver ?? throw new ArgumentNullException(nameof(swapContractResolver));
+            _authMessageSigner = authMessageSigner ?? throw new ArgumentNullException(nameof(authMessageSigner));
+            _log = log;
         }
 
-        public bool IsServiceConnected(AtomexClientService service) =>
+        public bool IsServiceConnected(Service service) =>
             service switch
             {
-                AtomexClientService.Exchange => _exchangeWs.IsConnected,
-                AtomexClientService.MarketData => _marketDataWs.IsConnected,
-                AtomexClientService.All => _exchangeWs.IsConnected && _marketDataWs.IsConnected,
+                Service.Exchange => _exchangeWs.IsConnected,
+                Service.MarketData => _marketDataWs.IsConnected,
                 _ => throw new ArgumentOutOfRangeException(nameof(service), service, null)
             };
 
@@ -97,7 +94,7 @@ namespace Atomex.Services
             _authToken = await AuthAsync()
                 .ConfigureAwait(false);
 
-            Log.Debug($"Auth token: {_authToken}");
+            _log.LogDebug($"Auth token: {_authToken}");
 
             var authHeaders = new HttpRequestHeaders
             {
@@ -132,17 +129,17 @@ namespace Atomex.Services
 
         private void ExchangeConnected(object sender, EventArgs e)
         {
-            Log.Debug("Exchange client connected");
+            _log.LogDebug("Exchange client connected");
 
             if (IsTaskCompleted(_exchangeHeartBeatTask))
             {
-                Log.Debug("Run HeartBeat loop for Exchange service");
+                _log.LogDebug("Run HeartBeat loop for Exchange service");
 
                 _exchangeHeartBeatCts = new CancellationTokenSource();
                 _exchangeHeartBeatTask = HeartBeatLoopAsync(_exchangeWs, _exchangeHeartBeatCts.Token);
             }
 
-            ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
+            ServiceStatusChanged?.Invoke(this, new ServiceEventArgs(Service.Exchange, ServiceStatus.Connected));
 
             if (_options.CancelOrdersAfterConnect)
                 CancelAllOrders(symbol: null, side: null, forAllConnections: true);
@@ -150,27 +147,27 @@ namespace Atomex.Services
             if (_options.CancelOrdersAfterDisconnect) // set orders auto cancel flag, after disconnect all orders will be canceled
                 SetOrdersAutoCancel(autoCancel: true);
 
-            ServiceAuthenticated?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
+            ServiceStatusChanged?.Invoke(this, new ServiceEventArgs(Service.Exchange, ServiceStatus.Authenticated));
         }
 
         private void ExchangeDisconnected(object sender, EventArgs e)
         {
-            Log.Debug("Exchange client disconnected");
+            _log.LogDebug("Exchange client disconnected");
 
             if (!IsTaskCompleted(_exchangeHeartBeatTask))
             {
                 try
                 {
-                    Log.Debug("Cancel Exchange client heartbeat");
+                    _log.LogDebug("Cancel Exchange client heartbeat");
                     _exchangeHeartBeatCts.Cancel();
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("Exchange heartbeat loop canceled");
+                    _log.LogDebug("Exchange heartbeat loop canceled");
                 }
             }
 
-            ServiceDisconnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.Exchange));
+            ServiceStatusChanged?.Invoke(this, new ServiceEventArgs(Service.Exchange, ServiceStatus.Disconnected));
         }
 
         private void ExchangeOnMessage(object sender, ResponseMessage e)
@@ -183,8 +180,8 @@ namespace Atomex.Services
 
                 switch (@event)
                 {
-                    case "pong": HandlePong(AtomexClientService.Exchange); break;
-                    case "error": HandleError(response, AtomexClientService.Exchange); break;
+                    case "pong": HandlePong(Service.Exchange); break;
+                    case "error": HandleError(response, Service.Exchange); break;
                     case "order": HandleOrder(response); break;
                     case "swap": HandleSwap(response); break;
                     //case "orderSendReply": break;
@@ -203,38 +200,38 @@ namespace Atomex.Services
 
         private void MarketDataConnected(object sender, EventArgs e)
         {
-            Log.Debug("MarketData client connected");
+            _log.LogDebug("MarketData client connected");
 
             if (IsTaskCompleted(_marketDataHeartBeatTask))
             {
-                Log.Debug("Run HeartBeat loop for MarketData service");
+                _log.LogDebug("Run HeartBeat loop for MarketData service");
 
                 _marketDataHeartBeatCts = new CancellationTokenSource();
                 _marketDataHeartBeatTask = HeartBeatLoopAsync(_marketDataWs, _marketDataHeartBeatCts.Token);
             }
 
-            ServiceConnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
-            ServiceAuthenticated?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
+            ServiceStatusChanged?.Invoke(this, new ServiceEventArgs(Service.MarketData, ServiceStatus.Connected));
+            ServiceStatusChanged?.Invoke(this, new ServiceEventArgs(Service.MarketData, ServiceStatus.Authenticated));
         }
 
         private void MarketDataDisconnected(object sender, EventArgs e)
         {
-            Log.Debug("MarketData client disconnected");
+            _log.LogDebug("MarketData client disconnected");
 
             if (!IsTaskCompleted(_marketDataHeartBeatTask))
             {
                 try
                 {
-                    Log.Debug("Cancel MarketData client heartbeat");
+                    _log.LogDebug("Cancel MarketData client heartbeat");
                     _marketDataHeartBeatCts.Cancel();
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("MarketData heart beat loop canceled");
+                    _log.LogDebug("MarketData heart beat loop canceled");
                 }
             }
 
-            ServiceDisconnected?.Invoke(this, new AtomexClientServiceEventArgs(AtomexClientService.MarketData));
+            ServiceStatusChanged?.Invoke(this, new ServiceEventArgs(Service.MarketData, ServiceStatus.Disconnected));
         }
 
         private void MarketDataOnMessage(object sender, ResponseMessage e)
@@ -247,8 +244,8 @@ namespace Atomex.Services
 
                 switch (@event)
                 {
-                    case "pong": HandlePong(AtomexClientService.MarketData); break;
-                    case "error": HandleError(response, AtomexClientService.MarketData); break;
+                    case "pong": HandlePong(Service.MarketData); break;
+                    case "error": HandleError(response, Service.MarketData); break;
                     case "topOfBook": HandleTopOfBook(response); break;
                     case "entries": HandleEntries(response); break;
                     case "snapshot": HandleSnapshot(response); break;
@@ -263,10 +260,7 @@ namespace Atomex.Services
             {
                 order.ClientOrderId = GenerateOrderClientId();
 
-                Log.Information("Sending the {OrderId} [{OrderClientId}] order...", order.Id, order.ClientOrderId);
-
-                await Account.UpsertOrderAsync(order)
-                    .ConfigureAwait(false);
+                _log.LogInformation("Sending the {OrderId} [{OrderClientId}] order...", order.Id, order.ClientOrderId);
 
                 var request = new
                 {
@@ -281,8 +275,8 @@ namespace Atomex.Services
                         type = (int)order.Type,
                         requisites = new
                         {
-                            baseCurrencyContract = GetSwapContract(order.Symbol.BaseCurrency()),
-                            quoteCurrencyContract = GetSwapContract(order.Symbol.QuoteCurrency()),
+                            baseCurrencyContract = _swapContractResolver.Invoke(order.Symbol.BaseCurrency()),
+                            quoteCurrencyContract = _swapContractResolver.Invoke(order.Symbol.QuoteCurrency()),
                             // secretHash =,
                             // receivingAddress =,
                             // refundAddress =,
@@ -298,11 +292,11 @@ namespace Atomex.Services
             }
             catch (OperationCanceledException)
             {
-                Log.Debug("The {TaskName} task has been canceled", nameof(OrderSendAsync));
+                _log.LogDebug("The {TaskName} task has been canceled", nameof(OrderSendAsync));
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Sending the {OrderId} [{OrderClientId}] order is failed for the {UserId} user", AccountUserId, order.Id, order.ClientOrderId);
+                _log.LogError(ex, "Sending the {OrderId} [{OrderClientId}] order is failed for the {UserId} user", AccountUserId, order.Id, order.ClientOrderId);
             }
         }
 
@@ -343,22 +337,14 @@ namespace Atomex.Services
             _marketDataWs.Send(JsonConvert.SerializeObject(request));
         }
 
-        public MarketDataOrderBook GetOrderBook(string symbol) =>
-            MarketDataRepository?.OrderBookBySymbol(symbol);
-
-        public MarketDataOrderBook GetOrderBook(Symbol symbol) =>
-            MarketDataRepository?.OrderBookBySymbol(symbol.Name);
-
-        public Quote GetQuote(Symbol symbol) =>
-            MarketDataRepository?.QuoteBySymbol(symbol.Name);
-
         public void SwapInitiateAsync(
             long id,
             byte[] secretHash,
             string symbol,
             string toAddress,
             decimal rewardForRedeem,
-            string refundAddress)
+            string refundAddress,
+            ulong lockTime)
         {
             var request = new
             {
@@ -370,7 +356,7 @@ namespace Atomex.Services
                     receivingAddress = toAddress,
                     refundAddress    = refundAddress,
                     rewardForRedeem  = rewardForRedeem,
-                    lockTime         = CurrencySwap.DefaultInitiatorLockTimeInSeconds
+                    lockTime         = lockTime
                 },
                 requestId = 0
             };
@@ -383,7 +369,8 @@ namespace Atomex.Services
             string symbol,
             string toAddress,
             decimal rewardForRedeem,
-            string refundAddress)
+            string refundAddress,
+            ulong lockTime)
         {
             var request = new
             {
@@ -394,7 +381,7 @@ namespace Atomex.Services
                     receivingAddress = toAddress,
                     refundAddress    = refundAddress,
                     rewardForRedeem  = rewardForRedeem,
-                    lockTime         = CurrencySwap.DefaultAcceptorLockTimeInSeconds
+                    lockTime         = lockTime
                 },
                 requestId = 0
             };
@@ -458,16 +445,18 @@ namespace Atomex.Services
         {
             try
             {
-                using var securePublicKey = Account.Wallet.GetServicePublicKey(index: DEFAULT_AUTHENTICATION_ACCOUNT_INDEX);
-                var publicKey = securePublicKey.ToUnsecuredBytes();
+                const string signingAlgorithm = "Sha256WithEcdsa:BtcMsg";
 
                 var timeStamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 var message = "Hello, Atomex!";
                 var messageToSignBytes = Encoding.UTF8.GetBytes($"{message}{timeStamp}");
-                var hash = BitcoinSignHelper.MessageHash(messageToSignBytes);
+                var signingMessagePayload = HashAlgorithm.Sha256.Hash(
+                        BitcoinUtils.FormatMessageForSigning(messageToSignBytes),
+                        iterations: 2
+                    );
 
-                var signature = await Account.Wallet
-                    .SignByServiceKeyAsync(hash, keyIndex: 0, cancellationToken)
+                var (publicKey, signature) = await _authMessageSigner
+                    .Invoke(signingMessagePayload, signingAlgorithm)
                     .ConfigureAwait(false);
 
                 var body = new
@@ -476,7 +465,7 @@ namespace Atomex.Services
                     message   = message,
                     publicKey = Hex.ToHexString(publicKey),
                     signature = Hex.ToHexString(signature),
-                    algorithm = "Sha256WithEcdsa:BtcMsg"
+                    algorithm = signingAlgorithm
                 };
 
                 var content = new StringContent(
@@ -494,7 +483,7 @@ namespace Atomex.Services
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    Log.Error($"Can't get Auth token. Error code: {response.StatusCode}");
+                    _log.LogError($"Can't get Auth token. Error code: {response.StatusCode}");
                     return null;
                 }
 
@@ -508,7 +497,7 @@ namespace Atomex.Services
             }
             catch (Exception ex)
             {
-                Log.Error($"Get Auth token error: {ex.Message}");
+                _log.LogError($"Get Auth token error: {ex.Message}");
                 return null;
             }
         }
@@ -534,15 +523,15 @@ namespace Atomex.Services
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("HeartBeat loop canceled");
+                    _log.LogDebug("HeartBeat loop canceled");
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "Error while sending heartbeat");
+                    _log.LogError(e, "Error while sending heartbeat");
                 }
             }
 
-            Log.Debug("Heartbeat stopped");
+            _log.LogDebug("Heartbeat stopped");
         }
 
         private static bool IsTaskCompleted(Task task) =>
@@ -551,16 +540,16 @@ namespace Atomex.Services
             task.IsCanceled ||
             task.IsFaulted;
 
-        private void HandlePong(AtomexClientService service)
+        private void HandlePong(Service service)
         {
-            Log.Verbose($"Pong received from {service}");
+            _log.LogTrace($"Pong received from {service}");
         }
 
-        private void HandleError(JObject response, AtomexClientService service)
+        private void HandleError(JObject response, Service service)
         {
             Error?.Invoke(
                 sender: this,
-                e: new AtomexClientErrorEventArgs(
+                e: new ServiceErrorEventArgs(
                     service: service,
                     error: new Error(
                         code: Errors.RequestError,
@@ -604,31 +593,17 @@ namespace Atomex.Services
                     Status        = (OrderStatus)Enum.Parse(typeof(OrderStatus), data["status"].Value<string>())
                 };
 
-                // remove canceled orders without trades from local db if StoreCanceledOrders options is true
-                if (order.Status == OrderStatus.Canceled && order.LastQty == 0 && !_options.StoreCanceledOrders)
-                {
-                    await Account
-                        .RemoveOrderByIdAsync(order.Id)
-                        .ConfigureAwait(false);
-                }
-                else
-                {
-                    await Account
-                        .UpsertOrderAsync(order)
-                        .ConfigureAwait(false);
-                }
-
                 OrderUpdated?.Invoke(
                     sender: this,
                     e: new OrderEventArgs(order));
             }
             catch (OperationCanceledException)
             {
-                Log.Debug("The {TaskName} task has been canceled", nameof(HandleOrder));
+                _log.LogDebug("The {TaskName} task has been canceled", nameof(HandleOrder));
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Order handling failed for the {UserId} user", AccountUserId);
+                _log.LogError(ex, "Order handling failed for the {UserId} user", AccountUserId);
             }
         }
 
@@ -707,25 +682,9 @@ namespace Atomex.Services
                 });
             }
 
-            Log.Verbose("Quotes: {@quotes}", quotes);
+            _log.LogTrace("Quotes: {@quotes}", quotes);
 
-            MarketDataRepository.ApplyQuotes(quotes);
-
-            var symbolsIds = new HashSet<string>();
-
-            foreach (var quote in quotes)
-                if (!symbolsIds.Contains(quote.Symbol))
-                    symbolsIds.Add(quote.Symbol);
-
-            foreach (var symbolId in symbolsIds)
-            {
-                var symbol = _symbolsProvider
-                    .GetSymbols(Account.Network)
-                    .GetByName(symbolId);
-
-                if (symbol != null)
-                    QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));
-            }
+            QuotesUpdated?.Invoke(this, new QuotesEventArgs(quotes));
         }
 
         private void HandleSnapshot(JObject response)
@@ -751,16 +710,9 @@ namespace Atomex.Services
                     Symbol            = s["Symbol"].Value<string>()
                 };
 
-                Log.Verbose("Snapshot: {@snapshot}", snapshot);
+                _log.LogTrace("Snapshot: {@snapshot}", snapshot);
 
-                MarketDataRepository.ApplySnapshot(snapshot);
-
-                var symbol = _symbolsProvider
-                    .GetSymbols(Account.Network)
-                    .GetByName(snapshot.Symbol);
-
-                if (symbol != null)
-                    QuotesUpdated?.Invoke(this, new MarketDataEventArgs(symbol));
+                SnapshotUpdated?.Invoke(this, new SnapshotEventArgs(snapshot));
             }
         }
 
@@ -780,20 +732,10 @@ namespace Atomex.Services
                 });
             }
 
-            MarketDataRepository.ApplyEntries(entries);
+            EntriesUpdated?.Invoke(this, new EntriesEventArgs(entries));
         }
 
-        private string GetSwapContract(string currency)
-        {
-            if (currency == "ETH" || Currencies.IsEthereumToken(currency))
-                return Account.Currencies.Get<EthereumConfig>(currency).SwapContractAddress;
-
-            if (currency == "XTZ" || Currencies.IsTezosToken(currency))
-                return Account.Currencies.Get<TezosConfig>(currency).SwapContractAddress;
-
-            return null;
-        }
-
-        private static string GenerateOrderClientId() => Guid.NewGuid().ToByteArray().ToHexString(0, 16);
+        private static string GenerateOrderClientId() =>
+            Guid.NewGuid().ToByteArray().ToHexString(0, 16);
     }
 }

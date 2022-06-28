@@ -16,7 +16,8 @@
             string symbol,
             string toAddress,
             decimal rewardForRedeem,
-            string refundAddress);
+            string refundAddress,
+            ulong lockTime);
 
         void SwapStatusAsync(
             string requestId,

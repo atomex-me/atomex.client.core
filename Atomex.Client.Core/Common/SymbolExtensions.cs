@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+
 using Atomex.Core;
 
 namespace Atomex.Common
@@ -8,19 +9,12 @@ namespace Atomex.Common
     {
         public static Side OrderSideForBuyCurrency(this Symbol symbol, string currency)
         {
-            return OrderSideForBuyCurrency(symbol.Name, currency);
+            return symbol.Name.OrderSideForBuyCurrency(currency);
         }
 
         public static Side OrderSideForBuyCurrency(this Symbol symbol, CurrencyConfig currency)
         {
-            return OrderSideForBuyCurrency(symbol.Name, currency.Name);
-        }
-
-        public static Side OrderSideForBuyCurrency(this string symbol, string currency)
-        {
-            return IsBaseCurrency(symbol, currency)
-                ? Side.Buy
-                : Side.Sell;
+            return symbol.Name.OrderSideForBuyCurrency(currency.Name);
         }
 
         public static string PurchasedCurrency(this Symbol symbol, Side side)
@@ -30,13 +24,6 @@ namespace Atomex.Common
                 : symbol.Quote;
         }
 
-        public static string PurchasedCurrency(this string symbol, Side side)
-        {
-            return side == Side.Buy
-                ? symbol.BaseCurrency()
-                : symbol.QuoteCurrency();
-        }
-
         public static string SoldCurrency(this Symbol symbol, Side side)
         {
             return side == Side.Buy
@@ -44,31 +31,9 @@ namespace Atomex.Common
                 : symbol.Base;
         }
 
-        public static string SoldCurrency(this string symbol, Side side)
-        {
-            return side == Side.Buy
-                ? symbol.QuoteCurrency()
-                : symbol.BaseCurrency();
-        }
-
         public static bool IsBaseCurrency(this Symbol symbol, string currency)
         {
             return symbol.Base == currency;
-        }
-
-        public static bool IsBaseCurrency(this string symbol, string currency)
-        {
-            return BaseCurrency(symbol) == currency;
-        }
-
-        public static string BaseCurrency(this string symbol)
-        {
-            return symbol.Substring(0, symbol.IndexOf('/'));
-        }
-
-        public static string QuoteCurrency(this string symbol)
-        {
-            return symbol.Substring(symbol.IndexOf('/') + 1);
         }
 
         public static bool IsQuoteCurrency(this Symbol symbol, string currency)

@@ -30,7 +30,7 @@ namespace Atomex.Swaps
 
         private readonly IAccount _account;
         private readonly ISwapClient _swapClient;
-        private readonly ICurrencyQuotesProvider _quotesProvider;
+        private readonly IQuotesProvider _quotesProvider;
         private readonly IMarketDataRepository _marketDataRepository;
         private readonly IDictionary<string, ICurrencySwap> _currencySwaps;
         private CancellationTokenSource _cts;
@@ -61,7 +61,7 @@ namespace Atomex.Swaps
         public SwapManager(
             IAccount account,
             ISwapClient swapClient,
-            ICurrencyQuotesProvider quotesProvider,
+            IQuotesProvider quotesProvider,
             IMarketDataRepository marketDataRepository)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
@@ -435,7 +435,8 @@ namespace Atomex.Swaps
                 swap.Symbol,
                 swap.ToAddress,
                 swap.RewardForRedeem,
-                swap.RefundAddress);
+                swap.RefundAddress,
+                CurrencySwap.DefaultInitiatorLockTimeInSeconds);
         }
 
         private async Task FillAndSendAcceptorRequisitesAsync(
@@ -485,7 +486,8 @@ namespace Atomex.Swaps
                 swap.Symbol,
                 swap.ToAddress,
                 swap.RewardForRedeem,
-                swap.RefundAddress);
+                swap.RefundAddress,
+                CurrencySwap.DefaultAcceptorLockTimeInSeconds);
         }
 
         private async Task<Error> CheckAndSaveInitiatorRequisitesAsync(

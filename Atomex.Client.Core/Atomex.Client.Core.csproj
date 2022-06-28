@@ -26,7 +26,6 @@
     <PackageReference Include="LiteDB" Version="4.1.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="5.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="5.0.0" />
-    <PackageReference Include="NBitcoin" Version="7.0.6" />
     <PackageReference Include="NBitcoin.Altcoins" Version="3.0.8" />
     <PackageReference Include="Nethereum.HdWallet" Version="4.3.0" />
     <PackageReference Include="Nethereum.JsonRpc.WebSocketClient" Version="4.3.0" />

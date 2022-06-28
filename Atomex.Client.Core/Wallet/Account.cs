@@ -9,7 +9,6 @@ using Microsoft.Extensions.Configuration;
 using Serilog;
 
 using Atomex.Abstract;
-using Atomex.Api;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
@@ -25,9 +24,7 @@ namespace Atomex.Wallet
     {
         public const string DefaultUserSettingsFileName = "user.config";
         public const string DefaultDataFileName = "data.db";
-
         private const string DefaultAccountKey = "Account:Default";
-        private const string ApiVersion = "1.5";
         public string SettingsFilePath => $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}";
 
         public event EventHandler<CurrencyEventArgs> BalanceUpdated
@@ -66,8 +63,6 @@ namespace Atomex.Wallet
         public IHdWallet Wallet { get; }
         public ICurrencies Currencies { get; }
         public UserData UserData { get; private set; }
-
-        private readonly ClientType _clientType;
         private IAccountDataRepository DataRepository { get; }
         private IDictionary<string, ICurrencyAccount> CurrencyAccounts { get; }
 
@@ -75,12 +70,10 @@ namespace Atomex.Wallet
             string pathToAccount,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ClientType clientType,
             Action<MigrationActionType> migrationCompleteCallback = null)
             : this(wallet: HdWallet.LoadFromFile(pathToAccount, password),
                    password: password,
                    currenciesProvider: currenciesProvider,
-                   clientType: clientType,
                    migrationCompleteCallback: migrationCompleteCallback)
         {
         }
@@ -89,7 +82,6 @@ namespace Atomex.Wallet
             IHdWallet wallet,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ClientType clientType,
             Action<MigrationActionType> migrationCompleteCallback = null)
         {
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
@@ -107,15 +99,12 @@ namespace Atomex.Wallet
 
             UserData = UserData.TryLoadFromFile(
                 pathToFile: SettingsFilePath) ?? UserData.GetDefaultSettings(Currencies);
-
-            _clientType = clientType;
         }
 
         public Account(
             IHdWallet wallet,
             IAccountDataRepository dataRepository,
-            ICurrenciesProvider currenciesProvider,
-            ClientType clientType)
+            ICurrenciesProvider currenciesProvider)
         {
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
             DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
@@ -125,8 +114,6 @@ namespace Atomex.Wallet
 
             UserData = UserData.TryLoadFromFile(
                 pathToFile: SettingsFilePath) ?? UserData.GetDefaultSettings(Currencies);
-
-            _clientType = clientType;
         }
 
         #region Common
@@ -162,42 +149,10 @@ namespace Atomex.Wallet
             return this;
         }
 
-        public async Task<Auth> CreateAuthRequestAsync(AuthNonce nonce, uint keyIndex = 0)
-        {
-            if (IsLocked)
-            {
-                Log.Warning("Wallet locked");
-                return null;
-            }
-
-            using var securePublicKey = Wallet.GetServicePublicKey(keyIndex);
-            var publicKey = securePublicKey.ToUnsecuredBytes();
-
-            var auth = new Auth
-            {
-                TimeStamp    = DateTime.UtcNow,
-                Nonce        = nonce.Nonce,
-                ClientNonce  = Guid.NewGuid().ToString(),
-                PublicKeyHex = publicKey.ToHexString(),
-                Version      = $"{ApiVersion} {_clientType}"
-            };
-
-            var hashToSign = HashAlgorithm.Sha256.Hash(auth.SignedData);
-
-            var signature = await Wallet
-                .SignByServiceKeyAsync(hashToSign, keyIndex)
-                .ConfigureAwait(false);
-
-            auth.Signature = Convert.ToBase64String(signature);
-
-            return auth;
-        }
-
         public static IAccount LoadFromConfiguration(
             IConfiguration configuration,
             SecureString password,
-            ICurrenciesProvider currenciesProvider,
-            ClientType clientType)
+            ICurrenciesProvider currenciesProvider)
         {
             var pathToAccount = configuration[DefaultAccountKey];
 
@@ -213,17 +168,16 @@ namespace Atomex.Wallet
                 return null;
             }
 
-            return LoadFromFile(pathToAccount, password, currenciesProvider, clientType);
+            return LoadFromFile(pathToAccount, password, currenciesProvider);
         }
 
         public static Account LoadFromFile(
             string pathToAccount,
             SecureString password,
             ICurrenciesProvider currenciesProvider,
-            ClientType clientType,
             Action<MigrationActionType> migrationCompleteCallback = null)
         {
-            return new Account(pathToAccount, password, currenciesProvider, clientType, migrationCompleteCallback);
+            return new Account(pathToAccount, password, currenciesProvider, migrationCompleteCallback);
         }
 
         public ICurrencyAccount GetCurrencyAccount(string currency)

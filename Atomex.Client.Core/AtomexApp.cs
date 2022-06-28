@@ -1,13 +1,16 @@
 ﻿using System;
 
+using Serilog;
+
 using Atomex.Abstract;
+using Atomex.Client.Abstract;
+using Atomex.Client.Common;
 using Atomex.MarketData.Abstract;
 using Atomex.Services;
 using Atomex.Services.Abstract;
 using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
-using Serilog;
 
 namespace Atomex
 {
@@ -17,8 +20,8 @@ namespace Atomex
 
         public IAtomexClient AtomexClient { get; private set; }
         public IAccount Account => AtomexClient?.Account;
-        public ICurrencyQuotesProvider QuotesProvider { get; private set; }
-        public ICurrencyOrderBookProvider OrderBooksProvider { get; private set; }
+        public IQuotesProvider QuotesProvider { get; private set; }
+        public IOrderBookProvider OrderBooksProvider { get; private set; }
         public ICurrenciesProvider CurrenciesProvider { get; private set; }
         public ISymbolsProvider SymbolsProvider { get; private set; }
         public ICurrenciesUpdater CurrenciesUpdater { get; private set; }
@@ -72,7 +75,7 @@ namespace Atomex
             _balanceUpdater.Start();
         }
 
-        private async void AtomexClient_SwapReceived(object sender, SwapEventArgs e)
+        private async void AtomexClient_SwapReceived(object sender, Client.V1.Common.SwapEventArgs e)
         {
             var error = await SwapManager
                 .HandleSwapAsync(e.Swap)
@@ -103,11 +106,13 @@ namespace Atomex
 
         public IAtomexApp UseAtomexClient(IAtomexClient atomexClient, bool restart = false)
         {
-            if (AtomexClient != null)
+            var previousAtomexClient = AtomexClient;
+
+            if (previousAtomexClient != null)
             {
                 StopAtomexClient();
 
-                AtomexClient.SwapUpdated -= AtomexClient_SwapReceived;
+                previousAtomexClient.SwapUpdated -= AtomexClient_SwapReceived;
             }
 
             AtomexClient = atomexClient;
@@ -132,7 +137,9 @@ namespace Atomex
                     log: Log.Logger);
             }
 
-            AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(AtomexClient));
+            AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(
+                oldClient: previousAtomexClient,
+                newClient: AtomexClient));
 
             if (AtomexClient != null && restart)
                 StartAtomexClient();
@@ -164,12 +171,12 @@ namespace Atomex
             return this;
         }
 
-        public IAtomexApp UseQuotesProvider(ICurrencyQuotesProvider quotesProvider)
+        public IAtomexApp UseQuotesProvider(IQuotesProvider quotesProvider)
         {
             QuotesProvider = quotesProvider;
             return this;
         }
-        public IAtomexApp UseOrderBooksProvider(ICurrencyOrderBookProvider orderBooksProvider)
+        public IAtomexApp UseOrderBooksProvider(IOrderBookProvider orderBooksProvider)
         {
             OrderBooksProvider = orderBooksProvider;
             return this;

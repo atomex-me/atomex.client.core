@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Configuration;
 
-namespace Atomex.Services
+namespace Atomex.Client
 {
     public record AtomexClientOptions
     {

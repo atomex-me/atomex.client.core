@@ -61,7 +61,8 @@ namespace Atomex.Client.V1
             string symbol,
             string toAddress,
             decimal rewardForRedeem,
-            string refundAddress) =>
+            string refundAddress,
+            ulong lockTime) =>
             SendAsync(Schemes.SwapInitiate.SerializeWithMessageId(new Swap
             {
                 Id              = id,
@@ -77,7 +78,8 @@ namespace Atomex.Client.V1
             string symbol,
             string toAddress,
             decimal rewardForRedeem,
-            string refundAddress) =>
+            string refundAddress,
+            ulong lockTime) =>
             SendAsync(Schemes.SwapAccept.SerializeWithMessageId(new Swap
             {
                 Id              = id,

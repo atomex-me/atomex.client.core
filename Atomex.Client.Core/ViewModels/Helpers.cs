@@ -15,6 +15,7 @@ using Atomex.MarketData.Abstract;
 using Atomex.Services.Abstract;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Abstract;
+using Atomex.Client.Abstract;
 
 namespace Atomex.ViewModels
 {
@@ -514,7 +515,7 @@ namespace Atomex.ViewModels
             IAccount account,
             IAtomexClient atomexClient,
             ISymbolsProvider symbolsProvider,
-            ICurrencyQuotesProvider quotesProvider,
+            IQuotesProvider quotesProvider,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
