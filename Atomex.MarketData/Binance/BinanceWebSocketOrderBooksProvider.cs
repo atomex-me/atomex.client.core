@@ -256,13 +256,13 @@ namespace Atomex.MarketData.Binance
 
                         while (reader.Read())
                         {
-                            if  (reader.TokenType == JsonTokenType.PropertyName)
+                            if (reader.TokenType == JsonTokenType.PropertyName)
                             {
                                 var propertyName = reader.GetString();
 
                                 if (propertyName == "stream")
                                 {
-                                    ParseUpdates(ref reader);
+                                    ParseUpdates(msg.Text);
                                     break;
                                 }
                                 else if (propertyName == "result" || propertyName == "code")
@@ -285,9 +285,9 @@ namespace Atomex.MarketData.Binance
             }
         }
 
-        private void ParseUpdates(ref Utf8JsonReader reader)
+        private void ParseUpdates(string jsonMessage)
         {
-            var streamMessage = JsonSerializer.Deserialize<BinancePayload<BinanceOrderBookUpdates>>(ref reader);
+            var streamMessage = JsonSerializer.Deserialize<BinancePayload<BinanceOrderBookUpdates>>(jsonMessage);
 
             if (!_streams.TryGetValue(streamMessage.StreamId, out var orderBookStream))
             {
