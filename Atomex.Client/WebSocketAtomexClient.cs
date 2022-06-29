@@ -81,8 +81,8 @@ namespace Atomex.Services
         public bool IsServiceConnected(Service service) =>
             service switch
             {
-                Service.Exchange => _exchangeWs.IsConnected,
-                Service.MarketData => _marketDataWs.IsConnected,
+                Service.Exchange => _exchangeWs?.IsConnected ?? false,
+                Service.MarketData => _marketDataWs?.IsConnected ?? false,
                 _ => throw new ArgumentOutOfRangeException(nameof(service), service, null)
             };
 
@@ -670,10 +670,10 @@ namespace Atomex.Services
             {
                 quotes.Add(new Quote
                 {
-                    Ask       = quote["Ask"].Value<decimal>(),
-                    Bid       = quote["Bid"].Value<decimal>(),
-                    Symbol    = quote["Symbol"].Value<string>(),
-                    TimeStamp = quote["TimeStamp"].Value<long>().ToUtcDateTimeFromMs()
+                    Ask       = quote["ask"].Value<decimal>(),
+                    Bid       = quote["bid"].Value<decimal>(),
+                    Symbol    = quote["dymbol"].Value<string>(),
+                    TimeStamp = quote["timeStamp"].Value<long>().ToUtcDateTimeFromMs()
                 });
             }
 
@@ -684,31 +684,34 @@ namespace Atomex.Services
 
         private void HandleSnapshot(JObject response)
         {
-            foreach (var s in response["data"])
+            if (response["data"] == null)
             {
-                var entries = new List<Entry>();
-
-                foreach (var entry in s["Entries"])
-                {
-                    entries.Add(new Entry
-                    {
-                        Price         = entry["Price"].Value<decimal>(),
-                        QtyProfile    = entry["QtyProfile"].ToObject<List<decimal>>(),
-                        Side          = (Side)Enum.Parse(typeof(Side), entry["side"].Value<string>()),
-                    });
-                }
-
-                var snapshot = new Snapshot
-                {
-                    Entries           = entries,
-                    LastTransactionId = s["UpdateId"].Value<long>(),
-                    Symbol            = s["Symbol"].Value<string>()
-                };
-
-                _log?.LogTrace("Snapshot: {@snapshot}", snapshot);
-
-                SnapshotUpdated?.Invoke(this, new SnapshotEventArgs(snapshot));
+                _log.LogWarning("Empty snapshot received");
+                return;
             }
+
+            var entries = new List<Entry>();
+
+            foreach (var entry in response["data"]["entries"])
+            {
+                entries.Add(new Entry
+                {
+                    Price         = entry["price"].Value<decimal>(),
+                    QtyProfile    = entry["qtyProfile"].ToObject<List<decimal>>(),
+                    Side          = (Side)Enum.Parse(typeof(Side), entry["side"].Value<string>()),
+                });
+            }
+
+            var snapshot = new Snapshot
+            {
+                Entries           = entries,
+                LastTransactionId = response["data"]["updateId"].Value<long>(),
+                Symbol            = response["data"]["symbol"].Value<string>()
+            };
+
+            _log?.LogTrace("Snapshot: {@snapshot}", snapshot);
+
+            SnapshotUpdated?.Invoke(this, new SnapshotEventArgs(snapshot));
         }
 
         private void HandleEntries(JObject response)
@@ -719,10 +722,10 @@ namespace Atomex.Services
             {
                 entries.Add(new Entry
                 {
-                    TransactionId = entry["UpdateId"].Value<long>(),
-                    Symbol        = entry["Symbol"].Value<string>(),
-                    Price         = entry["Price"].Value<decimal>(),
-                    QtyProfile    = entry["QtyProfile"].ToObject<List<decimal>>(),
+                    TransactionId = entry["updateId"].Value<long>(),
+                    Symbol        = entry["symbol"].Value<string>(),
+                    Price         = entry["price"].Value<decimal>(),
+                    QtyProfile    = entry["qtyProfile"].ToObject<List<decimal>>(),
                     Side          = (Side)Enum.Parse(typeof(Side), entry["side"].Value<string>()),
                 });
             }
