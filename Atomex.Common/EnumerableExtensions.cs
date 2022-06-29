@@ -29,7 +29,7 @@ namespace Atomex.Common
             where TKey : IComparable
         {
             return source.Any()
-                ? MaxBy(source, selector)
+                ? source.MaxBy(selector)
                 : default;
         }
 

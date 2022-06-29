@@ -53,18 +53,18 @@ namespace Atomex.Client.Rest
         private readonly CancellationTokenSource _cts = new();
         private bool _isConnected = false;
         private AuthenticationResponseData? _authenticationData;
-        private readonly LocalSwapProvider _localSwapProvider;
+        private readonly LastLocalSwapIdProvider _lastLocalSwapIdProvider;
         private readonly AuthMessageSigner _authMessageSigner;
 
         public RestAtomexClient(
             HttpClient httpClient,
-            LocalSwapProvider localSwapProvider,
+            LastLocalSwapIdProvider lastLocalSwapIdProvider,
             AuthMessageSigner authMessageSigner,
             ILogger logger = null
         )
         {
             HttpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            _localSwapProvider = localSwapProvider ?? throw new ArgumentNullException(nameof(localSwapProvider));
+            _lastLocalSwapIdProvider = lastLocalSwapIdProvider ?? throw new ArgumentNullException(nameof(lastLocalSwapIdProvider));
             _authMessageSigner = authMessageSigner ?? throw new ArgumentNullException(nameof(authMessageSigner));
             _log = logger;
         }
@@ -480,14 +480,11 @@ namespace Atomex.Client.Rest
                 {
                     _log?.LogInformation("Start to track swaps");
 
-                    var localSwaps = _localSwapProvider.Invoke();
+                    var lastSwapId = await _lastLocalSwapIdProvider
+                        .Invoke()
+                        .ConfigureAwait(false);
 
-                    var localSwapsCount = localSwaps.Count();
-                    var lastSwapId = localSwapsCount > 0
-                        ? localSwaps.MaxBy(s => s.Id).Id
-                        : 0L;
-
-                    _log?.LogDebug("Number of local swaps is {Count}. The last swap Id is {SwapId}", localSwapsCount, lastSwapId);
+                    _log?.LogDebug("The last swap Id is {SwapId}", lastSwapId);
 
                     var tryCount = 0u;
 
