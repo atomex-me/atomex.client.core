@@ -3,9 +3,10 @@
 using Serilog;
 
 using Atomex.Abstract;
-using Atomex.Core;
 using Atomex.Client.Abstract;
 using Atomex.Client.Common;
+using Atomex.Client.Entities;
+using Atomex.Client.V1.Common;
 using Atomex.MarketData.Abstract;
 using Atomex.Services;
 using Atomex.Services.Abstract;
@@ -13,7 +14,10 @@ using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.MarketData;
+using Atomex.MarketData.Common;
 using SwapEventArgs = Atomex.Client.V1.Common.SwapEventArgs;
+using Swap = Atomex.Core.Swap;
+using Order = Atomex.Core.Order;
 
 namespace Atomex
 {
@@ -32,10 +36,10 @@ namespace Atomex
         public ISwapManager SwapManager { get; private set; }
         public ITransactionsTracker TransactionsTracker { get; private set; }
         public IMarketDataRepository MarketDataRepository { get; private set; }
-
         public bool HasQuotesProvider => QuotesProvider != null;
 
         private IBalanceUpdater _balanceUpdater;
+        private bool _storeCanceledOrders;
 
         public IAtomexApp Start()
         {
@@ -65,6 +69,12 @@ namespace Atomex
 
         private async void StartAtomexClient()
         {
+            if (Account == null)
+                throw new InvalidOperationException("Account not set");
+
+            if (AtomexClient == null)
+                throw new InvalidOperationException("AtomexClient not set");
+
             // start atomex client
             await AtomexClient
                 .StartAsync()
@@ -79,38 +89,6 @@ namespace Atomex
             _balanceUpdater.Start();
         }
 
-        private async void AtomexClient_SwapReceived(object sender, SwapEventArgs e)
-        {
-            var error = await SwapManager
-                .HandleSwapAsync(new Swap
-                {
-                    Id = e.Swap.Id,
-                    Status = e.Swap.Status,
-                    TimeStamp = e.Swap.TimeStamp,
-                    OrderId = e.Swap.OrderId,
-                    Symbol = e.Swap.Symbol,
-                    Side = e.Swap.Side,
-                    Price = e.Swap.Price,
-                    Qty = e.Swap.Qty,
-                    IsInitiative = e.Swap.IsInitiative,
-                    ToAddress = e.Swap.ToAddress,
-                    RewardForRedeem = e.Swap.RewardForRedeem,
-                    PaymentTxId = e.Swap.PaymentTxId,
-                    RedeemScript = e.Swap.RedeemScript,
-                    RefundAddress = e.Swap.RefundAddress,
-                    PartyAddress = e.Swap.PartyAddress,
-                    PartyRewardForRedeem = e.Swap.PartyRewardForRedeem,
-                    PartyPaymentTxId = e.Swap.PartyPaymentTxId,
-                    PartyRedeemScript = e.Swap.PartyRedeemScript,
-                    PartyRefundAddress = e.Swap.PartyRefundAddress,
-                    SecretHash = e.Swap.SecretHash
-                })
-                .ConfigureAwait(false);
-
-            if (error != null)
-                Log.Error(error.Description);
-        }
-
         private async void StopAtomexClient()
         {
             _balanceUpdater.Stop();
@@ -121,31 +99,49 @@ namespace Atomex
             // stop swap manager
             SwapManager.Stop();
 
-            // lock account's wallet
-            Account.Lock();
-
             // stop atomex client
             await AtomexClient
                 .StopAsync()
                 .ConfigureAwait(false);
         }
 
-        public IAtomexApp UseAtomexClient(IAtomexClient atomexClient, bool restart = false)
+        public IAtomexApp ChangeAtomexClient(
+            IAtomexClient atomexClient,
+            IAccount account,
+            bool restart = false,
+            bool storeCanceledOrders = false)
         {
+            if (atomexClient != null && account == null)
+                throw new InvalidOperationException("Account must not be null for new atomex client");
+
+            _storeCanceledOrders = storeCanceledOrders;
+
             var previousAtomexClient = AtomexClient;
 
             if (previousAtomexClient != null)
             {
                 StopAtomexClient();
 
-                previousAtomexClient.SwapUpdated -= AtomexClient_SwapReceived;
+                // lock account's wallet
+                Account?.Lock();
+
+                previousAtomexClient.OrderUpdated    -= AtomexClient_OrderUpdated;
+                previousAtomexClient.SwapUpdated     -= AtomexClient_SwapReceived;
+                previousAtomexClient.EntriesUpdated  -= AtomexClient_EntriesUpdated;
+                previousAtomexClient.QuotesUpdated   -= AtomexClient_QuotesUpdated;
+                previousAtomexClient.SnapshotUpdated -= AtomexClient_SnapshotUpdated;
             }
 
+            Account = account;
             AtomexClient = atomexClient;
 
             if (AtomexClient != null)
             {
-                AtomexClient.SwapUpdated += AtomexClient_SwapReceived;
+                AtomexClient.OrderUpdated    += AtomexClient_OrderUpdated;
+                AtomexClient.SwapUpdated     += AtomexClient_SwapReceived;
+                AtomexClient.EntriesUpdated  += AtomexClient_EntriesUpdated;
+                AtomexClient.QuotesUpdated   += AtomexClient_QuotesUpdated;
+                AtomexClient.SnapshotUpdated += AtomexClient_SnapshotUpdated;
 
                 MarketDataRepository = new MarketDataRepository();
 
@@ -208,6 +204,91 @@ namespace Atomex
         {
             OrderBooksProvider = orderBooksProvider;
             return this;
+        }
+
+        private async void AtomexClient_OrderUpdated(object sender, OrderEventArgs e)
+        {
+            try
+            {
+                // remove canceled orders without trades from local db if StoreCanceledOrders options is true
+                if (e.Order.Status == OrderStatus.Canceled && e.Order.LastQty == 0 && !_storeCanceledOrders)
+                {
+                    await Account
+                        .RemoveOrderByIdAsync(e.Order.Id)
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    await Account
+                        .UpsertOrderAsync(new Order
+                        {
+                            Id            = e.Order.Id,
+                            ClientOrderId = e.Order.ClientOrderId,
+                            Symbol        = e.Order.Symbol,
+                            TimeStamp     = e.Order.TimeStamp,
+                            Price         = e.Order.Price,
+                            LastPrice     = e.Order.LastPrice,
+                            Qty           = e.Order.Qty,
+                            LeaveQty      = e.Order.LeaveQty,
+                            LastQty       = e.Order.LastQty,
+                            Side          = e.Order.Side,
+                            Type          = e.Order.Type,
+                            Status        = e.Order.Status
+                        })
+                        .ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                // todo: log
+            }
+        }
+
+        private async void AtomexClient_SwapReceived(object sender, SwapEventArgs e)
+        {
+            var error = await SwapManager
+                .HandleSwapAsync(new Swap
+                {
+                    Id                   = e.Swap.Id,
+                    Status               = e.Swap.Status,
+                    TimeStamp            = e.Swap.TimeStamp,
+                    OrderId              = e.Swap.OrderId,
+                    Symbol               = e.Swap.Symbol,
+                    Side                 = e.Swap.Side,
+                    Price                = e.Swap.Price,
+                    Qty                  = e.Swap.Qty,
+                    IsInitiative         = e.Swap.IsInitiative,
+                    ToAddress            = e.Swap.ToAddress,
+                    RewardForRedeem      = e.Swap.RewardForRedeem,
+                    PaymentTxId          = e.Swap.PaymentTxId,
+                    RedeemScript         = e.Swap.RedeemScript,
+                    RefundAddress        = e.Swap.RefundAddress,
+                    PartyAddress         = e.Swap.PartyAddress,
+                    PartyRewardForRedeem = e.Swap.PartyRewardForRedeem,
+                    PartyPaymentTxId     = e.Swap.PartyPaymentTxId,
+                    PartyRedeemScript    = e.Swap.PartyRedeemScript,
+                    PartyRefundAddress   = e.Swap.PartyRefundAddress,
+                    SecretHash           = e.Swap.SecretHash
+                })
+                .ConfigureAwait(false);
+
+            if (error != null)
+                Log.Error(error.Description);
+        }
+
+        private void AtomexClient_SnapshotUpdated(object sender, SnapshotEventArgs e)
+        {
+            MarketDataRepository.ApplySnapshot(e.Snapshot);
+        }
+
+        private void AtomexClient_QuotesUpdated(object sender, QuotesEventArgs e)
+        {
+            MarketDataRepository.ApplyQuotes(e.Quotes);
+        }
+
+        private void AtomexClient_EntriesUpdated(object sender, EntriesEventArgs e)
+        {
+            MarketDataRepository.ApplyEntries(e.Entries);
         }
     }
 }

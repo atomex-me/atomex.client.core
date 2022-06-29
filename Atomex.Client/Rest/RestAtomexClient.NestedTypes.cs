@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-
-using Atomex.Client.V1.Entities;
+using Atomex.Client.Entities;
 using Atomex.Common;
 
 #nullable enable

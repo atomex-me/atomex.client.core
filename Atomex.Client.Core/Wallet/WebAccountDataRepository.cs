@@ -4,17 +4,18 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Security;
 
-using Serilog;
-using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Tezos;
-using Atomex.Common;
-using Atomex.Core;
-using Atomex.Wallet.Abstract;
-using Atomex.Abstract;
-using Atomex.Common.Bson;
 using LiteDB;
 using Newtonsoft.Json;
+using Serilog;
 
+using Atomex.Abstract;
+using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Tezos;
+using Atomex.Client.Entities;
+using Atomex.Common;
+using Atomex.Common.Bson;
+using Atomex.Core;
+using Atomex.Wallet.Abstract;
 
 namespace Atomex.Wallet
 {
@@ -29,11 +30,9 @@ namespace Atomex.Wallet
         private readonly Dictionary<string, TokenTransfer> _tezosTokensTransfers;
         private readonly Dictionary<string, TokenContract> _tezosTokensContracts;
 
-        private ICurrencies _currencies;
-
+        private readonly ICurrencies _currencies;
         private readonly object _sync;
-
-        private BsonMapper _bsonMapper;
+        private readonly BsonMapper _bsonMapper;
 
         public Action<AvailableDataType, string, string> SaveDataCallback;
 

@@ -1,27 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 
+using Atomex.Client.Entities;
 using Atomex.Common;
 
 namespace Atomex.Client.V1.Entities
 {
-    public enum OrderStatus
-    {
-        Pending,
-        Placed,
-        PartiallyFilled,
-        Filled,
-        Canceled,
-        Rejected
-    }
-
-    public enum OrderType
-    {
-        Return,
-        FillOrKill,
-        ImmediateOrCancel
-    }
-
     public class Order
     {
         public long Id { get; set; }
@@ -37,5 +21,8 @@ namespace Atomex.Client.V1.Entities
         public OrderType Type { get; set; }
         public OrderStatus Status { get; set; }
         public IList<WalletAddress> FromWallets { get; set; }
+
+        public string BaseCurrencyContract { get; set; }
+        public string QuoteCurrencyContract { get; set; }
     }
 }

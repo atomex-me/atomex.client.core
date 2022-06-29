@@ -110,7 +110,7 @@ namespace Atomex.Common
             ILogger logger = null,
             CancellationToken cancellationToken = default)
         {
-            logger.LogDebug("Send {@method} request: {@baseUri}{@request}",
+            logger?.LogDebug("Send {@method} request: {@baseUri}{@request}",
                 method.ToString(),
                 baseUri,
                 relativeUri);

@@ -103,17 +103,17 @@ namespace Atomex.MarketData.TezTools
                     }
                     catch
                     {
-                        _log.LogError("Can't update tezos tokens quotes");
+                        _log?.LogError("Can't update tezos tokens quotes");
                     }
                 }
 
-                _log.LogDebug("Update finished");
+                _log?.LogDebug("Update finished");
 
                 return true;
             }
             catch (Exception e)
             {
-                _log.LogError(e, e.Message);
+                _log?.LogError(e, e.Message);
 
                 return false;
             }

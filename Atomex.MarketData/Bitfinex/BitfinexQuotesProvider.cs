@@ -62,7 +62,7 @@ namespace Atomex.MarketData.Bitfinex
         public override async Task UpdateAsync(
             CancellationToken cancellationToken = default)
         {
-            _log.LogDebug("Start of update");
+            _log?.LogDebug("Start of update");
 
             bool isAvailable;
 
@@ -71,11 +71,11 @@ namespace Atomex.MarketData.Bitfinex
                 isAvailable = await UpdateQuotesAsync(cancellationToken)
                     .ConfigureAwait(false);
 
-                _log.LogDebug("Update finished");
+                _log?.LogDebug("Update finished");
             }
             catch (Exception e)
             {
-                _log.LogError(e, e.Message);
+                _log?.LogError(e, e.Message);
 
                 isAvailable = false;
             }

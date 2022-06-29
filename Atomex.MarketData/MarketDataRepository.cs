@@ -1,13 +1,19 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading;
 
 using Atomex.MarketData.Abstract;
+using Atomex.MarketData.Common;
 using Atomex.MarketData.Entities;
 
 namespace Atomex.MarketData
 {
     public class MarketDataRepository : IMarketDataRepository
     {
+        public event EventHandler<QuotesEventArgs> QuotesUpdated;
+        public event EventHandler<EntriesEventArgs> EntriesUpdated;
+        public event EventHandler<SnapshotEventArgs> SnapshotUpdated;
+
         private readonly SemaphoreSlim _semaphoreSlim = new(1, 1);
         private readonly IDictionary<string, OrderBook> _orderBooks;
         private readonly IDictionary<string, Queue<Entry>> _entriesQueue;
@@ -40,6 +46,8 @@ namespace Atomex.MarketData
             foreach (var quote in quotes)
                 if (_lastQuotes.ContainsKey(quote.Symbol))
                     _lastQuotes[quote.Symbol] = quote;
+
+            QuotesUpdated?.Invoke(this, new QuotesEventArgs(quotes));
         }
 
         public void ApplyEntries(IList<Entry> entries)
@@ -74,6 +82,8 @@ namespace Atomex.MarketData
                     _semaphoreSlim.Release();
                 }
             }
+
+            EntriesUpdated?.Invoke(this, new EntriesEventArgs(entries));
         }
 
         public void ApplySnapshot(Snapshot snapshot)
@@ -104,6 +114,8 @@ namespace Atomex.MarketData
             {
                 _semaphoreSlim.Release();
             }
+
+            SnapshotUpdated?.Invoke(this, new SnapshotEventArgs(snapshot));
         }
 
         public OrderBook OrderBookBySymbol(string symbol)

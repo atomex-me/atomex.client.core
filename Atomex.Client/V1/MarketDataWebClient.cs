@@ -6,6 +6,7 @@ using Atomex.Client.V1.Proto;
 using Atomex.Client.V1.Entities;
 using Atomex.Client.V1.Common;
 using Atomex.MarketData.Common;
+using Atomex.Common;
 
 namespace Atomex.Client.V1
 {

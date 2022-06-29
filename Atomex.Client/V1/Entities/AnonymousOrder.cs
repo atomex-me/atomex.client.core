@@ -1,5 +1,6 @@
 ﻿using System;
 
+using Atomex.Client.Entities;
 using Atomex.Common;
 
 namespace Atomex.Client.V1.Entities

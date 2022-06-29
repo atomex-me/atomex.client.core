@@ -37,7 +37,7 @@ namespace Atomex.MarketData.Abstract
         {
             if (IsRunning)
             {
-                _log.LogWarning("Background update task already running");
+                _log?.LogWarning("Background update task already running");
                 return;
             }
 
@@ -48,7 +48,7 @@ namespace Atomex.MarketData.Abstract
 
         private async Task UpdateLoop()
         {
-            _log.LogInformation("Run background update loop");
+            _log?.LogInformation("Run background update loop");
 
             while (!_cts.IsCancellationRequested)
             {
@@ -62,11 +62,11 @@ namespace Atomex.MarketData.Abstract
                 }
                 catch (OperationCanceledException)
                 {
-                    _log.LogDebug("Background update task canceled");
+                    _log?.LogDebug("Background update task canceled");
                 }
             }
 
-            _log.LogInformation("Background update task finished");
+            _log?.LogInformation("Background update task finished");
         }
 
         public void Stop()
@@ -77,7 +77,7 @@ namespace Atomex.MarketData.Abstract
             }
             else
             {
-                _log.LogWarning("Background update task already finished");
+                _log?.LogWarning("Background update task already finished");
             }
         }
 

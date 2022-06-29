@@ -71,7 +71,7 @@ namespace Atomex.Services
         {
             try
             {
-                _log.LogInformation("Start AtomexClient services");
+                _log?.LogInformation("Start AtomexClient services");
 
                 // init schemes
                 var schemes = new ProtoSchemes();
@@ -107,7 +107,7 @@ namespace Atomex.Services
             }
             catch (Exception e)
             {
-                _log.LogError(e, "StartAsync error");
+                _log?.LogError(e, "StartAsync error");
             }
         }
 
@@ -118,7 +118,7 @@ namespace Atomex.Services
                 if (_exchangeClient == null || _marketDataClient == null)
                     return;
 
-                _log.LogInformation("Stop AtomexClient services");
+                _log?.LogInformation("Stop AtomexClient services");
 
                 // close services
                 await Task
@@ -144,7 +144,7 @@ namespace Atomex.Services
             }
             catch (Exception e)
             {
-                _log.LogError(e, "StopAsync error");
+                _log?.LogError(e, "StopAsync error");
             }
         }
 
@@ -156,7 +156,7 @@ namespace Atomex.Services
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Order send error");
+                _log?.LogError(e, "Order send error");
             }
         }
 
@@ -173,14 +173,14 @@ namespace Atomex.Services
 
         private void OnExchangeConnectedEventHandler(object sender, EventArgs args)
         {
-            _log.LogDebug("Exchange client connected");
+            _log?.LogDebug("Exchange client connected");
 
             if (_exchangeHeartBeatTask == null ||
                 _exchangeHeartBeatTask.IsCompleted ||
                 _exchangeHeartBeatTask.IsCanceled ||
                 _exchangeHeartBeatTask.IsFaulted)
             {
-                _log.LogDebug("Run heartbeat for Exchange client");
+                _log?.LogDebug("Run heartbeat for Exchange client");
 
                 _exchangeCts = new CancellationTokenSource();
                 _exchangeHeartBeatTask = RunHeartBeatLoopAsync(
@@ -195,7 +195,7 @@ namespace Atomex.Services
 
         private void OnExchangeDisconnectedEventHandler(object sender, EventArgs args)
         {
-            _log.LogDebug("Exchange client disconnected");
+            _log?.LogDebug("Exchange client disconnected");
 
             if (_exchangeHeartBeatTask != null &&
                 !_exchangeHeartBeatTask.IsCompleted &&
@@ -204,12 +204,12 @@ namespace Atomex.Services
             {
                 try
                 {
-                    _log.LogDebug("Cancel Exchange client heartbeat");
+                    _log?.LogDebug("Cancel Exchange client heartbeat");
                     _exchangeCts.Cancel();
                 }
                 catch (OperationCanceledException)
                 {
-                    _log.LogDebug("Exchange heart beat loop canceled");
+                    _log?.LogDebug("Exchange heart beat loop canceled");
                 }
             }
 
@@ -234,13 +234,13 @@ namespace Atomex.Services
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Exchange auth error");
+                _log?.LogError(e, "Exchange auth error");
             }
         }
 
         private void OnExchangeErrorEventHandler(object sender, ErrorEventArgs args)
         {
-            _log.LogError("Exchange service error {@Error}", args.Error);
+            _log?.LogError("Exchange service error {@Error}", args.Error);
 
             Error?.Invoke(this, new ServiceErrorEventArgs(args.Error, Service.Exchange));
         }
@@ -263,14 +263,14 @@ namespace Atomex.Services
 
         private void OnMarketDataConnectedEventHandler(object sender, EventArgs args)
         {
-            _log.LogDebug("MarketData client connected");
+            _log?.LogDebug("MarketData client connected");
 
             if (_marketDataHeartBeatTask == null ||
                 _marketDataHeartBeatTask.IsCompleted ||
                 _marketDataHeartBeatTask.IsCanceled ||
                 _marketDataHeartBeatTask.IsFaulted)
             {
-                _log.LogDebug("Run heartbeat for MarketData client");
+                _log?.LogDebug("Run heartbeat for MarketData client");
 
                 _marketDataCts = new CancellationTokenSource();
                 _marketDataHeartBeatTask = RunHeartBeatLoopAsync(
@@ -285,7 +285,7 @@ namespace Atomex.Services
 
         private void OnMarketDataDisconnectedEventHandler(object sender, EventArgs args)
         {
-            _log.LogDebug("MarketData client disconnected");
+            _log?.LogDebug("MarketData client disconnected");
 
             if (_marketDataHeartBeatTask != null &&
                 !_marketDataHeartBeatTask.IsCompleted &&
@@ -294,12 +294,12 @@ namespace Atomex.Services
             {
                 try
                 {
-                    _log.LogDebug("Cancel MarketData client heartbeat");
+                    _log?.LogDebug("Cancel MarketData client heartbeat");
                     _marketDataCts.Cancel();
                 }
                 catch (OperationCanceledException)
                 {
-                    _log.LogDebug("Exchange heart beat loop canceled");
+                    _log?.LogDebug("Exchange heart beat loop canceled");
                 }
             }
 
@@ -324,34 +324,34 @@ namespace Atomex.Services
             }
             catch (Exception e)
             {
-                _log.LogError(e, "MarketData auth error");
+                _log?.LogError(e, "MarketData auth error");
             }
         }
 
         private void OnMarketDataErrorEventHandler(object sender, ErrorEventArgs args)
         {
-            _log.LogWarning("Market data service error {@Error}", args.Error);
+            _log?.LogWarning("Market data service error {@Error}", args.Error);
 
             Error?.Invoke(this, new ServiceErrorEventArgs(args.Error, Service.Exchange));
         }
 
         private void OnQuotesReceivedEventHandler(object sender, QuotesEventArgs args)
         {
-            _log.LogTrace("Quotes: {@quotes}", args.Quotes);
+            _log?.LogTrace("Quotes: {@quotes}", args.Quotes);
 
             QuotesUpdated?.Invoke(this, args);
         }
 
         private void OnEntriesReceivedEventHandler(object sender, EntriesEventArgs args)
         {
-            _log.LogTrace("Entries: {@entries}", args.Entries);
+            _log?.LogTrace("Entries: {@entries}", args.Entries);
 
             EntriesUpdated?.Invoke(this, args);
         }
 
         private void OnSnapshotReceivedEventHandler(object sender, SnapshotEventArgs args)
         {
-            _log.LogTrace("Snapshot: {@snapshot}", args.Snapshot);
+            _log?.LogTrace("Snapshot: {@snapshot}", args.Snapshot);
 
             SnapshotUpdated?.Invoke(this, args);
         }
@@ -376,7 +376,7 @@ namespace Atomex.Services
 
         private void OnError(Service service, Exception exception)
         {
-            _log.LogError(exception, exception.Message);
+            _log?.LogError(exception, exception.Message);
 
             Error?.Invoke(this, new ServiceErrorEventArgs(
                 error: new Error(Errors.InternalError, exception.Message),
@@ -399,15 +399,15 @@ namespace Atomex.Services
                 }
                 catch (OperationCanceledException)
                 {
-                    _log.LogDebug("HeartBeat loop canceled");
+                    _log?.LogDebug("HeartBeat loop canceled");
                 }
                 catch (Exception e)
                 {
-                    _log.LogError(e, "Error while sending heartbeat");
+                    _log?.LogError(e, "Error while sending heartbeat");
                 }
             }
 
-            _log.LogDebug("Heartbeat stopped");
+            _log?.LogDebug("Heartbeat stopped");
         }
 
         public void SwapInitiateAsync(

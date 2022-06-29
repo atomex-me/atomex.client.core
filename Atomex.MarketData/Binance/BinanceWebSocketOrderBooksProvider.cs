@@ -137,7 +137,7 @@ namespace Atomex.MarketData.Binance
 
             if (!response.IsSuccessStatusCode)
             {
-                _log.LogError($"Invalid status code: {response.StatusCode}");
+                _log?.LogError($"Invalid status code: {response.StatusCode}");
                 return;
             }
 
@@ -150,7 +150,7 @@ namespace Atomex.MarketData.Binance
 
             if (snapshot == null)
             {
-                _log.LogError($"Null snapshot recevided for {symbol}");
+                _log?.LogError($"Null snapshot recevided for {symbol}");
                 return;
             }
 
@@ -158,7 +158,7 @@ namespace Atomex.MarketData.Binance
 
             if (!_streams.TryGetValue(streamId, out var orderBookStream))
             {
-                _log.LogError($"Can't find stream {streamId}");
+                _log?.LogError($"Can't find stream {streamId}");
                 return;
             }
 
@@ -194,7 +194,7 @@ namespace Atomex.MarketData.Binance
                     }
                     else
                     {
-                        _log.LogWarning("Something wrong!");
+                        _log?.LogWarning("Something wrong!");
                     }
                 }
 
@@ -267,7 +267,7 @@ namespace Atomex.MarketData.Binance
                                 }
                                 else if (propertyName == "result" || propertyName == "code")
                                 {
-                                    _log.LogDebug(msg.Text);
+                                    _log?.LogDebug(msg.Text);
                                     break;
                                 }
                             }
@@ -275,13 +275,13 @@ namespace Atomex.MarketData.Binance
                     }
                     catch (Exception e)
                     {
-                        _log.LogError(e, "Binance text message handle error");
+                        _log?.LogError(e, "Binance text message handle error");
                     }
                 }
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Binance response handle error");
+                _log?.LogError(e, "Binance response handle error");
             }
         }
 
@@ -291,7 +291,7 @@ namespace Atomex.MarketData.Binance
 
             if (!_streams.TryGetValue(streamMessage.StreamId, out var orderBookStream))
             {
-                _log.LogDebug($"Unknown stream {streamMessage.StreamId}");
+                _log?.LogDebug($"Unknown stream {streamMessage.StreamId}");
                 return;
             }
 

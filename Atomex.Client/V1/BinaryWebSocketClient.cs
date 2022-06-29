@@ -83,7 +83,7 @@ namespace Atomex.Client.V1
             var pong = Schemes.HeartBeat.DeserializeWithLengthPrefix(stream);
 
             if (pong.ToLowerInvariant() != "pong")
-                _log.LogError("Invalid heart beat response");
+                _log?.LogError("Invalid heart beat response");
         }
     }
 }

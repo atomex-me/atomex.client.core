@@ -5,27 +5,10 @@ using Newtonsoft.Json;
 
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
+using Atomex.Client.Entities;
 
 namespace Atomex.Core
 {
-    public enum OrderStatus
-    {
-        Pending,
-        Placed,
-        PartiallyFilled,
-        Filled,
-        Canceled,
-        Rejected
-    }
-
-    public enum OrderType
-    {
-        Return,
-        FillOrKill,
-        ImmediateOrCancel,
-        SolidFillOrKill
-    }
-
     public class Order
     {
         public long Id { get; set; }

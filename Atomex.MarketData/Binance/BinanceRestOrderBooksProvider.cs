@@ -168,7 +168,7 @@ namespace Atomex.MarketData.Binance
                                 LastUpdateTime = DateTime.Now;
                                 OrderBookUpdated?.Invoke(this, new OrderBookEventArgs(orderBook));
 
-                                _log.LogDebug($"Symbol: {symbol}; Bid: {bookTicker.Bid}; Ask: {bookTicker.Ask}");
+                                _log?.LogDebug($"Symbol: {symbol}; Bid: {bookTicker.Bid}; Ask: {bookTicker.Ask}");
                             }
                         }
 
@@ -182,11 +182,11 @@ namespace Atomex.MarketData.Binance
             }
             catch (OperationCanceledException)
             {
-                _log.LogDebug("Update task canceled");
+                _log?.LogDebug("Update task canceled");
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Update task error");
+                _log?.LogError(e, "Update task error");
             }
         }
 
@@ -198,7 +198,7 @@ namespace Atomex.MarketData.Binance
             }
             else
             {
-                _log.LogWarning("OrderBook provider task already finished");
+                _log?.LogWarning("OrderBook provider task already finished");
             }
         }
 

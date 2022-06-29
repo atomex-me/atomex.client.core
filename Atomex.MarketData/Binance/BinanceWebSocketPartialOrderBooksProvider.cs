@@ -151,7 +151,7 @@ namespace Atomex.MarketData.Binance
                                 }
                                 else if (propertyName == "result" || propertyName == "code")
                                 {
-                                    _log.LogDebug(msg.Text);
+                                    _log?.LogDebug(msg.Text);
                                     break;
                                 }
                             }
@@ -159,13 +159,13 @@ namespace Atomex.MarketData.Binance
                     }
                     catch (Exception e)
                     {
-                        _log.LogError(e, "Binance text message handle error");
+                        _log?.LogError(e, "Binance text message handle error");
                     }
                 }
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Binance response handle error");
+                _log?.LogError(e, "Binance response handle error");
             }
         }
 
@@ -175,7 +175,7 @@ namespace Atomex.MarketData.Binance
 
             if (!_orderBooks.TryGetValue(streamMessage.StreamId, out var orderBook))
             {
-                _log.LogDebug($"Unknown stream {streamMessage.StreamId}");
+                _log?.LogDebug($"Unknown stream {streamMessage.StreamId}");
                 return;
             }
 

@@ -6,6 +6,7 @@ using LiteDB;
 using Serilog;
 
 using Atomex.Core;
+using Atomex.Client.Entities;
 
 namespace Atomex.LiteDb
 {

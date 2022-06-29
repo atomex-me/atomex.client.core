@@ -5,9 +5,10 @@ using System.Threading.Tasks;
 
 using Serilog;
 
+using Atomex.Client.Entities;
 using Atomex.Core;
-using Atomex.Wallet.Abstract;
 using Atomex.Cryptography.Abstract;
+using Atomex.Wallet.Abstract;
 
 namespace Atomex.Common
 {

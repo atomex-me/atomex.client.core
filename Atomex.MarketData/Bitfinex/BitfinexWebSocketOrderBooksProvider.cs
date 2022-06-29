@@ -159,7 +159,7 @@ namespace Atomex.MarketData.Bitfinex
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Bitfinex response handle error");
+                _log?.LogError(e, "Bitfinex response handle error");
             }
         }
 
@@ -167,7 +167,7 @@ namespace Atomex.MarketData.Bitfinex
         {
             if (!TryParseEvent(msg, out var eventMsg))
             {
-                _log.LogWarning("Unknown response type");
+                _log?.LogWarning("Unknown response type");
                 return;
             }
 
@@ -204,7 +204,7 @@ namespace Atomex.MarketData.Bitfinex
             }
             else if (eventMsg.Event == "error")
             {
-                _log.LogError($"Bitfinex error with code: {eventMsg.Code} and message \"{eventMsg.Message}\"");
+                _log?.LogError($"Bitfinex error with code: {eventMsg.Code} and message \"{eventMsg.Message}\"");
             }
         }
 
@@ -244,7 +244,7 @@ namespace Atomex.MarketData.Bitfinex
                         }
                         catch (Exception ex)
                         {
-                            _log.LogError(ex, "Snapshot apply error");
+                            _log?.LogError(ex, "Snapshot apply error");
                         }
                     }
                 }
@@ -266,7 +266,7 @@ namespace Atomex.MarketData.Bitfinex
                     }
                     catch (Exception ex)
                     {
-                        _log.LogError(ex, "Orderbook update apply error");
+                        _log?.LogError(ex, "Orderbook update apply error");
                     }
                 }
 
@@ -276,7 +276,7 @@ namespace Atomex.MarketData.Bitfinex
             }
             else
             {
-                _log.LogWarning($"Unknown channel id {chanId}");
+                _log?.LogWarning($"Unknown channel id {chanId}");
             }
         }
 
@@ -300,7 +300,7 @@ namespace Atomex.MarketData.Bitfinex
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Subscribe to tickers error");
+                _log?.LogError(e, "Subscribe to tickers error");
             }
         }
 
@@ -329,7 +329,7 @@ namespace Atomex.MarketData.Bitfinex
                 }
                 catch (Exception e)
                 {
-                    _log.LogError(e, "Ping task error");
+                    _log?.LogError(e, "Ping task error");
                 }
 
             }, _pingCts.Token);

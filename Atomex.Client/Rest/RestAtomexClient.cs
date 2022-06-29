@@ -13,6 +13,7 @@ using Newtonsoft.Json.Serialization;
 
 using Atomex.Client.Abstract;
 using Atomex.Client.Common;
+using Atomex.Client.Entities;
 using Atomex.Client.V1.Common;
 using Atomex.Client.V1.Entities;
 using Atomex.Common;
@@ -40,7 +41,7 @@ namespace Atomex.Client.Rest
         public event EventHandler<SnapshotEventArgs> SnapshotUpdated;
 
         protected HttpClient HttpClient { get; }
-        protected ILogger Logger { get; }
+        protected ILogger _log;
         protected string AuthenticationMessage { get; } = DEFAULT_AUTHENTICATION_MESSAGE;
         protected uint AuthenticationAccountIndex { get; } = DEFAULT_AUTHENTICATION_ACCOUNT_INDEX;
         protected string AccountUserId { get; private set; }
@@ -52,26 +53,21 @@ namespace Atomex.Client.Rest
         private readonly CancellationTokenSource _cts = new();
         private bool _isConnected = false;
         private AuthenticationResponseData? _authenticationData;
-        private readonly SwapContractResolver _swapContractResolver;
         private readonly LocalSwapProvider _localSwapProvider;
         private readonly AuthMessageSigner _authMessageSigner;
 
         public RestAtomexClient(
             HttpClient httpClient,
-            SwapContractResolver swapContractResolver,
             LocalSwapProvider localSwapProvider,
             AuthMessageSigner authMessageSigner,
             ILogger logger = null
         )
         {
             HttpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-            _swapContractResolver = swapContractResolver ?? throw new ArgumentNullException(nameof(swapContractResolver));
             _localSwapProvider = localSwapProvider ?? throw new ArgumentNullException(nameof(localSwapProvider));
             _authMessageSigner = authMessageSigner ?? throw new ArgumentNullException(nameof(authMessageSigner));
-            Logger = logger;
+            _log = logger;
         }
-
-        //public bool IsAuthenticated => _authenticationData != null;
 
         public bool IsServiceConnected(Service service) => Enum.IsDefined(typeof(Service), service)
             ? _isConnected
@@ -81,7 +77,7 @@ namespace Atomex.Client.Rest
         {
             try
             {
-                Logger.LogInformation("{AtomexClientName} is starting for the {UserId} user", nameof(RestAtomexClient), AccountUserId);
+                _log?.LogInformation("{AtomexClientName} is starting for the {UserId} user", nameof(RestAtomexClient), AccountUserId);
 
                 await AuthenticateAsync(_cts.Token)
                     .ConfigureAwait(false);
@@ -90,7 +86,7 @@ namespace Atomex.Client.Rest
 
                 if (ServiceStatusChanged != null)
                 {
-                    Logger.LogDebug("Fire the {EventName} event", nameof(ServiceStatusChanged));
+                    _log?.LogDebug("Fire the {EventName} event", nameof(ServiceStatusChanged));
                     ServiceStatusChanged.Invoke(this, new ServiceEventArgs(Service.Exchange, ServiceStatus.Connected));
                     ServiceStatusChanged.Invoke(this, new ServiceEventArgs(Service.MarketData, ServiceStatus.Connected));
                 }
@@ -101,12 +97,12 @@ namespace Atomex.Client.Rest
                 _ = TrackSwapsAsync(_cts.Token);
                 _ = RunAutoAuthorizationAsync(_cts.Token);
 
-                Logger.LogInformation("{AtomexClientName} has been started for the {UserId} user",
+                _log?.LogInformation("{AtomexClientName} has been started for the {UserId} user",
                     nameof(RestAtomexClient), AccountUserId);
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "An exception has been occurred when the {AtomexClientName} client is started for the {UserId} user",
+                _log?.LogError(ex, "An exception has been occurred when the {AtomexClientName} client is started for the {UserId} user",
                     nameof(RestAtomexClient), AccountUserId);
 
                 await StopAsync();
@@ -117,7 +113,7 @@ namespace Atomex.Client.Rest
         {
             try
             {
-                Logger.LogInformation("{AtomexClientName} is stopping for the {UserId} user", nameof(RestAtomexClient), AccountUserId);
+                _log?.LogInformation("{AtomexClientName} is stopping for the {UserId} user", nameof(RestAtomexClient), AccountUserId);
 
                 _cts.Cancel();
 
@@ -125,17 +121,17 @@ namespace Atomex.Client.Rest
 
                 if (ServiceStatusChanged != null)
                 {
-                    Logger.LogDebug("Fire the {EventName} event", nameof(ServiceStatusChanged));
+                    _log?.LogDebug("Fire the {EventName} event", nameof(ServiceStatusChanged));
                     ServiceStatusChanged.Invoke(this, new ServiceEventArgs(Service.MarketData, ServiceStatus.Disconnected));
                     ServiceStatusChanged.Invoke(this, new ServiceEventArgs(Service.Exchange, ServiceStatus.Disconnected));
                 }
 
-                Logger.LogInformation("{AtomexClientName} has been stopped for the {UserId} user ",
+                _log?.LogInformation("{AtomexClientName} has been stopped for the {UserId} user ",
                     nameof(RestAtomexClient), AccountUserId);
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "An exception has been occurred when the {AtomexClientName} client is stopped for the {UserId} user",
+                _log?.LogError(ex, "An exception has been occurred when the {AtomexClientName} client is stopped for the {UserId} user",
                     nameof(RestAtomexClient), AccountUserId);
             }
 
@@ -146,7 +142,7 @@ namespace Atomex.Client.Rest
         {
             try
             {
-                Logger.LogInformation("Canceling orders of the {UserId} user", AccountUserId);
+                _log?.LogInformation("Canceling orders of the {UserId} user", AccountUserId);
 
                 using var response = await HttpClient
                     .DeleteAsync("orders", _cts.Token)
@@ -159,15 +155,15 @@ namespace Atomex.Client.Rest
                 response.EnsureSuccessStatusCode();
                 var responseResult = JsonConvert.DeserializeObject<OrdersCancelatonDto>(responseContent, JsonSerializerSettings);
 
-                Logger.LogDebug("{Count} orders of the {UserId} user are canceled", responseResult?.Count ?? 0, AccountUserId);
+                _log?.LogDebug("{Count} orders of the {UserId} user are canceled", responseResult?.Count ?? 0, AccountUserId);
             }
             catch (OperationCanceledException)
             {
-                Logger.LogDebug("The {TaskName} task has been canceled", nameof(CancelAllOrdersAsync));
+                _log?.LogDebug("The {TaskName} task has been canceled", nameof(CancelAllOrdersAsync));
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Orders cancelation is failed for the {UserId} user", AccountUserId);
+                _log?.LogError(ex, "Orders cancelation is failed for the {UserId} user", AccountUserId);
                 throw;
             }
         }
@@ -176,7 +172,7 @@ namespace Atomex.Client.Rest
         {
             try
             {
-                Logger.LogInformation("Canceling an order: {OrderId}, \"{Symbol}\", {Side}. User is {UserId}",
+                _log?.LogInformation("Canceling an order: {OrderId}, \"{Symbol}\", {Side}. User is {UserId}",
                     orderId, symbol, side, AccountUserId);
 
                 var queryParameters = await ConvertQueryParamsToStringAsync(new Dictionary<string, string>(2)
@@ -199,7 +195,7 @@ namespace Atomex.Client.Rest
 
                 if (responseResult?.Result != true)
                 {
-                    Logger.LogError("Order [{OrderId}, \"{Symbol}\", {Side}] cancelation is failed for the {UserId} user. " +
+                    _log?.LogError("Order [{OrderId}, \"{Symbol}\", {Side}] cancelation is failed for the {UserId} user. " +
                         "Response: {ResponseMessage} [{ResponseStatusCode}]", orderId, symbol, side, AccountUserId, responseContent, response.StatusCode);
 
                     return;
@@ -214,16 +210,16 @@ namespace Atomex.Client.Rest
                     Status = OrderStatus.Canceled
                 }));
 
-                Logger.LogInformation("Order [{OrderId}, \"{Symbol}\", {Side}] is canceled. User is {UserId}",
+                _log?.LogInformation("Order [{OrderId}, \"{Symbol}\", {Side}] is canceled. User is {UserId}",
                     orderId, symbol, side, AccountUserId);
             }
             catch (OperationCanceledException)
             {
-                Logger.LogDebug("The {TaskName} task has been canceled", nameof(OrderCancelAsync));
+                _log?.LogDebug("The {TaskName} task has been canceled", nameof(OrderCancelAsync));
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Order [{OrderId}, \"{Symbol}\", {Side}] cancelation is failed for the {UserId} user",
+                _log?.LogError(ex, "Order [{OrderId}, \"{Symbol}\", {Side}] cancelation is failed for the {UserId} user",
                     orderId, symbol, side, AccountUserId);
             }
         }
@@ -232,12 +228,8 @@ namespace Atomex.Client.Rest
         {
             try
             {
-                order.ClientOrderId = GenerateOrderClientId();
+                _log?.LogInformation("Sending the {OrderId} [{OrderClientId}] order...", order.Id, order.ClientOrderId);
 
-                Logger.LogInformation("Sending the {OrderId} [{OrderClientId}] order...", order.Id, order.ClientOrderId);
-
-                var baseCurrencyContract = _swapContractResolver.Invoke(order.Symbol.BaseCurrency());
-                var quoteCurrencyContract = _swapContractResolver.Invoke(order.Symbol.QuoteCurrency());
                 // TODO: we can only use a proof of possession when a signing algorithm can be received
                 //await order.CreateProofOfPossessionAsync(Account)
                 //    .ConfigureAwait(false);
@@ -250,8 +242,8 @@ namespace Atomex.Client.Rest
                     Side: order.Side,
                     Type: order.Type,
                     Requisites: new(
-                        BaseCurrencyContract: baseCurrencyContract,
-                        QuoteCurrencyContract: quoteCurrencyContract
+                        BaseCurrencyContract: order.BaseCurrencyContract,
+                        QuoteCurrencyContract: order.QuoteCurrencyContract
                     )
                 )
                 {
@@ -267,7 +259,7 @@ namespace Atomex.Client.Rest
                     //)),
                 };
 
-                Logger.LogDebug("Sending the New Order DTO...: {@NewOrderDto}", newOrderDto);
+                _log?.LogDebug("Sending the New Order DTO...: {@NewOrderDto}", newOrderDto);
 
                 var response = await HttpClient.PostAsync(
                     "orders",
@@ -285,7 +277,7 @@ namespace Atomex.Client.Rest
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    Logger.LogError("Sending the order is failed for the {UserId} user. New Order DTO: {@NewOrderDto}. " +
+                    _log?.LogError("Sending the order is failed for the {UserId} user. New Order DTO: {@NewOrderDto}. " +
                         "Response: {ResponseMessage} [{ResponseStatusCode}]", AccountUserId, newOrderDto, responseContent, response.StatusCode);
 
                     return;
@@ -295,7 +287,7 @@ namespace Atomex.Client.Rest
 
                 if (order.Id == 0)
                 {
-                    Logger.LogWarning("Response of the sent order has an invalid order id. It's not possible to add the order to the local DB. " +
+                    _log?.LogWarning("Response of the sent order has an invalid order id. It's not possible to add the order to the local DB. " +
                         "New Order DTO: {@NewOrderDto}. Response: {ResponseMessage} [{ResponseStatusCode}]", newOrderDto, responseContent, response.StatusCode);
 
                     return;
@@ -307,11 +299,11 @@ namespace Atomex.Client.Rest
             }
             catch (OperationCanceledException)
             {
-                Logger.LogDebug("The {TaskName} task has been canceled", nameof(OrderSendAsync));
+                _log?.LogDebug("The {TaskName} task has been canceled", nameof(OrderSendAsync));
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Sending the {OrderId} [{OrderClientId}] order is failed for the {UserId} user", AccountUserId, order.Id, order.ClientOrderId);
+                _log?.LogError(ex, "Sending the {OrderId} [{OrderClientId}] order is failed for the {UserId} user", AccountUserId, order.Id, order.ClientOrderId);
             }
         }
 
@@ -342,7 +334,7 @@ namespace Atomex.Client.Rest
         {
             try
             {
-                Logger.LogInformation("Initiating a swap...: {SwapId}, {SecretHash}, \"{Symbol}\", {ToAddress}, {RewardForRedeem}, {RefundAddress}",
+                _log?.LogInformation("Initiating a swap...: {SwapId}, {SecretHash}, \"{Symbol}\", {ToAddress}, {RewardForRedeem}, {RefundAddress}",
                     swapId, secretHash, symbol, toAddress, rewardForRedeem, refundAddress);
 
                 var initiateSwapDto = new InitiateSwapDto(
@@ -355,7 +347,7 @@ namespace Atomex.Client.Rest
                     SecretHash = secretHash.ToHexString(),
                 };
 
-                Logger.LogDebug("Sending the Initiate Swap DTO...: {@InitiateSwapDto}", initiateSwapDto);
+                _log?.LogDebug("Sending the Initiate Swap DTO...: {@InitiateSwapDto}", initiateSwapDto);
 
                 var response = await HttpClient.PostAsync(
                     $"swaps/{swapId}/requisites",
@@ -377,7 +369,7 @@ namespace Atomex.Client.Rest
 
                 if (result?.Result != true)
                 {
-                    Logger.LogError("Sending the swap requisites is failed for the {UserId} user. Initiate Swap DTO: {@InitiateSwapDto}" +
+                    _log?.LogError("Sending the swap requisites is failed for the {UserId} user. Initiate Swap DTO: {@InitiateSwapDto}" +
                         "Response: {ResponseMessage} [{ResponseStatusCode}]", AccountUserId, initiateSwapDto, responseContent, response.StatusCode);
 
                     return;
@@ -387,17 +379,17 @@ namespace Atomex.Client.Rest
             }
             catch (OperationCanceledException)
             {
-                Logger.LogDebug("The {taskName} task has been canceled", nameof(SwapInitiateAsync));
+                _log?.LogDebug("The {taskName} task has been canceled", nameof(SwapInitiateAsync));
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Swap initiation failed");
+                _log?.LogError(ex, "Swap initiation failed");
             }
         }
 
         public void SwapStatusAsync(string requestId, long swapId)
         {
-            Logger.LogDebug("Requesting the actual status of the {SwapId} swap [{RequestId}]", swapId, requestId);
+            _log?.LogDebug("Requesting the actual status of the {SwapId} swap [{RequestId}]", swapId, requestId);
             _ = RequestActualSwapState(swapId, _cts.Token);
         }
 
@@ -412,7 +404,7 @@ namespace Atomex.Client.Rest
                 iterations: 2
             );
 
-            Logger.LogDebug("Signing an authentication message using the \"{SigningAlgorithm}\" algorithm", signingAlgorithm);
+            _log?.LogDebug("Signing an authentication message using the \"{SigningAlgorithm}\" algorithm", signingAlgorithm);
 
             var (publicKey, signature) = await _authMessageSigner
                 .Invoke(signingMessagePayload, signingAlgorithm)
@@ -420,7 +412,7 @@ namespace Atomex.Client.Rest
 
             AccountUserId = HashAlgorithm.Sha256.Hash(publicKey, iterations: 2).ToHexString();
 
-            Logger.LogDebug("The authentication message has been signed using the \"{SigningAlgorithm}\" algorithm", signingAlgorithm);
+            _log?.LogDebug("The authentication message has been signed using the \"{SigningAlgorithm}\" algorithm", signingAlgorithm);
 
             var authenticationRequestContent = new AuthenticationRequestData(
                 Message: AuthenticationMessage,
@@ -449,7 +441,7 @@ namespace Atomex.Client.Rest
 
             if (!response.IsSuccessStatusCode)
             {
-                Logger.LogError("Authentication is failed for the {UserId} user. Response: {ResponseMessage} [{ResponseStatusCode}]", AccountUserId, responseContent, response.StatusCode);
+                _log?.LogError("Authentication is failed for the {UserId} user. Response: {ResponseMessage} [{ResponseStatusCode}]", AccountUserId, responseContent, response.StatusCode);
 
                 throw GetAuthenticationFailedException();
             }
@@ -457,13 +449,13 @@ namespace Atomex.Client.Rest
             var authenticationData = JsonConvert.DeserializeObject<AuthenticationResponseData>(responseContent, JsonSerializerSettings);
             if (authenticationData == null)
             {
-                Logger.LogError("Authentication is failed for the {UserId} user. It's not possible to parse authentication data", AccountUserId);
+                _log?.LogError("Authentication is failed for the {UserId} user. It's not possible to parse authentication data", AccountUserId);
 
                 throw GetAuthenticationFailedException();
             }
             if (string.IsNullOrWhiteSpace(authenticationData.Token))
             {
-                Logger.LogError("Authentication is failed for the {UserId} user. Authentication token is invalid", AccountUserId);
+                _log?.LogError("Authentication is failed for the {UserId} user. Authentication token is invalid", AccountUserId);
 
                 throw GetAuthenticationFailedException();
             }
@@ -477,7 +469,7 @@ namespace Atomex.Client.Rest
                 ServiceStatusChanged.Invoke(this, new ServiceEventArgs(Service.MarketData, ServiceStatus.Authenticated));
             }
 
-            Logger.LogInformation("The {UserId} user is authenticated until {AuthTokenExpiredDate}",
+            _log?.LogInformation("The {UserId} user is authenticated until {AuthTokenExpiredDate}",
                 AccountUserId, DateTimeOffset.FromUnixTimeMilliseconds(authenticationData.Expires).UtcDateTime);
         }
 
@@ -486,7 +478,7 @@ namespace Atomex.Client.Rest
             {
                 try
                 {
-                    Logger.LogInformation("Start to track swaps");
+                    _log?.LogInformation("Start to track swaps");
 
                     var localSwaps = _localSwapProvider.Invoke();
 
@@ -495,7 +487,7 @@ namespace Atomex.Client.Rest
                         ? localSwaps.MaxBy(s => s.Id).Id
                         : 0L;
 
-                    Logger.LogDebug("Number of local swaps is {Count}. The last swap Id is {SwapId}", localSwapsCount, lastSwapId);
+                    _log?.LogDebug("Number of local swaps is {Count}. The last swap Id is {SwapId}", localSwapsCount, lastSwapId);
 
                     var tryCount = 0u;
 
@@ -525,11 +517,11 @@ namespace Atomex.Client.Rest
                 }
                 catch (OperationCanceledException)
                 {
-                    Logger.LogDebug("The {TaskName} task has been canceled", nameof(TrackSwapsAsync));
+                    _log?.LogDebug("The {TaskName} task has been canceled", nameof(TrackSwapsAsync));
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, "Swaps tracking failed");
+                    _log?.LogError(ex, "Swaps tracking failed");
                 }
             },
             cancellationToken
@@ -542,29 +534,29 @@ namespace Atomex.Client.Rest
             {
                 try
                 {
-                    Logger.LogDebug("Requesting the actual state of the {SwapId} swap", swapId);
+                    _log?.LogDebug("Requesting the actual state of the {SwapId} swap", swapId);
 
                     var (swap, needToWait) = await FetchUserSwapAsync(swapId, cancellationToken)
                         .ConfigureAwait(false);
 
                     if (swap == null)
                     {
-                        Logger.LogError("It's not possible to fetch the {SwapId} swap", swapId);
+                        _log?.LogError("It's not possible to fetch the {SwapId} swap", swapId);
 
                         return;
                     }
 
-                    Logger.LogDebug("The {SwapId} swap has been received. Apply its' state locally (handle this swap again)", swapId);
+                    _log?.LogDebug("The {SwapId} swap has been received. Apply its' state locally (handle this swap again)", swapId);
 
                     await HandleSwapAsync(swap, needToWait, cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
-                    Logger.LogDebug("The {TaskName} task has been canceled", nameof(RequestActualSwapState));
+                    _log?.LogDebug("The {TaskName} task has been canceled", nameof(RequestActualSwapState));
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, "Requesting the actual state of the {SwapId} swap failed", swapId);
+                    _log?.LogError(ex, "Requesting the actual state of the {SwapId} swap failed", swapId);
                 }
             },
             cancellationToken
@@ -575,7 +567,7 @@ namespace Atomex.Client.Rest
             CancellationToken cancellationToken = default
         )
         {
-            Logger.LogDebug("Fetching swaps of the {UserId} user. The start swap id is {SwapId}", AccountUserId, lastSwapId);
+            _log?.LogDebug("Fetching swaps of the {UserId} user. The start swap id is {SwapId}", AccountUserId, lastSwapId);
 
             using var response = await HttpClient
                 .GetAsync($"swaps?afterId={lastSwapId}", cancellationToken)
@@ -591,7 +583,7 @@ namespace Atomex.Client.Rest
 
             if (swapDtos == null)
             {
-                Logger.LogError("Failed to fetch user swaps. Response: {ResponseMessage} [{ResponseStatusCode}]", responseContent, response.StatusCode);
+                _log?.LogError("Failed to fetch user swaps. Response: {ResponseMessage} [{ResponseStatusCode}]", responseContent, response.StatusCode);
 
                 return (false, null);
             }
@@ -608,7 +600,7 @@ namespace Atomex.Client.Rest
             long swapId,
             CancellationToken cancellationToken = default)
         {
-            Logger.LogDebug("Fetching the {SwapId} swap of the {UserId} user", AccountUserId, swapId);
+            _log?.LogDebug("Fetching the {SwapId} swap of the {UserId} user", AccountUserId, swapId);
 
             using var response = await HttpClient.GetAsync($"swaps/{swapId}", cancellationToken)
                 .ConfigureAwait(false);
@@ -623,7 +615,7 @@ namespace Atomex.Client.Rest
 
             if (swapDto == null)
             {
-                Logger.LogError("Failed to fetch user swaps. Response: {ResponseMessage} [{ResponseStatusCode}]", responseContent, response.StatusCode);
+                _log?.LogError("Failed to fetch user swaps. Response: {ResponseMessage} [{ResponseStatusCode}]", responseContent, response.StatusCode);
 
                 return (null, false);
             }
@@ -646,12 +638,12 @@ namespace Atomex.Client.Rest
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        Logger.LogDebug("Waiting for the authentication token to expire. Wait {Delay}", delay);
+                        _log?.LogDebug("Waiting for the authentication token to expire. Wait {Delay}", delay);
 
                         await Task.Delay(delay, cancellationToken)
                             .ConfigureAwait(false);
 
-                        Logger.LogDebug("The authentication token will expire soon. Making a new request of authentication");
+                        _log?.LogDebug("The authentication token will expire soon. Making a new request of authentication");
 
                         await AuthenticateAsync(cancellationToken)
                             .ConfigureAwait(false);
@@ -663,11 +655,11 @@ namespace Atomex.Client.Rest
                 }
                 catch (OperationCanceledException)
                 {
-                    Logger.LogInformation("Auto authorization has been canceled");
+                    _log?.LogInformation("Auto authorization has been canceled");
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError(ex, "Auto authorization failed");
+                    _log?.LogError(ex, "Auto authorization failed");
                 }
             },
             cancellationToken
@@ -679,7 +671,7 @@ namespace Atomex.Client.Rest
         private void ClearAuthenticationData()
         {
             var currentAuthorizationHeaderExists = HttpClient.DefaultRequestHeaders.Contains("Authorization");
-            Logger.LogDebug("Clearing authentication data. The current authorization header exists == {@exists}", currentAuthorizationHeaderExists);
+            _log?.LogDebug("Clearing authentication data. The current authorization header exists == {@exists}", currentAuthorizationHeaderExists);
 
             _authenticationData = null;
             if (currentAuthorizationHeaderExists)
@@ -696,25 +688,25 @@ namespace Atomex.Client.Rest
             {
                 if (neetToWait)
                 {
-                    Logger.LogDebug("Wait {WaitingInterval} for the swap: {@Swap}", DefaultWaitingSwapInterval, swap);
+                    _log?.LogDebug("Wait {WaitingInterval} for the swap: {@Swap}", DefaultWaitingSwapInterval, swap);
 
                     await Task.Delay(DefaultWaitingSwapInterval, cancellationToken)
                         .ConfigureAwait(false);
                 }
                 else
                 {
-                    Logger.LogDebug("Handle the swap without waiting: {@Swap}", swap);
+                    _log?.LogDebug("Handle the swap without waiting: {@Swap}", swap);
                 }
 
                 SwapUpdated?.Invoke(this, new SwapEventArgs(swap));
             }
             catch (OperationCanceledException)
             {
-                Logger.LogDebug("The {TaskName} task has been canceled", nameof(HandleSwapAsync));
+                _log?.LogDebug("The {TaskName} task has been canceled", nameof(HandleSwapAsync));
             }
             catch (Exception ex)
             {
-                Logger.LogError(ex, "Handling the swap failed: {@Swap}", swap);
+                _log?.LogError(ex, "Handling the swap failed: {@Swap}", swap);
             }
         }, cancellationToken);
 
@@ -755,8 +747,6 @@ namespace Atomex.Client.Rest
                 PartyRefundAddress   = swapDto.CounterParty?.Requisites?.RefundAddress
             };
         }
-
-        private static string GenerateOrderClientId() => Guid.NewGuid().ToByteArray().ToHexString(0, 16);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static Exception GetAuthenticationFailedException() => new("Authentication is failed");
