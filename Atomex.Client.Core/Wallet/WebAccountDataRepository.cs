@@ -195,9 +195,8 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 var walletId = $"{walletAddress.Currency}:{walletAddress.Address}";
-                WalletAddress existsAddress;
 
-                if (!_addresses.TryGetValue(walletId, out existsAddress))
+                if (!_addresses.TryGetValue(walletId, out WalletAddress existsAddress))
                 {
                     _addresses[walletId] = walletAddress.Copy();
 
@@ -734,8 +733,13 @@ namespace Atomex.Wallet
         {
             lock (_sync)
             {
-                if (!VerifyOrder(order))
+                var localOrder = GetOrderByIdUnsync(order.ClientOrderId);
+
+                if (!order.VerifyOrder(localOrder))
                     return Task.FromResult(false);
+
+                if (localOrder != null)
+                    order.ForwardLocalParameters(localOrder);
 
                 _orders[order.ClientOrderId] = order; // todo: copy?
 
@@ -762,89 +766,16 @@ namespace Atomex.Wallet
         {
             lock (_sync)
             {
-                if (_orders.TryGetValue(clientOrderId, out var order))
-                    return order;
-
-                return null;
+                return GetOrderByIdUnsync(clientOrderId);
             }
         }
 
-        private bool VerifyOrder(Order order)
+        private Order GetOrderByIdUnsync(string clientOrderId)
         {
-            if (order.Status == OrderStatus.Pending)
-            {
-                var pendingOrder = GetPendingOrder(order.ClientOrderId);
+            if (_orders.TryGetValue(clientOrderId, out var order))
+                return order;
 
-                if (pendingOrder != null)
-                {
-                    Log.Error("Order already pending");
-
-                    return false;
-                }
-            }
-            else if (order.Status == OrderStatus.Placed || order.Status == OrderStatus.Rejected)
-            {
-                var pendingOrder = GetPendingOrder(order.ClientOrderId);
-
-                if (pendingOrder == null)
-                {
-                    order.IsApproved = false;
-
-                    // probably a different device order
-                    Log.Information("Probably order from another device: {@order}",
-                        order.ToString());
-                }
-                else
-                {
-                    if (pendingOrder.Status == OrderStatus.Rejected)
-                    {
-                        Log.Error("Order already rejected");
-
-                        return false;
-                    }
-
-                    if (!order.IsContinuationOf(pendingOrder))
-                    {
-                        Log.Error(
-                            "Order is not continuation of saved pending order! Order: {@order}, pending order: {@pendingOrder}",
-                            order.ToString(),
-                            pendingOrder.ToString());
-
-                        return false;
-                    }
-
-                    // forward local params
-                    order.IsApproved = pendingOrder.IsApproved;
-                    order.MakerNetworkFee = pendingOrder.MakerNetworkFee;
-                }
-            }
-            else
-            {
-                var actualOrder = GetOrderById(order.ClientOrderId);
-
-                if (actualOrder == null)
-                {
-                    Log.Error("Order is not continuation of saved order! Order: {@order}",
-                        order.ToString());
-
-                    return false;
-                }
-
-                if (!order.IsContinuationOf(actualOrder))
-                {
-                    Log.Error("Order is not continuation of saved order! Order: {@order}, saved order: {@actualOrder}",
-                        order.ToString(),
-                        actualOrder.ToString());
-
-                    return false;
-                }
-
-                // forward local params
-                order.IsApproved = actualOrder.IsApproved;
-                order.MakerNetworkFee = actualOrder.MakerNetworkFee;
-            }
-
-            return true;
+            return null;
         }
 
         public virtual Order GetOrderById(long id)
@@ -852,17 +783,6 @@ namespace Atomex.Wallet
             lock (_sync)
             {
                 return _orders.Values.SingleOrDefault(o => o.Id == id);
-            }
-        }
-
-        private Order GetPendingOrder(string clientOrderId)
-        {
-            lock (_sync)
-            {
-                if (_orders.TryGetValue(clientOrderId, out var order))
-                    return order.Id == 0 ? order : null;
-
-                return null;
             }
         }
 

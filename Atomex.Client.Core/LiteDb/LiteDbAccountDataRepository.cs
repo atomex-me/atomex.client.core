@@ -11,7 +11,6 @@ using Serilog;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
-using Atomex.Client.Entities;
 using Atomex.Common;
 using Atomex.Common.Bson;
 using Atomex.Core;
@@ -1090,8 +1089,13 @@ namespace Atomex.LiteDb
             {
                 lock (_syncRoot)
                 {
-                    if (!VerifyOrder(order))
+                    var localOrder = GetOrderByIdUnsync(order.ClientOrderId);
+
+                    if (!order.VerifyOrder(localOrder))
                         return Task.FromResult(false);
+
+                    if (localOrder != null)
+                        order.ForwardLocalParameters(localOrder);
 
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
 
@@ -1136,135 +1140,27 @@ namespace Atomex.LiteDb
             return Task.FromResult(false);
         }
 
-        private Order GetPendingOrder(string clientOrderId)
-        {
-            try
-            {
-                lock (_syncRoot)
-                {
-                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
-
-                    var orders = db.GetCollection(OrdersCollectionName);
-
-                    var document = orders.FindOne(
-                        Query.And(
-                            Query.EQ("_id", clientOrderId),
-                            Query.EQ("OrderId", 0)));
-
-                    return document != null
-                        ? _bsonMapper.ToObject<Order>(document)
-                        : null;
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error getting pending orders");
-
-                return null;
-            }
-        }
-
-        private bool VerifyOrder(Order order)
-        {
-            if (order.Status == OrderStatus.Pending)
-            {
-                var pendingOrder = GetPendingOrder(order.ClientOrderId);
-
-                if (pendingOrder != null)
-                {
-                    Log.Error("Order already pending");
-
-                    return false;
-                }
-            }
-            else if (order.Status == OrderStatus.Placed || order.Status == OrderStatus.Rejected)
-            {
-                var pendingOrder = GetPendingOrder(order.ClientOrderId);
-
-                if (pendingOrder == null)
-                {
-                    order.IsApproved = false;
-
-                    // probably a different device order
-                    Log.Information("Probably order from another device: {@order}",
-                        order.ToString());
-                }
-                else
-                {
-                    if (pendingOrder.Status == OrderStatus.Rejected)
-                    {
-                        Log.Error("Order already rejected");
-
-                        return false;
-                    }
-
-                    if (!order.IsContinuationOf(pendingOrder))
-                    {
-                        Log.Error("Order is not continuation of saved pending order! Order: {@order}, pending order: {@pendingOrder}",
-                            order.ToString(),
-                            pendingOrder.ToString());
-
-                        return false;
-                    }
-
-                    // forward local params
-                    order.IsApproved = pendingOrder.IsApproved;
-                    order.MakerNetworkFee = pendingOrder.MakerNetworkFee;
-                    order.FromAddress = pendingOrder.FromAddress;
-                    order.FromOutputs = pendingOrder.FromOutputs;
-                    order.ToAddress = pendingOrder.ToAddress;
-                    order.RedeemFromAddress = pendingOrder.RedeemFromAddress;
-                }
-            }
-            else
-            {
-                var actualOrder = GetOrderById(order.ClientOrderId);
-
-                if (actualOrder == null)
-                {
-                    Log.Error("Order is not continuation of saved order! Order: {@order}",
-                        order.ToString());
-
-                    return false;
-                }
-
-                if (!order.IsContinuationOf(actualOrder))
-                {
-                    Log.Error("Order is not continuation of saved order! Order: {@order}, saved order: {@actualOrder}",
-                        order.ToString(),
-                        actualOrder.ToString());
-
-                    return false;
-                }
-
-                // forward local params
-                order.IsApproved = actualOrder.IsApproved;
-                order.MakerNetworkFee = actualOrder.MakerNetworkFee;
-                order.FromAddress = actualOrder.FromAddress;
-                order.FromOutputs = actualOrder.FromOutputs;
-                order.ToAddress = actualOrder.ToAddress;
-                order.RedeemFromAddress = actualOrder.RedeemFromAddress;
-            }
-
-            return true;
-        }
-
         public Order GetOrderById(string clientOrderId)
         {
+            lock (_syncRoot)
+            {
+                return GetOrderByIdUnsync(clientOrderId);
+            }
+        }
+
+        private Order GetOrderByIdUnsync(string clientOrderId)
+        {
             try
             {
-                lock (_syncRoot)
-                {
-                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+                using var db = new LiteDatabase(ConnectionString, _bsonMapper);
 
-                    var orders = db.GetCollection(OrdersCollectionName);
+                var orders = db.GetCollection(OrdersCollectionName);
 
-                    var document = orders.FindById(clientOrderId);
+                var document = orders.FindById(clientOrderId);
 
-                    return document != null
-                        ? _bsonMapper.ToObject<Order>(document)
-                        : null;
-                }
+                return document != null
+                    ? _bsonMapper.ToObject<Order>(document)
+                    : null;
             }
             catch (Exception e)
             {

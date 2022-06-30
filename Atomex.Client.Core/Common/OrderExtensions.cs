@@ -90,9 +90,14 @@ namespace Atomex.Common
             return status switch
             {
                 OrderStatus.Pending => false,
-                OrderStatus.Placed => previousStatus == OrderStatus.Pending,
-                OrderStatus.PartiallyFilled or OrderStatus.Filled or OrderStatus.Canceled =>
-                    previousStatus == OrderStatus.Placed || previousStatus == OrderStatus.PartiallyFilled,
+                OrderStatus.Placed =>
+                    previousStatus == OrderStatus.Pending,
+                OrderStatus.PartiallyFilled or
+                OrderStatus.Filled or
+                OrderStatus.Canceled =>
+                    previousStatus == OrderStatus.Pending || // allow orders without "Placed" status
+                    previousStatus == OrderStatus.Placed ||
+                    previousStatus == OrderStatus.PartiallyFilled,
                 OrderStatus.Rejected => previousStatus == OrderStatus.Pending,
                 _ => throw new ArgumentOutOfRangeException(nameof(status), status, null),
             };
@@ -148,6 +153,59 @@ namespace Atomex.Common
                    $"\"Type\": \"{order.Type}\", " +
                    $"\"Status\": \"{order.Status}\", " +
                    $"\"EndOfTransaction\": \"{order.EndOfTransaction}\"}}";
+        }
+
+        public static bool VerifyOrder(this Order order, Order localOrder)
+        {
+            if (order.Status == OrderStatus.Pending)
+            {
+                if (localOrder != null)
+                {
+                    Log.Error("Order already pending");
+
+                    return false;
+                }
+            }
+            else
+            {
+                if (localOrder == null) // probably a different device order, allow to save, but mark as unapproved
+                {
+                    order.IsApproved = false;
+
+                    Log.Information("Probably order from another device: {@order}",
+                        order.ToString());
+                }
+                else
+                {
+                    if (localOrder.Status == OrderStatus.Rejected)
+                    {
+                        Log.Error("Order already rejected");
+
+                        return false;
+                    }
+
+                    if (!order.IsContinuationOf(localOrder))
+                    {
+                        Log.Error("Order is not continuation of saved pending order! Order: {@order}, local order: {@localOrder}",
+                            order.ToString(),
+                            localOrder.ToString());
+
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
+        public static void ForwardLocalParameters(this Order destination, Order source)
+        {
+            destination.IsApproved        = source.IsApproved;
+            destination.MakerNetworkFee   = source.MakerNetworkFee;
+            destination.FromAddress       = source.FromAddress;
+            destination.FromOutputs       = source.FromOutputs;
+            destination.ToAddress         = source.ToAddress;
+            destination.RedeemFromAddress = source.RedeemFromAddress;
         }
     }
 }

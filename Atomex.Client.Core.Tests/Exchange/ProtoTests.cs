@@ -1,8 +1,10 @@
 ﻿using System.Collections.Generic;
 using System.IO;
-using Atomex.Api.Proto;
-using Atomex.Core;
+
 using Xunit;
+
+using Atomex.Client.V1.Entities;
+using Atomex.Client.V1.Proto;
 
 namespace Atomex.Client.Core.Tests
 {
