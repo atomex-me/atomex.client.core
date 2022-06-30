@@ -30,18 +30,8 @@ namespace Atomex.Wallet
             {
                 try
                 {
-                    var stopwatch = new Stopwatch();
-                    Log.Information("Started wallet scan.");
-                    stopwatch.Start();
-                    
                     var scanTasks = Account.Currencies.Select(c => ScanAsync(c.Name, skipUsed, cancellationToken)).ToArray();
                     await Task.WhenAll(scanTasks).ConfigureAwait(false);
-
-                    stopwatch.Stop();
-                    Log.Information("Ended wallet scan. Elapsed in {Milliseconds}", stopwatch.ElapsedMilliseconds);
-                    var ts = stopwatch.Elapsed;
-                    Log.Information("Elapsed Time is {0:00}:{1:00}:{2:00}.{3}",
-                        ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds);
                 }
                 catch (Exception e)
                 {
