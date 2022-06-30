@@ -201,17 +201,14 @@ namespace Atomex.Client.Rest
                     return;
                 }
 
-                // todo: request canceled order from server
-                OrderUpdated?.Invoke(this, new OrderEventArgs(new Order
-                {
-                    Id = orderId,
-                    Symbol = symbol,
-                    Side = side,
-                    Status = OrderStatus.Canceled
-                }));
-
                 _log?.LogInformation("Order [{OrderId}, \"{Symbol}\", {Side}] is canceled. User is {UserId}",
                     orderId, symbol, side, AccountUserId);
+
+                var order = await FetchUserOrderAsync(orderId)
+                    .ConfigureAwait(false);
+
+                if (order != null)
+                    OrderUpdated?.Invoke(this, new OrderEventArgs(order));
             }
             catch (OperationCanceledException)
             {
@@ -597,7 +594,7 @@ namespace Atomex.Client.Rest
             long swapId,
             CancellationToken cancellationToken = default)
         {
-            _log?.LogDebug("Fetching the {SwapId} swap of the {UserId} user", AccountUserId, swapId);
+            _log?.LogDebug("Fetching the {SwapId} swap of the {UserId} user", swapId, AccountUserId);
 
             using var response = await HttpClient.GetAsync($"swaps/{swapId}", cancellationToken)
                 .ConfigureAwait(false);
@@ -618,6 +615,33 @@ namespace Atomex.Client.Rest
             }
 
             return (MapSwapDtoToSwap(swapDto), IsNeedToWaitSwap(swapDto));
+        }
+
+        protected async Task<Order?> FetchUserOrderAsync(
+            long orderId,
+            CancellationToken cancellationToken = default)
+        {
+            _log?.LogDebug("Fetching the {OrderId} order of the {UserId} user", orderId, AccountUserId);
+
+            using var response = await HttpClient.GetAsync($"orders/{orderId}", cancellationToken)
+                .ConfigureAwait(false);
+
+            var responseContent = await response.Content
+                .ReadAsStringAsync()
+                .ConfigureAwait(false);
+
+            var orderDto = response.IsSuccessStatusCode
+                ? JsonConvert.DeserializeObject<OrderDto>(responseContent, JsonSerializerSettings)
+                : null;
+
+            if (orderDto == null)
+            {
+                _log?.LogError("Failed to fetch user order. Response: {ResponseMessage} [{ResponseStatusCode}]", responseContent, response.StatusCode);
+
+                return null;
+            }
+
+            return MapOrderDtoToOrder(orderDto);
         }
 
         protected Task RunAutoAuthorizationAsync(CancellationToken cancellationToken = default) => Task.Run(
@@ -742,6 +766,30 @@ namespace Atomex.Client.Rest
                 PartyAddress         = swapDto.CounterParty?.Requisites?.ReceivingAddress,
                 PartyRewardForRedeem = swapDto.CounterParty?.Requisites?.RewardForRedeem ?? 0m,
                 PartyRefundAddress   = swapDto.CounterParty?.Requisites?.RefundAddress
+            };
+        }
+
+        private Order MapOrderDtoToOrder(OrderDto orderDto)
+        {
+            var lastQty = orderDto?.Trades?.Sum(t => t.Qty) ?? 0m;
+            var lastPrice = lastQty > 0m
+                ? (orderDto?.Trades?.Sum(t => t.Qty * t.Price) ?? 0m) / lastQty
+                : 0m;
+
+            return new Order
+            {
+                Id            = orderDto.Id,
+                ClientOrderId = orderDto.ClientOrderId,
+                Symbol        = orderDto.Symbol,
+                Side          = orderDto.Side,
+                Price         = orderDto.Price,
+                Status        = orderDto.Status,
+                TimeStamp     = orderDto.TimeStamp,
+                Qty           = orderDto.Qty,
+                LeaveQty      = orderDto.LeaveQty,
+                Type          = orderDto.Type,
+                LastQty       = lastQty,
+                LastPrice     = lastPrice
             };
         }
 
