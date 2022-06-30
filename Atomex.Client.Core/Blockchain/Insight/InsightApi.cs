@@ -13,7 +13,6 @@ using Newtonsoft.Json;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
-using Atomex.Core;
 
 namespace Atomex.Blockchain.Insight
 {

@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Abstract;
-using Atomex.Api;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Core;
@@ -74,9 +73,9 @@ namespace Atomex.Wallet.Abstract
         /// <param name="nonce">Server nonce</param>
         /// <param name="keyIndex">Service key index</param>
         /// <returns>Auth request</returns>
-        Task<Auth> CreateAuthRequestAsync(
-            AuthNonce nonce,
-            uint keyIndex = 0);
+        //Task<Auth> CreateAuthRequestAsync(
+        //    AuthNonce nonce,
+        //    uint keyIndex = 0);
 
         ICurrencyAccount GetCurrencyAccount(string currency);
 

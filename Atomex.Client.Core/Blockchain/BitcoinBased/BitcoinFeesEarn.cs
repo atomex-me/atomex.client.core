@@ -4,7 +4,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
 using Atomex.Common;
-using Atomex.Core;
 
 namespace Atomex.Blockchain.BitcoinBased
 {

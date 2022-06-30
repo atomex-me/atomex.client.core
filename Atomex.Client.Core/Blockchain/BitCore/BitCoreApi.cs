@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
-using Atomex.Core;
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
 using Newtonsoft.Json;

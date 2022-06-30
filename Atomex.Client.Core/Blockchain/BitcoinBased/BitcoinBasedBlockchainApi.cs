@@ -4,7 +4,6 @@ using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
-using Atomex.Core;
 
 namespace Atomex.Blockchain.BitcoinBased
 {

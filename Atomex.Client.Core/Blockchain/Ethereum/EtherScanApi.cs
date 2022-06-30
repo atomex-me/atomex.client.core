@@ -16,9 +16,8 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum.Abstract;
 using Atomex.Blockchain.Ethereum.ERC20;
 using Atomex.Common;
-using Atomex.Core;
 using Atomex.EthereumTokens;
-using Error = Atomex.Core.Error;
+using Error = Atomex.Common.Error;
 using System.Net;
 
 namespace Atomex.Blockchain.Ethereum

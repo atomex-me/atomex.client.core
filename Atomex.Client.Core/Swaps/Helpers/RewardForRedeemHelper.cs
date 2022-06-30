@@ -3,8 +3,8 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Core;
-using Atomex.MarketData;
 using Atomex.MarketData.Abstract;
+using Atomex.MarketData.Entities;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.Swaps.Helpers
@@ -13,7 +13,7 @@ namespace Atomex.Swaps.Helpers
     {
         public static async Task<decimal> EstimateAsync(
             IAccount account,
-            ICurrencyQuotesProvider quotesProvider,
+            IQuotesProvider quotesProvider,
             Func<string, Quote> feeCurrencyQuotesProvider,
             CurrencyConfig redeemableCurrency,
             WalletAddress redeemFromAddress = null,

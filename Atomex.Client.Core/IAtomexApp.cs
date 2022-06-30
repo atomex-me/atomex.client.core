@@ -1,8 +1,9 @@
 ﻿using System;
 
 using Atomex.Abstract;
+using Atomex.Client.Abstract;
+using Atomex.Client.Common;
 using Atomex.MarketData.Abstract;
-using Atomex.Services;
 using Atomex.Services.Abstract;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
@@ -15,24 +16,29 @@ namespace Atomex
 
         IAtomexClient AtomexClient { get; }
         IAccount Account { get; }
-        ICurrencyQuotesProvider QuotesProvider { get; }
-        ICurrencyOrderBookProvider OrderBooksProvider { get; }
+        IQuotesProvider QuotesProvider { get; }
+        IOrderBookProvider OrderBooksProvider { get; }
         ICurrenciesProvider CurrenciesProvider { get; }
         ISymbolsProvider SymbolsProvider { get; }
         ICurrenciesUpdater CurrenciesUpdater { get; }
         ISymbolsUpdater SymbolsUpdater { get; }
         ISwapManager SwapManager { get; }
         ITransactionsTracker TransactionsTracker { get; }
+        IMarketDataRepository MarketDataRepository { get; }
         bool HasQuotesProvider { get; }
 
         IAtomexApp Start();
         IAtomexApp Stop();
-        IAtomexApp UseAtomexClient(IAtomexClient atomexClient, bool restart = false);
+        IAtomexApp ChangeAtomexClient(
+            IAtomexClient atomexClient,
+            IAccount account,
+            bool restart = false,
+            bool storeCanceledOrders = false);
         IAtomexApp UseCurrenciesProvider(ICurrenciesProvider currenciesProvider);
         IAtomexApp UseSymbolsProvider(ISymbolsProvider symbolsProvider);
         IAtomexApp UseCurrenciesUpdater(ICurrenciesUpdater currenciesUpdater);
         IAtomexApp UseSymbolsUpdater(ISymbolsUpdater symbolsUpdater);
-        IAtomexApp UseQuotesProvider(ICurrencyQuotesProvider quotesProvider);
-        IAtomexApp UseOrderBooksProvider(ICurrencyOrderBookProvider orderBooksProvider);
+        IAtomexApp UseQuotesProvider(IQuotesProvider quotesProvider);
+        IAtomexApp UseOrderBooksProvider(IOrderBookProvider orderBooksProvider);
     }
 }

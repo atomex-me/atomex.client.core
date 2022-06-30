@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Blockchain.BitcoinBased;
-using Atomex.Core;
+using Atomex.Common;
 
 namespace Atomex.Wallet.Abstract
 {
