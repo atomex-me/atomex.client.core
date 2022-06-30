@@ -436,11 +436,11 @@ namespace Atomex.Wallet.BitcoinBased
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug($"{Currency} UpdateBalanceAsync canceled.");
+                    Log.Debug("{Currency} UpdateBalanceAsync canceled.", Currency);
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, $"{Currency} UpdateBalanceAsync error.");
+                    Log.Error(e, "{Currency} UpdateBalanceAsync error.", Currency);
                 }
 
             }, cancellationToken);

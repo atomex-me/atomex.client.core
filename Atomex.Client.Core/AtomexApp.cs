@@ -1,5 +1,4 @@
 ﻿using System;
-
 using Atomex.Abstract;
 using Atomex.MarketData.Abstract;
 using Atomex.Services;

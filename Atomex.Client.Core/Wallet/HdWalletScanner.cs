@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
+using Atomex.Core;
 using Serilog;
 
 using Atomex.Wallet.Abstract;
@@ -26,10 +28,25 @@ namespace Atomex.Wallet
         {
             return Task.Run(async () =>
             {
-                foreach (var currency in Account.Currencies)
-                    await ScanAsync(currency.Name, skipUsed, cancellationToken)
-                        .ConfigureAwait(false);
+                try
+                {
+                    var stopwatch = new Stopwatch();
+                    Log.Information("Started wallet scan.");
+                    stopwatch.Start();
+                    
+                    var scanTasks = Account.Currencies.Select(c => ScanAsync(c.Name, skipUsed, cancellationToken)).ToArray();
+                    await Task.WhenAll(scanTasks).ConfigureAwait(false);
 
+                    stopwatch.Stop();
+                    Log.Information("Ended wallet scan. Elapsed in {Milliseconds}", stopwatch.ElapsedMilliseconds);
+                    var ts = stopwatch.Elapsed;
+                    Log.Information("Elapsed Time is {0:00}:{1:00}:{2:00}.{3}",
+                        ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds);
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Error while scanning HdWallet for all currencies");
+                }
             }, cancellationToken);
         }
 
@@ -40,10 +57,16 @@ namespace Atomex.Wallet
         {
             return Task.Run(async () =>
             {
-                await GetCurrencyScanner(currency)
-                    .ScanAsync(skipUsed, cancellationToken)
-                    .ConfigureAwait(false);
-
+                try
+                {
+                    await GetCurrencyScanner(currency)
+                        .ScanAsync(skipUsed, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Error while scanning HdWallet for {Currency} currency", currency);
+                }
             }, cancellationToken);
         }
 
