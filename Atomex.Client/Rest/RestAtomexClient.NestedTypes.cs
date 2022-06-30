@@ -142,7 +142,16 @@ namespace Atomex.Client.Rest
             public string? RefundAddress { get; set; }
         }
 
-        private record InitiateSwapResponseDto(bool Result);
+        private record AcceptSwapDto(
+            string ReceivingAddress,
+            decimal RewardForRedeem,
+            ulong LockTime
+        )
+        {
+            public string? RefundAddress { get; set; }
+        }
+
+        private record AddSwapRequisitesResponseDto(bool Result);
 
         private enum PartyStatus
         {

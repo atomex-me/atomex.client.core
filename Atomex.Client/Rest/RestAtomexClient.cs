@@ -309,7 +309,7 @@ namespace Atomex.Client.Rest
             // nothing to do...
         }
 
-        public void SwapAcceptAsync(
+        public async void SwapAcceptAsync(
             long id,
             string symbol,
             string toAddress,
@@ -317,7 +317,58 @@ namespace Atomex.Client.Rest
             string refundAddress,
             ulong lockTime)
         {
-            throw new NotImplementedException();
+            try
+            {
+                _log?.LogInformation("Accepting a swap...: {SwapId}, \"{Symbol}\", {ToAddress}, {RewardForRedeem}, {RefundAddress}",
+                    id, symbol, toAddress, rewardForRedeem, refundAddress);
+
+                var acceptSwapDto = new AcceptSwapDto(
+                    ReceivingAddress: toAddress,
+                    RewardForRedeem: rewardForRedeem,
+                    LockTime: lockTime
+                )
+                {
+                    RefundAddress = refundAddress,
+                };
+
+                _log?.LogDebug("Sending the Accept Swap DTO...: {@AcceptSwapDto}", acceptSwapDto);
+
+                var response = await HttpClient.PostAsync(
+                    $"swaps/{id}/requisites",
+                    new StringContent(
+                        content: JsonConvert.SerializeObject(acceptSwapDto),
+                        encoding: Encoding.UTF8,
+                        mediaType: "application/json"
+                    ),
+                    _cts.Token
+                ).ConfigureAwait(false);
+
+                var responseContent = await response.Content
+                    .ReadAsStringAsync()
+                    .ConfigureAwait(false);
+
+                var result = response.IsSuccessStatusCode
+                    ? JsonConvert.DeserializeObject<AddSwapRequisitesResponseDto>(responseContent, JsonSerializerSettings)
+                    : null;
+
+                if (result?.Result != true)
+                {
+                    _log?.LogError("Sending the swap requisites is failed for the {UserId} user. Accept Swap DTO: {@AcceptSwapDto}" +
+                        "Response: {ResponseMessage} [{ResponseStatusCode}]", AccountUserId, acceptSwapDto, responseContent, response.StatusCode);
+
+                    return;
+                }
+
+                await RequestActualSwapState(id, _cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                _log?.LogDebug("The {taskName} task has been canceled", nameof(SwapInitiateAsync));
+            }
+            catch (Exception ex)
+            {
+                _log?.LogError(ex, "Swap acception failed");
+            }
         }
 
         public async void SwapInitiateAsync(
@@ -361,7 +412,7 @@ namespace Atomex.Client.Rest
                     .ConfigureAwait(false);
 
                 var result = response.IsSuccessStatusCode
-                    ? JsonConvert.DeserializeObject<InitiateSwapResponseDto>(responseContent, JsonSerializerSettings)
+                    ? JsonConvert.DeserializeObject<AddSwapRequisitesResponseDto>(responseContent, JsonSerializerSettings)
                     : null;
 
                 if (result?.Result != true)
