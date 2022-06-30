@@ -32,6 +32,12 @@ namespace Atomex.MarketData.Binance
             { "LTC/KUSD", "ltcusdt" },
             { "XTZ/KUSD", "xtzusdt" },
             { "TZBTC/KUSD", "btcusdt" },
+
+            { "BTC/USDT_XTZ", "btcusdt" },
+            { "ETH/USDT_XTZ", "ethusdt" },
+            { "LTC/USDT_XTZ", "ltcusdt" },
+            { "XTZ/USDT_XTZ", "xtzusdt" },
+            { "TZBTC/USDT_XTZ", "btcusdt" },
         };
     }
 }
