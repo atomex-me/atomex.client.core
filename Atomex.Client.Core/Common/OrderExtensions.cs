@@ -71,16 +71,9 @@ namespace Atomex.Common
                 return false;
 
             // check leave qty
-            switch (order.Status)
-            {
-                case OrderStatus.PartiallyFilled:
-                case OrderStatus.Filled:
-                    if (order.LeaveQty >= previousOrder.LeaveQty)
-                        return false;
-                    break;
-                case OrderStatus.Canceled when order.LeaveQty > previousOrder.LeaveQty:
-                    return false;
-            }
+            if (order.LeaveQty > previousOrder.LeaveQty ||
+                ((order.Status == OrderStatus.PartiallyFilled || order.Status == OrderStatus.Filled) && order.LeaveQty == previousOrder.LeaveQty))
+                return false;
 
             return true;
         }

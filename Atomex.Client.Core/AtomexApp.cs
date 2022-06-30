@@ -227,13 +227,13 @@ namespace Atomex
                             Symbol        = e.Order.Symbol,
                             TimeStamp     = e.Order.TimeStamp,
                             Price         = e.Order.Price,
-                            LastPrice     = e.Order.LastPrice,
                             Qty           = e.Order.Qty,
-                            LeaveQty      = e.Order.LeaveQty,
-                            LastQty       = e.Order.LastQty,
                             Side          = e.Order.Side,
                             Type          = e.Order.Type,
-                            Status        = e.Order.Status
+                            Status        = e.Order.Status,
+                            LastPrice     = e.Order.LastPrice,
+                            LeaveQty      = e.Order.LeaveQty,
+                            LastQty       = e.Order.LastQty
                         })
                         .ConfigureAwait(false);
                 }
