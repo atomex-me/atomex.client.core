@@ -263,6 +263,17 @@
       "RefundFee": 120000,
       "RefundGasLimit": 400000,
       "RefundSize": 20000
+    },
+    "USDT_XTZ": {
+      "BasedOn": "FA2",
+      "Name": "USDT_XTZ",
+      "DisplayedName": "USDt",
+      "IsToken": true,
+      "Description": "Tether (FA2)",
+      "DigitsMultiplier": 1000000,
+      "SwapContract": "KT1Ays1Chwx3ArnHGoQXchUgDsvKe9JboUjj",
+      "TokenContract": "KT1XnTn74bUtxHfDtBmm2bGZAQfhPbvKWR8o",
+      "FeeCurrencySymbol": "XTZ/USDT_XTZ"
     }
   },
   "TestNet": {
