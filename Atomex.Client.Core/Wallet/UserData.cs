@@ -38,7 +38,7 @@ namespace Atomex.Wallet
         public uint AuthenticationKeyIndex { get; set; }
         public bool ShowActiveSwapWarning { get; set; }
         public int BalanceUpdateIntervalInSec { get; set; }
-        public string[] InitializedCurrencies { get; set; }
+        public string[] DisabledCurrencies { get; set; }
         public string[] DisabledTokens { get; set; }
         public bool? HideTokensWithLowBalance { get; set; }
         public List<AtomexNotification> Notifications { get; set; }
@@ -52,7 +52,7 @@ namespace Atomex.Wallet
                 AuthenticationKeyIndex = 0,
                 ShowActiveSwapWarning = true,
                 BalanceUpdateIntervalInSec = 120,
-                InitializedCurrencies = currencies.Select(curr => curr.Name).ToArray(),
+                DisabledCurrencies = Array.Empty<string>(),
                 Notifications = new List<AtomexNotification>()
             };
         }
