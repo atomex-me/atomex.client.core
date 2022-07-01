@@ -106,13 +106,13 @@ namespace Atomex.ViewModels
 
                         var isFreeAddress = w.Address == freeTezosAddress.Address && tokenBalance == 0;
 
-                        return new WalletAddressViewModel
+                        var a = new WalletAddressViewModel
                         {
                             WalletAddress    = tokenAddress,
                             Address          = w?.Address,
                             AvailableBalance = tezosBalance,
                             CurrencyFormat   = currency.Format,
-                            CurrencyCode     = currency.DisplayedName,
+                            CurrencyCode     = "XTZ",
                             IsFreeAddress    = isFreeAddress,
                             ShowTokenBalance = showTokenBalance,
                             HasActivity      = w?.HasActivity ?? false,
@@ -122,6 +122,8 @@ namespace Atomex.ViewModels
                             TokenId          = (int)tokenId,
                             IsTezosToken     = true
                         };
+
+                        return a;
                     });
             }
 
