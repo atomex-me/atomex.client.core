@@ -1,9 +1,7 @@
 ﻿using System;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Core;
 using Serilog;
 
 using Atomex.Wallet.Abstract;
@@ -30,7 +28,9 @@ namespace Atomex.Wallet
             {
                 try
                 {
-                    var scanTasks = Account.Currencies.Select(c => ScanAsync(c.Name, skipUsed, cancellationToken)).ToArray();
+                    var scanTasks = Account.Currencies
+                                                 .Select(c => ScanAsync(c.Name, skipUsed, cancellationToken))
+                                                 .ToArray();
                     await Task.WhenAll(scanTasks).ConfigureAwait(false);
                 }
                 catch (Exception e)
