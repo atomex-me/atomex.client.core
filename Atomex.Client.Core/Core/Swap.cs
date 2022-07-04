@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
+using Atomex.Client.V1.Entities;
 using Atomex.Common;
 
 namespace Atomex.Core
@@ -35,14 +36,6 @@ namespace Atomex.Core
 
         IsCanceled = 1 << 17,
         IsUnsettled = 1 << 18
-    }
-
-    [Flags]
-    public enum SwapStatus
-    {
-        Empty = 0,
-        Initiated = 0x01,
-        Accepted = 0x02
     }
 
     public class Swap

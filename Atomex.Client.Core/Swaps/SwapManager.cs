@@ -8,6 +8,8 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Blockchain.Helpers;
+using Atomex.Client.Abstract;
+using Atomex.Client.V1.Entities;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.MarketData.Abstract;
@@ -15,6 +17,9 @@ using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
+using Swap = Atomex.Core.Swap;
+using Order = Atomex.Core.Order;
+using Error = Atomex.Common.Error;
 
 namespace Atomex.Swaps
 {
@@ -29,7 +34,7 @@ namespace Atomex.Swaps
 
         private readonly IAccount _account;
         private readonly ISwapClient _swapClient;
-        private readonly ICurrencyQuotesProvider _quotesProvider;
+        private readonly IQuotesProvider _quotesProvider;
         private readonly IMarketDataRepository _marketDataRepository;
         private readonly IDictionary<string, ICurrencySwap> _currencySwaps;
         private CancellationTokenSource _cts;
@@ -60,7 +65,7 @@ namespace Atomex.Swaps
         public SwapManager(
             IAccount account,
             ISwapClient swapClient,
-            ICurrencyQuotesProvider quotesProvider,
+            IQuotesProvider quotesProvider,
             IMarketDataRepository marketDataRepository)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
@@ -434,7 +439,8 @@ namespace Atomex.Swaps
                 swap.Symbol,
                 swap.ToAddress,
                 swap.RewardForRedeem,
-                swap.RefundAddress);
+                swap.RefundAddress,
+                CurrencySwap.DefaultInitiatorLockTimeInSeconds);
         }
 
         private async Task FillAndSendAcceptorRequisitesAsync(
@@ -484,7 +490,8 @@ namespace Atomex.Swaps
                 swap.Symbol,
                 swap.ToAddress,
                 swap.RewardForRedeem,
-                swap.RefundAddress);
+                swap.RefundAddress,
+                CurrencySwap.DefaultAcceptorLockTimeInSeconds);
         }
 
         private async Task<Error> CheckAndSaveInitiatorRequisitesAsync(

@@ -7,6 +7,8 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Core;
 using System.Linq;
 using Atomex.Blockchain.BitcoinBased;
+using Atomex.Client.V1.Entities;
+using Swap = Atomex.Core.Swap;
 
 namespace Atomex.Common.Bson
 {

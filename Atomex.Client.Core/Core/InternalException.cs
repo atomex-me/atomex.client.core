@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Atomex.Common;
+using System;
 
 namespace Atomex.Core
 {
