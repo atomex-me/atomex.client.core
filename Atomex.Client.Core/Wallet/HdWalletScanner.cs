@@ -1,7 +1,7 @@
 ﻿using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
 using Serilog;
 
 using Atomex.Wallet.Abstract;
@@ -26,10 +26,17 @@ namespace Atomex.Wallet
         {
             return Task.Run(async () =>
             {
-                foreach (var currency in Account.Currencies)
-                    await ScanAsync(currency.Name, skipUsed, cancellationToken)
-                        .ConfigureAwait(false);
-
+                try
+                {
+                    var scanTasks = Account.Currencies
+                                                 .Select(c => ScanAsync(c.Name, skipUsed, cancellationToken))
+                                                 .ToArray();
+                    await Task.WhenAll(scanTasks).ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Error while scanning HdWallet for all currencies");
+                }
             }, cancellationToken);
         }
 
@@ -40,10 +47,16 @@ namespace Atomex.Wallet
         {
             return Task.Run(async () =>
             {
-                await GetCurrencyScanner(currency)
-                    .ScanAsync(skipUsed, cancellationToken)
-                    .ConfigureAwait(false);
-
+                try
+                {
+                    await GetCurrencyScanner(currency)
+                        .ScanAsync(skipUsed, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception e)
+                {
+                    Log.Error(e, "Error while scanning HdWallet for {Currency} currency", currency);
+                }
             }, cancellationToken);
         }
 

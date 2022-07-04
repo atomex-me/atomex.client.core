@@ -139,7 +139,7 @@ namespace Atomex.Wallet
         public void Unlock(SecureString password)
         {
             Wallet.Unlock(password);
-
+            Log.Information("Wallet is unlocked");
             Unlocked?.Invoke(this, EventArgs.Empty);
         }
 
