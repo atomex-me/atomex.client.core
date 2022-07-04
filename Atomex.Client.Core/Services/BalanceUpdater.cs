@@ -10,6 +10,7 @@ using Atomex.Services.BalanceUpdaters;
 using Atomex.TzktEvents;
 using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
+using Atomex.Wallet.Tezos;
 using Serilog;
 
 
@@ -109,7 +110,7 @@ namespace Atomex.Services
 
                 var tzkt = new TzktEventsClient(_log);
                 _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, tzkt, _log));
-                _balanceUpdaters.Add(new TezosTokenBalanceUpdater(_account, _currenciesProvider, _walletScanner, tzkt, _log));
+                _balanceUpdaters.Add(new TezosTokenBalanceUpdater(_account, _currenciesProvider, new TezosTokensScanner(_account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz)), tzkt, _log));
             }
             catch (Exception e)
             {

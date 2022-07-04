@@ -56,9 +56,10 @@ namespace Atomex.ViewModels
                             var tzktApi = new TzktApi(xtzConfig);
 
                             var balanceResult = await tzktApi
-                                .GetTokenBalancesAsync(
-                                    address: address.Address,
-                                    contractAddress: tezosTokenConfig.TokenContractAddress,
+                                .GetTokenBalanceAsync(
+                                    addresses: new[] { address.Address },
+                                    tokenContracts: new[] { tezosTokenConfig.TokenContractAddress },
+                                    tokenIds: new [] { tezosTokenConfig.TokenId },
                                     cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
 
@@ -78,7 +79,7 @@ namespace Atomex.ViewModels
                             }
 
                             actualBalance = balanceResult.Value
-                                .First(tb => tb.TokenId == tezosTokenConfig.TokenId)
+                                .First()
                                 .GetTokenBalance();
                         }
                         else if (Currencies.IsEthereumToken(address.Currency))

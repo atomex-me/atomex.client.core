@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -39,34 +40,10 @@ namespace Atomex.Wallet.Tezos
                     await new TezosWalletScanner(_tezosAccount)
                         .ScanAsync(cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
-
-                    xtzAddresses = await _tezosAccount.DataRepository
-                        .GetAddressesAsync(TezosConfig.Xtz)
-                        .ConfigureAwait(false);
                 }
 
-                // addresses from local db
-                var localAddresses = await _tezosAccount.DataRepository
-                    .GetTezosTokenAddressesAsync()
+                await UpdateBalanceAsync(cancellationToken)
                     .ConfigureAwait(false);
-
-                var addresses = localAddresses
-                    .Select(a => a.Address)
-                    .ToList();
-
-                if (xtzAddresses.Any())
-                    addresses.AddRange(xtzAddresses.Select(a => a.Address));
-
-                // remove duplicates
-                addresses = addresses
-                    .Distinct()
-                    .ToList();
-
-                foreach (var address in addresses)
-                {
-                    await ScanAsync(address, cancellationToken)
-                        .ConfigureAwait(false);
-                }
 
             }, cancellationToken);
         }
@@ -75,311 +52,606 @@ namespace Atomex.Wallet.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(async () =>
-            {
-                var tzktApi = new TzktApi(_tezosAccount.Config);
-
-                var tokenContractsResult = await tzktApi
-                    .GetTokenContractsAsync(address, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (tokenContractsResult.HasError)
-                {
-                    Log.Error($"Error while get token contracts for " +
-                        $"address: {address}. " +
-                        $"Code: {tokenContractsResult.Error.Code}. " +
-                        $"Description: {tokenContractsResult.Error.Description}.");
-
-                    return;
-                }
-
-                // upsert contracts
-                if (tokenContractsResult.Value.Any())
-                    await _tezosAccount.DataRepository
-                        .UpsertTezosTokenContractsAsync(tokenContractsResult.Value)
-                        .ConfigureAwait(false);
-
-                // contracts from local db
-                var contracts = (await _tezosAccount.DataRepository
-                    .GetTezosTokenAddressesAsync(address)
-                    .ConfigureAwait(false))
-                    .Select(a => a.TokenBalance.Contract)
-                    .ToList();
-
-                // add contracts from network
-                if (tokenContractsResult.Value.Any())
-                    contracts.AddRange(tokenContractsResult.Value.Select(x => x.Address));
-
-                contracts = contracts
-                    .Distinct()
-                    .ToList();
-
-                // scan by address and contract
-                foreach (var contractAddress in contracts)
-                {
-                    var contractWithMetadata = tokenContractsResult.Value.Find(x => x.Address == contractAddress);
-                    await ScanContractAsync(
-                            address,
-                            contractAddress,
-                            contractWithMetadata,
-                            cancellationToken)
-                        .ConfigureAwait(false);
-                }
-
-            }, cancellationToken);
+            return UpdateBalanceAsync(address, cancellationToken);
         }
 
-        public Task ScanContractAsync(
-            string contractAddress,
+        /// <summary>
+        /// Update balances and transfers for all tokens for all accounts
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public Task UpdateBalanceAsync(
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
             {
-                // addresses from local db
-                var localAddresses = await _tezosAccount.DataRepository
-                    .GetTezosTokenAddressesByContractAsync(contractAddress)
-                    .ConfigureAwait(false);
-
                 // all tezos addresses
-                var xtzAddresses = await _tezosAccount.DataRepository
+                var xtzLocalAddresses = await _tezosAccount.DataRepository
                     .GetAddressesAsync(TezosConfig.Xtz)
                     .ConfigureAwait(false);
 
-                if (xtzAddresses.Count() <= 1)
-                {
-                    // firstly scan xtz
-                    await new TezosWalletScanner(_tezosAccount)
-                        .ScanAsync(cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
-
-                    xtzAddresses = await _tezosAccount.DataRepository
-                        .GetAddressesAsync(TezosConfig.Xtz)
-                        .ConfigureAwait(false);
-                }
-
-                var addresses = localAddresses
-                    .Select(a => a.Address)
-                    .ToList();
-
-                if (xtzAddresses.Any())
-                    addresses.AddRange(xtzAddresses.Select(a => a.Address));
-
-                // remove duplicates
-                addresses = addresses
-                    .Distinct()
-                    .ToList();
-
-                foreach (var address in addresses)
-                {
-                    await ScanContractAsync(
-                            address,
-                            contractAddress,
-                            cancellationToken)
-                        .ConfigureAwait(false);
-                }
-
-            }, cancellationToken);
-        }
-
-        public Task ScanContractAsync(
-            string address,
-            string contractAddress,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.Run(async () =>
-            {
-                var tezosConfig = _tezosAccount.Config;
-
-                var tzktApi = new TzktApi(tezosConfig);
-
-                var tokenContractsResult = await tzktApi
-                    .GetTokenContractsAsync(address, cancellationToken)
+                // all tezos tokens addresses
+                var tokenLocalAddresses = await _tezosAccount.DataRepository
+                    .GetTezosTokenAddressesAsync()
                     .ConfigureAwait(false);
 
-                if (tokenContractsResult.HasError)
-                {
-                    Log.Error($"Error while get token contracts for " +
-                        $"address: {address}. " +
-                        $"Code: {tokenContractsResult.Error.Code}. " +
-                        $"Description: {tokenContractsResult.Error.Description}.");
+                var uniqueLocalAddresses = xtzLocalAddresses
+                    .Concat(tokenLocalAddresses)
+                    .Select(w => w.Address)
+                    .Distinct();
 
-                    return;
-                }
-
-                // upsert contracts
-                if (tokenContractsResult.Value.Any())
-                    await _tezosAccount.DataRepository
-                        .UpsertTezosTokenContractsAsync(tokenContractsResult.Value)
-                        .ConfigureAwait(false);
-
-                var contractWithMetadata = tokenContractsResult.Value.Find(x => x.Address == contractAddress);
-                await ScanContractAsync(
-                        address,
-                        contractAddress,
-                        contractWithMetadata,
-                        cancellationToken)
-                    .ConfigureAwait(false);
-
-            }, cancellationToken);
-        }
-    
-        private Task ScanContractAsync(
-            string address,
-            string contractAddress,
-            TokenContract contractWithMetadata,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.Run(async () =>
-            {
-                var tezosConfig = _tezosAccount.Config;
-
-                var tzktApi = new TzktApi(tezosConfig);
-
-                var contractType = contractWithMetadata?.Type ?? "FA2";
+                var tzktApi = new TzktApi(_tezosAccount.Config);
 
                 var tokenBalancesResult = await tzktApi
-                    .GetTokenBalancesAsync(
-                        address: address,
-                        contractAddress: contractAddress,
+                    .GetTokenBalanceAsync(
+                        addresses: uniqueLocalAddresses,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (tokenBalancesResult.HasError)
                 {
-                    Log.Error("Error while scan tokens balance for " +
-                        $"contract: {contractAddress} and " +
-                        $"address: {address}. " +
-                        $"Code: {tokenBalancesResult.Error.Code}. " +
-                        $"Description: {tokenBalancesResult.Error.Description}");
+                    Log.Error("Error while scan tokens balance for all tokens and addresses. Code: {@code}. Description: {@descr}",
+                        tokenBalancesResult.Error.Code,
+                        tokenBalancesResult.Error.Description);
 
                     return;
                 }
 
-                var localTokenAddresses = (await _tezosAccount.DataRepository
-                    .GetTezosTokenAddressesAsync(address, contractAddress)
-                    .ConfigureAwait(false))
-                    .ToList();
-
-                var tokenBalanceDict = tokenBalancesResult.Value
-                    .GroupBy(tb => UniqueTokenId(contractType, tb.Contract, tb.TokenId))
-                    .ToDictionary(
-                        g => g.Key,
-                        g => g.First());
-
-                foreach (var localAddress in localTokenAddresses)
-                {
-                    var uniqueTokenId = UniqueTokenId(
-                        localAddress.Currency,
-                        localAddress.TokenBalance.Contract,
-                        localAddress.TokenBalance.TokenId);
-
-                    if (tokenBalanceDict.TryGetValue(uniqueTokenId, out var tb))
-                    {
-                        localAddress.Balance = tb.GetTokenBalance();
-                        localAddress.TokenBalance = tb;
-
-                        tokenBalanceDict.Remove(uniqueTokenId);
-                    }
-                    else
-                    {
-                        localAddress.Balance = 0;
-                        localAddress.TokenBalance.Balance = "0";
-                    }
-                }
-
-                var xtzAddress = await _tezosAccount
-                    .GetAddressAsync(address, cancellationToken)
+                await ExtractAndSaveTokenContractsAsync(tokenBalancesResult.Value)
                     .ConfigureAwait(false);
 
-                var newTokenAddresses = tokenBalanceDict.Values
-                    .Select(tb => new WalletAddress
+                var tokenBalanceMap = tokenBalancesResult.Value
+                    .ToDictionary(tb => UniqueTokenId(tb.Address, tb.Contract, tb.TokenId));
+
+                var changedAddresses = new List<WalletAddress>();
+
+                foreach (var tokenLocalAddress in tokenLocalAddresses)
+                {
+                    var uniqueTokenId = UniqueTokenId(
+                        tokenLocalAddress.Address,
+                        tokenLocalAddress.TokenBalance.Contract,
+                        tokenLocalAddress.TokenBalance.TokenId);
+
+                    if (tokenBalanceMap.TryGetValue(uniqueTokenId, out var tb))
                     {
-                        Address      = address,
-                        Balance      = tb.GetTokenBalance(),
-                        Currency     = contractType,
-                        KeyIndex     = xtzAddress.KeyIndex,
-                        KeyType      = xtzAddress.KeyType,
-                        HasActivity  = true,
-                        TokenBalance = tb
+                        if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
+                            tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        {
+                            tokenLocalAddress.Balance = tb.GetTokenBalance();
+                            tokenLocalAddress.TokenBalance = tb;
+
+                            // save token local address to changed addresses list
+                            changedAddresses.Add(tokenLocalAddress);
+                        }
+
+                        // remove token balance from map to track new tokens, than are not in the local database 
+                        tokenBalanceMap.Remove(uniqueTokenId);
+                    }
+                    else // token balance at the address became zero
+                    {
+                        if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
+                            tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        {
+                            tokenLocalAddress.Balance = 0;
+                            tokenLocalAddress.TokenBalance.Balance = "0";
+
+                            // save token local address to changed addresses list
+                            changedAddresses.Add(tokenLocalAddress);
+                        }
+                    }
+                }
+
+                // add new addresses with tokens
+                var newTokenAddresses = tokenBalanceMap.Values
+                    .Select(tb =>
+                    {
+                        var xtzAddress = xtzLocalAddresses.First(w => w.Address == tb.Address);
+
+                        return new WalletAddress
+                        {
+                            Address      = tb.Address,
+                            Balance      = tb.GetTokenBalance(),
+                            Currency     = tb.ContractType,
+                            KeyIndex     = xtzAddress.KeyIndex,
+                            KeyType      = xtzAddress.KeyType,
+                            HasActivity  = true,
+                            TokenBalance = tb
+                        };
                     });
 
-                localTokenAddresses.AddRange(newTokenAddresses);
+                changedAddresses.AddRange(newTokenAddresses);
 
-                if (localTokenAddresses.Any())
+                // upsert changed token balances
+                if (changedAddresses.Any())
+                {
                     await _tezosAccount.DataRepository
-                        .UpsertTezosTokenAddressesAsync(localTokenAddresses)
+                        .UpsertTezosTokenAddressesAsync(changedAddresses)
                         .ConfigureAwait(false);
 
-                // scan transfers
-
-                foreach (var localAddress in localTokenAddresses)
-                {
-                    var transfersResult = await tzktApi
-                        .GetTokenTransfersAsync(
-                            address: localAddress.Address,
-                            contractAddress: localAddress.TokenBalance.Contract,
-                            tokenId: localAddress.TokenBalance.TokenId,
+                    await UpdateAndSaveTokenTransfersAsync(
+                            tzktApi,
+                            changedAddresses: changedAddresses.Select(w => w.Address),
+                            allAddresses: uniqueLocalAddresses
+                                .Concat(newTokenAddresses.Select(w => w.Address))
+                                .Distinct(),
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
-
-                    if (transfersResult.HasError)
-                    {
-                        Log.Error($"Error while get transfers for " +
-                            $"address: {localAddress.Address}, " +
-                            $"contract: {localAddress.TokenBalance.Contract} and " +
-                            $"token id: {localAddress.TokenBalance.TokenId}. " +
-                            $"Code: {transfersResult.Error.Code}. " +
-                            $"Description: {transfersResult.Error.Description}.");
-
-                        return;
-                    }
-
-                    // todo: fix 'self' transfers
-                    //transfersResult.Value.ForEach(t =>
-                    //{
-                    foreach (var t in transfersResult.Value)
-                    {
-                        t.Currency = contractType;
-
-                        if (localAddress.Address == t.From)
-                        {
-                            t.Type |= BlockchainTransactionType.Output;
-                        }
-                        else
-                        {
-                            var fromAddress = await _tezosAccount
-                                .GetAddressAsync(t.From, cancellationToken)
-                                .ConfigureAwait(false);
-
-                            if (fromAddress != null)
-                                t.Type |= BlockchainTransactionType.Output;
-                        }
-
-                        if (localAddress.Address == t.To)
-                        {
-                            t.Type |= BlockchainTransactionType.Input;
-                        }
-                        else
-                        {
-                            var toAddress = await _tezosAccount
-                                .GetAddressAsync(t.To, cancellationToken)
-                                .ConfigureAwait(false);
-
-                            if (toAddress != null)
-                                t.Type |= BlockchainTransactionType.Input;
-                        }
-                    }
-
-                    if (transfersResult?.Value?.Any() ?? false)
-                        await _tezosAccount.DataRepository
-                            .UpsertTezosTokenTransfersAsync(transfersResult.Value)
-                            .ConfigureAwait(false);
                 }
+
+                // raise balance updated event for all tokens and accounts
+                _tezosAccount.RaiseTokensBalanceUpdatedEvent(
+                    address: null,
+                    tokenContract: null,
+                    tokenId: null);
 
             }, cancellationToken);
         }
 
-        private static string UniqueTokenId(string type, string contract, decimal tokenId) =>
-            $"{type}:{contract}:{tokenId}";
+        /// <summary>
+        /// Update balances and transfers for all tokens for specific address
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public Task UpdateBalanceAsync(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.Run(async () =>
+            {
+                // all tezos addresses
+                var xtzLocalAddresses = await _tezosAccount.DataRepository
+                    .GetAddressesAsync(TezosConfig.Xtz)
+                    .ConfigureAwait(false);
+
+                var xtzAddress = xtzLocalAddresses.First(w => w.Address == address);
+
+                // tezos tokens addresses
+                var tokenLocalAddresses = (await _tezosAccount.DataRepository
+                    .GetTezosTokenAddressesAsync()
+                    .ConfigureAwait(false))
+                    .Where(w => w.Address == address);
+
+                var tzktApi = new TzktApi(_tezosAccount.Config);
+
+                var tokenBalancesResult = await tzktApi
+                    .GetTokenBalanceAsync(
+                        addresses: new[] { address },
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (tokenBalancesResult.HasError)
+                {
+                    Log.Error("Error while scan tokens balance for all tokens and specific address. Code: {@code}. Description: {@descr}",
+                        tokenBalancesResult.Error.Code,
+                        tokenBalancesResult.Error.Description);
+
+                    return;
+                }
+
+                await ExtractAndSaveTokenContractsAsync(tokenBalancesResult.Value)
+                    .ConfigureAwait(false);
+
+                var tokenBalanceMap = tokenBalancesResult.Value
+                    .ToDictionary(tb => UniqueTokenId(tb.Address, tb.Contract, tb.TokenId));
+
+                var changedAddresses = new List<WalletAddress>();
+
+                foreach (var tokenLocalAddress in tokenLocalAddresses)
+                {
+                    var uniqueTokenId = UniqueTokenId(
+                        tokenLocalAddress.Address,
+                        tokenLocalAddress.TokenBalance.Contract,
+                        tokenLocalAddress.TokenBalance.TokenId);
+
+                    if (tokenBalanceMap.TryGetValue(uniqueTokenId, out var tb))
+                    {
+                        if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
+                            tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        {
+                            tokenLocalAddress.Balance = tb.GetTokenBalance();
+                            tokenLocalAddress.TokenBalance = tb;
+
+                            // save token local address to changed addresses list
+                            changedAddresses.Add(tokenLocalAddress);
+                        }
+
+                        // remove token balance from map to track new tokens, than are not in the local database 
+                        tokenBalanceMap.Remove(uniqueTokenId);
+                    }
+                    else // token balance at the address became zero
+                    {
+                        if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
+                            tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        {
+                            tokenLocalAddress.Balance = 0;
+                            tokenLocalAddress.TokenBalance.Balance = "0";
+
+                            // save token local address to changed addresses list
+                            changedAddresses.Add(tokenLocalAddress);
+                        }
+                    }
+                }
+
+                // add new addresses with tokens
+                var newTokenAddresses = tokenBalanceMap.Values
+                    .Select(tb =>
+                    {
+                        return new WalletAddress
+                        {
+                            Address      = tb.Address,
+                            Balance      = tb.GetTokenBalance(),
+                            Currency     = tb.ContractType,
+                            KeyIndex     = xtzAddress.KeyIndex,
+                            KeyType      = xtzAddress.KeyType,
+                            HasActivity  = true,
+                            TokenBalance = tb
+                        };
+                    });
+
+                changedAddresses.AddRange(newTokenAddresses);
+
+                // upsert changed token balances
+                if (changedAddresses.Any())
+                {
+                    await _tezosAccount.DataRepository
+                        .UpsertTezosTokenAddressesAsync(changedAddresses)
+                        .ConfigureAwait(false);
+
+                    await UpdateAndSaveTokenTransfersAsync(
+                            tzktApi,
+                            changedAddresses: changedAddresses.Select(w => w.Address),
+                            allAddresses: xtzLocalAddresses.Select(w => w.Address)
+                                .Concat(newTokenAddresses.Select(w => w.Address))
+                                .Distinct(),
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                // raise balance updated event for all tokens for specific account
+                _tezosAccount.RaiseTokensBalanceUpdatedEvent(
+                    address: address,
+                    tokenContract: null,
+                    tokenId: null);
+
+            }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Update balances and transfers for specific token for all accounts
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public Task UpdateBalanceAsync(
+            string tokenContract,
+            int tokenId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.Run(async () =>
+            {
+                // all tezos addresses
+                var xtzLocalAddresses = await _tezosAccount.DataRepository
+                    .GetAddressesAsync(TezosConfig.Xtz)
+                    .ConfigureAwait(false);
+
+                // token's addresses
+                var allTokensLocalAddresses = await _tezosAccount.DataRepository
+                    .GetTezosTokenAddressesAsync()
+                    .ConfigureAwait(false);
+
+                var tokenLocalAddresses = allTokensLocalAddresses.Where(w =>
+                    w.TokenBalance.Contract == tokenContract &&
+                    w.TokenBalance.TokenId == tokenId);
+
+                var uniqueLocalAddresses = xtzLocalAddresses
+                    .Concat(tokenLocalAddresses)
+                    .Select(w => w.Address)
+                    .Distinct();
+
+                var tzktApi = new TzktApi(_tezosAccount.Config);
+
+                var tokenBalancesResult = await tzktApi
+                    .GetTokenBalanceAsync(
+                        addresses: uniqueLocalAddresses,
+                        tokenContracts: new [] { tokenContract },
+                        tokenIds: new [] { tokenId },
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (tokenBalancesResult.HasError)
+                {
+                    Log.Error("Error while scan tokens balance for specific token and all addresses. Code: {@code}. Description: {@descr}",
+                        tokenBalancesResult.Error.Code,
+                        tokenBalancesResult.Error.Description);
+
+                    return;
+                }
+
+                await ExtractAndSaveTokenContractsAsync(tokenBalancesResult.Value)
+                    .ConfigureAwait(false);
+
+                var tokenBalanceMap = tokenBalancesResult.Value
+                    .ToDictionary(tb => UniqueTokenId(tb.Address, tb.Contract, tb.TokenId));
+
+                var changedAddresses = new List<WalletAddress>();
+
+                foreach (var tokenLocalAddress in tokenLocalAddresses)
+                {
+                    var uniqueTokenId = UniqueTokenId(
+                        tokenLocalAddress.Address,
+                        tokenLocalAddress.TokenBalance.Contract,
+                        tokenLocalAddress.TokenBalance.TokenId);
+
+                    if (tokenBalanceMap.TryGetValue(uniqueTokenId, out var tb))
+                    {
+                        if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
+                            tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        {
+                            tokenLocalAddress.Balance = tb.GetTokenBalance();
+                            tokenLocalAddress.TokenBalance = tb;
+
+                            // save token local address to changed addresses list
+                            changedAddresses.Add(tokenLocalAddress);
+                        }
+
+                        // remove token balance from map to track new tokens, than are not in the local database 
+                        tokenBalanceMap.Remove(uniqueTokenId);
+                    }
+                    else // token balance at the address became zero
+                    {
+                        if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
+                            tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        {
+                            tokenLocalAddress.Balance = 0;
+                            tokenLocalAddress.TokenBalance.Balance = "0";
+
+                            // save token local address to changed addresses list
+                            changedAddresses.Add(tokenLocalAddress);
+                        }
+                    }
+                }
+
+                // add new addresses with tokens
+                var newTokenAddresses = tokenBalanceMap.Values
+                    .Select(tb =>
+                    {
+                        var xtzAddress = xtzLocalAddresses.First(w => w.Address == tb.Address);
+
+                        return new WalletAddress
+                        {
+                            Address = tb.Address,
+                            Balance = tb.GetTokenBalance(),
+                            Currency = tb.ContractType,
+                            KeyIndex = xtzAddress.KeyIndex,
+                            KeyType = xtzAddress.KeyType,
+                            HasActivity = true,
+                            TokenBalance = tb
+                        };
+                    });
+
+                changedAddresses.AddRange(newTokenAddresses);
+
+                // upsert changed token balances
+                if (changedAddresses.Any())
+                {
+                    await _tezosAccount.DataRepository
+                        .UpsertTezosTokenAddressesAsync(changedAddresses)
+                        .ConfigureAwait(false);
+
+                    await UpdateAndSaveTokenTransfersAsync(
+                            tzktApi,
+                            changedAddresses: changedAddresses.Select(w => w.Address),
+                            allAddresses: xtzLocalAddresses.Select(w => w.Address)
+                                .Concat(allTokensLocalAddresses.Select(w => w.Address))
+                                .Concat(newTokenAddresses.Select(w => w.Address))
+                                .Distinct(),
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                // raise balance updated event for specific tokens and all accounts
+                _tezosAccount.RaiseTokensBalanceUpdatedEvent(
+                    address: null,
+                    tokenContract: tokenContract,
+                    tokenId: tokenId);
+
+            }, cancellationToken);
+        }
+
+        /// <summary>
+        /// Update balances and transfers for specific token and address
+        /// </summary>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        public Task UpdateBalanceAsync(
+            string address,
+            string tokenContract,
+            int tokenId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.Run(async () =>
+            {
+                // all tezos addresses
+                var xtzLocalAddresses = await _tezosAccount.DataRepository
+                    .GetAddressesAsync(TezosConfig.Xtz)
+                    .ConfigureAwait(false);
+
+                var xtzAddress = xtzLocalAddresses.First(w => w.Address == address);
+
+                // tezos token address
+                var tokenLocalAddresses = (await _tezosAccount.DataRepository
+                    .GetTezosTokenAddressesAsync(address, tokenContract)
+                    .ConfigureAwait(false))
+                    .Where(w => w.TokenBalance.TokenId == tokenId);
+
+                var tzktApi = new TzktApi(_tezosAccount.Config);
+
+                var tokenBalancesResult = await tzktApi
+                    .GetTokenBalanceAsync(
+                        addresses: new [] { address },
+                        tokenContracts: new [] { tokenContract },
+                        tokenIds: new [] { tokenId },
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (tokenBalancesResult.HasError)
+                {
+                    Log.Error("Error while scan tokens balance for specific token and address. Code: {@code}. Description: {@descr}",
+                        tokenBalancesResult.Error.Code,
+                        tokenBalancesResult.Error.Description);
+
+                    return;
+                }
+
+                await ExtractAndSaveTokenContractsAsync(tokenBalancesResult.Value)
+                    .ConfigureAwait(false);
+
+                var tokenBalanceMap = tokenBalancesResult.Value
+                    .ToDictionary(tb => UniqueTokenId(tb.Address, tb.Contract, tb.TokenId));
+
+                var changedAddresses = new List<WalletAddress>();
+
+                foreach (var tokenLocalAddress in tokenLocalAddresses)
+                {
+                    var uniqueTokenId = UniqueTokenId(
+                        tokenLocalAddress.Address,
+                        tokenLocalAddress.TokenBalance.Contract,
+                        tokenLocalAddress.TokenBalance.TokenId);
+
+                    if (tokenBalanceMap.TryGetValue(uniqueTokenId, out var tb))
+                    {
+                        if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
+                            tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        {
+                            tokenLocalAddress.Balance = tb.GetTokenBalance();
+                            tokenLocalAddress.TokenBalance = tb;
+
+                            // save token local address to changed addresses list
+                            changedAddresses.Add(tokenLocalAddress);
+                        }
+
+                        // remove token balance from map to track new tokens, than are not in the local database 
+                        tokenBalanceMap.Remove(uniqueTokenId);
+                    }
+                    else // token balance at the address became zero
+                    {
+                        if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
+                            tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        {
+                            tokenLocalAddress.Balance = 0;
+                            tokenLocalAddress.TokenBalance.Balance = "0";
+
+                            // save token local address to changed addresses list
+                            changedAddresses.Add(tokenLocalAddress);
+                        }
+                    }
+                }
+
+                // add new addresses with tokens
+                var newTokenAddresses = tokenBalanceMap.Values
+                    .Select(tb =>
+                    {
+                        return new WalletAddress
+                        {
+                            Address      = tb.Address,
+                            Balance      = tb.GetTokenBalance(),
+                            Currency     = tb.ContractType,
+                            KeyIndex     = xtzAddress.KeyIndex,
+                            KeyType      = xtzAddress.KeyType,
+                            HasActivity  = true,
+                            TokenBalance = tb
+                        };
+                    });
+
+                changedAddresses.AddRange(newTokenAddresses);
+
+                // upsert changed token balances
+                if (changedAddresses.Any())
+                {
+                    await _tezosAccount.DataRepository
+                        .UpsertTezosTokenAddressesAsync(changedAddresses)
+                        .ConfigureAwait(false);
+
+                    await UpdateAndSaveTokenTransfersAsync(
+                            tzktApi,
+                            changedAddresses: changedAddresses.Select(w => w.Address),
+                            allAddresses: xtzLocalAddresses.Select(w => w.Address)
+                                .Concat(newTokenAddresses.Select(w => w.Address))
+                                .Distinct(),
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                // raise balance updated event for all tokens and accounts
+                _tezosAccount.RaiseTokensBalanceUpdatedEvent(
+                    address: address,
+                    tokenContract: tokenContract,
+                    tokenId: tokenId);
+
+            }, cancellationToken);
+        }
+
+        private static string UniqueTokenId(string address, string contract, decimal tokenId) =>
+            $"{address}:{contract}:{tokenId}";
+
+        private async Task ExtractAndSaveTokenContractsAsync(
+            IEnumerable<TokenBalance> tokenBalances)
+        {
+            var tokenContracts = tokenBalances
+                .GroupBy(tb => tb.Contract)
+                .Select(g => new TokenContract
+                {
+                    Address = g.First().Contract,
+                    Name = g.First().ContractAlias,
+                    Type = g.First().ContractType
+                });
+
+            if (tokenContracts.Any())
+            {
+                await _tezosAccount.DataRepository
+                    .UpsertTezosTokenContractsAsync(tokenContracts)
+                    .ConfigureAwait(false);
+            }
+        }
+
+        private async Task UpdateAndSaveTokenTransfersAsync(
+            TzktApi tzktApi,
+            IEnumerable<string> changedAddresses,
+            IEnumerable<string> allAddresses,
+            CancellationToken cancellationToken = default)
+        {
+            // scan transfers if need
+            var transfersResult = await tzktApi
+                .GetTokenTransfersAsync(
+                    addresses: changedAddresses,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (transfersResult.HasError)
+            {
+                Log.Error("Error while get transfers. Code: {@code}. Description: {@descr}.",
+                    transfersResult.Error.Code,
+                    transfersResult.Error.Description);
+
+                return;
+            }
+
+            if (transfersResult.Value?.Any() ?? false)
+            {
+                var localAddressesHashSet = allAddresses.ToHashSet();
+
+                // resolve transfers type
+                foreach (var transfer in transfersResult.Value)
+                {
+                    if (localAddressesHashSet.Contains(transfer.From))
+                        transfer.Type |= BlockchainTransactionType.Output;
+                    if (localAddressesHashSet.Contains(transfer.To))
+                        transfer.Type |= BlockchainTransactionType.Input;
+                }
+
+                await _tezosAccount.DataRepository
+                    .UpsertTezosTokenTransfersAsync(transfersResult.Value)
+                    .ConfigureAwait(false);
+            }
+        }
     }
 }
