@@ -206,15 +206,10 @@ namespace Atomex.Services
 
                 var tezosTokensScanner = new TezosTokensScanner(tezosAccount);
 
-                await tezosTokensScanner.ScanAsync(
-                    skipUsed: false,
-                    cancellationToken: cancellationToken);
-
-                // reload balances for all tezos tokens account
-                foreach (var currency in _account.Currencies)
-                    if (Currencies.IsTezosToken(currency.Name))
-                        _account.GetCurrencyAccount<TezosTokenAccount>(currency.Name)
-                            .ReloadBalances();
+                // todo: scan balance only for addresses affected by transaction!!
+                await tezosTokensScanner
+                    .UpdateBalanceAsync(cancellationToken)
+                    .ConfigureAwait(false);
             }
         }
     }

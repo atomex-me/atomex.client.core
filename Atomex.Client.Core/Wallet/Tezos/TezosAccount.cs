@@ -708,6 +708,14 @@ namespace Atomex.Wallet.Tezos
             }, cancellationToken);
         }
 
+        public void RaiseTokensBalanceUpdatedEvent(string address, string tokenContract, int? tokenId)
+        {
+            RaiseBalanceUpdated(new CurrencyEventArgs(
+                address: address,
+                tokenContract: tokenContract,
+                tokenId: tokenId));
+        }
+
         #endregion Balances
 
         #region Addresses

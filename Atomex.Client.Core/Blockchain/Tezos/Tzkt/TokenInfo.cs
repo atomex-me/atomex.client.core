@@ -42,15 +42,17 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         {
             var token = new Token()
             {
-                Contract = Contract.Address,
-                TokenId = decimal.Parse(TokenId),
+                Contract      = Contract.Address,
+                ContractAlias = Contract.Alias,
+                Standard      = Standard,
+                TokenId       = decimal.Parse(TokenId),
             };
 
-            if (Metadata != null) 
+            if (Metadata != null)
             {
                 try
                 {
-                    var metadata       = JsonConvert.DeserializeObject<Tzip21>(Metadata);
+                    var metadata = JsonConvert.DeserializeObject<Tzip21>(Metadata);
                     token.Name         = metadata.Name;
                     token.Symbol       = metadata.Symbol;
                     token.Decimals     = metadata.Decimals;

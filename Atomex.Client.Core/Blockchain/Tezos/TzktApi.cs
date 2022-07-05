@@ -596,76 +596,41 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             });
         }
 
-        public async Task<Result<List<TokenContract>>> GetTokenContractsAsync(
-            string address,
+        public async Task<Result<List<TokenBalance>>> GetTokenBalanceAsync(
+            IEnumerable<string> addresses,
+            IEnumerable<string> tokenContracts = null,
+            IEnumerable<int> tokenIds = null,
+            int offset = 0,
+            int limit = PageSize,
             CancellationToken cancellationToken = default)
         {
-            var offset = 0;
             var hasPages = true;
-            var contractAddresses = new HashSet<string>();
+            var result = new List<TokenBalance>();
 
-            while (hasPages)
-            {
-                var res = await HttpHelper
-                    .GetAsyncResult<List<string>>(
-                        baseUri: _baseUri,
-                        requestUri: $"tokens/balances?account={address}&select=token.contract.address",
-                        responseHandler: (response, content) => JsonConvert.DeserializeObject<List<string>>(content),
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
+            var accountsFilter = addresses.Count() == 1
+                ? $"account={addresses.First()}"
+                : $"account.in={string.Join(',', addresses)}";
 
-                if (res.HasError)
-                    return res.Error;
-                
-                if (res.Value.Any())
-                {
-                    contractAddresses.UnionWith(res.Value);
-                    offset += res.Value.Count;
+            var tokenContractsFilter = tokenContracts != null
+                ? tokenContracts.Count() == 1
+                    ? $"&token.contract={tokenContracts.First()}"
+                    : $"&token.contract.in={string.Join(',', tokenContracts)}"
+                : "";
 
-                    if (res.Value.Count < PageSize)
-                        hasPages = false;
-                }
-                else {
-                    hasPages = false;
-                }
-            }
-
-            var contracts = new List<TokenContract>();
-
-            foreach (var contractAddress in contractAddresses)
-            {
-                var tokenContract = await HttpHelper
-                    .GetAsyncResult<TokenContractResponse>(
-                        baseUri: _baseUri,
-                        requestUri: $"contracts/{contractAddress}",
-                        responseHandler: (response, content) => JsonConvert.DeserializeObject<TokenContractResponse>(content),
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (tokenContract.HasError)
-                    return tokenContract.Error;
-
-                contracts.Add(tokenContract.Value.ToTokenContract());
-            }
-
-            return contracts;
-        }
-
-        public async Task<Result<List<TokenBalance>>> GetTokenBalancesAsync(
-            string address,
-            string contractAddress = null,
-            CancellationToken cancellationToken = default)
-        {
-            var offset = 0;
-            var hasPages = true;
-            var tokenBalances = new List<TokenBalance>();
+            var tokenIdsFilter = tokenIds != null
+                ? tokenIds.Count() == 1
+                    ? $"&token.tokenId={tokenIds.First()}"
+                    : $"&token.tokenId.in={string.Join(',', tokenIds)}"
+                : "";
 
             while (hasPages)
             {
                 var requestUri = $"tokens/balances?" +
-                    $"account={address}" +
+                    accountsFilter +
+                    tokenContractsFilter +
+                    tokenIdsFilter +
                     $"&offset={offset}" +
-                    (contractAddress != null ? $"&token.contract={contractAddress}" : "");
+                    $"&limit={limit}";
 
                 var res = await HttpHelper
                     .GetAsyncResult<List<TokenBalanceResponse>>(
@@ -677,103 +642,162 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
                 if (res.HasError)
                     return res.Error;
-                
+
                 if (res.Value.Any())
                 {
-                    tokenBalances.AddRange(res.Value.Select(x => x.ToTokenBalance()));
+                    result.AddRange(res.Value.Select(x => x.ToTokenBalance()));
                     offset += res.Value.Count;
 
                     if (res.Value.Count < PageSize)
                         hasPages = false;
                 }
-                else {
+                else
+                {
                     hasPages = false;
                 }
             }
 
-            return tokenBalances;
+            return result;
         }
 
         public async Task<Result<List<TokenTransfer>>> GetTokenTransfersAsync(
-            string address,
-            string contractAddress = null,
-            decimal? tokenId = null,
-            int count = 100,
+            IEnumerable<string> addresses,
+            IEnumerable<string> tokenContracts = null,
+            IEnumerable<int> tokenIds = null,
+            DateTimeOffset? from = null,
+            DateTimeOffset? to = null,
+            int offset = 0,
+            int limit = PageSize,
             CancellationToken cancellationToken = default)
         {
-            var offset = 0;
-            var hasPages = true;
+            var tokenContractsFilter = tokenContracts != null
+                ? tokenContracts.Count() == 1
+                    ? $"&token.contract={tokenContracts.First()}"
+                    : $"&token.contract.in={string.Join(',', tokenContracts)}"
+                : "";
+
+            var tokenIdsFilter = tokenIds != null
+                ? tokenIds.Count() == 1
+                    ? $"&token.tokenId={tokenIds.First()}"
+                    : $"&token.tokenId.in={string.Join(',', tokenIds)}"
+                : "";
+
+            var fromTimeStampFilter = from != null
+                ? $"&timestamp.gt={from.Value.ToIso8601()}"
+                : "";
+
+            var toTimeStampFilter = to != null
+                ? $"&timestamp.le={to.Value.ToIso8601()}"
+                : "";
+
+            // todo: use `anyof.from.to.in` after release in TzKT
+            var accountsFilters = addresses.Count() == 1
+                ? new string[] {
+                    $"anyof.from.to={addresses.First()}"
+                }
+                : new string[] {
+                    $"from.in={string.Join(',', addresses)}",
+                    $"to.in={string.Join(',', addresses)}"
+                };
+
             var transfers = new List<TokenTransfer>();
 
-            while (hasPages && transfers.Count < count)
+            // todo: use `anyof.from.to.in` after release in TzKT
+            foreach (var accountFilter in accountsFilters)
             {
-                var limit = Math.Min(count - transfers.Count, PageSize);
+                var hasPages = true;
+                var transfersCount = 0;
 
-                var requestUri = $"tokens/transfers?" +
-                                 $"anyof.from.to={address}" +
-                                 $"&offset={offset}" +
-                                 $"&limit={limit}" +
-                                 (contractAddress != null ? $"&token.contract={contractAddress}" : "") +
-                                 (tokenId != null ? $"&token.tokenId={tokenId}" : "");
-
-                var tokenTransfersRes = await HttpHelper
-                    .GetAsyncResult<List<TokenTransferResponse>>(
-                        baseUri: _baseUri,
-                        requestUri: requestUri,
-                        responseHandler: (_, content) => JsonConvert.DeserializeObject<List<TokenTransferResponse>>(content),
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (tokenTransfersRes.HasError)
-                    return tokenTransfersRes.Error;
-                
-                if (tokenTransfersRes.Value.Any())
+                while (hasPages && transfersCount < limit)
                 {
-                    var uniqueTokenTransfersTxIds = tokenTransfersRes.Value
-                        .Select(tokenTransfer => tokenTransfer.TransactionId)
-                        .Distinct()
-                        .ToList();
+                    var requestLimit = Math.Min(limit - transfersCount, PageSize);
 
-                    var operationTxIdsString = uniqueTokenTransfersTxIds
-                        .Aggregate(string.Empty, (acc, txId) => $"{acc}{txId},");
+                    var requestUri = $"tokens/transfers?" +
+                        accountFilter +
+                        tokenContractsFilter +
+                        tokenIdsFilter +
+                        fromTimeStampFilter +
+                        toTimeStampFilter +
+                        $"&offset={offset}" +
+                        $"&limit={requestLimit}";
 
-                    operationTxIdsString = operationTxIdsString.Substring(0, operationTxIdsString.Length - 1);
-                    
-                    var tokenOperationsRes =  await HttpHelper
-                        .GetAsyncResult<List<TokenOperation>>(
+                    var tokenTransfersRes = await HttpHelper
+                        .GetAsyncResult<List<TokenTransferResponse>>(
                             baseUri: _baseUri,
-                            requestUri: $"operations/transactions?id.in={operationTxIdsString}&select=hash,counter,nonce,id",
-                            responseHandler: (_, content) => JsonConvert.DeserializeObject<List<TokenOperation>>(content),
+                            requestUri: requestUri,
+                            responseHandler: (_, content) => JsonConvert.DeserializeObject<List<TokenTransferResponse>>(content),
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
                     if (tokenTransfersRes.HasError)
                         return tokenTransfersRes.Error;
-                    
-                    transfers.AddRange(tokenTransfersRes.Value.Select(tokenTransfer =>
+
+                    if (tokenTransfersRes.Value.Any())
+                    {
+                        const int MaxOperationIdsPerRequest = 500;
+
+                        var uniqueOperationIds = tokenTransfersRes.Value
+                            .Select(tokenTransfer => tokenTransfer.TransactionId)
+                            .Distinct()
+                            .ToList();
+
+                        var operations = new List<TokenOperation>();
+
+                        var operationsIdsGroupsCount = Math.Ceiling(uniqueOperationIds.Count / (decimal)MaxOperationIdsPerRequest);
+
+                        for (var i = 0; i < operationsIdsGroupsCount; i++)
                         {
-                            var tokenOperation = tokenOperationsRes.Value
-                                .Find(to => to.Id == tokenTransfer.TransactionId);
+                            var operationIdsGroup = uniqueOperationIds
+                                .Skip(i * MaxOperationIdsPerRequest)
+                                .Take(MaxOperationIdsPerRequest);
 
-                            return tokenTransfer.ToTokenTransfer(
-                                tokenOperation?.Hash ?? string.Empty,
-                                tokenOperation?.Counter ?? 0,
-                                tokenOperation?.Nonce
-                            );
-                        })
-                    );
-                    
-                    offset += tokenTransfersRes.Value.Count;
+                            var operationIdsGroupString = string.Join(',', operationIdsGroup);
 
-                    if (tokenTransfersRes.Value.Count < limit)
+                            var tokenOperationsRes = await HttpHelper
+                                .GetAsyncResult<List<TokenOperation>>(
+                                    baseUri: _baseUri,
+                                    requestUri: $"operations/transactions?id.in={operationIdsGroupString}&select=hash,counter,nonce,id&limit={MaxOperationIdsPerRequest}",
+                                    responseHandler: (_, content) => JsonConvert.DeserializeObject<List<TokenOperation>>(content),
+                                    cancellationToken: cancellationToken)
+                                .ConfigureAwait(false);
+
+                            if (tokenOperationsRes.HasError)
+                                return tokenOperationsRes.Error;
+
+                            operations.AddRange(tokenOperationsRes.Value);
+                        }
+
+                        transfers.AddRange(tokenTransfersRes.Value.Select(tokenTransfer =>
+                            {
+                                var tokenOperation = operations
+                                    .Find(to => to.Id == tokenTransfer.TransactionId);
+
+                                return tokenTransfer.ToTokenTransfer(
+                                    tokenOperation?.Hash ?? string.Empty,
+                                    tokenOperation?.Counter ?? 0,
+                                    tokenOperation?.Nonce
+                                );
+                            })
+                        );
+
+                        transfersCount += tokenTransfersRes.Value.Count;
+                        offset += tokenTransfersRes.Value.Count;
+
+                        if (tokenTransfersRes.Value.Count < limit)
+                            hasPages = false;
+                    }
+                    else
+                    {
                         hasPages = false;
-                }
-                else {
-                    hasPages = false;
+                    }
                 }
             }
 
-            return transfers;
+            return transfers
+                .Distinct(new Common.EqualityComparer<TokenTransfer>(
+                    (t1,t2) => t1.Id.Equals(t2.Id),
+                    t => t.Id.GetHashCode()))
+                .ToList();
         }
     }
 }

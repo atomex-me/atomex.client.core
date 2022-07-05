@@ -79,7 +79,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             return new TokenTransfer()
             {
                 Id            = $"{operationHash}/{counter}/{nonceStr}",
-                Currency      = token.Symbol,
+                Currency      = token.ContractType, // token.Symbol,
                 TimeStamp     = Timestamp,
                 Level         = Level,
                 From          = From?.Address,

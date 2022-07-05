@@ -31,9 +31,6 @@ namespace Atomex.Wallet.Tezos
         public IHdWallet Wallet { get; }
         public IAccountDataRepository DataRepository { get; }
 
-        protected decimal Balance { get; set; }
-        protected decimal UnconfirmedIncome { get; set; }
-        protected decimal UnconfirmedOutcome { get; set; }
         protected TezosConfig XtzConfig => Currencies.Get<TezosConfig>(TezosConfig.Xtz);
         protected TezosTokenConfig TokenConfig => Currencies.Get<TezosTokenConfig>(Currency);
 
@@ -58,8 +55,6 @@ namespace Atomex.Wallet.Tezos
             Currency = Currencies
                 .Where(c => c is TezosTokenConfig token && token.TokenContractAddress == tokenContract && token.TokenId == tokenId)
                 .FirstOrDefault()?.Name ?? tokenType;
-
-            ReloadBalances();
         }
 
         public async Task<(string txId, Error error)> SendAsync(
@@ -509,10 +504,16 @@ namespace Atomex.Wallet.Tezos
 
         public virtual Balance GetBalance()
         {
-            return new Balance(
-                Balance,
-                UnconfirmedIncome,
-                UnconfirmedOutcome);
+            var balance = 0m;
+
+            var addresses = DataRepository
+                .GetUnspentTezosTokenAddressesAsync(TokenType, _tokenContract, _tokenId)
+                .WaitForResult();
+
+            foreach (var address in addresses)
+                balance += address.Balance;
+
+            return new Balance(balance, unconfirmedIncome: 0, unconfirmedOutcome: 0);
         }
 
         public Task UpdateBalanceAsync(
@@ -523,10 +524,11 @@ namespace Atomex.Wallet.Tezos
                 var scanner = new TezosTokensScanner(_tezosAccount);
 
                 await scanner
-                    .ScanContractAsync(_tokenContract, cancellationToken)
+                    .UpdateBalanceAsync(
+                        tokenContract: _tokenContract,
+                        tokenId: _tokenId,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
-
-                ReloadBalances();
 
             }, cancellationToken);
         }
@@ -540,32 +542,14 @@ namespace Atomex.Wallet.Tezos
                 var scanner = new TezosTokensScanner(_tezosAccount);
 
                 await scanner
-                    .ScanContractAsync(address, _tokenContract, cancellationToken)
+                    .UpdateBalanceAsync(
+                        address: address,
+                        tokenContract: _tokenContract,
+                        tokenId: _tokenId,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                ReloadBalances();
-
             }, cancellationToken);
-        }
-
-        public void ReloadBalances()
-        {
-            Balance            = 0;
-            UnconfirmedIncome  = 0;
-            UnconfirmedOutcome = 0;
-
-            var addresses = DataRepository
-                .GetUnspentTezosTokenAddressesAsync(TokenType, _tokenContract, _tokenId)
-                .WaitForResult();
-
-            foreach (var address in addresses)
-            {
-                Balance            += address.Balance;
-                UnconfirmedIncome  += address.UnconfirmedIncome;
-                UnconfirmedOutcome += address.UnconfirmedOutcome;
-            }
-
-            BalanceUpdated?.Invoke(this, new CurrencyEventArgs(Currency));
         }
 
         #endregion Balances

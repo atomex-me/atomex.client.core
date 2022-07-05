@@ -70,19 +70,23 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         {
             var token = Token.ToToken();
 
-            return new TokenBalance()
+            return new TokenBalance
             {
-                Contract     = token.Contract,
-                TokenId      = token.TokenId,
-                Name         = token.Name,
-                Symbol       = token.Symbol,
-                Decimals     = token.Decimals,
-                Description  = token.Description,
-                ArtifactUri  = token.ArtifactUri,
-                DisplayUri   = token.DisplayUri,
-                ThumbnailUri = token.ThumbnailUri,
-                Creators     = token.Creators,
-                Balance      = Balance,
+                Address        = Account?.Address,
+                Contract       = token.Contract,
+                ContractAlias  = token.ContractAlias,
+                Standard       = token.Standard,
+                TokenId        = token.TokenId,
+                Balance        = Balance,
+                TransfersCount = TransfersCount,
+                Name           = token.Name,
+                Symbol         = token.Symbol,
+                Decimals       = token.Decimals,
+                Description    = token.Description,
+                ArtifactUri    = token.ArtifactUri,
+                DisplayUri     = token.DisplayUri,
+                ThumbnailUri   = token.ThumbnailUri,
+                Creators       = token.Creators,
             };
         }
     }

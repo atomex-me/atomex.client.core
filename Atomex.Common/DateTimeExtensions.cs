@@ -36,5 +36,11 @@ namespace Atomex.Common
 
         public static long ToUnixTimeSeconds(this DateTime dateTime) =>
             ((DateTimeOffset)dateTime.ToUniversalTime()).ToUnixTimeSeconds();
+
+        public static string ToIso8601(this DateTime dateTime) =>
+            dateTime.ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ssK");
+
+        public static string ToIso8601(this DateTimeOffset dateTimeOffset) =>
+            dateTimeOffset.ToString("yyyy'-'MM'-'dd'T'HH':'mm':'ssK");
     }
 }
