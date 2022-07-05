@@ -744,7 +744,7 @@ namespace Atomex.ViewModels
             {
                 if (!swap.IsActive ||
                     swap.SoldCurrency != currency.Name ||
-                    swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
+                    swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed))
                     continue;
 
                 if (from is FromAddress fromAddress && fromAddress.Address == swap.FromAddress)

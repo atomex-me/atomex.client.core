@@ -148,6 +148,12 @@
     <value>Too low fees</value>
   </data>
   <data name="EnumerationValueMustBeOfEnumType" xml:space="preserve">
-	  <value>EnumerationValue must be of Enum type</value>
+    <value>EnumerationValue must be of Enum type</value>
+  </data>
+  <data name="OutputsAlreadySpent" xml:space="preserve">
+    <value>Some selected {0} outputs already spent</value>
+  </data>
+  <data name="OutputsAlreadySpentDetails" xml:space="preserve">
+    <value>Some selected {0} outputs already spent. Please select other outputs</value>
   </data>
 </root>

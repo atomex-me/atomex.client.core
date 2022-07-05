@@ -222,6 +222,25 @@ namespace Atomex.Wallet.BitcoinBased
             if (fee != null && feeRate != null)
                 throw new ArgumentException("Parameters Fee and FeePrice cannot be used at the same time");
 
+            // check if all outputs are available
+            var availableOutputs = await GetAvailableOutputsAsync()
+                .ConfigureAwait(false);
+
+            if (outputs.Any(o => availableOutputs.FirstOrDefault(ao => ao.TxId == o.TxId && ao.Index == o.Index) == null))
+            {
+                return new MaxAmountEstimation
+                {
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        description: string.Format(
+                            Resources.OutputsAlreadySpent,
+                            Currency),
+                        details: string.Format(
+                            Resources.OutputsAlreadySpentDetails,
+                            Currency)) // currency code
+                };
+            }
+
             if (outputs == null || !outputs.Any())
                 return new MaxAmountEstimation {
                     Error = new Error(
