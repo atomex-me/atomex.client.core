@@ -734,25 +734,42 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
                     if (tokenTransfersRes.Value.Any())
                     {
-                        var operationTxIdsString = string.Join(',', tokenTransfersRes.Value
+                        const int MaxOperationIdsPerRequest = 500;
+
+                        var uniqueOperationIds = tokenTransfersRes.Value
                             .Select(tokenTransfer => tokenTransfer.TransactionId)
                             .Distinct()
-                            .ToList());
+                            .ToList();
 
-                        var tokenOperationsRes = await HttpHelper
-                            .GetAsyncResult<List<TokenOperation>>(
-                                baseUri: _baseUri,
-                                requestUri: $"operations/transactions?id.in={operationTxIdsString}&select=hash,counter,nonce,id",
-                                responseHandler: (_, content) => JsonConvert.DeserializeObject<List<TokenOperation>>(content),
-                                cancellationToken: cancellationToken)
-                            .ConfigureAwait(false);
+                        var operations = new List<TokenOperation>();
 
-                        if (tokenOperationsRes.HasError)
-                            return tokenOperationsRes.Error;
+                        var operationsIdsGroupsCount = Math.Ceiling(uniqueOperationIds.Count / (decimal)MaxOperationIdsPerRequest);
+
+                        for (var i = 0; i < operationsIdsGroupsCount; i++)
+                        {
+                            var operationIdsGroup = uniqueOperationIds
+                                .Skip(i * MaxOperationIdsPerRequest)
+                                .Take(MaxOperationIdsPerRequest);
+
+                            var operationIdsGroupString = string.Join(',', operationIdsGroup);
+
+                            var tokenOperationsRes = await HttpHelper
+                                .GetAsyncResult<List<TokenOperation>>(
+                                    baseUri: _baseUri,
+                                    requestUri: $"operations/transactions?id.in={operationIdsGroupString}&select=hash,counter,nonce,id&limit={MaxOperationIdsPerRequest}",
+                                    responseHandler: (_, content) => JsonConvert.DeserializeObject<List<TokenOperation>>(content),
+                                    cancellationToken: cancellationToken)
+                                .ConfigureAwait(false);
+
+                            if (tokenOperationsRes.HasError)
+                                return tokenOperationsRes.Error;
+
+                            operations.AddRange(tokenOperationsRes.Value);
+                        }
 
                         transfers.AddRange(tokenTransfersRes.Value.Select(tokenTransfer =>
                             {
-                                var tokenOperation = tokenOperationsRes.Value
+                                var tokenOperation = operations
                                     .Find(to => to.Id == tokenTransfer.TransactionId);
 
                                 return tokenTransfer.ToTokenTransfer(
