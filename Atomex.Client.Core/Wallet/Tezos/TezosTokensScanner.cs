@@ -129,8 +129,7 @@ namespace Atomex.Wallet.Tezos
                     }
                     else // token balance at the address became zero
                     {
-                        if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
-                            tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        if (tokenLocalAddress.Balance != 0)
                         {
                             tokenLocalAddress.Balance = 0;
                             tokenLocalAddress.TokenBalance.Balance = "0";
@@ -260,8 +259,7 @@ namespace Atomex.Wallet.Tezos
                     }
                     else // token balance at the address became zero
                     {
-                        if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
-                            tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        if (tokenLocalAddress.Balance != 0)
                         {
                             tokenLocalAddress.Balance = 0;
                             tokenLocalAddress.TokenBalance.Balance = "0";
@@ -398,8 +396,7 @@ namespace Atomex.Wallet.Tezos
                     }
                     else // token balance at the address became zero
                     {
-                        if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
-                            tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        if (tokenLocalAddress.Balance != 0)
                         {
                             tokenLocalAddress.Balance = 0;
                             tokenLocalAddress.TokenBalance.Balance = "0";
@@ -534,8 +531,7 @@ namespace Atomex.Wallet.Tezos
                     }
                     else // token balance at the address became zero
                     {
-                        if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
-                            tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        if (tokenLocalAddress.Balance != 0)
                         {
                             tokenLocalAddress.Balance = 0;
                             tokenLocalAddress.TokenBalance.Balance = "0";
