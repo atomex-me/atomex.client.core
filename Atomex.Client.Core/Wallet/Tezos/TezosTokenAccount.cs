@@ -588,7 +588,10 @@ namespace Atomex.Wallet.Tezos
             walletAddress.TokenBalance = new TokenBalance
             {
                 Contract = _tokenContract,
-                TokenId  = _tokenId
+                TokenId = _tokenId,
+                Symbol = Currencies
+                    .Where(c => c is TezosTokenConfig token && token.TokenContractAddress == _tokenContract && token.TokenId == _tokenId)
+                    .FirstOrDefault()?.DisplayedName
             };
 
             await DataRepository
