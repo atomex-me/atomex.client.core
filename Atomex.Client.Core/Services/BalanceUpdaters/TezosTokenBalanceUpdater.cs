@@ -121,9 +121,18 @@ namespace Atomex.Services.BalanceUpdaters
         {
             try
             {
-                await _walletScanner
-                    .UpdateBalanceAsync(@event.Address, @event.Contract, (int)@event.TokenId)
-                    .ConfigureAwait(false);
+                if (@event.Contract != null)
+                {
+                    await _walletScanner
+                        .UpdateBalanceAsync(@event.Address, @event.Contract, (int)@event.TokenId)
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    await _walletScanner
+                        .UpdateBalanceAsync(@event.Address)
+                        .ConfigureAwait(false);
+                }
 
                 var newAddresses = await GetAddressesAsync()
                     .ConfigureAwait(false);
