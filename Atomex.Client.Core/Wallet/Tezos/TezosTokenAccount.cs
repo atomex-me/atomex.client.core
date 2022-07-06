@@ -585,13 +585,23 @@ namespace Atomex.Wallet.Tezos
 
             walletAddress.Currency = TokenType;
 
+            var tokenConfig = Currencies
+                .Where(c => c is TezosTokenConfig token && token.TokenContractAddress == _tokenContract && token.TokenId == _tokenId)
+                .FirstOrDefault();
+
             walletAddress.TokenBalance = new TokenBalance
             {
+                Address  = walletAddress.Address,
                 Contract = _tokenContract,
-                TokenId = _tokenId,
-                Symbol = Currencies
-                    .Where(c => c is TezosTokenConfig token && token.TokenContractAddress == _tokenContract && token.TokenId == _tokenId)
-                    .FirstOrDefault()?.DisplayedName
+                TokenId  = _tokenId,
+                Symbol   = tokenConfig?.DisplayedName,
+                Standard = TokenType switch
+                {
+                    "FA12" => "fa1.2",
+                    "FA2" => "fa2",
+                    _ => throw new NotSupportedException($"Not supported TokenType: {TokenType ?? "<null>"}")
+                },
+                Decimals = tokenConfig?.Digits ?? 0
             };
 
             await DataRepository
