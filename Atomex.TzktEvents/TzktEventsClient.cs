@@ -1,17 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Http;
+using System.Net.Security;
 using System.Threading.Tasks;
-using Atomex.TzktEvents.Models;
-using Microsoft.AspNetCore.SignalR.Client;
-using Serilog;
-using Atomex.TzktEvents.Services;
-using Microsoft.Extensions.DependencyInjection;
+using System.Security.Cryptography.X509Certificates;
 
+using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.DependencyInjection;
+using Serilog;
+
+using Atomex.TzktEvents.Models;
+using Atomex.TzktEvents.Services;
 
 namespace Atomex.TzktEvents
 {
     public class TzktEventsClient : ITzktEventsClient
     {
+        public static Func<HttpRequestMessage, X509Certificate2, X509Chain, SslPolicyErrors, bool> ServerCertificateCustomValidationCallback;
         public string EventsUrl => $"{_baseUri}events";
 
         public event EventHandler Connected;
@@ -27,12 +32,10 @@ namespace Atomex.TzktEvents
         private IAccountService _accountService;
         private ITokensService _tokensService;
 
-
         public TzktEventsClient(ILogger log)
         {
             _log = log ?? throw new ArgumentNullException(nameof(log));
         }
-
 
         public async Task StartAsync(string baseUri)
         {
@@ -53,7 +56,22 @@ namespace Atomex.TzktEvents
             try
             {
                 _hub = new HubConnectionBuilder()
-                    .WithUrl(EventsUrl)
+                    .WithUrl(EventsUrl, o =>
+                    {
+                        if (ServerCertificateCustomValidationCallback != null)
+                        {
+                            o.HttpMessageHandlerFactory = h =>
+                            {
+                                if (h is HttpClientHandler httpClientHandler)
+                                {
+                                    httpClientHandler.ServerCertificateCustomValidationCallback =
+                                        ServerCertificateCustomValidationCallback;
+                                }
+
+                                return h;
+                            };
+                        }
+                    })
                     .AddNewtonsoftJsonProtocol()
                     .WithAutomaticReconnect(new RetryPolicy())
                     .Build();
@@ -71,7 +89,7 @@ namespace Atomex.TzktEvents
                 _isStarted = true;
 
                 await InitAsync().ConfigureAwait(false);
-                
+
                 Connected?.Invoke(this, EventArgs.Empty);
                 _log.Information("TzktEventsClient started with events url: {EventsUrl}", EventsUrl);
             }
@@ -89,7 +107,7 @@ namespace Atomex.TzktEvents
                 _log.Warning("Connection of TzktEventsClient was not started");
                 return;
             }
-            
+
             _hub.Reconnecting -= ReconnectingHandler;
             _hub.Reconnected -= ReconnectedHandler;
             _hub.Closed -= ClosedHandler;
