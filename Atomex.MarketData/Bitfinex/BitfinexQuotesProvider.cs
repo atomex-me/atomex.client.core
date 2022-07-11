@@ -28,21 +28,18 @@ namespace Atomex.MarketData.Bitfinex
             { "KUSDUSD", "tUSTUSD" },
             { "USDT_XTZUSD", "tUSTUSD" },
         };
-
-        public const string Usd = "USD";
-
+        
         private string BaseUrl { get; } = "https://api.bitfinex.com/v2/";
-        private readonly ILogger _log;
 
-        public BitfinexQuotesProvider(ILogger log = null, params string[] symbols)
+        public BitfinexQuotesProvider(ILogger? log = null, params string[] symbols)
         {
-            _log = log;
+            Log = log;
             Quotes = symbols.ToDictionary(s => s, s => new Quote());
         }
 
-        public BitfinexQuotesProvider(IEnumerable<string> currencies, string baseCurrency, ILogger log = null)
+        public BitfinexQuotesProvider(IEnumerable<string> currencies, string baseCurrency, ILogger? log = null)
         {
-            _log = log;
+            Log = log;
             Quotes = currencies
                 .Select(c => QuoteSymbols[$"{c}{baseCurrency}"])
                 .Distinct()
@@ -59,23 +56,21 @@ namespace Atomex.MarketData.Bitfinex
                 ? Quotes.TryGetValue(s, out var rate) ? rate : null
                 : null;
 
-        public override async Task UpdateAsync(
-            CancellationToken cancellationToken = default)
+        public override async Task UpdateAsync(CancellationToken cancellationToken = default)
         {
-            _log?.LogDebug("Start of update");
-
+            Log?.LogDebug("Start updating Bitfinex quotes");
             bool isAvailable;
-
+            
             try
             {
                 isAvailable = await UpdateQuotesAsync(cancellationToken)
                     .ConfigureAwait(false);
 
-                _log?.LogDebug("Update finished");
+                Log?.LogDebug("Update Bitfinex quotes finished");
             }
             catch (Exception e)
             {
-                _log?.LogError(e, e.Message);
+                Log?.LogError(e, e.Message);
 
                 isAvailable = false;
             }

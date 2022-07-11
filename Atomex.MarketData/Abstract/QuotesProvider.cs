@@ -14,7 +14,8 @@ namespace Atomex.MarketData.Abstract
         public event EventHandler QuotesUpdated;
         public event EventHandler AvailabilityChanged;
 
-        private readonly ILogger _log;
+        public const string Usd = "USD";
+        protected ILogger? Log;
         private Task _updaterTask;
         private CancellationTokenSource _cts;
         protected Dictionary<string, Quote> Quotes { get; set; }
@@ -23,21 +24,18 @@ namespace Atomex.MarketData.Abstract
         public DateTime LastSuccessUpdateTime { get; protected set; }
         public virtual bool IsAvailable { get; protected set; }
         public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromMinutes(1);
-        public bool IsRunning => _updaterTask != null &&
-                                !_updaterTask.IsCompleted &&
-                                !_updaterTask.IsCanceled &&
-                                !_updaterTask.IsFaulted;
+        public bool IsRunning => _updaterTask is { IsCompleted: false, IsCanceled: false, IsFaulted: false };
 
-        public QuotesProvider(ILogger log = null)
+        public QuotesProvider(ILogger? log = null)
         {
-            _log = log;
+            Log = log;
         }
 
         public void Start()
         {
             if (IsRunning)
             {
-                _log?.LogWarning("Background update task already running");
+                Log?.LogWarning("Background update task already running");
                 return;
             }
 
@@ -48,7 +46,7 @@ namespace Atomex.MarketData.Abstract
 
         private async Task UpdateLoop()
         {
-            _log?.LogInformation("Run background update loop");
+            Log?.LogInformation("Run background update loop");
 
             while (!_cts.IsCancellationRequested)
             {
@@ -62,11 +60,11 @@ namespace Atomex.MarketData.Abstract
                 }
                 catch (OperationCanceledException)
                 {
-                    _log?.LogDebug("Background update task canceled");
+                    Log?.LogDebug("Background update task canceled");
                 }
             }
 
-            _log?.LogInformation("Background update task finished");
+            Log?.LogInformation("Background update task finished");
         }
 
         public void Stop()
@@ -77,7 +75,7 @@ namespace Atomex.MarketData.Abstract
             }
             else
             {
-                _log?.LogWarning("Background update task already finished");
+                Log?.LogWarning("Background update task already finished");
             }
         }
 

@@ -2,11 +2,9 @@
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Microsoft.Extensions.Logging;
-
 using Atomex.Common;
 using Atomex.MarketData.Abstract;
 using Atomex.MarketData.Entities;
@@ -15,15 +13,11 @@ namespace Atomex.MarketData.TezTools
 {
     public class TezToolsQuotesProvider : QuotesProvider
     {
-        public const string Usd = "USD";
-
         private string BaseUrl { get; } = "https://test.atomex.me/";
-        private readonly ILogger _log;
 
-        public TezToolsQuotesProvider(ILogger log = null)
+        public TezToolsQuotesProvider(ILogger? log = null)
         {
-            _log = log;
-
+            Log = log;
             Quotes = new Dictionary<string, Quote>();
         }
 
@@ -41,11 +35,24 @@ namespace Atomex.MarketData.TezTools
                 : null;
         }
 
-        public override async Task UpdateAsync(
-            CancellationToken cancellationToken = default)
+        public override async Task UpdateAsync(CancellationToken cancellationToken = default)
         {
-            var isAvailable = await UpdateQuotesAsync(cancellationToken)
-                .ConfigureAwait(false);
+            Log?.LogDebug("Start updating TezTools quotes");
+            bool isAvailable;
+
+            try
+            {
+                isAvailable = await UpdateQuotesAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                Log?.LogDebug("Update TezTools quotes finished");
+            }
+            catch (Exception e)
+            {
+                Log?.LogError(e, e.Message);
+
+                isAvailable = false;
+            }
 
             LastUpdateTime = DateTime.Now;
 
@@ -62,61 +69,49 @@ namespace Atomex.MarketData.TezTools
                 RiseQuotesUpdatedEvent(EventArgs.Empty);
         }
 
-        private async Task<bool> UpdateQuotesAsync(
-            CancellationToken cancellationToken = default)
+        private async Task<bool> UpdateQuotesAsync(CancellationToken cancellationToken = default)
         {
-            try
-            {
-                var response = await HttpHelper.GetAsync(
-                    baseUri: BaseUrl,
-                    relativeUri: "token/prices",
-                    cancellationToken: cancellationToken);
+            var response = await HttpHelper.GetAsync(
+                baseUri: BaseUrl,
+                relativeUri: "token/prices",
+                cancellationToken: cancellationToken);
 
-                if (!response.IsSuccessStatusCode)
-                    return false;
-
-                var responseContent = response.Content
-                    .ReadAsStringAsync()
-                    .WaitForResult();
-
-                var data = JsonConvert.DeserializeObject<JObject>(responseContent);
-
-                if (data["contracts"] is not JArray contracts)
-                    return false;
-
-                foreach (var token in contracts)
-                {
-                    try
-                    {
-                        var symbol = token["symbol"]?.Value<string>();
-                        if (symbol == null)
-                            continue;
-
-                        var bid = token["usdValue"]!.Value<decimal>();
-                        var ask = token["usdValue"]!.Value<decimal>();
-
-                        Quotes[symbol.ToLower()] = new Quote
-                        {
-                            Bid = bid,
-                            Ask = ask
-                        };
-                    }
-                    catch
-                    {
-                        _log?.LogError("Can't update tezos tokens quotes");
-                    }
-                }
-
-                _log?.LogDebug("Update finished");
-
-                return true;
-            }
-            catch (Exception e)
-            {
-                _log?.LogError(e, e.Message);
-
+            if (!response.IsSuccessStatusCode)
                 return false;
+
+            var responseContent = response.Content
+                .ReadAsStringAsync()
+                .WaitForResult();
+
+            var data = JsonConvert.DeserializeObject<JObject>(responseContent);
+
+            if (data["contracts"] is not JArray contracts)
+                return false;
+
+            foreach (var token in contracts)
+            {
+                try
+                {
+                    var symbol = token["symbol"]?.Value<string>();
+                    if (symbol == null)
+                        continue;
+
+                    var bid = token["usdValue"]!.Value<decimal>();
+                    var ask = token["usdValue"]!.Value<decimal>();
+
+                    Quotes[symbol.ToLower()] = new Quote
+                    {
+                        Bid = bid,
+                        Ask = ask
+                    };
+                }
+                catch
+                {
+                    Log?.LogError("Can't update TezTools quotes");
+                }
             }
+
+            return true;
         }
     }
 }

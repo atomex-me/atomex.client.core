@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 using Atomex.MarketData.Abstract;
 using Atomex.MarketData.Entities;
+using Microsoft.Extensions.Logging;
 
 namespace Atomex.MarketData
 {
@@ -12,17 +13,14 @@ namespace Atomex.MarketData
     {
         private readonly QuotesProvider[] _providers;
 
-        public MultiSourceQuotesProvider(params QuotesProvider[] providers)
+        public MultiSourceQuotesProvider(ILogger? log = null, params QuotesProvider[] providers)
         {
+            Log = log;
             _providers = providers ?? throw new ArgumentNullException(nameof(providers));
-
+            
             if (_providers.Length == 0)
                 throw new ArgumentException("At least one quote provider must be used");
-
-            SubscribeToAllProviderEvents();
         }
-
-        public override bool IsAvailable => _providers.All(p => p.IsAvailable);
 
         public override Quote GetQuote(string currency, string baseCurrency)
         {
@@ -50,26 +48,26 @@ namespace Atomex.MarketData
             return null;
         }
 
-        public override Task UpdateAsync(CancellationToken cancellation = default)
+        public override async Task UpdateAsync(CancellationToken cancellation = default)
         {
             var updateTasks = _providers.Select(p => p.UpdateAsync(cancellation));
+            await Task.WhenAll(updateTasks);
+            Log?.LogDebug("Update multisource quotes finished");
 
-            return Task.WhenAll(updateTasks);
+            var isAvailable = _providers.Any(provider => provider.IsAvailable);
+            LastUpdateTime = DateTime.Now;
+            
+            if (isAvailable)
+                LastSuccessUpdateTime = LastUpdateTime;
+
+            if (IsAvailable != isAvailable)
+            {
+                IsAvailable = isAvailable;
+                RiseAvailabilityChangedEvent(EventArgs.Empty);
+            }
+
+            if (IsAvailable)
+                RiseQuotesUpdatedEvent(EventArgs.Empty);
         }
-
-        private void SubscribeToAllProviderEvents()
-        {
-            foreach (var provider in _providers)
-                SubscribeToProviderEvents(provider);
-        }
-
-        private void SubscribeToProviderEvents(QuotesProvider quotesProvider)
-        {
-            quotesProvider.AvailabilityChanged += OnProviderAvailabilityChanged;
-            quotesProvider.QuotesUpdated += OnProviderQuotesUpdated;
-        }
-
-        private void OnProviderAvailabilityChanged(object sender, EventArgs args) => RiseAvailabilityChangedEvent(EventArgs.Empty);
-        private void OnProviderQuotesUpdated(object sender, EventArgs args) => RiseQuotesUpdatedEvent(EventArgs.Empty);
     }
 }
