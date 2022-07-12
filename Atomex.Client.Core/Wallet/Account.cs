@@ -118,15 +118,19 @@ namespace Atomex.Wallet
 
         #region Common
 
-        public void ChangePassword(SecureString newPassword)
+        public bool ChangePassword(SecureString newPassword)
         {
             var hdWallet = Wallet as HdWallet;
 
             hdWallet.KeyStorage.Encrypt(newPassword);
-            hdWallet.SaveToFile(Wallet.PathToWallet, newPassword);
+
+            if (!hdWallet.SaveToFile(Wallet.PathToWallet, newPassword))
+                return false;
 
             UserData.SaveToFile(SettingsFilePath);
             DataRepository.ChangePassword(newPassword);
+
+            return true;
         }
 
         public void Lock()

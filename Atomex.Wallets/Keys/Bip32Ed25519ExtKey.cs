@@ -172,8 +172,11 @@ namespace Atomex.Wallets.Keys
 
             using var childChainCode = new UnmanagedBytes(c.GetSpan().Slice(32, ChainCodeLength));
 
-            var klBytes = kl.ToByteArrayUnsigned();
-            var krBytes = kr.ToByteArrayUnsigned();
+            var klBytes = new byte[32];
+            kl.ToByteArrayUnsigned().AsSpan().CopyTo(klBytes);
+
+            var krBytes = new byte[32];
+            kr.ToByteArrayUnsigned().AsSpan().CopyTo(krBytes);
 
             PruneScalar(klBytes);
 

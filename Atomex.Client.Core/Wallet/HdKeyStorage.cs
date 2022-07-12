@@ -343,7 +343,7 @@ namespace Atomex.Wallet
             return result;
         }
 
-        public void SaveToFile(string pathToFile, SecureString password)
+        public bool SaveToFile(string pathToFile, SecureString password)
         {
             try
             {
@@ -365,7 +365,11 @@ namespace Atomex.Wallet
             catch (Exception e)
             {
                 Log.Error(e, "HdKeyStorage save to file error");
+
+                return false;
             }
+
+            return true;
         }
     }
 }

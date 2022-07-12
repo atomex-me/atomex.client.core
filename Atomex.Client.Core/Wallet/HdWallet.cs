@@ -319,7 +319,7 @@ namespace Atomex.Wallet
         public static HdWallet LoadFromFile(string pathToWallet, SecureString password) =>
             new(pathToWallet, password);
 
-        public void SaveToFile(string pathToWallet, SecureString password)
+        public bool SaveToFile(string pathToWallet, SecureString password)
         {
             var walletDirectory = Path.GetDirectoryName(pathToWallet);
 
@@ -329,7 +329,7 @@ namespace Atomex.Wallet
             if (!Directory.Exists(walletDirectory))
                 Directory.CreateDirectory(walletDirectory);
 
-            KeyStorage.SaveToFile(pathToWallet, password);
+            return KeyStorage.SaveToFile(pathToWallet, password);
         }
     }
 }

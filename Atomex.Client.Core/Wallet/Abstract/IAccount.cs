@@ -47,7 +47,7 @@ namespace Atomex.Wallet.Abstract
 
         #region Common
 
-        void ChangePassword(SecureString newPassword);
+        bool ChangePassword(SecureString newPassword);
 
         /// <summary>
         /// Lock account wallet
