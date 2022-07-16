@@ -37,9 +37,15 @@ namespace Atomex
         public ITransactionsTracker TransactionsTracker { get; private set; }
         public IMarketDataRepository MarketDataRepository { get; private set; }
         public bool HasQuotesProvider => QuotesProvider != null;
+        public AtomexAppOptions Options { get; }
 
         private IBalanceUpdater _balanceUpdater;
         private bool _storeCanceledOrders;
+
+        public AtomexApp(AtomexAppOptions options = null)
+        {
+            Options = options ?? AtomexAppOptions.Default;
+        }
 
         public IAtomexApp Start()
         {
@@ -150,7 +156,8 @@ namespace Atomex
                     account: Account,
                     swapClient: AtomexClient,
                     quotesProvider: QuotesProvider,
-                    marketDataRepository: MarketDataRepository);
+                    marketDataRepository: MarketDataRepository,
+                    options: Options.SwapManager);
 
                 // create transactions tracker
                 TransactionsTracker = new TransactionsTracker(Account);
@@ -240,7 +247,7 @@ namespace Atomex
             }
             catch (Exception ex)
             {
-                // todo: log
+                Log.Error(ex, "AtomexClient_OrderUpdated error");
             }
         }
 

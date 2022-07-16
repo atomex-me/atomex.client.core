@@ -23,6 +23,13 @@ using Error = Atomex.Common.Error;
 
 namespace Atomex.Swaps
 {
+    public record SwapManagerOptions
+    {
+        public bool UseWatchTowerMode { get; init; }
+
+        public static SwapManagerOptions Default => new() { UseWatchTowerMode = false };
+    }
+
     public class SwapManager : ISwapManager
     {
         protected static TimeSpan DefaultCredentialsExchangeTimeout = TimeSpan.FromMinutes(10);
@@ -37,6 +44,7 @@ namespace Atomex.Swaps
         private readonly IQuotesProvider _quotesProvider;
         private readonly IMarketDataRepository _marketDataRepository;
         private readonly IDictionary<string, ICurrencySwap> _currencySwaps;
+        private readonly SwapManagerOptions _options;
         private CancellationTokenSource _cts;
         private Task _workerTask;
 
@@ -66,12 +74,14 @@ namespace Atomex.Swaps
             IAccount account,
             ISwapClient swapClient,
             IQuotesProvider quotesProvider,
-            IMarketDataRepository marketDataRepository)
+            IMarketDataRepository marketDataRepository,
+            SwapManagerOptions options = null)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _swapClient = swapClient ?? throw new ArgumentNullException(nameof(swapClient));
             _quotesProvider = quotesProvider;
             _marketDataRepository = marketDataRepository ?? throw new ArgumentNullException(nameof(marketDataRepository));
+            _options = options ?? SwapManagerOptions.Default;
 
             var currencySwaps = _account.Currencies
                 .Select(c =>
@@ -945,7 +955,8 @@ namespace Atomex.Swaps
             try
             {
                 // party redeem
-                if (swap.IsInitiator &&
+                if (_options.UseWatchTowerMode &&
+                    swap.IsInitiator &&
                     swap.IsPurchasedCurrency(currencySwap.Currency) &&
                     swap.PartyRewardForRedeem > 0) // todo: user param >= 2*RedeemFee
                 {
