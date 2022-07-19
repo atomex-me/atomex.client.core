@@ -75,7 +75,7 @@ namespace Atomex.Swaps.Abstract
         /// <param name="swap">Swap</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Task</returns>
-        Task StartWaitForRedeemAsync(
+        Task StartWaitingForRedeemAsync(
             Swap swap,
             CancellationToken cancellationToken = default);
 

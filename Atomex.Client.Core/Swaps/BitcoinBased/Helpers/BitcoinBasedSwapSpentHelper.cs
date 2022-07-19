@@ -26,6 +26,8 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
             Func<Swap, CancellationToken, Task> refundTimeReachedHandler = null,
             CancellationToken cancellationToken = default)
         {
+            Log.Debug("StartSwapSpentControlAsync for {@Currency} swap with id {@swapId} started", currency.Name, swap.Id);
+
             return Task.Run(async () =>
             {
                 try
@@ -98,14 +100,23 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                         await Task.Delay(interval, cancellationToken)
                             .ConfigureAwait(false);
                     }
+
+                    Log.Debug("StartSwapSpentControlAsync for {@Currency} swap with id {@swapId} {@message}",
+                        currency.Name,
+                        swap.Id,
+                        cancellationToken.IsCancellationRequested ? "canceled" : "completed");
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("StartSwapSpentControlAsync canceled");
+                    Log.Debug("StartSwapSpentControlAsync for {@Currency} swap with id {@swapId} canceled",
+                        currency.Name,
+                        swap.Id);
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "StartSwapSpentControlAsync error");
+                    Log.Error(e, "StartSwapSpentControlAsync for {@Currency} swap with id {@swapId} error",
+                        currency.Name,
+                        swap.Id);
                 }
 
             }, cancellationToken);

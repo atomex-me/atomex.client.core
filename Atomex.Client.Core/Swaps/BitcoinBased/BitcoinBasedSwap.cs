@@ -128,7 +128,7 @@ namespace Atomex.Swaps.BitcoinBased
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            Log.Debug("Start party payment control for swap {@swap}.", swap.Id);
+            Log.Debug("Start party {@currency} payment control for swap {@swap}", Currency, swap.Id);
 
             // initiator waits "accepted" event, acceptor waits "initiated" event
             var initiatedHandler = swap.IsInitiator
@@ -427,10 +427,12 @@ namespace Atomex.Swaps.BitcoinBased
                 cancellationToken: cancellationToken);
         }
 
-        public override Task StartWaitForRedeemAsync(
+        public override Task StartWaitingForRedeemAsync(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
+            Log.Debug("Start waiting for {@currency} redeem for swap {@swap}", Currency, swap.Id);
+
             var currency = Currencies.GetByName(Currency);
 
             var lockTimeInSeconds = swap.IsInitiator

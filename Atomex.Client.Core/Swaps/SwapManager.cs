@@ -251,7 +251,7 @@ namespace Atomex.Swaps
                     return new Error(Errors.SwapError, $"Can't find swap with {id} in local db");
 
                 if (!swap.IsCanceled)
-                    return new Error(Errors.SwapError, $"Swap {id} is already active");
+                    return new Error(Errors.SwapError, $"Only canceled swaps can be resumed");
 
                 var swapCts = CreateOrGetSwapCts(id);
                 var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(_cts.Token, swapCts.Token);
@@ -431,6 +431,8 @@ namespace Atomex.Swaps
             {
                 await UpdateStatusAsync(swap, SwapStatus.Initiated | SwapStatus.Accepted)
                     .ConfigureAwait(false);
+
+                Log.Debug("HandleSwapByAcceptorAsync: start {@currency} payment control async for swap {@swapId}", swap.PurchasedCurrency, swap.Id);
 
                 await GetCurrencySwap(swap.PurchasedCurrency)
                     .StartPartyPaymentControlAsync(swap, cancellationToken)
@@ -746,6 +748,8 @@ namespace Atomex.Swaps
             Swap swap,
             CancellationToken cancellationToken)
         {
+            Log.Debug("InitiateSwapAsync for swap {@swapId}", swap.Id);
+
             // broadcast initiator payment
             await GetCurrencySwap(swap.SoldCurrency)
                 .PayAsync(swap, cancellationToken)
@@ -753,11 +757,15 @@ namespace Atomex.Swaps
 
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
             {
+                Log.Debug("InitiateSwapAsync: start waiting for {@currency} redeem for swap {@swapId}", swap.SoldCurrency, swap.Id);
+
                 // start redeem control async
                 await GetCurrencySwap(swap.SoldCurrency)
-                    .StartWaitForRedeemAsync(swap, cancellationToken)
+                    .StartWaitingForRedeemAsync(swap, cancellationToken)
                     .ConfigureAwait(false);
             }
+
+            Log.Debug("InitiateSwapAsync: start {@currency} payment control async for swap {@swapId}", swap.PurchasedCurrency, swap.Id);
 
             await GetCurrencySwap(swap.PurchasedCurrency)
                 .StartPartyPaymentControlAsync(swap, cancellationToken)
@@ -821,6 +829,8 @@ namespace Atomex.Swaps
             Swap swap,
             CancellationToken cancellationToken = default)
         {
+            Log.Debug("Restore {@swapId} swap", swap.Id);
+
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentSigned) &&
                 !swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
             {
@@ -879,12 +889,16 @@ namespace Atomex.Swaps
 
                 if (waitForRedeem)
                 {
+                    Log.Debug("RestoreSwapAsync: start waiting for {@currency} redeem for swap {@swapId}", swap.SoldCurrency, swap.Id);
+
                     await GetCurrencySwap(swap.SoldCurrency)
-                        .StartWaitForRedeemAsync(swap, cancellationToken)
+                        .StartWaitingForRedeemAsync(swap, cancellationToken)
                         .ConfigureAwait(false);
 
                     if (swap.IsInitiator)
                     {
+                        Log.Debug("RestoreSwapAsync: start {@currency} payment control async for swap {@swapId} by initiator", swap.PurchasedCurrency, swap.Id);
+
                         // check acceptor payment confirmation
                         await GetCurrencySwap(swap.PurchasedCurrency)
                             .StartPartyPaymentControlAsync(swap, cancellationToken)
@@ -929,6 +943,8 @@ namespace Atomex.Swaps
                     else if (swap.Status.HasFlag(SwapStatus.Initiated) && // initiated and accepted
                              swap.Status.HasFlag(SwapStatus.Accepted))
                     {
+                        Log.Debug("RestoreSwapAsync: start {@currency} payment control async for swap {@swapId} by acceptor", swap.PurchasedCurrency, swap.Id);
+
                         // wait for initiator tx
                         await GetCurrencySwap(swap.PurchasedCurrency)
                             .StartPartyPaymentControlAsync(swap, cancellationToken)
@@ -1024,7 +1040,7 @@ namespace Atomex.Swaps
         {
             try
             {
-                Log.Debug("Update swap {@swap} in db", swap.Id);
+                Log.Debug("Update swap {@swap} in db with flag {@flag}", swap.Id, changedFlag);
 
                 var result = await _account
                     .UpdateSwapAsync(swap)
@@ -1062,9 +1078,11 @@ namespace Atomex.Swaps
 
                     if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
                     {
+                        Log.Debug("InitiatorPaymentConfirmed: start waiting for {@currency} redeem for swap {@swapId}", swap.SoldCurrency, swap.Id);
+
                         // start redeem control async
                         await GetCurrencySwap(swap.SoldCurrency)
-                            .StartWaitForRedeemAsync(swap, cancellationToken)
+                            .StartWaitingForRedeemAsync(swap, cancellationToken)
                             .ConfigureAwait(false);
                     }
 
