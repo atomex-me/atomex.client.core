@@ -23,6 +23,7 @@ namespace Atomex
 {
     public class AtomexApp : IAtomexApp
     {
+        public static AtomexApp Instance { get; private set; }
         public event EventHandler<AtomexClientChangedEventArgs> AtomexClientChanged;
 
         public IAtomexClient AtomexClient { get; private set; }
@@ -45,6 +46,7 @@ namespace Atomex
         public AtomexApp(AtomexAppOptions options = null)
         {
             Options = options ?? AtomexAppOptions.Default;
+            Instance = this;
         }
 
         public IAtomexApp Start()
