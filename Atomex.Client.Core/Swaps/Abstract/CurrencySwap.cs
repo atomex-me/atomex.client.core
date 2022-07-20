@@ -68,7 +68,7 @@ namespace Atomex.Swaps.Abstract
             Swap swap,
             CancellationToken cancellationToken = default);
 
-        public abstract Task StartWaitForRedeemAsync(
+        public abstract Task StartWaitingForRedeemAsync(
             Swap swap,
             CancellationToken cancellationToken = default);
 

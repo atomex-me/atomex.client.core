@@ -131,6 +131,8 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
             Func<Swap, DateTime, CancellationToken, Task> canceledHandler = null,
             CancellationToken cancellationToken = default)
         {
+            Log.Debug("StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} started", currency.Name, swap.Id);
+
             return Task.Run(async () =>
             {
                 try
@@ -172,14 +174,23 @@ namespace Atomex.Swaps.Tezos.FA12.Helpers
                         await Task.Delay(interval, cancellationToken)
                             .ConfigureAwait(false);
                     }
+
+                    Log.Debug("StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} {@message}",
+                        currency.Name,
+                        swap.Id,
+                        cancellationToken.IsCancellationRequested ? "canceled" : "completed");
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("StartSwapRedeemedControlAsync canceled");
+                    Log.Debug("StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} canceled",
+                        currency.Name,
+                        swap.Id);
                 }
                 catch (Exception e)
                 {
-                    Log.Error(e, "StartSwapRedeemedControlAsync error");
+                    Log.Error(e, "StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} error",
+                        currency.Name,
+                        swap.Id);
                 }
 
             }, cancellationToken);

@@ -28,14 +28,17 @@ namespace Atomex.Swaps.BitcoinBased
 
         private BitcoinBasedConfig Config => Currencies.Get<BitcoinBasedConfig>(Currency);
         private readonly BitcoinBasedAccount _account;
+        private readonly bool _allowSpendingAllOutputs;
 
         public BitcoinBasedSwap(
             BitcoinBasedAccount account,
-            ICurrencies currencies)
+            ICurrencies currencies,
+            bool allowSpendingAllOutputs = false)
                 : base(account.Currency, currencies)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _transactionFactory = new BitcoinBasedSwapTransactionFactory();
+            _allowSpendingAllOutputs = allowSpendingAllOutputs;
         }
 
         public override async Task PayAsync(
@@ -128,7 +131,7 @@ namespace Atomex.Swaps.BitcoinBased
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            Log.Debug("Start party payment control for swap {@swap}.", swap.Id);
+            Log.Debug("Start party {@currency} payment control for swap {@swap}", Currency, swap.Id);
 
             // initiator waits "accepted" event, acceptor waits "initiated" event
             var initiatedHandler = swap.IsInitiator
@@ -427,10 +430,12 @@ namespace Atomex.Swaps.BitcoinBased
                 cancellationToken: cancellationToken);
         }
 
-        public override Task StartWaitForRedeemAsync(
+        public override Task StartWaitingForRedeemAsync(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
+            Log.Debug("Start waiting for {@currency} redeem for swap {@swap}", Currency, swap.Id);
+
             var currency = Currencies.GetByName(Currency);
 
             var lockTimeInSeconds = swap.IsInitiator
@@ -557,10 +562,15 @@ namespace Atomex.Swaps.BitcoinBased
             {
                 Log.Debug($"Some outputs already spent for {Currency} swap payment");
 
-                swap.FromOutputs = swap.FromOutputs
+                swap.FromOutputs
                     .Where(o => availableOutputs.FirstOrDefault(ao => ao.TxId == o.TxId && ao.Index == o.Index) != null)
                     .ToList();
             }
+
+            var fromOutputsInSatoshi = swap.FromOutputs.Sum(o => o.Value);
+
+            if (fromOutputsInSatoshi < amountInSatoshi && _allowSpendingAllOutputs)
+                swap.FromOutputs = availableOutputs.Cast<BitcoinBasedTxOutput>().ToList();
 
             var tx = await _transactionFactory
                 .CreateSwapPaymentTxAsync(

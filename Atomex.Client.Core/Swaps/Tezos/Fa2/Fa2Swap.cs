@@ -172,7 +172,7 @@ namespace Atomex.Swaps.Tezos.FA2
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            Log.Debug("Start party payment control for swap {@swap}.", swap.Id);
+            Log.Debug("Start party {@currency} payment control for swap {@swap}", Currency, swap.Id);
 
             // initiator waits "accepted" event, acceptor waits "initiated" event
             var initiatedHandler = swap.IsInitiator
@@ -603,10 +603,12 @@ namespace Atomex.Swaps.Tezos.FA2
                 cancellationToken: cancellationToken);
         }
 
-        public override Task StartWaitForRedeemAsync(
+        public override Task StartWaitingForRedeemAsync(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
+            Log.Debug("Start waiting for {@currency} redeem for swap {@swap}", Currency, swap.Id);
+
             var lockTimeInSeconds = swap.IsInitiator
                 ? DefaultInitiatorLockTimeInSeconds
                 : DefaultAcceptorLockTimeInSeconds;
