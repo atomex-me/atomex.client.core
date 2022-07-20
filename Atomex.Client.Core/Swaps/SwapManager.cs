@@ -25,19 +25,31 @@ namespace Atomex.Swaps
 {
     public record SwapManagerOptions
     {
-        public bool UseWatchTowerMode { get; init; }
+        /// <summary>
+        /// Do redeem for counterparty if there is a reward like a watchtower does
+        /// </summary>
+        public bool UseWatchTowerMode { get; set; }
+        /// <summary>
+        /// Allow spending all available outputs if there is not enough balance on selected outputs for Bitcoin based payment transaction
+        /// </summary>
+        public bool AllowSpendingAllOutputs { get; set; }
 
-        public static SwapManagerOptions Default => new() { UseWatchTowerMode = false };
+        public static SwapManagerOptions Default => new()
+        {
+            UseWatchTowerMode = false,
+            AllowSpendingAllOutputs = false
+        };
     }
 
     public class SwapManager : ISwapManager
     {
         protected static TimeSpan DefaultCredentialsExchangeTimeout = TimeSpan.FromMinutes(10);
-        protected static TimeSpan DefaultMaxSwapTimeout = TimeSpan.FromMinutes(20); // TimeSpan.FromMinutes(40);
+        protected static TimeSpan DefaultMaxSwapTimeout = TimeSpan.FromMinutes(180); // TimeSpan.FromMinutes(40);
         protected static TimeSpan DefaultMaxPaymentTimeout = TimeSpan.FromMinutes(48 * 60);
         protected static TimeSpan SwapTimeoutControlInterval = TimeSpan.FromMinutes(10);
 
         public event EventHandler<SwapEventArgs> SwapUpdated;
+        public event EventHandler<SwapErrorEventArgs> SwapError;
 
         private readonly IAccount _account;
         private readonly ISwapClient _swapClient;
@@ -75,7 +87,8 @@ namespace Atomex.Swaps
                 {
                     var currencySwap = CurrencySwapCreator.Create(
                         currency: c,
-                        account: _account);
+                        account: _account,
+                        allowSpendingAllOutputs: options.AllowSpendingAllOutputs);
 
                     currencySwap.InitiatorPaymentConfirmed += InitiatorPaymentConfirmed;
                     currencySwap.AcceptorPaymentConfirmed += AcceptorPaymentConfirmed;
@@ -178,7 +191,11 @@ namespace Atomex.Swaps
             }
             catch (Exception e)
             {
-                return new Error(Errors.SwapError, $"Swap {receivedSwap.Id} error: {e.Message}");
+                var error = new Error(Errors.SwapError, $"Swap `{receivedSwap.Id}` error. {e.Message}");
+
+                RaiseSwapErrorEvent(error, receivedSwap.Id);
+
+                return error;
             }
             finally
             {
@@ -806,6 +823,10 @@ namespace Atomex.Swaps
                         catch (Exception e)
                         {
                             Log.Error(e, "Swap {@id} restore error", activeSwapId);
+
+                            var error = new Error(Errors.SwapError, $"Swap `{activeSwapId}` restore error. {e.Message}");
+
+                            RaiseSwapErrorEvent(error, activeSwapId);
                         }
                         finally
                         {
@@ -815,7 +836,7 @@ namespace Atomex.Swaps
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("RestoreSwapsAsync canceled.");
+                    Log.Debug("RestoreSwapsAsync canceled");
                 }
                 catch (Exception e)
                 {
@@ -1244,6 +1265,18 @@ namespace Atomex.Swaps
                 tempCts.Dispose();
 
             return cts;
+        }
+
+        private void RaiseSwapErrorEvent(Error error, long swapId)
+        {
+            try
+            {
+                SwapError?.Invoke(this, new SwapErrorEventArgs(error, swapId));
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error during execution swap error event handler");
+            }
         }
     }
 }

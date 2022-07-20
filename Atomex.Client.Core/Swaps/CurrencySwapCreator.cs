@@ -20,13 +20,15 @@ namespace Atomex.Swaps
     {
         public static ICurrencySwap Create(
             CurrencyConfig currency,
-            IAccount account)
+            IAccount account,
+            bool allowSpendingAllOutputs)
         {
             return currency switch
             {
                 BitcoinBasedConfig _ => new BitcoinBasedSwap(
                     account: account.GetCurrencyAccount<BitcoinBasedAccount>(currency.Name),
-                    currencies: account.Currencies),
+                    currencies: account.Currencies,
+                    allowSpendingAllOutputs: allowSpendingAllOutputs),
 
                 Erc20Config _ => new Erc20Swap(
                     account: account.GetCurrencyAccount<Erc20Account>(currency.Name),

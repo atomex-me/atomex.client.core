@@ -9,6 +9,7 @@ namespace Atomex.Swaps.Abstract
     public interface ISwapManager
     {
         event EventHandler<SwapEventArgs> SwapUpdated;
+        event EventHandler<SwapErrorEventArgs> SwapError;
 
         /// <summary>
         /// Start swap manager services

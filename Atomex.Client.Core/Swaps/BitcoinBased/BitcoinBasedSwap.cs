@@ -28,14 +28,17 @@ namespace Atomex.Swaps.BitcoinBased
 
         private BitcoinBasedConfig Config => Currencies.Get<BitcoinBasedConfig>(Currency);
         private readonly BitcoinBasedAccount _account;
+        private readonly bool _allowSpendingAllOutputs;
 
         public BitcoinBasedSwap(
             BitcoinBasedAccount account,
-            ICurrencies currencies)
+            ICurrencies currencies,
+            bool allowSpendingAllOutputs = false)
                 : base(account.Currency, currencies)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _transactionFactory = new BitcoinBasedSwapTransactionFactory();
+            _allowSpendingAllOutputs = allowSpendingAllOutputs;
         }
 
         public override async Task PayAsync(
@@ -559,10 +562,15 @@ namespace Atomex.Swaps.BitcoinBased
             {
                 Log.Debug($"Some outputs already spent for {Currency} swap payment");
 
-                swap.FromOutputs = swap.FromOutputs
+                swap.FromOutputs
                     .Where(o => availableOutputs.FirstOrDefault(ao => ao.TxId == o.TxId && ao.Index == o.Index) != null)
                     .ToList();
             }
+
+            var fromOutputsInSatoshi = swap.FromOutputs.Sum(o => o.Value);
+
+            if (fromOutputsInSatoshi < amountInSatoshi && _allowSpendingAllOutputs)
+                swap.FromOutputs = availableOutputs.Cast<BitcoinBasedTxOutput>().ToList();
 
             var tx = await _transactionFactory
                 .CreateSwapPaymentTxAsync(
