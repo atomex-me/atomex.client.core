@@ -14,7 +14,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.BitcoinBased
 {
-    public class BitcoinBasedWalletScanner : ICurrencyHdWalletScanner
+    public class BitcoinBasedWalletScanner : ICurrencyWalletScanner
     {
         private const int DefaultInternalLookAhead = 3;
         private const int DefaultExternalLookAhead = 3;

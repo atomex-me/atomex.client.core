@@ -13,7 +13,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class TezosWalletScanner : ICurrencyHdWalletScanner
+    public class TezosWalletScanner : ICurrencyWalletScanner
     {
         private const int DefaultInternalLookAhead = 2;
         private const int DefaultExternalLookAhead = 2;
@@ -21,265 +21,315 @@ namespace Atomex.Wallet.Tezos
 
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
-        private TezosAccount Account { get; }
-        private CurrencyConfig Currency => Account.Currencies.GetByName(Account.Currency);
+        private readonly TezosAccount _account;
+        //private CurrencyConfig Currency => _account.Currencies.GetByName(_account.Currency);
+
+        private TezosConfig XtzConfig => _account.Config;
 
         public TezosWalletScanner(TezosAccount account)
         {
-            Account = account ?? throw new ArgumentNullException(nameof(account));
+            _account = account ?? throw new ArgumentNullException(nameof(account));
         }
 
         public async Task ScanAsync(
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
-            var currency = Currency;
+            //var currency = Currency;
 
-            var tezosAddresses = await Account.DataRepository
-                .GetAddressesAsync(currency.Name)
-                .ConfigureAwait(false);
+            //var tezosAddresses = await Account.DataRepository
+            //    .GetAddressesAsync(currency.Name)
+            //    .ConfigureAwait(false);
 
-            var isFirstScan = tezosAddresses.Count() <= 1;
+            //var isFirstScan = tezosAddresses.Count() <= 1;
 
-            var scanBip32Ed25519 = isFirstScan || tezosAddresses
-                .FirstOrDefault(w => w.KeyType == TezosConfig.Bip32Ed25519Key &&
-                                     (w.HasActivity ||
-                                     w.Balance != 0 ||
-                                     w.UnconfirmedIncome != 0 ||
-                                     w.UnconfirmedOutcome != 0)) != null;
+            //var scanBip32Ed25519 = isFirstScan || tezosAddresses
+            //    .FirstOrDefault(w => w.KeyType == TezosConfig.Bip32Ed25519Key &&
+            //                         (w.HasActivity ||
+            //                         w.Balance != 0 ||
+            //                         w.UnconfirmedIncome != 0 ||
+            //                         w.UnconfirmedOutcome != 0)) != null;
 
-            var scanParams = scanBip32Ed25519
-                ? new[]
-                {
-                    (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.Internal, LookAhead : OldLookAhead),
-                    (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.External, LookAhead : OldLookAhead),
-                    (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : InternalLookAhead)
-                }
-                : new[]
-                {
-                    (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : ExternalLookAhead),
-                };
+            //var scanParams = scanBip32Ed25519
+            //    ? new[]
+            //    {
+            //        (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.Internal, LookAhead : OldLookAhead),
+            //        (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.External, LookAhead : OldLookAhead),
+            //        (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : InternalLookAhead)
+            //    }
+            //    : new[]
+            //    {
+            //        (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : ExternalLookAhead),
+            //    };
 
-            var txs = new List<TezosTransaction>();
-            var txsById = new Dictionary<string, TezosTransaction>();
-            var internalTxs = new List<TezosTransaction>();
+            //var txs = new List<TezosTransaction>();
+            //var txsById = new Dictionary<string, TezosTransaction>();
+            //var internalTxs = new List<TezosTransaction>();
 
-            foreach (var (keyType, chain, lookAhead) in scanParams)
-            {
-                var freeKeysCount = 0;
-                var account = 0u;
-                var index = 0u;
+            //foreach (var (keyType, chain, lookAhead) in scanParams)
+            //{
+            //    var freeKeysCount = 0;
+            //    var account = 0u;
+            //    var index = 0u;
 
-                while (true)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
+            //    while (true)
+            //    {
+            //        cancellationToken.ThrowIfCancellationRequested();
 
-                    var walletAddress = await Account
-                        .DivideAddressAsync(
-                            account: account,
-                            chain: chain,
-                            index: index,
-                            keyType: keyType)
-                        .ConfigureAwait(false);
+            //        var walletAddress = await Account
+            //            .DivideAddressAsync(
+            //                account: account,
+            //                chain: chain,
+            //                index: index,
+            //                keyType: keyType)
+            //            .ConfigureAwait(false);
 
-                    if (walletAddress == null)
-                        break;
+            //        if (walletAddress == null)
+            //            break;
 
-                    Log.Debug(
-                        "Scan transactions for {@name} address {@chain}:{@index}:{@address}",
-                        currency.Name,
-                        chain,
-                        index,
-                        walletAddress.Address);
+            //        Log.Debug(
+            //            "Scan transactions for {@name} address {@chain}:{@index}:{@address}",
+            //            currency.Name,
+            //            chain,
+            //            index,
+            //            walletAddress.Address);
 
-                    var addressTxs = await ScanAddressAsync(walletAddress.Address, cancellationToken)
-                        .ConfigureAwait(false);
+            //        var addressTxs = await ScanAddressAsync(walletAddress.Address, cancellationToken)
+            //            .ConfigureAwait(false);
 
-                    if (addressTxs == null || !addressTxs.Any()) // address without activity
-                    {
-                        freeKeysCount++;
+            //        if (addressTxs == null || !addressTxs.Any()) // address without activity
+            //        {
+            //            freeKeysCount++;
 
-                        if (freeKeysCount >= lookAhead)
-                        {
-                            Log.Debug("{@lookAhead} free keys found. Chain scan completed", lookAhead);
-                            break;
-                        }
-                    }
-                    else // address has activity
-                    {
-                        freeKeysCount = 0;
+            //            if (freeKeysCount >= lookAhead)
+            //            {
+            //                Log.Debug("{@lookAhead} free keys found. Chain scan completed", lookAhead);
+            //                break;
+            //            }
+            //        }
+            //        else // address has activity
+            //        {
+            //            freeKeysCount = 0;
 
-                        foreach (var tx in addressTxs)
-                        {
-                            if (tx.IsInternal)
-                            {
-                                internalTxs.Add(tx);
-                            }
-                            else if (!txsById.ContainsKey(tx.Id))
-                            {
-                                txsById.Add(tx.Id, tx);
-                            }
-                        }
-                    }
+            //            foreach (var tx in addressTxs)
+            //            {
+            //                if (tx.IsInternal)
+            //                {
+            //                    internalTxs.Add(tx);
+            //                }
+            //                else if (!txsById.ContainsKey(tx.Id))
+            //                {
+            //                    txsById.Add(tx.Id, tx);
+            //                }
+            //            }
+            //        }
 
-                    if (keyType == TezosConfig.Bip32Ed25519Key)
-                    {
-                        index++;
-                    }
-                    else
-                    {
-                        account++;
-                    }
-                }
-            }
+            //        if (keyType == TezosConfig.Bip32Ed25519Key)
+            //        {
+            //            index++;
+            //        }
+            //        else
+            //        {
+            //            account++;
+            //        }
+            //    }
+            //}
 
-            // distribute internal txs
-            foreach (var internalTx in internalTxs)
-            {
-                if (txsById.TryGetValue(internalTx.Id, out var tx))
-                {
-                    if (tx.InternalTxs == null)
-                        tx.InternalTxs = new List<TezosTransaction>();
+            //// distribute internal txs
+            //foreach (var internalTx in internalTxs)
+            //{
+            //    if (txsById.TryGetValue(internalTx.Id, out var tx))
+            //    {
+            //        if (tx.InternalTxs == null)
+            //            tx.InternalTxs = new List<TezosTransaction>();
 
-                    tx.InternalTxs.Add(internalTx);
-                }
-                else
-                {
-                    txs.Add(internalTx);
-                }
-            }
+            //        tx.InternalTxs.Add(internalTx);
+            //    }
+            //    else
+            //    {
+            //        txs.Add(internalTx);
+            //    }
+            //}
 
-            txs.AddRange(txsById.Values);
+            //txs.AddRange(txsById.Values);
 
-            if (txs.Any())
-            {
-                await UpsertTransactionsAsync(txs)
-                    .ConfigureAwait(false);
-            }
+            //if (txs.Any())
+            //{
+            //    await UpsertTransactionsAsync(txs)
+            //        .ConfigureAwait(false);
+            //}
 
-            await Account
-                .UpdateBalanceAsync(cancellationToken)
-                .ConfigureAwait(false);
+            //await Account
+            //    .UpdateBalanceAsync(cancellationToken)
+            //    .ConfigureAwait(false);
 
-            var needToCheckBip32Ed25519 = isFirstScan && scanBip32Ed25519;
+            //var needToCheckBip32Ed25519 = isFirstScan && scanBip32Ed25519;
 
-            if (!needToCheckBip32Ed25519)
-                return;
+            //if (!needToCheckBip32Ed25519)
+            //    return;
 
-            var addresses = (await Account.DataRepository
-                .GetAddressesAsync(currency.Name)
-                .ConfigureAwait(false))
-                .Where(a => a.KeyType == TezosConfig.Bip32Ed25519Key);
+            //var addresses = (await Account.DataRepository
+            //    .GetAddressesAsync(currency.Name)
+            //    .ConfigureAwait(false))
+            //    .Where(a => a.KeyType == TezosConfig.Bip32Ed25519Key);
 
-            // if there is at least one address with activity => leave bip32ed25519 addresses in db
-            if (addresses.Any(w => w.HasActivity || w.Balance > 0 || w.UnconfirmedIncome > 0 || w.UnconfirmedOutcome > 0))
-                return;
+            //// if there is at least one address with activity => leave bip32ed25519 addresses in db
+            //if (addresses.Any(w => w.HasActivity || w.Balance > 0 || w.UnconfirmedIncome > 0 || w.UnconfirmedOutcome > 0))
+            //    return;
 
-            // remove bip32Ed25519 addresses if there is no activity on them
-            foreach (var address in addresses.ToList())
-            {
-                _ = await Account.DataRepository
-                    .RemoveAddressAsync(address.Currency, address.Address)
-                    .ConfigureAwait(false);
-            }
+            //// remove bip32Ed25519 addresses if there is no activity on them
+            //foreach (var address in addresses.ToList())
+            //{
+            //    _ = await Account.DataRepository
+            //        .RemoveAddressAsync(address.Currency, address.Address)
+            //        .ConfigureAwait(false);
+            //}
         }
 
-        public async Task ScanAsync(
+        public Task ScanAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            Log.Debug("Scan transactions for address {@address}", address);
+            return UpdateBalanceAsync(address, cancellationToken);
+            //Log.Debug("Scan transactions for address {@address}", address);
 
-            var addressTxs = await ScanAddressAsync(address, cancellationToken)
-                .ConfigureAwait(false);
+            //var addressTxs = await ScanAddressAsync(address, cancellationToken)
+            //    .ConfigureAwait(false);
 
-            if (addressTxs == null || !addressTxs.Any()) // address without activity
-                return;
+            //if (addressTxs == null || !addressTxs.Any()) // address without activity
+            //    return;
 
-            var txs = new List<TezosTransaction>();
-            var txsById = new Dictionary<string, TezosTransaction>();
-            var internalTxs = new List<TezosTransaction>();
+            //var txs = new List<TezosTransaction>();
+            //var txsById = new Dictionary<string, TezosTransaction>();
+            //var internalTxs = new List<TezosTransaction>();
 
-            foreach (var tx in addressTxs)
-            {
-                if (tx.IsInternal)
-                {
-                    internalTxs.Add(tx);
-                }
-                else if (!txsById.ContainsKey(tx.Id))
-                {
-                    txsById.Add(tx.Id, tx);
-                }
-            }
+            //foreach (var tx in addressTxs)
+            //{
+            //    if (tx.IsInternal)
+            //    {
+            //        internalTxs.Add(tx);
+            //    }
+            //    else if (!txsById.ContainsKey(tx.Id))
+            //    {
+            //        txsById.Add(tx.Id, tx);
+            //    }
+            //}
 
-            // distribute internal txs
-            foreach (var internalTx in internalTxs)
-            {
-                if (txsById.TryGetValue(internalTx.Id, out var tx))
-                {
-                    if (tx.InternalTxs == null)
-                        tx.InternalTxs = new List<TezosTransaction>();
+            //// distribute internal txs
+            //foreach (var internalTx in internalTxs)
+            //{
+            //    if (txsById.TryGetValue(internalTx.Id, out var tx))
+            //    {
+            //        if (tx.InternalTxs == null)
+            //            tx.InternalTxs = new List<TezosTransaction>();
 
-                    tx.InternalTxs.Add(internalTx);
-                }
-                else
-                {
-                    txs.Add(internalTx);
-                }
-            }
+            //        tx.InternalTxs.Add(internalTx);
+            //    }
+            //    else
+            //    {
+            //        txs.Add(internalTx);
+            //    }
+            //}
 
-            txs.AddRange(txsById.Values);
+            //txs.AddRange(txsById.Values);
 
-            if (txs.Any())
-            {
-                await UpsertTransactionsAsync(txs)
-                    .ConfigureAwait(false);
-            }
+            //if (txs.Any())
+            //{
+            //    await UpsertTransactionsAsync(txs)
+            //        .ConfigureAwait(false);
+            //}
 
-            await Account
-                .UpdateBalanceAsync(address, cancellationToken)
-                .ConfigureAwait(false);
+            //await Account
+            //    .UpdateBalanceAsync(address, cancellationToken)
+            //    .ConfigureAwait(false);
         }
 
-        private async Task<IEnumerable<TezosTransaction>> ScanAddressAsync(
+        public async Task UpdateBalanceAsync(
+            bool skipUsed = false,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public async Task UpdateBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            var currency = Currency;
-
-            var txsResult = await ((ITezosBlockchainApi)currency.BlockchainApi)
-                .TryGetTransactionsAsync(address, cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            if (txsResult.HasError)
+            try
             {
-                Log.Error(
-                    "Error while scan address transactions for {@address} with code {@code} and description {@description}",
-                    address,
-                    txsResult.Error.Code,
-                    txsResult.Error.Description);
-                return null;
-            }
-
-            var addressTxs = txsResult.Value
-                ?.Cast<TezosTransaction>()
-                .ToList();
-
-            return await Task.FromResult<IEnumerable<TezosTransaction>>(addressTxs);
-        }
-
-        private async Task UpsertTransactionsAsync(IEnumerable<TezosTransaction> transactions)
-        {
-            foreach (var tx in transactions)
-            {
-                await Account
-                    .UpsertTransactionAsync(
-                        tx: tx,
-                        updateBalance: false,
-                        notifyIfUnconfirmed: false,
-                        notifyIfBalanceUpdated: false)
+                var walletAddress = await _account.DataRepository
+                    .GetWalletAddressAsync(_account.Currency, address)
                     .ConfigureAwait(false);
+
+                if (walletAddress == null)
+                {
+                    Log.Error("[TezosWalletScanner] UpdateBalanceAsync error: can't find address {@address} in local db", address);
+                    return;
+                }
+
+                var balanceResult = await XtzConfig.BlockchainApi
+                    .TryGetBalanceAsync(address, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (balanceResult.HasError)
+                {
+                    Log.Error("[TezosWalletScanner] UpdateBalanceAsync error: can't get balance for {@address}. Code: {@code}. Description: {@description}",
+                        address,
+                        balanceResult.Error.Code,
+                        balanceResult.Error.Description);
+
+                    return;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("[TezosWalletScanner] UpdateBalanceAsync canceled");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[TezosWalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
             }
         }
+
+        //private async Task<IEnumerable<TezosTransaction>> ScanAddressAsync(
+        //    string address,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    var currency = Currency;
+
+        //    var txsResult = await ((ITezosBlockchainApi)currency.BlockchainApi)
+        //        .TryGetTransactionsAsync(address, cancellationToken: cancellationToken)
+        //        .ConfigureAwait(false);
+
+        //    if (txsResult.HasError)
+        //    {
+        //        Log.Error(
+        //            "Error while scan address transactions for {@address} with code {@code} and description {@description}",
+        //            address,
+        //            txsResult.Error.Code,
+        //            txsResult.Error.Description);
+        //        return null;
+        //    }
+
+        //    var addressTxs = txsResult.Value
+        //        ?.Cast<TezosTransaction>()
+        //        .ToList();
+
+        //    return await Task.FromResult<IEnumerable<TezosTransaction>>(addressTxs);
+        //}
+
+        //private async Task UpsertTransactionsAsync(IEnumerable<TezosTransaction> transactions)
+        //{
+        //    foreach (var tx in transactions)
+        //    {
+        //        await Account
+        //            .UpsertTransactionAsync(
+        //                tx: tx,
+        //                updateBalance: false,
+        //                notifyIfUnconfirmed: false,
+        //                notifyIfBalanceUpdated: false)
+        //            .ConfigureAwait(false);
+        //    }
+        //}
     }
 }

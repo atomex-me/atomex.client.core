@@ -204,7 +204,7 @@ namespace Atomex.Services
                 var tezosAccount = _account
                     .GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz);
 
-                var tezosTokensScanner = new TezosTokensScanner(tezosAccount);
+                var tezosTokensScanner = new TezosTokensWalletScanner(tezosAccount);
 
                 // todo: scan balance only for addresses affected by transaction!!
                 await tezosTokensScanner

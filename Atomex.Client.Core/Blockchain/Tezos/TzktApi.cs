@@ -368,8 +368,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             return addressInfo.Value.IsRevealed;
         }
 
-        private Result<IEnumerable<TezosTransaction>> ParseTxs(
-            JArray data)
+        private Result<IEnumerable<TezosTransaction>> ParseTxs(JArray data)
         {
             var result = new List<TezosTransaction>();
 
@@ -400,7 +399,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     Alias = alias,
 
                     IsInternal = transaction.ContainsKey("nonce"),
-                    //tx.IsInternal = tx.From == ((TezosTokens.FA12) _currency).SwapContractAddress;
                     InternalIndex = transaction["nonce"]?.Value<int>() ?? 0,
 
                     BlockInfo = new BlockInfo

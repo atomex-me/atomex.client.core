@@ -2,9 +2,9 @@
 {
     public class Balance
     {
-        public decimal Confirmed { get; }
-        public decimal UnconfirmedIncome { get; }
-        public decimal UnconfirmedOutcome { get; }
+        public decimal Confirmed { get; set; }
+        public decimal UnconfirmedIncome { get; set; }
+        public decimal UnconfirmedOutcome { get; set; }
 
         public decimal Available => Confirmed + UnconfirmedOutcome;
 

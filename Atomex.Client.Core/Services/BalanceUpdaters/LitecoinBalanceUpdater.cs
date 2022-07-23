@@ -10,7 +10,7 @@ namespace Atomex.Services.BalanceUpdaters
     {
         private const string CurrencyName = "LTC";
 
-        public LitecoinBalanceUpdater(IAccount account, IHdWalletScanner walletScanner, ISoChainRealtimeApi api,
+        public LitecoinBalanceUpdater(IAccount account, IWalletScanner walletScanner, ISoChainRealtimeApi api,
             ILogger log)
             : base(account, walletScanner, api, log, CurrencyName)
         {

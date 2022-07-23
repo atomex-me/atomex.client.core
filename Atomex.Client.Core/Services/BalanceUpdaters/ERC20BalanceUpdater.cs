@@ -17,13 +17,13 @@ namespace Atomex.Services.BalanceUpdaters
         private readonly IAccount _account;
         private readonly ICurrenciesProvider _currenciesProvider;
         private readonly ILogger _log;
-        private readonly IHdWalletScanner _walletScanner;
+        private readonly IWalletScanner _walletScanner;
 
         private readonly IList<IErc20Notifier> _notifiers = new List<IErc20Notifier>();
         private ISet<string> _addresses;
 
 
-        public Erc20BalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, IHdWalletScanner walletScanner, ILogger log)
+        public Erc20BalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, IWalletScanner walletScanner, ILogger log)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _currenciesProvider = currenciesProvider;

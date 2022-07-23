@@ -14,11 +14,11 @@ using Atomex.Wallet.Abstract;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class TezosTokensScanner : ICurrencyHdWalletScanner
+    public class TezosTokensWalletScanner : ICurrencyWalletScanner
     {
         private readonly TezosAccount _tezosAccount;
 
-        public TezosTokensScanner(TezosAccount tezosAccount)
+        public TezosTokensWalletScanner(TezosAccount tezosAccount)
         {
             _tezosAccount = tezosAccount ?? throw new ArgumentNullException(nameof(tezosAccount));
         }

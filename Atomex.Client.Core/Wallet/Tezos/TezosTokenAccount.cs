@@ -502,13 +502,13 @@ namespace Atomex.Wallet.Tezos
                 : new Balance();
         }
 
-        public virtual Balance GetBalance()
+        public virtual async Task<Balance> GetBalanceAsync()
         {
             var balance = 0m;
 
-            var addresses = DataRepository
+            var addresses = await DataRepository
                 .GetUnspentTezosTokenAddressesAsync(TokenType, _tokenContract, _tokenId)
-                .WaitForResult();
+                .ConfigureAwait(false);
 
             foreach (var address in addresses)
                 balance += address.Balance;
@@ -521,7 +521,7 @@ namespace Atomex.Wallet.Tezos
         {
             return Task.Run(async () =>
             {
-                var scanner = new TezosTokensScanner(_tezosAccount);
+                var scanner = new TezosTokensWalletScanner(_tezosAccount);
 
                 await scanner
                     .UpdateBalanceAsync(
@@ -539,7 +539,7 @@ namespace Atomex.Wallet.Tezos
         {
             return Task.Run(async () =>
             {
-                var scanner = new TezosTokensScanner(_tezosAccount);
+                var scanner = new TezosTokensWalletScanner(_tezosAccount);
 
                 await scanner
                     .UpdateBalanceAsync(

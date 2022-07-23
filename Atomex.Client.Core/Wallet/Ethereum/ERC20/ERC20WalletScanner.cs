@@ -15,7 +15,7 @@ using static Atomex.Blockchain.Ethereum.EtherScanApi;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class Erc20WalletScanner : ICurrencyHdWalletScanner
+    public class Erc20WalletScanner : ICurrencyWalletScanner
     {
         private const int DefaultInternalLookAhead = 1;
         private const int DefaultExternalLookAhead = 1;

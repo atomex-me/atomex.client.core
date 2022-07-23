@@ -21,7 +21,7 @@ namespace Atomex.Services
         private readonly IAccount _account;
         private readonly ICurrenciesProvider _currenciesProvider;
         private readonly ILogger _log;
-        private readonly IHdWalletScanner _walletScanner;
+        private readonly IWalletScanner _walletScanner;
 
         private CancellationTokenSource _cts;
         private bool _isRunning;
@@ -34,7 +34,7 @@ namespace Atomex.Services
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _currenciesProvider = currenciesProvider;
             _log = log ?? throw new ArgumentNullException(nameof(log));
-            _walletScanner = new HdWalletScanner(_account);
+            _walletScanner = new WalletScanner(_account);
 
             InitChainBalanceUpdaters();
         }
@@ -110,7 +110,7 @@ namespace Atomex.Services
 
                 var tzkt = new TzktEventsClient(_log);
                 _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, tzkt, _log));
-                _balanceUpdaters.Add(new TezosTokenBalanceUpdater(_account, _currenciesProvider, new TezosTokensScanner(_account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz)), tzkt, _log));
+                _balanceUpdaters.Add(new TezosTokenBalanceUpdater(_account, _currenciesProvider, new TezosTokensWalletScanner(_account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz)), tzkt, _log));
             }
             catch (Exception e)
             {

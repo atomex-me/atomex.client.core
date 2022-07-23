@@ -20,12 +20,12 @@ namespace Atomex.Services.BalanceUpdaters
         private readonly ICurrenciesProvider _currenciesProvider;
         private readonly ILogger _log;
         private readonly ITzktEventsClient _tzkt;
-        private readonly TezosTokensScanner _walletScanner;
+        private readonly TezosTokensWalletScanner _walletScanner;
 
         private ISet<string> _addresses;
 
 
-        public TezosTokenBalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, TezosTokensScanner walletScanner, ITzktEventsClient tzkt, ILogger log)
+        public TezosTokenBalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, TezosTokensWalletScanner walletScanner, ITzktEventsClient tzkt, ILogger log)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _tezosAccount = account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz);

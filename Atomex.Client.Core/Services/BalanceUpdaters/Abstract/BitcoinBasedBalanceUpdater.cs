@@ -15,13 +15,13 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
         private readonly IAccount _account;
         private readonly ILogger _log;
         private readonly ISoChainRealtimeApi _api;
-        private readonly IHdWalletScanner _walletScanner;
+        private readonly IWalletScanner _walletScanner;
 
         private ISet<string> _addresses;
         private readonly string _network;
         private readonly string _currencyName;
 
-        protected BitcoinBasedBalanceUpdater(IAccount account, IHdWalletScanner walletScanner, ISoChainRealtimeApi api, ILogger log, string currencyName)
+        protected BitcoinBasedBalanceUpdater(IAccount account, IWalletScanner walletScanner, ISoChainRealtimeApi api, ILogger log, string currencyName)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _walletScanner = walletScanner ?? throw new ArgumentNullException(nameof(walletScanner));

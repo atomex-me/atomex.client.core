@@ -237,7 +237,8 @@ namespace Atomex.Wallet
             string currency,
             CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(GetCurrencyAccount(currency).GetBalance());
+            return GetCurrencyAccount(currency)
+                .GetBalanceAsync();
         }
 
         public Task<Balance> GetAddressBalanceAsync(

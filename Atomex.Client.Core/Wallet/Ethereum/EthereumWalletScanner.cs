@@ -11,7 +11,7 @@ using Serilog;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class EthereumWalletScanner : ICurrencyHdWalletScanner
+    public class EthereumWalletScanner : ICurrencyWalletScanner
     {
         private const int DefaultInternalLookAhead = 1;
         private const int DefaultExternalLookAhead = 1;

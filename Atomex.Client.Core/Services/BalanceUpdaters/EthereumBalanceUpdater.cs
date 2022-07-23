@@ -17,12 +17,12 @@ namespace Atomex.Services.BalanceUpdaters
         private readonly ICurrenciesProvider _currenciesProvider;
         private readonly ILogger _log;
         private IEthereumNotifier _notifier;
-        private readonly IHdWalletScanner _walletScanner;
+        private readonly IWalletScanner _walletScanner;
 
         private ISet<string> _addresses;
 
 
-        public EthereumBalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, IHdWalletScanner walletScanner, ILogger log)
+        public EthereumBalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, IWalletScanner walletScanner, ILogger log)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _currenciesProvider = currenciesProvider;

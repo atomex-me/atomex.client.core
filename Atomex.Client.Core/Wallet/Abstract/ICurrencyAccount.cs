@@ -13,7 +13,7 @@ namespace Atomex.Wallet.Abstract
 
         #region Balances
 
-        Balance GetBalance();
+        Task<Balance> GetBalanceAsync();
 
         Task<Balance> GetAddressBalanceAsync(
             string address,

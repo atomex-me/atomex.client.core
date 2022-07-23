@@ -23,9 +23,6 @@ namespace Atomex.Wallet.Abstract
         public ICurrencies Currencies { get; }
         public IHdWallet Wallet { get; }
         public IAccountDataRepository DataRepository { get; }
-        protected decimal Balance { get; set; }
-        protected decimal UnconfirmedIncome { get; set; }
-        protected decimal UnconfirmedOutcome { get; set; }
 
         protected CurrencyAccount(
             string currency,
@@ -37,8 +34,6 @@ namespace Atomex.Wallet.Abstract
             Currencies     = currencies ?? throw new ArgumentNullException(nameof(currencies));
             Wallet         = wallet ?? throw new ArgumentNullException(nameof(wallet));
             DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
-
-            LoadBalances();
         }
 
         #region Common
@@ -90,12 +85,22 @@ namespace Atomex.Wallet.Abstract
                 : new Balance();
         }
 
-        public virtual Balance GetBalance()
+        public virtual async Task<Balance> GetBalanceAsync()
         {
-            return new Balance(
-                Balance,
-                UnconfirmedIncome,
-                UnconfirmedOutcome);
+            var unspentAddresses = await DataRepository
+                .GetUnspentAddressesAsync(Currency)
+                .ConfigureAwait(false);
+
+            var totalBalance = new Balance();
+
+            foreach (var unspentAddress in unspentAddresses)
+            {
+                totalBalance.Confirmed += unspentAddress.Balance;
+                totalBalance.UnconfirmedIncome += unspentAddress.UnconfirmedIncome;
+                totalBalance.UnconfirmedOutcome += unspentAddress.UnconfirmedOutcome;
+            }
+
+            return totalBalance;
         }
 
         public abstract Task UpdateBalanceAsync(
@@ -104,24 +109,6 @@ namespace Atomex.Wallet.Abstract
         public abstract Task UpdateBalanceAsync(
             string address,
             CancellationToken cancellationToken = default);
-
-        protected void LoadBalances()
-        {
-            Balance            = 0;
-            UnconfirmedIncome  = 0;
-            UnconfirmedOutcome = 0;
-
-            var addresses = DataRepository
-                .GetUnspentAddressesAsync(Currency)
-                .WaitForResult();
-
-            foreach (var address in addresses)
-            {
-                Balance            += address.Balance;
-                UnconfirmedIncome  += address.UnconfirmedIncome;
-                UnconfirmedOutcome += address.UnconfirmedOutcome;
-            }
-        }
 
         #endregion Balances
 
