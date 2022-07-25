@@ -10,7 +10,6 @@ using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
-using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Helpers;
@@ -813,7 +812,7 @@ namespace Atomex.Swaps.Tezos.FA2
                     address: walletAddress.Address,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false))
-                .Available;
+                .Confirmed;
 
             var balanceInMtz = balanceInTz.ToMicroTez();
 
@@ -897,9 +896,10 @@ namespace Atomex.Swaps.Tezos.FA2
                 .GetAddressAsync(paymentTx.From, cancellationToken)
                 .ConfigureAwait(false);
 
-            using var callingAddressPublicKey = new SecureBytes((await TezosAccount.GetAddressAsync(walletAddress.Address, cancellationToken)
-                .ConfigureAwait(false))
-                .PublicKeyBytes());
+            using var callingAddressPublicKey = TezosAccount.Wallet.GetPublicKey(
+                currency: TezosAccount.Config,
+                keyIndex: walletAddress.KeyIndex,
+                keyType: walletAddress.KeyType);
 
             var fa2 = Fa2Config;
             var fa2Api = fa2.BlockchainApi as ITokenBlockchainApi;

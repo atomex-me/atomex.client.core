@@ -10,24 +10,6 @@ namespace Atomex.Blockchain.Tezos
 {
     public static class TezosSigner
     {
-        public static byte[] Sign(
-            byte[] data,
-            byte[] privateKey)
-        {
-            return BcEd25519.Sign(
-                privateKey: privateKey,
-                data: data);
-        }
-
-        public static byte[] SignByExtendedKey(
-            byte[] data,
-            byte[] extendedPrivateKey)
-        {
-            return BcEd25519.SignWithExtendedKey(
-                privateKey: extendedPrivateKey,
-                data: data);
-        }
-
         private static SignedMessage SignHash(
             byte[] data,
             byte[] privateKey,
@@ -86,17 +68,6 @@ namespace Atomex.Blockchain.Tezos
                 privateKey,
                 (pkKey, data) => BcEd25519.Sign(pkKey, data),
                 watermark);
-        }
-
-        public static bool Verify(
-            byte[] data,
-            byte[] signature,
-            byte[] publicKey)
-        {
-            return BcEd25519.Verify(
-                publicKey: publicKey,
-                data: data,
-                signature: signature);
         }
 
         public static bool VerifyHash(

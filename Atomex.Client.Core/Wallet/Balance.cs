@@ -6,8 +6,6 @@
         public decimal UnconfirmedIncome { get; set; }
         public decimal UnconfirmedOutcome { get; set; }
 
-        public decimal Available => Confirmed + UnconfirmedOutcome;
-
         public Balance()
         { 
         }

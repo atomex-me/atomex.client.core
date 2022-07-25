@@ -771,7 +771,7 @@ namespace Atomex.Swaps.Ethereum
                     address: walletAddress.Address,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false))
-                .Available;
+                .Confirmed;
 
             var feeAmountInEth = rewardForRedeemInERC20 == 0
                 ? erc20Config.InitiateFeeAmount(gasPrice)

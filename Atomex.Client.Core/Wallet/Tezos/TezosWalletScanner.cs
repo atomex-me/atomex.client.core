@@ -10,6 +10,7 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
+using Atomex.Blockchain.Tezos.Tzkt;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -257,6 +258,8 @@ namespace Atomex.Wallet.Tezos
         {
             try
             {
+                var updateTimeStamp = DateTime.UtcNow;
+
                 var walletAddress = await _account.DataRepository
                     .GetWalletAddressAsync(_account.Currency, address)
                     .ConfigureAwait(false);
@@ -267,19 +270,61 @@ namespace Atomex.Wallet.Tezos
                     return;
                 }
 
-                var balanceResult = await XtzConfig.BlockchainApi
-                    .TryGetBalanceAsync(address, cancellationToken: cancellationToken)
+                var tzktApi = new TzktApi(XtzConfig);
+
+                var accountResult = await tzktApi
+                    .GetAccountAsync(address, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (balanceResult.HasError)
+                if (accountResult == null)
                 {
-                    Log.Error("[TezosWalletScanner] UpdateBalanceAsync error: can't get balance for {@address}. Code: {@code}. Description: {@description}",
+                    Log.Error("[TezosWalletScanner] UpdateBalanceAsync error: can't get account for address {@address}", address);
+                    return;
+                }
+
+                if (accountResult.HasError)
+                {
+                    Log.Error("[TezosWalletScanner] UpdateBalanceAsync error: can't get account for {@address}. Code: {@code}. Description: {@description}",
                         address,
-                        balanceResult.Error.Code,
-                        balanceResult.Error.Description);
+                        accountResult.Error.Code,
+                        accountResult.Error.Description);
 
                     return;
                 }
+
+                walletAddress.Balance = accountResult.Value.Balance.ToTez();
+                walletAddress.UnconfirmedIncome = 0;
+                walletAddress.UnconfirmedOutcome = 0;
+                walletAddress.HasActivity = accountResult.Value.NumberOfTransactions > 0 || accountResult.Value.TokenBalancesCount > 0;
+
+                var txsResult = await tzktApi
+                    .GetTransactionsAsync(
+                        address: address,
+                        fromTimeStamp: walletAddress.LastSuccessfullUpdate,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+
+
+                walletAddress.LastSuccessfullUpdate = updateTimeStamp;
+
+                var _ = await _account.DataRepository
+                    .UpsertAddressAsync(walletAddress)
+                    .ConfigureAwait(false);
+
+                //var balanceResult = await XtzConfig.BlockchainApi
+                //    .TryGetBalanceAsync(address, cancellationToken: cancellationToken)
+                //    .ConfigureAwait(false);
+
+                //if (balanceResult.HasError)
+                //{
+                //    Log.Error("[TezosWalletScanner] UpdateBalanceAsync error: can't get balance for {@address}. Code: {@code}. Description: {@description}",
+                //        address,
+                //        balanceResult.Error.Code,
+                //        balanceResult.Error.Description);
+
+                //    return;
+                //}
             }
             catch (OperationCanceledException)
             {
@@ -289,6 +334,15 @@ namespace Atomex.Wallet.Tezos
             {
                 Log.Error(e, "[TezosWalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
             }
+        }
+
+        private IEnumerable<TezosTransaction> ResolveInternalTransactions(IEnumerable<TezosTransaction> txs)
+        {
+            var result = new List<TezosTransaction>();
+
+
+
+            return result;
         }
 
         //private async Task<IEnumerable<TezosTransaction>> ScanAddressAsync(

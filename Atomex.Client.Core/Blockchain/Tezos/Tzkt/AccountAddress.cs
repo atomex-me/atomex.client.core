@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Atomex.Blockchain.Tezos.Tzkt
 {
-    public class AddressAccount
+    public class AccountAddress
     {
         /// <summary>
         /// Account alias name (offchain metadata).

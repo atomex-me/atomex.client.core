@@ -611,15 +611,12 @@ namespace Atomex.Wallet.Tezos
             return walletAddress;
         }
 
-        public async Task<WalletAddress> GetAddressAsync(
+        public Task<WalletAddress> GetAddressAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            var walletAddress = await DataRepository
-                .GetTezosTokenAddressAsync(TokenType, _tokenContract, _tokenId, address)
-                .ConfigureAwait(false);
-
-            return walletAddress?.ResolvePublicKey(Currencies, Wallet);
+            return DataRepository
+                .GetTezosTokenAddressAsync(TokenType, _tokenContract, _tokenId, address);
         }
 
         public Task<IEnumerable<WalletAddress>> GetAddressesAsync(
@@ -645,9 +642,7 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
-                return unspentAddresses
-                    .MaxBy(w => w.AvailableBalance())
-                    .ResolvePublicKey(Currencies, Wallet);
+                return unspentAddresses.MaxBy(w => w.AvailableBalance());
 
             // 2. try to find xtz address with max balance
             var unspentTezosAddresses = await DataRepository
@@ -667,7 +662,7 @@ namespace Atomex.Wallet.Tezos
                     .ConfigureAwait(false);
 
                 if (tokenAddress != null)
-                    return tokenAddress.ResolvePublicKey(Currencies, Wallet);
+                    return tokenAddress;
 
                 return await DivideAddressAsync(
                         keyIndex: xtzAddress.KeyIndex,
@@ -689,7 +684,7 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (tokenRedeemAddress != null)
-                return tokenRedeemAddress.ResolvePublicKey(Currencies, Wallet);
+                return tokenRedeemAddress;
 
             return await DivideAddressAsync(
                     keyIndex: xtzRedeemAddress.KeyIndex,

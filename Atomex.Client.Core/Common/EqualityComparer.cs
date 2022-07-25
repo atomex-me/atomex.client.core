@@ -15,14 +15,8 @@ namespace Atomex.Common
             Cmp = cmp;
             HashCode = hashCode;
         }
-        public bool Equals(T x, T y)
-        {
-            return Cmp(x, y);
-        }
+        public bool Equals(T x, T y) => Cmp(x, y);
 
-        public int GetHashCode(T obj)
-        {
-            return HashCode(obj);
-        }
+        public int GetHashCode(T obj) => HashCode(obj);
     }
 }

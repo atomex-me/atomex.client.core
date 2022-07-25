@@ -613,7 +613,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
-                return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance()));
+                return unspentAddresses.MaxBy(w => w.AvailableBalance());
 
             foreach (var chain in new[] { Bip44.Internal, Bip44.External })
             {
@@ -625,13 +625,11 @@ namespace Atomex.Wallet.Ethereum
                     .ConfigureAwait(false);
 
                 if (lastActiveAddress != null)
-                    return ResolvePublicKey(lastActiveAddress);
+                    return lastActiveAddress;
             }
 
-            var redeemAddress = await GetFreeExternalAddressAsync(cancellationToken)
+            return await GetFreeExternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
-
-            return ResolvePublicKey(redeemAddress);
         }
 
         public async Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(

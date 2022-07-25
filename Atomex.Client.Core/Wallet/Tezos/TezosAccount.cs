@@ -327,7 +327,7 @@ namespace Atomex.Wallet.Tezos
                 }
                 else if (xtzTx.Amount == 0)
                 {
-                    xtzTx = ResolveFA12TransactionType(xtzTx);
+                    xtzTx = ResolveFa12TransactionType(xtzTx);
                 }
             }
 
@@ -370,8 +370,7 @@ namespace Atomex.Wallet.Tezos
             }
         }
 
-        private TezosTransaction ResolveFA12TransactionType(
-            TezosTransaction tx)
+        private TezosTransaction ResolveFa12TransactionType(TezosTransaction tx)
         {
             if (tx.Params["entrypoint"].ToString().Equals("initiate")
                 || tx.Params["entrypoint"].ToString().Equals("redeem")
@@ -743,7 +742,7 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
-                return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance()));
+                return unspentAddresses.MaxBy(w => w.AvailableBalance());
 
             foreach (var chain in new[] {Bip44.Internal, Bip44.External})
             {
@@ -755,13 +754,11 @@ namespace Atomex.Wallet.Tezos
                     .ConfigureAwait(false);
 
                 if (lastActiveAddress != null)
-                    return ResolvePublicKey(lastActiveAddress);
+                    return lastActiveAddress;
             }
 
-            var redeemAddress = await GetFreeExternalAddressAsync(cancellationToken)
+            return await GetFreeExternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
-
-            return ResolvePublicKey(redeemAddress);
         }
 
         public async Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(

@@ -10,6 +10,9 @@ namespace Atomex.Blockchain.Tezos
         public static decimal ToTez(this decimal mtz) =>
             mtz / TezosConfig.XtzDigitsMultiplier;
 
+        public static decimal ToTez(this long mtz) =>
+            (decimal)mtz / TezosConfig.XtzDigitsMultiplier;
+
         public static decimal ToTokenDigits(this decimal tokens, decimal tokenDigitsMultiplier) =>
             Math.Floor(tokens * tokenDigitsMultiplier);
 

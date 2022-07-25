@@ -150,17 +150,11 @@ namespace Atomex.Wallet.Abstract
             return walletAddress;
         }
 
-        public virtual async Task<WalletAddress> GetAddressAsync(
+        public virtual Task<WalletAddress> GetAddressAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            var walletAddress = await DataRepository
-                .GetWalletAddressAsync(Currency, address)
-                .ConfigureAwait(false);
-
-            return walletAddress != null
-                ? ResolvePublicKey(walletAddress)
-                : null;
+            return DataRepository.GetWalletAddressAsync(Currency, address);
         }
 
         public virtual Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
@@ -168,12 +162,6 @@ namespace Atomex.Wallet.Abstract
         {
             return DataRepository.GetUnspentAddressesAsync(Currency);
         }
-
-        protected WalletAddress ResolvePublicKey(WalletAddress address) =>
-            address.ResolvePublicKey(Currencies, Wallet);
-
-        protected IList<WalletAddress> ResolvePublicKeys(IList<WalletAddress> addresses) =>
-            addresses.ResolvePublicKeys(Currencies, Wallet);
 
         public virtual async Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default)

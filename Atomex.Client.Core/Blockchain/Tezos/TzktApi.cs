@@ -13,7 +13,6 @@ using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.TezosTokens;
-using Atomex.Wallet.Tezos;
 
 namespace Atomex.Blockchain.Tezos.Tzkt
 {
@@ -104,25 +103,16 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             string address,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = $"accounts/{address}";
+            var account = await GetAccountAsync(address, cancellationToken)
+                .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult<decimal>(
-                baseUri: _baseUri,
-                requestUri: requestUri,
-                headers: _headers,
-                responseHandler: (response, content) =>
-                {
-                    var addressInfo = JsonConvert.DeserializeObject<JObject>(content);
+            if (account == null)
+                return new Error(Errors.InvalidResponse, $"[TzktApi] Account for address {address} is null");
 
-                    var type = addressInfo["type"].Value<string>();
+            if (account.HasError)
+                return account.Error;
 
-                    if (type == "empty")
-                        return 0;
-
-                    return addressInfo["balance"].Value<decimal>().ToTez();
-                },
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+            return account.Value?.Balance ?? 0m;
         }
 
         public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
@@ -176,9 +166,17 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
             string address,
+            DateTimeOffset? fromTimeStamp = null,
+            int? fromLevel = null,
             CancellationToken cancellationToken = default)
         {
             var requestUri = $"accounts/{address}/operations?type=transaction&micheline=2";
+
+            if (fromTimeStamp != null)
+                requestUri += $"&timestamp.ge={fromTimeStamp.Value.ToIso8601()}";
+
+            if (fromLevel != null)
+                requestUri += $"&level.ge={fromLevel.Value}";
 
             var txsResult = await HttpHelper
                 .GetAsyncResult(
@@ -200,11 +198,18 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
         public async Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
             string address,
+            DateTimeOffset? fromTimeStamp = null,
+            int? fromLevel = null,
             int attempts = 3,
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default)
         {
-            return await ResultHelper.TryDo((c) => GetTransactionsAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
+            return await ResultHelper
+                .TryDo(
+                    func: c => GetTransactionsAsync(address, fromTimeStamp, fromLevel, c),
+                    attempts: attempts,
+                    attemptsIntervalMs: attemptsIntervalMs,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
         }
 
@@ -236,55 +241,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
         }
 
-        public async Task<Result<TezosAddressInfo>> GetAddressInfoAsync(
-            string address,
-            CancellationToken cancellationToken = default)
-        {
-            return await HttpHelper.GetAsyncResult<TezosAddressInfo>(
-                    baseUri: _baseUri,
-                    requestUri: $"accounts/{address}",
-                    headers: _headers,
-                    responseHandler: (response, content) =>
-                    {
-                        var addressInfo = JsonConvert.DeserializeObject<JObject>(content);
-
-                        var type = addressInfo["type"].Value<string>();
-
-                        if (type == "empty")
-                        {
-                            return new TezosAddressInfo
-                            {
-                                Address          = address,
-                                IsAllocated      = false,
-                                IsRevealed       = false,
-                                LastCheckTimeUtc = DateTime.UtcNow
-                            };
-                        }
-
-                        if (type == "user")
-                        {
-                            return new TezosAddressInfo
-                            {
-                                Address          = address,
-                                IsAllocated      = decimal.Parse(addressInfo["balance"].Value<string>()) > 0,
-                                IsRevealed       = addressInfo["revealed"].Value<bool>(),
-                                LastCheckTimeUtc = DateTime.UtcNow
-                            };
-                        }
-
-                        return new TezosAddressInfo
-                        {
-                            Address          = address,
-                            IsAllocated      = true,
-                            IsRevealed       = true,
-                            LastCheckTimeUtc = DateTime.UtcNow
-                        };
-                    },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        public async Task<Result<Account>> GetAccountByAddressAsync(
+        public async Task<Result<Account>> GetAccountAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -292,29 +249,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     baseUri: _baseUri,
                     requestUri: $"accounts/{address}",
                     headers: _headers,
-                    responseHandler: (response, content) =>
-                    {
-                        var accountInfo = JsonConvert.DeserializeObject<JObject>(content);
-
-                        var type = accountInfo["type"].Value<string>();
-
-                        if (type == "user")
-                        {
-                            var delegationTime = accountInfo["delegationTime"]?.ToString() ?? null;
-
-                            return new Account
-                            {
-                                Address         = address,
-                                DelegateAddress = accountInfo["delegate"]?["address"]?.ToString() ?? null,
-                                DelegationTime  = delegationTime != null
-                                    ? DateTimeOffset.Parse(delegationTime).DateTime
-                                    : DateTime.MinValue,
-                                DelegationLevel = accountInfo["delegationLevel"]?.Value<decimal>() ?? 0
-                            };
-                        }
-
-                        return null;
-                    },
+                    responseHandler: (response, content) => System.Text.Json.JsonSerializer.Deserialize<Account>(content),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -340,32 +275,32 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             string address,
             CancellationToken cancellationToken = default)
         {
-            var addressInfo = await GetAddressInfoAsync(address, cancellationToken)
+            var account = await GetAccountAsync(address, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (addressInfo == null)
-                return null;
+            if (account == null)
+                return new Error(Errors.InvalidResponse, $"[TzktApi] Account for address {address} is null");
 
-            if (addressInfo.HasError)
-                return addressInfo.Error;
+            if (account.HasError)
+                return account.Error;
 
-            return addressInfo.Value.IsAllocated;
+            return account.Value?.Balance > 0;
         }
 
         public async Task<Result<bool>> IsRevealedAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            var addressInfo = await GetAddressInfoAsync(address, cancellationToken)
+            var account = await GetAccountAsync(address, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (addressInfo == null)
-                return null;
+            if (account == null)
+                return new Error(Errors.InvalidResponse, $"[TzktApi] Account for address {address} is null");
 
-            if (addressInfo.HasError)
-                return addressInfo.Error;
+            if (account.HasError)
+                return account.Error;
 
-            return addressInfo.Value.IsRevealed;
+            return account.Value?.Revealed ?? false;
         }
 
         private Result<IEnumerable<TezosTransaction>> ParseTxs(JArray data)

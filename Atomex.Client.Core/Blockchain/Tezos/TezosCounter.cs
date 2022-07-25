@@ -9,7 +9,7 @@ namespace Atomex.Blockchain.Tezos
 {
     public class TezosCounter
     {
-        private TimeSpan ExpirationPeriod = TimeSpan.FromMinutes(10); // ~ 10 blocks
+        private readonly TimeSpan ExpirationPeriod = TimeSpan.FromMinutes(10); // ~ 10 blocks
 
         private class CounterEntry
         {

@@ -754,7 +754,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
-                return ResolvePublicKey(unspentAddresses.MaxBy(w => w.AvailableBalance()));
+                return unspentAddresses.MaxBy(w => w.AvailableBalance());
 
             // addresses with eth
             var unspentEthereumAddresses = await DataRepository
@@ -780,13 +780,11 @@ namespace Atomex.Wallet.Ethereum
                     .ConfigureAwait(false);
 
                 if (lastActiveAddress != null)
-                    return ResolvePublicKey(lastActiveAddress);
+                    return lastActiveAddress;
             }
 
-            var redeemAddress = await GetFreeExternalAddressAsync(cancellationToken)
+            return await GetFreeExternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
-
-            return ResolvePublicKey(redeemAddress);
         }
 
         #endregion Addresses

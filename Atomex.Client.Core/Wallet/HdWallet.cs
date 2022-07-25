@@ -95,7 +95,6 @@ namespace Atomex.Wallet
             {
                 Currency  = currency.Name,
                 Address   = address,
-                PublicKey = Convert.ToBase64String(publicKey),
                 KeyIndex  = new KeyIndex { Account = account, Chain = chain, Index = index },
                 KeyType   = keyType
             };

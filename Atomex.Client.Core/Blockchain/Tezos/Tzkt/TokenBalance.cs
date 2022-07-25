@@ -17,7 +17,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// Click on the field to expand more details.
         /// </summary>
         [JsonPropertyName("account")]
-        public AddressAccount Account { get; set; }
+        public AccountAddress Account { get; set; }
 
         /// <summary>
         /// Token info.  

@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,31 +12,30 @@ namespace Atomex.Wallet.Tezos
 {
     public partial class TezosRevealChecker
     {
-        private readonly TezosConfig _tezos;
-        private readonly IDictionary<string, TezosAddressInfo> _addresses;
+        private record struct TezosAddressRevealCache(bool Revealed, DateTimeOffset TimeStamp);
+
+        private readonly TezosConfig _tezosConfig;
+        private readonly ConcurrentDictionary<string, TezosAddressRevealCache> _cache;
 
         public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromSeconds(30);
 
-        public TezosRevealChecker(TezosConfig tezos)
+        public TezosRevealChecker(TezosConfig tezosConfig)
         {
-            _tezos = tezos;
-            _addresses = new Dictionary<string, TezosAddressInfo>();
+            _tezosConfig = tezosConfig ?? throw new ArgumentNullException(nameof(tezosConfig));
+            _cache = new ConcurrentDictionary<string, TezosAddressRevealCache>();
         }
 
         public async Task<bool> IsRevealedAsync(
             string address,
             CancellationToken cancellationToken)
         {
-            lock (_addresses)
+            if (_cache.TryGetValue(address, out var cacheValue))
             {
-                if (_addresses.TryGetValue(address, out var info))
-                {
-                    if (info.LastCheckTimeUtc + UpdateInterval > DateTime.UtcNow)
-                        return info.IsRevealed;
-                }
+                if (cacheValue.TimeStamp + UpdateInterval > DateTimeOffset.UtcNow)
+                    return cacheValue.Revealed;
             }
 
-            var isRevealedResult = await new TzktApi(_tezos)
+            var isRevealedResult = await new TzktApi(_tezosConfig)
                 .IsRevealedAsync(address, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -57,24 +56,7 @@ namespace Atomex.Wallet.Tezos
                 return false;
             }
 
-            lock (_addresses)
-            {
-                if (_addresses.TryGetValue(address, out var info))
-                {
-                    info.Address = address;
-                    info.IsRevealed = isRevealedResult.Value;
-                    info.LastCheckTimeUtc = DateTime.UtcNow;
-                }
-                else
-                {
-                    _addresses.Add(address, new TezosAddressInfo()
-                    {
-                        Address = address,
-                        IsRevealed = isRevealedResult.Value,
-                        LastCheckTimeUtc = DateTime.UtcNow
-                    });
-                }
-            }
+            _cache[address] = new TezosAddressRevealCache(isRevealedResult.Value, DateTimeOffset.UtcNow);
 
             return isRevealedResult.Value;
         }

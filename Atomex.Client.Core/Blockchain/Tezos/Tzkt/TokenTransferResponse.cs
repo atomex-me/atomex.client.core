@@ -37,14 +37,14 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// Click on the field to expand more details.
         /// </summary>
         [JsonPropertyName("from")]
-        public AddressAccount From { get; set; }
+        public AccountAddress From { get; set; }
 
         /// <summary>
         /// Target account.  
         /// Click on the field to expand more details.
         /// </summary>
         [JsonPropertyName("to")]
-        public AddressAccount To { get; set; }
+        public AccountAddress To { get; set; }
 
         /// <summary>
         /// Amount of tokens transferred (raw value, not divided by `decimals`).  

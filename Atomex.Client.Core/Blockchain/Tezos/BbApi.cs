@@ -39,7 +39,6 @@ namespace Atomex.Blockchain.Tezos
 
             Log.Error("Error while trying to fetch bakers list");
             return new List<BakerData>();
-
         }
 
         public static async Task<BakerData> GetBaker(string address, Network network,
