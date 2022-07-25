@@ -16,7 +16,7 @@ using Atomex.Common.Memory;
 
 namespace Atomex.Blockchain.BitcoinBased
 {
-    public class BitcoinBasedTransaction : IBitcoinBasedTransaction
+    public class BitcoinBasedTransaction : IBlockchainTransaction
     {
         private const int DefaultConfirmations = 1;
 
@@ -150,9 +150,6 @@ namespace Atomex.Blockchain.BitcoinBased
             var scopedPrivateKey = privateKey.ToUnsecuredBytes();
 
             var key = new Key(scopedPrivateKey);
-            var debugAddress = spentOutput.DestinationAddress(bitcoinBasedConfig.Network);
-            var keyAddress = key.PubKey.GetAddress(bitcoinBasedConfig);
-            
 
             Sign(key, spentOutput, bitcoinBasedConfig); // todo: do not use NBitcoin.Key
         }
@@ -337,7 +334,7 @@ namespace Atomex.Blockchain.BitcoinBased
         public int VirtualSize() =>
             Tx.GetVirtualSize();
 
-        public IBitcoinBasedTransaction Clone()
+        public BitcoinBasedTransaction Clone()
         {
             return new BitcoinBasedTransaction(
                 currency: Currency,

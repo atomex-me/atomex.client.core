@@ -336,7 +336,7 @@ namespace Atomex.Wallet.BitcoinBased
 
             var indexedOutputs = outputs.ToDictionary(o => $"{o.TxId}:{o.Index}");
 
-            var btcBasedTx = (IBitcoinBasedTransaction) tx;
+            var btcBasedTx = (BitcoinBasedTransaction) tx;
 
             var selfInputs = btcBasedTx.Inputs
                 .Where(i => indexedOutputs.ContainsKey($"{i.Hash}:{i.Index}"))
@@ -577,7 +577,7 @@ namespace Atomex.Wallet.BitcoinBased
             bool notifyIfBalanceUpdated = true,
             CancellationToken cancellationToken = default)
         {
-            if (tx is not IBitcoinBasedTransaction btcBasedTx)
+            if (tx is not BitcoinBasedTransaction btcBasedTx)
                 throw new NotSupportedException("Transaction has incorrect type");
 
             await UpsertOutputsAsync(
@@ -638,7 +638,7 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         private async Task UpsertOutputsAsync(
-            IInOutTransaction tx,
+            BitcoinBasedTransaction tx,
             CancellationToken cancellationToken = default)
         {
             // update & save self outputs

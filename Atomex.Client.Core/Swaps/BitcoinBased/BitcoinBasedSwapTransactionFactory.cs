@@ -17,7 +17,7 @@ namespace Atomex.Swaps.BitcoinBased
         //public const decimal MaxFeeRateChangePercent = 0.5m;
         public const int MinFeeRate = 1;
 
-        public async Task<IBitcoinBasedTransaction> CreateSwapPaymentTxAsync(
+        public async Task<BitcoinBasedTransaction> CreateSwapPaymentTxAsync(
             IEnumerable<BitcoinBasedTxOutput> fromOutputs,
             long amount,
             string refundAddress,
@@ -115,8 +115,8 @@ namespace Atomex.Swaps.BitcoinBased
             return tx;
         }
 
-        public async Task<IBitcoinBasedTransaction> CreateSwapRefundTxAsync(
-            IBitcoinBasedTransaction paymentTx,
+        public async Task<BitcoinBasedTransaction> CreateSwapRefundTxAsync(
+            BitcoinBasedTransaction paymentTx,
             long amount,
             string refundAddress,
             byte[] redeemScript,
@@ -171,8 +171,8 @@ namespace Atomex.Swaps.BitcoinBased
                 knownRedeems: new Script(redeemScript));
         }
 
-        public async Task<IBitcoinBasedTransaction> CreateSwapRedeemTxAsync(
-            IBitcoinBasedTransaction paymentTx,
+        public async Task<BitcoinBasedTransaction> CreateSwapRedeemTxAsync(
+            BitcoinBasedTransaction paymentTx,
             long amount,
             string redeemAddress,
             byte[] redeemScript,

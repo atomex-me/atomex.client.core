@@ -14,6 +14,7 @@ using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Network = Atomex.Core.Network;
+using Atomex.Blockchain.BitcoinBased;
 
 namespace Atomex.Wallet
 {
@@ -163,7 +164,7 @@ namespace Atomex.Wallet
         }
 
         public async Task<bool> SignAsync(
-            IInOutTransaction tx,
+            BitcoinBasedTransaction tx,
             IEnumerable<ITxOutput> spentOutputs,
             IAddressResolver addressResolver,
             CurrencyConfig currencyConfig,

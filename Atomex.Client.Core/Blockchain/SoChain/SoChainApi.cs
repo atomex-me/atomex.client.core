@@ -682,7 +682,7 @@ namespace Atomex.Blockchain.SoChain
             IBlockchainTransaction transaction,
             CancellationToken cancellationToken = default)
         {
-            var tx = (IBitcoinBasedTransaction)transaction;
+            var tx = (BitcoinBasedTransaction)transaction;
 
             var requestUri = $"api/v2/send_tx/{NetworkAcronym}";
 

@@ -51,7 +51,7 @@ namespace Atomex.Blockchain.BlockCypher
                 .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var tx = (IBitcoinBasedTransaction)transaction;
+            var tx = (BitcoinBasedTransaction)transaction;
             var txHex = tx.ToBytes().ToHexString();
 
             tx.State = BlockchainTransactionState.Pending;

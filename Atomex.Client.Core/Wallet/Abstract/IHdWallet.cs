@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common.Memory;
 using Atomex.Core;
 
@@ -107,7 +108,7 @@ namespace Atomex.Wallet.Abstract
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>True, if transaction successfully signed, otherwise else</returns>
         Task<bool> SignAsync(
-            IInOutTransaction tx,
+            BitcoinBasedTransaction tx,
             IEnumerable<ITxOutput> spentOutputs,
             IAddressResolver addressResolver,
             CurrencyConfig currencyConfig,

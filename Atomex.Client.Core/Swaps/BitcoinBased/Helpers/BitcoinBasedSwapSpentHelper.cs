@@ -58,7 +58,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                                 secretSize: CurrencySwap.DefaultSecretSize,
                                 expectedNetwork: bitcoinBased.Network);
 
-                    var swapOutput = ((IBitcoinBasedTransaction)swap.PaymentTx)
+                    var swapOutput = ((BitcoinBasedTransaction)swap.PaymentTx)
                         .Outputs
                         .Cast<BitcoinBasedTxOutput>()
                         .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript) && o.Value >= requiredAmountInSatoshi);

@@ -90,7 +90,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                     return txResult.Value as BitcoinBasedTransaction;
                 }
 
-                return new Result<IBlockchainTransaction>((IBitcoinBasedTransaction)null);
+                return new Result<IBlockchainTransaction>((BitcoinBasedTransaction)null);
             }
             catch (Exception e)
             {
