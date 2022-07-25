@@ -1,7 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 
 namespace Atomex.Common
@@ -23,15 +22,15 @@ namespace Atomex.Common
             return Enumerable.Empty<BitcoinBasedTxOutput>();
         }
 
-        public static IEnumerable<ITxOutput> RemoveDuplicates(
-            this IEnumerable<ITxOutput> outputs)
+        public static IEnumerable<BitcoinBasedTxOutput> RemoveDuplicates(
+            this IEnumerable<BitcoinBasedTxOutput> outputs)
         {
             return outputs.GroupBy(o => $"{o.TxId}{o.Index}", RemoveDuplicatesOutputs);
         }
 
-        private static ITxOutput RemoveDuplicatesOutputs(
+        private static BitcoinBasedTxOutput RemoveDuplicatesOutputs(
             string id,
-            IEnumerable<ITxOutput> outputs)
+            IEnumerable<BitcoinBasedTxOutput> outputs)
         {
             var txOutputs = outputs.ToList();
 

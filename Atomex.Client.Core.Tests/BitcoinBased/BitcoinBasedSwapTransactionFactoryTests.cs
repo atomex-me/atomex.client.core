@@ -18,7 +18,7 @@ namespace Atomex.Client.Core.Tests
 {
     public class BitcoinBasedSwapTransactionFactoryTests
     {
-        private static Result<IEnumerable<ITxOutput>> GetTestOutputs(PubKey pubKey, NBitcoin.Network network)
+        private static Result<IEnumerable<BitcoinBasedTxOutput>> GetTestOutputs(PubKey pubKey, NBitcoin.Network network)
         {
             var tx = Transaction.Create(network);
             tx.Outputs.Add(new TxOut(new Money(100000L), pubKey.Hash));
@@ -29,7 +29,7 @@ namespace Atomex.Client.Core.Tests
                 .AsCoins()
                 .Select(c => new BitcoinBasedTxOutput(c));
 
-            return new Result<IEnumerable<ITxOutput>>(outputs);
+            return new Result<IEnumerable<BitcoinBasedTxOutput>>(outputs);
         }
 
         [Fact]

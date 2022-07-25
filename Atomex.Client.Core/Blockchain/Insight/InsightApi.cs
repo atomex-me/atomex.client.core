@@ -164,7 +164,7 @@ namespace Atomex.Blockchain.Insight
         private string BaseUri { get; }
 
         private static readonly RequestLimitControl RequestLimitControl
-            = new RequestLimitControl(MinDelayBetweenRequestMs);
+            = new (MinDelayBetweenRequestMs);
 
         public BitcoinBasedConfig Currency { get; }
 
@@ -305,7 +305,7 @@ namespace Atomex.Blockchain.Insight
                 .ConfigureAwait(false);
         }
 
-        public async override Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
+        public async override Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default)
@@ -331,13 +331,13 @@ namespace Atomex.Blockchain.Insight
                                 scriptPubKey: Script.FromHex(u.ScriptPubKey)),
                             spentTxPoint: null));
 
-                        return new Result<IEnumerable<ITxOutput>>(outputs);
+                        return new Result<IEnumerable<BitcoinBasedTxOutput>>(outputs);
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        public async override Task<Result<IEnumerable<ITxOutput>>> GetOutputsAsync(
+        public async override Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default)
@@ -355,7 +355,7 @@ namespace Atomex.Blockchain.Insight
                     {
                         var txs = JsonConvert.DeserializeObject<Txs>(content);
 
-                        var outputs = new List<ITxOutput>();
+                        var outputs = new List<BitcoinBasedTxOutput>();
 
                         foreach (var tx in txs.Transactions)
                         {
@@ -388,7 +388,7 @@ namespace Atomex.Blockchain.Insight
                             }
                         }
 
-                        return new Result<IEnumerable<ITxOutput>>(outputs);
+                        return new Result<IEnumerable<BitcoinBasedTxOutput>>(outputs);
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

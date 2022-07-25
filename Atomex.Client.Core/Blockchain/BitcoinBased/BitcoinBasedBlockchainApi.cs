@@ -25,12 +25,12 @@ namespace Atomex.Blockchain.BitcoinBased
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting input after {attempts} attempts");
         }
 
-        public abstract Task<Result<IEnumerable<ITxOutput>>> GetOutputsAsync(
+        public abstract Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default);
 
-        public async Task<Result<IEnumerable<ITxOutput>>> TryGetOutputsAsync(
+        public async Task<Result<IEnumerable<BitcoinBasedTxOutput>>> TryGetOutputsAsync(
             string address,
             string afterTxId = null,
             int attempts = 3,
@@ -41,7 +41,7 @@ namespace Atomex.Blockchain.BitcoinBased
                 .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting outputs after {attempts} attempts");
         }
 
-        public abstract Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
+        public abstract Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default);

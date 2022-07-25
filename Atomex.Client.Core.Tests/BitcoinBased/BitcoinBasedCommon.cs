@@ -3,14 +3,13 @@ using System.Collections.Generic;
 
 using NBitcoin;
 
-using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 
 namespace Atomex.Client.Core.Tests
 {
     public static class BitcoinBasedCommon
     {
-        public static IBitcoinBasedTransaction CreateFakeTx(BitcoinBasedConfig currency, PubKey to, params long[] outputs)
+        public static BitcoinBasedTransaction CreateFakeTx(BitcoinBasedConfig currency, PubKey to, params long[] outputs)
         {
             var tx = Transaction.Create(currency.Network);
 
@@ -20,9 +19,9 @@ namespace Atomex.Client.Core.Tests
             return new BitcoinBasedTransaction(currency.Name, tx);
         }
 
-        public static IBitcoinBasedTransaction CreateSegwitPaymentTx(
+        public static BitcoinBasedTransaction CreateSegwitPaymentTx(
             BitcoinBasedConfig currency,
-            IEnumerable<ITxOutput> outputs,
+            IEnumerable<BitcoinBasedTxOutput> outputs,
             PubKey from,
             PubKey to,
             int amount,
@@ -36,9 +35,9 @@ namespace Atomex.Client.Core.Tests
                 fee: fee);
         }
 
-        public static IBitcoinBasedTransaction CreatePaymentTx(
+        public static BitcoinBasedTransaction CreatePaymentTx(
             BitcoinBasedConfig currency,
-            IEnumerable<ITxOutput> outputs,
+            IEnumerable<BitcoinBasedTxOutput> outputs,
             PubKey from,
             PubKey to,
             int amount,

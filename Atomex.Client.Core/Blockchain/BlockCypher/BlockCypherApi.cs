@@ -132,7 +132,7 @@ namespace Atomex.Blockchain.BlockCypher
             return new Result<ITxPoint>(btcBasedTx.Inputs[inputNo]);
         }
 
-        public override async Task<Result<IEnumerable<ITxOutput>>> GetOutputsAsync(
+        public override async Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default)
@@ -154,7 +154,7 @@ namespace Atomex.Blockchain.BlockCypher
                     });
 
                     if (!addr.ContainsKey("txs"))
-                        return new Result<IEnumerable<ITxOutput>>(Enumerable.Empty<ITxOutput>());
+                        return new Result<IEnumerable<BitcoinBasedTxOutput>>(Enumerable.Empty<BitcoinBasedTxOutput>());
 
                     var txs = addr["txs"] as JArray;
 
@@ -257,7 +257,7 @@ namespace Atomex.Blockchain.BlockCypher
             .ConfigureAwait(false);
         }
 
-        public override async Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
+        public override async Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default)

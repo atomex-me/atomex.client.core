@@ -624,7 +624,7 @@ namespace Atomex.Wallet.BitcoinBased
         #region Outputs
 
         public virtual async Task UpsertOutputsAsync(
-            IEnumerable<ITxOutput> outputs,
+            IEnumerable<BitcoinBasedTxOutput> outputs,
             string address,
             bool notifyIfBalanceUpdated = true,
             CancellationToken cancellationToken = default)
@@ -690,7 +690,7 @@ namespace Atomex.Wallet.BitcoinBased
 
         private async Task UpsertOutputAsync(
             CurrencyConfig currency,
-            ITxOutput output,
+            BitcoinBasedTxOutput output,
             string address)
         {
             var addressOutputs = (await DataRepository
@@ -708,7 +708,7 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync()
+        public Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync()
         {
             var currency = Config;
 
@@ -718,7 +718,7 @@ namespace Atomex.Wallet.BitcoinBased
                 transactionType: currency.TransactionType);
         }
 
-        public Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(string address)
+        public Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(string address)
         {
             var currency = Config;
 
@@ -729,19 +729,19 @@ namespace Atomex.Wallet.BitcoinBased
                 transactionType: currency.TransactionType);
         }
 
-        public Task<IEnumerable<ITxOutput>> GetOutputsAsync()
+        public Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync()
         {
             return DataRepository
                 .GetOutputsAsync(Currency, Config.OutputType());
         }
 
-        public Task<IEnumerable<ITxOutput>> GetOutputsAsync(string address)
+        public Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(string address)
         {
             return DataRepository
                 .GetOutputsAsync(Currency, address, Config.OutputType());
         }
 
-        public Task<ITxOutput> GetOutputAsync(string txId, uint index)
+        public Task<BitcoinBasedTxOutput> GetOutputAsync(string txId, uint index)
         {
             return DataRepository
                 .GetOutputAsync(Currency, txId, index, Config.OutputType());

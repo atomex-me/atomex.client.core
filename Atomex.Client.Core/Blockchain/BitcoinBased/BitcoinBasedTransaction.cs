@@ -48,14 +48,13 @@ namespace Atomex.Blockchain.BitcoinBased
                     .ToArray();
             }
         }
-        public ITxOutput[] Outputs
+        public BitcoinBasedTxOutput[] Outputs
         {
             get
             { 
                 return Tx.Outputs
                     .AsCoins()
                     .Select(c => new BitcoinBasedTxOutput(c))
-                    .Cast<ITxOutput>()
                     .ToArray();
             }
         }
@@ -95,7 +94,7 @@ namespace Atomex.Blockchain.BitcoinBased
         public async Task<bool> SignAsync(
             IAddressResolver addressResolver,
             IKeyStorage keyStorage,
-            IEnumerable<ITxOutput> spentOutputs,
+            IEnumerable<BitcoinBasedTxOutput> spentOutputs,
             CurrencyConfig currencyConfig,
             CancellationToken cancellationToken = default)
         {
@@ -134,17 +133,15 @@ namespace Atomex.Blockchain.BitcoinBased
 
         public void Sign(
             Key privateKey,
-            ITxOutput spentOutput,
+            BitcoinBasedTxOutput spentOutput,
             BitcoinBasedConfig bitcoinBasedConfig)
         {
-            var output = (BitcoinBasedTxOutput)spentOutput;
-
-            Tx.Sign(new BitcoinSecret(privateKey, bitcoinBasedConfig.Network), output.Coin);
+            Tx.Sign(new BitcoinSecret(privateKey, bitcoinBasedConfig.Network), spentOutput.Coin);
         }
 
         public void Sign(
             SecureBytes privateKey,
-            ITxOutput spentOutput,
+            BitcoinBasedTxOutput spentOutput,
             BitcoinBasedConfig bitcoinBasedConfig)
         {
             var scopedPrivateKey = privateKey.ToUnsecuredBytes();
@@ -156,7 +153,7 @@ namespace Atomex.Blockchain.BitcoinBased
 
         public void Sign(
             Key privateKey,
-            ITxOutput[] spentOutputs,
+            BitcoinBasedTxOutput[] spentOutputs,
             BitcoinBasedConfig bitcoinBasedConfig)
         {
             foreach (var output in spentOutputs)
@@ -165,7 +162,7 @@ namespace Atomex.Blockchain.BitcoinBased
 
         public void Sign(
             SecureBytes privateKey,
-            ITxOutput[] spentOutputs,
+            BitcoinBasedTxOutput[] spentOutputs,
             BitcoinBasedConfig bitcoinBasedConfig)
         {
             var scopedPrivateKey = privateKey.ToUnsecuredBytes();
@@ -173,12 +170,12 @@ namespace Atomex.Blockchain.BitcoinBased
             Sign(new Key(scopedPrivateKey), spentOutputs, bitcoinBasedConfig); // todo: do not use NBitcoin.Key
         }
 
-        public void NonStandardSign(byte[] sigScript, ITxOutput spentOutput)
+        public void NonStandardSign(byte[] sigScript, BitcoinBasedTxOutput spentOutput)
         {
             NonStandardSign(new Script(sigScript), spentOutput);
         }
 
-        public void NonStandardSign(Script sigScript, ITxOutput spentOutput)
+        public void NonStandardSign(Script sigScript, BitcoinBasedTxOutput spentOutput)
         {
             var spentOutpoint = ((BitcoinBasedTxOutput) spentOutput).Coin.Outpoint;
             var input = Tx.Inputs.FindIndexedInput(spentOutpoint);
@@ -199,7 +196,7 @@ namespace Atomex.Blockchain.BitcoinBased
         }
 
         public bool Verify(
-            ITxOutput spentOutput,
+            BitcoinBasedTxOutput spentOutput,
             BitcoinBasedConfig bitcoinBasedConfig,
             bool checkScriptPubKey = true)
         {
@@ -209,14 +206,14 @@ namespace Atomex.Blockchain.BitcoinBased
                     CheckScriptPubKey = checkScriptPubKey,
                     ScriptVerify = ScriptVerify.Standard
                 })
-                .AddCoins(((BitcoinBasedTxOutput)spentOutput).Coin)
+                .AddCoins(spentOutput.Coin)
                 .Verify(Tx, out _);
 
             return result;
         }
 
         public bool Verify(
-            ITxOutput spentOutput,
+            BitcoinBasedTxOutput spentOutput,
             out Error[] errors,
             BitcoinBasedConfig bitcoinBasedConfig,
             bool checkScriptPubKey = true)
@@ -227,7 +224,7 @@ namespace Atomex.Blockchain.BitcoinBased
                     CheckScriptPubKey = checkScriptPubKey,
                     ScriptVerify = ScriptVerify.Standard
                 })
-                .AddCoins(((BitcoinBasedTxOutput)spentOutput).Coin)
+                .AddCoins(spentOutput.Coin)
                 .Verify(Tx, out var policyErrors);
 
             errors = policyErrors
@@ -238,7 +235,7 @@ namespace Atomex.Blockchain.BitcoinBased
         }
 
         public bool Verify(
-            IEnumerable<ITxOutput> spentOutputs,
+            IEnumerable<BitcoinBasedTxOutput> spentOutputs,
             BitcoinBasedConfig bitcoinBasedConfig,
             bool checkScriptPubKey = true)
         {
@@ -249,7 +246,6 @@ namespace Atomex.Blockchain.BitcoinBased
                     ScriptVerify = ScriptVerify.Standard,
                 })
                 .AddCoins(spentOutputs
-                    .Cast<BitcoinBasedTxOutput>()
                     .Select(o => o.Coin)
                     .ToArray())
                 .Verify(Tx, out var errors);
@@ -258,7 +254,7 @@ namespace Atomex.Blockchain.BitcoinBased
         }
 
         public bool Verify(
-            IEnumerable<ITxOutput> spentOutputs,
+            IEnumerable<BitcoinBasedTxOutput> spentOutputs,
             out Error[] errors,
             BitcoinBasedConfig bitcoinBasedConfig,
             bool checkScriptPubKey = true)
@@ -270,7 +266,6 @@ namespace Atomex.Blockchain.BitcoinBased
                     ScriptVerify = ScriptVerify.Standard
                 })
                 .AddCoins(spentOutputs
-                    .Cast<BitcoinBasedTxOutput>()
                     .Select(o => o.Coin)
                     .ToArray())
                 .Verify(Tx, out var policyErrors);
@@ -290,10 +285,9 @@ namespace Atomex.Blockchain.BitcoinBased
             return Tx.Check() == TransactionCheckResult.Success;
         }
 
-        public long GetFee(ITxOutput[] spentOutputs)
+        public long GetFee(BitcoinBasedTxOutput[] spentOutputs)
         {
             return Tx.GetFee(spentOutputs
-                    .Cast<BitcoinBasedTxOutput>()
                     .Select(o => o.Coin)
                     .ToArray())
                 .Satoshi;

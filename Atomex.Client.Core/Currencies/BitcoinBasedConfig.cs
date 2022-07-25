@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 
 using NBitcoin;
 
-using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Core;
 using Atomex.Common.Memory;
@@ -145,7 +144,7 @@ namespace Atomex
         }
 
         public BitcoinBasedTransaction CreatePaymentTx(
-            IEnumerable<ITxOutput> unspentOutputs,
+            IEnumerable<BitcoinBasedTxOutput> unspentOutputs,
             string destinationAddress,
             string changeAddress,
             long amount,
@@ -164,7 +163,7 @@ namespace Atomex
         }
 
         public BitcoinBasedTransaction CreateP2PkhTx(
-            IEnumerable<ITxOutput> unspentOutputs,
+            IEnumerable<BitcoinBasedTxOutput> unspentOutputs,
             string destinationAddress,
             string changeAddress,
             long amount,
@@ -173,7 +172,6 @@ namespace Atomex
             params Script[] knownRedeems)
         {
             var coins = unspentOutputs
-                .Cast<BitcoinBasedTxOutput>()
                 .Select(o => o.Coin);
 
             var destination = BitcoinAddress.Create(destinationAddress, Network)
@@ -194,7 +192,7 @@ namespace Atomex
         }
 
         public BitcoinBasedTransaction CreateP2WPkhTx(
-            IEnumerable<ITxOutput> unspentOutputs,
+            IEnumerable<BitcoinBasedTxOutput> unspentOutputs,
             string destinationAddress,
             string changeAddress,
             long amount,
@@ -202,7 +200,6 @@ namespace Atomex
             params Script[] knownRedeems)
         {
             var coins = unspentOutputs
-                .Cast<BitcoinBasedTxOutput>()
                 .Select(o => o.Coin);
 
             var destination = new BitcoinWitPubKeyAddress(destinationAddress, Network)
@@ -222,7 +219,7 @@ namespace Atomex
         }
 
         public virtual BitcoinBasedTransaction CreateHtlcP2PkhScriptSwapPaymentTx(
-            IEnumerable<ITxOutput> unspentOutputs,
+            IEnumerable<BitcoinBasedTxOutput> unspentOutputs,
             string aliceRefundAddress,
             string bobAddress,
             DateTimeOffset lockTime,
@@ -233,7 +230,6 @@ namespace Atomex
             out byte[] redeemScript)
         {
             var coins = unspentOutputs
-                .Cast<BitcoinBasedTxOutput>()
                 .Select(o => o.Coin);
 
             var swap = BitcoinBasedSwapTemplate.GenerateHtlcP2PkhSwapPayment(

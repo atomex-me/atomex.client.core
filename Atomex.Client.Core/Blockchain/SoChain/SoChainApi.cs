@@ -473,7 +473,7 @@ namespace Atomex.Blockchain.SoChain
                 .ConfigureAwait(false);
         }
 
-        public override async Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
+        public override async Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default)
@@ -503,13 +503,13 @@ namespace Atomex.Blockchain.SoChain
                                         scriptPubKey: Script.FromHex(u.ScriptHex)),
                                     spentTxPoint: null));
 
-                        return new Result<IEnumerable<ITxOutput>>(result);
+                        return new Result<IEnumerable<BitcoinBasedTxOutput>>(result);
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<IEnumerable<ITxOutput>>> GetReceivedOutputsAsync(
+        public async Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetReceivedOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default)
@@ -539,13 +539,13 @@ namespace Atomex.Blockchain.SoChain
                                         scriptPubKey: Script.FromHex(u.ScriptHex)),
                                     spentTxPoint: null));
 
-                        return new Result<IEnumerable<ITxOutput>>(result);
+                        return new Result<IEnumerable<BitcoinBasedTxOutput>>(result);
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        public override async Task<Result<IEnumerable<ITxOutput>>> GetOutputsAsync(
+        public override async Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default)
@@ -563,7 +563,7 @@ namespace Atomex.Blockchain.SoChain
                     {
                         var displayData = JsonConvert.DeserializeObject<Response<AddressDisplayData>>(content);
 
-                        var outputs = new List<ITxOutput>();
+                        var outputs = new List<BitcoinBasedTxOutput>();
 
                         foreach (var tx in displayData.Data.Txs)
                         {
@@ -588,7 +588,7 @@ namespace Atomex.Blockchain.SoChain
                                 spentTxPoint: spentTxPoint));
                         }
 
-                        return new Result<IEnumerable<ITxOutput>>(outputs);
+                        return new Result<IEnumerable<BitcoinBasedTxOutput>>(outputs);
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

@@ -109,7 +109,7 @@ namespace Atomex.Wallet.Abstract
         /// <returns>True, if transaction successfully signed, otherwise else</returns>
         Task<bool> SignAsync(
             BitcoinBasedTransaction tx,
-            IEnumerable<ITxOutput> spentOutputs,
+            IEnumerable<BitcoinBasedTxOutput> spentOutputs,
             IAddressResolver addressResolver,
             CurrencyConfig currencyConfig,
             CancellationToken cancellationToken = default);

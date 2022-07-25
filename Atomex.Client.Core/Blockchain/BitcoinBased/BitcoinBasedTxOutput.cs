@@ -17,7 +17,7 @@ namespace Atomex.Blockchain.BitcoinBased
         P2WSH
     }
 
-    public class BitcoinBasedTxOutput : ITxOutput
+    public class BitcoinBasedTxOutput
     {
         public Coin Coin { get; }
         public uint Index => Coin.Outpoint.N;

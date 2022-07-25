@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
 
 namespace Atomex.Blockchain.Abstract
@@ -19,17 +21,17 @@ namespace Atomex.Blockchain.Abstract
             int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);
 
-        Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
+        Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default);
 
-        Task<Result<IEnumerable<ITxOutput>>> GetOutputsAsync(
+        Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default);
 
-        Task<Result<IEnumerable<ITxOutput>>> TryGetOutputsAsync(
+        Task<Result<IEnumerable<BitcoinBasedTxOutput>>> TryGetOutputsAsync(
             string address,
             string afterTxId = null,
             int attempts = 3,

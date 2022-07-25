@@ -162,7 +162,7 @@ namespace Atomex.Swaps.BitcoinBased
                 throw new Exception($"Insufficient funds for fee. Available {amount}, required {feeInSatoshi}");
 
             return currencyConfig.CreateP2PkhTx(
-                unspentOutputs: new ITxOutput[] { swapOutput },
+                unspentOutputs: new BitcoinBasedTxOutput[] { swapOutput },
                 destinationAddress: refundAddress,
                 changeAddress: refundAddress,
                 amount: amount - feeInSatoshi,
@@ -218,7 +218,7 @@ namespace Atomex.Swaps.BitcoinBased
                 throw new Exception($"Insufficient funds for fee. Available {amount}, required {feeInSatoshi}");
 
             var tx = currencyConfig.CreateP2PkhTx(
-                unspentOutputs: new ITxOutput[] { swapOutput },
+                unspentOutputs: new BitcoinBasedTxOutput[] { swapOutput },
                 destinationAddress: redeemAddress,
                 changeAddress: redeemAddress,
                 amount: amount - feeInSatoshi,

@@ -4,6 +4,7 @@ using System.Security;
 using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.BitcoinBased;
 using Atomex.Blockchain.Tezos;
 using Atomex.Core;
 
@@ -122,26 +123,31 @@ namespace Atomex.Wallet.Abstract
         #region Outputs
 
         Task<bool> UpsertOutputsAsync(
-            IEnumerable<ITxOutput> outputs,
+            IEnumerable<BitcoinBasedTxOutput> outputs,
             string currency,
             string address);
-        Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
+
+        Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(
             string currency,
             Type outputType,
             Type transactionType);
-        Task<IEnumerable<ITxOutput>> GetAvailableOutputsAsync(
+
+        Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(
             string currency,
             string address,
             Type outputType,
             Type transactionType);
-        Task<IEnumerable<ITxOutput>> GetOutputsAsync(
+
+        Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(
             string currency,
             Type outputType);
-        Task<IEnumerable<ITxOutput>> GetOutputsAsync(
+
+        Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(
             string currency,
             string address,
             Type outputType);
-        Task<ITxOutput> GetOutputAsync(
+
+        Task<BitcoinBasedTxOutput> GetOutputAsync(
             string currency,
             string txId,
             uint index,

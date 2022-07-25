@@ -123,7 +123,7 @@ namespace Atomex.Blockchain.BitCore
         private string BaseUri { get; }
 
         private static readonly RequestLimitControl RequestLimitControl
-            = new RequestLimitControl(MinDelayBetweenRequestMs);
+            = new (MinDelayBetweenRequestMs);
 
         public BitcoinBasedConfig Currency { get; }
         public string Network => Currency.Network == NBitcoin.Network.Main ? "mainnet" : "testnet";
@@ -246,7 +246,7 @@ namespace Atomex.Blockchain.BitCore
             return new BitcoinBasedTxPoint(txInput);
         }
 
-        public async override Task<Result<IEnumerable<ITxOutput>>> GetUnspentOutputsAsync(
+        public async override Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default)
@@ -264,7 +264,7 @@ namespace Atomex.Blockchain.BitCore
                     {
                         var outputs = JsonConvert.DeserializeObject<List<Output>>(content);
 
-                        return new Result<IEnumerable<ITxOutput>>(outputs.Select(o => new BitcoinBasedTxOutput(
+                        return new Result<IEnumerable<BitcoinBasedTxOutput>>(outputs.Select(o => new BitcoinBasedTxOutput(
                             coin: new Coin(
                                 fromTxHash: new uint256(o.TxId),
                                 fromOutputIndex: o.Index,
@@ -276,7 +276,7 @@ namespace Atomex.Blockchain.BitCore
                 .ConfigureAwait(false);
         }
 
-        public async override Task<Result<IEnumerable<ITxOutput>>> GetOutputsAsync(
+        public async override Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default)
@@ -294,7 +294,7 @@ namespace Atomex.Blockchain.BitCore
                     {
                         var outputs = JsonConvert.DeserializeObject<List<Output>>(content);
 
-                        return new Result<IEnumerable<ITxOutput>>(outputs.Select(o =>
+                        return new Result<IEnumerable<BitcoinBasedTxOutput>>(outputs.Select(o =>
                         {
                             var spentPoint = !string.IsNullOrEmpty(o.SpentTxId)
                                 ? new TxPoint(0, o.SpentTxId)

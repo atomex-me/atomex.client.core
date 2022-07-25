@@ -11,6 +11,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
+using Atomex.Blockchain.BitcoinBased;
 
 namespace Atomex.Wallet.BitcoinBased
 {
@@ -216,7 +217,7 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         private async Task ScanTransactionsAsync(
-            IEnumerable<ITxOutput> outputs,
+            IEnumerable<BitcoinBasedTxOutput> outputs,
             CancellationToken cancellationToken = default)
         {
             var currency = Currency;
