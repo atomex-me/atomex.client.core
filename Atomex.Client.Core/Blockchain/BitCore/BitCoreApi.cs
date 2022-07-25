@@ -5,13 +5,15 @@ using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
-using Atomex.Common;
+
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+
+using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.BitcoinBased;
+using Atomex.Common;
 
 namespace Atomex.Blockchain.BitCore
 {

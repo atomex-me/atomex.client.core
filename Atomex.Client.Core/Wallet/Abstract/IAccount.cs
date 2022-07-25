@@ -143,9 +143,9 @@ namespace Atomex.Wallet.Abstract
 
         #region Transactions
 
-        Task<IBlockchainTransaction> GetTransactionByIdAsync(
+        Task<T> GetTransactionByIdAsync<T>(
             string currency,
-            string txId);
+            string txId) where T : IBlockchainTransaction;
 
         Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
             string currency);

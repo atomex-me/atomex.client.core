@@ -324,7 +324,7 @@ namespace Atomex.Wallet.BitcoinBased
             var currency = Config;
 
             var oldTx = await DataRepository
-                .GetTransactionByIdAsync(Currency, tx.Id, currency.TransactionType)
+                .GetTransactionByIdAsync<BitcoinBasedTransaction>(Currency, tx.Id)
                 .ConfigureAwait(false);
 
             if (oldTx != null && oldTx.IsConfirmed)
@@ -401,7 +401,7 @@ namespace Atomex.Wallet.BitcoinBased
                         var isSpent = o.IsSpent;
 
                         var tx = await DataRepository
-                            .GetTransactionByIdAsync(Currency, o.TxId, currency.TransactionType)
+                            .GetTransactionByIdAsync<BitcoinBasedTransaction>(Currency, o.TxId)
                             .ConfigureAwait(false);
 
                         var isConfirmedOutput = tx?.IsConfirmed ?? false;
@@ -411,7 +411,7 @@ namespace Atomex.Wallet.BitcoinBased
                         if (isSpent)
                         {
                             var spentTx = await DataRepository
-                                .GetTransactionByIdAsync(Currency, o.SpentTxPoint.Hash, currency.TransactionType)
+                                .GetTransactionByIdAsync<BitcoinBasedTransaction>(Currency, o.SpentTxPoint.Hash)
                                 .ConfigureAwait(false);
 
                             isConfirmedInput = spentTx?.IsConfirmed ?? false;
@@ -495,7 +495,7 @@ namespace Atomex.Wallet.BitcoinBased
                 //        .FirstOrDefault(to => to.Index == o.Index && to.TxId == o.TxId) != null) == null;
 
                 var isConfirmedOutput = (await DataRepository
-                    .GetTransactionByIdAsync(Currency, o.TxId, currency.TransactionType)
+                    .GetTransactionByIdAsync<BitcoinBasedTransaction>(Currency, o.TxId)
                     .ConfigureAwait(false))
                     .IsConfirmed;
 
@@ -504,7 +504,7 @@ namespace Atomex.Wallet.BitcoinBased
                 //        .FirstOrDefault(ti => ti.Index == o.Index && ti.Hash == o.TxId) != null) == null;
 
                 var isConfirmedInput = isSpent && (await DataRepository
-                    .GetTransactionByIdAsync(Currency, o.SpentTxPoint.Hash, currency.TransactionType)
+                    .GetTransactionByIdAsync<BitcoinBasedTransaction>(Currency, o.SpentTxPoint.Hash)
                     .ConfigureAwait(false))
                     .IsConfirmed;
 
@@ -607,16 +607,6 @@ namespace Atomex.Wallet.BitcoinBased
 
             if (updateBalance && notifyIfBalanceUpdated)
                 RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
-        }
-
-        public Task<IBlockchainTransaction> GetTransactionByIdAsync(string txId)
-        {
-            var currency = Currencies.GetByName(Currency);
-
-            return DataRepository.GetTransactionByIdAsync(
-                currency: Currency,
-                txId: txId,
-                transactionType: currency.TransactionType);
         }
 
         #endregion Transactions

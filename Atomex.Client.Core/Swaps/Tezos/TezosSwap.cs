@@ -199,9 +199,8 @@ namespace Atomex.Swaps.Tezos
                 swap.RedeemTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
             {
                 // redeem already broadcast
-                _ = TrackTransactionConfirmationAsync(
+                _ = TrackTransactionConfirmationAsync<TezosTransaction>(
                     swap: swap,
-                    currency: xtzConfig,
                     dataRepository: _account.DataRepository,
                     txId: swap.RedeemTx.Id,
                     confirmationHandler: RedeemConfirmedEventHandler,
@@ -337,9 +336,8 @@ namespace Atomex.Swaps.Tezos
             await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemBroadcast, cancellationToken)
                 .ConfigureAwait(false);
 
-            _ = TrackTransactionConfirmationAsync(
+            _ = TrackTransactionConfirmationAsync<TezosTransaction>(
                 swap: swap,
-                currency: xtzConfig,
                 dataRepository: _account.DataRepository,
                 txId: redeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
@@ -457,9 +455,8 @@ namespace Atomex.Swaps.Tezos
                 swap.RefundTx.CreationTime != null &&
                 swap.RefundTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
             {
-                _ = TrackTransactionConfirmationAsync(
+                _ = TrackTransactionConfirmationAsync<TezosTransaction>(
                     swap: swap,
-                    currency: xtzConfig,
                     dataRepository: _account.DataRepository,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
@@ -570,9 +567,8 @@ namespace Atomex.Swaps.Tezos
             await UpdateSwapAsync(swap, SwapStateFlags.IsRefundBroadcast, cancellationToken)
                 .ConfigureAwait(false);
 
-            _ = TrackTransactionConfirmationAsync(
+            _ = TrackTransactionConfirmationAsync<TezosTransaction>(
                 swap: swap,
-                currency: xtzConfig,
                 dataRepository: _account.DataRepository,
                 txId: refundTx.Id,
                 confirmationHandler: RefundConfirmedEventHandler,
@@ -867,7 +863,7 @@ namespace Atomex.Swaps.Tezos
 
                 var tx = await _account
                     .DataRepository
-                    .GetTransactionByIdAsync(XtzConfig.Name, txId, XtzConfig.TransactionType)
+                    .GetTransactionByIdAsync<TezosTransaction>(XtzConfig.Name, txId)
                     .ConfigureAwait(false);
 
                 if (tx is not { IsConfirmed: true }) continue;

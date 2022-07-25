@@ -16,14 +16,12 @@ namespace Atomex.Wallet.Abstract
 
         #region Addresses
 
-        Task<bool> UpsertAddressAsync(
-            WalletAddress walletAddress);
+        Task<bool> UpsertAddressAsync(WalletAddress walletAddress);
 
         Task<int> UpsertAddressesAsync(
             IEnumerable<WalletAddress> walletAddresses);
 
-        Task<bool> TryInsertAddressAsync(
-            WalletAddress walletAddress);
+        Task<bool> TryInsertAddressAsync(WalletAddress walletAddress);
 
         Task<WalletAddress> GetWalletAddressAsync(
             string currency,
@@ -42,12 +40,9 @@ namespace Atomex.Wallet.Abstract
             string currency,
             bool includeUnconfirmed = true);
 
-        Task<IEnumerable<WalletAddress>> GetAddressesAsync(
-            string currency);
+        Task<IEnumerable<WalletAddress>> GetAddressesAsync(string currency);
 
-        Task<bool> RemoveAddressAsync(
-            string currency,
-            string address);
+        Task<bool> RemoveAddressAsync(string currency, string address);
 
         #endregion Addresses
 
@@ -99,13 +94,11 @@ namespace Atomex.Wallet.Abstract
 
         #region Transactions
 
-        Task<bool> UpsertTransactionAsync(
-            IBlockchainTransaction tx);
+        Task<bool> UpsertTransactionAsync(IBlockchainTransaction tx);
 
-        Task<IBlockchainTransaction> GetTransactionByIdAsync(
+        Task<T> GetTransactionByIdAsync<T>(
             string currency,
-            string txId,
-            Type transactionType);
+            string txId) where T : IBlockchainTransaction;
 
         Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
             string currency,
@@ -115,8 +108,7 @@ namespace Atomex.Wallet.Abstract
             string currency,
             Type transactionType);
 
-        Task<bool> RemoveTransactionByIdAsync(
-            string id);
+        Task<bool> RemoveTransactionByIdAsync(string id);
 
         #endregion Transactions
 

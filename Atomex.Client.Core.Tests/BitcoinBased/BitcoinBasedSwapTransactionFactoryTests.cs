@@ -3,16 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Moq;
+using NBitcoin;
+using NBitcoin.Altcoins;
+using Xunit;
+
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.BitcoinBased;
-using Moq;
-using NBitcoin;
-using NBitcoin.Altcoins;
-using Xunit;
 
 namespace Atomex.Client.Core.Tests
 {

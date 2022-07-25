@@ -303,7 +303,7 @@ namespace Atomex.Wallet.Tezos
 
             var oldTx = !xtzTx.IsInternal
                 ? await DataRepository
-                    .GetTransactionByIdAsync(Currency, tx.Id, Config.TransactionType)
+                    .GetTransactionByIdAsync<TezosTransaction>(Currency, tx.Id)
                     .ConfigureAwait(false)
                 : null;
 

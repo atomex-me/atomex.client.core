@@ -190,9 +190,8 @@ namespace Atomex.Swaps.Ethereum
                 swap.RedeemTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(30) > DateTime.UtcNow)
             {
                 // redeem already broadcast
-                _ = TrackTransactionConfirmationAsync(
+                _ = TrackTransactionConfirmationAsync<EthereumTransaction>(
                     swap: swap,
-                    currency: ethConfig,
                     dataRepository: _account.DataRepository,
                     txId: swap.RedeemTx.Id,
                     confirmationHandler: RedeemConfirmedEventHandler,
@@ -309,9 +308,8 @@ namespace Atomex.Swaps.Ethereum
             await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemBroadcast, cancellationToken)
                 .ConfigureAwait(false);
 
-            _ = TrackTransactionConfirmationAsync(
+            _ = TrackTransactionConfirmationAsync<EthereumTransaction>(
                 swap: swap,
-                currency: ethConfig,
                 dataRepository: _account.DataRepository,
                 txId: redeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
@@ -419,9 +417,8 @@ namespace Atomex.Swaps.Ethereum
                 swap.RefundTx.CreationTime != null &&
                 swap.RefundTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(20) > DateTime.UtcNow)
             {
-                _ = TrackTransactionConfirmationAsync(
+                _ = TrackTransactionConfirmationAsync<EthereumTransaction>(
                     swap: swap,
-                    currency: ethConfig,
                     dataRepository: _account.DataRepository,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
@@ -558,9 +555,8 @@ namespace Atomex.Swaps.Ethereum
             await UpdateSwapAsync(swap, SwapStateFlags.IsRefundBroadcast, cancellationToken)
                 .ConfigureAwait(false);
 
-            _ = TrackTransactionConfirmationAsync(
+            _ = TrackTransactionConfirmationAsync<EthereumTransaction>(
                 swap: swap,
-                currency: ethConfig,
                 dataRepository: _account.DataRepository,
                 txId: refundTx.Id,
                 confirmationHandler: RefundConfirmedEventHandler,
@@ -890,7 +886,7 @@ namespace Atomex.Swaps.Ethereum
                 
                 var tx = await _account
                     .DataRepository
-                    .GetTransactionByIdAsync(EthConfig.Name, txId, EthConfig.TransactionType)
+                    .GetTransactionByIdAsync<EthereumTransaction>(EthConfig.Name, txId)
                     .ConfigureAwait(false);
 
                 if (tx is not { IsConfirmed: true }) continue;

@@ -317,7 +317,7 @@ namespace Atomex.Wallet.Ethereum
 
             var oldTx = !ethTx.IsInternal
                 ? await DataRepository
-                    .GetTransactionByIdAsync(Currency, tx.Id, EthConfig.TransactionType)
+                    .GetTransactionByIdAsync<EthereumTransaction>(Currency, tx.Id)
                     .ConfigureAwait(false)
                 : null;
 

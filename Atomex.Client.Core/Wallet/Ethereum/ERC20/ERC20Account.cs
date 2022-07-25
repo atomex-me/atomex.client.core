@@ -369,8 +369,8 @@ namespace Atomex.Wallet.Ethereum
             if (tx is not EthereumTransaction ethTx)
                 throw new ArgumentException("Invalid tx type", nameof(tx));
 
-            var oldTx = (EthereumTransaction) await DataRepository
-                .GetTransactionByIdAsync(Currency, tx.Id, erc20.TransactionType)
+            var oldTx = await DataRepository
+                .GetTransactionByIdAsync<EthereumTransaction>(Currency, tx.Id)
                 .ConfigureAwait(false);
 
             //if (oldTx != null && oldTx.IsConfirmed)

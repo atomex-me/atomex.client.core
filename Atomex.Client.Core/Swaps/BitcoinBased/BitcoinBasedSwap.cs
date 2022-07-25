@@ -225,9 +225,8 @@ namespace Atomex.Swaps.BitcoinBased
 
                 if (!needReplaceTx)
                 {
-                    _ = TrackTransactionConfirmationAsync(
+                    _ = TrackTransactionConfirmationAsync<BitcoinBasedTransaction>(
                         swap: swap,
-                        currency: currency,
                         dataRepository: _account.DataRepository,
                         txId: swap.RedeemTx.Id,
                         confirmationHandler: RedeemConfirmedEventHandler,
@@ -342,9 +341,8 @@ namespace Atomex.Swaps.BitcoinBased
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            _ = TrackTransactionConfirmationAsync(
+            _ = TrackTransactionConfirmationAsync<BitcoinBasedTransaction>(
                 swap: swap,
-                currency: currency,
                 dataRepository: _account.DataRepository,
                 txId: swap.RedeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
@@ -365,9 +363,8 @@ namespace Atomex.Swaps.BitcoinBased
         {
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast))
             {
-                _ = TrackTransactionConfirmationAsync(
+                _ = TrackTransactionConfirmationAsync<BitcoinBasedTransaction>(
                     swap: swap,
-                    currency: Currencies.GetByName(swap.SoldCurrency),
                     dataRepository: _account.DataRepository,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
@@ -452,9 +449,8 @@ namespace Atomex.Swaps.BitcoinBased
                 cancellationToken: cancellationToken);
 
             if (!swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed))
-                _ = TrackTransactionConfirmationAsync(
+                _ = TrackTransactionConfirmationAsync<BitcoinBasedTransaction>(
                     swap: swap,
-                    currency: currency,
                     dataRepository: _account.DataRepository,
                     txId: swap.PaymentTxId,
                     confirmationHandler: PaymentConfirmedEventHandler,
@@ -826,9 +822,8 @@ namespace Atomex.Swaps.BitcoinBased
                         updateBalance: true)
                     .ConfigureAwait(false);
 
-                _ = TrackTransactionConfirmationAsync(
+                _ = TrackTransactionConfirmationAsync<BitcoinBasedTransaction>(
                     swap: swap,
-                    currency: Currencies.GetByName(swap.SoldCurrency),
                     dataRepository: _account.DataRepository,
                     txId: txId,
                     confirmationHandler: RefundConfirmedEventHandler,

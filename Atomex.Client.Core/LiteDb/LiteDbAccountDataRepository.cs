@@ -816,10 +816,9 @@ namespace Atomex.LiteDb
             return Task.FromResult(false);
         }
 
-        public Task<IBlockchainTransaction> GetTransactionByIdAsync(
+        public Task<T> GetTransactionByIdAsync<T>(
             string currency,
-            string txId,
-            Type transactionType)
+            string txId) where T : IBlockchainTransaction
         {
             try
             {
@@ -831,9 +830,7 @@ namespace Atomex.LiteDb
 
                     if (document != null)
                     {
-                        var tx = (IBlockchainTransaction)_bsonMapper.ToObject(
-                            type: transactionType,
-                            doc: document);
+                        var tx = _bsonMapper.ToObject<T>(document);
 
                         return Task.FromResult(tx);
                     }
@@ -844,7 +841,7 @@ namespace Atomex.LiteDb
                 Log.Error(e, "Error getting transaction by id");
             }
 
-            return Task.FromResult<IBlockchainTransaction>(null);
+            return Task.FromResult<T>(default);
         }
 
         public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
@@ -948,13 +945,13 @@ namespace Atomex.LiteDb
             Type outputType,
             Type transactionType)
         {
-            var outputs = (await GetOutputsAsync(currency, outputType)
+            return (await GetOutputsAsync(currency, outputType)
                 .ConfigureAwait(false))
                 .Where(o => !o.IsSpent)
                 .ToList();
 
-            return await GetOnlyConfirmedOutputsAsync(currency, outputs, transactionType)
-                .ConfigureAwait(false);
+            //return await GetOnlyConfirmedOutputsAsync(currency, outputs, transactionType)
+            //    .ConfigureAwait(false);
         }
 
         public async Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(
@@ -963,33 +960,33 @@ namespace Atomex.LiteDb
             Type outputType,
             Type transactionType)
         {
-            var outputs = (await GetOutputsAsync(currency, address, outputType)
+            return (await GetOutputsAsync(currency, address, outputType)
                 .ConfigureAwait(false))
                 .Where(o => !o.IsSpent)
                 .ToList();
 
-            return await GetOnlyConfirmedOutputsAsync(currency, outputs, transactionType)
-                .ConfigureAwait(false);
+            //return await GetOnlyConfirmedOutputsAsync(currency, outputs, transactionType)
+            //    .ConfigureAwait(false);
         }
 
-        private async Task<IEnumerable<BitcoinBasedTxOutput>> GetOnlyConfirmedOutputsAsync(
-            string currency,
-            IEnumerable<BitcoinBasedTxOutput> outputs,
-            Type transactionType)
-        {
-            var confirmedOutputs = new List<BitcoinBasedTxOutput>();
+        //private async Task<IEnumerable<BitcoinBasedTxOutput>> GetOnlyConfirmedOutputsAsync(
+        //    string currency,
+        //    IEnumerable<BitcoinBasedTxOutput> outputs,
+        //    Type transactionType)
+        //{
+        //    var confirmedOutputs = new List<BitcoinBasedTxOutput>();
 
-            foreach (var o in outputs)
-            {
-                var tx = await GetTransactionByIdAsync(currency, o.TxId, transactionType)
-                    .ConfigureAwait(false);
+        //    foreach (var o in outputs)
+        //    {
+        //        var tx = await GetTransactionByIdAsync(currency, o.TxId, transactionType)
+        //            .ConfigureAwait(false);
 
-                if (tx?.IsConfirmed ?? false)
-                    confirmedOutputs.Add(o);
-            }
+        //        if (tx?.IsConfirmed ?? false)
+        //            confirmedOutputs.Add(o);
+        //    }
 
-            return confirmedOutputs;
-        }
+        //    return confirmedOutputs;
+        //}
 
         public Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(string currency, Type outputType)
         {

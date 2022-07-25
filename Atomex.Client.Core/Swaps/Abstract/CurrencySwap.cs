@@ -107,13 +107,12 @@ namespace Atomex.Swaps.Abstract
         public static byte[] CreateSwapSecretHash(byte[] secretBytes) =>
             HashAlgorithm.Sha256.Hash(secretBytes, iterations: 2);
 
-        protected Task TrackTransactionConfirmationAsync(
+        protected Task TrackTransactionConfirmationAsync<T>(
             Swap swap,
-            CurrencyConfig currency,
             IAccountDataRepository dataRepository,
             string txId,
             Func<Swap, IBlockchainTransaction, CancellationToken, Task> confirmationHandler,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default) where T : IBlockchainTransaction
         {
             return Task.Run(async () =>
             {
@@ -121,8 +120,12 @@ namespace Atomex.Swaps.Abstract
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
+                        var currency = Atomex.Currencies.IsTezosToken(Currency)
+                            ? TezosConfig.Xtz
+                            : Currency;
+
                         var tx = await dataRepository
-                            .GetTransactionByIdAsync(currency.Name, txId, currency.TransactionType)
+                            .GetTransactionByIdAsync<T>(currency, txId)
                             .ConfigureAwait(false);
 
                         if (tx == null)

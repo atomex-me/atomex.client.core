@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using Atomex.Blockchain.BitcoinBased;
 
 namespace Atomex.Wallet.BitcoinBased
 {
@@ -233,7 +233,8 @@ namespace Atomex.Wallet.BitcoinBased
                 foreach (var txId in txIds)
                 {
                     var localTx = await Account
-                        .GetTransactionByIdAsync(txId)
+                        .DataRepository
+                        .GetTransactionByIdAsync<BitcoinBasedTransaction>(currency.Name, txId)
                         .ConfigureAwait(false);
 
                     // request only not confirmed transactions
