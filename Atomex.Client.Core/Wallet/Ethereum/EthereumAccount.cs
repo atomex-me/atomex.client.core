@@ -376,9 +376,8 @@ namespace Atomex.Wallet.Ethereum
                     var eth = EthConfig;
 
                     var txs = (await DataRepository
-                        .GetTransactionsAsync(Currency, eth.TransactionType)
+                        .GetTransactionsAsync<EthereumTransaction>(Currency)
                         .ConfigureAwait(false))
-                        .Cast<EthereumTransaction>()
                         .ToList();
 
                     var internalTxs = txs.Aggregate(new List<EthereumTransaction>(), (list, tx) =>
@@ -538,9 +537,8 @@ namespace Atomex.Wallet.Ethereum
 
                     // calculate unconfirmed balances
                     var unconfirmedTxs = (await DataRepository
-                        .GetUnconfirmedTransactionsAsync(Currency, eth.TransactionType)
+                        .GetUnconfirmedTransactionsAsync<EthereumTransaction>(Currency)
                         .ConfigureAwait(false))
-                        .Cast<EthereumTransaction>()
                         .ToList();
 
                     var unconfirmedInternalTxs = unconfirmedTxs.Aggregate(new List<EthereumTransaction>(), (list, tx) =>
@@ -682,5 +680,17 @@ namespace Atomex.Wallet.Ethereum
         }
 
         #endregion Addresses
+
+        #region Transactions
+
+        public override async Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return await DataRepository
+                .GetUnconfirmedTransactionsAsync<EthereumTransaction>(Currency)
+                .ConfigureAwait(false);
+        }
+
+        #endregion Transactions
     }
 }

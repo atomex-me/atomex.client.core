@@ -242,6 +242,9 @@ namespace Atomex.Wallet.Abstract
                 RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
         }
 
+        public abstract Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
+            CancellationToken cancellationToken = default);
+
         #endregion Transactions
     }
 }

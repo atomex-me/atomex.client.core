@@ -12,7 +12,6 @@ using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
-using Atomex.Common.Bson;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
@@ -331,7 +330,7 @@ namespace Atomex.Wallet.BitcoinBased
                 return false;
 
             var outputs = await DataRepository
-                .GetOutputsAsync(Currency, currency.OutputType())
+                .GetOutputsAsync(Currency)
                 .ConfigureAwait(false);
 
             var indexedOutputs = outputs.ToDictionary(o => $"{o.TxId}:{o.Index}");
@@ -383,7 +382,7 @@ namespace Atomex.Wallet.BitcoinBased
                     var currency = Config;
 
                     var outputs = (await DataRepository
-                        .GetOutputsAsync(Currency, currency.OutputType())
+                        .GetOutputsAsync(Currency)
                         .ConfigureAwait(false))
                         .ToList();
 
@@ -472,7 +471,7 @@ namespace Atomex.Wallet.BitcoinBased
             var currency = Config;
 
             var outputs = (await DataRepository
-                .GetOutputsAsync(Currency, address, currency.OutputType())
+                .GetOutputsAsync(Currency, address)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -665,7 +664,7 @@ namespace Atomex.Wallet.BitcoinBased
                 var input = tx.Inputs[i];
                 
                 var selfInput = await DataRepository
-                    .GetOutputAsync(Currency, input.Hash, input.Index, typeof(BitcoinBasedTxOutput))
+                    .GetOutputAsync(Currency, input.Hash, input.Index)
                     .ConfigureAwait(false);
 
                 if (selfInput == null)
@@ -684,7 +683,7 @@ namespace Atomex.Wallet.BitcoinBased
             string address)
         {
             var addressOutputs = (await DataRepository
-                .GetOutputsAsync(currency.Name, address, currency.OutputType())
+                .GetOutputsAsync(currency.Name, address)
                 .ConfigureAwait(false))
                 .ToList();
 
@@ -700,41 +699,29 @@ namespace Atomex.Wallet.BitcoinBased
 
         public Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync()
         {
-            var currency = Config;
-
-            return DataRepository.GetAvailableOutputsAsync(
-                currency: Currency,
-                outputType: currency.OutputType(),
-                transactionType: currency.TransactionType);
+            return DataRepository.GetAvailableOutputsAsync(Currency);
         }
 
         public Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(string address)
         {
-            var currency = Config;
-
             return DataRepository.GetAvailableOutputsAsync(
                 currency: Currency,
-                address: address,
-                outputType: currency.OutputType(),
-                transactionType: currency.TransactionType);
+                address: address);
         }
 
         public Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync()
         {
-            return DataRepository
-                .GetOutputsAsync(Currency, Config.OutputType());
+            return DataRepository.GetOutputsAsync(Currency);
         }
 
         public Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(string address)
         {
-            return DataRepository
-                .GetOutputsAsync(Currency, address, Config.OutputType());
+            return DataRepository.GetOutputsAsync(Currency, address);
         }
 
         public Task<BitcoinBasedTxOutput> GetOutputAsync(string txId, uint index)
         {
-            return DataRepository
-                .GetOutputAsync(Currency, txId, index, Config.OutputType());
+            return DataRepository.GetOutputAsync(Currency, txId, index);
         }
 
         #endregion Outputs
@@ -750,5 +737,17 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         #endregion AddressResolver
+
+        #region Transactions
+
+        public override async Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return await DataRepository
+                .GetUnconfirmedTransactionsAsync<BitcoinBasedTransaction>(Currency)
+                .ConfigureAwait(false);
+        }
+
+        #endregion Transactions
     }
 }

@@ -708,5 +708,12 @@ namespace Atomex.Wallet.Tezos
             decimal amount);
 
         #endregion Helpers
+
+        #region Transactions
+
+        public Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
+            CancellationToken cancellationToken = default) => Task.FromResult(Enumerable.Empty<IBlockchainTransaction>());
+
+        #endregion Transactions
     }
 }

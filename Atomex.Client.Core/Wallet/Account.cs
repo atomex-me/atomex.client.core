@@ -309,20 +309,21 @@ namespace Atomex.Wallet
                 txId: txId);
         }
 
-        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(string currency)
+        public Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
+            where T : IBlockchainTransaction
         {
-            return DataRepository.GetTransactionsAsync(
-                currency: currency,
-                transactionType: Currencies.GetByName(currency).TransactionType);
+            return DataRepository.GetTransactionsAsync<T>(
+                currency: currency);
         }
 
-        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync()
+        public async Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync()
         {
             var result = new List<IBlockchainTransaction>();
 
-            foreach (var currency in Currencies)
+            foreach (var (_, account) in CurrencyAccounts)
             {
-                var txs = await GetTransactionsAsync(currency.Name)
+                var txs = await account
+                    .GetUnconfirmedTransactionsAsync()
                     .ConfigureAwait(false);
 
                 result.AddRange(txs);

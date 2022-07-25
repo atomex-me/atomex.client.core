@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Atomex.Blockchain.Abstract;
 using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract
@@ -44,5 +45,12 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default);
 
         #endregion Addresses
+
+        #region Transactions
+
+        Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
+            CancellationToken cancellationToken = default);
+
+        #endregion
     }
 }

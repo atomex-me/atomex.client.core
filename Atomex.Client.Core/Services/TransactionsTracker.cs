@@ -49,11 +49,11 @@ namespace Atomex.Services
                 try
                 {
                     var txs = await _account
-                        .GetTransactionsAsync()
+                        .GetUnconfirmedTransactionsAsync()
                         .ConfigureAwait(false);
 
                     foreach (var tx in txs)
-                        if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
+                        if (tx.State != BlockchainTransactionState.Failed)
                             _ = TrackTransactionAsync(tx, _cts.Token);
                 }
                 catch (OperationCanceledException)

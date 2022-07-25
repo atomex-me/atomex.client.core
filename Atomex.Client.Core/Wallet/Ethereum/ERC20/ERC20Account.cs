@@ -431,9 +431,8 @@ namespace Atomex.Wallet.Ethereum
                     var erc20 = Erc20Config;
 
                     var txs = (await DataRepository
-                        .GetTransactionsAsync(Currency, erc20.TransactionType)
+                        .GetTransactionsAsync<EthereumTransaction>(Currency)
                         .ConfigureAwait(false))
-                        .Cast<EthereumTransaction>()
                         .ToList();
 
                     // calculate balances
@@ -601,9 +600,8 @@ namespace Atomex.Wallet.Ethereum
 
                     // calculate unconfirmed balances
                     var unconfirmedTxs = (await DataRepository
-                        .GetUnconfirmedTransactionsAsync(Currency, erc20.TransactionType)
+                        .GetUnconfirmedTransactionsAsync<EthereumTransaction>(Currency)
                         .ConfigureAwait(false))
-                        .Cast<EthereumTransaction>()
                         .ToList();
 
                     foreach (var utx in unconfirmedTxs)
@@ -788,5 +786,17 @@ namespace Atomex.Wallet.Ethereum
         }
 
         #endregion Addresses
+
+        #region Transactions
+
+        public override async Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return await DataRepository
+                .GetUnconfirmedTransactionsAsync<EthereumTransaction>(Currency)
+                .ConfigureAwait(false);
+        }
+
+        #endregion Transactions
     }
 }

@@ -96,17 +96,14 @@ namespace Atomex.Wallet.Abstract
 
         Task<bool> UpsertTransactionAsync(IBlockchainTransaction tx);
 
-        Task<T> GetTransactionByIdAsync<T>(
-            string currency,
-            string txId) where T : IBlockchainTransaction;
+        Task<T> GetTransactionByIdAsync<T>(string currency, string txId)
+            where T : IBlockchainTransaction;
 
-        Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
-            string currency,
-            Type transactionType);
+        Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
+            where T : IBlockchainTransaction;
 
-        Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
-            string currency,
-            Type transactionType);
+        Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(string currency)
+            where T : IBlockchainTransaction;
 
         Task<bool> RemoveTransactionByIdAsync(string id);
 
@@ -120,30 +117,23 @@ namespace Atomex.Wallet.Abstract
             string address);
 
         Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(
-            string currency,
-            Type outputType,
-            Type transactionType);
+            string currency);
 
         Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(
             string currency,
-            string address,
-            Type outputType,
-            Type transactionType);
+            string address);
+
+        Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(
+            string currency);
 
         Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(
             string currency,
-            Type outputType);
-
-        Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(
-            string currency,
-            string address,
-            Type outputType);
+            string address);
 
         Task<BitcoinBasedTxOutput> GetOutputAsync(
             string currency,
             string txId,
-            uint index,
-            Type outputType);
+            uint index);
 
         #endregion Outputs
 

@@ -821,5 +821,17 @@ namespace Atomex.Wallet.Tezos
         }
 
         #endregion Addresses
+
+        #region Transactions
+
+        public override async Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return await DataRepository
+                .GetUnconfirmedTransactionsAsync<TezosTransaction>(Currency)
+                .ConfigureAwait(false);
+        }
+
+        #endregion Transactions
     }
 }
