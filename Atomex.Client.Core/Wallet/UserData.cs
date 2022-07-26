@@ -40,6 +40,7 @@ namespace Atomex.Wallet
         public int BalanceUpdateIntervalInSec { get; set; }
         public string[] DisabledCurrencies { get; set; }
         public string[] DisabledTokens { get; set; }
+        public string[] DisabledCollectibles { get; set; }
         public bool? HideTokensWithLowBalance { get; set; }
         public List<AtomexNotification> Notifications { get; set; }
 
