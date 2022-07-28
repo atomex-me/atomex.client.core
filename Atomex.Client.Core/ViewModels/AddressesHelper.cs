@@ -100,7 +100,7 @@ namespace Atomex.ViewModels
                         var tokenBalance = tokenAddress?.Balance ?? 0;
                         var showTokenBalance = tokenBalance != 0;
                         var tokenCode = tokenAddress?.TokenBalance?.Symbol ?? tezosTokenConfig?.DisplayedName
-                            ?? string.Empty;
+                            ?? "TOKENS";
                         var tokenFormat =
                             $"F{Math.Min(tokenAddress?.TokenBalance?.Decimals ?? MaxTokenCurrencyFormatDecimals, MaxTokenCurrencyFormatDecimals)}";
                         var intTokenId = (int)(tokenAddress?.TokenBalance?.TokenId ?? 0);
