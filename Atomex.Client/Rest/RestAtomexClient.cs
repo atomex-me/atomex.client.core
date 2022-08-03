@@ -614,8 +614,14 @@ namespace Atomex.Client.Rest
         {
             _log?.LogDebug("Fetching swaps of the {UserId} user. The start swap id is {SwapId}", AccountUserId, lastSwapId);
 
+            var queryParameters = await ConvertQueryParamsToStringAsync(new Dictionary<string, string>(2)
+            {
+                ["afterId"] = lastSwapId.ToString(),
+                ["userIds"] = _authenticationData?.Id,
+            });
+
             using var response = await HttpClient
-                .GetAsync($"swaps?afterId={lastSwapId}", cancellationToken)
+                .GetAsync($"swaps?{queryParameters}", cancellationToken)
                 .ConfigureAwait(false);
 
             var responseContent = await response.Content
@@ -647,7 +653,12 @@ namespace Atomex.Client.Rest
         {
             _log?.LogDebug("Fetching the {SwapId} swap of the {UserId} user", swapId, AccountUserId);
 
-            using var response = await HttpClient.GetAsync($"swaps/{swapId}", cancellationToken)
+            var queryParameters = await ConvertQueryParamsToStringAsync(new Dictionary<string, string>(2)
+            {
+                ["userIds"] = _authenticationData?.Id,
+            });
+
+            using var response = await HttpClient.GetAsync($"swaps/{swapId}?{queryParameters}", cancellationToken)
                 .ConfigureAwait(false);
 
             var responseContent = await response.Content
