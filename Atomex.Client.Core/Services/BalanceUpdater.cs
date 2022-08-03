@@ -3,6 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.SoChain;
 using Atomex.Services.Abstract;
@@ -11,8 +14,6 @@ using Atomex.TzktEvents;
 using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Tezos;
-using Serilog;
-
 
 namespace Atomex.Services
 {
@@ -55,7 +56,9 @@ namespace Atomex.Services
                 {
                     var startTasks = _balanceUpdaters
                         .Select(x => x.StartAsync());
-                    await Task.WhenAll(startTasks).ConfigureAwait(false);
+
+                    await Task.WhenAll(startTasks)
+                        .ConfigureAwait(false);
 
                     _log.Information("BalanceUpdater successfully started");
                 }
@@ -84,7 +87,9 @@ namespace Atomex.Services
                 {
                     var stopTasks = _balanceUpdaters
                         .Select(x => x.StopAsync());
-                    await Task.WhenAll(stopTasks).ConfigureAwait(false);
+
+                    await Task.WhenAll(stopTasks)
+                        .ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {

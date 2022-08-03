@@ -5,7 +5,6 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.Extensions.Configuration;
 using Serilog;
 
 using Atomex.Abstract;
@@ -24,7 +23,6 @@ namespace Atomex.Wallet
     {
         public const string DefaultUserSettingsFileName = "user.config";
         public const string DefaultDataFileName = "data.db";
-        private const string DefaultAccountKey = "Account:Default";
         public string SettingsFilePath => $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}";
 
         public event EventHandler<CurrencyEventArgs> BalanceUpdated
@@ -151,28 +149,6 @@ namespace Atomex.Wallet
         {
             UserData = userData;
             return this;
-        }
-
-        public static IAccount LoadFromConfiguration(
-            IConfiguration configuration,
-            SecureString password,
-            ICurrenciesProvider currenciesProvider)
-        {
-            var pathToAccount = configuration[DefaultAccountKey];
-
-            if (string.IsNullOrEmpty(pathToAccount))
-            {
-                Log.Error("Path to default account is null or empty");
-                return null;
-            }
-
-            if (!File.Exists(FileSystem.Current.ToFullPath(pathToAccount)))
-            {
-                Log.Error("Default account not found");
-                return null;
-            }
-
-            return LoadFromFile(pathToAccount, password, currenciesProvider);
         }
 
         public static Account LoadFromFile(

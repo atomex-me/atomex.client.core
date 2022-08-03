@@ -164,7 +164,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
+        public async Task<Result<IEnumerable<TezosTransaction>>> GetTransactionsAsync(
             string address,
             DateTimeOffset? fromTimeStamp = null,
             int? fromLevel = null,
@@ -193,10 +193,10 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             if (txsResult.HasError)
                 return txsResult.Error;
 
-            return new Result<IEnumerable<IBlockchainTransaction>>(txsResult.Value);
+            return new Result<IEnumerable<TezosTransaction>>(txsResult.Value);
         }
 
-        public async Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
+        public async Task<Result<IEnumerable<TezosTransaction>>> TryGetTransactionsAsync(
             string address,
             DateTimeOffset? fromTimeStamp = null,
             int? fromLevel = null,

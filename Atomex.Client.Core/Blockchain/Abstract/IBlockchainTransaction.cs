@@ -1,7 +1,5 @@
 ﻿using System;
 
-using Atomex.Core;
-
 namespace Atomex.Blockchain.Abstract
 {
     public enum BlockchainTransactionState

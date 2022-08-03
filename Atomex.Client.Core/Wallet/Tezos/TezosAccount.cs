@@ -292,66 +292,66 @@ namespace Atomex.Wallet.Tezos
                 cancellationToken: cancellationToken);
         }
 
-        protected override async Task<bool> ResolveTransactionTypeAsync(
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default)
-        {
-            var xtz = Config;
+        //protected override async Task<bool> ResolveTransactionTypeAsync(
+        //    IBlockchainTransaction tx,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    var xtz = Config;
 
-            if (tx is not TezosTransaction xtzTx)
-                throw new ArgumentException("Invalid tx type", nameof(tx));
+        //    if (tx is not TezosTransaction xtzTx)
+        //        throw new ArgumentException("Invalid tx type", nameof(tx));
 
-            var oldTx = !xtzTx.IsInternal
-                ? await DataRepository
-                    .GetTransactionByIdAsync<TezosTransaction>(Currency, tx.Id)
-                    .ConfigureAwait(false)
-                : null;
+        //    var oldTx = !xtzTx.IsInternal
+        //        ? await DataRepository
+        //            .GetTransactionByIdAsync<TezosTransaction>(Currency, tx.Id)
+        //            .ConfigureAwait(false)
+        //        : null;
 
-            if (oldTx != null && oldTx.IsConfirmed)
-                return false;
+        //    if (oldTx != null && oldTx.IsConfirmed)
+        //        return false;
 
-            var isFromSelf = await IsSelfAddressAsync(
-                    address: xtzTx.From,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+        //    var isFromSelf = await IsSelfAddressAsync(
+        //            address: xtzTx.From,
+        //            cancellationToken: cancellationToken)
+        //        .ConfigureAwait(false);
 
-            if (isFromSelf)
-            { 
-                xtzTx.Type |= BlockchainTransactionType.Output;
+        //    if (isFromSelf)
+        //    { 
+        //        xtzTx.Type |= BlockchainTransactionType.Output;
 
-                var isToSwapContract = xtzTx.To == xtz.SwapContractAddress;
+        //        var isToSwapContract = xtzTx.To == xtz.SwapContractAddress;
 
-                if (isToSwapContract)
-                {
-                    // todo: recognize swap payment/refund/redeem
-                }
-                else if (xtzTx.Amount == 0)
-                {
-                    xtzTx = ResolveFa12TransactionType(xtzTx);
-                }
-            }
+        //        if (isToSwapContract)
+        //        {
+        //            // todo: recognize swap payment/refund/redeem
+        //        }
+        //        else if (xtzTx.Amount == 0)
+        //        {
+        //            xtzTx = ResolveFa12TransactionType(xtzTx);
+        //        }
+        //    }
 
-            var isToSelf = await IsSelfAddressAsync(
-                    address: xtzTx.To,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+        //    var isToSelf = await IsSelfAddressAsync(
+        //            address: xtzTx.To,
+        //            cancellationToken: cancellationToken)
+        //        .ConfigureAwait(false);
 
-            if (isToSelf)
-                xtzTx.Type |= BlockchainTransactionType.Input;
+        //    if (isToSelf)
+        //        xtzTx.Type |= BlockchainTransactionType.Input;
 
-            if (oldTx != null)
-                xtzTx.Type |= oldTx.Type;
+        //    if (oldTx != null)
+        //        xtzTx.Type |= oldTx.Type;
 
-            // todo: recognize swap payment/refund/redeem
+        //    // todo: recognize swap payment/refund/redeem
 
-            xtzTx.InternalTxs?
-                .ForEach(async t => await ResolveTransactionTypeAsync(t, cancellationToken)
-                .ConfigureAwait(false));
+        //    xtzTx.InternalTxs?
+        //        .ForEach(async t => await ResolveTransactionTypeAsync(t, cancellationToken)
+        //        .ConfigureAwait(false));
 
-            ResolveTezosTxAlias(xtzTx);
+        //    ResolveTezosTxAlias(xtzTx);
 
-            return true;
-        }
+        //    return true;
+        //}
 
         public static void ResolveTezosTxAlias(TezosTransaction tx)
         {
@@ -618,109 +618,103 @@ namespace Atomex.Wallet.Tezos
             }, cancellationToken);
         }
 
-        public override Task UpdateBalanceAsync(
+        public override async Task UpdateBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(async () =>
-            {
-                //try
-                //{
-                    var scanner = new TezosWalletScanner(this);
+            var scanner = new TezosWalletScanner(this);
 
-                    await scanner
-                        .UpdateBalanceAsync(address, cancellationToken)
-                        .ConfigureAwait(false);
+            await scanner
+                .UpdateBalanceAsync(address, cancellationToken)
+                .ConfigureAwait(false);
 
-                    // TODO: raise balance updated event if balance changed?
+            // TODO: raise balance updated event if balance changed?
 
-                //    var xtz = Config;
+            //    var xtz = Config;
 
-                //    var walletAddress = await DataRepository
-                //        .GetWalletAddressAsync(Currency, address)
-                //        .ConfigureAwait(false);
+            //    var walletAddress = await DataRepository
+            //        .GetWalletAddressAsync(Currency, address)
+            //        .ConfigureAwait(false);
 
-                //    if (walletAddress == null)
-                //        return;
+            //    if (walletAddress == null)
+            //        return;
 
-                //    var balanceResult = await xtz.BlockchainApi
-                //        .TryGetBalanceAsync(address, cancellationToken: cancellationToken)
-                //        .ConfigureAwait(false);
+            //    var balanceResult = await xtz.BlockchainApi
+            //        .TryGetBalanceAsync(address, cancellationToken: cancellationToken)
+            //        .ConfigureAwait(false);
 
-                //    if (balanceResult.HasError)
-                //    {
-                //        Log.Error("Error while balance update for {@address} with code {@code} and description {@description}",
-                //            address,
-                //            balanceResult.Error.Code,
-                //            balanceResult.Error.Description);
-                //        return;
-                //    }
+            //    if (balanceResult.HasError)
+            //    {
+            //        Log.Error("Error while balance update for {@address} with code {@code} and description {@description}",
+            //            address,
+            //            balanceResult.Error.Code,
+            //            balanceResult.Error.Description);
+            //        return;
+            //    }
 
-                //    var balance = balanceResult.Value; //.ToTez();
+            //    var balance = balanceResult.Value; //.ToTez();
 
-                //    // calculate unconfirmed balances
-                //    var unconfirmedTxs = (await DataRepository
-                //        .GetUnconfirmedTransactionsAsync(Currency, xtz.TransactionType)
-                //        .ConfigureAwait(false))
-                //        .Cast<TezosTransaction>()
-                //        .ToList();
+            //    // calculate unconfirmed balances
+            //    var unconfirmedTxs = (await DataRepository
+            //        .GetUnconfirmedTransactionsAsync(Currency, xtz.TransactionType)
+            //        .ConfigureAwait(false))
+            //        .Cast<TezosTransaction>()
+            //        .ToList();
 
-                //    var unconfirmedInternalTxs = unconfirmedTxs.Aggregate(new List<TezosTransaction>(), (list, tx) =>
-                //    {
-                //        if (tx.InternalTxs != null)
-                //            list.AddRange(tx.InternalTxs);
+            //    var unconfirmedInternalTxs = unconfirmedTxs.Aggregate(new List<TezosTransaction>(), (list, tx) =>
+            //    {
+            //        if (tx.InternalTxs != null)
+            //            list.AddRange(tx.InternalTxs);
 
-                //        return list;
-                //    });
+            //        return list;
+            //    });
 
-                //    var unconfirmedIncome = 0m;
-                //    var unconfirmedOutcome = 0m;
+            //    var unconfirmedIncome = 0m;
+            //    var unconfirmedOutcome = 0m;
 
-                //    foreach (var utx in unconfirmedTxs.Concat(unconfirmedInternalTxs))
-                //    {
-                //        var isFailed = utx.State == BlockchainTransactionState.Failed;
+            //    foreach (var utx in unconfirmedTxs.Concat(unconfirmedInternalTxs))
+            //    {
+            //        var isFailed = utx.State == BlockchainTransactionState.Failed;
 
-                //        unconfirmedIncome += address == utx.To && !isFailed
-                //            ? TezosConfig.MtzToTz(utx.Amount)
-                //            : 0;
-                //        unconfirmedOutcome += address == utx.From && !isFailed
-                //            ? -TezosConfig.MtzToTz(utx.Amount + utx.Fee + utx.Burn)
-                //            : 0;
-                //    }
+            //        unconfirmedIncome += address == utx.To && !isFailed
+            //            ? TezosConfig.MtzToTz(utx.Amount)
+            //            : 0;
+            //        unconfirmedOutcome += address == utx.From && !isFailed
+            //            ? -TezosConfig.MtzToTz(utx.Amount + utx.Fee + utx.Burn)
+            //            : 0;
+            //    }
 
-                //    var balanceDifference = balance - walletAddress.Balance;
-                //    var unconfirmedIncomeDifference = unconfirmedIncome - walletAddress.UnconfirmedIncome;
-                //    var unconfirmedOutcomeDifference = unconfirmedOutcome - walletAddress.UnconfirmedOutcome;
+            //    var balanceDifference = balance - walletAddress.Balance;
+            //    var unconfirmedIncomeDifference = unconfirmedIncome - walletAddress.UnconfirmedIncome;
+            //    var unconfirmedOutcomeDifference = unconfirmedOutcome - walletAddress.UnconfirmedOutcome;
 
-                //    if (balanceDifference != 0 ||
-                //        unconfirmedIncomeDifference != 0 ||
-                //        unconfirmedOutcomeDifference != 0)
-                //    {
-                //        walletAddress.Balance = balance;
-                //        walletAddress.UnconfirmedIncome = unconfirmedIncome;
-                //        walletAddress.UnconfirmedOutcome = unconfirmedOutcome;
-                //        walletAddress.HasActivity = true;
+            //    if (balanceDifference != 0 ||
+            //        unconfirmedIncomeDifference != 0 ||
+            //        unconfirmedOutcomeDifference != 0)
+            //    {
+            //        walletAddress.Balance = balance;
+            //        walletAddress.UnconfirmedIncome = unconfirmedIncome;
+            //        walletAddress.UnconfirmedOutcome = unconfirmedOutcome;
+            //        walletAddress.HasActivity = true;
 
-                //        await DataRepository.UpsertAddressAsync(walletAddress)
-                //            .ConfigureAwait(false);
+            //        await DataRepository.UpsertAddressAsync(walletAddress)
+            //            .ConfigureAwait(false);
 
-                //        Balance += balanceDifference;
-                //        UnconfirmedIncome += unconfirmedIncomeDifference;
-                //        UnconfirmedOutcome += unconfirmedOutcomeDifference;
+            //        Balance += balanceDifference;
+            //        UnconfirmedIncome += unconfirmedIncomeDifference;
+            //        UnconfirmedOutcome += unconfirmedOutcomeDifference;
 
-                //        RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
-                //    }
-                //}
-                //catch (OperationCanceledException)
-                //{
-                //    Log.Debug($"{Currency} UpdateBalanceAsync canceled.");
-                //}
-                //catch (Exception e)
-                //{
-                //    Log.Error(e, "Tezos UpdateBalanceAsync error.");
-                //}
-
-            }, cancellationToken);
+            //        RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
+            //    }
+            //}
+            //catch (OperationCanceledException)
+            //{
+            //    Log.Debug($"{Currency} UpdateBalanceAsync canceled.");
+            //}
+            //catch (Exception e)
+            //{
+            //    Log.Error(e, "Tezos UpdateBalanceAsync error.");
+            //}
         }
 
         public void RaiseTokensBalanceUpdatedEvent(string address, string tokenContract, int? tokenId)

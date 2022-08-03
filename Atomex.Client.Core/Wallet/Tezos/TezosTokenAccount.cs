@@ -168,6 +168,12 @@ namespace Atomex.Wallet.Tezos
 
             Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
+            //await _tezosAccount.DataRepository
+            //    .UpsertTransactionAsync(tx)
+            //    .ConfigureAwait(false);
+
+            //_tezosAccount
+
             await _tezosAccount
                 .UpsertTransactionAsync(
                     tx: tx,
@@ -516,40 +522,32 @@ namespace Atomex.Wallet.Tezos
             return new Balance(balance, unconfirmedIncome: 0, unconfirmedOutcome: 0);
         }
 
-        public Task UpdateBalanceAsync(
+        public async Task UpdateBalanceAsync(
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(async () =>
-            {
-                var scanner = new TezosTokensWalletScanner(_tezosAccount);
+            var scanner = new TezosTokensWalletScanner(_tezosAccount);
 
-                await scanner
-                    .UpdateBalanceAsync(
-                        tokenContract: _tokenContract,
-                        tokenId: _tokenId,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-            }, cancellationToken);
+            await scanner
+                .UpdateBalanceAsync(
+                    tokenContract: _tokenContract,
+                    tokenId: _tokenId,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        public Task UpdateBalanceAsync(
+        public async Task UpdateBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(async () =>
-            {
-                var scanner = new TezosTokensWalletScanner(_tezosAccount);
+            var scanner = new TezosTokensWalletScanner(_tezosAccount);
 
-                await scanner
-                    .UpdateBalanceAsync(
-                        address: address,
-                        tokenContract: _tokenContract,
-                        tokenId: _tokenId,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-            }, cancellationToken);
+            await scanner
+                .UpdateBalanceAsync(
+                    address: address,
+                    tokenContract: _tokenContract,
+                    tokenId: _tokenId,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
 
         #endregion Balances
