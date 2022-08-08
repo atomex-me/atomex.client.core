@@ -86,7 +86,7 @@ namespace Atomex.Wallet.Tezos
                         code: Errors.InsufficientFunds,
                         description: "Insufficient funds"));
 
-            var digitsMultiplier = tokenConfig.DigitsMultiplier != 0
+            var digitsMultiplier = addressFeeUsage.WalletAddress.TokenBalance.Decimals == 0
                 ? tokenConfig.DigitsMultiplier
                 : (decimal)Math.Pow(10, addressFeeUsage.WalletAddress.TokenBalance.Decimals);
 
