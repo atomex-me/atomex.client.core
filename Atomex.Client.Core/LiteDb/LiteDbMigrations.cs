@@ -23,6 +23,7 @@ namespace Atomex.LiteDb
         public const ushort Version8 = 8;
         public const ushort Version9 = 9;
         public const ushort Version10 = 10;
+        public const ushort Version11 = 11;
 
         public static ushort MigrateFrom_0_to_1(
             string pathToDb,
@@ -460,6 +461,26 @@ namespace Atomex.LiteDb
             
             Shrink(db, sessionPassword);
             UpdateVersion(db: db, fromVersion: Version9, toVersion: Version10);
+
+            return Version10;
+        }
+        
+        public static ushort MigrateFrom_10_to_11(string pathToDb, string sessionPassword)
+        {
+            var connectionString = $"FileName={pathToDb};Password={sessionPassword};Mode=Exclusive";
+
+            using var db = new LiteDatabase(connectionString);
+
+            if (db.Engine.UserVersion != Version10)
+                throw new Exception("Invalid db version");
+
+            var removedAddressesCount = db.GetCollection(LiteDbAccountDataRepository.TezosTokensAddresses)
+                .Delete(Query.EQ("Currency", "FA2"));
+
+            Log.Debug("Migration from v10 to v11: {@Count} invalid FA2 addresses deleted", removedAddressesCount);
+            
+            Shrink(db, sessionPassword);
+            UpdateVersion(db: db, fromVersion: Version10, toVersion: Version11);
 
             return Version10;
         }

@@ -60,7 +60,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     token.ArtifactUri  = metadata.ArtifactUri;
                     token.DisplayUri   = metadata.DisplayUri;
                     token.ThumbnailUri = metadata.ThumbnailUri;
-                    token.Creators     = metadata.Creators;
                 }
                 catch
                 {

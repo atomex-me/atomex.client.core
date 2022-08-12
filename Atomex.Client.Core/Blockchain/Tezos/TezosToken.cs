@@ -24,8 +24,6 @@ namespace Atomex.Blockchain.Tezos
         public string DisplayUri { get; set; }
         [JsonPropertyName("thumbnailUri")]
         public string ThumbnailUri { get; set; }
-        [JsonPropertyName("creators")]
-        public List<string> Creators { get; set; }
     }
 
     public class Token
@@ -41,7 +39,6 @@ namespace Atomex.Blockchain.Tezos
         public string ArtifactUri { get; set; }
         public string DisplayUri { get; set; }
         public string ThumbnailUri { get; set; }
-        public List<string> Creators { get; set; }
 
         public bool HasDescription =>
             !string.IsNullOrEmpty(Description);
