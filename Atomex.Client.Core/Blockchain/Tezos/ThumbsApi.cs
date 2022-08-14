@@ -59,6 +59,6 @@ namespace Atomex.Blockchain.Tezos
         }
 
         public static string GetCollectiblePreviewUrl(string contractAddress, decimal tokenId) =>
-            $"https://img.rarible.com/prod/image/upload/t_image_preview/prod-itemImages/TEZOS-{contractAddress}:{decimal.ToInt32(tokenId)}";
+            $"https://test.atomex.me/tokens-preview/{contractAddress}/{decimal.ToInt32(tokenId)}.png";
     }
 }
