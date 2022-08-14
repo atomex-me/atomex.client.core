@@ -84,7 +84,7 @@ namespace Atomex.ViewModels
                                 {
                                     Contract = tokenContract,
                                     Balance  = "0",
-                                    Symbol   = tezosTokenConfig?.DisplayedName ?? "TOKENS",
+                                    Symbol   = tezosTokenConfig?.DisplayedName ?? string.Empty,
                                     Decimals = 0
                                 }
                             };
