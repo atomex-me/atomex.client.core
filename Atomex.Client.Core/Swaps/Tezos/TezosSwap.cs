@@ -201,7 +201,7 @@ namespace Atomex.Swaps.Tezos
                 // redeem already broadcast
                 _ = TrackTransactionConfirmationAsync<TezosTransaction>(
                     swap: swap,
-                    dataRepository: _account.DataRepository,
+                    dataRepository: _account.LocalStorage,
                     txId: swap.RedeemTx.Id,
                     confirmationHandler: RedeemConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -338,7 +338,7 @@ namespace Atomex.Swaps.Tezos
 
             _ = TrackTransactionConfirmationAsync<TezosTransaction>(
                 swap: swap,
-                dataRepository: _account.DataRepository,
+                dataRepository: _account.LocalStorage,
                 txId: redeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -457,7 +457,7 @@ namespace Atomex.Swaps.Tezos
             {
                 _ = TrackTransactionConfirmationAsync<TezosTransaction>(
                     swap: swap,
-                    dataRepository: _account.DataRepository,
+                    dataRepository: _account.LocalStorage,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -569,7 +569,7 @@ namespace Atomex.Swaps.Tezos
 
             _ = TrackTransactionConfirmationAsync<TezosTransaction>(
                 swap: swap,
-                dataRepository: _account.DataRepository,
+                dataRepository: _account.LocalStorage,
                 txId: refundTx.Id,
                 confirmationHandler: RefundConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -838,11 +838,10 @@ namespace Atomex.Swaps.Tezos
 
             // account new unconfirmed transaction
             await _account
+                .LocalStorage
                 .UpsertTransactionAsync(
                     tx: tx,
-                    updateBalance: true,
-                    notifyIfUnconfirmed: true,
-                    notifyIfBalanceUpdated: true,
+                    notifyIfNewOrChanged: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -862,7 +861,7 @@ namespace Atomex.Swaps.Tezos
                     .ConfigureAwait(false);
 
                 var tx = await _account
-                    .DataRepository
+                    .LocalStorage
                     .GetTransactionByIdAsync<TezosTransaction>(XtzConfig.Name, txId)
                     .ConfigureAwait(false);
 

@@ -30,7 +30,7 @@ namespace Atomex.Wallet.Tezos
             return Task.Run(async () =>
             {
                 // all tezos addresses
-                var xtzAddresses = await _tezosAccount.DataRepository
+                var xtzAddresses = await _tezosAccount.LocalStorage
                     .GetAddressesAsync(TezosConfig.Xtz)
                     .ConfigureAwait(false);
 
@@ -66,12 +66,12 @@ namespace Atomex.Wallet.Tezos
             return Task.Run(async () =>
             {
                 // all tezos addresses
-                var xtzLocalAddresses = await _tezosAccount.DataRepository
+                var xtzLocalAddresses = await _tezosAccount.LocalStorage
                     .GetAddressesAsync(TezosConfig.Xtz)
                     .ConfigureAwait(false);
 
                 // all tezos tokens addresses
-                var tokenLocalAddresses = await _tezosAccount.DataRepository
+                var tokenLocalAddresses = await _tezosAccount.LocalStorage
                     .GetTezosTokenAddressesAsync()
                     .ConfigureAwait(false);
 
@@ -163,7 +163,7 @@ namespace Atomex.Wallet.Tezos
                 // upsert changed token balances
                 if (changedAddresses.Any())
                 {
-                    await _tezosAccount.DataRepository
+                    await _tezosAccount.LocalStorage
                         .UpsertTezosTokenAddressesAsync(changedAddresses)
                         .ConfigureAwait(false);
 
@@ -198,14 +198,14 @@ namespace Atomex.Wallet.Tezos
             return Task.Run(async () =>
             {
                 // all tezos addresses
-                var xtzLocalAddresses = await _tezosAccount.DataRepository
+                var xtzLocalAddresses = await _tezosAccount.LocalStorage
                     .GetAddressesAsync(TezosConfig.Xtz)
                     .ConfigureAwait(false);
 
                 var xtzAddress = xtzLocalAddresses.First(w => w.Address == address);
 
                 // tezos tokens addresses
-                var tokenLocalAddresses = (await _tezosAccount.DataRepository
+                var tokenLocalAddresses = (await _tezosAccount.LocalStorage
                     .GetTezosTokenAddressesAsync()
                     .ConfigureAwait(false))
                     .Where(w => w.Address == address);
@@ -291,7 +291,7 @@ namespace Atomex.Wallet.Tezos
                 // upsert changed token balances
                 if (changedAddresses.Any())
                 {
-                    await _tezosAccount.DataRepository
+                    await _tezosAccount.LocalStorage
                         .UpsertTezosTokenAddressesAsync(changedAddresses)
                         .ConfigureAwait(false);
 
@@ -327,12 +327,12 @@ namespace Atomex.Wallet.Tezos
             return Task.Run(async () =>
             {
                 // all tezos addresses
-                var xtzLocalAddresses = await _tezosAccount.DataRepository
+                var xtzLocalAddresses = await _tezosAccount.LocalStorage
                     .GetAddressesAsync(TezosConfig.Xtz)
                     .ConfigureAwait(false);
 
                 // token's addresses
-                var allTokensLocalAddresses = await _tezosAccount.DataRepository
+                var allTokensLocalAddresses = await _tezosAccount.LocalStorage
                     .GetTezosTokenAddressesAsync()
                     .ConfigureAwait(false);
 
@@ -430,7 +430,7 @@ namespace Atomex.Wallet.Tezos
                 // upsert changed token balances
                 if (changedAddresses.Any())
                 {
-                    await _tezosAccount.DataRepository
+                    await _tezosAccount.LocalStorage
                         .UpsertTezosTokenAddressesAsync(changedAddresses)
                         .ConfigureAwait(false);
 
@@ -468,14 +468,14 @@ namespace Atomex.Wallet.Tezos
             return Task.Run(async () =>
             {
                 // all tezos addresses
-                var xtzLocalAddresses = await _tezosAccount.DataRepository
+                var xtzLocalAddresses = await _tezosAccount.LocalStorage
                     .GetAddressesAsync(TezosConfig.Xtz)
                     .ConfigureAwait(false);
 
                 var xtzAddress = xtzLocalAddresses.First(w => w.Address == address);
 
                 // tezos token address
-                var tokenLocalAddresses = (await _tezosAccount.DataRepository
+                var tokenLocalAddresses = (await _tezosAccount.LocalStorage
                     .GetTezosTokenAddressesAsync(address, tokenContract)
                     .ConfigureAwait(false))
                     .Where(w => w.TokenBalance.TokenId == tokenId);
@@ -563,7 +563,7 @@ namespace Atomex.Wallet.Tezos
                 // upsert changed token balances
                 if (changedAddresses.Any())
                 {
-                    await _tezosAccount.DataRepository
+                    await _tezosAccount.LocalStorage
                         .UpsertTezosTokenAddressesAsync(changedAddresses)
                         .ConfigureAwait(false);
 
@@ -603,7 +603,7 @@ namespace Atomex.Wallet.Tezos
 
             if (tokenContracts.Any())
             {
-                await _tezosAccount.DataRepository
+                await _tezosAccount.LocalStorage
                     .UpsertTezosTokenContractsAsync(tokenContracts)
                     .ConfigureAwait(false);
             }
@@ -644,7 +644,7 @@ namespace Atomex.Wallet.Tezos
                         transfer.Type |= BlockchainTransactionType.Input;
                 }
 
-                await _tezosAccount.DataRepository
+                await _tezosAccount.LocalStorage
                     .UpsertTezosTokenTransfersAsync(transfersResult.Value)
                     .ConfigureAwait(false);
             }

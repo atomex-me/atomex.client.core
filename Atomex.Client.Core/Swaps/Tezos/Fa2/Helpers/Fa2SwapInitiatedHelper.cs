@@ -13,7 +13,7 @@ using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Swaps.Abstract;
 
-namespace Atomex.Swaps.Tezos.FA2.Helpers
+namespace Atomex.Swaps.Tezos.Fa2.Helpers
 {
     public static class Fa2SwapInitiatedHelper
     {

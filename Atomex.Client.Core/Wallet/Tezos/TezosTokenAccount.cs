@@ -29,7 +29,7 @@ namespace Atomex.Wallet.Tezos
         public string TokenType { get; }
         public ICurrencies Currencies { get; }
         public IHdWallet Wallet { get; }
-        public IAccountDataRepository DataRepository { get; }
+        public ILocalStorage DataRepository { get; }
 
         protected TezosConfig XtzConfig => Currencies.Get<TezosConfig>(TezosConfig.Xtz);
         protected TezosTokenConfig TokenConfig => Currencies.Get<TezosTokenConfig>(Currency);
@@ -40,7 +40,7 @@ namespace Atomex.Wallet.Tezos
             int tokenId,
             ICurrencies currencies,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository,
+            ILocalStorage dataRepository,
             TezosAccount tezosAccount)
         {
             TokenType      = tokenType ?? throw new ArgumentNullException(nameof(tokenType));
@@ -168,18 +168,11 @@ namespace Atomex.Wallet.Tezos
 
             Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
-            //await _tezosAccount.DataRepository
-            //    .UpsertTransactionAsync(tx)
-            //    .ConfigureAwait(false);
-
-            //_tezosAccount
-
             await _tezosAccount
+                .LocalStorage
                 .UpsertTransactionAsync(
                     tx: tx,
-                    updateBalance: false,
-                    notifyIfUnconfirmed: true,
-                    notifyIfBalanceUpdated: false,
+                    notifyIfNewOrChanged: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 

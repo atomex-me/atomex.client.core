@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Security;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
@@ -10,8 +11,10 @@ using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract
 {
-    public interface IAccountDataRepository
+    public interface ILocalStorage
     {
+        public event EventHandler<TransactionsEventArgs> TransactionsChanged;
+
         void ChangePassword(SecureString newPassword);
 
         #region Addresses
@@ -94,7 +97,15 @@ namespace Atomex.Wallet.Abstract
 
         #region Transactions
 
-        Task<bool> UpsertTransactionAsync(IBlockchainTransaction tx);
+        Task<bool> UpsertTransactionAsync(
+            IBlockchainTransaction tx,
+            bool notifyIfNewOrChanged = false,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> UpsertTransactionsAsync(
+            IEnumerable<IBlockchainTransaction> txs,
+            bool notifyIfNewOrChanged = false,
+            CancellationToken cancellationToken = default);
 
         Task<T> GetTransactionByIdAsync<T>(string currency, string txId)
             where T : IBlockchainTransaction;

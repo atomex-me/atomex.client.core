@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Blockchain.Ethereum;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using Serilog;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -233,18 +235,17 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
         }
 
-        private async Task UpsertTransactionsAsync(IEnumerable<EthereumTransaction> transactions)
+        private async Task UpsertTransactionsAsync(
+            IEnumerable<EthereumTransaction> transactions,
+            CancellationToken cancellationToken = default)
         {
-            foreach (var tx in transactions)
-            {
-                await Account
-                    .UpsertTransactionAsync(
-                        tx: tx,
-                        updateBalance: false,
-                        notifyIfUnconfirmed: false,
-                        notifyIfBalanceUpdated: false)
-                    .ConfigureAwait(false);
-            }
+            await Account
+                .LocalStorage
+                .UpsertTransactionsAsync(
+                    txs: transactions,
+                    notifyIfNewOrChanged: true,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 }

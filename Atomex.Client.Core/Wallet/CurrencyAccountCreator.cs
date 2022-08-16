@@ -15,7 +15,7 @@ namespace Atomex.Wallet
         public static IDictionary<string, ICurrencyAccount> Create(
             ICurrencies currencies,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository)
+            ILocalStorage dataRepository)
         {
             var accounts = new Dictionary<string, ICurrencyAccount>();
 
@@ -57,7 +57,7 @@ namespace Atomex.Wallet
         public static ICurrencyAccount CreateCurrencyAccount(
             string currency,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository,
+            ILocalStorage dataRepository,
             ICurrencies currencies,
             ICurrencyAccount baseChainAccount = null)
         {
@@ -118,7 +118,7 @@ namespace Atomex.Wallet
             int tokenId,
             ICurrencies currencies,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository,
+            ILocalStorage dataRepository,
             TezosAccount tezosAccount)
         {
             return tokenType switch

@@ -192,57 +192,6 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             return UpdateBalanceAsync(address, cancellationToken);
-            //Log.Debug("Scan transactions for address {@address}", address);
-
-            //var addressTxs = await ScanAddressAsync(address, cancellationToken)
-            //    .ConfigureAwait(false);
-
-            //if (addressTxs == null || !addressTxs.Any()) // address without activity
-            //    return;
-
-            //var txs = new List<TezosTransaction>();
-            //var txsById = new Dictionary<string, TezosTransaction>();
-            //var internalTxs = new List<TezosTransaction>();
-
-            //foreach (var tx in addressTxs)
-            //{
-            //    if (tx.IsInternal)
-            //    {
-            //        internalTxs.Add(tx);
-            //    }
-            //    else if (!txsById.ContainsKey(tx.Id))
-            //    {
-            //        txsById.Add(tx.Id, tx);
-            //    }
-            //}
-
-            //// distribute internal txs
-            //foreach (var internalTx in internalTxs)
-            //{
-            //    if (txsById.TryGetValue(internalTx.Id, out var tx))
-            //    {
-            //        if (tx.InternalTxs == null)
-            //            tx.InternalTxs = new List<TezosTransaction>();
-
-            //        tx.InternalTxs.Add(internalTx);
-            //    }
-            //    else
-            //    {
-            //        txs.Add(internalTx);
-            //    }
-            //}
-
-            //txs.AddRange(txsById.Values);
-
-            //if (txs.Any())
-            //{
-            //    await UpsertTransactionsAsync(txs)
-            //        .ConfigureAwait(false);
-            //}
-
-            //await Account
-            //    .UpdateBalanceAsync(address, cancellationToken)
-            //    .ConfigureAwait(false);
         }
 
         public async Task UpdateBalanceAsync(
@@ -262,7 +211,8 @@ namespace Atomex.Wallet.Tezos
                 {
                     var updateTimeStamp = DateTime.UtcNow;
 
-                    var walletAddress = await _account.DataRepository
+                    var walletAddress = await _account
+                        .LocalStorage
                         .GetWalletAddressAsync(_account.Currency, address)
                         .ConfigureAwait(false);
 
@@ -324,11 +274,18 @@ namespace Atomex.Wallet.Tezos
 
                     var txs = CollapseInternalTransactions(txsResult.Value);
 
-                    //_account.UpsertTransactionAsync()
+                    await _account
+                        .LocalStorage
+                        .UpsertTransactionsAsync(
+                            txs: txs,
+                            notifyIfNewOrChanged: true,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
     
                     walletAddress.LastSuccessfullUpdate = updateTimeStamp;
 
-                    var _ = await _account.DataRepository
+                    var _ = await _account
+                        .LocalStorage
                         .UpsertAddressAsync(walletAddress)
                         .ConfigureAwait(false);
                 }
@@ -381,46 +338,5 @@ namespace Atomex.Wallet.Tezos
 
             return result;
         }
-
-        //private async Task<IEnumerable<TezosTransaction>> ScanAddressAsync(
-        //    string address,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var currency = Currency;
-
-        //    var txsResult = await ((ITezosBlockchainApi)currency.BlockchainApi)
-        //        .TryGetTransactionsAsync(address, cancellationToken: cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    if (txsResult.HasError)
-        //    {
-        //        Log.Error(
-        //            "Error while scan address transactions for {@address} with code {@code} and description {@description}",
-        //            address,
-        //            txsResult.Error.Code,
-        //            txsResult.Error.Description);
-        //        return null;
-        //    }
-
-        //    var addressTxs = txsResult.Value
-        //        ?.Cast<TezosTransaction>()
-        //        .ToList();
-
-        //    return await Task.FromResult<IEnumerable<TezosTransaction>>(addressTxs);
-        //}
-
-        //private async Task UpsertTransactionsAsync(IEnumerable<TezosTransaction> transactions)
-        //{
-        //    foreach (var tx in transactions)
-        //    {
-        //        await Account
-        //            .UpsertTransactionAsync(
-        //                tx: tx,
-        //                updateBalance: false,
-        //                notifyIfUnconfirmed: false,
-        //                notifyIfBalanceUpdated: false)
-        //            .ConfigureAwait(false);
-        //    }
-        //}
     }
 }

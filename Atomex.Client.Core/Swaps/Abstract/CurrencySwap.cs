@@ -109,7 +109,7 @@ namespace Atomex.Swaps.Abstract
 
         protected Task TrackTransactionConfirmationAsync<T>(
             Swap swap,
-            IAccountDataRepository dataRepository,
+            ILocalStorage dataRepository,
             string txId,
             Func<Swap, IBlockchainTransaction, CancellationToken, Task> confirmationHandler,
             CancellationToken cancellationToken = default) where T : IBlockchainTransaction

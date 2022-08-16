@@ -78,7 +78,7 @@ namespace Atomex.Services.BalanceUpdaters
         private async Task<ISet<string>> GetAddressesAsync()
         {
             // all tezos addresses
-            var xtzAddresses = await _tezosAccount.DataRepository
+            var xtzAddresses = await _tezosAccount.LocalStorage
                 .GetAddressesAsync(TezosConfig.Xtz)
                 .ConfigureAwait(false);
 
@@ -89,7 +89,7 @@ namespace Atomex.Services.BalanceUpdaters
                     .ScanAsync()
                     .ConfigureAwait(false);
 
-                xtzAddresses = await _tezosAccount.DataRepository
+                xtzAddresses = await _tezosAccount.LocalStorage
                     .GetAddressesAsync(TezosConfig.Xtz)
                     .ConfigureAwait(false);
             }
@@ -103,7 +103,7 @@ namespace Atomex.Services.BalanceUpdaters
             walletAddresses.Add(freeAddress);
 
             // addresses from local db
-            var localAddresses = await _tezosAccount.DataRepository
+            var localAddresses = await _tezosAccount.LocalStorage
                 .GetTezosTokenAddressesAsync()
                 .ConfigureAwait(false);
 

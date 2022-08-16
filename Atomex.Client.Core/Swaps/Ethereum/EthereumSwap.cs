@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 
 using Nethereum.Contracts;
 using Nethereum.RPC.Eth.DTOs;
-using Nethereum.Signer;
 using Nethereum.Web3;
 using Serilog;
 
@@ -192,7 +191,7 @@ namespace Atomex.Swaps.Ethereum
                 // redeem already broadcast
                 _ = TrackTransactionConfirmationAsync<EthereumTransaction>(
                     swap: swap,
-                    dataRepository: _account.DataRepository,
+                    dataRepository: _account.LocalStorage,
                     txId: swap.RedeemTx.Id,
                     confirmationHandler: RedeemConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -310,7 +309,7 @@ namespace Atomex.Swaps.Ethereum
 
             _ = TrackTransactionConfirmationAsync<EthereumTransaction>(
                 swap: swap,
-                dataRepository: _account.DataRepository,
+                dataRepository: _account.LocalStorage,
                 txId: redeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -419,7 +418,7 @@ namespace Atomex.Swaps.Ethereum
             {
                 _ = TrackTransactionConfirmationAsync<EthereumTransaction>(
                     swap: swap,
-                    dataRepository: _account.DataRepository,
+                    dataRepository: _account.LocalStorage,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -557,7 +556,7 @@ namespace Atomex.Swaps.Ethereum
 
             _ = TrackTransactionConfirmationAsync<EthereumTransaction>(
                 swap: swap,
-                dataRepository: _account.DataRepository,
+                dataRepository: _account.LocalStorage,
                 txId: refundTx.Id,
                 confirmationHandler: RefundConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -832,13 +831,11 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("TxId {@id} for swap {@swapId}", txId, swap.Id);
 
-            // account new unconfirmed transaction
             await _account
+                .LocalStorage
                 .UpsertTransactionAsync(
                     tx: tx,
-                    updateBalance: true,
-                    notifyIfUnconfirmed: true,
-                    notifyIfBalanceUpdated: true,
+                    notifyIfNewOrChanged: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -885,7 +882,7 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
                 
                 var tx = await _account
-                    .DataRepository
+                    .LocalStorage
                     .GetTransactionByIdAsync<EthereumTransaction>(EthConfig.Name, txId)
                     .ConfigureAwait(false);
 

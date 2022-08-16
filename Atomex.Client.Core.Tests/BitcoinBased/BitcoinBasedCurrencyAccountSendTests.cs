@@ -42,7 +42,7 @@ namespace Atomex.Client.Core.Tests
             decimal fee,
             DustUsagePolicy dustUsagePolicy,
             Action<Mock<IBlockchainApi>> apiSetup = null,
-            Action<Mock<IAccountDataRepository>, WalletAddress> repositorySetup = null)
+            Action<Mock<ILocalStorage>, WalletAddress> repositorySetup = null)
         {
             var apiMock = new Mock<IBlockchainApi>();
             apiSetup?.Invoke(apiMock);
@@ -60,7 +60,7 @@ namespace Atomex.Client.Core.Tests
 
             var fromOutputs = GetOutputs(fromAddress.Address, NBitcoin.Network.TestNet, currency.CoinToSatoshi(available)).ToList();
 
-            var repositoryMock = new Mock<IAccountDataRepository>();
+            var repositoryMock = new Mock<ILocalStorage>();
             repositorySetup?.Invoke(repositoryMock, fromAddress);
 
             var currencies = Common.CurrenciesTestNet;

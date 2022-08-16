@@ -227,7 +227,7 @@ namespace Atomex.Swaps.BitcoinBased
                 {
                     _ = TrackTransactionConfirmationAsync<BitcoinBasedTransaction>(
                         swap: swap,
-                        dataRepository: _account.DataRepository,
+                        dataRepository: _account.LocalStorage,
                         txId: swap.RedeemTx.Id,
                         confirmationHandler: RedeemConfirmedEventHandler,
                         cancellationToken: cancellationToken);
@@ -343,7 +343,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             _ = TrackTransactionConfirmationAsync<BitcoinBasedTransaction>(
                 swap: swap,
-                dataRepository: _account.DataRepository,
+                dataRepository: _account.LocalStorage,
                 txId: swap.RedeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -365,7 +365,7 @@ namespace Atomex.Swaps.BitcoinBased
             {
                 _ = TrackTransactionConfirmationAsync<BitcoinBasedTransaction>(
                     swap: swap,
-                    dataRepository: _account.DataRepository,
+                    dataRepository: _account.LocalStorage,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -451,7 +451,7 @@ namespace Atomex.Swaps.BitcoinBased
             if (!swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed))
                 _ = TrackTransactionConfirmationAsync<BitcoinBasedTransaction>(
                     swap: swap,
-                    dataRepository: _account.DataRepository,
+                    dataRepository: _account.LocalStorage,
                     txId: swap.PaymentTxId,
                     confirmationHandler: PaymentConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -824,7 +824,7 @@ namespace Atomex.Swaps.BitcoinBased
 
                 _ = TrackTransactionConfirmationAsync<BitcoinBasedTransaction>(
                     swap: swap,
-                    dataRepository: _account.DataRepository,
+                    dataRepository: _account.LocalStorage,
                     txId: txId,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);

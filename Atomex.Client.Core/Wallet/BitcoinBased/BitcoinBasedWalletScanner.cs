@@ -233,7 +233,7 @@ namespace Atomex.Wallet.BitcoinBased
                 foreach (var txId in txIds)
                 {
                     var localTx = await Account
-                        .DataRepository
+                        .LocalStorage
                         .GetTransactionByIdAsync<BitcoinBasedTransaction>(currency.Name, txId)
                         .ConfigureAwait(false);
 
@@ -273,11 +273,10 @@ namespace Atomex.Wallet.BitcoinBased
                     }
 
                     await Account
+                        .LocalStorage
                         .UpsertTransactionAsync(
                             tx: tx,
-                            updateBalance: false,
-                            notifyIfUnconfirmed: true,
-                            notifyIfBalanceUpdated: false,
+                            notifyIfNewOrChanged: true,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }

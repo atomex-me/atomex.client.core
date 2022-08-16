@@ -14,7 +14,7 @@ namespace Atomex.Wallet.Abstract
     public interface IAccount : IAddressResolver
     {
         event EventHandler<CurrencyEventArgs> BalanceUpdated;
-        event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded;
+        //event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded;
         event EventHandler Locked;
         event EventHandler Unlocked;
 

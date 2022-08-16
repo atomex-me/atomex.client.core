@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using Atomex.EthereumTokens;
 
+using Atomex.EthereumTokens;
 
 namespace Atomex.Blockchain.Ethereum
 {
@@ -13,7 +13,6 @@ namespace Atomex.Blockchain.Ethereum
 
         Task StartAsync();
         Task StopAsync();
-
 
         Task SubscribeOnEventsAsync(string address, Action<string, string> handler);
         Task SubscribeOnEventsAsync(IEnumerable<string> addresses, Action<string, string> handler);

@@ -26,7 +26,7 @@ namespace Atomex.Wallet.BitcoinBased
             string currency,
             ICurrencies currencies,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository)
+            ILocalStorage dataRepository)
                 : base(currency, currencies, wallet, dataRepository)
         {
         }
@@ -133,11 +133,10 @@ namespace Atomex.Wallet.BitcoinBased
 
             Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
-            await UpsertTransactionAsync(
+            await LocalStorage
+                .UpsertTransactionAsync(
                     tx: tx,
-                    updateBalance: false,
-                    notifyIfUnconfirmed: true,
-                    notifyIfBalanceUpdated: false,
+                    notifyIfNewOrChanged: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -545,7 +544,7 @@ namespace Atomex.Wallet.BitcoinBased
         public virtual async Task<WalletAddress> GetFreeInternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
-            var lastActiveAddress = await DataRepository
+            var lastActiveAddress = await LocalStorage
                 .GetLastActiveWalletAddressAsync(
                     currency: Currency,
                     chain: Bip44.Internal,
@@ -665,7 +664,7 @@ namespace Atomex.Wallet.BitcoinBased
             {
                 var input = tx.Inputs[i];
                 
-                var selfInput = await DataRepository
+                var selfInput = await LocalStorage
                     .GetOutputAsync(Currency, input.Hash, input.Index)
                     .ConfigureAwait(false);
 
@@ -684,14 +683,14 @@ namespace Atomex.Wallet.BitcoinBased
             BitcoinBasedTxOutput output,
             string address)
         {
-            var addressOutputs = (await DataRepository
+            var addressOutputs = (await LocalStorage
                 .GetOutputsAsync(currency.Name, address)
                 .ConfigureAwait(false))
                 .ToList();
 
             addressOutputs.Add(output);
 
-            await DataRepository
+            await LocalStorage
                 .UpsertOutputsAsync(
                     outputs: addressOutputs.RemoveDuplicates(),
                     currency: currency.Name,
@@ -701,29 +700,29 @@ namespace Atomex.Wallet.BitcoinBased
 
         public Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync()
         {
-            return DataRepository.GetAvailableOutputsAsync(Currency);
+            return LocalStorage.GetAvailableOutputsAsync(Currency);
         }
 
         public Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(string address)
         {
-            return DataRepository.GetAvailableOutputsAsync(
+            return LocalStorage.GetAvailableOutputsAsync(
                 currency: Currency,
                 address: address);
         }
 
         public Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync()
         {
-            return DataRepository.GetOutputsAsync(Currency);
+            return LocalStorage.GetOutputsAsync(Currency);
         }
 
         public Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(string address)
         {
-            return DataRepository.GetOutputsAsync(Currency, address);
+            return LocalStorage.GetOutputsAsync(Currency, address);
         }
 
         public Task<BitcoinBasedTxOutput> GetOutputAsync(string txId, uint index)
         {
-            return DataRepository.GetOutputAsync(Currency, txId, index);
+            return LocalStorage.GetOutputAsync(Currency, txId, index);
         }
 
         #endregion Outputs
@@ -745,7 +744,7 @@ namespace Atomex.Wallet.BitcoinBased
         public override async Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
             CancellationToken cancellationToken = default)
         {
-            return await DataRepository
+            return await LocalStorage
                 .GetUnconfirmedTransactionsAsync<BitcoinBasedTransaction>(Currency)
                 .ConfigureAwait(false);
         }

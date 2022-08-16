@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security;
+using System.Threading;
 using System.Threading.Tasks;
 
 using LiteDB;
@@ -16,10 +17,11 @@ using Atomex.Common;
 using Atomex.Common.Bson;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
+using Atomex.Wallet;
 
 namespace Atomex.LiteDb
 {
-    public class LiteDbAccountDataRepository : IAccountDataRepository
+    public class LiteDbLocalStorage : ILocalStorage
     {
         public const string OrdersCollectionName = "Orders";
         public const string SwapsCollectionName = "Swaps";
@@ -44,18 +46,18 @@ namespace Atomex.LiteDb
         private const string TransferContract = nameof(TokenTransfer.Contract);
         private const string KeyTypeKey = nameof(WalletAddress.KeyType);
 
+        public event EventHandler<TransactionsEventArgs> TransactionsChanged;
+
         private readonly string _pathToDb;
         private string _sessionPassword;
         private readonly BsonMapper _bsonMapper;
-
         private readonly ConcurrentDictionary<long, Swap> _swapById = new();
-
         private bool _swapsLoaded;
         private readonly object _syncRoot = new();
 
         private string ConnectionString => $"FileName={_pathToDb};Password={_sessionPassword};Mode=Exclusive";
 
-        public LiteDbAccountDataRepository(
+        public LiteDbLocalStorage(
             string pathToDb,
             SecureString password,
             ICurrencies currencies,
@@ -793,7 +795,10 @@ namespace Atomex.LiteDb
 
         #region Transactions
 
-        public Task<bool> UpsertTransactionAsync(IBlockchainTransaction tx)
+        public Task<bool> UpsertTransactionAsync(
+            IBlockchainTransaction tx,
+            bool notifyIfNewOrChanged = false,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -803,14 +808,46 @@ namespace Atomex.LiteDb
 
                     var transactions = db.GetCollection(TransactionCollectionName);
                     transactions.EnsureIndex(CurrencyKey);
-                    transactions.Upsert(_bsonMapper.ToDocument(tx));
+
+                    var upsertResult = transactions.Upsert(_bsonMapper.ToDocument(tx));
+
+                    // todo: notify if add or changed
+
+                    return Task.FromResult(upsertResult);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error adding transaction");
+            }
+
+            return Task.FromResult(false);
+        }
+
+        public Task<bool> UpsertTransactionsAsync(
+            IEnumerable<IBlockchainTransaction> txs,
+            bool notifyIfNewOrChanged = false,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+
+                    var transactions = db.GetCollection(TransactionCollectionName);
+                    transactions.EnsureIndex(CurrencyKey);
+
+                    var upsertResult = transactions.Upsert(txs.Select(tx => _bsonMapper.ToDocument(tx)));
+
+                    // todo: notify if add or changed
 
                     return Task.FromResult(true);
                 }
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error adding transaction");
+                Log.Error(e, "Error adding transactions");
             }
 
             return Task.FromResult(false);

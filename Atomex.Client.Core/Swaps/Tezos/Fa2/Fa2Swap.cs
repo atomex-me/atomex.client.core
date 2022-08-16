@@ -13,11 +13,11 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Helpers;
-using Atomex.Swaps.Tezos.FA2.Helpers;
+using Atomex.Swaps.Tezos.Fa2.Helpers;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Tezos;
 
-namespace Atomex.Swaps.Tezos.FA2
+namespace Atomex.Swaps.Tezos.Fa2
 {
     public class Fa2Swap : CurrencySwap
     {
@@ -123,9 +123,6 @@ namespace Atomex.Swaps.Tezos.FA2
                         await BroadcastTxAsync(
                                 swap: swap,
                                 tx: tx,
-                                updateBalance: isInitiateTx,
-                                notifyIfUnconfirmed: true,
-                                notifyIfBalanceUpdated: isInitiateTx,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
                     }
@@ -971,10 +968,7 @@ namespace Atomex.Swaps.Tezos.FA2
         private async Task BroadcastTxAsync(
             Swap swap,
             TezosTransaction tx,
-            CancellationToken cancellationToken = default,
-            bool updateBalance = true,
-            bool notifyIfUnconfirmed = true,
-            bool notifyIfBalanceUpdated = true)
+            CancellationToken cancellationToken = default)
         {
             var broadcastResult = await XtzConfig.BlockchainApi
                 .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
@@ -992,11 +986,10 @@ namespace Atomex.Swaps.Tezos.FA2
 
             // account new unconfirmed transaction
             await TezosAccount
+                .LocalStorage
                 .UpsertTransactionAsync(
                     tx: tx,
-                    updateBalance: updateBalance,
-                    notifyIfUnconfirmed: notifyIfUnconfirmed,
-                    notifyIfBalanceUpdated: notifyIfBalanceUpdated,
+                    notifyIfNewOrChanged: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }

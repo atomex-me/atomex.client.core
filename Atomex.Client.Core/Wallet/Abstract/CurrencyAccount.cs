@@ -13,7 +13,7 @@ using Atomex.Wallet.Bip;
 
 namespace Atomex.Wallet.Abstract
 {
-    public abstract class CurrencyAccount : ICurrencyAccount, ITransactionalAccount
+    public abstract class CurrencyAccount : ICurrencyAccount
     {
         public event EventHandler<CurrencyEventArgs> BalanceUpdated;
         public event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded;
@@ -21,18 +21,18 @@ namespace Atomex.Wallet.Abstract
         public string Currency { get; }
         public ICurrencies Currencies { get; }
         public IHdWallet Wallet { get; }
-        public IAccountDataRepository DataRepository { get; }
+        public ILocalStorage LocalStorage { get; }
 
         protected CurrencyAccount(
             string currency,
             ICurrencies currencies,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository)
+            ILocalStorage localStorage)
         {
-            Currency       = currency ?? throw new ArgumentNullException(nameof(currency));
-            Currencies     = currencies ?? throw new ArgumentNullException(nameof(currencies));
-            Wallet         = wallet ?? throw new ArgumentNullException(nameof(wallet));
-            DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
+            Currency     = currency ?? throw new ArgumentNullException(nameof(currency));
+            Currencies   = currencies ?? throw new ArgumentNullException(nameof(currencies));
+            Wallet       = wallet ?? throw new ArgumentNullException(nameof(wallet));
+            LocalStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
         }
 
         #region Common
@@ -72,7 +72,7 @@ namespace Atomex.Wallet.Abstract
             string address,
             CancellationToken cancellationToken = default)
         {
-            var walletAddress = await DataRepository
+            var walletAddress = await LocalStorage
                 .GetWalletAddressAsync(Currency, address)
                 .ConfigureAwait(false);
 
@@ -86,7 +86,7 @@ namespace Atomex.Wallet.Abstract
 
         public virtual async Task<Balance> GetBalanceAsync()
         {
-            var unspentAddresses = await DataRepository
+            var unspentAddresses = await LocalStorage
                 .GetUnspentAddressesAsync(Currency)
                 .ConfigureAwait(false);
 
@@ -142,7 +142,7 @@ namespace Atomex.Wallet.Abstract
             if (walletAddress == null)
                 return null;
 
-            _ = await DataRepository
+            _ = await LocalStorage
                 .TryInsertAddressAsync(walletAddress)
                 .ConfigureAwait(false);
 
@@ -153,13 +153,13 @@ namespace Atomex.Wallet.Abstract
             string address,
             CancellationToken cancellationToken = default)
         {
-            return DataRepository.GetWalletAddressAsync(Currency, address);
+            return LocalStorage.GetWalletAddressAsync(Currency, address);
         }
 
         public virtual Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            return DataRepository.GetUnspentAddressesAsync(Currency);
+            return LocalStorage.GetUnspentAddressesAsync(Currency);
         }
 
         public virtual async Task<WalletAddress> GetFreeExternalAddressAsync(
@@ -168,7 +168,7 @@ namespace Atomex.Wallet.Abstract
             // for tezos and tezos tokens with standard keys different account are used
             if (Atomex.Currencies.IsTezosBased(Currency))
             {
-                var lastActiveAccountAddress = await DataRepository
+                var lastActiveAccountAddress = await LocalStorage
                     .GetLastActiveWalletAddressByAccountAsync(
                         currency: Currency,
                         keyType: CurrencyConfig.StandardKey)
@@ -182,7 +182,7 @@ namespace Atomex.Wallet.Abstract
                     .ConfigureAwait(false);
             }
 
-            var lastActiveAddress = await DataRepository
+            var lastActiveAddress = await LocalStorage
                 .GetLastActiveWalletAddressAsync(
                     currency: Currency,
                     chain: Bip44.External,
@@ -200,7 +200,7 @@ namespace Atomex.Wallet.Abstract
         public Task<IEnumerable<WalletAddress>> GetAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            return DataRepository.GetAddressesAsync(Currency);
+            return LocalStorage.GetAddressesAsync(Currency);
         }
 
         #endregion Addresses

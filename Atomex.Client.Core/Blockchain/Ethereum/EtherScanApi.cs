@@ -14,7 +14,7 @@ using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum.Abstract;
-using Atomex.Blockchain.Ethereum.ERC20;
+using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Common;
 using Atomex.EthereumTokens;
 using Error = Atomex.Common.Error;
@@ -765,7 +765,7 @@ namespace Atomex.Blockchain.Ethereum
         {
             try
             {
-                var callData = (allowanceMessage as ERC20AllowanceFunctionMessage)
+                var callData = (allowanceMessage as Erc20AllowanceFunctionMessage)
                     .GetCallData()
                     .ToHex(prefix: true);
 

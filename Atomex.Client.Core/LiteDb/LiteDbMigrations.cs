@@ -41,7 +41,7 @@ namespace Atomex.LiteDb
             using var db = new LiteDatabase(connectionString);
 
             // first "raw" version, simply reload all transaction from blockchain
-            var removed = db.GetCollection(LiteDbAccountDataRepository.TransactionCollectionName).Delete(Query.All());
+            var removed = db.GetCollection(LiteDbLocalStorage.TransactionCollectionName).Delete(Query.All());
 
             Log.Debug($"{removed} transactions removed by migration");
 
@@ -75,10 +75,10 @@ namespace Atomex.LiteDb
             using var db = new LiteDatabase(connectionString);
 
             // remove all tezos transactions
-            db.GetCollection(LiteDbAccountDataRepository.TransactionCollectionName).Delete(Query.EQ("Currency", "XTZ"));
+            db.GetCollection(LiteDbLocalStorage.TransactionCollectionName).Delete(Query.EQ("Currency", "XTZ"));
 
             // remove all tezos addresses
-            db.GetCollection(LiteDbAccountDataRepository.AddressesCollectionName).Delete(Query.EQ("Currency", "XTZ"));
+            db.GetCollection(LiteDbLocalStorage.AddressesCollectionName).Delete(Query.EQ("Currency", "XTZ"));
 
             Shrink(db, sessionPassword);
             UpdateVersion(db: db, fromVersion: Version1, toVersion: Version2);
@@ -104,7 +104,7 @@ namespace Atomex.LiteDb
             using var db = new LiteDatabase(connectionString);
 
             // update wallet addresses
-            var addressesCollection = db.GetCollection(LiteDbAccountDataRepository.AddressesCollectionName);
+            var addressesCollection = db.GetCollection(LiteDbLocalStorage.AddressesCollectionName);
             var addresses = addressesCollection.FindAll().ToList();
 
             foreach (var address in addresses)
@@ -117,7 +117,7 @@ namespace Atomex.LiteDb
             var inserted = addressesCollection.Upsert(addresses);
 
             // update transactions
-            var transactionsCollection = db.GetCollection(LiteDbAccountDataRepository.TransactionCollectionName);
+            var transactionsCollection = db.GetCollection(LiteDbLocalStorage.TransactionCollectionName);
             var transactions = transactionsCollection.FindAll().ToList();
 
             foreach (var transaction in transactions)
@@ -131,8 +131,8 @@ namespace Atomex.LiteDb
 
             if (network == Network.TestNet)
             {
-                db.GetCollection(LiteDbAccountDataRepository.TransactionCollectionName).Delete(Query.EQ("Currency", "XTZ"));
-                db.GetCollection(LiteDbAccountDataRepository.AddressesCollectionName).Delete(Query.EQ("Currency", "XTZ"));
+                db.GetCollection(LiteDbLocalStorage.TransactionCollectionName).Delete(Query.EQ("Currency", "XTZ"));
+                db.GetCollection(LiteDbLocalStorage.AddressesCollectionName).Delete(Query.EQ("Currency", "XTZ"));
             }
 
             Shrink(db, sessionPassword);
@@ -163,7 +163,7 @@ namespace Atomex.LiteDb
             var doubleSuffixes = currencies.Select(c => $":{c}:{c}");
 
             // fix wallet addresses
-            var addressesCollection = db.GetCollection(LiteDbAccountDataRepository.AddressesCollectionName);
+            var addressesCollection = db.GetCollection(LiteDbLocalStorage.AddressesCollectionName);
             var addresses = addressesCollection.FindAll().ToList();
 
             foreach (var addressInBson in addresses)
@@ -203,7 +203,7 @@ namespace Atomex.LiteDb
             var inserted = addressesCollection.Upsert(addresses);
 
             // fix transactions
-            var transactionsCollection = db.GetCollection(LiteDbAccountDataRepository.TransactionCollectionName);
+            var transactionsCollection = db.GetCollection(LiteDbLocalStorage.TransactionCollectionName);
             var transactions = transactionsCollection.FindAll().ToList();
 
             foreach (var transactionInBson in transactions)
@@ -265,15 +265,15 @@ namespace Atomex.LiteDb
             using var db = new LiteDatabase(connectionString);
 
             // fix outputs
-            var outputsCollection = db.GetCollection(LiteDbAccountDataRepository.OutputsCollectionName);
+            var outputsCollection = db.GetCollection(LiteDbLocalStorage.OutputsCollectionName);
             var deletedOutputs = outputsCollection.Delete(Query.EQ("Currency", "BTC"));
 
             // fix transactions
-            var transactionsCollection = db.GetCollection(LiteDbAccountDataRepository.TransactionCollectionName);
+            var transactionsCollection = db.GetCollection(LiteDbLocalStorage.TransactionCollectionName);
             var transactions = transactionsCollection.Delete(Query.EQ("Currency", "BTC"));
 
             // fix addresses
-            var addressesCollection = db.GetCollection(LiteDbAccountDataRepository.AddressesCollectionName);
+            var addressesCollection = db.GetCollection(LiteDbLocalStorage.AddressesCollectionName);
             var addresses = addressesCollection.Delete(Query.EQ("Currency", "BTC"));
 
             Shrink(db, sessionPassword);
@@ -300,7 +300,7 @@ namespace Atomex.LiteDb
 
             var tezSymbols = new[] { "XTZ", "TZBTC", "KUSD" };
 
-            var removedXtzTx = db.GetCollection(LiteDbAccountDataRepository.TransactionCollectionName)
+            var removedXtzTx = db.GetCollection(LiteDbLocalStorage.TransactionCollectionName)
                 .Delete(Query.Where(nameof(WalletAddress.Currency), x => tezSymbols.Contains(x.AsString)));
 
             Log.Debug($"{removedXtzTx} XTZ and tez tokens transactions removed by migration");
@@ -330,13 +330,13 @@ namespace Atomex.LiteDb
             var tezosTokens = new[] { "TZBTC", "KUSD" };
 
             var removedXtzTx = db
-                .GetCollection(LiteDbAccountDataRepository.TransactionCollectionName)
+                .GetCollection(LiteDbLocalStorage.TransactionCollectionName)
                 .Delete(Query.Where(nameof(WalletAddress.Currency), x => tezosTokens.Contains(x.AsString)));
 
             Log.Debug($"{removedXtzTx} Tezos tokens transactions removed by migration");
 
             var removedXtzAddresses = db
-                .GetCollection(LiteDbAccountDataRepository.AddressesCollectionName)
+                .GetCollection(LiteDbLocalStorage.AddressesCollectionName)
                 .Delete(Query.Where(nameof(WalletAddress.Currency), x => tezosTokens.Contains(x.AsString)));
 
             Shrink(db, sessionPassword);
@@ -361,7 +361,7 @@ namespace Atomex.LiteDb
 
             using var db = new LiteDatabase(connectionString);
 
-            var addressesCollection = db.GetCollection(LiteDbAccountDataRepository.AddressesCollectionName);
+            var addressesCollection = db.GetCollection(LiteDbLocalStorage.AddressesCollectionName);
             var xtzAddresses = addressesCollection
                 .Find(Query.EQ("Currency", "XTZ"))
                 .ToList();
@@ -371,7 +371,7 @@ namespace Atomex.LiteDb
 
             var upserted = addressesCollection.Upsert(xtzAddresses);
 
-            var tezosTokensAddressesCollection = db.GetCollection(LiteDbAccountDataRepository.TezosTokensAddresses);
+            var tezosTokensAddressesCollection = db.GetCollection(LiteDbLocalStorage.TezosTokensAddresses);
             var tezosTokensAddresses = tezosTokensAddressesCollection
                 .FindAll()
                 .ToList();
@@ -403,26 +403,26 @@ namespace Atomex.LiteDb
 
             // // remove all tezos addresses, transactions and contracts
             var removedTokenAddresses = db
-                .GetCollection(LiteDbAccountDataRepository.TezosTokensAddresses)
+                .GetCollection(LiteDbLocalStorage.TezosTokensAddresses)
                 .Delete(Query.All());
             
             var removedTransfers = db
-                .GetCollection(LiteDbAccountDataRepository.TezosTokensTransfers)
+                .GetCollection(LiteDbLocalStorage.TezosTokensTransfers)
                 .Delete(Query.All());
             
             var removedContracts = db
-                .GetCollection(LiteDbAccountDataRepository.TezosTokensContracts)
+                .GetCollection(LiteDbLocalStorage.TezosTokensContracts)
                 .Delete(Query.All());
             
             var removedTransactions = db
-                .GetCollection(LiteDbAccountDataRepository.TransactionCollectionName)
+                .GetCollection(LiteDbLocalStorage.TransactionCollectionName)
                 .Delete(Query.EQ(nameof(WalletAddress.Currency), "XTZ"));
             
             var removedAddresses = db
-                .GetCollection(LiteDbAccountDataRepository.AddressesCollectionName)
+                .GetCollection(LiteDbLocalStorage.AddressesCollectionName)
                 .Delete(Query.EQ(nameof(WalletAddress.Currency), "XTZ"));
             
-            var transactionsCollection = db.GetCollection(LiteDbAccountDataRepository.TransactionCollectionName);
+            var transactionsCollection = db.GetCollection(LiteDbLocalStorage.TransactionCollectionName);
             var usdtTransactions = transactionsCollection
                 .Find(Query.EQ(nameof(WalletAddress.Currency), "USDT"))
                 .ToList();
@@ -450,7 +450,7 @@ namespace Atomex.LiteDb
             if (db.Engine.UserVersion != Version9)
                 throw new Exception("Invalid db version");
 
-            var removedAddressesCount = db.GetCollection(LiteDbAccountDataRepository.TezosTokensAddresses)
+            var removedAddressesCount = db.GetCollection(LiteDbLocalStorage.TezosTokensAddresses)
                 .Delete(Query.Or(
                     Query.EQ("Currency", "KUSD"),
                     Query.EQ("Currency", "TZBTC"),

@@ -38,21 +38,21 @@ namespace Atomex.Wallet
                     currencyAccount.Value.BalanceUpdated -= value;
             }
         }
-        public event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded
-        {
-            add
-            {
-                foreach (var currencyAccount in CurrencyAccounts.Values)
-                    if (currencyAccount is ITransactionalAccount account)
-                        account.UnconfirmedTransactionAdded += value;
-            }
-            remove
-            {
-                foreach (var currencyAccount in CurrencyAccounts.Values)
-                    if (currencyAccount is ITransactionalAccount account)
-                        account.UnconfirmedTransactionAdded -= value;
-            }
-        }
+        //public event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded
+        //{
+        //    add
+        //    {
+        //        foreach (var currencyAccount in CurrencyAccounts.Values)
+        //            if (currencyAccount is ITransactionalAccount account)
+        //                account.UnconfirmedTransactionAdded += value;
+        //    }
+        //    remove
+        //    {
+        //        foreach (var currencyAccount in CurrencyAccounts.Values)
+        //            if (currencyAccount is ITransactionalAccount account)
+        //                account.UnconfirmedTransactionAdded -= value;
+        //    }
+        //}
         public event EventHandler Locked;
         public event EventHandler Unlocked;
 
@@ -61,7 +61,7 @@ namespace Atomex.Wallet
         public IHdWallet Wallet { get; }
         public ICurrencies Currencies { get; }
         public UserData UserData { get; private set; }
-        private IAccountDataRepository DataRepository { get; }
+        private ILocalStorage LocalStorage { get; }
         private IDictionary<string, ICurrencyAccount> CurrencyAccounts { get; }
 
         private Account(
@@ -86,14 +86,14 @@ namespace Atomex.Wallet
 
             Currencies = currenciesProvider.GetCurrencies(Network);
 
-            DataRepository = new LiteDbAccountDataRepository(
+            LocalStorage = new LiteDbLocalStorage(
                 pathToDb: Path.Combine(Path.GetDirectoryName(Wallet.PathToWallet), DefaultDataFileName),
                 password: password,
                 currencies: Currencies,
                 network: wallet.Network,
                 migrationCompleteCallback);
 
-            CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, DataRepository);
+            CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, LocalStorage);
 
             UserData = UserData.TryLoadFromFile(
                 pathToFile: SettingsFilePath) ?? UserData.GetDefaultSettings(Currencies);
@@ -101,14 +101,14 @@ namespace Atomex.Wallet
 
         public Account(
             IHdWallet wallet,
-            IAccountDataRepository dataRepository,
+            ILocalStorage dataRepository,
             ICurrenciesProvider currenciesProvider)
         {
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
-            DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
+            LocalStorage = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
 
             Currencies = currenciesProvider.GetCurrencies(Network);
-            CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, DataRepository);
+            CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, LocalStorage);
 
             UserData = UserData.TryLoadFromFile(
                 pathToFile: SettingsFilePath) ?? UserData.GetDefaultSettings(Currencies);
@@ -126,7 +126,7 @@ namespace Atomex.Wallet
                 return false;
 
             UserData.SaveToFile(SettingsFilePath);
-            DataRepository.ChangePassword(newPassword);
+            LocalStorage.ChangePassword(newPassword);
 
             return true;
         }
@@ -184,7 +184,7 @@ namespace Atomex.Wallet
                 tokenId,
                 Currencies,
                 Wallet,
-                DataRepository,
+                LocalStorage,
                 CurrencyAccounts[TezosConfig.Xtz] as TezosAccount);
         }
 
@@ -280,7 +280,7 @@ namespace Atomex.Wallet
             string currency,
             string txId) where T : IBlockchainTransaction
         {
-            return DataRepository.GetTransactionByIdAsync<T>(
+            return LocalStorage.GetTransactionByIdAsync<T>(
                 currency: currency,
                 txId: txId);
         }
@@ -288,7 +288,7 @@ namespace Atomex.Wallet
         public Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
             where T : IBlockchainTransaction
         {
-            return DataRepository.GetTransactionsAsync<T>(
+            return LocalStorage.GetTransactionsAsync<T>(
                 currency: currency);
         }
 
@@ -309,42 +309,42 @@ namespace Atomex.Wallet
         }
 
         public Task<bool> RemoveTransactionAsync(string id) =>
-            DataRepository.RemoveTransactionByIdAsync(id);
+            LocalStorage.RemoveTransactionByIdAsync(id);
 
         #endregion Transactions
 
         #region Orders
 
         public Task<bool> UpsertOrderAsync(Order order) =>
-            DataRepository.UpsertOrderAsync(order);
+            LocalStorage.UpsertOrderAsync(order);
 
         public Task<bool> RemoveAllOrdersAsync() =>
-            DataRepository.RemoveAllOrdersAsync();
+            LocalStorage.RemoveAllOrdersAsync();
 
         public Order GetOrderById(string clientOrderId) =>
-            DataRepository.GetOrderById(clientOrderId);
+            LocalStorage.GetOrderById(clientOrderId);
 
         public Order GetOrderById(long id) =>
-            DataRepository.GetOrderById(id);
+            LocalStorage.GetOrderById(id);
 
         public Task<bool> RemoveOrderByIdAsync(long id) =>
-            DataRepository.RemoveOrderByIdAsync(id);
+            LocalStorage.RemoveOrderByIdAsync(id);
 
         #endregion Orders
 
         #region Swaps
 
         public Task<bool> AddSwapAsync(Swap swap) =>
-            DataRepository.AddSwapAsync(swap);
+            LocalStorage.AddSwapAsync(swap);
 
         public Task<bool> UpdateSwapAsync(Swap swap) =>
-            DataRepository.UpdateSwapAsync(swap);
+            LocalStorage.UpdateSwapAsync(swap);
 
         public Task<Swap> GetSwapByIdAsync(long swapId) =>
-            DataRepository.GetSwapByIdAsync(swapId);
+            LocalStorage.GetSwapByIdAsync(swapId);
 
         public Task<IEnumerable<Swap>> GetSwapsAsync() =>
-            DataRepository.GetSwapsAsync();
+            LocalStorage.GetSwapsAsync();
 
         #endregion Swaps
     }

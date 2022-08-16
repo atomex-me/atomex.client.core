@@ -10,7 +10,7 @@ using Serilog;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
-using Atomex.Blockchain.Ethereum.ERC20;
+using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.EthereumTokens;
@@ -41,7 +41,7 @@ namespace Atomex.Wallet.Ethereum
             string currency,
             ICurrencies currencies,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository)
+            ILocalStorage dataRepository)
                 : base(currency, currencies, wallet, dataRepository)
         {
         }
@@ -155,11 +155,10 @@ namespace Atomex.Wallet.Ethereum
 
             Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
-            await UpsertTransactionAsync(
+            await LocalStorage
+                .UpsertTransactionAsync(
                     tx: tx,
-                    updateBalance: false,
-                    notifyIfUnconfirmed: true,
-                    notifyIfBalanceUpdated: false,
+                    notifyIfNewOrChanged: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -612,7 +611,7 @@ namespace Atomex.Wallet.Ethereum
         public async Task<WalletAddress> GetRedeemAddressAsync(
             CancellationToken cancellationToken = default)
         {
-            var unspentAddresses = await DataRepository
+            var unspentAddresses = await LocalStorage
                 .GetUnspentAddressesAsync(Currency)
                 .ConfigureAwait(false);
 
@@ -621,7 +620,7 @@ namespace Atomex.Wallet.Ethereum
 
             foreach (var chain in new[] { Bip44.Internal, Bip44.External })
             {
-                var lastActiveAddress = await DataRepository
+                var lastActiveAddress = await LocalStorage
                     .GetLastActiveWalletAddressAsync(
                         currency: Currency,
                         chain: chain,
@@ -643,7 +642,7 @@ namespace Atomex.Wallet.Ethereum
 
             foreach (var token in Atomex.Currencies.EthTokens)
             {
-                var addresses = await DataRepository
+                var addresses = await LocalStorage
                     .GetUnspentAddressesAsync(token)
                     .ConfigureAwait(false);
 
@@ -692,7 +691,7 @@ namespace Atomex.Wallet.Ethereum
         public override async Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
             CancellationToken cancellationToken = default)
         {
-            return await DataRepository
+            return await LocalStorage
                 .GetUnconfirmedTransactionsAsync<EthereumTransaction>(Currency)
                 .ConfigureAwait(false);
         }
