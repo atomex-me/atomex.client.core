@@ -58,7 +58,7 @@ namespace Atomex.Blockchain.Tezos
             return $"{_settings.CatavaApiUri}/{contractAddress}";
         }
 
-        public static string GetCollectiblePreviewUrl(string contractAddress, decimal tokenId) =>
+        public static string GetTokenPreviewUrl(string contractAddress, decimal tokenId) =>
             $"https://test.atomex.me/tokens-preview/{contractAddress}/{decimal.ToInt32(tokenId)}.png";
     }
 }
