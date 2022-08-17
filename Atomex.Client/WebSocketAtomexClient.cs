@@ -670,10 +670,10 @@ namespace Atomex.Services
             {
                 quotes.Add(new Quote
                 {
-                    Ask       = quote["ask"].Value<decimal>(),
-                    Bid       = quote["bid"].Value<decimal>(),
-                    Symbol    = quote["dymbol"].Value<string>(),
-                    TimeStamp = quote["timeStamp"].Value<long>().ToUtcDateTimeFromMs()
+                    Ask       = quote["ask"]?.Value<decimal>() ?? 0m,
+                    Bid       = quote["bid"]?.Value<decimal>() ?? 0m,
+                    Symbol    = quote["symbol"]?.Value<string>(),
+                    TimeStamp = quote["timeStamp"]?.Value<long>().ToUtcDateTimeFromMs() ?? DateTime.MinValue
                 });
             }
 
