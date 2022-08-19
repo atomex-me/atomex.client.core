@@ -119,10 +119,10 @@ namespace Atomex.Swaps.BitcoinBased
 
             // account new unconfirmed transaction
             await _account
+                .LocalStorage
                 .UpsertTransactionAsync(
                     tx: swap.PaymentTx,
-                    updateBalance: true,
-                    notifyIfUnconfirmed: true,
+                    notifyIfNewOrChanged: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -335,9 +335,10 @@ namespace Atomex.Swaps.BitcoinBased
 
             // add new unconfirmed transaction
             await _account
+                .LocalStorage
                 .UpsertTransactionAsync(
                     tx: swap.RedeemTx,
-                    updateBalance: true,
+                    notifyIfNewOrChanged: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -767,9 +768,11 @@ namespace Atomex.Swaps.BitcoinBased
                     .ConfigureAwait(false);
 
                 await _account
+                    .LocalStorage
                     .UpsertTransactionAsync(
                         tx: tx,
-                        updateBalance: true)
+                        notifyIfNewOrChanged: true,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (Exception e)
@@ -817,9 +820,11 @@ namespace Atomex.Swaps.BitcoinBased
                     .ConfigureAwait(false);
 
                 await _account
+                    .LocalStorage
                     .UpsertTransactionAsync(
                         tx: swap.RefundTx,
-                        updateBalance: true)
+                        notifyIfNewOrChanged: true,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 _ = TrackTransactionConfirmationAsync<BitcoinBasedTransaction>(
