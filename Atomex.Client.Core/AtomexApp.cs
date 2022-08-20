@@ -7,14 +7,14 @@ using Atomex.Client.Abstract;
 using Atomex.Client.Common;
 using Atomex.Client.Entities;
 using Atomex.Client.V1.Common;
+using Atomex.MarketData;
 using Atomex.MarketData.Abstract;
+using Atomex.MarketData.Common;
 using Atomex.Services;
 using Atomex.Services.Abstract;
 using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
-using Atomex.MarketData;
-using Atomex.MarketData.Common;
 using SwapEventArgs = Atomex.Client.V1.Common.SwapEventArgs;
 using Swap = Atomex.Core.Swap;
 using Order = Atomex.Core.Order;
@@ -37,6 +37,7 @@ namespace Atomex
         public ISwapManager SwapManager { get; private set; }
         public ITransactionsTracker TransactionsTracker { get; private set; }
         public IMarketDataRepository MarketDataRepository { get; private set; }
+        public ILocalStorage LocalStorage { get; private set; }
         public bool HasQuotesProvider => QuotesProvider != null;
         public AtomexAppOptions Options { get; }
 
@@ -116,6 +117,7 @@ namespace Atomex
         public IAtomexApp ChangeAtomexClient(
             IAtomexClient atomexClient,
             IAccount account,
+            ILocalStorage localStorage,
             bool restart = false,
             bool storeCanceledOrders = false)
         {
@@ -142,6 +144,7 @@ namespace Atomex
 
             Account = account;
             AtomexClient = atomexClient;
+            LocalStorage = localStorage;
 
             if (AtomexClient != null)
             {
@@ -162,7 +165,7 @@ namespace Atomex
                     options: Options.SwapManager);
 
                 // create transactions tracker
-                TransactionsTracker = new TransactionsTracker(Account);
+                TransactionsTracker = new TransactionsTracker(Account, LocalStorage);
 
                 _balanceUpdater = new BalanceUpdater(
                     account: Account,

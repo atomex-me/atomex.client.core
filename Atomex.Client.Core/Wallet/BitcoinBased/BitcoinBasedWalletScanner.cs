@@ -83,12 +83,13 @@ namespace Atomex.Wallet.BitcoinBased
             if (outputs == null || !outputs.Any())
                 return;
 
-            await Account
-                .UpsertOutputsAsync(
-                    outputs: outputs,
-                    address: address,
-                    notifyIfBalanceUpdated: false)
-                .ConfigureAwait(false);
+            //await Account
+            //    .LocalStorage
+            //    .UpsertOutputsAsync(
+            //        outputs: outputs,
+            //        currency: currency.Name,
+            //        address: address)
+            //    .ConfigureAwait(false);
 
             await ScanTransactionsAsync(outputs, cancellationToken)
                 .ConfigureAwait(false);
@@ -192,12 +193,12 @@ namespace Atomex.Wallet.BitcoinBased
                     {
                         freeKeysCount = 0;
 
-                        await Account
-                            .UpsertOutputsAsync(
-                                outputs: outputs,
-                                address: walletAddress.Address,
-                                notifyIfBalanceUpdated: false)
-                            .ConfigureAwait(false);
+                        //await Account
+                        //    .UpsertOutputsAsync(
+                        //        outputs: outputs,
+                        //        address: walletAddress.Address,
+                        //        notifyIfBalanceUpdated: false)
+                        //    .ConfigureAwait(false);
                     }
 
                     index++;
