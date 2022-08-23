@@ -96,8 +96,8 @@ namespace Atomex.MarketData.TezTools
                     if (symbol == null)
                         continue;
 
-                    var bid = token["usdValue"]!.Value<decimal>();
-                    var ask = token["usdValue"]!.Value<decimal>();
+                    var bid = token["sellPrice"]!.Value<decimal>();
+                    var ask = token["buyPrice"]!.Value<decimal>();
 
                     Quotes[symbol.ToLower()] = new Quote
                     {
