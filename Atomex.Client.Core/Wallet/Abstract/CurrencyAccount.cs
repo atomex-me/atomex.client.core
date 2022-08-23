@@ -132,21 +132,21 @@ namespace Atomex.Wallet.Abstract
         {
             var currency = Currencies.GetByName(Currency);
 
-            var walletAddress = Wallet.GetAddress(
+            return Wallet.GetAddress(
                 currency: currency,
                 account: account,
                 chain: chain,
                 index: index,
                 keyType: keyType);
 
-            if (walletAddress == null)
-                return null;
+            //if (walletAddress == null)
+            //    return null;
 
-            _ = await LocalStorage
-                .TryInsertAddressAsync(walletAddress)
-                .ConfigureAwait(false);
+            //_ = await LocalStorage
+            //    .TryInsertAddressAsync(walletAddress)
+            //    .ConfigureAwait(false);
 
-            return walletAddress;
+            //return walletAddress;
         }
 
         public virtual Task<WalletAddress> GetAddressAsync(

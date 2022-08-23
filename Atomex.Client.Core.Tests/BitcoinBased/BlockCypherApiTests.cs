@@ -144,7 +144,7 @@ namespace Atomex.Client.Core.Tests
 
             Assert.False(txResult.HasError, txResult.Error?.Description ?? "");
 
-            var tx = txResult.Value as IBitcoinBasedTransaction;
+            var tx = txResult.Value as BitcoinBasedTransaction;
 
             Assert.NotNull(tx);
             Assert.True(tx.Id == txId);

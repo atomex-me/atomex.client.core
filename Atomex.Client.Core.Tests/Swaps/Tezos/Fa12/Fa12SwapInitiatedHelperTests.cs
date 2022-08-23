@@ -5,7 +5,7 @@ using Xunit;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Swaps.Tezos.FA12.Helpers;
+using Atomex.Swaps.Tezos.Fa12.Helpers;
 
 namespace Atomex.Client.Core.Tests
 {

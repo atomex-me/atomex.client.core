@@ -836,16 +836,14 @@ namespace Atomex.Swaps.Tezos
 
             Log.Debug("TxId {@id} for swap {@swapId}", txId, swap.Id);
 
-            // account new unconfirmed transaction
-            await _account
+            // save new unconfirmed transaction
+            var _ = await _account
                 .LocalStorage
                 .UpsertTransactionAsync(
                     tx: tx,
                     notifyIfNewOrChanged: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-
-            // todo: transaction receipt status control
         }
 
         private async Task<bool> WaitPaymentConfirmationAsync(

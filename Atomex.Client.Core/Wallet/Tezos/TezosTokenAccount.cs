@@ -168,7 +168,7 @@ namespace Atomex.Wallet.Tezos
 
             Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
-            await _tezosAccount
+             var _ = await _tezosAccount
                 .LocalStorage
                 .UpsertTransactionAsync(
                     tx: tx,

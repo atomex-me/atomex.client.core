@@ -412,12 +412,11 @@ namespace Atomex.Wallet.Tezos
         {
             var xtz = Config;
 
-            return new[]
-                {
-                    (xtz.RedeemFee + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0)).ToTez(),
-                    (xtz.RefundFee + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0)).ToTez()
-                
-                }.Max() + xtz.RevealFee.ToTez() + Config.MicroTezReserve.ToTez();
+            var redeemFee = xtz.RedeemFee + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0);
+            var refundFee = xtz.RefundFee + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0);
+            var reserveFee = Math.Max(redeemFee, refundFee) + xtz.RevealFee + xtz.MicroTezReserve;
+
+            return reserveFee.ToTez();
         }
 
         private async Task<decimal> StorageFeeByTypeAsync(

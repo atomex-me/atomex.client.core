@@ -140,8 +140,8 @@ namespace Atomex.Client.Core.Tests
             Assert.True(result);
 
             var readTx = await repository
-                .GetTransactionByIdAsync(Common.EthTestNet.Name, id, Common.EthTestNet.TransactionType)
-                .ConfigureAwait(false) as EthereumTransaction;
+                .GetTransactionByIdAsync<EthereumTransaction>(Common.EthTestNet.Name, id)
+                .ConfigureAwait(false);
 
             Assert.NotNull(readTx);
             Assert.NotNull(readTx.InternalTxs);

@@ -219,7 +219,7 @@ namespace Atomex.Client.Core.Tests
 
             var broadcastCallback = new Action<IBlockchainTransaction, int, int, CancellationToken>((tx, attempts, attemptsInterval, token) =>
             {
-                var btcBasedTx = (IBitcoinBasedTransaction) tx;
+                var btcBasedTx = (BitcoinBasedTransaction) tx;
                 Assert.NotNull(btcBasedTx.Outputs.FirstOrDefault(o => o.Value == currency.CoinToSatoshi(amount + change)));
             });
 
@@ -264,7 +264,7 @@ namespace Atomex.Client.Core.Tests
 
             var broadcastCallback = new Action<IBlockchainTransaction, int, int, CancellationToken>((tx, attempts, attemptsInterval, token) =>
             {
-                var btcBasedTx = (IBitcoinBasedTransaction)tx;
+                var btcBasedTx = (BitcoinBasedTransaction)tx;
                 Assert.True(btcBasedTx.Fees == currency.CoinToSatoshi(fee + change));
             });
 
