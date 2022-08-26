@@ -175,8 +175,6 @@ namespace Atomex.Wallet.Ethereum
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            _ = UpdateBalanceAsync(cancellationToken);
-
             return null;
         }
 
@@ -357,63 +355,6 @@ namespace Atomex.Wallet.Ethereum
                 eth.GetFeeAmount(Math.Max(erc20.RefundGasLimit, erc20.RedeemGasLimit), gasPrice),
                 eth.GetFeeAmount(Math.Max(eth.RefundGasLimit, eth.RedeemGasLimit), gasPrice));
         }
-
-        //protected override async Task<bool> ResolveTransactionTypeAsync(
-        //    IBlockchainTransaction tx,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var erc20 = Erc20Config;
-
-        //    if (tx is not EthereumTransaction ethTx)
-        //        throw new ArgumentException("Invalid tx type", nameof(tx));
-
-        //    var oldTx = await DataRepository
-        //        .GetTransactionByIdAsync<EthereumTransaction>(Currency, tx.Id)
-        //        .ConfigureAwait(false);
-
-        //    //if (oldTx != null && oldTx.IsConfirmed)
-        //    //    return false;
-
-        //    var isFromSelf = await IsSelfAddressAsync(
-        //            address: ethTx.From,
-        //            cancellationToken: cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    if (isFromSelf && ethTx.Currency == erc20.Name)
-        //        ethTx.Type |= BlockchainTransactionType.Output;
-
-        //    var isToSelf = await IsSelfAddressAsync(
-        //            address: ethTx.To,
-        //            cancellationToken: cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    if (isToSelf && ethTx.Currency == erc20.Name)
-        //        ethTx.Type |= BlockchainTransactionType.Input;
-
-        //    // todo: recognize swap payment/refund/redeem
-
-        //    if (oldTx != null)
-        //    {
-        //        if (ethTx.IsInternal)
-        //        {
-        //            if (oldTx.Type.HasFlag(BlockchainTransactionType.SwapPayment))
-        //                ethTx.Type |= BlockchainTransactionType.SwapPayment;
-        //            if (oldTx.Type.HasFlag(BlockchainTransactionType.SwapRedeem))
-        //                ethTx.Type |= BlockchainTransactionType.SwapRedeem;
-        //            if (oldTx.Type.HasFlag(BlockchainTransactionType.SwapRefund))
-        //                ethTx.Type |= BlockchainTransactionType.SwapRefund;
-        //        }
-        //        else
-        //        {
-        //            ethTx.Type |= oldTx.Type;
-        //        }
-        //    }
-
-        //    ethTx.InternalTxs?.ForEach(async t => await ResolveTransactionTypeAsync(t, cancellationToken)
-        //        .ConfigureAwait(false));
-
-        //    return true;
-        //}
 
         #endregion Common
 

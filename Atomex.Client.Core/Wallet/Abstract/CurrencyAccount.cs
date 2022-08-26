@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Serilog;
-
 using Atomex.Abstract;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
@@ -46,13 +44,6 @@ namespace Atomex.Wallet.Abstract
         {
             UnconfirmedTransactionAdded?.Invoke(this, eventArgs);
         }
-
-        //protected virtual Task<bool> ResolveTransactionTypeAsync(
-        //    IBlockchainTransaction tx,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return Task.FromResult(true);
-        //}
 
         protected async Task<bool> IsSelfAddressAsync(
             string address,
@@ -124,7 +115,7 @@ namespace Atomex.Wallet.Abstract
                 keyType: keyType);
         }
 
-        public virtual async Task<WalletAddress> DivideAddressAsync(
+        public virtual Task<WalletAddress> DivideAddressAsync(
             uint account,
             uint chain,
             uint index,
@@ -132,21 +123,14 @@ namespace Atomex.Wallet.Abstract
         {
             var currency = Currencies.GetByName(Currency);
 
-            return Wallet.GetAddress(
+            var walletAddress = Wallet.GetAddress(
                 currency: currency,
                 account: account,
                 chain: chain,
                 index: index,
                 keyType: keyType);
 
-            //if (walletAddress == null)
-            //    return null;
-
-            //_ = await LocalStorage
-            //    .TryInsertAddressAsync(walletAddress)
-            //    .ConfigureAwait(false);
-
-            //return walletAddress;
+            return Task.FromResult(walletAddress);
         }
 
         public virtual Task<WalletAddress> GetAddressAsync(
@@ -206,40 +190,6 @@ namespace Atomex.Wallet.Abstract
         #endregion Addresses
 
         #region Transactions
-
-        //public virtual async Task UpsertTransactionAsync(
-        //    IBlockchainTransaction tx,
-        //    bool updateBalance = false,
-        //    bool notifyIfUnconfirmed = true,
-        //    bool notifyIfBalanceUpdated = true,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var result = await ResolveTransactionTypeAsync(tx, cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    if (result == false)
-        //        return;
-
-        //    result = await DataRepository
-        //        .UpsertTransactionAsync(tx)
-        //        .ConfigureAwait(false);
-
-        //    if (!result)
-        //    {
-        //        Log.Error("Tx upsert error.");
-        //        return; // todo: error or message?
-        //    }
-
-        //    if (updateBalance)
-        //        await UpdateBalanceAsync(cancellationToken)
-        //            .ConfigureAwait(false);
-
-        //    if (notifyIfUnconfirmed && !tx.IsConfirmed)
-        //        RaiseUnconfirmedTransactionAdded(new TransactionEventArgs(tx));
-
-        //    if (updateBalance && notifyIfBalanceUpdated)
-        //        RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
-        //}
 
         public abstract Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
             CancellationToken cancellationToken = default);

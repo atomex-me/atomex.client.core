@@ -77,7 +77,7 @@ namespace Atomex.Wallet.Tezos
                                                 new
                                                 {
                                                     @int = string.Format("{0:0}", amount)
-        }
+                                                }
                                             }
                                         }
                                     }
