@@ -1,6 +1,6 @@
 ﻿namespace Atomex.Blockchain.Tezos.Internal
 {
-    internal static class Watermark
+    public static class Watermark
     {
         public static readonly byte[] Block = { 1 };
         public static readonly byte[] Endorsement = { 2 };
