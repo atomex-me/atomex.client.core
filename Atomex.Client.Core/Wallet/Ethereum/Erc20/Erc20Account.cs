@@ -24,13 +24,17 @@ namespace Atomex.Wallet.Ethereum
 {
     public class Erc20Account : CurrencyAccount, IEstimatable
     {
+        protected readonly EthereumAccount _ethereumAccount;
+
         public Erc20Account(
             string currency,
             ICurrencies currencies,
             IHdWallet wallet,
-            ILocalStorage dataRepository)
-                : base(currency, currencies, wallet, dataRepository)
+            ILocalStorage localStorage,
+            EthereumAccount ethereumAccount)
+                : base(currency, currencies, wallet, localStorage)
         {
+            _ethereumAccount = ethereumAccount ?? throw new ArgumentNullException(nameof(ethereumAccount));
         }
 
         #region Common
@@ -360,238 +364,25 @@ namespace Atomex.Wallet.Ethereum
 
         #region Balances
 
-        public override Task UpdateBalanceAsync(
+        public override async Task UpdateBalanceAsync(
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var scanner = new Erc20WalletScanner(this, _ethereumAccount);
 
-            //return Task.Run(async () =>
-            //{
-            //    try
-            //    {
-            //        var erc20 = Erc20Config;
-
-            //        var txs = (await DataRepository
-            //            .GetTransactionsAsync<EthereumTransaction>(Currency)
-            //            .ConfigureAwait(false))
-            //            .ToList();
-
-            //        // calculate balances
-            //        var totalUnconfirmedIncome = 0m;
-            //        var totalUnconfirmedOutcome = 0m;
-
-            //        var addresses = new Dictionary<string, WalletAddress>();
-
-            //        foreach (var tx in txs)
-            //        {
-            //            try
-            //            {
-            //                var selfAddresses = new HashSet<string>();
-
-            //                if (tx.Type.HasFlag(BlockchainTransactionType.Input))
-            //                    selfAddresses.Add(tx.To);
-
-            //                if (tx.Type.HasFlag(BlockchainTransactionType.Output))
-            //                    selfAddresses.Add(tx.From);
-
-            //                foreach (var address in selfAddresses)
-            //                {
-            //                    var isIncome = address == tx.To;
-            //                    var isOutcome = address == tx.From;
-            //                    var isConfirmed = tx.IsConfirmed;
-            //                    var isFailed = tx.State == BlockchainTransactionState.Failed;
-
-            //                    var income = isIncome && !isFailed
-            //                        ? erc20.TokenDigitsToTokens(tx.Amount)
-            //                        : 0;
-
-            //                    var outcome = isOutcome && !isFailed
-            //                        ? -erc20.TokenDigitsToTokens(tx.Amount)
-            //                        : 0;
-
-            //                    if (addresses.TryGetValue(address, out var walletAddress))
-            //                    {
-            //                        //walletAddress.Balance += isConfirmed ? income + outcome : 0;
-            //                        walletAddress.UnconfirmedIncome += !isConfirmed ? income : 0;
-            //                        walletAddress.UnconfirmedOutcome += !isConfirmed ? outcome : 0;
-            //                    }
-            //                    else
-            //                    {
-            //                        walletAddress = await DataRepository
-            //                            .GetWalletAddressAsync(Currency, address)
-            //                            .ConfigureAwait(false);
-
-            //                        if (walletAddress == null)
-            //                        {
-            //                            Log.Error("WalletAddress {Address} for {Currency} was not found in local database", address, Currency);
-            //                            continue;
-            //                        }
-
-            //                        //walletAddress.Balance = isConfirmed ? income + outcome : 0;
-            //                        walletAddress.UnconfirmedIncome = !isConfirmed ? income : 0;
-            //                        walletAddress.UnconfirmedOutcome = !isConfirmed ? outcome : 0;
-            //                        walletAddress.HasActivity = true;
-
-            //                        addresses.Add(address, walletAddress);
-            //                    }
-
-            //                    //totalBalance += isConfirmed ? income + outcome : 0;
-            //                    totalUnconfirmedIncome += !isConfirmed ? income : 0;
-            //                    totalUnconfirmedOutcome += !isConfirmed ? outcome : 0;
-            //                }
-
-            //            }
-            //            catch (Exception e)
-            //            {
-            //                Log.Error(e, "Error in update balance");
-            //            }
-            //        }
-
-            //        var totalBalance = 0m;
-
-            //        var api = erc20.BlockchainApi as IEthereumBlockchainApi;
-
-            //        foreach (var wa in addresses.Values)
-            //        {
-            //            var balanceResult = await api
-            //                .TryGetErc20BalanceAsync(
-            //                    address: wa.Address,
-            //                    contractAddress: erc20.ERC20ContractAddress,
-            //                    cancellationToken: cancellationToken)
-            //                .ConfigureAwait(false);
-
-            //            if (balanceResult.HasError)
-            //            {
-            //                Log.Error("Error while getting balance for {@address} with code {@code} and description {@description}",
-            //                    wa.Address,
-            //                    balanceResult.Error.Code,
-            //                    balanceResult.Error.Description);
-
-            //                continue; // todo: may be return?
-            //            }
-
-            //            wa.Balance = erc20.TokenDigitsToTokens(balanceResult.Value);
-
-            //            totalBalance += wa.Balance;
-            //        }
-
-            //        // upsert addresses
-            //        await DataRepository
-            //            .UpsertAddressesAsync(addresses.Values)
-            //            .ConfigureAwait(false);
-
-            //        Balance = totalBalance;
-            //        UnconfirmedIncome = totalUnconfirmedIncome;
-            //        UnconfirmedOutcome = totalUnconfirmedOutcome;
-
-            //        RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
-            //    }
-            //    catch (OperationCanceledException)
-            //    {
-            //        Log.Debug($"{Currency} UpdateBalanceAsync canceled.");
-            //    }
-            //    catch (Exception e)
-            //    {
-            //        Log.Error(e, $"{Currency} UpdateBalanceAsync error.");
-            //    }
-
-            //}, cancellationToken);
+            await scanner
+                .UpdateBalanceAsync(skipUsed: false, cancellationToken)
+                .ConfigureAwait(false);
         }
 
-        public override Task UpdateBalanceAsync(
+        public override async Task UpdateBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var scanner = new Erc20WalletScanner(this, _ethereumAccount);
 
-            //return Task.Run(async() =>
-            //{
-            //    try
-            //    {
-            //        var erc20 = Erc20Config;
-
-            //        var walletAddress = await DataRepository
-            //            .GetWalletAddressAsync(Currency, address)
-            //            .ConfigureAwait(false);
-
-            //        if (walletAddress == null)
-            //            return;
-
-            //        var api = erc20.BlockchainApi as IEthereumBlockchainApi;
-
-            //        var balanceResult = await api
-            //            .TryGetErc20BalanceAsync(
-            //                address: address,
-            //                contractAddress: erc20.ERC20ContractAddress,
-            //                cancellationToken: cancellationToken)
-            //            .ConfigureAwait(false);
-
-            //        if (balanceResult.HasError)
-            //        {
-            //            Log.Error("Error while balance update for {@address} with code {@code} and description {@description}",
-            //                address,
-            //                balanceResult.Error.Code,
-            //                balanceResult.Error.Description);
-
-            //            return;
-            //        }
-
-            //        var balance = erc20.TokenDigitsToTokens(balanceResult.Value);
-
-            //        var unconfirmedIncome = 0m;
-            //        var unconfirmedOutcome = 0m;
-
-            //        // calculate unconfirmed balances
-            //        var unconfirmedTxs = (await DataRepository
-            //            .GetUnconfirmedTransactionsAsync<EthereumTransaction>(Currency)
-            //            .ConfigureAwait(false))
-            //            .ToList();
-
-            //        foreach (var utx in unconfirmedTxs)
-            //        {
-            //            var isIncome = address == utx.To;
-            //            var isOutcome = address == utx.From;
-            //            var isFailed = utx.State == BlockchainTransactionState.Failed;
-
-            //            unconfirmedIncome += isIncome && !isFailed
-            //                ? erc20.TokenDigitsToTokens(utx.Amount)
-            //                : 0;
-            //            unconfirmedOutcome += isOutcome && !isFailed
-            //                ? -erc20.TokenDigitsToTokens(utx.Amount)
-            //                : 0;
-            //        }
-
-            //        var balanceDifference = balance - walletAddress.Balance;
-            //        var unconfirmedIncomeDifference = unconfirmedIncome - walletAddress.UnconfirmedIncome;
-            //        var unconfirmedOutcomeDifference = unconfirmedOutcome - walletAddress.UnconfirmedOutcome;
-
-            //        if (balanceDifference != 0 ||
-            //            unconfirmedIncomeDifference != 0 ||
-            //            unconfirmedOutcomeDifference != 0)
-            //        {
-            //            walletAddress.Balance = balance;
-            //            walletAddress.UnconfirmedIncome = unconfirmedIncome;
-            //            walletAddress.UnconfirmedOutcome = unconfirmedOutcome;
-            //            walletAddress.HasActivity = true;
-
-            //            await DataRepository.UpsertAddressAsync(walletAddress)
-            //                .ConfigureAwait(false);
-
-            //            LoadBalances();
-
-            //            RaiseBalanceUpdated(new CurrencyEventArgs(Currency));
-            //        }
-            //    }
-            //    catch (OperationCanceledException)
-            //    {
-            //        Log.Debug($"{Currency} UpdateBalanceAsync canceled.");
-            //    }
-            //    catch (Exception e)
-            //    {
-            //        Log.Error(e, $"{Currency} UpdateBalanceAsync error.");
-            //    }
-
-            //}, cancellationToken);
+            await scanner
+                .UpdateBalanceAsync(address, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         #endregion Balances

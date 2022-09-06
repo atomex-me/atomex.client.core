@@ -36,20 +36,27 @@ namespace Atomex.Common
             Func<HttpResponseMessage, string, Result<T>> responseHandler,
             CancellationToken cancellationToken = default)
         {
-            using var response = await GetAsync(
-                    baseUri: baseUri,
-                    relativeUri: requestUri,
-                    headers: headers,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+            try
+            {
+                using var response = await GetAsync(
+                        baseUri: baseUri,
+                        relativeUri: requestUri,
+                        headers: headers,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
 
-            var responseContent = await response.Content
-                .ReadAsStringAsync()
-                .ConfigureAwait(false);
+                var responseContent = await response.Content
+                    .ReadAsStringAsync()
+                    .ConfigureAwait(false);
 
-            return !response.IsSuccessStatusCode
-                ? new Error((int)response.StatusCode, responseContent)
-                : responseHandler(response, responseContent);
+                return !response.IsSuccessStatusCode
+                    ? new Error((int)response.StatusCode, responseContent)
+                    : responseHandler(response, responseContent);
+            }
+            catch (Exception e)
+            {
+                return new Error(Errors.RequestError, e.Message);
+            }
         }
 
         public static async Task<Result<T>> PostAsyncResult<T>(

@@ -37,11 +37,11 @@ namespace Atomex.Client.Core.Tests
         [Fact]
         public async Task<IBlockchainTransaction> CreateSwapPaymentTxTest()
         {
-            var bitcoinApi = new Mock<IInOutBlockchainApi>();
+            var bitcoinApi = new Mock<BitcoinBasedBlockchainApi>();
             bitcoinApi.Setup(a => a.GetUnspentOutputsAsync(It.IsAny<string>(), null, new CancellationToken()))
                 .Returns(Task.FromResult(GetTestOutputs(Common.Alice.PubKey, NBitcoin.Network.TestNet)));
 
-            var litecoinApi = new Mock<IInOutBlockchainApi>();
+            var litecoinApi = new Mock<BitcoinBasedBlockchainApi>();
             litecoinApi.Setup(a => a.GetUnspentOutputsAsync(It.IsAny<string>(), null, new CancellationToken()))
                 .Returns(Task.FromResult(GetTestOutputs(Common.Bob.PubKey, AltNetworkSets.Litecoin.Testnet)));
 

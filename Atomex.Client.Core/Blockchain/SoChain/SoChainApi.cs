@@ -15,6 +15,7 @@ using Serilog;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
+using Atomex.Wallet;
 
 namespace Atomex.Blockchain.SoChain
 {
@@ -242,6 +243,12 @@ namespace Atomex.Blockchain.SoChain
             public string Address { get; set; }
             [JsonProperty(PropertyName = "balance")]
             public string Balance { get; set; }
+            [JsonProperty(PropertyName = "received_value")]
+            public string ReceivedValue { get; set; }
+            [JsonProperty(PropertyName = "pending_value")]
+            public string PendingValue { get; set; }
+            [JsonProperty(PropertyName = "total_txs")]
+            public int TotalTxs { get; set; }
             [JsonProperty(PropertyName = "txs")]
             public List<TxDisplayData> Txs { get; set; }
         }
@@ -430,49 +437,6 @@ namespace Atomex.Blockchain.SoChain
             return new Script(ops);
         }
 
-        public async Task<Result<IEnumerable<ITxPoint>>> GetInputsAsync(
-            string txId,
-            CancellationToken cancellationToken = default)
-        {
-            var requestUri = $"api/v2/get_tx_inputs/{NetworkAcronym}/{txId}";
-
-            await RequestLimitControl
-                .WaitAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            return await HttpHelper.GetAsyncResult(
-                    baseUri: BaseUrl,
-                    requestUri: requestUri,
-                    responseHandler: (response, content) =>
-                    {
-                        var inputs = JsonConvert.DeserializeObject<Response<TxInputs>>(content);
-
-                        var result = inputs.Data.Inputs
-                            .Select(i =>
-                            {
-                                var witScript = WitScript.Empty;
-
-                                if (i.Witness != null)
-                                    witScript = i.Witness.Aggregate(witScript, (current, witness) => current + new WitScript(witness));
-
-                                var script = i.Script != null
-                                    ? ParseScript(i.Script)
-                                    : Script.Empty;
-
-                                return new BitcoinBasedTxPoint(new IndexedTxIn
-                                {
-                                    TxIn = new TxIn(new OutPoint(new uint256(i.FromOutput.TxId), i.FromOutput.OutputNo), script),
-                                    Index = i.InputNo,
-                                    WitScript = witScript,
-                                });
-                            });
-
-                        return new Result<IEnumerable<ITxPoint>>(result);
-                    },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
-
         public override async Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
@@ -509,89 +473,18 @@ namespace Atomex.Blockchain.SoChain
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetReceivedOutputsAsync(
-            string address,
-            string afterTxId = null,
-            CancellationToken cancellationToken = default)
-        {
-            var addParams = afterTxId != null ? $"{address}/{afterTxId}" : $"{address}";
-            var requestUri = $"api/v2/get_tx_received/{NetworkAcronym}/{addParams}";
-
-            await RequestLimitControl
-                .WaitAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            return await HttpHelper.GetAsyncResult(
-                    baseUri: BaseUrl,
-                    requestUri: requestUri,
-                    responseHandler: (response, content) =>
-                    {
-                        var outputs = JsonConvert.DeserializeObject<Response<AddressOutputs>>(content);
-
-                        var result = outputs.Data.Txs
-                            .Select(u =>
-                                new BitcoinBasedTxOutput(
-                                    coin: new Coin(
-                                        fromTxHash: new uint256(u.TxId),
-                                        fromOutputIndex: (uint)u.OutputNo,
-                                        amount: new Money(decimal.Parse(u.Value, CultureInfo.InvariantCulture),
-                                            MoneyUnit.BTC),
-                                        scriptPubKey: Script.FromHex(u.ScriptHex)),
-                                    spentTxPoint: null));
-
-                        return new Result<IEnumerable<BitcoinBasedTxOutput>>(result);
-                    },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
-
         public override async Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = $"api/v2/address/{NetworkAcronym}/{address}";
-
-            await RequestLimitControl
-                .WaitAsync(cancellationToken)
+            var addressInfoResult = await GetAddressInfo(address, cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult(
-                    baseUri: BaseUrl,
-                    requestUri: requestUri,
-                    responseHandler: (response, content) =>
-                    {
-                        var displayData = JsonConvert.DeserializeObject<Response<AddressDisplayData>>(content);
+            if (addressInfoResult.HasError)
+                return addressInfoResult.Error;
 
-                        var outputs = new List<BitcoinBasedTxOutput>();
-
-                        foreach (var tx in displayData.Data.Txs)
-                        {
-                            if (tx.Incoming == null)
-                                continue;
-
-                            var spentTxPoint = tx.Incoming.Spent != null
-                                ? new TxPoint(tx.Incoming.Spent.InputNo, tx.Incoming.Spent.TxId)
-                                : null;
-
-                            var amount = new Money(decimal.Parse(tx.Incoming.Value, CultureInfo.InvariantCulture),
-                                MoneyUnit.BTC);
-
-                            var script = Script.FromHex(tx.Incoming.ScriptHex);
-
-                            outputs.Add(new BitcoinBasedTxOutput(
-                                coin: new Coin(
-                                    fromTxHash: new uint256(tx.TxId),
-                                    fromOutputIndex: tx.Incoming.OutputNo,
-                                    amount: amount,
-                                    scriptPubKey: script),
-                                spentTxPoint: spentTxPoint));
-                        }
-
-                        return new Result<IEnumerable<BitcoinBasedTxOutput>>(outputs);
-                    },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+            return new Result<IEnumerable<BitcoinBasedTxOutput>>(addressInfoResult.Value.Outputs);
         }
 
         public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
@@ -624,29 +517,6 @@ namespace Atomex.Blockchain.SoChain
                             },
                             fees: (long)(decimal.Parse(tx.Data.Fee, CultureInfo.InvariantCulture) * Satoshi)
                         );
-                    },
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
-
-        public async Task<Result<bool>> IsTransactionConfirmed(
-            string txId,
-            CancellationToken cancellationToken = default)
-        {
-            var requestUri = $"api/v2/is_tx_confirmed/{NetworkAcronym}/{txId}";
-
-            await RequestLimitControl
-                .WaitAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            return await HttpHelper.GetAsyncResult<bool>(
-                    baseUri: BaseUrl,
-                    requestUri: requestUri,
-                    responseHandler: (response, content) =>
-                    {
-                        var info = JsonConvert.DeserializeObject<Response<TxConfirmationInfo>>(content);
-
-                        return info.Data.IsConfirmed;
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -711,6 +581,99 @@ namespace Atomex.Blockchain.SoChain
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
+
+        public async Task<Result<BitcoinBasedAddressInfo>> GetAddressInfo(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            var requestUri = $"api/v2/address/{NetworkAcronym}/{address}";
+
+            await RequestLimitControl
+                .WaitAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            return await HttpHelper.GetAsyncResult(
+                    baseUri: BaseUrl,
+                    requestUri: requestUri,
+                    responseHandler: (response, content) =>
+                    {
+                        var displayData = JsonConvert.DeserializeObject<Response<AddressDisplayData>>(content);
+
+                        var balance = decimal.Parse(displayData.Data.Balance, CultureInfo.InvariantCulture);
+                        var unconfirmedIncome = 0m;
+                        var unconfirmedOutcome = 0m;
+
+                        var outputs = new List<BitcoinBasedTxOutput>();
+                        var outgoingTxConfirmations = new Dictionary<string, int>();
+                        var unresolvedSpentTxConfirmations = new Dictionary<(string, uint), BitcoinBasedTxOutput>();
+
+                        foreach (var tx in displayData.Data.Txs)
+                        {
+                            if (tx.Outgoing != null)
+                            {
+                                outgoingTxConfirmations.Add(tx.TxId, tx.Confirmations);
+                            }
+
+                            if (tx.Incoming != null)
+                            {
+                                var amount = new Money(
+                                    amount: decimal.Parse(tx.Incoming.Value, CultureInfo.InvariantCulture),
+                                    unit: MoneyUnit.BTC);
+
+                                var script = Script.FromHex(tx.Incoming.ScriptHex);
+
+                                var spentTxPoint = tx.Incoming.Spent != null
+                                    ? new TxPoint(tx.Incoming.Spent.InputNo, tx.Incoming.Spent.TxId)
+                                    : null;
+
+                                var spentTxConfirmations = 0;
+                                var spentTxResolved = true;
+
+                                if (spentTxPoint != null && !outgoingTxConfirmations.TryGetValue(spentTxPoint.Hash, out spentTxConfirmations))
+                                {
+                                    spentTxConfirmations = 0;
+                                    spentTxResolved = false;
+                                }
+
+                                var output = new BitcoinBasedTxOutput(
+                                    coin: new Coin(
+                                        fromTxHash: new uint256(tx.TxId),
+                                        fromOutputIndex: tx.Incoming.OutputNo,
+                                        amount: amount,
+                                        scriptPubKey: script),
+                                    confirmations: tx.Confirmations,
+                                    spentTxPoint: spentTxPoint,
+                                    spentTxConfirmations: spentTxConfirmations);
+
+                                if (!spentTxResolved)
+                                    unresolvedSpentTxConfirmations.Add((tx.TxId, tx.Incoming.OutputNo), output);
+
+                                outputs.Add(output);
+                            }
+                        }
+
+                        // try resolve unresolved spent tx
+                        if (unresolvedSpentTxConfirmations.Any())
+                        {
+                            foreach (var tx in unresolvedSpentTxConfirmations)
+                            {
+                                if (!outgoingTxConfirmations.TryGetValue(tx.Value.SpentTxPoint.Hash, out var spentTxConfirmations))
+                                {
+                                    Log.Warning("[SoChainApi] Can't find confirmations info for spent tx {@hash}", tx.Value.SpentTxPoint.Hash);
+                                    continue;
+                                }
+
+                                tx.Value.SpentTxConfirmations = spentTxConfirmations;
+                            }
+                        }
+
+                        return new Result<BitcoinBasedAddressInfo>(
+                            new BitcoinBasedAddressInfo(balance, unconfirmedIncome, unconfirmedOutcome, outputs));
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
 
         private static string AcronymByNetwork(Network network)
         {

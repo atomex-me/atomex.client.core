@@ -8,7 +8,6 @@ using Serilog;
 using NBitcoin;
 
 using Atomex.Abstract;
-using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
@@ -317,17 +316,25 @@ namespace Atomex.Wallet.BitcoinBased
 
         #region Balances
 
-        public override Task UpdateBalanceAsync(
+        public override async Task UpdateBalanceAsync(
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var scanner = new BitcoinBasedWalletScanner(this);
+
+            await scanner
+                .UpdateBalanceAsync(skipUsed: false, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         public override async Task UpdateBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            var scanner = new BitcoinBasedWalletScanner(this);
+
+            await scanner
+                .UpdateBalanceAsync(address, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         #endregion Balances

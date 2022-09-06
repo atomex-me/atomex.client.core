@@ -7,7 +7,13 @@ using Atomex.Common;
 
 namespace Atomex.Blockchain.BitcoinBased
 {
-    public abstract class BitcoinBasedBlockchainApi : BlockchainApi, IInOutBlockchainApi
+    public record BitcoinBasedAddressInfo(
+        decimal Balance,
+        decimal UnconfirmedIncome,
+        decimal UnconfirmedOutcome,
+        IEnumerable<BitcoinBasedTxOutput> Outputs);
+
+    public abstract class BitcoinBasedBlockchainApi : BlockchainApi
     {
         public abstract Task<Result<ITxPoint>> GetInputAsync(
             string txId,

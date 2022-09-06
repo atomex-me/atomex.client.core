@@ -24,38 +24,29 @@ namespace Atomex.Blockchain.BitcoinBased
         public long Value => Coin.Amount.Satoshi;
         public bool IsValid => Coin.TxOut.ScriptPubKey.IsValid;
         public string TxId => Coin.Outpoint.Hash.ToString();
-        public bool IsSpent => SpentTxPoint != null;
-        public ITxPoint SpentTxPoint { get; set; }
         public BitcoinOutputType Type => Coin.GetOutputType();
+        public int Confirmations { get; set; }
+        public bool IsConfirmed => Confirmations > 0;
+        public ITxPoint SpentTxPoint { get; set; }
+        public bool IsSpent => SpentTxPoint != null;
+        public int SpentTxConfirmations { get; set; }
+        public bool IsSpentTxConfirmed => SpentTxConfirmations > 0;
 
         public BitcoinBasedTxOutput(Coin coin)
-            : this(coin, null)
+            : this(coin, confirmations: 0, spentTxPoint: null, spentTxConfirmations: 0)
         {
         }
 
-        public BitcoinBasedTxOutput(Coin coin, ITxPoint spentTxPoint)
+        public BitcoinBasedTxOutput(Coin coin, int confirmations, ITxPoint spentTxPoint, int spentTxConfirmations)
         {
             Coin = coin;
+            Confirmations = confirmations;
             SpentTxPoint = spentTxPoint;
+            SpentTxConfirmations = spentTxConfirmations;
         }
-
-        public bool IsP2Pk =>
-            Coin.TxOut.ScriptPubKey.IsScriptType(ScriptType.P2PK);
-
-        public bool IsP2Pkh =>
-            Coin.TxOut.ScriptPubKey.IsScriptType(ScriptType.P2PKH);
-
-        public bool IsSegwitP2Pkh =>
-            Coin.TxOut.ScriptPubKey.IsScriptType(ScriptType.P2WPKH);
 
         public bool IsP2Sh =>
             Coin.TxOut.ScriptPubKey.IsScriptType(ScriptType.P2SH);
-
-        public bool IsP2PkhSwapPayment =>
-            BitcoinBasedSwapTemplate.IsP2PkhSwapPayment(Coin.TxOut.ScriptPubKey);
-
-        public bool IsHtlcP2PkhSwapPayment =>
-            BitcoinBasedSwapTemplate.IsHtlcP2PkhSwapPayment(Coin.TxOut.ScriptPubKey);
 
         public bool IsPayToScriptHash(Script redeemScript) =>
             IsP2Sh && redeemScript.PaymentScript.Equals(Coin.TxOut.ScriptPubKey);

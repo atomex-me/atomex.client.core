@@ -644,7 +644,8 @@ namespace Atomex.Wallet.Tezos
                         transfer.Type |= BlockchainTransactionType.Input;
                 }
 
-                await _tezosAccount.LocalStorage
+                await _tezosAccount
+                    .LocalStorage
                     .UpsertTezosTokenTransfersAsync(transfersResult.Value)
                     .ConfigureAwait(false);
             }

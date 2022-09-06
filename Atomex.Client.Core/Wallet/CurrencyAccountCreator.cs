@@ -41,6 +41,26 @@ namespace Atomex.Wallet
                         currencies: currencies,
                         baseChainAccount: tezosAccount));
                 }
+                else if (Currencies.IsEthereumToken(currency.Name))
+                {
+                    if (!accounts.TryGetValue(EthereumConfig.Eth, out var ethereumAccount))
+                    {
+                        ethereumAccount = CreateCurrencyAccount(
+                            currency: EthereumConfig.Eth,
+                            wallet: wallet,
+                            dataRepository: dataRepository,
+                            currencies: currencies);
+
+                        accounts.Add(EthereumConfig.Eth, ethereumAccount);
+                    }
+
+                    accounts.Add(currency.Name, CreateCurrencyAccount(
+                        currency: currency.Name,
+                        wallet: wallet,
+                        dataRepository: dataRepository,
+                        currencies: currencies,
+                        baseChainAccount: ethereumAccount));
+                }
                 else
                 {
                     accounts.Add(currency.Name, CreateCurrencyAccount(
@@ -73,7 +93,8 @@ namespace Atomex.Wallet
                     currency,
                     currencies,
                     wallet,
-                    dataRepository),
+                    dataRepository,
+                    baseChainAccount as EthereumAccount),
 
                 "ETH" => new EthereumAccount(
                     currency,

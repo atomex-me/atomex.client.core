@@ -226,7 +226,7 @@ namespace Atomex.Swaps.Tezos.Fa12
                 // redeem already broadcast
                 _ = TrackTransactionConfirmationAsync<TezosTransaction>(
                     swap: swap,
-                    dataRepository: Fa12Account.DataRepository,
+                    dataRepository: Fa12Account.LocalStorage,
                     txId: swap.RedeemTx.Id,
                     confirmationHandler: RedeemConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -369,7 +369,7 @@ namespace Atomex.Swaps.Tezos.Fa12
 
             _ = TrackTransactionConfirmationAsync<TezosTransaction>(
                 swap: swap,
-                dataRepository: Fa12Account.DataRepository,
+                dataRepository: Fa12Account.LocalStorage,
                 txId: redeemTx.Id,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -477,7 +477,7 @@ namespace Atomex.Swaps.Tezos.Fa12
             {
                 _ = TrackTransactionConfirmationAsync<TezosTransaction>(
                     swap: swap,
-                    dataRepository: Fa12Account.DataRepository,
+                    dataRepository: Fa12Account.LocalStorage,
                     txId: swap.RefundTx.Id,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
@@ -589,7 +589,7 @@ namespace Atomex.Swaps.Tezos.Fa12
 
             _ = TrackTransactionConfirmationAsync<TezosTransaction>(
                 swap: swap,
-                dataRepository: Fa12Account.DataRepository,
+                dataRepository: Fa12Account.LocalStorage,
                 txId: refundTx.Id,
                 confirmationHandler: RefundConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -754,7 +754,7 @@ namespace Atomex.Swaps.Tezos.Fa12
                     .ConfigureAwait(false);
 
                 var tx = await Fa12Account
-                    .DataRepository
+                    .LocalStorage
                     .GetTransactionByIdAsync<TezosTransaction>(XtzConfig.Name, txId)
                     .ConfigureAwait(false);
 

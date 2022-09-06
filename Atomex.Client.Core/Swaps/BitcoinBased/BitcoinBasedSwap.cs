@@ -858,7 +858,7 @@ namespace Atomex.Swaps.BitcoinBased
                 {
                     attempts++;
 
-                    var inputResult = await ((IInOutBlockchainApi)soldCurrency.BlockchainApi)
+                    var inputResult = await ((BitcoinBasedBlockchainApi)soldCurrency.BlockchainApi)
                         .TryGetInputAsync(spentPoint.Hash, spentPoint.Index, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 

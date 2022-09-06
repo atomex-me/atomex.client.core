@@ -96,7 +96,7 @@ namespace Atomex.Wallet.Ethereum
 
                                 if (freeKeysCount >= lookAhead)
                                 {
-                                    Log.Debug("{@lookAhead} free keys found. Chain scan completed", lookAhead);
+                                    Log.Debug("[EthereumWalletScanner] {@lookAhead} free keys found. Chain scan completed", lookAhead);
                                     break;
                                 }
                             }
@@ -227,7 +227,7 @@ namespace Atomex.Wallet.Ethereum
             {
                 try
                 {
-                    Log.Debug("UpdateBalanceAsync for address {@address}", address);
+                    Log.Debug("[EthereumWalletScanner] UpdateBalanceAsync for address {@address}", address);
 
                     var walletAddress = await _account
                         .LocalStorage

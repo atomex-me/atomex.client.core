@@ -7,11 +7,10 @@ namespace Atomex.Core
 {
     public class WalletAddress
     {
-        public string UniqueId => Currency != "FA12" && Currency != "FA2"
+        public string Id => Currency != "FA12" && Currency != "FA2"
             ? $"{Address}:{Currency}"
             : $"{Address}:{Currency}:{TokenBalance.Contract}:{TokenBalance.TokenId}";
 
-        public long Id { get; set; }
         public string Currency { get; set; }
         public string Address { get; set; }
         public decimal Balance { get; set; }

@@ -181,7 +181,7 @@ namespace Atomex.LiteDb
                     addresses.EnsureIndex(CurrencyKey);
                     addresses.EnsureIndex(AddressKey);
 
-                    var existsAddress = addresses.FindById(walletAddress.UniqueId);
+                    var existsAddress = addresses.FindById(walletAddress.Id);
 
                     if (existsAddress == null)
                     {
@@ -623,7 +623,7 @@ namespace Atomex.LiteDb
                     //addresses.EnsureIndex(CurrencyKey);
                     //addresses.EnsureIndex(AddressKey);
 
-                    if (!addresses.Exists(Query.EQ(IdKey, address.UniqueId)))
+                    if (!addresses.Exists(Query.EQ(IdKey, address.Id)))
                     {
                         var document = _bsonMapper.ToDocument(address);
 

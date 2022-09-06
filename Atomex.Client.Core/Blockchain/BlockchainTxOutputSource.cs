@@ -24,7 +24,7 @@ namespace Atomex.Blockchain
 
             foreach (var a in addresses)
             {
-                var outputsResult = await ((IInOutBlockchainApi)_currency.BlockchainApi)
+                var outputsResult = await ((BitcoinBasedBlockchainApi)_currency.BlockchainApi)
                     .GetUnspentOutputsAsync(a.Address)
                     .ConfigureAwait(false);
 
@@ -45,7 +45,7 @@ namespace Atomex.Blockchain
 
             foreach (var address in addresses)
             {
-                var outputsResult = await ((IInOutBlockchainApi)_currency.BlockchainApi)
+                var outputsResult = await ((BitcoinBasedBlockchainApi)_currency.BlockchainApi)
                     .GetUnspentOutputsAsync(address)
                     .ConfigureAwait(false);
 

@@ -272,7 +272,9 @@ namespace Atomex.Blockchain.BitCore
                                 fromOutputIndex: o.Index,
                                 amount: new Money(o.Value, MoneyUnit.Satoshi),
                                 scriptPubKey: Script.FromHex(o.Script)),
-                            spentTxPoint: null)));
+                            confirmations: o.Confirmations,
+                            spentTxPoint: null,
+                            spentTxConfirmations: 0)));
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -308,7 +310,9 @@ namespace Atomex.Blockchain.BitCore
                                     fromOutputIndex: o.Index,
                                     amount: new Money(o.Value, MoneyUnit.Satoshi),
                                     scriptPubKey: Script.FromHex(o.Script)),
-                                spentTxPoint: spentPoint);
+                                confirmations: o.Confirmations,
+                                spentTxPoint: spentPoint,
+                                spentTxConfirmations: 0); // TODO: get spent tx confiramtions
                         }));
                     },
                     cancellationToken: cancellationToken)

@@ -4,7 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Abstract;
-using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Core;
 using Atomex.Wallet.Bip;
@@ -14,7 +13,6 @@ namespace Atomex.Wallet.Abstract
     public abstract class CurrencyAccount : ICurrencyAccount
     {
         public event EventHandler<CurrencyEventArgs> BalanceUpdated;
-        public event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded;
 
         public string Currency { get; }
         public ICurrencies Currencies { get; }
@@ -38,21 +36,6 @@ namespace Atomex.Wallet.Abstract
         protected void RaiseBalanceUpdated(CurrencyEventArgs eventArgs)
         {
             BalanceUpdated?.Invoke(this, eventArgs);
-        }
-
-        protected void RaiseUnconfirmedTransactionAdded(TransactionEventArgs eventArgs)
-        {
-            UnconfirmedTransactionAdded?.Invoke(this, eventArgs);
-        }
-
-        protected async Task<bool> IsSelfAddressAsync(
-            string address,
-            CancellationToken cancellationToken = default)
-        {
-            var walletAddress = await GetAddressAsync(address, cancellationToken)
-                .ConfigureAwait(false);
-
-            return walletAddress != null;
         }
 
         #endregion Common
