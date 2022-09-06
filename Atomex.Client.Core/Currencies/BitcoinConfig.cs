@@ -8,9 +8,7 @@ using NBitcoin;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
-using Atomex.Blockchain.BitCore;
 using Atomex.Blockchain.BlockCypher;
-using Atomex.Blockchain.Insight;
 using Atomex.Blockchain.SoChain;
 using Atomex.Common;
 using Atomex.Wallet.Bip;
@@ -93,8 +91,6 @@ namespace Atomex
             {
                 "sochain"             => new SoChainApi(this, configuration),
                 "blockcypher"         => new BlockCypherApi(this, configuration),
-                "insight"             => new InsightApi(this, configuration),
-                "bitcore+blockcypher" => new BitCoreApi(this, configuration),
                 _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
             };
         }

@@ -8,16 +8,19 @@ namespace Atomex.Common.Bson
 {
     public class BitcoinBasedTxOutputToBsonSerializer : BsonSerializer<BitcoinBasedTxOutput>
     {
-        private const string TxIdKey       = nameof(BitcoinBasedTxOutput.TxId);
-        private const string IndexKey      = nameof(BitcoinBasedTxOutput.Index);
-        private const string ValueKey      = nameof(BitcoinBasedTxOutput.Value);
-        private const string SpentHashKey  = "SpentHash";
-        private const string SpentIndexKey = "SpentIndex";
-        private const string ScriptKey     = "Script";
+        private const string TxIdKey                 = nameof(BitcoinBasedTxOutput.TxId);
+        private const string IndexKey                = nameof(BitcoinBasedTxOutput.Index);
+        private const string ValueKey                = nameof(BitcoinBasedTxOutput.Value);
+        private const string SpentHashKey            = "SpentHash";
+        private const string SpentIndexKey           = "SpentIndex";
+        private const string ScriptKey               = "Script";
+        private const string ConfirmationsKey        = "Confirmations";
+        private const string SpentTxConfirmationsKey = "SpentTxConfirmations";
 
         public override BitcoinBasedTxOutput Deserialize(BsonValue output)
         {
             var bson = output as BsonDocument;
+
             if (bson == null)
                 return null;
 
@@ -36,7 +39,13 @@ namespace Atomex.Common.Bson
                     amount: new Money(bson[ValueKey].AsInt64),
                     scriptPubKey: Script.FromHex(bson[ScriptKey].AsString)
                 ),
-                spentTxPoint: spentPoint
+                confirmations: bson.ContainsKey(ConfirmationsKey)
+                    ? bson[ConfirmationsKey].AsInt32
+                    : 0,
+                spentTxPoint: spentPoint,
+                spentTxConfirmations: bson.ContainsKey(SpentTxConfirmationsKey)
+                    ? bson[SpentTxConfirmationsKey].AsInt32
+                    : 0
             );
         }
 
@@ -55,7 +64,9 @@ namespace Atomex.Common.Bson
                     ? (int)output.SpentTxPoint?.Index
                     : 0,
                 [SpentHashKey]  = output.SpentTxPoint?.Hash,
-                [ScriptKey]     = output.Coin.TxOut.ScriptPubKey.ToHex()
+                [ScriptKey]     = output.Coin.TxOut.ScriptPubKey.ToHex(),
+                [ConfirmationsKey] = output.Confirmations,
+                [SpentTxConfirmationsKey] = output.SpentTxConfirmations
             };
         }
     }

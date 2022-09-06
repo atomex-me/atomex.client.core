@@ -15,7 +15,6 @@ using Serilog;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
-using Atomex.Wallet;
 
 namespace Atomex.Blockchain.SoChain
 {
@@ -226,7 +225,7 @@ namespace Atomex.Blockchain.SoChain
             [JsonProperty(PropertyName = "block_no")]
             public int? BlockNo { get; set; }
             [JsonProperty(PropertyName = "confirmations")]
-            public int Confirmations { get; set; }
+            public long Confirmations { get; set; }
             [JsonProperty(PropertyName = "time")]
             public int Time { get; set; }
             [JsonProperty(PropertyName = "incoming")]
@@ -465,7 +464,9 @@ namespace Atomex.Blockchain.SoChain
                                         amount: new Money(decimal.Parse(u.Value, CultureInfo.InvariantCulture),
                                             MoneyUnit.BTC),
                                         scriptPubKey: Script.FromHex(u.ScriptHex)),
-                                    spentTxPoint: null));
+                                    confirmations: u.Confirmations,
+                                    spentTxPoint: null,
+                                    spentTxConfirmations: 0));
 
                         return new Result<IEnumerable<BitcoinBasedTxOutput>>(result);
                     },
@@ -582,7 +583,7 @@ namespace Atomex.Blockchain.SoChain
                 .ConfigureAwait(false);
         }
 
-        public async Task<Result<BitcoinBasedAddressInfo>> GetAddressInfo(
+        public override async Task<Result<BitcoinBasedAddressInfo>> GetAddressInfo(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -592,7 +593,7 @@ namespace Atomex.Blockchain.SoChain
                 .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult(
+            return await HttpHelper.GetAsyncResult<BitcoinBasedAddressInfo>(
                     baseUri: BaseUrl,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
@@ -600,11 +601,12 @@ namespace Atomex.Blockchain.SoChain
                         var displayData = JsonConvert.DeserializeObject<Response<AddressDisplayData>>(content);
 
                         var balance = decimal.Parse(displayData.Data.Balance, CultureInfo.InvariantCulture);
-                        var unconfirmedIncome = 0m;
-                        var unconfirmedOutcome = 0m;
+                        var received = decimal.Parse(displayData.Data.ReceivedValue, CultureInfo.InvariantCulture);
+                        var unconfirmedIncomeInSatoshi = 0L;
+                        var unconfirmedOutcomeInSatoshi = 0L;
 
                         var outputs = new List<BitcoinBasedTxOutput>();
-                        var outgoingTxConfirmations = new Dictionary<string, int>();
+                        var outgoingTxConfirmations = new Dictionary<string, long>();
                         var unresolvedSpentTxConfirmations = new Dictionary<(string, uint), BitcoinBasedTxOutput>();
 
                         foreach (var tx in displayData.Data.Txs)
@@ -616,9 +618,7 @@ namespace Atomex.Blockchain.SoChain
 
                             if (tx.Incoming != null)
                             {
-                                var amount = new Money(
-                                    amount: decimal.Parse(tx.Incoming.Value, CultureInfo.InvariantCulture),
-                                    unit: MoneyUnit.BTC);
+                                var amount = decimal.Parse(tx.Incoming.Value, CultureInfo.InvariantCulture);
 
                                 var script = Script.FromHex(tx.Incoming.ScriptHex);
 
@@ -626,7 +626,7 @@ namespace Atomex.Blockchain.SoChain
                                     ? new TxPoint(tx.Incoming.Spent.InputNo, tx.Incoming.Spent.TxId)
                                     : null;
 
-                                var spentTxConfirmations = 0;
+                                var spentTxConfirmations = 0L;
                                 var spentTxResolved = true;
 
                                 if (spentTxPoint != null && !outgoingTxConfirmations.TryGetValue(spentTxPoint.Hash, out spentTxConfirmations))
@@ -639,16 +639,18 @@ namespace Atomex.Blockchain.SoChain
                                     coin: new Coin(
                                         fromTxHash: new uint256(tx.TxId),
                                         fromOutputIndex: tx.Incoming.OutputNo,
-                                        amount: amount,
+                                        amount: new Money(
+                                            amount: amount,
+                                            unit: MoneyUnit.BTC),
                                         scriptPubKey: script),
                                     confirmations: tx.Confirmations,
                                     spentTxPoint: spentTxPoint,
                                     spentTxConfirmations: spentTxConfirmations);
 
+                                outputs.Add(output);
+
                                 if (!spentTxResolved)
                                     unresolvedSpentTxConfirmations.Add((tx.TxId, tx.Incoming.OutputNo), output);
-
-                                outputs.Add(output);
                             }
                         }
 
@@ -667,13 +669,28 @@ namespace Atomex.Blockchain.SoChain
                             }
                         }
 
-                        return new Result<BitcoinBasedAddressInfo>(
-                            new BitcoinBasedAddressInfo(balance, unconfirmedIncome, unconfirmedOutcome, outputs));
+                        foreach (var output in outputs)
+                        {
+                            // unconfirmed income
+                            if (output.Confirmations == 0)
+                                unconfirmedIncomeInSatoshi += output.Value;
+
+                            // unconfirmed outcome
+                            if (output.SpentTxPoint != null && output.SpentTxConfirmations == 0)
+                                unconfirmedOutcomeInSatoshi += output.Value;
+                        }
+
+                        return new BitcoinBasedAddressInfo(
+                            Balance: balance,
+                            Received: received,
+                            Sent: received - balance,
+                            UnconfirmedIncome: Currency.SatoshiToCoin(unconfirmedIncomeInSatoshi),
+                            UnconfirmedOutcome: Currency.SatoshiToCoin(unconfirmedOutcomeInSatoshi),
+                            Outputs: outputs);
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
-
 
         private static string AcronymByNetwork(Network network)
         {

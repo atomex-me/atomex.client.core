@@ -125,7 +125,7 @@ namespace Atomex.Wallet.Abstract
         Task<bool> UpsertOutputsAsync(
             IEnumerable<BitcoinBasedTxOutput> outputs,
             string currency,
-            string address);
+            NBitcoin.Network network);
 
         Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(
             string currency);

@@ -45,7 +45,6 @@ namespace Atomex.Wallet.Ethereum
                     };
 
                     var api = EthConfig.BlockchainApi;
-                    var updateTimeStamp = DateTime.UtcNow;
 
                     var txs = new List<EthereumTransaction>();
                     var walletAddresses = new List<WalletAddress>();

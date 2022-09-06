@@ -25,11 +25,11 @@ namespace Atomex.Blockchain.BitcoinBased
         public bool IsValid => Coin.TxOut.ScriptPubKey.IsValid;
         public string TxId => Coin.Outpoint.Hash.ToString();
         public BitcoinOutputType Type => Coin.GetOutputType();
-        public int Confirmations { get; set; }
+        public long Confirmations { get; set; }
         public bool IsConfirmed => Confirmations > 0;
         public ITxPoint SpentTxPoint { get; set; }
         public bool IsSpent => SpentTxPoint != null;
-        public int SpentTxConfirmations { get; set; }
+        public long SpentTxConfirmations { get; set; }
         public bool IsSpentTxConfirmed => SpentTxConfirmations > 0;
 
         public BitcoinBasedTxOutput(Coin coin)
@@ -37,7 +37,7 @@ namespace Atomex.Blockchain.BitcoinBased
         {
         }
 
-        public BitcoinBasedTxOutput(Coin coin, int confirmations, ITxPoint spentTxPoint, int spentTxConfirmations)
+        public BitcoinBasedTxOutput(Coin coin, long confirmations, ITxPoint spentTxPoint, long spentTxConfirmations)
         {
             Coin = coin;
             Confirmations = confirmations;

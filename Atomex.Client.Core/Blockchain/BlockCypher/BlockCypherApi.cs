@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using NBitcoin;
+using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
@@ -137,79 +138,13 @@ namespace Atomex.Blockchain.BlockCypher
             string afterTxId = null,
             CancellationToken cancellationToken = default)
         {
-            await RequestLimitControl
-                .WaitAsync(cancellationToken)
+            var addressInfoResult = await GetAddressInfo(address, cancellationToken)
                 .ConfigureAwait(false);
 
-            var requestUri = $"/addrs/{address}/full?txlimit=1000" + (ApiToken != null ? $"&token={ApiToken}" : "");
+            if (addressInfoResult.HasError)
+                return addressInfoResult.Error;
 
-            return await HttpHelper.GetAsyncResult(
-                baseUri: BaseUri,
-                requestUri: requestUri,
-                responseHandler: (response, content) =>
-                {
-                    var addr = JsonConvert.DeserializeObject<JObject>(content, new JsonSerializerSettings()
-                    {
-                        DateTimeZoneHandling = DateTimeZoneHandling.Utc
-                    });
-
-                    if (!addr.ContainsKey("txs"))
-                        return new Result<IEnumerable<BitcoinBasedTxOutput>>(Enumerable.Empty<BitcoinBasedTxOutput>());
-
-                    var txs = addr["txs"] as JArray;
-
-                    var result = new List<BitcoinBasedTxOutput>();
-
-                    foreach (var tx in txs.Cast<JObject>())
-                    {
-                        if (!tx.ContainsKey("outputs"))
-                            continue;
-
-                        var outputs = tx["outputs"] as JArray;
-
-                        var outputN = 0u;
-
-                        foreach (var output in outputs.Cast<JObject>())
-                        {
-                            var addresses = output.ContainsKey("addresses")
-                                ? output["addresses"] as JArray
-                                : null;
-
-                            if (addresses == null)
-                            {
-                                outputN++;
-                                continue;
-                            }
-
-                            if (addresses.Count != 1 || !addresses.Values<string>().Contains(address))
-                            {
-                                outputN++;
-                                continue;
-                            }
-
-                            var amount = new Money(output.Value<long>("value"), MoneyUnit.Satoshi);
-                            var script = Script.FromHex(output.Value<string>("script"));
-
-                            var spentTxPoint = output.ContainsKey("spent_by")
-                                ? new TxPoint(0, output.Value<string>("spent_by"))
-                                : null;
-
-                            result.Add(new BitcoinBasedTxOutput(
-                                coin: new Coin(
-                                    fromTxHash: new uint256(tx.Value<string>("hash")),
-                                    fromOutputIndex: outputN,
-                                    amount: amount,
-                                    scriptPubKey: script),
-                                spentTxPoint: spentTxPoint));
-
-                            outputN++;
-                        }
-                    }
-
-                    return result;
-                },
-                cancellationToken: cancellationToken)
-            .ConfigureAwait(false);
+            return new Result<IEnumerable<BitcoinBasedTxOutput>>(addressInfoResult.Value.Outputs);
         }
 
         public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
@@ -329,6 +264,168 @@ namespace Atomex.Blockchain.BlockCypher
                     return new TxPoint((uint)i, spentResult.Value);
 
             return new Result<ITxPoint>((ITxPoint)null);
+        }
+
+        public override async Task<Result<BitcoinBasedAddressInfo>> GetAddressInfo(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            await RequestLimitControl
+                .WaitAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            var requestUri = $"/addrs/{address}/full?txlimit=1000" + (ApiToken != null ? $"&token={ApiToken}" : "");
+
+            return await HttpHelper.GetAsyncResult<BitcoinBasedAddressInfo>(
+                    baseUri: BaseUri,
+                    requestUri: requestUri,
+                    responseHandler: (response, content) =>
+                    {
+                        var addr = JsonConvert.DeserializeObject<JObject>(content, new JsonSerializerSettings()
+                        {
+                            DateTimeZoneHandling = DateTimeZoneHandling.Utc
+                        });
+
+                        var balanceInSatoshi = addr["balance"].Value<long>();
+                        var receivedInSatoshi = addr["total_received"].Value<long>();
+                        var sentInSatoshi = addr["total_sent"].Value<long>();
+                        var unconfirmedIncomeInSatoshi = 0L;
+                        var unconfirmedOutcomeInSatoshi = 0L;
+                        //var unconfirmedBalanceInSatoshi = addr["unconfirmed_balance"].Value<long>();
+
+                        if (!addr.ContainsKey("txs"))
+                        {
+                            return new BitcoinBasedAddressInfo(
+                                Balance: Currency.SatoshiToCoin(balanceInSatoshi),
+                                Received: Currency.SatoshiToCoin(receivedInSatoshi),
+                                Sent: Currency.SatoshiToCoin(sentInSatoshi),
+                                UnconfirmedIncome: 0,
+                                UnconfirmedOutcome: 0,
+                                Outputs: Enumerable.Empty<BitcoinBasedTxOutput>());
+                        }
+
+                        var txs = addr["txs"] as JArray;
+
+                        var outputs = new List<BitcoinBasedTxOutput>();
+                        var outgoingTxConfirmations = new Dictionary<string, long>();
+                        var unresolvedSpentTxConfirmations = new Dictionary<(string, uint), BitcoinBasedTxOutput>();
+
+                        foreach (var tx in txs.Cast<JObject>())
+                        {
+                            if (tx.ContainsKey("inputs"))
+                            {
+                                var txInputs = tx["inputs"] as JArray;
+
+                                foreach (var txInput in txInputs.Cast<JObject>())
+                                {
+                                    var addresses = txInput.ContainsKey("addresses")
+                                        ? txInput["addresses"] as JArray
+                                        : null;
+
+                                    if (addresses == null || !addresses.Values<string>().Contains(address))
+                                        continue;
+
+                                    outgoingTxConfirmations.Add(tx.Value<string>("hash"), tx.Value<long>("confirmations"));
+                                }
+                            }
+
+                            if (tx.ContainsKey("outputs"))
+                            {
+                                var txOutputs = tx["outputs"] as JArray;
+
+                                var txOutputN = 0u;
+
+                                foreach (var txOutput in txOutputs.Cast<JObject>())
+                                {
+                                    var addresses = txOutput.ContainsKey("addresses")
+                                        ? txOutput["addresses"] as JArray
+                                        : null;
+
+                                    if (addresses == null)
+                                    {
+                                        txOutputN++;
+                                        continue;
+                                    }
+
+                                    if (addresses.Count != 1 || !addresses.Values<string>().Contains(address))
+                                    {
+                                        txOutputN++;
+                                        continue;
+                                    }
+
+                                    var txHash = tx.Value<string>("hash");
+                                    var amount = new Money(txOutput.Value<long>("value"), MoneyUnit.Satoshi);
+                                    var script = Script.FromHex(txOutput.Value<string>("script"));
+
+                                    var spentTxPoint = txOutput.ContainsKey("spent_by")
+                                        ? new TxPoint(0, txOutput.Value<string>("spent_by"))
+                                        : null;
+
+                                    var spentTxConfirmations = 0L;
+                                    var spentTxResolved = true;
+
+                                    if (spentTxPoint != null && !outgoingTxConfirmations.TryGetValue(spentTxPoint.Hash, out spentTxConfirmations))
+                                    {
+                                        spentTxConfirmations = 0;
+                                        spentTxResolved = false;
+                                    }
+
+                                    var output = new BitcoinBasedTxOutput(
+                                        coin: new Coin(
+                                            fromTxHash: new uint256(txHash),
+                                            fromOutputIndex: txOutputN,
+                                            amount: amount,
+                                            scriptPubKey: script),
+                                        confirmations: tx.Value<long>("confirmations"),
+                                        spentTxPoint: spentTxPoint,
+                                        spentTxConfirmations: spentTxConfirmations);
+
+                                    outputs.Add(output);
+
+                                    if (!spentTxResolved)
+                                        unresolvedSpentTxConfirmations.Add((txHash, txOutputN), output);
+
+                                    txOutputN++;
+                                }
+                            }
+                        }
+
+                        // try resolve unresolved spent tx
+                        if (unresolvedSpentTxConfirmations.Any())
+                        {
+                            foreach (var tx in unresolvedSpentTxConfirmations)
+                            {
+                                if (!outgoingTxConfirmations.TryGetValue(tx.Value.SpentTxPoint.Hash, out var spentTxConfirmations))
+                                {
+                                    Log.Warning("[BlockCypherApi] Can't find confirmations info for spent tx {@hash}", tx.Value.SpentTxPoint.Hash);
+                                    continue;
+                                }
+
+                                tx.Value.SpentTxConfirmations = spentTxConfirmations;
+                            }
+                        }
+
+                        foreach (var output in outputs)
+                        {
+                            // unconfirmed income
+                            if (output.Confirmations == 0)
+                                unconfirmedIncomeInSatoshi += output.Value;
+
+                            // unconfirmed outcome
+                            if (output.SpentTxPoint != null && output.SpentTxConfirmations == 0)
+                                unconfirmedOutcomeInSatoshi += output.Value;
+                        }
+
+                        return new BitcoinBasedAddressInfo(
+                            Balance: Currency.SatoshiToCoin(balanceInSatoshi),
+                            Received: Currency.SatoshiToCoin(receivedInSatoshi),
+                            Sent: Currency.SatoshiToCoin(sentInSatoshi),
+                            UnconfirmedIncome: Currency.SatoshiToCoin(unconfirmedIncomeInSatoshi),
+                            UnconfirmedOutcome: Currency.SatoshiToCoin(unconfirmedOutcomeInSatoshi),
+                            Outputs: outputs);
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
     }
 }

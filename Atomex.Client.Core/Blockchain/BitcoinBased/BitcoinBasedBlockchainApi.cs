@@ -9,6 +9,8 @@ namespace Atomex.Blockchain.BitcoinBased
 {
     public record BitcoinBasedAddressInfo(
         decimal Balance,
+        decimal Received,
+        decimal Sent,
         decimal UnconfirmedIncome,
         decimal UnconfirmedOutcome,
         IEnumerable<BitcoinBasedTxOutput> Outputs);
@@ -55,6 +57,10 @@ namespace Atomex.Blockchain.BitcoinBased
         public abstract Task<Result<ITxPoint>> IsTransactionOutputSpent(
             string txId,
             uint outputNo,
+            CancellationToken cancellationToken = default);
+
+        public abstract Task<Result<BitcoinBasedAddressInfo>> GetAddressInfo(
+            string address,
             CancellationToken cancellationToken = default);
     }
 }

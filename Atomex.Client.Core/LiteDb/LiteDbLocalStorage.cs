@@ -941,7 +941,7 @@ namespace Atomex.LiteDb
         public Task<bool> UpsertOutputsAsync(
             IEnumerable<BitcoinBasedTxOutput> outputs,
             string currency,
-            string address)
+            NBitcoin.Network network)
         {
             try
             {
@@ -954,7 +954,7 @@ namespace Atomex.LiteDb
                         {
                             var document = _bsonMapper.ToDocument(o);
                             document[CurrencyKey] = currency;
-                            document[AddressKey] = address;
+                            document[AddressKey] = o.DestinationAddress(network);
                             return document;
                         });
 
@@ -967,7 +967,7 @@ namespace Atomex.LiteDb
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error adding transaction");
+                Log.Error(e, "Error while upserting outputs");
             }
 
             return Task.FromResult(false);
@@ -1082,7 +1082,8 @@ namespace Atomex.LiteDb
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
                     var id = $"{txId}:{index}";
 
-                    var document = db.GetCollection(OutputsCollectionName)
+                    var document = db
+                        .GetCollection(OutputsCollectionName)
                         .FindById(id);
 
                     var output = document != null
