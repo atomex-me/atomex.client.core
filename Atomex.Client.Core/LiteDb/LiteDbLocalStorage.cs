@@ -751,6 +751,32 @@ namespace Atomex.LiteDb
             return Task.FromResult<T>(default);
         }
 
+        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+            string currency,
+            Type transactionType)
+        {
+            try
+            {
+                lock (_syncRoot)
+                {
+                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
+
+                    var transactions = db.GetCollection(TransactionCollectionName)
+                        .Find(Query.EQ(CurrencyKey, currency))
+                        .Select(d => (IBlockchainTransaction)_bsonMapper.ToObject(transactionType, d))
+                        .ToList();
+
+                    return Task.FromResult<IEnumerable<IBlockchainTransaction>>(transactions);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error getting transactions");
+            }
+
+            return Task.FromResult(Enumerable.Empty<IBlockchainTransaction>());
+        }
+
         public Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
              where T : IBlockchainTransaction
         {

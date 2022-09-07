@@ -104,6 +104,10 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
             where T : IBlockchainTransaction;
 
+        Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+            string currency,
+            Type transactionType);
+
         Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(string currency)
             where T : IBlockchainTransaction;
 

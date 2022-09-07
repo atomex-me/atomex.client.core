@@ -197,6 +197,13 @@ namespace Atomex.LiteDb
             return _liteDbLocalStorage.GetTransactionsAsync<T>(currency);
         }
 
+        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+            string currency,
+            Type transactionType)
+        {
+            return _liteDbLocalStorage.GetTransactionsAsync(currency, transactionType);
+        }
+
         public Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(
             string currency) where T : IBlockchainTransaction
         {

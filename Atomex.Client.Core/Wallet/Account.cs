@@ -219,6 +219,11 @@ namespace Atomex.Wallet
             return _localStorage.GetTransactionsAsync<T>(currency);
         }
 
+        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(string currency)
+        {
+            return _localStorage.GetTransactionsAsync(currency, Currencies.GetByName(currency).TransactionType);
+        }
+
         public async Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync()
         {
             var result = new List<IBlockchainTransaction>();
