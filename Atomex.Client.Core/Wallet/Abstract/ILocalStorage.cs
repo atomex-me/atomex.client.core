@@ -13,7 +13,8 @@ namespace Atomex.Wallet.Abstract
 {
     public interface ILocalStorage
     {
-        public event EventHandler<TransactionsEventArgs> TransactionsChanged;
+        public event EventHandler<BalanceChangedEventArgs> BalanceChanged;
+        public event EventHandler<TransactionsChangedEventArgs> TransactionsChanged;
 
         void ChangePassword(SecureString newPassword);
 
@@ -23,8 +24,6 @@ namespace Atomex.Wallet.Abstract
 
         Task<int> UpsertAddressesAsync(
             IEnumerable<WalletAddress> walletAddresses);
-
-        Task<bool> TryInsertAddressAsync(WalletAddress walletAddress);
 
         Task<WalletAddress> GetWalletAddressAsync(
             string currency,
@@ -45,8 +44,6 @@ namespace Atomex.Wallet.Abstract
 
         Task<IEnumerable<WalletAddress>> GetAddressesAsync(string currency);
 
-        Task<bool> RemoveAddressAsync(string currency, string address);
-
         #endregion Addresses
 
         #region TezosTokens
@@ -65,17 +62,11 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync();
 
         Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync(
-            string address);
-
-        Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync(
             string address,
             string tokenContract);
 
         Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesByContractAsync(
             string tokenContract);
-
-        Task<bool> TryInsertTezosTokenAddressAsync(
-            WalletAddress address);
 
         Task<int> UpsertTezosTokenAddressesAsync(
             IEnumerable<WalletAddress> walletAddresses);
@@ -140,11 +131,6 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(
             string currency,
             string address);
-
-        Task<BitcoinBasedTxOutput> GetOutputAsync(
-            string currency,
-            string txId,
-            uint index);
 
         #endregion Outputs
 

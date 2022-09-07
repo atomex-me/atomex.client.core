@@ -15,7 +15,7 @@ using Network = Atomex.Core.Network;
 
 namespace Atomex.Client.Core.Tests
 {
-    public class LiteDbAccountDataRepositoryTests
+    public class LiteDbLocalStorageTests
     {
         private const string PathToDb = "test.db";
         private SecureString Password { get; } = "12345".ToSecureString();

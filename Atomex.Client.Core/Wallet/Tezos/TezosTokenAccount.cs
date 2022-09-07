@@ -19,8 +19,6 @@ namespace Atomex.Wallet.Tezos
 {
     public abstract class TezosTokenAccount : ICurrencyAccount, IEstimatable
     {
-        public event EventHandler<CurrencyEventArgs> BalanceUpdated;
-
         protected readonly string _tokenContract;
         protected readonly int _tokenId;
         protected readonly TezosAccount _tezosAccount;

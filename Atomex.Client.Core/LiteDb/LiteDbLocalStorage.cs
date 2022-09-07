@@ -46,13 +46,12 @@ namespace Atomex.LiteDb
         private const string TransferContract = nameof(TokenTransfer.Contract);
         private const string KeyTypeKey = nameof(WalletAddress.KeyType);
 
-        public event EventHandler<TransactionsEventArgs> TransactionsChanged;
+        public event EventHandler<BalanceChangedEventArgs> BalanceChanged;
+        public event EventHandler<TransactionsChangedEventArgs> TransactionsChanged;
 
         private readonly string _pathToDb;
         private string _sessionPassword;
         private readonly BsonMapper _bsonMapper;
-        private readonly ConcurrentDictionary<long, Swap> _swapById = new();
-        private bool _swapsLoaded;
         private readonly object _syncRoot = new();
 
         private string ConnectionString => $"FileName={_pathToDb};Password={_sessionPassword};Mode=Exclusive";
@@ -165,52 +164,6 @@ namespace Atomex.LiteDb
             }
 
             return Task.FromResult(0);
-        }
-
-        public Task<bool> TryInsertAddressAsync(
-            WalletAddress walletAddress)
-        {
-            try
-            {
-                lock (_syncRoot)
-                {
-                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
-
-                    var addresses = db.GetCollection(AddressesCollectionName);
-                    addresses.EnsureIndex(IndexKey);
-                    addresses.EnsureIndex(CurrencyKey);
-                    addresses.EnsureIndex(AddressKey);
-
-                    var existsAddress = addresses.FindById(walletAddress.Id);
-
-                    if (existsAddress == null)
-                    {
-                        var document = _bsonMapper.ToDocument(walletAddress);
-
-                        var id = addresses.Insert(document);
-
-                        return Task.FromResult(id != null);
-                    }
-                    else if (existsAddress.ContainsKey(KeyTypeKey) &&
-                             existsAddress[KeyTypeKey].AsInt32 != walletAddress.KeyType)
-                    {
-                        existsAddress[KeyTypeKey] = walletAddress.KeyType;
-                        existsAddress["KeyIndex"].AsDocument["Chain"] = (int)walletAddress.KeyIndex.Chain;
-                        existsAddress["KeyIndex"].AsDocument["Index"] = (int)walletAddress.KeyIndex.Index;
-                        existsAddress["KeyIndex"].AsDocument["Account"] = (int)walletAddress.KeyIndex.Account;
-
-                        return Task.FromResult(addresses.Update(existsAddress));
-                    }
-
-                    return Task.FromResult(false);
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error updating address");
-            }
-
-            return Task.FromResult(false);
         }
 
         public Task<WalletAddress> GetWalletAddressAsync(
@@ -376,28 +329,6 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<WalletAddress>());
         }
 
-        public Task<bool> RemoveAddressAsync(
-            string currency,
-            string address)
-        {
-            try
-            {
-                lock (_syncRoot)
-                {
-                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
-                    var addresses = db.GetCollection(AddressesCollectionName);
-
-                    return Task.FromResult(addresses.Delete($"{address}:{currency}"));
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error getting wallet addresses");
-            }
-
-            return Task.FromResult(false);
-        }
-
         #endregion Addresses
 
         #region TezosTokens
@@ -443,32 +374,6 @@ namespace Atomex.LiteDb
 
                     var addresses = tezosTokenAddresses
                         .FindAll()
-                        .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
-                        .ToList();
-
-                    return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error getting tezos tokens addresses");
-            }
-
-            return Task.FromResult(Enumerable.Empty<WalletAddress>());
-        }
-
-        public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync(
-            string address)
-        {
-            try
-            {
-                lock (_syncRoot)
-                {
-                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
-                    var tezosTokenAddresses = db.GetCollection(TezosTokensAddresses);
-
-                    var addresses = tezosTokenAddresses
-                        .Find(Query.EQ(AddressKey, address))
                         .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
                         .ToList();
 
@@ -607,40 +512,6 @@ namespace Atomex.LiteDb
             }
 
             return Task.FromResult(Enumerable.Empty<WalletAddress>());
-        }
-
-        public Task<bool> TryInsertTezosTokenAddressAsync(
-            WalletAddress address)
-        {
-            try
-            {
-                lock (_syncRoot)
-                {
-                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
-
-                    var addresses = db.GetCollection(TezosTokensAddresses);
-                    //addresses.EnsureIndex(IndexKey);
-                    //addresses.EnsureIndex(CurrencyKey);
-                    //addresses.EnsureIndex(AddressKey);
-
-                    if (!addresses.Exists(Query.EQ(IdKey, address.Id)))
-                    {
-                        var document = _bsonMapper.ToDocument(address);
-
-                        var id = addresses.Insert(document);
-
-                        return Task.FromResult(id != null);
-                    }
-
-                    return Task.FromResult(false);
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error updating tezos token address");
-            }
-
-            return Task.FromResult(false);
         }
 
         public Task<int> UpsertTezosTokenTransfersAsync(
@@ -1070,37 +941,6 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<BitcoinBasedTxOutput>());
         }
 
-        public Task<BitcoinBasedTxOutput> GetOutputAsync(
-            string currency,
-            string txId,
-            uint index)
-        {
-            try
-            {
-                lock (_syncRoot)
-                {
-                    using var db = new LiteDatabase(ConnectionString, _bsonMapper);
-                    var id = $"{txId}:{index}";
-
-                    var document = db
-                        .GetCollection(OutputsCollectionName)
-                        .FindById(id);
-
-                    var output = document != null
-                        ? _bsonMapper.ToObject<BitcoinBasedTxOutput>(document)
-                        : null;
-
-                    return Task.FromResult(output);
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error getting output");
-            }
-
-            return Task.FromResult<BitcoinBasedTxOutput>(null);
-        }
-
         #endregion Outputs
 
         #region Orders
@@ -1146,6 +986,7 @@ namespace Atomex.LiteDb
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
 
                     var collectionExists = db.DropCollection(OrdersCollectionName);
+
                     if (collectionExists)
                         Log.Debug("The {Collection} collection is dropped", OrdersCollectionName);
                     else
@@ -1246,9 +1087,6 @@ namespace Atomex.LiteDb
 
         public Task<bool> AddSwapAsync(Swap swap)
         {
-            if (!_swapById.TryAdd(swap.Id, swap))
-                return Task.FromResult(false);
-
             try
             {
                 lock (_syncRoot)
@@ -1277,7 +1115,8 @@ namespace Atomex.LiteDb
                 {
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
 
-                    var result = db.GetCollection<Swap>(SwapsCollectionName)
+                    var result = db
+                        .GetCollection<Swap>(SwapsCollectionName)
                         .Update(swap);
 
                     return Task.FromResult(result);
@@ -1293,23 +1132,17 @@ namespace Atomex.LiteDb
 
         public Task<Swap> GetSwapByIdAsync(long id)
         {
-            if (_swapById.TryGetValue(id, out var swap))
-                return Task.FromResult(swap);
-
             try
             {
                 lock (_syncRoot)
                 {
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
 
-                    swap = db.GetCollection<Swap>(SwapsCollectionName)
+                    var swap = db
+                        .GetCollection<Swap>(SwapsCollectionName)
                         .FindById(id);
 
-                    if (swap != null)
-                    {
-                        _swapById.TryAdd(swap.Id, swap);
-                        return Task.FromResult(swap);
-                    }
+                    return Task.FromResult(swap);
                 }
             }
             catch (Exception e)
@@ -1322,26 +1155,18 @@ namespace Atomex.LiteDb
 
         public Task<IEnumerable<Swap>> GetSwapsAsync()
         {
-            if (_swapsLoaded)
-                return Task.FromResult<IEnumerable<Swap>>(_swapById.Values);
-
             try
             {
                 lock (_syncRoot)
                 {
                     using var db = new LiteDatabase(ConnectionString, _bsonMapper);
 
-                    var swaps = db.GetCollection<Swap>(SwapsCollectionName)
+                    var swaps = db
+                        .GetCollection<Swap>(SwapsCollectionName)
                         .Find(Query.All())
                         .ToList();
 
-                    foreach (var swap in swaps)
-                        if (!_swapById.ContainsKey(swap.Id))
-                            _swapById.TryAdd(swap.Id, swap);
-
-                    _swapsLoaded = true;
-
-                    return Task.FromResult<IEnumerable<Swap>>(_swapById.Values);
+                    return Task.FromResult<IEnumerable<Swap>>(swaps);
                 }
             }
             catch (Exception e)

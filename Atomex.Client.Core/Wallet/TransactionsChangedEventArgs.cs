@@ -4,16 +4,16 @@ using Atomex.Blockchain.Abstract;
 
 namespace Atomex.Wallet
 {
-    public class TransactionsEventArgs
+    public class TransactionsChangedEventArgs
     {
         public IEnumerable<IBlockchainTransaction> Transactions { get; }
 
-        public TransactionsEventArgs(IBlockchainTransaction transaction)
+        public TransactionsChangedEventArgs(IBlockchainTransaction transaction)
         {
             Transactions = new List<IBlockchainTransaction>() { transaction };
         }
 
-        public TransactionsEventArgs(IEnumerable<IBlockchainTransaction> transactions)
+        public TransactionsChangedEventArgs(IEnumerable<IBlockchainTransaction> transactions)
         {
             Transactions = transactions;
         }

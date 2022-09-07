@@ -35,7 +35,7 @@ namespace Atomex.Services
             _localStorage.TransactionsChanged += LocalStorage_TransactionsChanged;
         }
 
-        private void LocalStorage_TransactionsChanged(object sender, TransactionsEventArgs e)
+        private void LocalStorage_TransactionsChanged(object sender, TransactionsChangedEventArgs e)
         {
             try
             {
