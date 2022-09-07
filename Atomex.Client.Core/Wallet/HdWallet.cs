@@ -30,7 +30,8 @@ namespace Atomex.Wallet
         {
             PathToWallet = FileSystem.Current.ToFullPath(pathToWallet);
 
-            KeyStorage = HdKeyStorageLoader.LoadFromFile(pathToWallet, password)
+            KeyStorage = HdKeyStorageLoader
+                .LoadFromFile(pathToWallet, password)
                 .Unlock(password);
         }
 
