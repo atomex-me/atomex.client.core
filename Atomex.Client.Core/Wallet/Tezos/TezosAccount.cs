@@ -436,7 +436,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             return (await LocalStorage
-                .GetTezosTokenAddressesAsync()
+                .GetTokenAddressesAsync()
                 .ConfigureAwait(false))
                 .Where(w => w.AvailableBalance() > 0)
                 .ToList();

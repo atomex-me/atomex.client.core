@@ -48,41 +48,41 @@ namespace Atomex.Wallet.Abstract
 
         #region TezosTokens
 
-        Task<WalletAddress> GetTezosTokenAddressAsync(
+        Task<WalletAddress> GetTokenAddressAsync(
             string currency,
             string tokenContract,
             decimal tokenId,
             string address);
 
-        Task<IEnumerable<WalletAddress>> GetUnspentTezosTokenAddressesAsync(
+        Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             string currency,
             string tokenContract,
             decimal tokenId);
 
-        Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync();
+        Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync();
 
-        Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync(
+        Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
             string address,
             string tokenContract);
 
-        Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesByContractAsync(
+        Task<IEnumerable<WalletAddress>> GetTokenAddressesByContractAsync(
             string tokenContract);
 
-        Task<int> UpsertTezosTokenAddressesAsync(
+        Task<int> UpsertTokenAddressesAsync(
             IEnumerable<WalletAddress> walletAddresses);
 
-        Task<int> UpsertTezosTokenTransfersAsync(
+        Task<int> UpsertTokenTransfersAsync(
             IEnumerable<TokenTransfer> tokenTransfers);
 
-        Task<IEnumerable<TokenTransfer>> GetTezosTokenTransfersAsync(
+        Task<IEnumerable<TokenTransfer>> GetTokenTransfersAsync(
             string contractAddress,
             int offset = 0,
             int limit = 20);
 
-        Task<int> UpsertTezosTokenContractsAsync(
+        Task<int> UpsertTokenContractsAsync(
             IEnumerable<TokenContract> tokenContracts);
 
-        Task<IEnumerable<TokenContract>> GetTezosTokenContractsAsync();
+        Task<IEnumerable<TokenContract>> GetTokenContractsAsync();
 
         #endregion TezosTokens
 

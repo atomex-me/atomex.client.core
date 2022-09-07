@@ -54,7 +54,7 @@ namespace Atomex.ViewModels
                     .Concat(new[] { freeTezosAddress });
 
                 var tokenAddresses = (await tezosAccount.LocalStorage
-                    .GetTezosTokenAddressesByContractAsync(tokenContract)
+                    .GetTokenAddressesByContractAsync(tokenContract)
                     .ConfigureAwait(false))
                     .Where(w => w.Currency == "FA12" || w.Currency == "FA2");
 

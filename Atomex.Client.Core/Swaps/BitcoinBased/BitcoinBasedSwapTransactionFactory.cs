@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using NBitcoin;
 using Serilog;
 
-using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.BitcoinBased;
 
 namespace Atomex.Swaps.BitcoinBased

@@ -104,7 +104,7 @@ namespace Atomex.Services.BalanceUpdaters
 
             // addresses from local db
             var localAddresses = await _tezosAccount.LocalStorage
-                .GetTezosTokenAddressesAsync()
+                .GetTokenAddressesAsync()
                 .ConfigureAwait(false);
 
             var addresses = localAddresses

@@ -21,6 +21,9 @@ namespace Atomex.LiteDb
 
         private readonly LiteDbLocalStorage _liteDbLocalStorage;
 
+        //private IDictionary<string, WalletAddress> _walletByAddress;
+        //private IDictionary<string, List<WalletAddress>> _walletsByCurrency;
+
         public LiteDbCachedLocalStorage(
             string pathToDb,
             SecureString password,
@@ -93,72 +96,72 @@ namespace Atomex.LiteDb
 
         #region TezosTokens
 
-        public Task<WalletAddress> GetTezosTokenAddressAsync(
+        public Task<WalletAddress> GetTokenAddressAsync(
             string currency,
             string tokenContract,
             decimal tokenId,
             string address)
         {
-            return _liteDbLocalStorage.GetTezosTokenAddressAsync(currency, tokenContract, tokenId, address);
+            return _liteDbLocalStorage.GetTokenAddressAsync(currency, tokenContract, tokenId, address);
         }
 
-        public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync()
+        public Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync()
         {
-            return _liteDbLocalStorage.GetTezosTokenAddressesAsync();
+            return _liteDbLocalStorage.GetTokenAddressesAsync();
         }
 
-        public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync(
+        public Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
             string address,
             string tokenContract)
         {
-            return _liteDbLocalStorage.GetTezosTokenAddressesAsync(address, tokenContract);
+            return _liteDbLocalStorage.GetTokenAddressesAsync(address, tokenContract);
         }
 
-        public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesByContractAsync(
+        public Task<IEnumerable<WalletAddress>> GetTokenAddressesByContractAsync(
             string tokenContract)
         {
-            return _liteDbLocalStorage.GetTezosTokenAddressesByContractAsync(tokenContract);
+            return _liteDbLocalStorage.GetTokenAddressesByContractAsync(tokenContract);
         }
 
-        public Task<int> UpsertTezosTokenAddressesAsync(IEnumerable<WalletAddress> walletAddresses)
+        public Task<int> UpsertTokenAddressesAsync(IEnumerable<WalletAddress> walletAddresses)
         {
-            return _liteDbLocalStorage.UpsertTezosTokenAddressesAsync(walletAddresses);
+            return _liteDbLocalStorage.UpsertTokenAddressesAsync(walletAddresses);
         }
 
-        public Task<IEnumerable<WalletAddress>> GetUnspentTezosTokenAddressesAsync(
+        public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             string currency,
             string tokenContract,
             decimal tokenId)
         {
-            return _liteDbLocalStorage.GetUnspentTezosTokenAddressesAsync(
+            return _liteDbLocalStorage.GetUnspentTokenAddressesAsync(
                 currency,
                 tokenContract,
                 tokenId);
         }
 
-        public Task<int> UpsertTezosTokenTransfersAsync(
+        public Task<int> UpsertTokenTransfersAsync(
             IEnumerable<TokenTransfer> tokenTransfers)
         {
-            return _liteDbLocalStorage.UpsertTezosTokenTransfersAsync(tokenTransfers);
+            return _liteDbLocalStorage.UpsertTokenTransfersAsync(tokenTransfers);
         }
 
-        public Task<IEnumerable<TokenTransfer>> GetTezosTokenTransfersAsync(
+        public Task<IEnumerable<TokenTransfer>> GetTokenTransfersAsync(
             string contractAddress,
             int offset = 0,
             int limit = int.MaxValue)
         {
-            return _liteDbLocalStorage.GetTezosTokenTransfersAsync(contractAddress, offset, limit);
+            return _liteDbLocalStorage.GetTokenTransfersAsync(contractAddress, offset, limit);
         }
 
-        public Task<int> UpsertTezosTokenContractsAsync(
+        public Task<int> UpsertTokenContractsAsync(
             IEnumerable<TokenContract> tokenContracts)
         {
-            return _liteDbLocalStorage.UpsertTezosTokenContractsAsync(tokenContracts);
+            return _liteDbLocalStorage.UpsertTokenContractsAsync(tokenContracts);
         }
 
-        public Task<IEnumerable<TokenContract>> GetTezosTokenContractsAsync()
+        public Task<IEnumerable<TokenContract>> GetTokenContractsAsync()
         {
-            return _liteDbLocalStorage.GetTezosTokenContractsAsync();
+            return _liteDbLocalStorage.GetTokenContractsAsync();
         }
 
         #endregion TezosTokens

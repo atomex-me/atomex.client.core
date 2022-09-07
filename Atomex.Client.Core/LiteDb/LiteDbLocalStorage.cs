@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Security;
@@ -333,7 +332,7 @@ namespace Atomex.LiteDb
 
         #region TezosTokens
 
-        public Task<WalletAddress> GetTezosTokenAddressAsync(
+        public Task<WalletAddress> GetTokenAddressAsync(
             string currency,
             string tokenContract,
             decimal tokenId,
@@ -363,7 +362,7 @@ namespace Atomex.LiteDb
             return Task.FromResult<WalletAddress>(null);
         }
 
-        public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync()
+        public Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync()
         {
             try
             {
@@ -388,7 +387,7 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<WalletAddress>());
         }
 
-        public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesAsync(
+        public Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
             string address,
             string tokenContract)
         {
@@ -417,7 +416,7 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<WalletAddress>());
         }
 
-        public Task<IEnumerable<WalletAddress>> GetTezosTokenAddressesByContractAsync(
+        public Task<IEnumerable<WalletAddress>> GetTokenAddressesByContractAsync(
             string tokenContract)
         {
             try
@@ -443,7 +442,7 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<WalletAddress>());
         }
 
-        public Task<int> UpsertTezosTokenAddressesAsync(
+        public Task<int> UpsertTokenAddressesAsync(
             IEnumerable<WalletAddress> walletAddresses)
         {
             try
@@ -472,7 +471,7 @@ namespace Atomex.LiteDb
             return Task.FromResult(0);
         }
 
-        public Task<IEnumerable<WalletAddress>> GetUnspentTezosTokenAddressesAsync(
+        public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             string currency,
             string tokenContract,
             decimal tokenId)
@@ -514,7 +513,7 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<WalletAddress>());
         }
 
-        public Task<int> UpsertTezosTokenTransfersAsync(
+        public Task<int> UpsertTokenTransfersAsync(
             IEnumerable<TokenTransfer> tokenTransfers)
         {
             try
@@ -541,7 +540,7 @@ namespace Atomex.LiteDb
             return Task.FromResult(0);
         }
 
-        public Task<IEnumerable<TokenTransfer>> GetTezosTokenTransfersAsync(
+        public Task<IEnumerable<TokenTransfer>> GetTokenTransfersAsync(
             string contractAddress,
             int offset = 0,
             int limit = int.MaxValue)
@@ -568,7 +567,7 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<TokenTransfer>());
         }
 
-        public Task<int> UpsertTezosTokenContractsAsync(
+        public Task<int> UpsertTokenContractsAsync(
             IEnumerable<TokenContract> tokenContracts)
         {
             try
@@ -595,7 +594,7 @@ namespace Atomex.LiteDb
             return Task.FromResult(0);
         }
 
-        public Task<IEnumerable<TokenContract>> GetTezosTokenContractsAsync()
+        public Task<IEnumerable<TokenContract>> GetTokenContractsAsync()
         {
             try
             {
