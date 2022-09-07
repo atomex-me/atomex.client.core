@@ -5,7 +5,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Abstract;
-using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Core;
 
@@ -13,8 +12,6 @@ namespace Atomex.Wallet.Abstract
 {
     public interface IAccount : IAddressResolver
     {
-        event EventHandler<CurrencyEventArgs> BalanceUpdated;
-        //event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded;
         event EventHandler Locked;
         event EventHandler Unlocked;
 

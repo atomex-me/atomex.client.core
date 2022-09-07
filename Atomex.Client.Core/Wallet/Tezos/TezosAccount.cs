@@ -402,14 +402,6 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
         }
 
-        public void RaiseTokensBalanceUpdatedEvent(string address, string tokenContract, int? tokenId)
-        {
-            RaiseBalanceUpdated(new CurrencyEventArgs(
-                address: address,
-                tokenContract: tokenContract,
-                tokenId: tokenId));
-        }
-
         #endregion Balances
 
         #region Addresses

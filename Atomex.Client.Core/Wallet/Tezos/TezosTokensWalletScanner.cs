@@ -163,7 +163,8 @@ namespace Atomex.Wallet.Tezos
                 // upsert changed token balances
                 if (changedAddresses.Any())
                 {
-                    await _tezosAccount.LocalStorage
+                    await _tezosAccount
+                        .LocalStorage
                         .UpsertTezosTokenAddressesAsync(changedAddresses)
                         .ConfigureAwait(false);
 
@@ -176,12 +177,6 @@ namespace Atomex.Wallet.Tezos
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
-
-                // raise balance updated event for all tokens and accounts
-                _tezosAccount.RaiseTokensBalanceUpdatedEvent(
-                    address: null,
-                    tokenContract: null,
-                    tokenId: null);
 
             }, cancellationToken);
         }
@@ -291,7 +286,8 @@ namespace Atomex.Wallet.Tezos
                 // upsert changed token balances
                 if (changedAddresses.Any())
                 {
-                    await _tezosAccount.LocalStorage
+                    await _tezosAccount
+                        .LocalStorage
                         .UpsertTezosTokenAddressesAsync(changedAddresses)
                         .ConfigureAwait(false);
 
@@ -304,12 +300,6 @@ namespace Atomex.Wallet.Tezos
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
-
-                // raise balance updated event for all tokens for specific account
-                _tezosAccount.RaiseTokensBalanceUpdatedEvent(
-                    address: address,
-                    tokenContract: null,
-                    tokenId: null);
 
             }, cancellationToken);
         }
@@ -430,7 +420,8 @@ namespace Atomex.Wallet.Tezos
                 // upsert changed token balances
                 if (changedAddresses.Any())
                 {
-                    await _tezosAccount.LocalStorage
+                    await _tezosAccount
+                        .LocalStorage
                         .UpsertTezosTokenAddressesAsync(changedAddresses)
                         .ConfigureAwait(false);
 
@@ -444,12 +435,6 @@ namespace Atomex.Wallet.Tezos
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
-
-                // raise balance updated event for specific tokens and all accounts
-                _tezosAccount.RaiseTokensBalanceUpdatedEvent(
-                    address: null,
-                    tokenContract: tokenContract,
-                    tokenId: tokenId);
 
             }, cancellationToken);
         }
@@ -563,7 +548,8 @@ namespace Atomex.Wallet.Tezos
                 // upsert changed token balances
                 if (changedAddresses.Any())
                 {
-                    await _tezosAccount.LocalStorage
+                    await _tezosAccount
+                        .LocalStorage
                         .UpsertTezosTokenAddressesAsync(changedAddresses)
                         .ConfigureAwait(false);
 
@@ -576,12 +562,6 @@ namespace Atomex.Wallet.Tezos
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
-
-                // raise balance updated event for all tokens and accounts
-                _tezosAccount.RaiseTokensBalanceUpdatedEvent(
-                    address: address,
-                    tokenContract: tokenContract,
-                    tokenId: tokenId);
 
             }, cancellationToken);
         }

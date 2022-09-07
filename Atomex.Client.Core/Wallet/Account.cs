@@ -23,34 +23,6 @@ namespace Atomex.Wallet
         public const string DefaultDataFileName = "data.db";
         public string SettingsFilePath => $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}";
 
-        public event EventHandler<CurrencyEventArgs> BalanceUpdated
-        {
-            add
-            {
-                foreach (var currencyAccount in _currencyAccounts)
-                    currencyAccount.Value.BalanceUpdated += value;
-            }
-            remove
-            {
-                foreach (var currencyAccount in _currencyAccounts)
-                    currencyAccount.Value.BalanceUpdated -= value;
-            }
-        }
-        //public event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded
-        //{
-        //    add
-        //    {
-        //        foreach (var currencyAccount in CurrencyAccounts.Values)
-        //            if (currencyAccount is ITransactionalAccount account)
-        //                account.UnconfirmedTransactionAdded += value;
-        //    }
-        //    remove
-        //    {
-        //        foreach (var currencyAccount in CurrencyAccounts.Values)
-        //            if (currencyAccount is ITransactionalAccount account)
-        //                account.UnconfirmedTransactionAdded -= value;
-        //    }
-        //}
         public event EventHandler Locked;
         public event EventHandler Unlocked;
 

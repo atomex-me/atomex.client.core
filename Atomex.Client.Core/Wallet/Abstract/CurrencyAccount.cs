@@ -12,8 +12,6 @@ namespace Atomex.Wallet.Abstract
 {
     public abstract class CurrencyAccount : ICurrencyAccount
     {
-        public event EventHandler<CurrencyEventArgs> BalanceUpdated;
-
         public string Currency { get; }
         public ICurrencies Currencies { get; }
         public IHdWallet Wallet { get; }
@@ -30,15 +28,6 @@ namespace Atomex.Wallet.Abstract
             Wallet       = wallet ?? throw new ArgumentNullException(nameof(wallet));
             LocalStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
         }
-
-        #region Common
-
-        protected void RaiseBalanceUpdated(CurrencyEventArgs eventArgs)
-        {
-            BalanceUpdated?.Invoke(this, eventArgs);
-        }
-
-        #endregion Common
 
         #region Balances
 

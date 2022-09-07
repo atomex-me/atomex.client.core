@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,8 +9,6 @@ namespace Atomex.Wallet.Abstract
 {
     public interface ICurrencyAccount
     {
-        event EventHandler<CurrencyEventArgs> BalanceUpdated;
-
         #region Balances
 
         Task<Balance> GetBalanceAsync();
