@@ -57,8 +57,6 @@ namespace Atomex.Core
 
         public abstract bool IsAddressFromKey(string address, byte[] publicKey);
 
-        //public abstract bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey);
-
         public abstract decimal GetFeeAmount(decimal fee, decimal feePrice);
 
         public abstract decimal GetFeeFromFeeAmount(decimal feeAmount, decimal feePrice);

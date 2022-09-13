@@ -218,12 +218,6 @@ namespace Atomex
         public override bool IsAddressFromKey(string address, byte[] publicKey) =>
              AddressFromKey(publicKey).ToLowerInvariant()
                 .Equals(address.ToLowerInvariant());
-
-        //public override bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey) =>
-        //    TezosSigner.Verify(
-        //        data: data,
-        //        signature: signature,
-        //        publicKey: publicKey);
  
         public override decimal GetFeeAmount(decimal fee, decimal feePrice) =>
             fee;

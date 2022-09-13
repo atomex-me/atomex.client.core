@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Security;
 using System.Threading;
@@ -23,6 +24,7 @@ namespace Atomex.LiteDb
 
         //private IDictionary<string, WalletAddress> _walletByAddress;
         //private IDictionary<string, List<WalletAddress>> _walletsByCurrency;
+        private readonly Lazy<IDictionary<long, Swap>> _swapById;
 
         public LiteDbCachedLocalStorage(
             string pathToDb,
@@ -37,6 +39,10 @@ namespace Atomex.LiteDb
                 currencies,
                 network,
                 migrationComplete);
+
+            _swapById = new Lazy<IDictionary<long, Swap>>(
+                valueFactory: () => new ConcurrentDictionary<long, Swap>(),
+                isThreadSafe: true);
         }
 
         public void ChangePassword(SecureString newPassword)
@@ -48,14 +54,14 @@ namespace Atomex.LiteDb
 
         public Task<bool> UpsertAddressAsync(WalletAddress walletAddress)
         {
-            // todo: balance updated
+            // todo: raise balance updated if need
 
             return _liteDbLocalStorage.UpsertAddressAsync(walletAddress);
         }
 
         public Task<int> UpsertAddressesAsync(IEnumerable<WalletAddress> walletAddresses)
         {
-            // todo: balance updated
+            // todo: raise balance updated if need
 
             return _liteDbLocalStorage.UpsertAddressesAsync(walletAddresses);
         }
@@ -125,6 +131,8 @@ namespace Atomex.LiteDb
 
         public Task<int> UpsertTokenAddressesAsync(IEnumerable<WalletAddress> walletAddresses)
         {
+            // todo: raise balance updated if need
+
             return _liteDbLocalStorage.UpsertTokenAddressesAsync(walletAddresses);
         }
 
@@ -142,6 +150,8 @@ namespace Atomex.LiteDb
         public Task<int> UpsertTokenTransfersAsync(
             IEnumerable<TokenTransfer> tokenTransfers)
         {
+            // todo: raise transactions changed if need
+
             return _liteDbLocalStorage.UpsertTokenTransfersAsync(tokenTransfers);
         }
 
@@ -173,6 +183,8 @@ namespace Atomex.LiteDb
             bool notifyIfNewOrChanged = false,
             CancellationToken cancellationToken = default)
         {
+            // todo: raise transactions changed if need
+
             return _liteDbLocalStorage.UpsertTransactionAsync(tx, notifyIfNewOrChanged, cancellationToken);
         }
 
@@ -181,6 +193,8 @@ namespace Atomex.LiteDb
             bool notifyIfNewOrChanged = false,
             CancellationToken cancellationToken = default)
         {
+            // todo: raise transactions changed if need
+
             return _liteDbLocalStorage.UpsertTransactionsAsync(txs, notifyIfNewOrChanged, cancellationToken);
         }
 
@@ -286,17 +300,26 @@ namespace Atomex.LiteDb
 
         public Task<bool> AddSwapAsync(Swap swap)
         {
+            _swapById.Value.TryAdd(swap.Id, swap);
+
             return _liteDbLocalStorage.AddSwapAsync(swap);
         }
 
         public Task<bool> UpdateSwapAsync(Swap swap)
         {
+            _swapById.Value[swap.Id] = swap;
+
             return _liteDbLocalStorage.UpdateSwapAsync(swap);
         }
 
-        public Task<Swap> GetSwapByIdAsync(long id)
+        public async Task<Swap> GetSwapByIdAsync(long id)
         {
-            return _liteDbLocalStorage.GetSwapByIdAsync(id);
+            if (_swapById.Value.TryGetValue(id, out var swap))
+                return swap;
+
+            return await _liteDbLocalStorage
+                .GetSwapByIdAsync(id)
+                .ConfigureAwait(false);
         }
 
         public Task<IEnumerable<Swap>> GetSwapsAsync()
