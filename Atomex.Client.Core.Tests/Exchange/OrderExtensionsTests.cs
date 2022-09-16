@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 
 using Xunit;
 
@@ -17,9 +16,6 @@ namespace Atomex.Client.Core.Tests
             {
                 LeaveQty = leaveQty,
                 Status = status,
-                FromWallets = new List<WalletAddress> {
-                    new WalletAddress { Address = "1234" }
-                }
             };
         }
 

@@ -2,8 +2,10 @@
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+
 using LiteDB;
 using Serilog;
+
 using Atomex.Core;
 
 namespace Atomex.LiteDb

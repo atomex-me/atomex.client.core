@@ -287,6 +287,9 @@ namespace Atomex.Wallet.BitcoinBased
         {
             var updateTimeStamp = DateTime.UtcNow;
 
+            if (api == null)
+                api = BitcoinBasedConfig.BlockchainApi as BitcoinBasedBlockchainApi;
+
             var addressInfo = await api
                 .GetAddressInfo(walletAddress.Address, cancellationToken)
                 .ConfigureAwait(false);

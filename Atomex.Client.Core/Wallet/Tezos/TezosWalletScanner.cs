@@ -319,7 +319,9 @@ namespace Atomex.Wallet.Tezos
             var txsResult = await tzktApi
                 .GetTransactionsAsync(
                     address: walletAddress.Address,
-                    fromTimeStamp: walletAddress.LastSuccessfullUpdate,
+                    fromTimeStamp: walletAddress.LastSuccessfullUpdate != DateTime.MinValue
+                        ? walletAddress.LastSuccessfullUpdate
+                        : null,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -327,8 +329,8 @@ namespace Atomex.Wallet.Tezos
             {
                 Log.Error("[TezosWalletScanner] UpdateBalanceAsync error. Can't get txs for address: {@address}. Code: {@code}. Description: {@description}",
                     walletAddress.Address,
-                    accountResult.Error.Code,
-                    accountResult.Error.Description);
+                    txsResult.Error.Code,
+                    txsResult.Error.Description);
 
                 return txsResult.Error;
             }

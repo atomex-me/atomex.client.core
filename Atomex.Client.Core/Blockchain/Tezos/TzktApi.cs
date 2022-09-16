@@ -173,7 +173,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             var requestUri = $"accounts/{address}/operations?type=transaction&micheline=2";
 
             if (fromTimeStamp != null)
-                requestUri += $"&timestamp.ge={fromTimeStamp.Value.ToIso8601()}";
+                requestUri += $"&timestamp.ge={fromTimeStamp.Value.ToUtcIso8601()}";
 
             if (fromLevel != null)
                 requestUri += $"&level.ge={fromLevel.Value}";
@@ -616,11 +616,11 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 : "";
 
             var fromTimeStampFilter = from != null
-                ? $"&timestamp.gt={from.Value.ToIso8601()}"
+                ? $"&timestamp.gt={from.Value.ToUtcIso8601()}"
                 : "";
 
             var toTimeStampFilter = to != null
-                ? $"&timestamp.le={to.Value.ToIso8601()}"
+                ? $"&timestamp.le={to.Value.ToUtcIso8601()}"
                 : "";
 
             // todo: use `anyof.from.to.in` after release in TzKT
