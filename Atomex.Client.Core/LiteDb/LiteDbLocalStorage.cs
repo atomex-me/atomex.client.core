@@ -95,15 +95,10 @@ namespace Atomex.LiteDb
         private BsonMapper CreateBsonMapper(ICurrencies currencies)
         {
             return new BsonMapper()
-                .UseSerializer(new CurrencyToBsonSerializer(currencies))
                 .UseSerializer(new BigIntegerToBsonSerializer())
                 .UseSerializer(new JObjectToBsonSerializer())
-                .UseSerializer(new WalletAddressToBsonSerializer())
-                .UseSerializer(new OrderToBsonSerializer())
                 .UseSerializer(new BitcoinBasedTransactionToBsonSerializer(currencies))
                 .UseSerializer(new BitcoinBasedTxOutputToBsonSerializer())
-                .UseSerializer(new EthereumTransactionToBsonSerializer())
-                .UseSerializer(new TezosTransactionToBsonSerializer())
                 .UseSerializer(new SwapToBsonSerializer(currencies));
         }
 

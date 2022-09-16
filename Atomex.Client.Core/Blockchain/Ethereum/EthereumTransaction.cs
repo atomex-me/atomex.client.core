@@ -9,6 +9,7 @@ using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Signer;
 using Serilog;
 using Transaction = Nethereum.RPC.Eth.DTOs.Transaction;
+using LiteDB;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
@@ -22,13 +23,16 @@ namespace Atomex.Blockchain.Ethereum
     {
         private const int DefaultConfirmations = 1;
 
+        [BsonField("TxId")]
         public string Id { get; set; }
+        [BsonId]
         public string UniqueId => $"{Id}:{Currency}";
         public string Currency { get; set; }
         public BlockInfo BlockInfo { get; set; }
         public BlockchainTransactionState State { get; set; }
         public BlockchainTransactionType Type { get; set; }
         public DateTime? CreationTime { get; set; }
+        [BsonIgnore]
         public bool IsConfirmed => BlockInfo?.Confirmations >= DefaultConfirmations;
 
         public string From { get; set; }

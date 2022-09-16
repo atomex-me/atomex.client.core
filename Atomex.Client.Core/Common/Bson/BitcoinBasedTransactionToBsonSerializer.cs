@@ -54,7 +54,7 @@ namespace Atomex.Common.Bson
                     tx: Transaction.Parse(bson[TxKey].AsString, btcBaseCurrency.Network),
                     blockInfo: blockInfo,
                     fees: !bson[FeesKey].IsNull
-                        ? (long?)bson[FeesKey].AsInt64
+                        ? bson[FeesKey].AsInt64
                         : null
                 )
                 {

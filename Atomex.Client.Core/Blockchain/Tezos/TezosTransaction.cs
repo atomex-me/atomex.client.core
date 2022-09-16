@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Newtonsoft.Json.Linq;
+using LiteDB;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
@@ -21,13 +22,16 @@ namespace Atomex.Blockchain.Tezos
     {
         private const int DefaultConfirmations = 1;
 
+        [BsonField("TxId")]
         public string Id { get; set; }
+        [BsonId]
         public string UniqueId => $"{Id}:{Currency}";
         public string Currency { get; set; }
         public BlockInfo BlockInfo { get; set; }
         public BlockchainTransactionState State { get; set ; }
         public BlockchainTransactionType Type { get; set; }
         public DateTime? CreationTime { get; set; }
+        [BsonIgnore]
         public bool IsConfirmed => BlockInfo?.Confirmations >= DefaultConfirmations;
 
         public string From { get; set; }
@@ -45,15 +49,23 @@ namespace Atomex.Blockchain.Tezos
         public bool IsInternal { get; set; }
         public int InternalIndex { get; set; }
 
+        [BsonIgnore]
         public JObject Head { get; set; }
+        [BsonIgnore]
         public JArray Operations { get; private set; }
+        [BsonIgnore]
         public SignedMessage SignedMessage { get; private set; }
 
         public string OperationType { get; set; } = Internal.OperationType.Transaction;
+        [BsonIgnore]
         public bool UseSafeStorageLimit { get; set; } = false;
+        [BsonIgnore]
         public bool UseRun { get; set; } = true;
+        [BsonIgnore]
         public bool UsePreApply { get; set; } = false;
+        [BsonIgnore]
         public bool UseOfflineCounter { get; set; } = true;
+        [BsonIgnore]
         public int UsedCounters { get; set; }
 
         public List<TezosTransaction> InternalTxs { get; set; }

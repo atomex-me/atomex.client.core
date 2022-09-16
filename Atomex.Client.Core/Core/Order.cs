@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 
 using Newtonsoft.Json;
+using LiteDB;
 
 using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common;
@@ -11,7 +12,9 @@ namespace Atomex.Core
 {
     public class Order
     {
+        [BsonId]
         public long Id { get; set; }
+        [BsonField("OrderId")]
         public string ClientOrderId { get; set; }
         public string Symbol { get; set; }
         public DateTime TimeStamp { get; set; }

@@ -1,12 +1,12 @@
 ﻿using System;
+using System.Linq;
 
 using LiteDB;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
-using Atomex.Core;
-using System.Linq;
 using Atomex.Blockchain.BitcoinBased;
+using Atomex.Core;
 using Atomex.Client.V1.Entities;
 using Swap = Atomex.Core.Swap;
 
