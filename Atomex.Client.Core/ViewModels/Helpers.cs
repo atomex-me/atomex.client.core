@@ -787,7 +787,7 @@ namespace Atomex.ViewModels
             CancellationToken cancellationToken = default)
         {
             return await HttpHelper.GetAsync(
-                    baseUri: "https://test.atomex.me/",
+                    baseUri: "https://services.atomex.me/",
                     requestUri: $"usermessages/get_user_messages/?uid={userId}&format=json",
                     responseHandler: response =>
                         JsonConvert.DeserializeObject<List<UserMessage>>(response.Content.ReadAsStringAsync()
@@ -800,7 +800,7 @@ namespace Atomex.ViewModels
             CancellationToken cancellationToken = default)
         {
             return await HttpHelper.PostAsync(
-                    baseUri: "https://test.atomex.me/",
+                    baseUri: "https://services.atomex.me/",
                     content: null,
                     requestUri: $"usermessages/get_user_messages/{messageId}/mark_read/",
                     responseHandler: response => response,

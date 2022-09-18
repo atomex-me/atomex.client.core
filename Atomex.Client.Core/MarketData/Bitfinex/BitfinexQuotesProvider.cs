@@ -34,7 +34,7 @@ namespace Atomex.MarketData.Bitfinex
         public const string Usd = "USD";
 
         //private string BaseUrl { get; } = "https://api.bitfinex.com/v2/";
-        private string BaseUrl { get; } = "https://test.atomex.me/v2/";
+        private string BaseUrl { get; } = "https://proxy.atomex.me/v2/";
 
         public BitfinexQuotesProvider(params string[] symbols) //todo: check before use
         {
