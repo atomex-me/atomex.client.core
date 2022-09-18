@@ -13,7 +13,7 @@ namespace Atomex.MarketData.TezTools
 {
     public class TezToolsQuotesProvider : QuotesProvider
     {
-        private string BaseUrl { get; } = "https://test.atomex.me/";
+        private string BaseUrl { get; } = "https://proxy.atomex.me/";
 
         public TezToolsQuotesProvider(ILogger? log = null)
         {

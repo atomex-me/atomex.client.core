@@ -59,6 +59,6 @@ namespace Atomex.Blockchain.Tezos
         }
 
         public static string GetTokenPreviewUrl(string contractAddress, decimal tokenId) =>
-            $"https://test.atomex.me/tokens-preview/{contractAddress}/{decimal.ToInt32(tokenId)}.png";
+            $"https://services.atomex.me/tokens-preview/{contractAddress}/{decimal.ToInt32(tokenId)}.png";
     }
 }

@@ -898,7 +898,7 @@ namespace Atomex.ViewModels
             CancellationToken cancellationToken = default)
         {
             using var response = await HttpHelper.GetAsync(
-                    baseUri: "https://test.atomex.me/",
+                    baseUri: "https://services.atomex.me/",
                     relativeUri: $"usermessages/get_user_messages/?uid={userId}&format=json",
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -915,7 +915,7 @@ namespace Atomex.ViewModels
             CancellationToken cancellationToken = default)
         {
             return await HttpHelper.PostAsync(
-                    baseUri: "https://test.atomex.me/",
+                    baseUri: "https://services.atomex.me/",
                     relativeUri: $"usermessages/get_user_messages/{messageId}/mark_read/",
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
