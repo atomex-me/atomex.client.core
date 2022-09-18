@@ -8,7 +8,7 @@ namespace Atomex.Core
     public class WalletAddress
     {
         public string Id => Currency != "FA12" && Currency != "FA2"
-            ? $"{Address}:{Currency}"
+            ? GetId(Address, Currency)
             : $"{Address}:{Currency}:{TokenBalance.Contract}:{TokenBalance.TokenId}";
 
         public string Currency { get; set; }
@@ -25,5 +25,7 @@ namespace Atomex.Core
         public decimal AvailableBalance() => Currencies.IsBitcoinBased(Currency)
             ? Balance + UnconfirmedIncome
             : Balance;
+
+        public static string GetId(string address, string currency) => $"{address}:{currency}";
     }
 }

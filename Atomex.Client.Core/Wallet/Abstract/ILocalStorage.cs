@@ -20,19 +20,24 @@ namespace Atomex.Wallet.Abstract
 
         #region Addresses
 
-        Task<bool> UpsertAddressAsync(WalletAddress walletAddress);
+        Task<bool> UpsertAddressAsync(
+            WalletAddress walletAddress,
+            CancellationToken cancellationToken = default);
 
         Task<int> UpsertAddressesAsync(
-            IEnumerable<WalletAddress> walletAddresses);
+            IEnumerable<WalletAddress> walletAddresses,
+            CancellationToken cancellationToken = default);
 
         Task<WalletAddress> GetWalletAddressAsync(
             string currency,
-            string address);
+            string address,
+            CancellationToken cancellationToken = default);
 
         Task<WalletAddress> GetLastActiveWalletAddressAsync(
             string currency,
             uint chain,
-            int keyType);
+            int keyType,
+            CancellationToken cancellationToken = default);
 
         Task<WalletAddress> GetLastActiveWalletAddressByAccountAsync(
             string currency,
@@ -140,20 +145,51 @@ namespace Atomex.Wallet.Abstract
 
         #region Orders
 
-        Task<bool> UpsertOrderAsync(Order order);
-        Task<bool> RemoveAllOrdersAsync();
-        Order GetOrderById(string clientOrderId);
-        Order GetOrderById(long id);
-        Task<bool> RemoveOrderByIdAsync(long id);
+        Task<bool> UpsertOrderAsync(
+            Order order,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> RemoveAllOrdersAsync(
+            CancellationToken cancellationToken = default);
+
+        Order GetOrderById(
+            string clientOrderId,
+            CancellationToken cancellationToken = default);
+
+        Order GetOrderById(
+            long id,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> RemoveOrderByIdAsync(
+            long id,
+            CancellationToken cancellationToken = default);
 
         #endregion Orders
 
         #region Swaps
 
-        Task<bool> AddSwapAsync(Swap swap);
-        Task<bool> UpdateSwapAsync(Swap swap);
-        Task<Swap> GetSwapByIdAsync(long id);
-        Task<IEnumerable<Swap>> GetSwapsAsync();
+        Task<bool> AddSwapAsync(
+            Swap swap,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> UpdateSwapAsync(
+            Swap swap,
+            CancellationToken cancellationToken = default);
+
+        Task<Swap> GetSwapByIdAsync(
+            long id,
+            CancellationToken cancellationToken = default);
+
+        Task<IEnumerable<Swap>> GetSwapsAsync(
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default);
+
+        Task<IEnumerable<Swap>> GetActiveSwapsAsync(
+            string fromCurrency,
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default);
 
         #endregion Swaps
     }
