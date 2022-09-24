@@ -58,11 +58,11 @@ namespace Atomex.Wallets.Tezos
 
                     // gas limit
                     var gas = (int)tezosConfig.GasReserve
-                        + operationResult?["consumed_gas"]?.Value<int>() ?? 0;
+                        + (operationResult?["consumed_milligas"]?.Value<int>() ?? 0) / 1000;
 
                     gas += metaData
                         ?["internal_operation_results"]
-                        ?.Sum(res => res["result"]?["consumed_gas"]?.Value<int>() ?? 0) ?? 0;
+                        ?.Sum(res => (res["result"]?["consumed_milligas"]?.Value<int>() ?? 0) / 1000) ?? 0;
 
                     operation.GasLimit = gas;
 
