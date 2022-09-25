@@ -21,6 +21,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Wallets.Ethereum", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Wallets.Tezos", "Atomex.Wallets.Tezos\Atomex.Wallets.Tezos.csproj", "{5626DF41-8C15-4DE7-85A4-CDF04D1A5500}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.MarketData", "Atomex.MarketData\Atomex.MarketData.csproj", "{7F6D5B86-5F2D-4FB5-9F20-A2E6D058A19F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Client", "Atomex.Client\Atomex.Client.csproj", "{C30A78BB-82EF-4F08-89E8-D1D5CAFE9BB7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -139,6 +143,30 @@ Global
 		{5626DF41-8C15-4DE7-85A4-CDF04D1A5500}.Release|x64.Build.0 = Release|Any CPU
 		{5626DF41-8C15-4DE7-85A4-CDF04D1A5500}.Release|x86.ActiveCfg = Release|Any CPU
 		{5626DF41-8C15-4DE7-85A4-CDF04D1A5500}.Release|x86.Build.0 = Release|Any CPU
+		{7F6D5B86-5F2D-4FB5-9F20-A2E6D058A19F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F6D5B86-5F2D-4FB5-9F20-A2E6D058A19F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F6D5B86-5F2D-4FB5-9F20-A2E6D058A19F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7F6D5B86-5F2D-4FB5-9F20-A2E6D058A19F}.Debug|x64.Build.0 = Debug|Any CPU
+		{7F6D5B86-5F2D-4FB5-9F20-A2E6D058A19F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7F6D5B86-5F2D-4FB5-9F20-A2E6D058A19F}.Debug|x86.Build.0 = Debug|Any CPU
+		{7F6D5B86-5F2D-4FB5-9F20-A2E6D058A19F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F6D5B86-5F2D-4FB5-9F20-A2E6D058A19F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F6D5B86-5F2D-4FB5-9F20-A2E6D058A19F}.Release|x64.ActiveCfg = Release|Any CPU
+		{7F6D5B86-5F2D-4FB5-9F20-A2E6D058A19F}.Release|x64.Build.0 = Release|Any CPU
+		{7F6D5B86-5F2D-4FB5-9F20-A2E6D058A19F}.Release|x86.ActiveCfg = Release|Any CPU
+		{7F6D5B86-5F2D-4FB5-9F20-A2E6D058A19F}.Release|x86.Build.0 = Release|Any CPU
+		{C30A78BB-82EF-4F08-89E8-D1D5CAFE9BB7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C30A78BB-82EF-4F08-89E8-D1D5CAFE9BB7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C30A78BB-82EF-4F08-89E8-D1D5CAFE9BB7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C30A78BB-82EF-4F08-89E8-D1D5CAFE9BB7}.Debug|x64.Build.0 = Debug|Any CPU
+		{C30A78BB-82EF-4F08-89E8-D1D5CAFE9BB7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C30A78BB-82EF-4F08-89E8-D1D5CAFE9BB7}.Debug|x86.Build.0 = Debug|Any CPU
+		{C30A78BB-82EF-4F08-89E8-D1D5CAFE9BB7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C30A78BB-82EF-4F08-89E8-D1D5CAFE9BB7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C30A78BB-82EF-4F08-89E8-D1D5CAFE9BB7}.Release|x64.ActiveCfg = Release|Any CPU
+		{C30A78BB-82EF-4F08-89E8-D1D5CAFE9BB7}.Release|x64.Build.0 = Release|Any CPU
+		{C30A78BB-82EF-4F08-89E8-D1D5CAFE9BB7}.Release|x86.ActiveCfg = Release|Any CPU
+		{C30A78BB-82EF-4F08-89E8-D1D5CAFE9BB7}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

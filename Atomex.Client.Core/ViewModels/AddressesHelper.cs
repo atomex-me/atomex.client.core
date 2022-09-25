@@ -84,7 +84,7 @@ namespace Atomex.ViewModels
                                 {
                                     Contract = tokenContract,
                                     Balance  = "0",
-                                    Symbol   = tezosTokenConfig?.DisplayedName ?? "TOKENS",
+                                    Symbol   = tezosTokenConfig?.DisplayedName ?? string.Empty,
                                     Decimals = 0
                                 }
                             };
@@ -99,11 +99,11 @@ namespace Atomex.ViewModels
 
                         var tokenBalance = tokenAddress?.Balance ?? 0;
                         var showTokenBalance = tokenBalance != 0;
-                        var tokenCode = tokenAddress?.TokenBalance?.Symbol ?? tezosTokenConfig?.DisplayedName ?? "TOKENS";
+                        var tokenCode = tokenAddress?.TokenBalance?.Symbol ?? tezosTokenConfig?.DisplayedName
+                            ?? string.Empty;
                         var tokenFormat =
                             $"F{Math.Min(tokenAddress?.TokenBalance?.Decimals ?? MaxTokenCurrencyFormatDecimals, MaxTokenCurrencyFormatDecimals)}";
-                        var tokenId = tokenAddress?.TokenBalance?.TokenId ?? 0;
-
+                        var intTokenId = (int)(tokenAddress?.TokenBalance?.TokenId ?? 0);
                         var isFreeAddress = w.Address == freeTezosAddress.Address && tokenBalance == 0;
 
                         var a = new WalletAddressViewModel
@@ -119,7 +119,7 @@ namespace Atomex.ViewModels
                             TokenBalance     = tokenBalance,
                             TokenFormat      = tokenFormat,
                             TokenCode        = tokenCode,
-                            TokenId          = (int)tokenId,
+                            TokenId          = intTokenId,
                             IsTezosToken     = true
                         };
 

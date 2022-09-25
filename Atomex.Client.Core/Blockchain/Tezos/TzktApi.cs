@@ -645,7 +645,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 {
                     var requestLimit = Math.Min(limit - transfersCount, PageSize);
 
-                    var requestUri = $"tokens/transfers?" +
+                    var requestUri = "tokens/transfers?" +
                         accountFilter +
                         tokenContractsFilter +
                         tokenIdsFilter +
@@ -667,7 +667,9 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
                     if (tokenTransfersRes.Value.Any())
                     {
-                        const int MaxOperationIdsPerRequest = 500;
+                        // hint: don't increase value of this variable
+                        // Otherwise TzKT API can response with 414 Request-URI Too Large
+                        const int MaxOperationIdsPerRequest = 100;
 
                         var uniqueOperationIds = tokenTransfersRes.Value
                             .Select(tokenTransfer => tokenTransfer.TransactionId)

@@ -163,24 +163,33 @@ namespace Atomex.Blockchain.Tezos.Internal
             return true;
         }
 
-        public async Task<JObject> RunOperations(JObject blockHead, JArray operations)
+        public async Task<JObject> RunOperations(
+            string branch,
+            string chainId,
+            string operations)
         {
-            var contents = new JObject
-            {
-                ["operation"] = new JObject()
-                {
-                    { "branch", blockHead["hash"] },
-                    { "contents", operations },
-                    { "signature", "edsigtePsnVcZ3FPzmenoU9NS1ubUsMmzSCmJgumPjUozCGLz7UwgpbPkpFP2LzC43pBS5B5tFNvDRbJ56s8by5W4Q4SrYPy6Qp" } //random sig
-                },
-                ["chain_id"] = blockHead["chain_id"]
-            };
+            var contents = "{" +
+                "\"operation\":{" +
+                    $"\"branch\":\"{branch}\"," +
+                    $"\"contents\":{operations}," +
+                    $"\"signature\":\"edsigtePsnVcZ3FPzmenoU9NS1ubUsMmzSCmJgumPjUozCGLz7UwgpbPkpFP2LzC43pBS5B5tFNvDRbJ56s8by5W4Q4SrYPy6Qp\"" +
+                "}," +
+                $"\"chain_id\":\"{chainId}\"" +
+            "}";
 
-            var result = await QueryJ<JObject>($"chains/{_chain}/blocks/head/helpers/scripts/run_operation", contents)
+            var result = await Query(
+                    ep: $"chains/{_chain}/blocks/head/helpers/scripts/run_operation",
+                    data: contents)
                 .ConfigureAwait(false);
 
-            return result;
+            return JObject.Parse(result);
         }
+
+        public Task<JObject> RunOperations(JObject blockHead, JArray operations) =>
+            RunOperations(
+                branch: blockHead["hash"].Value<string>(),
+                chainId: blockHead["chain_id"].Value<string>(),
+                operations: operations.ToString(Formatting.None));
 
         public Task<JToken> ForgeOperations(JObject blockHead, JToken operations)
         {

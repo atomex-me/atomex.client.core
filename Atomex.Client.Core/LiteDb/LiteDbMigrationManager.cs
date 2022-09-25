@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-
 using LiteDB;
 using Serilog;
-
 using Atomex.Core;
 using Atomex.Client.Entities;
 
@@ -80,6 +78,12 @@ namespace Atomex.LiteDb
 
                 if (currentVersion == LiteDbMigrations.Version9)
                     currentVersion = LiteDbMigrations.MigrateFrom_9_to_10(pathToDb, sessionPassword);
+
+                if (currentVersion == LiteDbMigrations.Version10)
+                {
+                    currentVersion = LiteDbMigrations.MigrateFrom_10_to_11(pathToDb, sessionPassword);
+                    migrationActions.Add(MigrationActionType.XtzTokensDataDeleted);
+                }
             }
             catch (Exception e)
             {

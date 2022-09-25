@@ -90,5 +90,6 @@
         public const int NullOperation = 5004;
         public const int RpcResponseError = 5005;
         public const int AddressNotFound = 5006;
+        public const int AutoFillError = 5007;
     }
 }

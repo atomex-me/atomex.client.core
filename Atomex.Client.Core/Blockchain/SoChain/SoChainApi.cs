@@ -321,7 +321,7 @@ namespace Atomex.Blockchain.SoChain
         public BitcoinBasedConfig Currency { get; }
         public string NetworkAcronym { get; }
         public string BaseUrl { get; } = "https://sochain.com/";
-        public string ProxyUrl { get; } = "https://test.atomex.me/";
+        public string ProxyUrl { get; } = "https://proxy.atomex.me/";
 
         public SoChainApi(BitcoinBasedConfig currency, string baseUri)
         {

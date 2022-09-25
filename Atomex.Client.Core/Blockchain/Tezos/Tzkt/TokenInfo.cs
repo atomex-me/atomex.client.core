@@ -10,7 +10,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// Internal TzKT id (not the same as `tokenId`).
         /// </summary>
         [JsonProperty("id")]
-        public int Id { get; set; }
+        public long Id { get; set; }
 
         /// <summary>
         /// Contract, created the token.
@@ -60,7 +60,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     token.ArtifactUri  = metadata.ArtifactUri;
                     token.DisplayUri   = metadata.DisplayUri;
                     token.ThumbnailUri = metadata.ThumbnailUri;
-                    token.Creators     = metadata.Creators;
                 }
                 catch
                 {

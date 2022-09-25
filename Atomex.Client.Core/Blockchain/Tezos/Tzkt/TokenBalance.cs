@@ -10,7 +10,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// **[sortable]**
         /// </summary>
         [JsonPropertyName("id")]
-        public int Id { get; set; }
+        public long Id { get; set; }
 
         /// <summary>
         /// Owner account.  
@@ -85,8 +85,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 Description    = token.Description,
                 ArtifactUri    = token.ArtifactUri,
                 DisplayUri     = token.DisplayUri,
-                ThumbnailUri   = token.ThumbnailUri,
-                Creators       = token.Creators,
+                ThumbnailUri   = token.ThumbnailUri
             };
         }
     }
