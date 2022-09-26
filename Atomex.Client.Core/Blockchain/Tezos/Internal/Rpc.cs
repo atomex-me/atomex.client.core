@@ -111,10 +111,10 @@ namespace Atomex.Blockchain.Tezos.Internal
                 {
                     try
                     {
-                        gas = tezosConfig.GasReserve + operationResult?["consumed_gas"]?.Value<decimal>() ?? 0;
+                        gas = tezosConfig.GasReserve + operationResult?["consumed_milligas"]?.Value<decimal>() / 1000 ?? 0;
                         gas += metaData
                             ?.SelectToken("internal_operation_results")
-                            ?.Sum(res => res["result"]?["consumed_gas"]?.Value<decimal>() ?? 0) ?? 0;
+                            ?.Sum(res => res["result"]?["consumed_milligas"]?.Value<decimal>() / 1000 ?? 0) ?? 0;
 
                         storage_diff = operationResult?["paid_storage_size_diff"]?.Value<decimal>() ?? 0;
                         storage_diff += tezosConfig.ActivationStorage * (operationResult?["allocated_destination_contract"]?.ToString() == "True" ? 1 : 0);
