@@ -57,19 +57,19 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// Internal TzKT id of the transaction operation, caused the token transfer.
         /// </summary>
         [JsonPropertyName("transactionId")]
-        public int? TransactionId { get; set; }
+        public long? TransactionId { get; set; }
 
         /// <summary>
         /// Internal TzKT id of the origination operation, caused the token transfer.
         /// </summary>
         [JsonPropertyName("originationId")]
-        public int? OriginationId { get; set; }
+        public long? OriginationId { get; set; }
 
         /// <summary>
         /// Internal TzKT id of the migration operation, caused the token transfer.
         /// </summary>
         [JsonPropertyName("migrationId")]
-        public int? MigrationId { get; set; }
+        public long? MigrationId { get; set; }
 
         public TokenTransfer ToTokenTransfer(string operationHash, int counter, int? nonce)
         {

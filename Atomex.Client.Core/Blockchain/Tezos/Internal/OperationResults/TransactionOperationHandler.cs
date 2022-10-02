@@ -21,7 +21,7 @@ namespace Atomex.Blockchain.Tezos.Internal.OperationResults
             }
             //*/
             result.Status = opResult?["status"]?.ToString() ?? result.Status;
-            result.ConsumedGas = opResult?["consumed_gas"]?.ToString() ?? result.ConsumedGas;
+            result.ConsumedGas = opResult?["consumed_milligas"]?.ToString() ?? result.ConsumedGas;
             result.Succeeded = result.Status == "applied";
 
             return result;
