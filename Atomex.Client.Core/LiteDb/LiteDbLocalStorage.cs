@@ -117,9 +117,9 @@ namespace Atomex.LiteDb
                 addresses.EnsureIndex(CurrencyKey);
                 addresses.EnsureIndex(AddressKey);
                 
-                var result = addresses.Upsert(document);
+                var upsertResult = addresses.Upsert(document);
 
-                return Task.FromResult(result);
+                return Task.FromResult(upsertResult);
             }
             catch (Exception e)
             {
@@ -138,13 +138,13 @@ namespace Atomex.LiteDb
                 var documents = walletAddresses.Select(_bsonMapper.ToDocument);
 
                 var addresses = _db.GetCollection(AddressesCollectionName);
-                addresses.EnsureIndex(IndexKey);
+                //addresses.EnsureIndex(IndexKey);
                 addresses.EnsureIndex(CurrencyKey);
                 addresses.EnsureIndex(AddressKey);
                 
-                var result = addresses.Upsert(documents);
+                var upsertResult = addresses.Upsert(documents);
 
-                return Task.FromResult(result);
+                return Task.FromResult(upsertResult);
             }
             catch (Exception e)
             {
@@ -190,21 +190,13 @@ namespace Atomex.LiteDb
             {
                 var addresses = _db.GetCollection(AddressesCollectionName);
 
-                //BsonExpression.Create("");
-                //var query = Query.And(
-                //    Query.All(IndexKey, Query.Descending),
-                //    Query.EQ(CurrencyKey, currency),
-                //    Query.EQ(ChainKey, (int)chain),
-                //    Query.EQ(KeyTypeKey, keyType),
-                //    Query.EQ(HasActivityKey, true));
-
-                var document = addresses.FindOne(
-                    Query.And(
-                        Query.All(IndexKey, Query.Descending),
+                var document = addresses
+                    .Find(Query.And(
                         Query.EQ(CurrencyKey, currency),
-                        Query.EQ(ChainKey, (int)chain),
                         Query.EQ(KeyTypeKey, keyType),
-                        Query.EQ(HasActivityKey, true)));
+                        Query.EQ(ChainKey, (int)chain),
+                        Query.EQ(HasActivityKey, true)))
+                    .MaxByOrDefault(d => d["KeyIndex"]["Index"].AsInt32);
 
                 var walletAddress = document != null
                     ? _bsonMapper.ToObject<WalletAddress>(document)
@@ -228,14 +220,12 @@ namespace Atomex.LiteDb
             {
                 var addresses = _db.GetCollection(AddressesCollectionName);
 
-                var documents = addresses.Find(Query.And(
-                    Query.EQ(CurrencyKey, currency),
-                    Query.EQ(KeyTypeKey, keyType),
-                    Query.EQ(HasActivityKey, true)));
-
-                var document = documents
-                    .OrderByDescending(d => d["KeyIndex"].AsDocument["Account"].AsInt32)
-                    .FirstOrDefault();
+                var document = addresses
+                    .Find(Query.And(
+                        Query.EQ(CurrencyKey, currency),
+                        Query.EQ(KeyTypeKey, keyType),
+                        Query.EQ(HasActivityKey, true)))
+                    .MaxByOrDefault(d => d["KeyIndex"]["Account"].AsInt32);
 
                 var walletAddress = document != null
                     ? _bsonMapper.ToObject<WalletAddress>(document)
@@ -435,7 +425,7 @@ namespace Atomex.LiteDb
             string tokenContract,
             decimal tokenId)
         {
-            var queries = new List<Query>
+            var queries = new List<BsonExpression>
             {
                 Query.EQ(TokenContractKey, tokenContract),
                 Query.Or(
@@ -972,7 +962,7 @@ namespace Atomex.LiteDb
             {
                 var orders = _db.GetCollection(OrdersCollectionName);
 
-                var removed = orders.Delete(Query.EQ("OrderId", id));
+                var removed = orders.DeleteMany(Query.EQ("OrderId", id));
 
                 return Task.FromResult(removed > 0);
             }
@@ -1067,15 +1057,6 @@ namespace Atomex.LiteDb
             }
 
             return Task.FromResult(Enumerable.Empty<Swap>());
-        }
-
-        public Task<IEnumerable<Swap>> GetActiveSwapsAsync(
-            string fromCurrency,
-            int offset = 0,
-            int limit = int.MaxValue,
-            CancellationToken cancellationToken = default)
-        {
-
         }
 
         #endregion Swaps

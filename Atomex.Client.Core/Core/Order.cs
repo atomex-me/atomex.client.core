@@ -12,9 +12,9 @@ namespace Atomex.Core
 {
     public class Order
     {
-        [BsonId]
-        public long Id { get; set; }
         [BsonField("OrderId")]
+        public long Id { get; set; }
+        [BsonId]
         public string ClientOrderId { get; set; }
         public string Symbol { get; set; }
         public DateTime TimeStamp { get; set; }

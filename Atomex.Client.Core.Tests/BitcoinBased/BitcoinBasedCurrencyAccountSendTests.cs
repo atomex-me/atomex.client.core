@@ -111,7 +111,7 @@ namespace Atomex.Client.Core.Tests
                 },
                 repositorySetup: (repositoryMock, fromAddress) =>
                 {
-                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address))
+                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address, CancellationToken.None))
                         .Returns(Task.FromResult(fromAddress));
                 });
 
@@ -237,7 +237,7 @@ namespace Atomex.Client.Core.Tests
                 },
                 repositorySetup: (repositoryMock, fromAddress) =>
                 {
-                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address))
+                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address, CancellationToken.None))
                         .Returns(Task.FromResult(fromAddress));
                 });
 
@@ -282,7 +282,7 @@ namespace Atomex.Client.Core.Tests
                 },
                 repositorySetup: (repositoryMock, fromAddress) =>
                 {
-                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address))
+                    repositoryMock.Setup(r => r.GetWalletAddressAsync(It.IsAny<string>(), fromAddress.Address, CancellationToken.None))
                         .Returns(Task.FromResult(fromAddress));
                 });
 

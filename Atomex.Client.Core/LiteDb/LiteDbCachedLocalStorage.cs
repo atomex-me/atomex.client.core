@@ -38,7 +38,8 @@ namespace Atomex.LiteDb
                 password,
                 currencies,
                 network,
-                migrationComplete);
+                migrationComplete
+                );
 
             //_swapById = new Lazy<IDictionary<long, Swap>>(
             //    valueFactory: () => new ConcurrentDictionary<long, Swap>(),
@@ -52,21 +53,28 @@ namespace Atomex.LiteDb
 
         #region Addresses
 
-        public Task<bool> UpsertAddressAsync(WalletAddress walletAddress)
+        public Task<bool> UpsertAddressAsync(
+            WalletAddress walletAddress,
+            CancellationToken cancellationToken = default)
         {
             // todo: raise balance updated if need
 
             return _liteDbLocalStorage.UpsertAddressAsync(walletAddress);
         }
 
-        public Task<int> UpsertAddressesAsync(IEnumerable<WalletAddress> walletAddresses)
+        public Task<int> UpsertAddressesAsync(
+            IEnumerable<WalletAddress> walletAddresses,
+            CancellationToken cancellationToken = default)
         {
             // todo: raise balance updated if need
 
             return _liteDbLocalStorage.UpsertAddressesAsync(walletAddresses);
         }
 
-        public Task<WalletAddress> GetWalletAddressAsync(string currency, string address)
+        public Task<WalletAddress> GetWalletAddressAsync(
+            string currency,
+            string address,
+            CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.GetWalletAddressAsync(currency, address);
         }
@@ -74,7 +82,8 @@ namespace Atomex.LiteDb
         public Task<WalletAddress> GetLastActiveWalletAddressAsync(
             string currency,
             uint chain,
-            int keyType)
+            int keyType,
+            CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.GetLastActiveWalletAddressAsync(currency, chain, keyType);
         }
@@ -269,27 +278,36 @@ namespace Atomex.LiteDb
 
         #region Orders
 
-        public Task<bool> UpsertOrderAsync(Order order)
+        public Task<bool> UpsertOrderAsync(
+            Order order,
+            CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.UpsertOrderAsync(order);
         }
 
-        public Task<bool> RemoveAllOrdersAsync()
+        public Task<bool> RemoveAllOrdersAsync(
+            CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.RemoveAllOrdersAsync();
         }
 
-        public Order GetOrderById(string clientOrderId)
+        public Order GetOrderById(
+            string clientOrderId,
+            CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.GetOrderById(clientOrderId);
         }
 
-        public Order GetOrderById(long id)
+        public Order GetOrderById(
+            long id,
+            CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.GetOrderById(id);
         }
 
-        public Task<bool> RemoveOrderByIdAsync(long id)
+        public Task<bool> RemoveOrderByIdAsync(
+            long id,
+            CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.RemoveOrderByIdAsync(id);
         }
@@ -298,21 +316,27 @@ namespace Atomex.LiteDb
 
         #region Swaps
 
-        public Task<bool> AddSwapAsync(Swap swap)
+        public Task<bool> AddSwapAsync(
+            Swap swap,
+            CancellationToken cancellationToken = default)
         {
             //_swapById.Value.TryAdd(swap.Id, swap);
 
             return _liteDbLocalStorage.AddSwapAsync(swap);
         }
 
-        public Task<bool> UpdateSwapAsync(Swap swap)
+        public Task<bool> UpdateSwapAsync(
+            Swap swap,
+            CancellationToken cancellationToken = default)
         {
             //_swapById.Value[swap.Id] = swap;
 
             return _liteDbLocalStorage.UpdateSwapAsync(swap);
         }
 
-        public async Task<Swap> GetSwapByIdAsync(long id)
+        public async Task<Swap> GetSwapByIdAsync(
+            long id,
+            CancellationToken cancellationToken = default)
         {
             //if (_swapById.Value.TryGetValue(id, out var swap))
             //    return swap;
@@ -322,7 +346,10 @@ namespace Atomex.LiteDb
                 .ConfigureAwait(false);
         }
 
-        public Task<IEnumerable<Swap>> GetSwapsAsync()
+        public Task<IEnumerable<Swap>> GetSwapsAsync(
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.GetSwapsAsync();
         }

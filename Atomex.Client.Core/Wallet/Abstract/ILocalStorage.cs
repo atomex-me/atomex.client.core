@@ -11,6 +11,12 @@ using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract
 {
+    public enum MigrationActionType
+    {
+        XtzTransactionsDeleted,
+        XtzTokensDataDeleted
+    }
+
     public interface ILocalStorage
     {
         public event EventHandler<BalanceChangedEventArgs> BalanceChanged;
@@ -181,12 +187,6 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default);
 
         Task<IEnumerable<Swap>> GetSwapsAsync(
-            int offset = 0,
-            int limit = int.MaxValue,
-            CancellationToken cancellationToken = default);
-
-        Task<IEnumerable<Swap>> GetActiveSwapsAsync(
-            string fromCurrency,
             int offset = 0,
             int limit = int.MaxValue,
             CancellationToken cancellationToken = default);
