@@ -1,14 +1,15 @@
-﻿namespace Atomex.Wallet
+﻿using System.Collections.Generic;
+
+namespace Atomex.Wallet
 {
     public class BalanceChangedEventArgs
     {
-        public string? Currency { get; init; }
-        public string? Address { get; init; }
+        public string[] Currencies { get; init; }
+        public string[] Addresses { get; init; }
     }
 
     public class TokenBalanceChangedEventArgs : BalanceChangedEventArgs
     {
-        public string? TokenContract { get; init; }
-        public int? TokenId { get; init; }
+        public (string, decimal)[] Tokens { get; init; }
     }
 }

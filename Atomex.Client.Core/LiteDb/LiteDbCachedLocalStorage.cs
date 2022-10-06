@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
@@ -53,22 +53,69 @@ namespace Atomex.LiteDb
 
         #region Addresses
 
-        public Task<bool> UpsertAddressAsync(
+        public async Task<bool> UpsertAddressAsync(
             WalletAddress walletAddress,
             CancellationToken cancellationToken = default)
         {
-            // todo: raise balance updated if need
+            var localAddress = await _liteDbLocalStorage
+                .GetWalletAddressAsync(
+                    walletAddress.Currency,
+                    walletAddress.Address,
+                    cancellationToken)
+                .ConfigureAwait(false);
 
-            return _liteDbLocalStorage.UpsertAddressAsync(walletAddress);
+            var balanceChanged = localAddress == null || localAddress.Balance != walletAddress.Balance;
+
+            var upsertResult = await _liteDbLocalStorage
+                .UpsertAddressAsync(walletAddress, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (balanceChanged)
+                BalanceChanged?.Invoke(this, new BalanceChangedEventArgs {
+                    Currencies = new string[] { walletAddress.Currency },
+                    Addresses = new string[] { walletAddress.Address }
+                });
+
+            return upsertResult;
         }
 
-        public Task<int> UpsertAddressesAsync(
+        public async Task<int> UpsertAddressesAsync(
             IEnumerable<WalletAddress> walletAddresses,
             CancellationToken cancellationToken = default)
         {
-            // todo: raise balance updated if need
+            var changedCurrencies = new HashSet<string>();
+            var changedAddresses = new HashSet<string>();
+            
+            foreach (var walletAddress in walletAddresses)
+            {
+                var localAddress = await _liteDbLocalStorage
+                    .GetWalletAddressAsync(
+                        walletAddress.Currency,
+                        walletAddress.Address,
+                        cancellationToken)
+                    .ConfigureAwait(false);
 
-            return _liteDbLocalStorage.UpsertAddressesAsync(walletAddresses);
+                var balanceChanged = localAddress == null || localAddress.Balance != walletAddress.Balance;
+
+                if (balanceChanged)
+                {
+                    changedCurrencies.Add(walletAddress.Currency);
+                    changedAddresses.Add(walletAddress.Address);
+                }
+            }
+
+            var upsertResult = await _liteDbLocalStorage
+                .UpsertAddressesAsync(walletAddresses)
+                .ConfigureAwait(false);;
+
+            if (changedCurrencies.Any())
+                BalanceChanged?.Invoke(this, new BalanceChangedEventArgs
+                {
+                    Currencies = changedCurrencies.ToArray(),
+                    Addresses = changedAddresses.ToArray()
+                });
+
+            return upsertResult;
         }
 
         public Task<WalletAddress> GetWalletAddressAsync(
@@ -138,11 +185,43 @@ namespace Atomex.LiteDb
             return _liteDbLocalStorage.GetTokenAddressesByContractAsync(tokenContract);
         }
 
-        public Task<int> UpsertTokenAddressesAsync(IEnumerable<WalletAddress> walletAddresses)
+        public async Task<int> UpsertTokenAddressesAsync(IEnumerable<WalletAddress> walletAddresses)
         {
-            // todo: raise balance updated if need
+            var changedTokens = new HashSet<(string, decimal)>();
+            var changedAddresses = new HashSet<string>();
 
-            return _liteDbLocalStorage.UpsertTokenAddressesAsync(walletAddresses);
+            foreach (var walletAddress in walletAddresses)
+            {
+                var localAddress = await _liteDbLocalStorage
+                    .GetTokenAddressAsync(
+                        walletAddress.Currency,
+                        walletAddress.TokenBalance.Contract,
+                        walletAddress.TokenBalance.TokenId,
+                        walletAddress.Address)
+                    .ConfigureAwait(false);
+
+                var balanceChanged = localAddress == null || localAddress.TokenBalance.Balance != walletAddress.TokenBalance.Balance;
+
+                if (balanceChanged)
+                {
+                    changedTokens.Add((walletAddress.TokenBalance.Contract, walletAddress.TokenBalance.TokenId));
+                    changedAddresses.Add(walletAddress.Address);
+                }
+            }
+
+            var upsertResult = await _liteDbLocalStorage
+                .UpsertTokenAddressesAsync(walletAddresses)
+                .ConfigureAwait(false); ;
+
+            if (changedTokens.Any())
+                BalanceChanged?.Invoke(this, new TokenBalanceChangedEventArgs
+                {
+                    Currencies = new string[] {},
+                    Tokens = changedTokens.ToArray(),
+                    Addresses = changedAddresses.ToArray()
+                });
+
+            return upsertResult;
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
@@ -156,12 +235,16 @@ namespace Atomex.LiteDb
                 tokenId);
         }
 
-        public Task<int> UpsertTokenTransfersAsync(
+        public async Task<int> UpsertTokenTransfersAsync(
             IEnumerable<TokenTransfer> tokenTransfers)
         {
-            // todo: raise transactions changed if need
+            var upsertResult = await _liteDbLocalStorage
+                .UpsertTokenTransfersAsync(tokenTransfers)
+                .ConfigureAwait(false);
 
-            return _liteDbLocalStorage.UpsertTokenTransfersAsync(tokenTransfers);
+            TransactionsChanged?.Invoke(this, new TransactionsChangedEventArgs(tokenTransfers));
+
+            return upsertResult;
         }
 
         public Task<IEnumerable<TokenTransfer>> GetTokenTransfersAsync(
@@ -187,24 +270,32 @@ namespace Atomex.LiteDb
 
         #region Transactions
 
-        public Task<bool> UpsertTransactionAsync(
+        public async Task<bool> UpsertTransactionAsync(
             IBlockchainTransaction tx,
             bool notifyIfNewOrChanged = false,
             CancellationToken cancellationToken = default)
         {
-            // todo: raise transactions changed if need
+            var upsertResult = await _liteDbLocalStorage
+                .UpsertTransactionAsync(tx, notifyIfNewOrChanged, cancellationToken)
+                .ConfigureAwait(false);
 
-            return _liteDbLocalStorage.UpsertTransactionAsync(tx, notifyIfNewOrChanged, cancellationToken);
+            TransactionsChanged?.Invoke(this, new TransactionsChangedEventArgs(tx));
+
+            return upsertResult;
         }
 
-        public Task<bool> UpsertTransactionsAsync(
+        public async Task<bool> UpsertTransactionsAsync(
             IEnumerable<IBlockchainTransaction> txs,
             bool notifyIfNewOrChanged = false,
             CancellationToken cancellationToken = default)
         {
-            // todo: raise transactions changed if need
+            var upsertResult = await _liteDbLocalStorage
+                .UpsertTransactionsAsync(txs, notifyIfNewOrChanged, cancellationToken)
+                .ConfigureAwait(false);
 
-            return _liteDbLocalStorage.UpsertTransactionsAsync(txs, notifyIfNewOrChanged, cancellationToken);
+            TransactionsChanged?.Invoke(this, new TransactionsChangedEventArgs(txs));
+
+            return upsertResult;
         }
 
         public Task<T> GetTransactionByIdAsync<T>(
@@ -212,6 +303,14 @@ namespace Atomex.LiteDb
             string txId) where T : IBlockchainTransaction
         {
             return _liteDbLocalStorage.GetTransactionByIdAsync<T>(currency, txId);
+        }
+
+        public Task<IBlockchainTransaction> GetTransactionByIdAsync(
+            string currency,
+            string txId,
+            Type transactionType)
+        {
+            return _liteDbLocalStorage.GetTransactionByIdAsync(currency, txId, transactionType);
         }
 
         public Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)

@@ -46,6 +46,7 @@ namespace Atomex.Wallet.BitcoinBased
                     var api = BitcoinBasedConfig.BlockchainApi as BitcoinBasedBlockchainApi;
 
                     var outputs = new List<BitcoinBasedTxOutput>();
+                    var txs = new List<BitcoinBasedTransaction>();
                     var walletAddresses = new List<WalletAddress>();
 
                     WalletAddress defautWalletAddress = null;
@@ -88,7 +89,7 @@ namespace Atomex.Wallet.BitcoinBased
                                 return;
                             }
 
-                            if (!walletAddress.HasActivity && !outputsResult.Value.Any()) // address without activity
+                            if (!walletAddress.HasActivity && !outputsResult.Value.Item1.Any()) // address without activity
                             {
                                 freeKeysCount++;
 
@@ -102,7 +103,8 @@ namespace Atomex.Wallet.BitcoinBased
                             {
                                 freeKeysCount = 0;
 
-                                outputs.AddRange(outputsResult.Value);
+                                outputs.AddRange(outputsResult.Value.Item1);
+                                txs.AddRange(outputsResult.Value.Item2);
 
                                 // save only active addresses
                                 walletAddresses.Add(walletAddress);
@@ -120,6 +122,17 @@ namespace Atomex.Wallet.BitcoinBased
                                 outputs: outputs,
                                 currency: _account.Currency,
                                 network: BitcoinBasedConfig.Network)
+                            .ConfigureAwait(false);
+                    }
+
+                    if (txs.Any())
+                    {
+                        var upsertResult = await _account
+                            .LocalStorage
+                            .UpsertTransactionsAsync(
+                                txs,
+                                notifyIfNewOrChanged: true,
+                                cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
                     }
 
@@ -169,22 +182,24 @@ namespace Atomex.Wallet.BitcoinBased
 
                     var api = BitcoinBasedConfig.BlockchainApi as BitcoinBasedBlockchainApi;
                     var outputs = new List<BitcoinBasedTxOutput>();
+                    var txs = new List<BitcoinBasedTransaction>();
 
                     foreach (var walletAddress in walletAddresses)
                     {
-                        var txsResult = await UpdateAddressAsync(
+                        var updateResult = await UpdateAddressAsync(
                                 walletAddress,
                                 api: api,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (txsResult.HasError)
+                        if (updateResult.HasError)
                         {
                             Log.Error("[BitcoinBasedWalletScanner] UpdateBalanceAsync error while scan {@address}", walletAddress.Address);
                             return;
                         }
 
-                        outputs.AddRange(txsResult.Value);
+                        outputs.AddRange(updateResult.Value.Item1);
+                        txs.AddRange(updateResult.Value.Item2);
                     }
 
                     if (outputs.Any())
@@ -195,6 +210,17 @@ namespace Atomex.Wallet.BitcoinBased
                                 outputs: outputs,
                                 currency: _account.Currency,
                                 network: BitcoinBasedConfig.Network)
+                            .ConfigureAwait(false);
+                    }
+
+                    if (txs.Any())
+                    {
+                        var upsertResult = await _account
+                            .LocalStorage
+                            .UpsertTransactionsAsync(
+                                txs,
+                                notifyIfNewOrChanged: true,
+                                cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
                     }
 
@@ -239,26 +265,37 @@ namespace Atomex.Wallet.BitcoinBased
                         return;
                     }
 
-                    var outputsResult = await UpdateAddressAsync(
+                    var updateResult = await UpdateAddressAsync(
                             walletAddress,
                             api: null,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (outputsResult.HasError)
+                    if (updateResult.HasError)
                     {
                         Log.Error("[BitcoinBasedWalletScanner] UpdateBalanceAsync error while scan {@address}", address);
                         return;
                     }
 
-                    if (outputsResult.Value.Any())
+                    if (updateResult.Value.Item1.Any())
                     {
                         await _account
                             .LocalStorage
                             .UpsertOutputsAsync(
-                                outputs: outputsResult.Value,
+                                outputs: updateResult.Value.Item1,
                                 currency: _account.Currency,
                                 network: BitcoinBasedConfig.Network)
+                            .ConfigureAwait(false);
+                    }
+
+                    if (updateResult.Value.Item2.Any())
+                    {
+                        var upsertResult = await _account
+                            .LocalStorage
+                            .UpsertTransactionsAsync(
+                                updateResult.Value.Item2,
+                                notifyIfNewOrChanged: true,
+                                cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
                     }
 
@@ -280,7 +317,7 @@ namespace Atomex.Wallet.BitcoinBased
             }, cancellationToken);
         }
 
-        private async Task<Result<IEnumerable<BitcoinBasedTxOutput>>> UpdateAddressAsync(
+        private async Task<Result<(IEnumerable<BitcoinBasedTxOutput>, IEnumerable<BitcoinBasedTransaction>)>> UpdateAddressAsync(
             WalletAddress walletAddress,
             BitcoinBasedBlockchainApi api = null,
             CancellationToken cancellationToken = default)
@@ -308,7 +345,93 @@ namespace Atomex.Wallet.BitcoinBased
             walletAddress.HasActivity = addressInfo.Value.Outputs.Any();
             walletAddress.LastSuccessfullUpdate = updateTimeStamp;
 
-            return new Result<IEnumerable<BitcoinBasedTxOutput>>(addressInfo.Value.Outputs);
+            if (!addressInfo.Value.Outputs.Any())
+                new Result<(IEnumerable<BitcoinBasedTxOutput>, IEnumerable<BitcoinBasedTransaction>)>((
+                    addressInfo.Value.Outputs,
+                    Enumerable.Empty<BitcoinBasedTransaction>()));
+
+            var txsResult = await UpdateTransactionsAsync(addressInfo.Value.Outputs, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (txsResult.HasError)
+            {
+                Log.Error("[BitcoinBasedWalletScanner] UpdateAddressAsync error while getting transactions for {@address} with code {@code} and description {@description}",
+                    walletAddress.Address,
+                    addressInfo.Error.Code,
+                    addressInfo.Error.Description);
+            }
+
+            return new Result<(IEnumerable<BitcoinBasedTxOutput>, IEnumerable<BitcoinBasedTransaction>)>((
+                addressInfo.Value.Outputs,
+                txsResult.Value));
+        }
+
+        [Obsolete("Transactions can be partially collected from outputs without full tx data requests")]
+        private async Task<Result<IEnumerable<BitcoinBasedTransaction>>> UpdateTransactionsAsync(
+            IEnumerable<BitcoinBasedTxOutput> outputs,
+            CancellationToken cancellationToken = default)
+        {
+            var uniqueTxs = new Dictionary<string, BitcoinBasedTransaction>();
+
+            foreach (var output in outputs)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var txIds = output.IsSpent
+                    ? new[] { output.TxId, output.SpentTxPoint.Hash }
+                    : new[] { output.TxId };
+
+                foreach (var txId in txIds)
+                {
+                    // skip already requested transactions
+                    if (uniqueTxs.ContainsKey(txId))
+                        continue;
+
+                    var localTx = await _account.LocalStorage
+                        .GetTransactionByIdAsync<BitcoinBasedTransaction>(_account.Currency, txId)
+                        .ConfigureAwait(false);
+
+                    // request only not confirmed transactions
+                    if (localTx != null && localTx.IsConfirmed)
+                        continue;
+
+                    Log.Debug("[BitcoinBasedWalletScanner] Scan {@currency} transaction {@txId}", _account.Currency, txId);
+
+                    var txResult = await BitcoinBasedConfig
+                        .BlockchainApi
+                        .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (txResult == null)
+                    {
+                        Log.Error("[BitcoinBasedWalletScanner] Error while get transactions {@txId}", txId);
+                        continue;
+                    }
+
+                    if (txResult.HasError)
+                    {
+                        Log.Error(
+                            "[BitcoinBasedWalletScanner] Error while get transactions {@txId}. Code: {@code}. Description: {@desc}",
+                            txId,
+                            txResult.Error.Code,
+                            txResult.Error.Description);
+
+                        continue;
+                    }
+
+                    var tx = txResult.Value;
+
+                    if (tx == null)
+                    {
+                        Log.Warning("[BitcoinBasedWalletScanner] Wow! Transaction with id {@txId} not found", txId);
+                        continue;
+                    }
+
+                    uniqueTxs.Add(txId, tx as BitcoinBasedTransaction);
+                }
+            }
+
+            return uniqueTxs.Values;
         }
     }
 }

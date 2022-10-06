@@ -639,9 +639,18 @@ namespace Atomex.LiteDb
             return Task.FromResult(false);
         }
 
-        public Task<T> GetTransactionByIdAsync<T>(
+        public async Task<T> GetTransactionByIdAsync<T>(
             string currency,
             string txId) where T : IBlockchainTransaction
+        {
+            return (T)await GetTransactionByIdAsync(currency, txId, typeof(T))
+                .ConfigureAwait(false);
+        }
+
+        public Task<IBlockchainTransaction> GetTransactionByIdAsync(
+            string currency,
+            string txId,
+            Type transactionType)
         {
             try
             {
@@ -651,7 +660,7 @@ namespace Atomex.LiteDb
 
                 if (document != null)
                 {
-                    var tx = _bsonMapper.ToObject<T>(document);
+                    var tx = (IBlockchainTransaction)_bsonMapper.ToObject(transactionType, document);
 
                     return Task.FromResult(tx);
                 }
@@ -661,7 +670,7 @@ namespace Atomex.LiteDb
                 Log.Error(e, "Error getting transaction by id");
             }
 
-            return Task.FromResult<T>(default);
+            return Task.FromResult<IBlockchainTransaction>(default);
         }
 
         public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
