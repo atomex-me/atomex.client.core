@@ -45,7 +45,6 @@ namespace Atomex.Blockchain.Tezos
 
             return new SignedMessage
             {
-                Bytes            = dataForSign,
                 SignedHash       = signature,
                 EncodedSignature = Base58Check.Encode(signature, Prefix.Edsig),
                 SignedBytes      = data.ToHexString() + signature.ToHexString()

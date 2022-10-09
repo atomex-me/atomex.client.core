@@ -97,12 +97,9 @@ namespace Atomex.Wallet.BitcoinBased
                 fee: feeInSatoshi,
                 lockTime: DateTimeOffset.MinValue);
 
-            var signResult = await Wallet
-                .SignAsync(
+            var signResult = await SignAsync(
                     tx: tx,
                     spentOutputs: from,
-                    addressResolver: this,
-                    currencyConfig: config,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -140,6 +137,66 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
 
             return null;
+        }
+
+        public async Task<bool> SignAsync(
+            BitcoinBasedTransaction tx,
+            IEnumerable<BitcoinBasedTxOutput> spentOutputs,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                foreach (var spentOutput in spentOutputs)
+                {
+                    var address = spentOutput.DestinationAddress(Config.Network);
+
+                    var walletAddress = await GetAddressAsync(
+                            currency: Currency,
+                            address: address,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (walletAddress == null)
+                        return false; // todo error?
+
+                    using var publicKey = Wallet.GetPublicKey(Config, walletAddress.KeyIndex, walletAddress.KeyType);
+
+                    var signatureHash = tx.GetSignatureHash(spentOutput, redeemScript: null, SigHash.All);
+
+                    var signature = await Wallet
+                        .SignHashAsync(
+                            signatureHash,
+                            walletAddress,
+                            Config,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+
+                    var sigScript = spentOutput.Type switch
+                    {
+                        BitcoinOutputType.P2PKH => PayToPubkeyHashTemplate.Instance.GenerateScriptSig(
+                            signature: new TransactionSignature(signature, SigHash.All),
+                            publicKey: new PubKey(publicKey.ToUnsecuredBytes())),
+
+                        BitcoinOutputType.P2WPKH => (Script)PayToWitPubKeyHashTemplate.Instance.GenerateWitScript(
+                            signature: new TransactionSignature(signature, SigHash.All),
+                            publicKey: new PubKey(publicKey.ToUnsecuredBytes())),
+
+                        BitcoinOutputType.P2PK => PayToPubkeyTemplate.Instance.GenerateScriptSig(
+                            signature: new TransactionSignature(signature, SigHash.All)),
+
+                        _ => throw new NotSupportedException($"Type {spentOutput.Type} not supported")
+                    };
+
+                    tx.SetSignature(sigScript, spentOutput);
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[BitcoinBasedAccount] Sign error");
+                return false;
+            }
         }
 
         public async Task<decimal?> EstimateFeeAsync(

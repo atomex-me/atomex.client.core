@@ -92,7 +92,8 @@ namespace Atomex.Swaps.Ethereum
 
                         tx.Nonce = nonceResult.Value;
 
-                        var signResult = await SignTransactionAsync(tx, cancellationToken)
+                        var signResult = await EthereumAccount
+                            .SignAsync(tx, cancellationToken)
                             .ConfigureAwait(false);
 
                         if (!signResult)
@@ -292,7 +293,8 @@ namespace Atomex.Swaps.Ethereum
                     Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
                 };
 
-                var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
+                var signResult = await EthereumAccount
+                    .SignAsync(redeemTx, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!signResult)
@@ -410,7 +412,8 @@ namespace Atomex.Swaps.Ethereum
                 Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
             };
 
-            var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
+            var signResult = await EthereumAccount
+                .SignAsync(redeemTx, cancellationToken)
                 .ConfigureAwait(false);
 
             if (!signResult)
@@ -539,7 +542,8 @@ namespace Atomex.Swaps.Ethereum
                     Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
                 };
 
-                var signResult = await SignTransactionAsync(refundTx, cancellationToken)
+                var signResult = await EthereumAccount
+                    .SignAsync(refundTx, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!signResult)
@@ -947,25 +951,6 @@ namespace Atomex.Swaps.Ethereum
             {
                 Type = BlockchainTransactionType.Output | BlockchainTransactionType.TokenApprove
             };
-        }
-
-        private async Task<bool> SignTransactionAsync(
-            EthereumTransaction tx,
-            CancellationToken cancellationToken = default)
-        {
-            var walletAddress = await Erc20Account
-                .GetAddressAsync(
-                    address: tx.From,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            return await Erc20Account.Wallet
-                .SignAsync(
-                    tx: tx,
-                    address: walletAddress,
-                    currency: Erc20Config,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
         }
 
         private async Task BroadcastTxAsync(

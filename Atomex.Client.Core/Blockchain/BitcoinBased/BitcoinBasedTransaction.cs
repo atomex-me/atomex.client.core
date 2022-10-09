@@ -1,18 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 using NBitcoin;
 using NBitcoin.Policy;
-using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
-using Atomex.Core;
-using Atomex.Wallet.Abstract;
-using Atomex.Common.Memory;
 
 namespace Atomex.Blockchain.BitcoinBased
 {
@@ -59,16 +53,6 @@ namespace Atomex.Blockchain.BitcoinBased
             }
         }
 
-        public BitcoinBasedTransaction(BitcoinBasedConfig currency, string hex)
-            : this(currency.Name, Transaction.Parse(hex, currency.Network))
-        {
-        }
-
-        public BitcoinBasedTransaction(BitcoinBasedConfig currency, byte[] bytes)
-            : this(currency.Name, Transaction.Parse(bytes.ToHexString(), currency.Network))
-        {
-        }
-
         public BitcoinBasedTransaction(
             string currency,
             Transaction tx,
@@ -91,64 +75,12 @@ namespace Atomex.Blockchain.BitcoinBased
                 : BlockchainTransactionState.Pending;
         }
 
-        public async Task<bool> SignAsync(
-            IAddressResolver addressResolver,
-            IKeyStorage keyStorage,
-            IEnumerable<BitcoinBasedTxOutput> spentOutputs,
-            CurrencyConfig currencyConfig,
-            CancellationToken cancellationToken = default)
-        {
-            if (spentOutputs == null)
-                throw new ArgumentNullException(nameof(spentOutputs));
-
-            var btcBasedConfig = currencyConfig as BitcoinBasedConfig;
-
-            foreach (var spentOutput in spentOutputs)
-            {
-                var address = spentOutput.DestinationAddress(btcBasedConfig.Network);
-
-                var walletAddress = await addressResolver
-                    .GetAddressAsync(
-                        currency: Currency,
-                        address: address,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (walletAddress?.KeyIndex == null)
-                {
-                    Log.Error($"Can't find private key for address {address}");
-                    return false;
-                }
-
-                using var securePrivateKey = keyStorage.GetPrivateKey(
-                    currency: btcBasedConfig,
-                    keyIndex: walletAddress.KeyIndex,
-                    keyType: walletAddress.KeyType);
-
-                Sign(securePrivateKey, spentOutput, btcBasedConfig);
-            }
-
-            return true;
-        }
-
         public void Sign(
             Key privateKey,
             BitcoinBasedTxOutput spentOutput,
             BitcoinBasedConfig bitcoinBasedConfig)
         {
             Tx.Sign(new BitcoinSecret(privateKey, bitcoinBasedConfig.Network), spentOutput.Coin);
-        }
-
-        public void Sign(
-            SecureBytes privateKey,
-            BitcoinBasedTxOutput spentOutput,
-            BitcoinBasedConfig bitcoinBasedConfig)
-        {
-            var scopedPrivateKey = privateKey.ToUnsecuredBytes();
-
-            var key = new Key(scopedPrivateKey);
-
-            Sign(key, spentOutput, bitcoinBasedConfig); // todo: do not use NBitcoin.Key
         }
 
         public void Sign(
@@ -160,39 +92,28 @@ namespace Atomex.Blockchain.BitcoinBased
                 Sign(privateKey, output, bitcoinBasedConfig);
         }
 
-        public void Sign(
-            SecureBytes privateKey,
-            BitcoinBasedTxOutput[] spentOutputs,
-            BitcoinBasedConfig bitcoinBasedConfig)
+        public void SetSignature(Script sigScript, BitcoinBasedTxOutput spentOutput)
         {
-            var scopedPrivateKey = privateKey.ToUnsecuredBytes();
-
-            Sign(new Key(scopedPrivateKey), spentOutputs, bitcoinBasedConfig); // todo: do not use NBitcoin.Key
-        }
-
-        public void NonStandardSign(byte[] sigScript, BitcoinBasedTxOutput spentOutput)
-        {
-            NonStandardSign(new Script(sigScript), spentOutput);
-        }
-
-        public void NonStandardSign(Script sigScript, BitcoinBasedTxOutput spentOutput)
-        {
-            var spentOutpoint = ((BitcoinBasedTxOutput) spentOutput).Coin.Outpoint;
+            var spentOutpoint = spentOutput.Coin.Outpoint;
             var input = Tx.Inputs.FindIndexedInput(spentOutpoint);
 
-            input.ScriptSig = sigScript;
+            if (spentOutput.IsSegWit)
+            {
+                input.WitScript = sigScript;
+            }
+            else
+            {
+                input.ScriptSig = sigScript;
+            }
         }
 
-        public void NonStandardSign(byte[] sigScript, int inputNo)
+        public void ClearSignatures(int inputNo)
         {
-            NonStandardSign(new Script(sigScript), inputNo);
-        }
+            if (Tx.Inputs[inputNo].ScriptSig != null)
+                Tx.Inputs[inputNo].ScriptSig = Script.Empty;
 
-        public void NonStandardSign(Script sigScript, int inputNo)
-        {
-            var input = Tx.Inputs[inputNo];
-
-            input.ScriptSig = sigScript;
+            if (Tx.Inputs[inputNo].WitScript != null)
+                Tx.Inputs[inputNo].WitScript = Script.Empty;
         }
 
         public bool Verify(
@@ -319,14 +240,8 @@ namespace Atomex.Blockchain.BitcoinBased
                 .ToBytes();
         }
 
-        public Script GetScriptSig(int inputNo) =>
-            Tx.Inputs[inputNo].ScriptSig;
-
         public byte[] ToBytes() =>
             Tx.ToBytes();
-
-        public int VirtualSize() =>
-            Tx.GetVirtualSize();
 
         public BitcoinBasedTransaction Clone()
         {
@@ -335,13 +250,6 @@ namespace Atomex.Blockchain.BitcoinBased
                 tx: Tx.Clone(),
                 blockInfo: (BlockInfo)BlockInfo?.Clone(),
                 fees: Fees);
-        }
-
-        public long GetDust(long minOutputValue)
-        {
-            return Outputs
-                .Where(output => output.Value < minOutputValue)
-                .Sum(output => output.Value);
         }
 
         public void SetSequenceNumber(uint sequenceNumber)

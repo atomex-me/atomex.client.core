@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Security;
 using System.Threading;
@@ -8,13 +7,11 @@ using System.Threading.Tasks;
 using NBitcoin;
 using Serilog;
 
-using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Network = Atomex.Core.Network;
-using Atomex.Blockchain.BitcoinBased;
 
 namespace Atomex.Wallet
 {
@@ -162,70 +159,6 @@ namespace Atomex.Wallet
             Log.Verbose("Data successfully signed");
 
             return Task.FromResult(signature);      
-        }
-
-        public async Task<bool> SignAsync(
-            BitcoinBasedTransaction tx,
-            IEnumerable<BitcoinBasedTxOutput> spentOutputs,
-            IAddressResolver addressResolver,
-            CurrencyConfig currencyConfig,
-            CancellationToken cancellationToken = default)
-        {
-            if (tx == null)
-                throw new ArgumentNullException(nameof(tx));
-
-            Log.Verbose("Sign request for transaction {@id}", tx.Id);
-
-            if (IsLocked)
-            {
-                Log.Warning("Wallet locked");
-                return false;
-            }
-
-            var signResult = await tx
-                .SignAsync(
-                    addressResolver: addressResolver,
-                    keyStorage: KeyStorage,
-                    spentOutputs: spentOutputs,
-                    currencyConfig: currencyConfig,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            if (signResult)
-                Log.Verbose("Transaction {@id} successfully signed", tx.Id);
-            else
-                Log.Error("Transaction {@id} signing error", tx.Id);
-
-            return signResult;
-        }
-
-        public async Task<bool> SignAsync(
-            IAddressBasedTransaction tx,
-            WalletAddress address,
-            CurrencyConfig currencyConfig,
-            CancellationToken cancellationToken = default)
-        {
-            if (tx == null)
-                throw new ArgumentNullException(nameof(tx));
-
-            Log.Verbose("Sign request for transaction {@id}", tx.Id);
-
-            if (IsLocked)
-            {
-                Log.Warning("Wallet locked");
-                return false;
-            }
-
-            var signResult = await tx
-                .SignAsync(KeyStorage, address, currencyConfig, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (signResult)
-                Log.Verbose("Transaction {@id} successfully signed", tx.Id);
-            else
-                Log.Error("Transaction {@id} signing error", tx.Id);
-
-            return signResult;
         }
 
         public Task<byte[]> SignHashAsync(

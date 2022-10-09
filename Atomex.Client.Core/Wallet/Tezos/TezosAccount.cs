@@ -13,6 +13,8 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
+using Atomex.Blockchain.Tezos.Internal;
+using Atomex.Cryptography;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -130,8 +132,7 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var signResult = await Wallet
-                .SignAsync(tx, addressFeeUsage.WalletAddress, xtzConfig, cancellationToken)
+            var signResult = await SignAsync(tx, cancellationToken)
                 .ConfigureAwait(false);
 
             if (!signResult)
@@ -167,6 +168,46 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             return (txId, error: null);
+        }
+
+
+        public async Task<bool> SignAsync(
+            TezosTransaction tx,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var walletAddress = await GetAddressAsync(
+                        address: tx.From,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                var rpc = new Rpc(Config.RpcNodeUri);
+
+                var forgedOpGroup = await rpc
+                    .ForgeOperations(tx.Head, tx.Operations)
+                    .ConfigureAwait(false);
+
+                var dataToSign = Hex.FromString(forgedOpGroup.ToString());
+
+                var signature = await Wallet
+                    .SignHashAsync(dataToSign, walletAddress, Config, cancellationToken)
+                    .ConfigureAwait(false);
+
+                tx.SignedMessage = new SignedMessage
+                {
+                    SignedHash = signature,
+                    EncodedSignature = Base58Check.Encode(signature, Prefix.Edsig),
+                    SignedBytes = dataToSign.ToHexString() + signature.ToHexString()
+                };
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[TezosAccount] Sign error");
+                return false;
+            }
         }
 
         public async Task<decimal> EstimateFeeAsync(

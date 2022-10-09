@@ -33,12 +33,10 @@ namespace Atomex.Swaps.BitcoinBased
                 .Where(o => { return tx.Inputs.FirstOrDefault(i => i.Hash == o.TxId && i.Index == o.Index) != null; })
                 .ToList();
 
-            var result = await Account.Wallet
+            var result = await Account
                 .SignAsync(
                     tx: tx,
-                    spentOutputs: spentOutputs,
-                    addressResolver: Account,
-                    currencyConfig: Account.Config)
+                    spentOutputs: spentOutputs)
                 .ConfigureAwait(false);
 
             if (!result)
@@ -94,7 +92,7 @@ namespace Atomex.Swaps.BitcoinBased
                 return tx;
 
             // clean any signature, if exists
-            tx.NonStandardSign(Script.Empty, 0);
+            tx.ClearSignatures(0);
 
             var sigHash = tx.GetSignatureHash(spentOutput, new Script(redeemScript));
 
@@ -121,7 +119,7 @@ namespace Atomex.Swaps.BitcoinBased
                 aliceRefundPubKey: refundAddressPublicKey.ToUnsecuredBytes(),
                 redeemScript: redeemScript);
 
-            tx.NonStandardSign(refundScriptSig, spentOutput);
+            tx.SetSignature(refundScriptSig, spentOutput);
 
             if (!tx.Verify(spentOutput, out var errors, Account.Config))
             {
@@ -187,7 +185,7 @@ namespace Atomex.Swaps.BitcoinBased
                 secret: secret,
                 redeemScript: redeemScript);
 
-            tx.NonStandardSign(redeemScriptSig, spentOutput);
+            tx.SetSignature(redeemScriptSig, spentOutput);
 
             if (!tx.Verify(spentOutput, out var errors, Account.Config))
             {

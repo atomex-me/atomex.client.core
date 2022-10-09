@@ -127,8 +127,8 @@ namespace Atomex.Wallet.Ethereum
                 Type = BlockchainTransactionType.Output
             };
 
-            var signResult = await Wallet
-                .SignAsync(tx, addressFeeUsage.WalletAddress, erc20Config, cancellationToken)
+            var signResult = await _ethereumAccount
+                .SignAsync(tx, cancellationToken)
                 .ConfigureAwait(false);
 
             if (!signResult)

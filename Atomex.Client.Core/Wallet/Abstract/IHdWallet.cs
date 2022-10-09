@@ -1,11 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
 using Atomex.Common.Memory;
 using Atomex.Core;
 
@@ -95,34 +92,6 @@ namespace Atomex.Wallet.Abstract
         /// <returns>Signature</returns>
         Task<byte[]> SignAsync(
             byte[] data,
-            WalletAddress address,
-            CurrencyConfig currency,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Sign input/output <paramref name="tx"/> corresponding to <paramref name="spentOutputs"/>
-        /// </summary>
-        /// <param name="tx">In/out transaction to sign</param>
-        /// <param name="spentOutputs">Spent outputs</param>
-        /// <param name="addressResolver">Address resolver</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>True, if transaction successfully signed, otherwise else</returns>
-        Task<bool> SignAsync(
-            BitcoinBasedTransaction tx,
-            IEnumerable<BitcoinBasedTxOutput> spentOutputs,
-            IAddressResolver addressResolver,
-            CurrencyConfig currencyConfig,
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Sign address based <paramref name="tx"/> by key for <paramref name="address"/>
-        /// </summary>
-        /// <param name="tx">Address based transaction to sign</param>
-        /// <param name="address">Address</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>True, if transaction successfully signed, otherwise else</returns>
-        Task<bool> SignAsync(
-            IAddressBasedTransaction tx,
             WalletAddress address,
             CurrencyConfig currency,
             CancellationToken cancellationToken = default);

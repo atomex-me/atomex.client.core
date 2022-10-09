@@ -2,24 +2,17 @@
 using System.Collections.Generic;
 using System.Numerics;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Signer;
-using Serilog;
-using Transaction = Nethereum.RPC.Eth.DTOs.Transaction;
 using LiteDB;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
-using Atomex.Common.Memory;
-using Atomex.Core;
-using Atomex.Wallet.Abstract;
 
 namespace Atomex.Blockchain.Ethereum
 {
-    public class EthereumTransaction : IAddressBasedTransaction
+    public class EthereumTransaction : IBlockchainTransaction
     {
         private const int DefaultConfirmations = 1;
 
@@ -51,46 +44,6 @@ namespace Atomex.Blockchain.Ethereum
 
         public EthereumTransaction()
         {
-        }
-
-        public EthereumTransaction(
-            string currency,
-            Transaction tx,
-            TransactionReceipt txReceipt,
-            DateTime blockTimeStamp)
-        {
-            Currency = currency;
-            Id       = tx.TransactionHash;
-            Type     = BlockchainTransactionType.Unknown;
-            State    = txReceipt.Status != null && txReceipt.Status.Value == BigInteger.One
-                ? BlockchainTransactionState.Confirmed
-                : (txReceipt.Status != null
-                    ? BlockchainTransactionState.Failed
-                    : BlockchainTransactionState.Unconfirmed);
-            CreationTime = blockTimeStamp;
-
-            From          = tx.From.ToLowerInvariant();
-            To            = tx.To.ToLowerInvariant();
-            Input         = tx.Input;
-            Amount        = tx.Value;
-            Nonce         = tx.Nonce;
-            GasPrice      = tx.GasPrice;
-            GasLimit      = tx.Gas;
-            GasUsed       = txReceipt.GasUsed;
-            ReceiptStatus = State == BlockchainTransactionState.Confirmed;
-            IsInternal    = false;
-            InternalIndex = 0;
-
-            BlockInfo = new BlockInfo
-            {
-                Confirmations = txReceipt.Status != null
-                    ? (int)txReceipt.Status.Value
-                    : 0,
-                BlockHash   = tx.BlockHash,
-                BlockHeight = (long) tx.TransactionIndex.Value,
-                BlockTime   = blockTimeStamp,
-                FirstSeen   = blockTimeStamp
-            };
         }
 
         public EthereumTransaction(string currency, TransactionInput txInput)
@@ -147,34 +100,18 @@ namespace Atomex.Blockchain.Ethereum
 
         public byte[] ToBytes() => Encoding.UTF8.GetBytes(RlpEncodedTx);
 
-        public async Task<bool> SignAsync(
-            IKeyStorage keyStorage,
-            WalletAddress address,
-            CurrencyConfig currencyConfig,
-            CancellationToken cancellationToken = default)
+        public byte[] GetRawHash(int chainId) =>
+            new LegacyTransactionChainId(
+                to: To,
+                amount: Amount,
+                nonce: Nonce,
+                gasPrice: GasPrice,
+                gasLimit: GasLimit,
+                data: Input,
+                chainId: chainId).RawHash;
+
+        public string GetRlpEncoded(int chainId, byte[] signature)
         {
-            if (address.KeyIndex == null)
-            {
-                Log.Error("Can't find private key for address {@address}", address);
-                return false;
-            }
-
-            using var privateKey = keyStorage.GetPrivateKey(
-                currency: currencyConfig,
-                keyIndex: address.KeyIndex,
-                keyType: address.KeyType);
-
-            return await SignAsync(privateKey, currencyConfig as EthereumConfig)
-                .ConfigureAwait(false);
-        }
-
-        private Task<bool> SignAsync(
-            SecureBytes privateKey,
-            EthereumConfig ethereumConfig)
-        {
-            if (privateKey == null)
-                throw new ArgumentNullException(nameof(privateKey));
-
             var tx = new LegacyTransactionChainId(
                 to: To,
                 amount: Amount,
@@ -182,18 +119,13 @@ namespace Atomex.Blockchain.Ethereum
                 gasPrice: GasPrice,
                 gasLimit: GasLimit,
                 data: Input,
-                chainId: ethereumConfig.ChainId);
+                chainId: chainId);
 
-            var pkKey = privateKey.ToUnsecuredBytes();
-            var key = new EthECKey(pkKey, true);
+            tx.SetSignature(new EthECDSASignature(signature));
 
-            tx.Sign(key);
-
-            RlpEncodedTx = tx
+            return tx
                 .GetRLPEncoded()
                 .ToHexString();
-
-            return Task.FromResult(true);
         }
     }
 }

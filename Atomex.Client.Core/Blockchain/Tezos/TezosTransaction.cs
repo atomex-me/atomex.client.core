@@ -10,15 +10,12 @@ using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Internal;
-using Atomex.Common;
 using Atomex.Common.Memory;
-using Atomex.Core;
 using Atomex.Cryptography;
-using Atomex.Wallet.Abstract;
 
 namespace Atomex.Blockchain.Tezos
 {
-    public class TezosTransaction : IAddressBasedTransaction
+    public class TezosTransaction : IBlockchainTransaction
     {
         private const int DefaultConfirmations = 1;
 
@@ -54,7 +51,7 @@ namespace Atomex.Blockchain.Tezos
         [BsonIgnore]
         public JArray Operations { get; private set; }
         [BsonIgnore]
-        public SignedMessage SignedMessage { get; private set; }
+        public SignedMessage SignedMessage { get; set; }
 
         public string OperationType { get; set; } = Internal.OperationType.Transaction;
         [BsonIgnore]
@@ -104,60 +101,6 @@ namespace Atomex.Blockchain.Tezos
                     resTx.InternalTxs.Add(intTx.Clone());
 
             return resTx;
-        }
-
-        public async Task<bool> SignAsync(
-            IKeyStorage keyStorage,
-            WalletAddress address,
-            CurrencyConfig currencyConfig,
-            CancellationToken cancellationToken = default)
-        {
-            if (address.KeyIndex == null)
-            {
-                Log.Error("Can't find private key for address {@address}", address);
-                return false;
-            }
-
-            using var securePrivateKey = keyStorage.GetPrivateKey(
-                currency: currencyConfig,
-                keyIndex: address.KeyIndex,
-                keyType: address.KeyType);
-
-            if (securePrivateKey == null)
-            {
-                Log.Error("Can't find private key for address {@address}", address);
-                return false;
-            }
-
-            var privateKey = securePrivateKey.ToUnsecuredBytes();
-
-            var xtz = currencyConfig as TezosConfig;
-
-            var rpc = new Rpc(xtz.RpcNodeUri);
-
-            var forgedOpGroup = await rpc
-                .ForgeOperations(Head, Operations)
-                .ConfigureAwait(false);
-
-            //var forgedOpGroup = Forge.ForgeOperationsLocal(Head["hash"].ToString(), Operations);
-
-            var dataToSign = Hex.FromString(forgedOpGroup.ToString());
-
-            SignedMessage = TezosSigner.SignHash(
-                data: dataToSign,
-                privateKey: privateKey,
-                watermark: Watermark.Generic,
-                isExtendedKey: privateKey.Length == 64);
-
-            var verifyResult = TezosSigner.VerifyHash(
-                data: Watermark.Generic.ConcatArrays(dataToSign),
-                signature: SignedMessage.SignedHash,
-                publicKey: keyStorage.GetPublicKey(
-                    currency: currencyConfig,
-                    keyIndex: address.KeyIndex,
-                    keyType: address.KeyType).ToUnsecuredBytes());
-
-            return SignedMessage != null && verifyResult;
         }
 
         public async Task<(bool result, bool isRunSuccess, bool hasReveal)> FillOperationsAsync(

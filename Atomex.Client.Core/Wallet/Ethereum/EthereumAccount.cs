@@ -125,8 +125,7 @@ namespace Atomex.Wallet.Ethereum
                 GasLimit     = new BigInteger(gasLimit),
             };
 
-            var signResult = await Wallet
-                .SignAsync(tx, addressFeeUsage.WalletAddress, ethConfig, cancellationToken)
+            var signResult = await SignAsync(tx, cancellationToken)
                 .ConfigureAwait(false);
 
             if (!signResult)
@@ -163,6 +162,32 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             return null;
+        }
+
+        public async Task<bool> SignAsync(
+            EthereumTransaction tx,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var walletAddress = await GetAddressAsync(
+                        address: tx.From,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                var signature = await Wallet
+                    .SignHashAsync(tx.GetRawHash(EthConfig.ChainId), walletAddress, EthConfig, cancellationToken)
+                    .ConfigureAwait(false);
+
+                tx.RlpEncodedTx = tx.GetRlpEncoded(EthConfig.ChainId, signature);
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[EthereumAccount] Sign error");
+                return false;
+            }
         }
 
         public async Task<decimal> EstimateFeeAsync(

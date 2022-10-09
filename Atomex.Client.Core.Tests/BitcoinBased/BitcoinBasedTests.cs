@@ -185,7 +185,7 @@ namespace Atomex.Client.Core.Tests
                 aliceRefundPubKey: Common.Alice.PubKey.ToBytes(),
                 redeemScript: redeemScriptBytes);
 
-            refundTx.NonStandardSign(refundScript, paymentTxOutputs.First());
+            refundTx.SetSignature(refundScript, paymentTxOutputs.First());
 
             Assert.True(refundTx.Verify(paymentTxOutputs, currency));
 
@@ -230,7 +230,7 @@ namespace Atomex.Client.Core.Tests
                 secret: Common.Secret,
                 redeemScript: redeemScriptBytes);
 
-            redeemTx.NonStandardSign(scriptSig, paymentOutput);
+            redeemTx.SetSignature(scriptSig, paymentOutput);
 
             Assert.True(redeemTx.Verify(paymentOutputs, currency));
 

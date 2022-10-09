@@ -137,8 +137,8 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var signResult = await Wallet
-                .SignAsync(tx, addressFeeUsage.WalletAddress, xtzConfig, cancellationToken)
+            var signResult = await _tezosAccount
+                .SignAsync(tx, cancellationToken)
                 .ConfigureAwait(false);
 
             if (!signResult)

@@ -86,7 +86,8 @@ namespace Atomex.Swaps.Tezos
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    var signResult = await SignTransactionAsync(paymentTx, cancellationToken)
+                    var signResult = await _account
+                        .SignAsync(paymentTx, cancellationToken)
                         .ConfigureAwait(false);
 
                     if (!signResult)
@@ -303,7 +304,8 @@ namespace Atomex.Swaps.Tezos
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
+                var signResult = await _account
+                    .SignAsync(redeemTx, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!signResult)
@@ -422,7 +424,8 @@ namespace Atomex.Swaps.Tezos
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                var signResult = await SignTransactionAsync(redeemForPartyTx, cancellationToken)
+                var signResult = await _account
+                    .SignAsync(redeemForPartyTx, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!signResult)
@@ -534,7 +537,8 @@ namespace Atomex.Swaps.Tezos
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                var signResult = await SignTransactionAsync(refundTx, cancellationToken)
+                var signResult = await _account
+                    .SignAsync(refundTx, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!signResult)
@@ -796,25 +800,6 @@ namespace Atomex.Swaps.Tezos
                 UseSafeStorageLimit = true,
                 UseOfflineCounter   = true
             };
-        }
-
-        private async Task<bool> SignTransactionAsync(
-            TezosTransaction tx,
-            CancellationToken cancellationToken = default)
-        {
-            var walletAddress = await _account
-                .GetAddressAsync(
-                    address: tx.From,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            return await _account.Wallet
-                .SignAsync(
-                    tx: tx,
-                    address: walletAddress,
-                    currency: XtzConfig,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
         }
 
         private async Task BroadcastTxAsync(

@@ -102,7 +102,8 @@ namespace Atomex.Swaps.Tezos.Fa12
 
                         isAlreadyRevealed = hasReveal;
 
-                        var signResult = await SignTransactionAsync(tx, cancellationToken)
+                        var signResult = await TezosAccount
+                            .SignAsync(tx, cancellationToken)
                             .ConfigureAwait(false);
 
                         if (!signResult)
@@ -334,7 +335,8 @@ namespace Atomex.Swaps.Tezos.Fa12
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
+                var signResult = await TezosAccount
+                    .SignAsync(redeemTx, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!signResult)
@@ -451,7 +453,8 @@ namespace Atomex.Swaps.Tezos.Fa12
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var signResult = await SignTransactionAsync(redeemTx, cancellationToken)
+            var signResult = await TezosAccount
+                .SignAsync(redeemTx, cancellationToken)
                 .ConfigureAwait(false);
 
             if (!signResult)
@@ -554,7 +557,8 @@ namespace Atomex.Swaps.Tezos.Fa12
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                var signResult = await SignTransactionAsync(refundTx, cancellationToken)
+                var signResult = await TezosAccount
+                    .SignAsync(refundTx, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!signResult)
@@ -965,26 +969,6 @@ namespace Atomex.Swaps.Tezos.Fa12
 
             return transactions;
         }
-
-        private async Task<bool> SignTransactionAsync(
-            TezosTransaction tx,
-            CancellationToken cancellationToken = default)
-        {
-            var walletAddress = await TezosAccount
-                .GetAddressAsync(
-                    address: tx.From,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            return await TezosAccount.Wallet
-                .SignAsync(
-                    tx: tx,
-                    address: walletAddress,
-                    currency: XtzConfig,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-        }
-
         private async Task BroadcastTxAsync(
             Swap swap,
             TezosTransaction tx,
