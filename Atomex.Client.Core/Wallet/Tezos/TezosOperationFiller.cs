@@ -83,7 +83,8 @@ namespace Atomex.Wallets.Tezos
 
                     storageDiff += (int)tezosConfig.ActivationStorage * metaData
                         ?["internal_operation_results"]
-                        ?.Where(res => res["result"]?["allocated_destination_contract"]?.ToString() == "True")
+                        ?.Where(res => res["result"]?["allocated_destination_contract"]?.ToString() == "True" || 
+                                       res["kind"]?.ToString() == "origination")
                         .Count() ?? 0;
 
                     storageDiff += metaData
