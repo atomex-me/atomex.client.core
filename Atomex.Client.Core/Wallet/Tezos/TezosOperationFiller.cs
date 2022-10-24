@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 using Netezos.Forging;
@@ -29,7 +30,10 @@ namespace Atomex.Wallets.Tezos
                     .RunOperations(
                         blockHash,
                         chainId,
-                        JsonSerializer.Serialize(operations))
+                        JsonSerializer.Serialize(operations, new JsonSerializerOptions
+                        {
+                            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+                        }))
                     .ConfigureAwait(false);
 
                 foreach (var result in response["contents"])
