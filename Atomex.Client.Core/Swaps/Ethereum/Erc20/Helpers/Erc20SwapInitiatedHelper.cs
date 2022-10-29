@@ -124,7 +124,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                 var contractInitEvent = events.Last();
 
-                var initiatedEvent = contractInitEvent.ParseERC20InitiatedEvent();
+                var initiatedEvent = contractInitEvent.ParseErc20InitiatedEvent();
 
                 if (initiatedEvent.RefundTimestamp < refundTimeStamp)
                 {
@@ -227,7 +227,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                 if (events == null || !events.Any())
                     return false;
 
-                foreach (var @event in events.Select(e => e.ParseERC20AddedEvent()))
+                foreach (var @event in events.Select(e => e.ParseErc20AddedEvent()))
                 {
                     erc20TransferValues = await GetTransferValuesAsync(
                             currency: currency,
@@ -310,7 +310,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                 if (events == null || !events.Any())
                     return new List<BigInteger>();
 
-                return events.Select(e => e.ParseERC20TransferEvent().Value).ToList();
+                return events.Select(e => e.ParseErc20TransferEvent().Value).ToList();
             }
             catch (Exception e)
             {

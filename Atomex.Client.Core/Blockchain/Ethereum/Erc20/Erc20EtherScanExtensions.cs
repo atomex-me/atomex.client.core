@@ -16,42 +16,35 @@ namespace Atomex.Blockchain.Ethereum.Erc20
         private const int InputItemSizeInHex = 64;
         //private const int SignatureLengthInHex = 32;
         
-        public static bool IsErc20SignatureEqual(this EthereumTransaction transaction, string signatureHash)
-        {
-            var txSignature = transaction.Input[..(transaction.Input.Length % InputItemSizeInHex)];
-
-            return signatureHash.StartsWith(txSignature);
-        }
-
-        public static bool IsErc20ApproveTransaction(this EthereumTransaction transaction)
-        {
-            return transaction.IsErc20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveFunctionMessage>());
-        }
+        //public static bool IsErc20ApproveTransaction(this EthereumTransaction transaction)
+        //{
+        //    return transaction.IsErc20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveFunctionMessage>());
+        //}
 
         public static bool IsErc20TransferTransaction(this EthereumTransaction transaction)
         {
-            return transaction.IsErc20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferFunctionMessage>());
+            return transaction.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferFunctionMessage>());
         }
 
         public static bool IsErc20InitiateTransaction(this EthereumTransaction transaction)
         {
-            return transaction.IsErc20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<Erc20InitiateFunctionMessage>());
+            return transaction.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20InitiateFunctionMessage>());
         }
 
         public static bool IsErc20AddTransaction(this EthereumTransaction transaction)
         {
-            return transaction.IsErc20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<Erc20AddFunctionMessage>());
+            return transaction.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20AddFunctionMessage>());
         }
 
-        public static bool IsErc20RedeemTransaction(this EthereumTransaction transaction)
-        {
-            return transaction.IsErc20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<Erc20RedeemFunctionMessage>());
-        }
+        //public static bool IsErc20RedeemTransaction(this EthereumTransaction transaction)
+        //{
+        //    return transaction.IsErc20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<Erc20RedeemFunctionMessage>());
+        //}
 
-        public static bool IsErc20RefundTransaction(this EthereumTransaction transaction)
-        {
-            return transaction.IsErc20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<Erc20RefundFunctionMessage>());
-        }
+        //public static bool IsErc20RefundTransaction(this EthereumTransaction transaction)
+        //{
+        //    return transaction.IsErc20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<Erc20RefundFunctionMessage>());
+        //}
         
         public static bool IsErc20ApprovalEvent(this EtherScanApi.ContractEvent contractEvent)
         {
@@ -63,47 +56,47 @@ namespace Atomex.Blockchain.Ethereum.Erc20
             return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<Erc20TransferEventDTO>();
         }
 
-        public static bool IsErc20InitiatedEvent(this EtherScanApi.ContractEvent contractEvent)
-        {
-            return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<Erc20InitiatedEventDTO>();
-        }
+        //public static bool IsErc20InitiatedEvent(this EtherScanApi.ContractEvent contractEvent)
+        //{
+        //    return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<Erc20InitiatedEventDTO>();
+        //}
 
-        public static bool IsErc20AddedEvent(this EtherScanApi.ContractEvent contractEvent)
-        {
-            return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<Erc20AddedEventDTO>();
-        }
+        //public static bool IsErc20AddedEvent(this EtherScanApi.ContractEvent contractEvent)
+        //{
+        //    return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<Erc20AddedEventDTO>();
+        //}
 
-        public static bool IsERC20RedeemedEvent(this EtherScanApi.ContractEvent contractEvent)
-        {
-            return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<Erc20RedeemedEventDTO>();
-        }
+        //public static bool IsErc20RedeemedEvent(this EtherScanApi.ContractEvent contractEvent)
+        //{
+        //    return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<Erc20RedeemedEventDTO>();
+        //}
 
-        public static bool IsERC20RefundedEvent(this EtherScanApi.ContractEvent contractEvent)
-        {
-            return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<Erc20RefundedEventDTO>();
-        }
+        //public static bool IsErc20RefundedEvent(this EtherScanApi.ContractEvent contractEvent)
+        //{
+        //    return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<Erc20RefundedEventDTO>();
+        //}
 
-        public static EthereumTransaction ParseERC20TransactionType(
-            this EthereumTransaction transaction)
-        {
-            if (transaction.Input == "0x")
-                return transaction;
+        //public static EthereumTransaction ParseErc20TransactionType(
+        //    this EthereumTransaction transaction)
+        //{
+        //    if (transaction.Input == "0x")
+        //        return transaction;
 
-            if (transaction.Currency == "ETH")
-            {
-                if (transaction.IsErc20TransferTransaction() ||
-                    transaction.IsErc20ApproveTransaction())
-                    transaction.Type |= BlockchainTransactionType.TokenCall;
-                else if (transaction.IsErc20InitiateTransaction() ||
-                    transaction.IsErc20RedeemTransaction() ||
-                    transaction.IsErc20RefundTransaction())
-                    transaction.Type |= BlockchainTransactionType.SwapCall;
-            }
+        //    if (transaction.Currency == "ETH")
+        //    {
+        //        if (transaction.IsErc20TransferTransaction() ||
+        //            transaction.IsErc20ApproveTransaction())
+        //            transaction.Type |= BlockchainTransactionType.TokenCall;
+        //        else if (transaction.IsErc20InitiateTransaction() ||
+        //            transaction.IsErc20RedeemTransaction() ||
+        //            transaction.IsErc20RefundTransaction())
+        //            transaction.Type |= BlockchainTransactionType.ContractCall;
+        //    }
 
-            return transaction;
-        }
+        //    return transaction;
+        //}
 
-        public static EthereumTransaction ParseERC20Input(
+        public static EthereumTransaction ParseErc20Input(
             this EthereumTransaction transaction)
         {
             if (transaction.Input == "0x")
@@ -170,7 +163,7 @@ namespace Atomex.Blockchain.Ethereum.Erc20
             };
         }
 
-        public static Erc20TransferEventDTO ParseERC20TransferEvent(
+        public static Erc20TransferEventDTO ParseErc20TransferEvent(
             this EtherScanApi.ContractEvent contractEvent)
         {
             var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<Erc20TransferEventDTO>();
@@ -190,7 +183,7 @@ namespace Atomex.Blockchain.Ethereum.Erc20
             };
         }
 
-        public static Erc20InitiatedEventDTO ParseERC20InitiatedEvent(
+        public static Erc20InitiatedEventDTO ParseErc20InitiatedEvent(
             this EtherScanApi.ContractEvent contractEvent)
         {
             var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<Erc20InitiatedEventDTO>();
@@ -221,59 +214,59 @@ namespace Atomex.Blockchain.Ethereum.Erc20
             };
         }
 
-        public static Erc20AddedEventDTO ParseERC20AddedEvent(
-            this EtherScanApi.ContractEvent contractEvent)
-        {
-            var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<Erc20AddedEventDTO>();
+        //public static Erc20AddedEventDTO ParseErc20AddedEvent(
+        //    this EtherScanApi.ContractEvent contractEvent)
+        //{
+        //    var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<Erc20AddedEventDTO>();
 
-            if (contractEvent.Topics == null ||
-                contractEvent.Topics.Count != 2 ||
-                contractEvent.EventSignatureHash() != eventSignatureHash)
-                throw new Exception("Invalid contract event");
+        //    if (contractEvent.Topics == null ||
+        //        contractEvent.Topics.Count != 2 ||
+        //        contractEvent.EventSignatureHash() != eventSignatureHash)
+        //        throw new Exception("Invalid contract event");
 
-            var initiatorHex = contractEvent.HexData.Substring(PrefixOffset, TopicSizeInHex);
-            var valueHex = contractEvent.HexData.Substring(PrefixOffset + TopicSizeInHex, TopicSizeInHex);
+        //    var initiatorHex = contractEvent.HexData.Substring(PrefixOffset, TopicSizeInHex);
+        //    var valueHex = contractEvent.HexData.Substring(PrefixOffset + TopicSizeInHex, TopicSizeInHex);
 
-            return new Erc20AddedEventDTO
-            {
-                HashedSecret = Hex.FromString(contractEvent.Topics[1], true),
-                Initiator = $"0x{initiatorHex[^AddressLengthInHex..]}",
-                Value = new HexBigInteger(valueHex).Value
-            };
-        }
+        //    return new Erc20AddedEventDTO
+        //    {
+        //        HashedSecret = Hex.FromString(contractEvent.Topics[1], true),
+        //        Initiator = $"0x{initiatorHex[^AddressLengthInHex..]}",
+        //        Value = new HexBigInteger(valueHex).Value
+        //    };
+        //}
 
-        public static Erc20RedeemedEventDTO ParseERC20RedeemedEvent(
-            this EtherScanApi.ContractEvent contractEvent)
-        {
-            var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<Erc20RedeemedEventDTO>();
+        //public static Erc20RedeemedEventDTO ParseErc20RedeemedEvent(
+        //    this EtherScanApi.ContractEvent contractEvent)
+        //{
+        //    var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<Erc20RedeemedEventDTO>();
 
-            if (contractEvent.Topics == null ||
-                contractEvent.Topics.Count != 2 ||
-                contractEvent.EventSignatureHash() != eventSignatureHash)
-                throw new Exception("Invalid contract event");
+        //    if (contractEvent.Topics == null ||
+        //        contractEvent.Topics.Count != 2 ||
+        //        contractEvent.EventSignatureHash() != eventSignatureHash)
+        //        throw new Exception("Invalid contract event");
 
-            return new Erc20RedeemedEventDTO
-            {
-                HashedSecret = Hex.FromString(contractEvent.Topics[1], true),
-                Secret = Hex.FromString(contractEvent.HexData, true)
-            };
-        }
+        //    return new Erc20RedeemedEventDTO
+        //    {
+        //        HashedSecret = Hex.FromString(contractEvent.Topics[1], true),
+        //        Secret = Hex.FromString(contractEvent.HexData, true)
+        //    };
+        //}
 
-        public static Erc20RefundedEventDTO ParseRefundedEvent(
-            this EtherScanApi.ContractEvent contractEvent)
-        {
-            var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<Erc20RefundedEventDTO>();
+        //public static Erc20RefundedEventDTO ParseRefundedEvent(
+        //    this EtherScanApi.ContractEvent contractEvent)
+        //{
+        //    var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<Erc20RefundedEventDTO>();
 
-            if (contractEvent.Topics == null ||
-                contractEvent.Topics.Count != 2 ||
-                contractEvent.EventSignatureHash() != eventSignatureHash)
-                throw new Exception("Invalid contract event");
+        //    if (contractEvent.Topics == null ||
+        //        contractEvent.Topics.Count != 2 ||
+        //        contractEvent.EventSignatureHash() != eventSignatureHash)
+        //        throw new Exception("Invalid contract event");
 
-            return new Erc20RefundedEventDTO
-            {
-                HashedSecret = Hex.FromString(contractEvent.Topics[1], true),
-            };
-        }
+        //    return new Erc20RefundedEventDTO
+        //    {
+        //        HashedSecret = Hex.FromString(contractEvent.Topics[1], true),
+        //    };
+        //}
 
         public static EthereumTransaction TransformApprovalEvent(
             this EtherScanApi.ContractEvent contractEvent,
@@ -327,7 +320,7 @@ namespace Atomex.Blockchain.Ethereum.Erc20
             if (!contractEvent.IsErc20TransferEvent())
                 return null;
 
-            var transferEvent = contractEvent.ParseERC20TransferEvent();
+            var transferEvent = contractEvent.ParseErc20TransferEvent();
 
             var tx = new EthereumTransaction() //todo: make a refactoring
             {

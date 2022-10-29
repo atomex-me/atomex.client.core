@@ -15,6 +15,7 @@ using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
+using Atomex.Blockchain.Ethereum.Erc20;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -443,6 +444,77 @@ namespace Atomex.Wallet.Ethereum
             return await LocalStorage
                 .GetUnconfirmedTransactionsAsync<EthereumTransaction>(Currency)
                 .ConfigureAwait(false);
+        }
+
+        public override async Task ResolveTransactionsTypesAsync(
+            IEnumerable<IBlockchainTransaction> txs,
+            CancellationToken cancellationToken = default)
+        {
+            var resolved = new List<IBlockchainTransaction>();
+
+            foreach (var tx in txs.Cast<EthereumTransaction>())
+            {
+                if (tx.IsTypeResolved)
+                    continue;
+
+                await ResolveTransactionTypeAsync(tx, cancellationToken)
+                    .ConfigureAwait(false);
+
+                resolved.Add(tx);
+            }
+
+            await LocalStorage
+                .UpsertTransactionsAsync(
+                    txs,
+                    notifyIfNewOrChanged: true,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        private async Task ResolveTransactionTypeAsync(
+            EthereumTransaction tx,
+            CancellationToken cancellationToken = default)
+        {
+            tx.Type = BlockchainTransactionType.Unknown;
+
+            var fromAddress = await GetAddressAsync(tx.From, cancellationToken)
+                .ConfigureAwait(false);
+
+            var isFromSelf = fromAddress != null;
+
+            if (isFromSelf)
+                tx.Type |= BlockchainTransactionType.Output;
+
+            var toAddress = await GetAddressAsync(tx.To, cancellationToken)
+               .ConfigureAwait(false);
+
+            var isToSelf = toAddress != null;
+
+            if (isToSelf)
+                tx.Type |= BlockchainTransactionType.Input;
+
+            if (tx.Input != null)
+            {
+                tx.Type |= BlockchainTransactionType.ContractCall;
+
+                if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<InitiateFunctionMessage>()))
+                    tx.Type |= BlockchainTransactionType.SwapPayment;
+                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RedeemFunctionMessage>()))
+                    tx.Type |= BlockchainTransactionType.SwapRedeem;
+                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RefundFunctionMessage>()))
+                    tx.Type |= BlockchainTransactionType.SwapRefund;
+                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferFunctionMessage>()))
+                    tx.Type |= BlockchainTransactionType.TokenTransfer;
+                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveFunctionMessage>()))
+                    tx.Type |= BlockchainTransactionType.TokenApprove;
+            }
+
+            if (tx.InternalTxs != null)
+            {
+                tx.InternalTxs.ForEach(
+                    async t => await ResolveTransactionTypeAsync(t, cancellationToken)
+                        .ConfigureAwait(false));
+            }
         }
 
         #endregion Transactions

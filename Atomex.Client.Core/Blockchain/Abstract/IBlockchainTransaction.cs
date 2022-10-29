@@ -14,15 +14,15 @@ namespace Atomex.Blockchain.Abstract
     [Flags]
     public enum BlockchainTransactionType
     {
-        Unknown      = 0x00,
-        Input        = 0x01,
-        Output       = 0x02,
-        SwapPayment  = 0x04,
-        SwapRefund   = 0x08,
-        SwapRedeem   = 0x10,
-        TokenApprove = 0x20,
-        TokenCall    = 0x40,
-        SwapCall     = 0x80,
+        Unknown       = 0x00,
+        Input         = 0x01,
+        Output        = 0x02,
+        SwapPayment   = 0x04,
+        SwapRefund    = 0x08,
+        SwapRedeem    = 0x10,
+        TokenApprove  = 0x20,
+        TokenTransfer = 0x40,
+        ContractCall  = 0x80
     }
 
     public interface IBlockchainTransaction
@@ -35,5 +35,6 @@ namespace Atomex.Blockchain.Abstract
         DateTime? CreationTime { get; }
 
         bool IsConfirmed { get; }
+        bool IsTypeResolved { get; }
     }
 }

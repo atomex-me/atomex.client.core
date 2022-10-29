@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+
 using Nethereum.ABI.FunctionEncoding.Attributes;
 using Nethereum.Util;
 

@@ -27,6 +27,7 @@ namespace Atomex.Blockchain.Ethereum
         public DateTime? CreationTime { get; set; }
         [BsonIgnore]
         public bool IsConfirmed => BlockInfo?.Confirmations >= DefaultConfirmations;
+        public bool IsTypeResolved { get; set; }
 
         public string From { get; set; }
         public string To { get; set; }

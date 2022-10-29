@@ -48,10 +48,8 @@ namespace Atomex.Blockchain.Ethereum
             return new InitiatedEventDTO
             {
                 HashedSecret = Hex.FromString(contractEvent.Topics[1], true),
-                Participant =
-                    $"0x{contractEvent.Topics[2].Substring(contractEvent.Topics[2].Length - AddressLengthInHex)}",
-                Initiator =
-                    $"0x{initiatorHex.Substring(initiatorHex.Length - AddressLengthInHex)}",
+                Participant = $"0x{contractEvent.Topics[2][^AddressLengthInHex..]}",
+                Initiator = $"0x{initiatorHex[^AddressLengthInHex..]}",
                 RefundTimestamp = new HexBigInteger(refundTimeHex).Value,
                 Value = new HexBigInteger(valueHex).Value,
                 RedeemFee = new HexBigInteger(redeemFeeHex).Value
@@ -75,7 +73,7 @@ namespace Atomex.Blockchain.Ethereum
             return new AddedEventDTO
             {
                 HashedSecret = Hex.FromString(contractEvent.Topics[1], true),
-                Initiator = $"0x{initiatorHex.Substring(initiatorHex.Length - AddressLengthInHex)}",
+                Initiator = $"0x{initiatorHex[^AddressLengthInHex..]}",
                 Value = new HexBigInteger(valueHex).Value
             };
         }

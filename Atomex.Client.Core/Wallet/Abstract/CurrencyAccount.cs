@@ -166,6 +166,10 @@ namespace Atomex.Wallet.Abstract
         public abstract Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
             CancellationToken cancellationToken = default);
 
+        public abstract Task ResolveTransactionsTypesAsync(
+            IEnumerable<IBlockchainTransaction> txs,
+            CancellationToken cancellationToken = default);
+
         #endregion Transactions
     }
 }

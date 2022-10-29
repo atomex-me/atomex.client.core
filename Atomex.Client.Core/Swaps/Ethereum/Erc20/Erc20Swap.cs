@@ -973,7 +973,7 @@ namespace Atomex.Swaps.Ethereum
             Log.Debug("TxId {@id} for swap {@swapId}", txId, swap.Id);
 
             if (tx.Type.HasFlag(BlockchainTransactionType.SwapPayment))
-                tx = tx.ParseERC20Input();
+                tx = tx.ParseErc20Input();
 
             // account new unconfirmed transaction
             await Erc20Account
@@ -989,7 +989,7 @@ namespace Atomex.Swaps.Ethereum
             ethTx.Amount = 0;
             ethTx.Type = BlockchainTransactionType.Output | (ethTx.Type.HasFlag(BlockchainTransactionType.TokenApprove)
                 ? BlockchainTransactionType.TokenCall
-                : BlockchainTransactionType.SwapCall);
+                : BlockchainTransactionType.ContractCall);
 
             await EthereumAccount
                 .LocalStorage
