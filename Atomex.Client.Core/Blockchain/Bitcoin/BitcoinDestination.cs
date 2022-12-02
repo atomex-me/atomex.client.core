@@ -2,7 +2,7 @@
 
 using Atomex.Common;
 
-namespace Atomex.Blockchain.BitcoinBased
+namespace Atomex.Blockchain.Bitcoin
 {
     public class BitcoinDestination
     {

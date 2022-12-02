@@ -6,7 +6,7 @@ using Atomex.ViewModels;
 
 namespace Atomex.Blockchain.Tezos
 {
-    public class TokenTransfer : IBlockchainTransaction
+    public class TokenTransfer : ITransaction
     {
         public string Id { get; set; }
         public string Currency { get; set; }
@@ -18,8 +18,8 @@ namespace Atomex.Blockchain.Tezos
             Confirmations = 1,
             FirstSeen     = TimeStamp.UtcDateTime
         };
-        public BlockchainTransactionState State { get; set; } = BlockchainTransactionState.Confirmed;
-        public BlockchainTransactionType Type { get; set; }
+        public TransactionStatus Status { get; set; } = TransactionStatus.Confirmed;
+        public TransactionType Type { get; set; }
         public DateTime? CreationTime => TimeStamp.UtcDateTime;
         public bool IsConfirmed => true;
         public string Contract => Token.Contract;
@@ -38,7 +38,7 @@ namespace Atomex.Blockchain.Tezos
                 ? result
                 : 0;
 
-        public string GetAlias() => Type.HasFlag(BlockchainTransactionType.Input)
+        public string GetAlias() => Type.HasFlag(TransactionType.Input)
             ? !string.IsNullOrEmpty(FromAlias)
                 ? FromAlias
                 : From.TruncateAddress()

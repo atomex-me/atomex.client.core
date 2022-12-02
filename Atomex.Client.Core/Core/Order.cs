@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using LiteDB;
 
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
 using Atomex.Client.Entities;
 
@@ -31,7 +31,7 @@ namespace Atomex.Core
         public decimal MakerNetworkFee { get; set; }
 
         public string FromAddress { get; set; }
-        public List<BitcoinBasedTxOutput> FromOutputs { get; set; }
+        public List<BitcoinTxOutput> FromOutputs { get; set; }
         public string ToAddress { get; set; }
         public string RedeemFromAddress { get; set; }
 

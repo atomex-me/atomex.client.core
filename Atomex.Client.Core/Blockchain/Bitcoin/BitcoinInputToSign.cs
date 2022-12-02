@@ -5,14 +5,14 @@ using NBitcoin;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 
-namespace Atomex.Blockchain.BitcoinBased
+namespace Atomex.Blockchain.Bitcoin
 {
     public class BitcoinInputToSign
     {
         /// <summary>
         /// Reference to tx output
         /// </summary>
-        public BitcoinBasedTxOutput Output { get; set; }
+        public BitcoinTxOutput Output { get; set; }
         /// <summary>
         /// Known redeem script
         /// </summary>

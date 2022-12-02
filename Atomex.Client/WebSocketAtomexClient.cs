@@ -548,7 +548,7 @@ namespace Atomex.Services
                     service: service,
                     error: new Error(
                         code: Errors.RequestError,
-                        description: response["data"].Value<string>())));
+                        message: response["data"].Value<string>())));
         }
 
         private async void HandleOrder(JObject response)

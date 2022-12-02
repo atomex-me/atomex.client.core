@@ -16,7 +16,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
     {
         private const int BlocksAhead = 10000; // >24h with block time 10-30 seconds
 
-        public static async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public static async Task<Result<ITransaction>> TryToFindPaymentAsync(
             Swap swap,
             CurrencyConfig currency,
             CancellationToken cancellationToken = default)
@@ -59,13 +59,13 @@ namespace Atomex.Swaps.Ethereum.Helpers
                    !tx.To.Equals(savedTx.To, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                if (tx.State == BlockchainTransactionState.Failed)
+                if (tx.Status == TransactionStatus.Failed)
                     continue; // skip failed transactions
 
                 return tx;
             }
 
-            return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
+            return new Result<ITransaction>((ITransaction)null);
         }
 
         public static async Task<Result<bool>> IsInitiatedAsync(

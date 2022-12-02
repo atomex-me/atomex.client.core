@@ -282,8 +282,8 @@ namespace Atomex.Blockchain.Ethereum.Erc20
             {
                 Currency      = erc20.Name,
                 Id            = contractEvent.HexTransactionHash,
-                Type          = BlockchainTransactionType.Output | BlockchainTransactionType.TokenApprove,
-                State         = BlockchainTransactionState.Confirmed, //todo: check if true in 100% cases
+                Type          = TransactionType.Output | TransactionType.TokenApprove,
+                Status         = TransactionStatus.Confirmed, //todo: check if true in 100% cases
                 CreationTime  = contractEvent.HexTimeStamp[PrefixOffset..].FromHexString(),
 
                 From          = approvalEvent.Owner,
@@ -329,10 +329,10 @@ namespace Atomex.Blockchain.Ethereum.Erc20
 
                 Type = transferEvent.From == address
                     ? transferEvent.To == erc20.SwapContractAddress.ToLowerInvariant()   //todo: change to erc20.SwapContractAddress after currencies.json update
-                        ? BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
-                        : BlockchainTransactionType.Output
-                    : BlockchainTransactionType.Input,  //todo: recognize redeem&refund
-                State = BlockchainTransactionState.Confirmed, //todo: check if true in 100% cases
+                        ? TransactionType.Output | TransactionType.SwapPayment
+                        : TransactionType.Output
+                    : TransactionType.Input,  //todo: recognize redeem&refund
+                Status = TransactionStatus.Confirmed, //todo: check if true in 100% cases
                 CreationTime = contractEvent.HexTimeStamp[PrefixOffset..].FromHexString(),
 
                 From = transferEvent.From,

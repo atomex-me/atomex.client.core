@@ -272,7 +272,7 @@ namespace Atomex.Swaps.Ethereum
 
                 redeemTx = new EthereumTransaction(ethConfig.Name, txInput)
                 {
-                    Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
+                    Type = TransactionType.Output | TransactionType.SwapRedeem
                 };
 
                 var signResult = await _account
@@ -391,7 +391,7 @@ namespace Atomex.Swaps.Ethereum
 
             var redeemTx = new EthereumTransaction(ethConfig.Name, txInput)
             {
-                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
+                Type = TransactionType.Output | TransactionType.SwapRedeem
             };
 
             var signResult = await _account
@@ -521,7 +521,7 @@ namespace Atomex.Swaps.Ethereum
 
                 refundTx = new EthereumTransaction(ethConfig.Name, txInput)
                 {
-                    Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
+                    Type = TransactionType.Output | TransactionType.SwapRefund
                 };
 
                 var signResult = await _account
@@ -608,7 +608,7 @@ namespace Atomex.Swaps.Ethereum
             return Task.CompletedTask;
         }
 
-        public override async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public override async Task<Result<ITransaction>> TryToFindPaymentAsync(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
@@ -793,7 +793,7 @@ namespace Atomex.Swaps.Ethereum
 
             return new EthereumTransaction(ethConfig.Name, txInput)
             {
-                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
+                Type = TransactionType.Output | TransactionType.SwapPayment
             };
         }
 

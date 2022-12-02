@@ -10,7 +10,7 @@ using Serilog;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Common.Bson;
@@ -592,7 +592,7 @@ namespace Atomex.LiteDb
         #region Transactions
 
         public Task<bool> UpsertTransactionAsync(
-            IBlockchainTransaction tx,
+            ITransaction tx,
             bool notifyIfNewOrChanged = false,
             CancellationToken cancellationToken = default)
         {
@@ -616,7 +616,7 @@ namespace Atomex.LiteDb
         }
 
         public Task<bool> UpsertTransactionsAsync(
-            IEnumerable<IBlockchainTransaction> txs,
+            IEnumerable<ITransaction> txs,
             bool notifyIfNewOrChanged = false,
             CancellationToken cancellationToken = default)
         {
@@ -641,13 +641,13 @@ namespace Atomex.LiteDb
 
         public async Task<T> GetTransactionByIdAsync<T>(
             string currency,
-            string txId) where T : IBlockchainTransaction
+            string txId) where T : ITransaction
         {
             return (T)await GetTransactionByIdAsync(currency, txId, typeof(T))
                 .ConfigureAwait(false);
         }
 
-        public Task<IBlockchainTransaction> GetTransactionByIdAsync(
+        public Task<ITransaction> GetTransactionByIdAsync(
             string currency,
             string txId,
             Type transactionType)
@@ -660,7 +660,7 @@ namespace Atomex.LiteDb
 
                 if (document != null)
                 {
-                    var tx = (IBlockchainTransaction)_bsonMapper.ToObject(transactionType, document);
+                    var tx = (ITransaction)_bsonMapper.ToObject(transactionType, document);
 
                     return Task.FromResult(tx);
                 }
@@ -670,10 +670,10 @@ namespace Atomex.LiteDb
                 Log.Error(e, "Error getting transaction by id");
             }
 
-            return Task.FromResult<IBlockchainTransaction>(default);
+            return Task.FromResult<ITransaction>(default);
         }
 
-        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+        public Task<IEnumerable<ITransaction>> GetTransactionsAsync(
             string currency,
             Type transactionType)
         {
@@ -681,21 +681,21 @@ namespace Atomex.LiteDb
             {
                 var transactions = _db.GetCollection(TransactionCollectionName)
                     .Find(Query.EQ(CurrencyKey, currency))
-                    .Select(d => (IBlockchainTransaction)_bsonMapper.ToObject(transactionType, d))
+                    .Select(d => (ITransaction)_bsonMapper.ToObject(transactionType, d))
                     .ToList();
 
-                return Task.FromResult<IEnumerable<IBlockchainTransaction>>(transactions);
+                return Task.FromResult<IEnumerable<ITransaction>>(transactions);
             }
             catch (Exception e)
             {
                 Log.Error(e, "Error getting transactions");
             }
 
-            return Task.FromResult(Enumerable.Empty<IBlockchainTransaction>());
+            return Task.FromResult(Enumerable.Empty<ITransaction>());
         }
 
         public Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
-             where T : IBlockchainTransaction
+             where T : ITransaction
         {
             try
             {
@@ -715,7 +715,7 @@ namespace Atomex.LiteDb
         }
 
         public async Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(
-            string currency) where T : IBlockchainTransaction
+            string currency) where T : ITransaction
         {
             var transactions = await GetTransactionsAsync<T>(currency)
                 .ConfigureAwait(false);
@@ -743,7 +743,7 @@ namespace Atomex.LiteDb
         #region Outputs
 
         public Task<bool> UpsertOutputsAsync(
-            IEnumerable<BitcoinBasedTxOutput> outputs,
+            IEnumerable<BitcoinTxOutput> outputs,
             string currency,
             NBitcoin.Network network)
         {
@@ -772,7 +772,7 @@ namespace Atomex.LiteDb
             return Task.FromResult(false);
         }
 
-        public async Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(
+        public async Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(
             string currency)
         {
             return (await GetOutputsAsync(currency)
@@ -784,7 +784,7 @@ namespace Atomex.LiteDb
             //    .ConfigureAwait(false);
         }
 
-        public async Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(
+        public async Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(
             string currency,
             string address)
         {
@@ -816,26 +816,26 @@ namespace Atomex.LiteDb
         //    return confirmedOutputs;
         //}
 
-        public Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(string currency)
+        public Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(string currency)
         {
             try
             {
                 var outputs = _db.GetCollection(OutputsCollectionName)
                     .Find(Query.EQ(CurrencyKey, currency))
-                    .Select(d => _bsonMapper.ToObject<BitcoinBasedTxOutput>(d))
+                    .Select(d => _bsonMapper.ToObject<BitcoinTxOutput>(d))
                     .ToList();
 
-                return Task.FromResult<IEnumerable<BitcoinBasedTxOutput>>(outputs);
+                return Task.FromResult<IEnumerable<BitcoinTxOutput>>(outputs);
             }
             catch (Exception e)
             {
                 Log.Error(e, "Error getting outputs");
             }
 
-            return Task.FromResult(Enumerable.Empty<BitcoinBasedTxOutput>());
+            return Task.FromResult(Enumerable.Empty<BitcoinTxOutput>());
         }
 
-        public Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(
+        public Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(
             string currency,
             string address)
         {
@@ -846,17 +846,17 @@ namespace Atomex.LiteDb
                     .Find(Query.And(
                         left: Query.EQ(CurrencyKey, currency),
                         right: Query.EQ(AddressKey, address)))
-                    .Select(d => _bsonMapper.ToObject<BitcoinBasedTxOutput>(d))
+                    .Select(d => _bsonMapper.ToObject<BitcoinTxOutput>(d))
                     .ToList();
 
-                return Task.FromResult<IEnumerable<BitcoinBasedTxOutput>>(outputs);
+                return Task.FromResult<IEnumerable<BitcoinTxOutput>>(outputs);
             }
             catch (Exception e)
             {
                 Log.Error(e, "Error getting outputs");
             }
 
-            return Task.FromResult(Enumerable.Empty<BitcoinBasedTxOutput>());
+            return Task.FromResult(Enumerable.Empty<BitcoinTxOutput>());
         }
 
         #endregion Outputs

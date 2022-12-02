@@ -17,7 +17,7 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
 {
     public static class Fa2SwapInitiatedHelper
     {
-        public static async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public static async Task<Result<ITransaction>> TryToFindPaymentAsync(
             Swap swap,
             CurrencyConfig currency,
             CancellationToken cancellationToken = default)
@@ -66,10 +66,10 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
                 return txsResult.Error;
 
             foreach (var tx in txsResult.Value)
-                if (tx.State != BlockchainTransactionState.Failed)
+                if (tx.Status != TransactionStatus.Failed)
                     return tx;
 
-            return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
+            return new Result<ITransaction>((ITransaction)null);
         }
 
         public static async Task<Result<bool>> IsInitiatedAsync(

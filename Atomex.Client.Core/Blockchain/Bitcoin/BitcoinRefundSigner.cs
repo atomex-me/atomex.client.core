@@ -2,7 +2,7 @@
 
 using Atomex.Blockchain.Abstract;
 
-namespace Atomex.Blockchain.BitcoinBased
+namespace Atomex.Blockchain.Bitcoin
 {
     public class BitcoinRefundSigner : IBitcoinOutputSigner
     {
@@ -11,7 +11,7 @@ namespace Atomex.Blockchain.BitcoinBased
             byte[] publicKey,
             Script knownRedeemScript)
         {
-            return BitcoinBasedSwapTemplate.GenerateHtlcSwapRefundForP2Sh(
+            return BitcoinSwapTemplate.GenerateHtlcSwapRefundForP2Sh(
                 aliceRefundSig: signature,
                 aliceRefundPubKey: publicKey,
                 redeemScript: knownRedeemScript.ToBytes());

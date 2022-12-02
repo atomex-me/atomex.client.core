@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using NBitcoin;
 
-namespace Atomex.Blockchain.BitcoinBased
+namespace Atomex.Blockchain.Bitcoin
 {
-    public static class BitcoinBasedSwapTemplate
+    public static class BitcoinSwapTemplate
     {
         /// <summary>
         /// Generate atomic swap payment script to P2PKH <paramref name="bobAddress"/> with HTLC refund and secret size check

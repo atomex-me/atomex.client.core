@@ -1,31 +1,25 @@
-﻿namespace Atomex.Common
+﻿using System;
+
+namespace Atomex.Common
 {
-    public class Error
+    public readonly struct Error
     {
-        public int Code { get; set; }
-        public string Description { get; set; }
-        public string Details { get; set; }
-        public string RequestId { get; set; }
-        public string OrderId { get; set; }
-        public long? SwapId { get; set; }
+        public int Code { get; init; }
+        public string Message { get; init; }
+        public Exception Exception { get; init; }
 
-        public Error()
-            : this(0, null)
-        {
-        }
-
-        public Error(int code, string description)
+        public Error(int code, string message)
         {
             Code = code;
-            Description = description;
+            Message = message;
+            Exception = null;
         }
 
-        public Error(int code, string description, string details)
-            : this(code, description) => Details = details;
-
-        public override string ToString()
+        public Error(int code, string message, Exception exception)
         {
-            return $"{{Code: {Code}, Description: {Description}, RequestId: {RequestId}}}";
+            Code = code;
+            Message = message;
+            Exception = exception;
         }
     }
 

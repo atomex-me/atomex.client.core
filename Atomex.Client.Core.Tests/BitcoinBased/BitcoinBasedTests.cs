@@ -5,7 +5,7 @@ using System.Linq;
 using NBitcoin;
 using Xunit;
 
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
 
 namespace Atomex.Client.Core.Tests
@@ -23,7 +23,7 @@ namespace Atomex.Client.Core.Tests
 
         [Theory]
         [MemberData(nameof(Currencies))]
-        public BitcoinBasedTransaction CreatePaymentTx(BitcoinBasedConfig currency)
+        public BitcoinTransaction CreatePaymentTx(BitcoinBasedConfig currency)
         {
             var initTx = BitcoinBasedCommon.CreateFakeTx(currency, Common.Alice.PubKey, 1_0000_0000, 1_0000_0000);
             const int amount = 1_0000_0000;
@@ -44,7 +44,6 @@ namespace Atomex.Client.Core.Tests
             Assert.NotNull(tx.Outputs.FirstOrDefault(o => o.Value == change));
             Assert.Equal(tx.Outputs.First(o => o.Value == amount).DestinationAddress(currency.Network), Common.BobAddress(currency));
             Assert.Equal(tx.Outputs.First(o => o.Value == change).DestinationAddress(currency.Network), Common.AliceAddress(currency));
-            Assert.Equal(initTx.TotalOut - fee, tx.TotalOut);
             Assert.Equal(fee, tx.GetFee(initTx.Outputs));
 
             return tx;
@@ -52,7 +51,7 @@ namespace Atomex.Client.Core.Tests
 
         [Theory]
         [MemberData(nameof(Currencies))]
-        public BitcoinBasedTransaction CreateSegwitPaymentTx(BitcoinBasedConfig currency)
+        public BitcoinTransaction CreateSegwitPaymentTx(BitcoinBasedConfig currency)
         {
             var initTx = BitcoinBasedCommon.CreateFakeTx(currency, Common.Alice.PubKey, 1_0000_0000, 1_0000_0000);
             const int amount = 1_0000_0000;
@@ -72,7 +71,6 @@ namespace Atomex.Client.Core.Tests
             Assert.NotNull(tx.Outputs.FirstOrDefault(o => o.Value == amount));
             Assert.NotNull(tx.Outputs.FirstOrDefault(o => o.Value == change));
             Assert.Equal(tx.Outputs.First(o => o.Value == amount).DestinationAddress(currency.Network), Common.BobSegwitAddress(currency));
-            Assert.Equal(initTx.TotalOut - fee, tx.TotalOut);
             Assert.Equal(fee, tx.GetFee(initTx.Outputs));
 
             return tx;
@@ -80,7 +78,7 @@ namespace Atomex.Client.Core.Tests
 
         [Theory]
         [MemberData(nameof(Currencies))]
-        public (BitcoinBasedTransaction, byte[]) CreateHtlcP2PkhScriptSwapPaymentTx(BitcoinBasedConfig currency)
+        public (BitcoinTransaction, byte[]) CreateHtlcP2PkhScriptSwapPaymentTx(BitcoinBasedConfig currency)
         {
             var initTx = BitcoinBasedCommon.CreateFakeTx(currency, Common.Alice.PubKey, 1_0000_0000, 1_0000_0000);
             const int amount = 1_0000_0000;
@@ -101,7 +99,6 @@ namespace Atomex.Client.Core.Tests
             Assert.NotNull(tx);
             Assert.NotNull(redeemScript);
             Assert.True(tx.Check());
-            Assert.Equal(initTx.TotalOut - fee, tx.TotalOut);
             Assert.Equal(fee, tx.GetFee(initTx.Outputs));
 
             return (tx, redeemScript);
@@ -109,7 +106,7 @@ namespace Atomex.Client.Core.Tests
 
         [Theory]
         [MemberData(nameof(Currencies))]
-        public BitcoinBasedTransaction SignPaymentTx(BitcoinBasedConfig currency)
+        public BitcoinTransaction SignPaymentTx(BitcoinBasedConfig currency)
         {
             var initTx = BitcoinBasedCommon.CreateFakeTx(currency, Common.Alice.PubKey, 1_0000_0000, 1_0000_0000);
             var tx = CreatePaymentTx(currency);
@@ -123,7 +120,7 @@ namespace Atomex.Client.Core.Tests
 
         [Theory]
         [MemberData(nameof(Currencies))]
-        public BitcoinBasedTransaction SignSegwitPaymentTx(BitcoinBasedConfig currency)
+        public BitcoinTransaction SignSegwitPaymentTx(BitcoinBasedConfig currency)
         {
             var initTx = BitcoinBasedCommon.CreateFakeTx(currency, Common.Alice.PubKey, 1_0000_0000, 1_0000_0000);
             var tx = CreateSegwitPaymentTx(currency);
@@ -137,7 +134,7 @@ namespace Atomex.Client.Core.Tests
 
         [Theory]
         [MemberData(nameof(Currencies))]
-        public (BitcoinBasedTransaction, byte[]) SignHtlcP2PkhScriptSwapPaymentTx(BitcoinBasedConfig currency)
+        public (BitcoinTransaction, byte[]) SignHtlcP2PkhScriptSwapPaymentTx(BitcoinBasedConfig currency)
         {
             var initTx = BitcoinBasedCommon.CreateFakeTx(currency, Common.Alice.PubKey, 1_0000_0000, 1_0000_0000);
             var (tx, redeemScript) = CreateHtlcP2PkhScriptSwapPaymentTx(currency);
@@ -151,7 +148,7 @@ namespace Atomex.Client.Core.Tests
 
         [Theory]
         [MemberData(nameof(Currencies))]
-        public BitcoinBasedTransaction SignHtlcP2PkhScriptSwapRefundTx(BitcoinBasedConfig currency)
+        public BitcoinTransaction SignHtlcP2PkhScriptSwapRefundTx(BitcoinBasedConfig currency)
         {
             const int paymentQty = 1_0000_0000;
 
@@ -176,11 +173,11 @@ namespace Atomex.Client.Core.Tests
                 knownRedeems: redeemScript
             );
 
-            var sigHash = new uint256(refundTx.GetSignatureHash(paymentTxOutputs.First() as BitcoinBasedTxOutput, redeemScript));
+            var sigHash = new uint256(refundTx.GetSignatureHash(paymentTxOutputs.First() as BitcoinTxOutput, redeemScript));
 
             var aliceSign = Common.Alice.Sign(sigHash, new SigningOptions { SigHash = SigHash.All });
 
-            var refundScript = BitcoinBasedSwapTemplate.GenerateHtlcSwapRefundForP2Sh(
+            var refundScript = BitcoinSwapTemplate.GenerateHtlcSwapRefundForP2Sh(
                 aliceRefundSig: aliceSign.ToBytes(),
                 aliceRefundPubKey: Common.Alice.PubKey.ToBytes(),
                 redeemScript: redeemScriptBytes);
@@ -194,7 +191,7 @@ namespace Atomex.Client.Core.Tests
 
         [Theory]
         [MemberData(nameof(Currencies))]
-        public BitcoinBasedTransaction SignHtlcP2PkhScriptSwapRedeemTx(BitcoinBasedConfig currency)
+        public BitcoinTransaction SignHtlcP2PkhScriptSwapRedeemTx(BitcoinBasedConfig currency)
         {
             const int paymentQty = 1_0000_0000;
 
@@ -204,7 +201,7 @@ namespace Atomex.Client.Core.Tests
                 .Where(o => o.Value == paymentQty)
                 .ToArray();
 
-            var paymentOutput = paymentOutputs.First() as BitcoinBasedTxOutput;
+            var paymentOutput = paymentOutputs.First() as BitcoinTxOutput;
 
             const int amount = 9999_0000;
             const int fee = 1_0000;
@@ -224,7 +221,7 @@ namespace Atomex.Client.Core.Tests
 
             var bobSign = Common.Bob.Sign(sigHash, new SigningOptions { SigHash = SigHash.All });
 
-            var scriptSig = BitcoinBasedSwapTemplate.GenerateP2PkhSwapRedeemForP2Sh(
+            var scriptSig = BitcoinSwapTemplate.GenerateP2PkhSwapRedeemForP2Sh(
                 sig: bobSign.ToBytes(),
                 pubKey: Common.Bob.PubKey.ToBytes(),
                 secret: Common.Secret,
@@ -272,7 +269,7 @@ namespace Atomex.Client.Core.Tests
         {
             var tx = SignHtlcP2PkhScriptSwapRedeemTx(currency);
 
-            var data = (tx.Inputs.First() as BitcoinBasedTxPoint)
+            var data = (tx.Inputs.First() as BitcoinTxPoint)
                 .ExtractAllPushData();
 
             var secret = data.FirstOrDefault(d => d.SequenceEqual(Common.Secret));

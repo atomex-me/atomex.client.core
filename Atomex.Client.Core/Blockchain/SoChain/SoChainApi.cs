@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
+using System.Numerics;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,12 +14,12 @@ using Microsoft.Extensions.Configuration;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
 
 namespace Atomex.Blockchain.SoChain
 {
-    public class SoChainApi : BitcoinBasedBlockchainApi
+    public class SoChainApi : BitcoinBlockchainApi
     {
         internal class SendTx
         {
@@ -355,16 +356,16 @@ namespace Atomex.Blockchain.SoChain
             string address,
             CancellationToken cancellationToken = default)
         {
-            var utxoResult = await GetUnspentOutputsAsync(address, cancellationToken: cancellationToken)
+            var (outputs, error) = await GetUnspentOutputsAsync(address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (utxoResult.HasError)
-                return utxoResult.Error;
+            if (error != null)
+                return error;
 
-            if (utxoResult.Value == null)
+            if (outputs == null)
                 return 0;
 
-            var balanceInSatoshi = utxoResult.Value.Sum(o => o.Value);
+            var balanceInSatoshi = outputs.Sum(o => o.Value);
 
             return Currency.SatoshiToCoin(balanceInSatoshi);
         }
@@ -398,7 +399,7 @@ namespace Atomex.Blockchain.SoChain
 
                         var scriptHex = script.ToHex();
 
-                        return new BitcoinBasedTxPoint(new IndexedTxIn
+                        return new BitcoinTxPoint(new IndexedTxIn
                         {
                             TxIn = new TxIn(new OutPoint(new uint256(input.FromOutput.TxId), input.FromOutput.OutputNo), script), // Script.FromHex(input.Script.Replace(" ", string.Empty))),
                             Index = input.InputNo,
@@ -436,7 +437,7 @@ namespace Atomex.Blockchain.SoChain
             return new Script(ops);
         }
 
-        public override async Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetUnspentOutputsAsync(
+        public override async Task<Result<IEnumerable<BitcoinTxOutput>>> GetUnspentOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default)
@@ -457,7 +458,7 @@ namespace Atomex.Blockchain.SoChain
 
                         var result = outputs.Data.Txs
                             .Select(u =>
-                                new BitcoinBasedTxOutput(
+                                new BitcoinTxOutput(
                                     coin: new Coin(
                                         fromTxHash: new uint256(u.TxId),
                                         fromOutputIndex: (uint)u.OutputNo,
@@ -468,27 +469,27 @@ namespace Atomex.Blockchain.SoChain
                                     spentTxPoint: null,
                                     spentTxConfirmations: 0));
 
-                        return new Result<IEnumerable<BitcoinBasedTxOutput>>(result);
+                        return new Result<IEnumerable<BitcoinTxOutput>> { Value = result };
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        public override async Task<Result<IEnumerable<BitcoinBasedTxOutput>>> GetOutputsAsync(
+        public override async Task<Result<IEnumerable<BitcoinTxOutput>>> GetOutputsAsync(
             string address,
             string afterTxId = null,
             CancellationToken cancellationToken = default)
         {
-            var addressInfoResult = await GetAddressInfo(address, cancellationToken)
+            var (addressInfo, error) = await GetAddressInfo(address, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (addressInfoResult.HasError)
-                return addressInfoResult.Error;
+            if (error != null)
+                return error;
 
-            return new Result<IEnumerable<BitcoinBasedTxOutput>>(addressInfoResult.Value.Outputs);
+            return new Result<IEnumerable<BitcoinTxOutput>> { Value = addressInfo.Outputs };
         }
 
-        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public override async Task<Result<ITransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
@@ -498,25 +499,21 @@ namespace Atomex.Blockchain.SoChain
                 .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult<IBlockchainTransaction>(
+            return await HttpHelper.GetAsyncResult<ITransaction>(
                     baseUri: BaseUrl,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
                     {
                         var tx = JsonConvert.DeserializeObject<Response<Tx>>(content);
 
-                        return new BitcoinBasedTransaction(
+                        return new BitcoinTransaction(
                             currency: Currency.Name,
                             tx: Transaction.Parse(tx.Data.TxHex, Currency.Network),
-                            blockInfo: new BlockInfo
-                            {
-                                Confirmations = tx.Data.Confirmations,
-                                BlockHash     = tx.Data.BlockHash,
-                                BlockHeight   = tx.Data.BlockNo.GetValueOrDefault(0),
-                                BlockTime     = tx.Data.Time.ToUtcDateTime(),
-                                FirstSeen     = tx.Data.Time.ToUtcDateTime()
-                            },
-                            fees: (long)(decimal.Parse(tx.Data.Fee, CultureInfo.InvariantCulture) * Satoshi)
+                            creationTime: tx.Data.Time.ToUtcDateTime(),
+                            blockTime: tx.Data.Time.ToUtcDateTime(),
+                            blockHeight: tx.Data.BlockNo.GetValueOrDefault(0),
+                            confirmations: tx.Data.Confirmations,
+                            fee: (BigInteger) decimal.Parse(tx.Data.Fee, CultureInfo.InvariantCulture) * Satoshi
                         );
                     },
                     cancellationToken: cancellationToken)
@@ -550,18 +547,16 @@ namespace Atomex.Blockchain.SoChain
         }
 
         public override async Task<Result<string>> BroadcastAsync(
-            IBlockchainTransaction transaction,
+            ITransaction transaction,
             CancellationToken cancellationToken = default)
         {
-            var tx = (BitcoinBasedTransaction)transaction;
+            var tx = (BitcoinTransaction)transaction;
 
             var requestUri = $"api/v2/send_tx/{NetworkAcronym}";
 
             var txHex = tx.ToBytes().ToHexString();
 
             Log.Debug("TxHex: {@txHex}", txHex);
-
-            tx.State = BlockchainTransactionState.Pending;
 
             await RequestLimitControl
                 .WaitAsync(cancellationToken)
@@ -583,7 +578,7 @@ namespace Atomex.Blockchain.SoChain
                 .ConfigureAwait(false);
         }
 
-        public override async Task<Result<BitcoinBasedAddressInfo>> GetAddressInfo(
+        public override async Task<Result<BitcoinAddressInfo>> GetAddressInfo(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -593,7 +588,7 @@ namespace Atomex.Blockchain.SoChain
                 .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return await HttpHelper.GetAsyncResult<BitcoinBasedAddressInfo>(
+            return await HttpHelper.GetAsyncResult<BitcoinAddressInfo>(
                     baseUri: BaseUrl,
                     requestUri: requestUri,
                     responseHandler: (response, content) =>
@@ -605,9 +600,9 @@ namespace Atomex.Blockchain.SoChain
                         var unconfirmedIncomeInSatoshi = 0L;
                         var unconfirmedOutcomeInSatoshi = 0L;
 
-                        var outputs = new List<BitcoinBasedTxOutput>();
+                        var outputs = new List<BitcoinTxOutput>();
                         var outgoingTxConfirmations = new Dictionary<string, long>();
-                        var unresolvedSpentTxConfirmations = new Dictionary<(string, uint), BitcoinBasedTxOutput>();
+                        var unresolvedSpentTxConfirmations = new Dictionary<(string, uint), BitcoinTxOutput>();
 
                         foreach (var tx in displayData.Data.Txs)
                         {
@@ -635,7 +630,7 @@ namespace Atomex.Blockchain.SoChain
                                     spentTxResolved = false;
                                 }
 
-                                var output = new BitcoinBasedTxOutput(
+                                var output = new BitcoinTxOutput(
                                     coin: new Coin(
                                         fromTxHash: new uint256(tx.TxId),
                                         fromOutputIndex: tx.Incoming.OutputNo,
@@ -680,7 +675,7 @@ namespace Atomex.Blockchain.SoChain
                                 unconfirmedOutcomeInSatoshi += output.Value;
                         }
 
-                        return new BitcoinBasedAddressInfo(
+                        return new BitcoinAddressInfo(
                             Balance: balance,
                             Received: received,
                             Sent: received - balance,

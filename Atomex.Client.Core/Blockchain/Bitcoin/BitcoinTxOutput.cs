@@ -3,7 +3,7 @@
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 
-namespace Atomex.Blockchain.BitcoinBased
+namespace Atomex.Blockchain.Bitcoin
 {
     public enum BitcoinOutputType
     {
@@ -17,7 +17,7 @@ namespace Atomex.Blockchain.BitcoinBased
         P2WSH
     }
 
-    public class BitcoinBasedTxOutput
+    public class BitcoinTxOutput
     {
         public Coin Coin { get; }
         public uint Index => Coin.Outpoint.N;
@@ -32,12 +32,12 @@ namespace Atomex.Blockchain.BitcoinBased
         public long SpentTxConfirmations { get; set; }
         public bool IsSpentTxConfirmed => SpentTxConfirmations > 0;
 
-        public BitcoinBasedTxOutput(Coin coin)
+        public BitcoinTxOutput(Coin coin)
             : this(coin, confirmations: 0, spentTxPoint: null, spentTxConfirmations: 0)
         {
         }
 
-        public BitcoinBasedTxOutput(Coin coin, long confirmations, ITxPoint spentTxPoint, long spentTxConfirmations)
+        public BitcoinTxOutput(Coin coin, long confirmations, ITxPoint spentTxPoint, long spentTxConfirmations)
         {
             Coin = coin;
             Confirmations = confirmations;

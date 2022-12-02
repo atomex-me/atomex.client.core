@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 
 namespace Atomex.Swaps.BitcoinBased
 {
     public interface IBitcoinBasedSwapTransactionFactory
     {
-        Task<BitcoinBasedTransaction> CreateSwapPaymentTxAsync(
-            IEnumerable<BitcoinBasedTxOutput> fromOutputs,
+        Task<BitcoinTransaction> CreateSwapPaymentTxAsync(
+            IEnumerable<BitcoinTxOutput> fromOutputs,
             long amount,
             string refundAddress,
             string toAddress,
@@ -20,16 +20,16 @@ namespace Atomex.Swaps.BitcoinBased
             BitcoinBasedConfig currencyConfig,
             CancellationToken cancellationToken = default);
 
-        Task<BitcoinBasedTransaction> CreateSwapRefundTxAsync(
-            BitcoinBasedTransaction paymentTx,
+        Task<BitcoinTransaction> CreateSwapRefundTxAsync(
+            BitcoinTransaction paymentTx,
             long amount,
             string refundAddress,
             byte[] redeemScript,
             DateTimeOffset lockTime,
             BitcoinBasedConfig currency);
 
-        Task<BitcoinBasedTransaction> CreateSwapRedeemTxAsync(
-            BitcoinBasedTransaction paymentTx,
+        Task<BitcoinTransaction> CreateSwapRedeemTxAsync(
+            BitcoinTransaction paymentTx,
             long amount,
             string redeemAddress,
             byte[] redeemScript,

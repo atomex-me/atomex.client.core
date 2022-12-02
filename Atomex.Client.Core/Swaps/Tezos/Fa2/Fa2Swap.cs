@@ -74,7 +74,7 @@ namespace Atomex.Swaps.Tezos.Fa2
 
                     foreach (var tx in txsToBroadcast)
                     {
-                        var isInitiateTx = tx.Type.HasFlag(BlockchainTransactionType.SwapPayment);
+                        var isInitiateTx = tx.Type.HasFlag(TransactionType.SwapPayment);
 
                         var isAlreadyRevealed = false;
 
@@ -305,7 +305,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                 GasLimit     = fa2.RedeemGasLimit,
                 StorageLimit = fa2.RedeemStorageLimit,
                 Params       = CreateRedeemParams(swap),
-                Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
+                Type         = TransactionType.Output | TransactionType.SwapRedeem,
 
                 UseRun              = true,
                 UseSafeStorageLimit = true,
@@ -425,7 +425,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                 GasLimit     = fa2.RedeemGasLimit,
                 StorageLimit = fa2.RedeemStorageLimit,
                 Params       = CreateRedeemParams(swap),
-                Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
+                Type         = TransactionType.Output | TransactionType.SwapRedeem,
 
                 UseRun              = true,
                 UseSafeStorageLimit = true,
@@ -527,7 +527,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                 GasLimit     = fa2.RefundGasLimit,
                 StorageLimit = fa2.RefundStorageLimit,
                 Params       = CreateRefundParams(swap),
-                Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund,
+                Type         = TransactionType.Output | TransactionType.SwapRefund,
 
                 UseRun              = true,
                 UseSafeStorageLimit = true,
@@ -643,7 +643,7 @@ namespace Atomex.Swaps.Tezos.Fa2
             return Task.CompletedTask;
         }
 
-        public override async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public override async Task<Result<ITransaction>> TryToFindPaymentAsync(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
@@ -874,7 +874,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                     tokenAmountInDigits: amountInTokens.ToTokenDigits(fa2.DigitsMultiplier),
                     refundTimeStamp: refundTimeStampUtcInSec,
                     redeemFeeAmount: (long)rewardForRedeemInTokenDigits),
-                Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment,
+                Type         = TransactionType.Output | TransactionType.SwapPayment,
 
                 UseRun              = true,
                 UseSafeStorageLimit = true,
@@ -939,7 +939,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                         owner: walletAddress.Address,
                         spender: fa2.SwapContractAddress,
                         tokenId: fa2.TokenId),
-                    Type         = BlockchainTransactionType.TokenApprove,
+                    Type         = TransactionType.TokenApprove,
 
                     UseRun              = true,
                     UseSafeStorageLimit = true,

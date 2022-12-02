@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
 using NBitcoin;
 using NBitcoin.Policy;
@@ -8,94 +9,77 @@ using NBitcoin.Policy;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 
-namespace Atomex.Blockchain.BitcoinBased
+namespace Atomex.Blockchain.Bitcoin
 {
-    public class BitcoinBasedTransaction : IBlockchainTransaction
+    public class BitcoinTransaction : ITransaction
     {
-        private const int DefaultConfirmations = 1;
+        private readonly Transaction _tx;
 
-        public Transaction Tx { get; }
-
-        public string Id => Tx.GetHash().ToString();
-        public string UniqueId => $"{Id}:{Currency}";
-
+        public string Id => _tx.GetHash().ToString();
         public string Currency { get; }
-        public BlockInfo BlockInfo { get; }
-        public BlockchainTransactionState State { get; set; }
-        public BlockchainTransactionType Type { get; set; }
-        public DateTime? CreationTime { get; set; }
-        public long? Fees { get; set; }
+        public TransactionStatus Status { get; }
+        public TransactionType Type { get; set; }
+        public DateTimeOffset? CreationTime { get; }
+        public DateTimeOffset? BlockTime { get; }
+        public long BlockHeight { get; }
+        public long Confirmations { get; }
+        public DateTime LockTime => _tx.LockTime.Date.UtcDateTime;
+        public BigInteger ResolvedAmount { get; set; }
+        public BigInteger ResolvedFee { get; }
+        public BitcoinTxPoint[] Inputs => _tx.Inputs
+            .AsIndexedInputs()
+            .Select(i => new BitcoinTxPoint(i))
+            .ToArray();
 
-        public bool IsConfirmed => (BlockInfo?.Confirmations ?? 0) >= DefaultConfirmations;
-        public long TotalOut => Tx.TotalOut.Satoshi;
-        public long Amount { get; set; }
-        public DateTime LockTime => Tx.LockTime.Date.UtcDateTime;
+        public BitcoinTxOutput[] Outputs => _tx.Outputs
+            .AsCoins()
+            .Select(c => new BitcoinTxOutput(c))
+            .ToArray();
 
-        public ITxPoint[] Inputs
-        {
-            get
-            {
-                return Tx.Inputs
-                    .AsIndexedInputs()
-                    .Select(i => new BitcoinBasedTxPoint(i))
-                    .Cast<ITxPoint>()
-                    .ToArray();
-            }
-        }
-        public BitcoinBasedTxOutput[] Outputs
-        {
-            get
-            { 
-                return Tx.Outputs
-                    .AsCoins()
-                    .Select(c => new BitcoinBasedTxOutput(c))
-                    .ToArray();
-            }
-        }
-
-        public BitcoinBasedTransaction(
+        public BitcoinTransaction(
             string currency,
             Transaction tx,
-            BlockInfo blockInfo = null,
-            long? fees = null)
+            DateTimeOffset? creationTime = null,
+            DateTimeOffset? blockTime = null,
+            long blockHeight = 0,
+            long confirmations = 0,
+            BigInteger? fee = null)
         {
+            _tx = tx;
+
             Currency  = currency;
-            Tx        = tx;
-            BlockInfo = blockInfo;
-            Fees      = fees;
+            CreationTime = creationTime;
+            BlockTime = blockTime;
+            BlockHeight = blockHeight;
+            Confirmations = confirmations;
+            ResolvedFee = fee ?? BigInteger.Zero;
 
-            CreationTime = blockInfo != null
-                ? blockInfo.FirstSeen ?? blockInfo.BlockTime
-                : null;
-
-            State = blockInfo != null
-                ? blockInfo.Confirmations >= DefaultConfirmations
-                    ? BlockchainTransactionState.Confirmed
-                    : BlockchainTransactionState.Unconfirmed
-                : BlockchainTransactionState.Pending;
+            Status = confirmations > 0
+                ? TransactionStatus.Confirmed
+                : TransactionStatus.Pending;
         }
 
         public void Sign(
             Key privateKey,
-            BitcoinBasedTxOutput spentOutput,
+            BitcoinTxOutput spentOutput,
             BitcoinBasedConfig bitcoinBasedConfig)
         {
-            Tx.Sign(new BitcoinSecret(privateKey, bitcoinBasedConfig.Network), spentOutput.Coin);
+            _tx.Sign(new BitcoinSecret(privateKey, bitcoinBasedConfig.Network), spentOutput.Coin);
         }
 
         public void Sign(
             Key privateKey,
-            BitcoinBasedTxOutput[] spentOutputs,
+            BitcoinTxOutput[] spentOutputs,
             BitcoinBasedConfig bitcoinBasedConfig)
         {
             foreach (var output in spentOutputs)
                 Sign(privateKey, output, bitcoinBasedConfig);
         }
 
-        public void SetSignature(Script sigScript, BitcoinBasedTxOutput spentOutput)
+        public void SetSignature(Script sigScript, BitcoinTxOutput spentOutput)
         {
             var spentOutpoint = spentOutput.Coin.Outpoint;
-            var input = Tx.Inputs.FindIndexedInput(spentOutpoint);
+            var input = _tx.Inputs.FindIndexedInput(spentOutpoint);
 
             if (spentOutput.IsSegWit)
             {
@@ -109,15 +93,15 @@ namespace Atomex.Blockchain.BitcoinBased
 
         public void ClearSignatures(int inputNo)
         {
-            if (Tx.Inputs[inputNo].ScriptSig != null)
-                Tx.Inputs[inputNo].ScriptSig = Script.Empty;
+            if (_tx.Inputs[inputNo].ScriptSig != null)
+                _tx.Inputs[inputNo].ScriptSig = Script.Empty;
 
-            if (Tx.Inputs[inputNo].WitScript != null)
-                Tx.Inputs[inputNo].WitScript = Script.Empty;
+            if (_tx.Inputs[inputNo].WitScript != null)
+                _tx.Inputs[inputNo].WitScript = Script.Empty;
         }
 
         public bool Verify(
-            BitcoinBasedTxOutput spentOutput,
+            BitcoinTxOutput spentOutput,
             BitcoinBasedConfig bitcoinBasedConfig,
             bool checkScriptPubKey = true)
         {
@@ -128,13 +112,13 @@ namespace Atomex.Blockchain.BitcoinBased
                     ScriptVerify = ScriptVerify.Standard
                 })
                 .AddCoins(spentOutput.Coin)
-                .Verify(Tx, out _);
+                .Verify(_tx, out _);
 
             return result;
         }
 
         public bool Verify(
-            BitcoinBasedTxOutput spentOutput,
+            BitcoinTxOutput spentOutput,
             out Error[] errors,
             BitcoinBasedConfig bitcoinBasedConfig,
             bool checkScriptPubKey = true)
@@ -146,7 +130,7 @@ namespace Atomex.Blockchain.BitcoinBased
                     ScriptVerify = ScriptVerify.Standard
                 })
                 .AddCoins(spentOutput.Coin)
-                .Verify(Tx, out var policyErrors);
+                .Verify(_tx, out var policyErrors);
 
             errors = policyErrors
                 .Select(pe => new Error(Errors.TransactionVerificationError, pe.ToString()))
@@ -156,7 +140,7 @@ namespace Atomex.Blockchain.BitcoinBased
         }
 
         public bool Verify(
-            IEnumerable<BitcoinBasedTxOutput> spentOutputs,
+            IEnumerable<BitcoinTxOutput> spentOutputs,
             BitcoinBasedConfig bitcoinBasedConfig,
             bool checkScriptPubKey = true)
         {
@@ -169,13 +153,13 @@ namespace Atomex.Blockchain.BitcoinBased
                 .AddCoins(spentOutputs
                     .Select(o => o.Coin)
                     .ToArray())
-                .Verify(Tx, out var errors);
+                .Verify(_tx, out var errors);
 
             return result;
         }
 
         public bool Verify(
-            IEnumerable<BitcoinBasedTxOutput> spentOutputs,
+            IEnumerable<BitcoinTxOutput> spentOutputs,
             out Error[] errors,
             BitcoinBasedConfig bitcoinBasedConfig,
             bool checkScriptPubKey = true)
@@ -189,7 +173,7 @@ namespace Atomex.Blockchain.BitcoinBased
                 .AddCoins(spentOutputs
                     .Select(o => o.Coin)
                     .ToArray())
-                .Verify(Tx, out var policyErrors);
+                .Verify(_tx, out var policyErrors);
 
             errors = policyErrors
                 .Select(pe => new Error(Errors.TransactionVerificationError, pe.ToString()))
@@ -203,19 +187,17 @@ namespace Atomex.Blockchain.BitcoinBased
             if (Outputs.Any(output => !output.IsValid))
                 return false;
 
-            return Tx.Check() == TransactionCheckResult.Success;
+            return _tx.Check() == TransactionCheckResult.Success;
         }
 
-        public long GetFee(BitcoinBasedTxOutput[] spentOutputs)
-        {
-            return Tx.GetFee(spentOutputs
-                    .Select(o => o.Coin)
-                    .ToArray())
+        public long GetFee(BitcoinTxOutput[] spentOutputs) =>
+            _tx.GetFee(spentOutputs
+                .Select(o => o.Coin)
+                .ToArray())
                 .Satoshi;
-        }
 
         public byte[] GetSignatureHash(
-            BitcoinBasedTxOutput output,
+            BitcoinTxOutput output,
             Script redeemScript = null,
             SigHash sigHash = SigHash.All)
         {
@@ -223,14 +205,14 @@ namespace Atomex.Blockchain.BitcoinBased
                 ? output.Coin
                 : new ScriptCoin(output.Coin, redeemScript);
 
-            var input = Tx.Inputs
+            var input = _tx.Inputs
                 .AsIndexedInputs()
                 .FirstOrDefault(i => i.PrevOut.Hash == coin.Outpoint.Hash && i.PrevOut.N == coin.Outpoint.N);
 
             if (input == null)
                 throw new Exception($"Transaction has no input for coin {coin.Outpoint.Hash}:{coin.Outpoint.N}");
 
-            return Tx
+            return _tx
                 .GetSignatureHash(
                     scriptCode: coin.GetScriptCode(),
                     nIn: (int)input.Index,
@@ -241,27 +223,18 @@ namespace Atomex.Blockchain.BitcoinBased
         }
 
         public byte[] ToBytes() =>
-            Tx.ToBytes();
-
-        public BitcoinBasedTransaction Clone()
-        {
-            return new BitcoinBasedTransaction(
-                currency: Currency,
-                tx: Tx.Clone(),
-                blockInfo: (BlockInfo)BlockInfo?.Clone(),
-                fees: Fees);
-        }
+            _tx.ToBytes();
 
         public void SetSequenceNumber(uint sequenceNumber)
         {
-            foreach (var input in Tx.Inputs)
+            foreach (var input in _tx.Inputs)
                 input.Sequence = new Sequence(sequenceNumber);
         }
 
         public uint GetSequenceNumber(int inputIndex) =>
-            Tx.Inputs[inputIndex].Sequence.Value;
+            _tx.Inputs[inputIndex].Sequence.Value;
 
-        public static BitcoinBasedTransaction CreateTransaction(
+        public static BitcoinTransaction CreateTransaction(
             BitcoinBasedConfig currency,
             IEnumerable<ICoin> coins,
             Script destination,
@@ -281,7 +254,7 @@ namespace Atomex.Blockchain.BitcoinBased
                 knownRedeems: knownRedeems);
         }
 
-        public static BitcoinBasedTransaction CreateTransaction(
+        public static BitcoinTransaction CreateTransaction(
             BitcoinBasedConfig currency,
             IEnumerable<ICoin> coins,
             Script destination,
@@ -304,11 +277,11 @@ namespace Atomex.Blockchain.BitcoinBased
                 .AddKnownRedeems(knownRedeems)
                 .BuildTransaction(false);
 
-            return new BitcoinBasedTransaction(
+            return new BitcoinTransaction(
                 currency: currency.Name,
                 tx: tx,
-                blockInfo: null,
-                fees: (long)tx.GetFee(coins.ToArray()).ToUnit(MoneyUnit.Satoshi));
+                creationTime: DateTimeOffset.UtcNow,
+                fee: (long)tx.GetFee(coins.ToArray()).ToUnit(MoneyUnit.Satoshi));
         }
     }
 }

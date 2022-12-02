@@ -118,7 +118,7 @@ namespace Atomex.ViewModels
                                 .BlockchainApi;
 
                             var balanceResult = await api
-                                .TryGetBalanceAsync(
+                                .GetBalanceAsync(
                                     address: address.Address,
                                     cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);

@@ -25,7 +25,7 @@ namespace Atomex.Wallet.Tezos
                 .Where(t => t.From == fromAddress &&
                             t.CreationTime != null &&
                             t.CreationTime.Value.ToUniversalTime() + TimeSpan.FromHours(1) > DateTime.UtcNow &&
-                            t.State != BlockchainTransactionState.Failed);
+                            t.Status != TransactionStatus.Failed);
 
             // allow to send a transaction if there is not a single unconfirmed transaction
             return !unconfirmedTxs.Any();

@@ -1,6 +1,6 @@
 ﻿using NBitcoin;
 
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 
 namespace Atomex.Common
 {

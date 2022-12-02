@@ -9,7 +9,7 @@ using NBitcoin;
 using Atomex.Common;
 using Atomex.Wallet.BitcoinBased;
 
-namespace Atomex.Blockchain.BitcoinBased
+namespace Atomex.Blockchain.Bitcoin
 {
     public class BitcoinTransactionParams
     {
@@ -24,7 +24,7 @@ namespace Atomex.Blockchain.BitcoinBased
         public decimal ChangeInSatoshi => InputInSatoshi - FeeInSatoshi;
 
         public static async Task<BitcoinTransactionParams> SelectTransactionParamsByFeeRateAsync(
-            IEnumerable<BitcoinBasedTxOutput> availableOutputs,
+            IEnumerable<BitcoinTxOutput> availableOutputs,
             string to,
             decimal amount,
             decimal feeRate,
@@ -251,7 +251,7 @@ namespace Atomex.Blockchain.BitcoinBased
         }
 
         public static async Task<BitcoinTransactionParams> SelectTransactionParamsByFeeAsync(
-            IEnumerable<BitcoinBasedTxOutput> availableOutputs,
+            IEnumerable<BitcoinTxOutput> availableOutputs,
             string to,
             decimal amount,
             decimal fee,

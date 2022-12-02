@@ -45,8 +45,7 @@ namespace Atomex.Wallet.Ethereum
                     };
 
                     var api = EthConfig.BlockchainApi;
-
-                    var txs = new List<EthereumTransaction>();
+                    var transactions = new List<EthereumTransaction>();
                     var walletAddresses = new List<WalletAddress>();
 
                     WalletAddress defautWalletAddress = null;
@@ -77,19 +76,19 @@ namespace Atomex.Wallet.Ethereum
                                 defautWalletAddress = walletAddress;
                             }
 
-                            var txsResult = await UpdateAddressAsync(
+                            var (txs, error) = await UpdateAddressAsync(
                                     walletAddress: walletAddress,
                                     api: api,
                                     cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
 
-                            if (txsResult.HasError)
+                            if (error != null)
                             {
                                 Log.Error("[EthereumWalletScanner] ScanAsync error while scan {@address}", walletAddress.Address);
                                 return;
                             }
 
-                            if (!walletAddress.HasActivity && !txsResult.Value.Any()) // address without activity
+                            if (!walletAddress.HasActivity && !txs.Any()) // address without activity
                             {
                                 freeKeysCount++;
 
@@ -103,7 +102,7 @@ namespace Atomex.Wallet.Ethereum
                             {
                                 freeKeysCount = 0;
 
-                                txs.AddRange(CollapseInternalTransactions(txsResult.Value));
+                                transactions.AddRange(CollapseInternalTransactions(txs));
 
                                 // save only active addresses
                                 walletAddresses.Add(walletAddress);
@@ -113,12 +112,12 @@ namespace Atomex.Wallet.Ethereum
                         }
                     }
 
-                    if (txs.Any())
+                    if (transactions.Any())
                     {
                         var upsertResult = await _account
                             .LocalStorage
                             .UpsertTransactionsAsync(
-                                txs: txs,
+                                txs: transactions,
                                 notifyIfNewOrChanged: true,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
@@ -168,31 +167,31 @@ namespace Atomex.Wallet.Ethereum
                     // todo: if skipUsed == true => skip "disabled" wallets
 
                     var api = EthConfig.BlockchainApi;
-                    var txs = new List<EthereumTransaction>();
+                    var transactions = new List<EthereumTransaction>();
 
                     foreach (var walletAddress in walletAddresses)
                     {
-                        var txsResult = await UpdateAddressAsync(
+                        var (txs, error) = await UpdateAddressAsync(
                                 walletAddress,
                                 api: api,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (txsResult.HasError)
+                        if (error != null)
                         {
                             Log.Error("[EthereumWalletScanner] UpdateBalanceAsync error while scan {@address}", walletAddress.Address);
                             return;
                         }
 
-                        txs.AddRange(txsResult.Value);
+                        transactions.AddRange(txs);
                     }
 
-                    if (txs.Any())
+                    if (transactions.Any())
                     {
                         var _ = await _account
                             .LocalStorage
                             .UpsertTransactionsAsync(
-                                txs: txs,
+                                txs: transactions,
                                 notifyIfNewOrChanged: true,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
@@ -239,24 +238,24 @@ namespace Atomex.Wallet.Ethereum
                         return;
                     }
 
-                    var txsResult = await UpdateAddressAsync(
+                    var (txs, error) = await UpdateAddressAsync(
                             walletAddress,
                             api: null,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (txsResult.HasError)
+                    if (error != null)
                     {
                         Log.Error("[EthereumWalletScanner] UpdateBalanceAsync error while scan {@address}", address);
                         return;
                     }
 
-                    if (txsResult.Value.Any())
+                    if (txs.Any())
                     {
                         await _account
                             .LocalStorage
                             .UpsertTransactionsAsync(
-                                txs: txsResult.Value,
+                                txs: txs,
                                 notifyIfNewOrChanged: true,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
@@ -289,47 +288,47 @@ namespace Atomex.Wallet.Ethereum
             if (api == null)
                 api = EthConfig.BlockchainApi;
 
-            var balanceResult = await api
-                .TryGetBalanceAsync(
+            var (balance, getBalanceError) = await api
+                .GetBalanceAsync(
                     address: walletAddress.Address,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (balanceResult.HasError)
+            if (getBalanceError != null)
             {
                 Log.Error("[EthereumWalletScanner] UpdateAddressAsync error while getting balance for {@address} with code {@code} and description {@description}",
                     walletAddress.Address,
-                    balanceResult.Error.Code,
-                    balanceResult.Error.Description);
+                    getBalanceError.Value.Code,
+                    getBalanceError.Value.Message);
 
-                return balanceResult.Error;
+                return getBalanceError;
             }
 
-            var txsResult = await ((IEthereumBlockchainApi)api)
+            var (txs, getTxsError) = await ((IEthereumBlockchainApi)api)
                 .TryGetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (txsResult.HasError)
+            if (getTxsError != null)
             {
                 Log.Error(
                     "[EthereumWalletScanner] UpdateAddressAsync error while scan address transactions for {@address} with code {@code} and description {@description}",
                     walletAddress.Address,
-                    txsResult.Error.Code,
-                    txsResult.Error.Description);
+                    getTxsError.Value.Code,
+                    getTxsError.Value.Message);
 
-                return txsResult.Error;
+                return getTxsError;
             }
 
-            walletAddress.Balance = balanceResult.Value;
+            walletAddress.Balance = balance;
             walletAddress.UnconfirmedIncome = 0;
             walletAddress.UnconfirmedOutcome = 0;
-            walletAddress.HasActivity = txsResult.Value.Any();
-
-            var txs = CollapseInternalTransactions(txsResult.Value.Cast<EthereumTransaction>());
+            walletAddress.HasActivity = txs.Any();
 
             walletAddress.LastSuccessfullUpdate = updateTimeStamp;
 
-            return new Result<IEnumerable<EthereumTransaction>>(txs);
+            return new Result<IEnumerable<EthereumTransaction>>() {
+                Value = CollapseInternalTransactions(txs.Cast<EthereumTransaction>())
+            };
         }
 
         private IEnumerable<EthereumTransaction> CollapseInternalTransactions(

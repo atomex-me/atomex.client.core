@@ -5,7 +5,7 @@ using Newtonsoft.Json.Linq;
 
 using Atomex.Common;
 
-namespace Atomex.Blockchain.BitcoinBased
+namespace Atomex.Blockchain.Bitcoin
 {
     public class FeeRate
     {

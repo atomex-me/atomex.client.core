@@ -4,7 +4,7 @@ using System.IO;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Atomex.Core;

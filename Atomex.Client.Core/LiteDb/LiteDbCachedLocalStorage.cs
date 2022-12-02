@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Tezos;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
@@ -271,7 +271,7 @@ namespace Atomex.LiteDb
         #region Transactions
 
         public async Task<bool> UpsertTransactionAsync(
-            IBlockchainTransaction tx,
+            ITransaction tx,
             bool notifyIfNewOrChanged = false,
             CancellationToken cancellationToken = default)
         {
@@ -285,7 +285,7 @@ namespace Atomex.LiteDb
         }
 
         public async Task<bool> UpsertTransactionsAsync(
-            IEnumerable<IBlockchainTransaction> txs,
+            IEnumerable<ITransaction> txs,
             bool notifyIfNewOrChanged = false,
             CancellationToken cancellationToken = default)
         {
@@ -300,12 +300,12 @@ namespace Atomex.LiteDb
 
         public Task<T> GetTransactionByIdAsync<T>(
             string currency,
-            string txId) where T : IBlockchainTransaction
+            string txId) where T : ITransaction
         {
             return _liteDbLocalStorage.GetTransactionByIdAsync<T>(currency, txId);
         }
 
-        public Task<IBlockchainTransaction> GetTransactionByIdAsync(
+        public Task<ITransaction> GetTransactionByIdAsync(
             string currency,
             string txId,
             Type transactionType)
@@ -314,12 +314,12 @@ namespace Atomex.LiteDb
         }
 
         public Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
-             where T : IBlockchainTransaction
+             where T : ITransaction
         {
             return _liteDbLocalStorage.GetTransactionsAsync<T>(currency);
         }
 
-        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+        public Task<IEnumerable<ITransaction>> GetTransactionsAsync(
             string currency,
             Type transactionType)
         {
@@ -327,7 +327,7 @@ namespace Atomex.LiteDb
         }
 
         public Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(
-            string currency) where T : IBlockchainTransaction
+            string currency) where T : ITransaction
         {
             return _liteDbLocalStorage.GetUnconfirmedTransactionsAsync<T>(currency);
         }
@@ -342,31 +342,31 @@ namespace Atomex.LiteDb
         #region Outputs
 
         public Task<bool> UpsertOutputsAsync(
-            IEnumerable<BitcoinBasedTxOutput> outputs,
+            IEnumerable<BitcoinTxOutput> outputs,
             string currency,
             NBitcoin.Network network)
         {
             return _liteDbLocalStorage.UpsertOutputsAsync(outputs, currency, network);
         }
 
-        public Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(string currency)
+        public Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(string currency)
         {
             return _liteDbLocalStorage.GetAvailableOutputsAsync(currency);
         }
 
-        public Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(
+        public Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(
             string currency,
             string address)
         {
             return _liteDbLocalStorage.GetAvailableOutputsAsync(currency, address);
         }
 
-        public Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(string currency)
+        public Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(string currency)
         {
             return _liteDbLocalStorage.GetOutputsAsync(currency);
         }
 
-        public Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(
+        public Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(
             string currency,
             string address)
         {

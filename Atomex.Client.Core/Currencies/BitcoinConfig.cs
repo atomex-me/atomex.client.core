@@ -7,12 +7,12 @@ using Microsoft.Extensions.Configuration;
 using NBitcoin;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.BlockCypher;
 using Atomex.Blockchain.SoChain;
 using Atomex.Common;
 using Atomex.Wallet.Bip;
-using FeeRate = Atomex.Blockchain.BitcoinBased.FeeRate;
+using FeeRate = Atomex.Blockchain.Bitcoin.FeeRate;
 
 namespace Atomex
 {

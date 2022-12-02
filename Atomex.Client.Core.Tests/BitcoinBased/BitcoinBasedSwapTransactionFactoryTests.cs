@@ -11,7 +11,7 @@ using Xunit;
 
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.BitcoinBased;
@@ -20,7 +20,7 @@ namespace Atomex.Client.Core.Tests
 {
     public class BitcoinBasedSwapTransactionFactoryTests
     {
-        private static Result<IEnumerable<BitcoinBasedTxOutput>> GetTestOutputs(PubKey pubKey, NBitcoin.Network network)
+        private static Result<IEnumerable<BitcoinTxOutput>> GetTestOutputs(PubKey pubKey, NBitcoin.Network network)
         {
             var tx = Transaction.Create(network);
             tx.Outputs.Add(new TxOut(new Money(100000L), pubKey.Hash));
@@ -29,19 +29,19 @@ namespace Atomex.Client.Core.Tests
 
             var outputs = tx.Outputs
                 .AsCoins()
-                .Select(c => new BitcoinBasedTxOutput(c));
+                .Select(c => new BitcoinTxOutput(c));
 
-            return new Result<IEnumerable<BitcoinBasedTxOutput>>(outputs);
+            return new Result<IEnumerable<BitcoinTxOutput>>(outputs);
         }
 
         [Fact]
-        public async Task<IBlockchainTransaction> CreateSwapPaymentTxTest()
+        public async Task<ITransaction> CreateSwapPaymentTxTest()
         {
-            var bitcoinApi = new Mock<BitcoinBasedBlockchainApi>();
+            var bitcoinApi = new Mock<BitcoinBlockchainApi>();
             bitcoinApi.Setup(a => a.GetUnspentOutputsAsync(It.IsAny<string>(), null, new CancellationToken()))
                 .Returns(Task.FromResult(GetTestOutputs(Common.Alice.PubKey, NBitcoin.Network.TestNet)));
 
-            var litecoinApi = new Mock<BitcoinBasedBlockchainApi>();
+            var litecoinApi = new Mock<BitcoinBlockchainApi>();
             litecoinApi.Setup(a => a.GetUnspentOutputsAsync(It.IsAny<string>(), null, new CancellationToken()))
                 .Returns(Task.FromResult(GetTestOutputs(Common.Bob.PubKey, AltNetworkSets.Litecoin.Testnet)));
 
@@ -77,7 +77,7 @@ namespace Atomex.Client.Core.Tests
 
             var outputs = (await new BlockchainTxOutputSource(bitcoin)
                 .GetAvailableOutputsAsync(new[] { aliceBtcAddress }))
-                .Cast<BitcoinBasedTxOutput>();
+                .Cast<BitcoinTxOutput>();
 
             var tx = await new BitcoinBasedSwapTransactionFactory()
                 .CreateSwapPaymentTxAsync(

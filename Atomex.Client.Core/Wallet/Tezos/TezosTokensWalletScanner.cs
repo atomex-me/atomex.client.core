@@ -619,9 +619,9 @@ namespace Atomex.Wallet.Tezos
                 foreach (var transfer in transfersResult.Value)
                 {
                     if (localAddressesHashSet.Contains(transfer.From))
-                        transfer.Type |= BlockchainTransactionType.Output;
+                        transfer.Type |= TransactionType.Output;
                     if (localAddressesHashSet.Contains(transfer.To))
-                        transfer.Type |= BlockchainTransactionType.Input;
+                        transfer.Type |= TransactionType.Input;
                 }
 
                 await _tezosAccount

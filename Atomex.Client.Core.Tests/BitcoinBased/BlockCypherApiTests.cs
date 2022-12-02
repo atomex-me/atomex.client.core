@@ -2,7 +2,7 @@
 using System.Linq;
 using Xunit;
 
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.BlockCypher;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -29,7 +29,7 @@ namespace Atomex.Client.Core.Tests
             var api = new BlockCypherApi(currency, BlockCypherApi.BitcoinMainNet);
             var balanceResult = await api.GetBalanceAsync(address);
 
-            Assert.False(balanceResult.HasError, balanceResult.Error?.Description ?? "");
+            Assert.False(balanceResult.HasError, balanceResult.Error?.Message ?? "");
         }
 
         public static IEnumerable<object[]> InputTestData => new List<object[]>
@@ -56,7 +56,7 @@ namespace Atomex.Client.Core.Tests
             var api = new BlockCypherApi(currency, BlockCypherApi.BitcoinMainNet);
             var inputResult = await api.GetInputAsync(txId, inputIndex);
 
-            Assert.False(inputResult.HasError, inputResult.Error?.Description ?? "");
+            Assert.False(inputResult.HasError, inputResult.Error?.Message ?? "");
 
             var input = inputResult.Value;
 
@@ -74,7 +74,7 @@ namespace Atomex.Client.Core.Tests
             var api = new BlockCypherApi(currency, BlockCypherApi.BitcoinMainNet);
             var utxoResult = await api.GetUnspentOutputsAsync(address);
 
-            Assert.False(utxoResult.HasError, utxoResult.Error?.Description ?? "");
+            Assert.False(utxoResult.HasError, utxoResult.Error?.Message ?? "");
 
             var utxo = utxoResult.Value;
 
@@ -105,7 +105,7 @@ namespace Atomex.Client.Core.Tests
             var api = new BlockCypherApi(currency, BlockCypherApi.BitcoinMainNet);
             var outputsResult = await api.GetOutputsAsync(address);
 
-            Assert.False(outputsResult.HasError, outputsResult.Error?.Description ?? "");
+            Assert.False(outputsResult.HasError, outputsResult.Error?.Message ?? "");
 
             var outputs = outputsResult.Value?.ToList();
 
@@ -142,9 +142,9 @@ namespace Atomex.Client.Core.Tests
             var api = new BlockCypherApi(currency, BlockCypherApi.BitcoinMainNet);
             var txResult = await api.GetTransactionAsync(txId);
 
-            Assert.False(txResult.HasError, txResult.Error?.Description ?? "");
+            Assert.False(txResult.HasError, txResult.Error?.Message ?? "");
 
-            var tx = txResult.Value as BitcoinBasedTransaction;
+            var tx = txResult.Value as BitcoinTransaction;
 
             Assert.NotNull(tx);
             Assert.True(tx.Id == txId);
@@ -178,7 +178,7 @@ namespace Atomex.Client.Core.Tests
             var api = new BlockCypherApi(currency, BlockCypherApi.BitcoinMainNet);
             var spentPointResult = await api.IsTransactionOutputSpent(txId, outputNo);
 
-            Assert.False(spentPointResult.HasError, spentPointResult.Error?.Description ?? "");
+            Assert.False(spentPointResult.HasError, spentPointResult.Error?.Message ?? "");
 
             var spentPoint = spentPointResult.Value;
 

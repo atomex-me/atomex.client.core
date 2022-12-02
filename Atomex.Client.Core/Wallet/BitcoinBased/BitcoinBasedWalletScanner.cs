@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 using Serilog;
 
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
@@ -43,10 +43,10 @@ namespace Atomex.Wallet.BitcoinBased
                         (Chain : Bip44.External, LookAhead : ExternalLookAhead),
                     };
 
-                    var api = BitcoinBasedConfig.BlockchainApi as BitcoinBasedBlockchainApi;
+                    var api = BitcoinBasedConfig.BlockchainApi as BitcoinBlockchainApi;
 
-                    var outputs = new List<BitcoinBasedTxOutput>();
-                    var txs = new List<BitcoinBasedTransaction>();
+                    var outputs = new List<BitcoinTxOutput>();
+                    var txs = new List<BitcoinTransaction>();
                     var walletAddresses = new List<WalletAddress>();
 
                     WalletAddress defautWalletAddress = null;
@@ -180,9 +180,9 @@ namespace Atomex.Wallet.BitcoinBased
 
                     // todo: if skipUsed == true => skip "disabled" wallets
 
-                    var api = BitcoinBasedConfig.BlockchainApi as BitcoinBasedBlockchainApi;
-                    var outputs = new List<BitcoinBasedTxOutput>();
-                    var txs = new List<BitcoinBasedTransaction>();
+                    var api = BitcoinBasedConfig.BlockchainApi as BitcoinBlockchainApi;
+                    var outputs = new List<BitcoinTxOutput>();
+                    var txs = new List<BitcoinTransaction>();
 
                     foreach (var walletAddress in walletAddresses)
                     {
@@ -317,15 +317,15 @@ namespace Atomex.Wallet.BitcoinBased
             }, cancellationToken);
         }
 
-        private async Task<Result<(IEnumerable<BitcoinBasedTxOutput>, IEnumerable<BitcoinBasedTransaction>)>> UpdateAddressAsync(
+        private async Task<Result<(IEnumerable<BitcoinTxOutput>, IEnumerable<BitcoinTransaction>)>> UpdateAddressAsync(
             WalletAddress walletAddress,
-            BitcoinBasedBlockchainApi api = null,
+            BitcoinBlockchainApi api = null,
             CancellationToken cancellationToken = default)
         {
             var updateTimeStamp = DateTime.UtcNow;
 
             if (api == null)
-                api = BitcoinBasedConfig.BlockchainApi as BitcoinBasedBlockchainApi;
+                api = BitcoinBasedConfig.BlockchainApi as BitcoinBlockchainApi;
 
             var addressInfo = await api
                 .GetAddressInfo(walletAddress.Address, cancellationToken)
@@ -346,9 +346,9 @@ namespace Atomex.Wallet.BitcoinBased
             walletAddress.LastSuccessfullUpdate = updateTimeStamp;
 
             if (!addressInfo.Value.Outputs.Any())
-                new Result<(IEnumerable<BitcoinBasedTxOutput>, IEnumerable<BitcoinBasedTransaction>)>((
+                new Result<(IEnumerable<BitcoinTxOutput>, IEnumerable<BitcoinTransaction>)>((
                     addressInfo.Value.Outputs,
-                    Enumerable.Empty<BitcoinBasedTransaction>()));
+                    Enumerable.Empty<BitcoinTransaction>()));
 
             var txsResult = await UpdateTransactionsAsync(addressInfo.Value.Outputs, cancellationToken)
                 .ConfigureAwait(false);
@@ -361,17 +361,17 @@ namespace Atomex.Wallet.BitcoinBased
                     addressInfo.Error.Description);
             }
 
-            return new Result<(IEnumerable<BitcoinBasedTxOutput>, IEnumerable<BitcoinBasedTransaction>)>((
+            return new Result<(IEnumerable<BitcoinTxOutput>, IEnumerable<BitcoinTransaction>)>((
                 addressInfo.Value.Outputs,
                 txsResult.Value));
         }
 
         [Obsolete("Transactions can be partially collected from outputs without full tx data requests")]
-        private async Task<Result<IEnumerable<BitcoinBasedTransaction>>> UpdateTransactionsAsync(
-            IEnumerable<BitcoinBasedTxOutput> outputs,
+        private async Task<Result<IEnumerable<BitcoinTransaction>>> UpdateTransactionsAsync(
+            IEnumerable<BitcoinTxOutput> outputs,
             CancellationToken cancellationToken = default)
         {
-            var uniqueTxs = new Dictionary<string, BitcoinBasedTransaction>();
+            var uniqueTxs = new Dictionary<string, BitcoinTransaction>();
 
             foreach (var output in outputs)
             {
@@ -388,7 +388,7 @@ namespace Atomex.Wallet.BitcoinBased
                         continue;
 
                     var localTx = await _account.LocalStorage
-                        .GetTransactionByIdAsync<BitcoinBasedTransaction>(_account.Currency, txId)
+                        .GetTransactionByIdAsync<BitcoinTransaction>(_account.Currency, txId)
                         .ConfigureAwait(false);
 
                     // request only not confirmed transactions
@@ -399,7 +399,7 @@ namespace Atomex.Wallet.BitcoinBased
 
                     var txResult = await BitcoinBasedConfig
                         .BlockchainApi
-                        .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
+                        .GetTransactionAsync(txId, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
                     if (txResult == null)
@@ -427,7 +427,7 @@ namespace Atomex.Wallet.BitcoinBased
                         continue;
                     }
 
-                    uniqueTxs.Add(txId, tx as BitcoinBasedTransaction);
+                    uniqueTxs.Add(txId, tx as BitcoinTransaction);
                 }
             }
 

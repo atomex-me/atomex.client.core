@@ -5,29 +5,38 @@ using System.Text;
 
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Signer;
-using LiteDB;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
+using TransactionType = Atomex.Blockchain.Abstract.TransactionType;
 
 namespace Atomex.Blockchain.Ethereum
 {
-    public class EthereumTransaction : IBlockchainTransaction
-    {
-        private const int DefaultConfirmations = 1;
+    //public class EthereumInternalTransaction
+    //{
+    //    public long BlockHeight { get; set; }
+    //    public DateTimeOffset? BlockTime { get; set; }
+    //    public string Hash { get; set; }
+    //    public string From { get; set; }
+    //    public string To { get; set; }
+    //    public BigInteger Value { get; set; }
+    //    public BigInteger GasLimit { get; set; }
+    //    public string Data { get; set; }
+    //    public string Type { get; set; }
+    //    public bool IsError { get; set; }
+    //    public string ErrorDescription { get; set; }
+    //}
 
-        [BsonField("TxId")]
+    public class EthereumTransaction : ITransaction
+    {
         public string Id { get; set; }
-        [BsonId]
-        public string UniqueId => $"{Id}:{Currency}";
         public string Currency { get; set; }
-        public BlockInfo BlockInfo { get; set; }
-        public BlockchainTransactionState State { get; set; }
-        public BlockchainTransactionType Type { get; set; }
-        public DateTime? CreationTime { get; set; }
-        [BsonIgnore]
-        public bool IsConfirmed => BlockInfo?.Confirmations >= DefaultConfirmations;
-        public bool IsTypeResolved { get; set; }
+        public TransactionStatus Status { get; set; }
+        public TransactionType Type { get; set; }
+        public DateTimeOffset? CreationTime { get; set; }
+        public DateTimeOffset? BlockTime { get; set; }
+        public long BlockHeight { get; set; }
+        public long Confirmations { get; set; }
 
         public string From { get; set; }
         public string To { get; set; }
@@ -50,9 +59,9 @@ namespace Atomex.Blockchain.Ethereum
         public EthereumTransaction(string currency, TransactionInput txInput)
         {
             Currency     = currency;
-            Type         = BlockchainTransactionType.Unknown;
-            State        = BlockchainTransactionState.Unknown;
-            CreationTime = DateTime.UtcNow;
+            Status       = TransactionStatus.Pending;
+            Type         = TransactionType.Unknown;
+            CreationTime = DateTimeOffset.UtcNow;
 
             From         = txInput.From.ToLowerInvariant();
             To           = txInput.To.ToLowerInvariant();
@@ -61,39 +70,6 @@ namespace Atomex.Blockchain.Ethereum
             Nonce        = txInput.Nonce;
             GasPrice     = txInput.GasPrice;
             GasLimit     = txInput.Gas;
-        }
-
-        public EthereumTransaction Clone()
-        {
-            var resTx = new EthereumTransaction()
-            {
-                Currency      = Currency,
-                Id            = Id,
-                Type          = Type,
-                State         = State,
-                CreationTime  = CreationTime,
-
-                From          = From,
-                To            = To,
-                Input         = Input,
-                Amount        = Amount,
-                Nonce         = Nonce,
-                GasPrice      = GasPrice,
-                GasLimit      = GasLimit,
-                GasUsed       = GasUsed,
-                ReceiptStatus = ReceiptStatus,
-                IsInternal    = IsInternal,
-                InternalIndex = InternalIndex,
-                InternalTxs   = new List<EthereumTransaction>(),
-
-                BlockInfo = (BlockInfo)(BlockInfo?.Clone() ?? null)
-            };
-
-            if (InternalTxs != null)
-                foreach (var intTx in InternalTxs)
-                    resTx.InternalTxs.Add(intTx.Clone());
-
-            return resTx;
         }
 
         public bool Verify() =>

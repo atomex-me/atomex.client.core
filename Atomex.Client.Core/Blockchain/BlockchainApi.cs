@@ -12,42 +12,12 @@ namespace Atomex.Blockchain
             string address,
             CancellationToken cancellationToken = default);
 
-        public async Task<Result<decimal>> TryGetBalanceAsync(
-            string address,
-            int attempts = 3,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            return await ResultHelper.TryDo((c) => GetBalanceAsync(address, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting balance after {attempts} attempts");
-        }
-
-        public abstract Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public abstract Task<Result<ITransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default);
-
-        public async Task<Result<IBlockchainTransaction>> TryGetTransactionAsync(
-            string txId,
-            int attempts = 3,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            return await ResultHelper.TryDo((c) => GetTransactionAsync(txId, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transaciton after {attempts} attempts");
-        }
 
         public abstract Task<Result<string>> BroadcastAsync(
-            IBlockchainTransaction transaction,
+            ITransaction transaction,
             CancellationToken cancellationToken = default);
-
-        public async Task<Result<string>> TryBroadcastAsync(
-            IBlockchainTransaction transaction,
-            int attempts = 3,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            return await ResultHelper.TryDo((c) => BroadcastAsync(transaction, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transaction after {attempts} attempts");
-        }
     }
 }

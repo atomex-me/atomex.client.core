@@ -41,7 +41,7 @@ namespace Atomex.Services
             {
                 foreach (var tx in e.Transactions)
                 {
-                    if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
+                    if (!tx.IsConfirmed && tx.Status != TransactionStatus.Failed)
                         _ = TrackTransactionAsync(tx, _cts.Token);
                 }
             }
@@ -71,7 +71,7 @@ namespace Atomex.Services
 
                     foreach (var tx in txs)
                     {
-                        if (tx.State != BlockchainTransactionState.Failed)
+                        if (tx.Status != TransactionStatus.Failed)
                             _ = TrackTransactionAsync(tx, _cts.Token);
                     }
                 }
@@ -106,7 +106,7 @@ namespace Atomex.Services
         }
 
         private Task TrackTransactionAsync(
-            IBlockchainTransaction tx,
+            ITransaction tx,
             CancellationToken cancellationToken)
         {
             return Task.Run(async () =>
@@ -132,7 +132,7 @@ namespace Atomex.Services
                             continue;
                         }
 
-                        if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed)
+                        if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.Status == TransactionStatus.Failed)
                         {
                             TransactionProcessedHandler(result.Value.Transaction, cancellationToken);
                             break;
@@ -143,7 +143,7 @@ namespace Atomex.Services
                             DateTime.UtcNow > tx.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
                             !Currencies.IsBitcoinBased(tx.Currency))
                         {
-                            tx.State = BlockchainTransactionState.Failed;
+                            tx.State = TransactionStatus.Failed;
 
                             TransactionProcessedHandler(tx, cancellationToken);
                             break;
@@ -166,7 +166,7 @@ namespace Atomex.Services
         }
 
         private async void TransactionProcessedHandler(
-            IBlockchainTransaction tx,
+            ITransaction tx,
             CancellationToken cancellationToken)
         {
             try

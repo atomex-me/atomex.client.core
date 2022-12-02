@@ -5,7 +5,7 @@ using LiteDB;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Core;
 using Atomex.Client.V1.Entities;
 using Swap = Atomex.Core.Swap;
@@ -73,7 +73,7 @@ namespace Atomex.Common.Bson
 
             var fromOutputs = !bson[FromOutputsKey].IsNull
                 ? bson[FromOutputsKey].AsArray
-                    .Select(v => BsonMapper.ToObject<BitcoinBasedTxOutput>((BsonDocument)v))
+                    .Select(v => BsonMapper.ToObject<BitcoinTxOutput>((BsonDocument)v))
                     .ToList()
                 : null;
 
@@ -110,25 +110,25 @@ namespace Atomex.Common.Bson
                 SecretHash           = bson[SecretHashKey].AsBinary,
 
                 PaymentTx = !bson[PaymentTxKey].IsNull
-                    ? (IBlockchainTransaction)BsonMapper.ToObject(
+                    ? (ITransaction)BsonMapper.ToObject(
                         type: soldCurrency.TransactionType,
                         doc: bson[PaymentTxKey].AsDocument)
                     : null,
 
                 RefundTx = !bson[RefundTxKey].IsNull
-                    ? (IBlockchainTransaction)BsonMapper.ToObject(
+                    ? (ITransaction)BsonMapper.ToObject(
                         type: soldCurrency.TransactionType,
                         doc: bson[RefundTxKey].AsDocument)
                     : null,
 
                 RedeemTx = !bson[RedeemTxKey].IsNull
-                    ? (IBlockchainTransaction)BsonMapper.ToObject(
+                    ? (ITransaction)BsonMapper.ToObject(
                         type: purchasedCurrency.TransactionType,
                         doc: bson[RedeemTxKey].AsDocument)
                     : null,
 
                 PartyPaymentTx = !bson[PartyPaymentTxKey].IsNull
-                    ? (IBlockchainTransaction)BsonMapper.ToObject(
+                    ? (ITransaction)BsonMapper.ToObject(
                         type: purchasedCurrency.TransactionType,
                         doc: bson[PartyPaymentTxKey].AsDocument)
                     : null,

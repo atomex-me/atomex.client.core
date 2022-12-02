@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using NBitcoin;
 using Serilog;
 
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Core;
 using Atomex.Wallet.BitcoinBased;
 
@@ -20,8 +20,8 @@ namespace Atomex.Swaps.BitcoinBased
             Account = account ?? throw new ArgumentNullException(nameof(account));
         }
 
-        public async Task<BitcoinBasedTransaction> SignPaymentTxAsync(
-            BitcoinBasedTransaction paymentTx)
+        public async Task<BitcoinTransaction> SignPaymentTxAsync(
+            BitcoinTransaction paymentTx)
         {
             var tx = paymentTx.Clone();
 
@@ -54,18 +54,18 @@ namespace Atomex.Swaps.BitcoinBased
             return tx;
         }
 
-        public Task<BitcoinBasedTransaction> SignRefundTxAsync(
-            BitcoinBasedTransaction refundTx,
-            BitcoinBasedTransaction paymentTx,
+        public Task<BitcoinTransaction> SignRefundTxAsync(
+            BitcoinTransaction refundTx,
+            BitcoinTransaction paymentTx,
             WalletAddress refundAddress,
             byte[] redeemScript)
         {
             return SignHtlcSwapRefundForP2ShTxAsync(refundTx, paymentTx, refundAddress, redeemScript);
         }
 
-        public async Task<BitcoinBasedTransaction> SignHtlcSwapRefundForP2ShTxAsync(
-            BitcoinBasedTransaction refundTx,
-            BitcoinBasedTransaction paymentTx,
+        public async Task<BitcoinTransaction> SignHtlcSwapRefundForP2ShTxAsync(
+            BitcoinTransaction refundTx,
+            BitcoinTransaction paymentTx,
             WalletAddress refundAddress,
             byte[] redeemScript)
         {
@@ -78,7 +78,7 @@ namespace Atomex.Swaps.BitcoinBased
             }
 
             var spentOutput = paymentTx.Outputs
-                .Cast<BitcoinBasedTxOutput>()
+                .Cast<BitcoinTxOutput>()
                 .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));
 
             if (spentOutput == null)
@@ -114,7 +114,7 @@ namespace Atomex.Swaps.BitcoinBased
                 keyIndex: refundAddress.KeyIndex,
                 keyType: refundAddress.KeyType);
 
-            var refundScriptSig = BitcoinBasedSwapTemplate.GenerateHtlcSwapRefundForP2Sh(
+            var refundScriptSig = BitcoinSwapTemplate.GenerateHtlcSwapRefundForP2Sh(
                 aliceRefundSig: signature,
                 aliceRefundPubKey: refundAddressPublicKey.ToUnsecuredBytes(),
                 redeemScript: redeemScript);
@@ -130,9 +130,9 @@ namespace Atomex.Swaps.BitcoinBased
             return tx;
         }
 
-        public Task<BitcoinBasedTransaction> SignRedeemTxAsync(
-            BitcoinBasedTransaction redeemTx,
-            BitcoinBasedTransaction paymentTx,
+        public Task<BitcoinTransaction> SignRedeemTxAsync(
+            BitcoinTransaction redeemTx,
+            BitcoinTransaction paymentTx,
             WalletAddress redeemAddress,
             byte[] secret,
             byte[] redeemScript)
@@ -140,9 +140,9 @@ namespace Atomex.Swaps.BitcoinBased
             return SignHtlcSwapRedeemForP2ShTxAsync(redeemTx, paymentTx, redeemAddress, secret, redeemScript);
         }
 
-        public async Task<BitcoinBasedTransaction> SignHtlcSwapRedeemForP2ShTxAsync(
-            BitcoinBasedTransaction redeemTx,
-            BitcoinBasedTransaction paymentTx,
+        public async Task<BitcoinTransaction> SignHtlcSwapRedeemForP2ShTxAsync(
+            BitcoinTransaction redeemTx,
+            BitcoinTransaction paymentTx,
             WalletAddress redeemAddress,
             byte[] secret,
             byte[] redeemScript)
@@ -150,7 +150,7 @@ namespace Atomex.Swaps.BitcoinBased
             var tx = redeemTx.Clone();
 
             var spentOutput = paymentTx.Outputs
-                .Cast<BitcoinBasedTxOutput>()
+                .Cast<BitcoinTxOutput>()
                 .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));
 
             if (spentOutput == null)
@@ -179,7 +179,7 @@ namespace Atomex.Swaps.BitcoinBased
                 keyIndex: redeemAddress.KeyIndex,
                 keyType: redeemAddress.KeyType);
 
-            var redeemScriptSig = BitcoinBasedSwapTemplate.GenerateP2PkhSwapRedeemForP2Sh(
+            var redeemScriptSig = BitcoinSwapTemplate.GenerateP2PkhSwapRedeemForP2Sh(
                 sig: signature,
                 pubKey: redeemAddressPublicKey.ToUnsecuredBytes(),
                 secret: secret,

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Client.V1.Entities;
 using Atomex.Common;
 
@@ -64,7 +64,7 @@ namespace Atomex.Core
         public decimal MakerNetworkFee { get; set; }
 
         public string FromAddress { get; set; }
-        public List<BitcoinBasedTxOutput> FromOutputs { get; set; }
+        public List<BitcoinTxOutput> FromOutputs { get; set; }
         public string RedeemFromAddress { get; set; }
 
         public string SoldCurrency => Symbol.SoldCurrency(Side);
@@ -98,29 +98,29 @@ namespace Atomex.Core
             set { _secretHash = value; StateFlags |= SwapStateFlags.HasSecretHash; }
         }
 
-        private IBlockchainTransaction _paymentTx;
-        public IBlockchainTransaction PaymentTx
+        private ITransaction _paymentTx;
+        public ITransaction PaymentTx
         {
             get => _paymentTx;
             set { _paymentTx = value; if (_paymentTx != null) StateFlags |= SwapStateFlags.HasPayment; }
         }
 
-        private IBlockchainTransaction _refundTx;
-        public IBlockchainTransaction RefundTx
+        private ITransaction _refundTx;
+        public ITransaction RefundTx
         {
             get => _refundTx;
             set { _refundTx = value; if (_refundTx != null) StateFlags |= SwapStateFlags.HasRefund; }
         }
 
-        private IBlockchainTransaction _redeemTx;
-        public IBlockchainTransaction RedeemTx
+        private ITransaction _redeemTx;
+        public ITransaction RedeemTx
         {
             get => _redeemTx;
             set { _redeemTx = value; if (_redeemTx != null) StateFlags |= SwapStateFlags.HasRedeem; }
         }
 
-        private IBlockchainTransaction _partyPaymentTx;
-        public IBlockchainTransaction PartyPaymentTx
+        private ITransaction _partyPaymentTx;
+        public ITransaction PartyPaymentTx
         {
             get => _partyPaymentTx;
             set { _partyPaymentTx = value; if (_partyPaymentTx != null) StateFlags |= SwapStateFlags.HasPartyPayment; }

@@ -285,7 +285,7 @@ namespace Atomex
                 .ConfigureAwait(false);
 
             if (error != null)
-                Log.Error(error.Description);
+                Log.Error(error.Message);
         }
 
         private void AtomexClient_SnapshotUpdated(object sender, SnapshotEventArgs e)

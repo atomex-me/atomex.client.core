@@ -206,7 +206,7 @@ namespace Atomex.Wallet
 
         public Task<T> GetTransactionByIdAsync<T>(
             string currency,
-            string txId) where T : IBlockchainTransaction
+            string txId) where T : ITransaction
         {
             return _localStorage.GetTransactionByIdAsync<T>(
                 currency: currency,
@@ -214,19 +214,19 @@ namespace Atomex.Wallet
         }
 
         public Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
-            where T : IBlockchainTransaction
+            where T : ITransaction
         {
             return _localStorage.GetTransactionsAsync<T>(currency);
         }
 
-        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(string currency)
+        public Task<IEnumerable<ITransaction>> GetTransactionsAsync(string currency)
         {
             return _localStorage.GetTransactionsAsync(currency, Currencies.GetByName(currency).TransactionType);
         }
 
-        public async Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync()
+        public async Task<IEnumerable<ITransaction>> GetUnconfirmedTransactionsAsync()
         {
-            var result = new List<IBlockchainTransaction>();
+            var result = new List<ITransaction>();
 
             foreach (var (_, account) in _currencyAccounts)
             {

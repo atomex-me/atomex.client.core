@@ -14,9 +14,9 @@ namespace Atomex.Blockchain.Helpers
     public class ConfirmationCheckResult
     {
         public bool IsConfirmed { get; }
-        public IBlockchainTransaction Transaction { get; }
+        public ITransaction Transaction { get; }
 
-        public ConfirmationCheckResult(bool isConfirmed, IBlockchainTransaction tx)
+        public ConfirmationCheckResult(bool isConfirmed, ITransaction tx)
         {
             IsConfirmed = isConfirmed;
             Transaction = tx;
@@ -35,7 +35,7 @@ namespace Atomex.Blockchain.Helpers
             try
             {
                 var txResult = await currency.BlockchainApi
-                    .TryGetTransactionAsync(txId, cancellationToken: cancellationToken)
+                    .GetTransactionAsync(txId, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (txResult != null && txResult.HasError)
@@ -59,7 +59,7 @@ namespace Atomex.Blockchain.Helpers
 
                 var tx = txResult.Value;
 
-                if (tx != null && tx.State == BlockchainTransactionState.Failed)
+                if (tx != null && tx.Status == TransactionStatus.Failed)
                     return new ConfirmationCheckResult(false, tx);
 
                 if (tx == null || tx.BlockInfo == null || tx.BlockInfo.Confirmations < NumberOfConfirmations)

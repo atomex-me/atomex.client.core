@@ -141,14 +141,14 @@ namespace Atomex.Wallet.Abstract
         #region Transactions
 
         Task<T> GetTransactionByIdAsync<T>(string currency, string txId)
-            where T : IBlockchainTransaction;
+            where T : ITransaction;
 
         Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
-            where T : IBlockchainTransaction;
+            where T : ITransaction;
 
-        Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(string currency);
+        Task<IEnumerable<ITransaction>> GetTransactionsAsync(string currency);
 
-        Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync();
+        Task<IEnumerable<ITransaction>> GetUnconfirmedTransactionsAsync();
 
         Task<bool> RemoveTransactionAsync(string id);
 

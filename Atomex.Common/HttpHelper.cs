@@ -50,12 +50,20 @@ namespace Atomex.Common
                     .ConfigureAwait(false);
 
                 return !response.IsSuccessStatusCode
-                    ? new Error((int)response.StatusCode, responseContent)
+                    ? new Error
+                    {
+                        Code = (int)response.StatusCode,
+                        Message = responseContent
+                    }
                     : responseHandler(response, responseContent);
             }
             catch (Exception e)
             {
-                return new Error(Errors.RequestError, e.Message);
+                return new Error
+                {
+                    Code = Errors.RequestError,
+                    Message = e.Message
+                };
             }
         }
 
@@ -78,7 +86,11 @@ namespace Atomex.Common
                 .ConfigureAwait(false);
 
             return !response.IsSuccessStatusCode
-                ? new Error((int)response.StatusCode, responseContent)
+                ? new Error
+                {
+                    Code = (int)response.StatusCode,
+                    Message = responseContent
+                }
                 : responseHandler(response, responseContent);
         }
         
@@ -103,7 +115,11 @@ namespace Atomex.Common
                 .ConfigureAwait(false);
 
             return !response.IsSuccessStatusCode
-                ? new Error((int)response.StatusCode, responseContent)
+                ? new Error
+                {
+                    Code = (int)response.StatusCode,
+                    Message = responseContent
+                }
                 : responseHandler(response, responseContent);
         }
 

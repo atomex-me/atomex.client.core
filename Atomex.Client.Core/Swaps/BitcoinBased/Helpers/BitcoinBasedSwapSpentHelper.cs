@@ -7,8 +7,8 @@ using NBitcoin;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
-using Atomex.Blockchain.BitcoinBased.Helpers;
+using Atomex.Blockchain.Bitcoin;
+using Atomex.Blockchain.Bitcoin.Helpers;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
@@ -49,7 +49,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
 
                     var redeemScript = swap.RefundAddress == null && swap.RedeemScript != null
                         ? new Script(Convert.FromBase64String(swap.RedeemScript))
-                        : BitcoinBasedSwapTemplate
+                        : BitcoinSwapTemplate
                             .GenerateHtlcP2PkhSwapPayment(
                                 aliceRefundAddress: swap.RefundAddress,
                                 bobAddress: swap.PartyAddress,
@@ -58,9 +58,9 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                                 secretSize: CurrencySwap.DefaultSecretSize,
                                 expectedNetwork: bitcoinBased.Network);
 
-                    var swapOutput = ((BitcoinBasedTransaction)swap.PaymentTx)
+                    var swapOutput = ((BitcoinTransaction)swap.PaymentTx)
                         .Outputs
-                        .Cast<BitcoinBasedTxOutput>()
+                        .Cast<BitcoinTxOutput>()
                         .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript) && o.Value >= requiredAmountInSatoshi);
 
                     if (swapOutput == null)

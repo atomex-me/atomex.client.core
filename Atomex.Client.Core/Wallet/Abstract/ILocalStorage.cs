@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Tezos;
 using Atomex.Core;
 
@@ -100,32 +100,32 @@ namespace Atomex.Wallet.Abstract
         #region Transactions
 
         Task<bool> UpsertTransactionAsync(
-            IBlockchainTransaction tx,
+            ITransaction tx,
             bool notifyIfNewOrChanged = false,
             CancellationToken cancellationToken = default);
 
         Task<bool> UpsertTransactionsAsync(
-            IEnumerable<IBlockchainTransaction> txs,
+            IEnumerable<ITransaction> txs,
             bool notifyIfNewOrChanged = false,
             CancellationToken cancellationToken = default);
 
         Task<T> GetTransactionByIdAsync<T>(string currency, string txId)
-            where T : IBlockchainTransaction;
+            where T : ITransaction;
 
-        Task<IBlockchainTransaction> GetTransactionByIdAsync(
+        Task<ITransaction> GetTransactionByIdAsync(
             string currency,
             string txId,
             Type transactionType);
 
         Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
-            where T : IBlockchainTransaction;
+            where T : ITransaction;
 
-        Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
+        Task<IEnumerable<ITransaction>> GetTransactionsAsync(
             string currency,
             Type transactionType);
 
         Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(string currency)
-            where T : IBlockchainTransaction;
+            where T : ITransaction;
 
         Task<bool> RemoveTransactionByIdAsync(string id);
 
@@ -134,21 +134,21 @@ namespace Atomex.Wallet.Abstract
         #region Outputs
 
         Task<bool> UpsertOutputsAsync(
-            IEnumerable<BitcoinBasedTxOutput> outputs,
+            IEnumerable<BitcoinTxOutput> outputs,
             string currency,
             NBitcoin.Network network);
 
-        Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(
+        Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(
             string currency);
 
-        Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(
+        Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(
             string currency,
             string address);
 
-        Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(
+        Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(
             string currency);
 
-        Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync(
+        Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(
             string currency,
             string address);
 

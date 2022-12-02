@@ -191,17 +191,6 @@ namespace Atomex.Blockchain.Ethereum
                .ConfigureAwait(false);
         }
 
-        public async Task<Result<BigInteger>> TryGetErc20BalanceAsync(
-            string address,
-            string contractAddress,
-            int attempts = 3,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            return await ResultHelper.TryDo((c) => GetErc20BalanceAsync(address, contractAddress, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting erc20 balance after {attempts} attempts");
-        }
-
         public async Task<Result<long>> GetBlockNumber(
             CancellationToken cancellationToken = default)
         {
@@ -254,23 +243,12 @@ namespace Atomex.Blockchain.Ethereum
                .ConfigureAwait(false);
         }
 
-        public async Task<Result<BigInteger>> TryGetTransactionCountAsync(
-            string address,
-            bool pending = true,
-            int attempts = 10,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            return await ResultHelper.TryDo((c) => GetTransactionCountAsync(address, pending, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transaction count after {attempts} attempts");
-        }
-
-        public async override Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public async override Task<Result<ITransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
             if (txId == null)
-                return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
+                return new Result<ITransaction>((ITransaction)null);
 
             var requestUri = $"api?module=proxy&action=eth_getTransactionByHash&txhash={txId}&apikey={ApiKey}";
 
@@ -292,7 +270,7 @@ namespace Atomex.Blockchain.Ethereum
                        {
                            Id            = tx["hash"].Value<string>(),
                            Currency      = Currency,
-                           Type          = BlockchainTransactionType.Unknown,
+                           Type          = TransactionType.Unknown,
                            //State = state,
                            //CreationTime = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
 
@@ -372,16 +350,16 @@ namespace Atomex.Blockchain.Ethereum
                 .ConfigureAwait(false);
 
             if (txReceipt == null)
-                return new Result<IBlockchainTransaction>((IBlockchainTransaction)null);
+                return new Result<ITransaction>((ITransaction)null);
 
             if (txReceipt.HasError)
                 return txReceipt.Error;
 
             txResult.Value.State = txReceipt.Value == 0
-                ? BlockchainTransactionState.Failed
-                : BlockchainTransactionState.Confirmed;
+                ? TransactionStatus.Failed
+                : TransactionStatus.Confirmed;
 
-            txResult.Value.BlockInfo.Confirmations = txResult.Value.State == BlockchainTransactionState.Confirmed
+            txResult.Value.BlockInfo.Confirmations = txResult.Value.State == TransactionStatus.Confirmed
                 ? 1
                 : 0;
 
@@ -405,14 +383,14 @@ namespace Atomex.Blockchain.Ethereum
                 ethTx.InternalTxs = internalTxsResult.Value
                     .Cast<EthereumTransaction>()
                             .ToList()
-                            .ForEachDo(itx => itx.State = ethTx.State)
+                            .ForEachDo(itx => itx.Status = ethTx.State)
                             .ToList();
             }
 
             return txResult.Value;
         }
 
-        public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetInternalTransactionsAsync(
+        public async Task<Result<IEnumerable<ITransaction>>> GetInternalTransactionsAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
@@ -425,13 +403,13 @@ namespace Atomex.Blockchain.Ethereum
             return await HttpHelper.GetAsyncResult(
                    baseUri: BaseUrl,
                    requestUri: requestUri,
-                   responseHandler: (response, content) => new Result<IEnumerable<IBlockchainTransaction>>(
+                   responseHandler: (response, content) => new Result<IEnumerable<ITransaction>>(
                        ParseTransactions(content, txId: txId, isInternal: true)),
                    cancellationToken: cancellationToken)
                .ConfigureAwait(false);
         }
 
-        public async Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
+        public async Task<Result<IEnumerable<ITransaction>>> GetTransactionsAsync(
             string address,
             long fromBlock = 0,
             long toBlock = long.MaxValue,
@@ -445,7 +423,7 @@ namespace Atomex.Blockchain.Ethereum
             var result = await HttpHelper.GetAsyncResult(
                     baseUri: BaseUrl,
                     requestUri: $"api?module=account&action=txlist&address={address}&startblock={fromBlock}&endblock={toBlock}&sort=asc&apikey={ApiKey}",
-                    responseHandler: (response, content) => new Result<IEnumerable<IBlockchainTransaction>>(
+                    responseHandler: (response, content) => new Result<IEnumerable<ITransaction>>(
                         ParseTransactions(content, txId: null, isInternal: false)),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -463,7 +441,7 @@ namespace Atomex.Blockchain.Ethereum
             var internalResult = await HttpHelper.GetAsyncResult(
                     baseUri: BaseUrl,
                     requestUri: $"api?module=account&action=txlistinternal&address={address}&startblock={fromBlock}&endblock={toBlock}&sort=asc&apikey={ApiKey}",
-                    responseHandler: (response, content) => new Result<IEnumerable<IBlockchainTransaction>>(
+                    responseHandler: (response, content) => new Result<IEnumerable<ITransaction>>(
                         ParseTransactions(content, txId: null, isInternal: true)),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -476,19 +454,7 @@ namespace Atomex.Blockchain.Ethereum
 
             var txs = result.Value.Concat(internalResult.Value);
 
-            return new Result<IEnumerable<IBlockchainTransaction>>(txs);
-        }
-
-        public async Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
-            string address,
-            long fromBlock = 0,
-            long toBlock = long.MaxValue,
-            int attempts = 10,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            return await ResultHelper.TryDo((c) => GetTransactionsAsync(address, fromBlock, toBlock, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
+            return new Result<IEnumerable<ITransaction>>(txs);
         }
 
         public Task<Result<IEnumerable<ContractEvent>>> GetContractEventsAsync(
@@ -599,13 +565,13 @@ namespace Atomex.Blockchain.Ethereum
         }
 
         public override async Task<Result<string>> BroadcastAsync(
-            IBlockchainTransaction transaction,
+            ITransaction transaction,
             CancellationToken cancellationToken = default)
         {
             if (transaction is not EthereumTransaction ethTx)
                 return new Error(Errors.TransactionBroadcastError, "Invalid transaction type.");
 
-            ethTx.State = BlockchainTransactionState.Pending;
+            ethTx.Status = TransactionStatus.Pending;
 
             var requestUri = $"api?module=proxy&action=eth_sendRawTransaction&hex=0x{ethTx.RlpEncodedTx}&apikey={ApiKey}";
 
@@ -671,12 +637,12 @@ namespace Atomex.Blockchain.Ethereum
             return txId;
         }
 
-        private IEnumerable<IBlockchainTransaction> ParseTransactions(
+        private IEnumerable<ITransaction> ParseTransactions(
             string responseContent,
             string txId,
             bool isInternal)
         {
-            var result = new List<IBlockchainTransaction>();
+            var result = new List<ITransaction>();
 
             var txs = JsonConvert.DeserializeObject<Response<List<Transaction>>>(responseContent);
 
@@ -709,20 +675,20 @@ namespace Atomex.Blockchain.Ethereum
 
                 var state = tx.ReceiptStatus != null
                     ? tx.ReceiptStatus.Equals("1")
-                        ? BlockchainTransactionState.Confirmed
-                        : BlockchainTransactionState.Failed
+                        ? TransactionStatus.Confirmed
+                        : TransactionStatus.Failed
                     : isInternal
                         ? tx.IsError.Equals("0")
-                            ? BlockchainTransactionState.Confirmed
-                            : BlockchainTransactionState.Failed
-                        : BlockchainTransactionState.Unconfirmed;
+                            ? TransactionStatus.Confirmed
+                            : TransactionStatus.Failed
+                        : TransactionStatus.Unconfirmed;
 
                 result.Add(new EthereumTransaction
                 {
                     Id            = id,
                     Currency      = Currency,
-                    Type          = BlockchainTransactionType.Unknown,
-                    State         = state,
+                    Type          = TransactionType.Unknown,
+                    Status         = state,
                     CreationTime  = DateTimeExtensions.UnixStartTime.AddSeconds(double.Parse(tx.TimeStamp)),
 
                     From          = tx.From.ToLowerInvariant(),
@@ -737,7 +703,7 @@ namespace Atomex.Blockchain.Ethereum
                         : 0,
                     GasLimit      = BigInteger.Parse(tx.Gas),
                     GasUsed       = BigInteger.Parse(tx.GasUsed),
-                    ReceiptStatus = state == BlockchainTransactionState.Confirmed,
+                    ReceiptStatus = state == TransactionStatus.Confirmed,
                     IsInternal    = isInternal,
                     InternalIndex = internalIndex,
 
@@ -757,7 +723,7 @@ namespace Atomex.Blockchain.Ethereum
             return result;
         }
 
-        public async Task<Result<decimal>> GetERC20AllowanceAsync(
+        public async Task<Result<decimal>> GetErc20AllowanceAsync(
             Erc20Config erc20,
             string tokenAddress,
             FunctionMessage allowanceMessage,
@@ -859,16 +825,6 @@ namespace Atomex.Blockchain.Ethereum
                     },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-        }
-
-        public async Task<Result<long>> TryGetBlockByTimeStampAsync(
-            long unixTimeStamp,
-            int attempts = 3,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            return await ResultHelper.TryDo((c) => GetBlockByTimeStampAsync(unixTimeStamp, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting blockno by timestamp after {attempts} attempts");
         }
     }
 }

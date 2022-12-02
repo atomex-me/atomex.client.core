@@ -18,14 +18,7 @@ namespace Atomex.Blockchain.Ethereum
             string contractAddress,
             CancellationToken cancellationToken = default);
 
-        Task<Result<BigInteger>> TryGetErc20BalanceAsync(
-            string address,
-            string contractAddress,
-            int attempts = 3,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default);
-
-        Task<Result<decimal>> GetERC20AllowanceAsync(
+        Task<Result<decimal>> GetErc20AllowanceAsync(
             Erc20Config erc20,
             string tokenAddress,
             FunctionMessage allowanceMessage,
@@ -36,35 +29,14 @@ namespace Atomex.Blockchain.Ethereum
             bool pending = true,
             CancellationToken cancellationToken = default);
 
-        Task<Result<BigInteger>> TryGetTransactionCountAsync(
-            string address,
-            bool pending = true,
-            int attempts = 3,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default);
-
-        Task<Result<IEnumerable<IBlockchainTransaction>>> GetTransactionsAsync(
+        Task<Result<IEnumerable<ITransaction>>> GetTransactionsAsync(
             string address,
             long fromBlock = 0,
             long toBlock = long.MaxValue,
-            CancellationToken cancellationToken = default);
-
-        Task<Result<IEnumerable<IBlockchainTransaction>>> TryGetTransactionsAsync(
-            string address,
-            long fromBlock = 0,
-            long toBlock = long.MaxValue,
-            int attempts = 3,
-            int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);
 
         Task<Result<long>> GetBlockByTimeStampAsync(
             long unixTimeStamp,
-            CancellationToken cancellationToken = default);
-
-        Task<Result<long>> TryGetBlockByTimeStampAsync(
-            long unixTimeStamp,
-            int attempts = 3,
-            int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);
     }
 }

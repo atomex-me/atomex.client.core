@@ -7,15 +7,15 @@ namespace Atomex.Wallet
 {
     public class TransactionsChangedEventArgs
     {
-        public IEnumerable<IBlockchainTransaction> Transactions { get; }
+        public IEnumerable<ITransaction> Transactions { get; }
         public string Currency => Transactions?.FirstOrDefault()?.Currency;
 
-        public TransactionsChangedEventArgs(IBlockchainTransaction transaction)
+        public TransactionsChangedEventArgs(ITransaction transaction)
         {
-            Transactions = new List<IBlockchainTransaction>() { transaction };
+            Transactions = new List<ITransaction>() { transaction };
         }
 
-        public TransactionsChangedEventArgs(IEnumerable<IBlockchainTransaction> transactions)
+        public TransactionsChangedEventArgs(IEnumerable<ITransaction> transactions)
         {
             Transactions = transactions;
         }

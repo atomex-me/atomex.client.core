@@ -15,7 +15,7 @@ using Atomex.Cryptography;
 
 namespace Atomex.Blockchain.Tezos
 {
-    public class TezosTransaction : IBlockchainTransaction
+    public class TezosTransaction : ITransaction
     {
         private const int DefaultConfirmations = 1;
 
@@ -25,8 +25,8 @@ namespace Atomex.Blockchain.Tezos
         public string UniqueId => $"{Id}:{Currency}";
         public string Currency { get; set; }
         public BlockInfo BlockInfo { get; set; }
-        public BlockchainTransactionState State { get; set ; }
-        public BlockchainTransactionType Type { get; set; }
+        public TransactionStatus Status { get; set ; }
+        public TransactionType Type { get; set; }
         public DateTime? CreationTime { get; set; }
         [BsonIgnore]
         public bool IsConfirmed => BlockInfo?.Confirmations >= DefaultConfirmations;
@@ -73,7 +73,7 @@ namespace Atomex.Blockchain.Tezos
             {
                 Id           = Id,
                 Currency     = Currency,
-                State        = State,
+                Status        = Status,
                 Type         = Type,
                 CreationTime = CreationTime,
 

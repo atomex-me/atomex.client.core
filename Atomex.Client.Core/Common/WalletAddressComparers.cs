@@ -9,10 +9,8 @@ namespace Atomex.Common
         {
         }
 
-        public int Compare(WalletAddress x, WalletAddress y)
-        {
-            return x.AvailableBalance().CompareTo(y.AvailableBalance());
-        }
+        public int Compare(WalletAddress x, WalletAddress y) =>
+            x.AvailableBalance().CompareTo(y.AvailableBalance());
     }
 
     public class AvailableBalanceDescending : IComparer<WalletAddress>
@@ -21,9 +19,7 @@ namespace Atomex.Common
         {
         }
 
-        public int Compare(WalletAddress x, WalletAddress y)
-        {
-            return y.AvailableBalance().CompareTo(x.AvailableBalance());
-        }
+        public int Compare(WalletAddress x, WalletAddress y) =>
+            y.AvailableBalance().CompareTo(x.AvailableBalance());
     }
 }

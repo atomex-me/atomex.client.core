@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Core;
 
 namespace Atomex.Blockchain
@@ -17,14 +17,14 @@ namespace Atomex.Blockchain
             _currency = currency ?? throw new ArgumentNullException(nameof(currency));
         }
 
-        public async Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(
+        public async Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(
             IEnumerable<WalletAddress> addresses)
         {
-            var outputs = new List<BitcoinBasedTxOutput>();
+            var outputs = new List<BitcoinTxOutput>();
 
             foreach (var a in addresses)
             {
-                var outputsResult = await ((BitcoinBasedBlockchainApi)_currency.BlockchainApi)
+                var outputsResult = await ((BitcoinBlockchainApi)_currency.BlockchainApi)
                     .GetUnspentOutputsAsync(a.Address)
                     .ConfigureAwait(false);
 
@@ -38,14 +38,14 @@ namespace Atomex.Blockchain
             return outputs;
         }
 
-        public async Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(
+        public async Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(
             IEnumerable<string> addresses)
         {
-            var outputs = new List<BitcoinBasedTxOutput>();
+            var outputs = new List<BitcoinTxOutput>();
 
             foreach (var address in addresses)
             {
-                var outputsResult = await ((BitcoinBasedBlockchainApi)_currency.BlockchainApi)
+                var outputsResult = await ((BitcoinBlockchainApi)_currency.BlockchainApi)
                     .GetUnspentOutputsAsync(address)
                     .ConfigureAwait(false);
 

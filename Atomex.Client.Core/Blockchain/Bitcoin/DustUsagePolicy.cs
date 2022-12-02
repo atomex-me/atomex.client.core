@@ -1,4 +1,4 @@
-﻿namespace Atomex.Blockchain.BitcoinBased
+﻿namespace Atomex.Blockchain.Bitcoin
 {
     public enum DustUsagePolicy
     {

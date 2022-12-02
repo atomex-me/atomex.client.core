@@ -9,7 +9,7 @@ using NBitcoin;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
@@ -32,8 +32,8 @@ namespace Atomex.Wallet.BitcoinBased
 
         #region Common
 
-        public async Task<Error> SendAsync(
-            IEnumerable<BitcoinBasedTxOutput> from,
+        public async Task<Result<string>> SendAsync(
+            IEnumerable<BitcoinTxOutput> from,
             string to,
             decimal amount,
             decimal fee,
@@ -50,7 +50,7 @@ namespace Atomex.Wallet.BitcoinBased
             if (amountInSatoshi < config.GetDust())
                 return new Error(
                     code: Errors.InsufficientAmount,
-                    description: $"Insufficient amount to send. Min non-dust amount {config.SatoshiToCoin(config.GetDust())}, actual {config.SatoshiToCoin(amountInSatoshi)}");
+                    message: $"Insufficient amount to send. Min non-dust amount {config.SatoshiToCoin(config.GetDust())}, actual {config.SatoshiToCoin(amountInSatoshi)}");
 
             from = from
                 .SelectOutputsForAmount(requiredInSatoshi)
@@ -61,7 +61,7 @@ namespace Atomex.Wallet.BitcoinBased
             if (!from.Any())
                 return new Error(
                     code: Errors.InsufficientFunds,
-                    description: $"Insufficient funds. Required {config.SatoshiToCoin(requiredInSatoshi)}, available {config.SatoshiToCoin(availableInSatoshi)}");
+                    message: $"Insufficient funds. Required {config.SatoshiToCoin(requiredInSatoshi)}, available {config.SatoshiToCoin(availableInSatoshi)}");
 
             var changeAddress = await GetFreeInternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
@@ -75,7 +75,7 @@ namespace Atomex.Wallet.BitcoinBased
                     case DustUsagePolicy.Warning:
                         return new Error(
                             code: Errors.InsufficientAmount,
-                            description: $"Change {config.SatoshiToCoin(changeInSatoshi)} can be definded by the network as dust and the transaction will be rejected");
+                            message: $"Change {config.SatoshiToCoin(changeInSatoshi)} can be definded by the network as dust and the transaction will be rejected");
                     case DustUsagePolicy.AddToDestination:
                         amountInSatoshi += changeInSatoshi;
                         break;
@@ -85,7 +85,7 @@ namespace Atomex.Wallet.BitcoinBased
                     default:
                         return new Error(
                             code: Errors.InternalError,
-                            description: $"Unknown dust usage policy value {dustUsagePolicy}");
+                            message: $"Unknown dust usage policy value {dustUsagePolicy}");
                 }
             }
 
@@ -106,26 +106,24 @@ namespace Atomex.Wallet.BitcoinBased
             if (!signResult)
                 return new Error(
                     code: Errors.TransactionSigningError,
-                    description: "Transaction signing error");
+                    message: "Transaction signing error");
 
             if (!tx.Verify(from, out var errors, config))
                 return new Error(
                     code: Errors.TransactionVerificationError,
-                    description: $"Transaction verification error: {string.Join(", ", errors.Select(e => e.Description))}");
+                    message: $"Transaction verification error: {string.Join(", ", errors.Select(e => e.Message))}");
 
-            var broadcastResult = await config.BlockchainApi
+            var (txId, error) = await config.BlockchainApi
                 .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (broadcastResult.HasError)
-                return broadcastResult.Error;
-
-            var txId = broadcastResult.Value;
+            if (error != null)
+                return error.Value;
 
             if (txId == null)
                 return new Error(
                     code: Errors.TransactionBroadcastError,
-                    description: "Transaction id is null");
+                    message: "Transaction id is null");
 
             Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
@@ -136,12 +134,12 @@ namespace Atomex.Wallet.BitcoinBased
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            return null;
+            return txId;
         }
 
         public async Task<bool> SignAsync(
-            BitcoinBasedTransaction tx,
-            IEnumerable<BitcoinBasedTxOutput> spentOutputs,
+            BitcoinTransaction tx,
+            IEnumerable<BitcoinTxOutput> spentOutputs,
             CancellationToken cancellationToken = default)
         {
             try
@@ -265,7 +263,7 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
-            IEnumerable<BitcoinBasedTxOutput> outputs,
+            IEnumerable<BitcoinTxOutput> outputs,
             string to,
             decimal? fee,
             decimal? feeRate,
@@ -284,12 +282,12 @@ namespace Atomex.Wallet.BitcoinBased
                 {
                     Error = new Error(
                         code: Errors.InsufficientFunds,
-                        description: string.Format(
+                        message: string.Format(
                             Resources.OutputsAlreadySpent,
-                            Currency),
-                        details: string.Format(
-                            Resources.OutputsAlreadySpentDetails,
-                            Currency)) // currency code
+                            Currency)), // currency code
+                    ErrorHint = string.Format(
+                        Resources.OutputsAlreadySpentDetails,
+                        Currency) // currency code
                 };
             }
 
@@ -297,11 +295,11 @@ namespace Atomex.Wallet.BitcoinBased
                 return new MaxAmountEstimation {
                     Error = new Error(
                         code: Errors.InsufficientFunds,
-                        description: Resources.InsufficientFunds,
-                        details: string.Format(
-                            Resources.InsufficientFundsDetails,
-                            0m,        // available
-                            Currency)) // currency code
+                        message: Resources.InsufficientFunds),
+                    ErrorHint = string.Format(
+                        Resources.InsufficientFundsDetails,
+                        0m,       // available
+                        Currency) // currency code
                 };
 
             var availableInSatoshi = outputs.Sum(o => o.Value);
@@ -355,11 +353,11 @@ namespace Atomex.Wallet.BitcoinBased
                     Fee    = Config.SatoshiToCoin(estimatedFeeInSatoshi),
                     Error = new Error(
                         code: Errors.InsufficientFunds,
-                        description: Resources.InsufficientFunds,
-                        details: string.Format(Resources.InsufficientFundsToSendAmountDetails,
-                            Config.SatoshiToCoin(estimatedFeeInSatoshi), // required
-                            Currency,              // currency code
-                            Config.SatoshiToCoin(availableInSatoshi)))   // available
+                        message: Resources.InsufficientFunds),
+                    ErrorHint = string.Format(Resources.InsufficientFundsToSendAmountDetails,
+                        Config.SatoshiToCoin(estimatedFeeInSatoshi), // required
+                        Currency,                                    // currency code
+                        Config.SatoshiToCoin(availableInSatoshi))    // available
                 };
 
             return new MaxAmountEstimation
@@ -427,15 +425,15 @@ namespace Atomex.Wallet.BitcoinBased
 
         #region Outputs
 
-        public Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync() =>
+        public Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync() =>
             LocalStorage.GetAvailableOutputsAsync(Currency);
 
-        public Task<IEnumerable<BitcoinBasedTxOutput>> GetAvailableOutputsAsync(string address) =>
+        public Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(string address) =>
             LocalStorage.GetAvailableOutputsAsync(
                 currency: Currency,
                 address: address);
 
-        public Task<IEnumerable<BitcoinBasedTxOutput>> GetOutputsAsync() =>
+        public Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync() =>
             LocalStorage.GetOutputsAsync(Currency);
 
         #endregion Outputs
@@ -454,11 +452,11 @@ namespace Atomex.Wallet.BitcoinBased
 
         #region Transactions
 
-        public override async Task<IEnumerable<IBlockchainTransaction>> GetUnconfirmedTransactionsAsync(
+        public override async Task<IEnumerable<ITransaction>> GetUnconfirmedTransactionsAsync(
             CancellationToken cancellationToken = default)
         {
             return await LocalStorage
-                .GetUnconfirmedTransactionsAsync<BitcoinBasedTransaction>(Currency)
+                .GetUnconfirmedTransactionsAsync<BitcoinTransaction>(Currency)
                 .ConfigureAwait(false);
         }
 

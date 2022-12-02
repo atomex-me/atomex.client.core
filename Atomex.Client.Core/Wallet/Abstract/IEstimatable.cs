@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
 
 namespace Atomex.Wallet.Abstract
@@ -24,9 +24,9 @@ namespace Atomex.Wallet.Abstract
 
     public class FromOutputs : IFromSource
     {
-        public IEnumerable<BitcoinBasedTxOutput> Outputs { get; }
+        public IEnumerable<BitcoinTxOutput> Outputs { get; }
 
-        public FromOutputs(IEnumerable<BitcoinBasedTxOutput> outputs)
+        public FromOutputs(IEnumerable<BitcoinTxOutput> outputs)
         {
             Outputs = outputs ?? throw new ArgumentNullException(nameof(outputs));
         }
@@ -38,6 +38,7 @@ namespace Atomex.Wallet.Abstract
         public decimal Fee { get; set; }
         public decimal Reserved { get; set; }
         public Error Error { get; set; }
+        public string ErrorHint { get; set; }
     }
 
     public interface IEstimatable

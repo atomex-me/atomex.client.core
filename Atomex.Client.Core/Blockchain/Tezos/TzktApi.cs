@@ -37,14 +37,14 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         }
 
         public override async Task<Result<string>> BroadcastAsync(
-            IBlockchainTransaction transaction,
+            ITransaction transaction,
             CancellationToken cancellationToken = default)
         {
             var tx = (TezosTransaction)transaction;
 
             try
             {
-                tx.State = BlockchainTransactionState.Pending;
+                tx.Status = TransactionStatus.Pending;
 
                 var rpc = new Rpc(_rpcNodeUri);
                 var readyForInject = true;
@@ -103,19 +103,19 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             string address,
             CancellationToken cancellationToken = default)
         {
-            var account = await GetAccountAsync(address, cancellationToken)
+            var (account, error) = await GetAccountAsync(address, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (error != null)
+                return error;
 
             if (account == null)
                 return new Error(Errors.InvalidResponse, $"[TzktApi] Account for address {address} is null");
 
-            if (account.HasError)
-                return account.Error;
-
-            return account.Value?.Balance ?? 0m;
+            return account.Balance;
         }
 
-        public override async Task<Result<IBlockchainTransaction>> GetTransactionAsync(
+        public override async Task<Result<ITransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
@@ -125,7 +125,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             var requestUri = $"operations/transactions/{txId}?micheline=2";
 
             return await HttpHelper
-                .GetAsyncResult<IBlockchainTransaction>(
+                .GetAsyncResult<ITransaction>(
                     baseUri: _baseUri,
                     requestUri: requestUri,
                     headers: _headers,
@@ -196,23 +196,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             return new Result<IEnumerable<TezosTransaction>>(txsResult.Value);
         }
 
-        public async Task<Result<IEnumerable<TezosTransaction>>> TryGetTransactionsAsync(
-            string address,
-            DateTimeOffset? fromTimeStamp = null,
-            int? fromLevel = null,
-            int attempts = 3,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            return await ResultHelper
-                .TryDo(
-                    func: c => GetTransactionsAsync(address, fromTimeStamp, fromLevel, c),
-                    attempts: attempts,
-                    attemptsIntervalMs: attemptsIntervalMs,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
-        }
-
         public async Task<Result<IEnumerable<TezosTransaction>>> GetTransactionsAsync(
             string from,
             string to,
@@ -227,18 +210,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
-        }
-
-        public async Task<Result<IEnumerable<TezosTransaction>>> TryGetTransactionsAsync(
-            string from,
-            string to,
-            string parameters,
-            int attempts = 10,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            return await ResultHelper.TryDo((c) => GetTransactionsAsync(from, to, parameters, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting transactions after {attempts} attempts");
         }
 
         public async Task<Result<Account>> GetAccountAsync(
@@ -323,8 +294,8 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 {
                     Id       = transaction["hash"].ToString(),
                     Currency = _currency.Name,
-                    State    = state,
-                    Type     = BlockchainTransactionType.Unknown,
+                    Status    = state,
+                    Type     = TransactionType.Unknown,
                     CreationTime = DateTime.SpecifyKind(DateTime.Parse(transaction["timestamp"].ToString()), DateTimeKind.Utc),
 
                     GasUsed = transaction["gasUsed"].Value<decimal>(),
@@ -338,7 +309,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
                     BlockInfo = new BlockInfo
                     {
-                        Confirmations = state == BlockchainTransactionState.Failed ? 0 : 1,
+                        Confirmations = state == TransactionStatus.Failed ? 0 : 1,
                         BlockHash     = null,
                         BlockHeight   = transaction["level"].Value<long>(),
                         BlockTime     = DateTime.SpecifyKind(DateTime.Parse(transaction["timestamp"].ToString()), DateTimeKind.Utc),
@@ -376,14 +347,14 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             return result;
         }
 
-        public static BlockchainTransactionState StateFromStatus(string status) =>
+        public static TransactionStatus StateFromStatus(string status) =>
             status switch
             {
-                "applied"     => BlockchainTransactionState.Confirmed,
-                "backtracked" => BlockchainTransactionState.Failed,
-                "skipped"     => BlockchainTransactionState.Failed,
-                "failed"      => BlockchainTransactionState.Failed,
-                _             => BlockchainTransactionState.Unknown
+                "applied"     => TransactionStatus.Confirmed,
+                "backtracked" => TransactionStatus.Failed,
+                "skipped"     => TransactionStatus.Failed,
+                "failed"      => TransactionStatus.Failed,
+                _             => TransactionStatus.Unknown
             };
 
         #region ITokenBlockchainApi
@@ -447,19 +418,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             {
                 return new Error(Errors.RequestError, e.Message);
             }
-        }
-
-        public async Task<Result<decimal>> TryGetFa12AllowanceAsync(
-            string holderAddress,
-            string spenderAddress,
-            string callingAddress,
-            SecureBytes securePublicKey,
-            int attempts = 10,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default)
-        {
-            return await ResultHelper.TryDo((c) => GetFa12AllowanceAsync(holderAddress, spenderAddress, callingAddress, securePublicKey, c), attempts, attemptsIntervalMs, cancellationToken)
-                .ConfigureAwait(false) ?? new Error(Errors.RequestError, $"Connection error while getting balance after {attempts} attempts");
         }
 
         public async Task<Result<bool>> IsFa2TokenOperatorActiveAsync(

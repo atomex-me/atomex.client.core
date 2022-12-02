@@ -75,7 +75,7 @@ namespace Atomex.Swaps.Ethereum
 
                     foreach (var tx in txsToBroadcast)
                     {
-                        var isInitiateTx = tx.Type.HasFlag(BlockchainTransactionType.SwapPayment);
+                        var isInitiateTx = tx.Type.HasFlag(TransactionType.SwapPayment);
 
                         var nonceResult = await EthereumNonceManager.Instance
                             .GetNonceAsync(Erc20Config, tx.From, pending: true, cancellationToken)
@@ -290,7 +290,7 @@ namespace Atomex.Swaps.Ethereum
 
                 redeemTx = new EthereumTransaction(erc20Config.Name, txInput)
                 {
-                    Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
+                    Type = TransactionType.Output | TransactionType.SwapRedeem
                 };
 
                 var signResult = await EthereumAccount
@@ -409,7 +409,7 @@ namespace Atomex.Swaps.Ethereum
 
             var redeemTx = new EthereumTransaction(erc20Config.Name, txInput)
             {
-                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem
+                Type = TransactionType.Output | TransactionType.SwapRedeem
             };
 
             var signResult = await EthereumAccount
@@ -539,7 +539,7 @@ namespace Atomex.Swaps.Ethereum
 
                 refundTx = new EthereumTransaction(erc20Config.Name, txInput)
                 {
-                    Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund
+                    Type = TransactionType.Output | TransactionType.SwapRefund
                 };
 
                 var signResult = await EthereumAccount
@@ -626,7 +626,7 @@ namespace Atomex.Swaps.Ethereum
             return Task.CompletedTask;
         }
 
-        public override async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public override async Task<Result<ITransaction>> TryToFindPaymentAsync(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
@@ -845,7 +845,7 @@ namespace Atomex.Swaps.Ethereum
 
             return new EthereumTransaction(erc20Config.Name, txInput)
             {
-                Type = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment
+                Type = TransactionType.Output | TransactionType.SwapPayment
             };
         }
 
@@ -876,7 +876,7 @@ namespace Atomex.Swaps.Ethereum
             };
 
             var allowance = await ((IEthereumBlockchainApi)erc20.BlockchainApi)
-                .GetERC20AllowanceAsync(
+                .GetErc20AllowanceAsync(
                     erc20: erc20,
                     tokenAddress: erc20.ERC20ContractAddress,
                     allowanceMessage: allowanceMessage,
@@ -949,7 +949,7 @@ namespace Atomex.Swaps.Ethereum
 
             return new EthereumTransaction(erc20Config.Name, txInput)
             {
-                Type = BlockchainTransactionType.Output | BlockchainTransactionType.TokenApprove
+                Type = TransactionType.Output | TransactionType.TokenApprove
             };
         }
 
@@ -972,7 +972,7 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("TxId {@id} for swap {@swapId}", txId, swap.Id);
 
-            if (tx.Type.HasFlag(BlockchainTransactionType.SwapPayment))
+            if (tx.Type.HasFlag(TransactionType.SwapPayment))
                 tx = tx.ParseErc20Input();
 
             // account new unconfirmed transaction
@@ -987,9 +987,9 @@ namespace Atomex.Swaps.Ethereum
             var ethTx = tx.Clone();
             ethTx.Currency = EthConfig.Name;
             ethTx.Amount = 0;
-            ethTx.Type = BlockchainTransactionType.Output | (ethTx.Type.HasFlag(BlockchainTransactionType.TokenApprove)
-                ? BlockchainTransactionType.TokenCall
-                : BlockchainTransactionType.ContractCall);
+            ethTx.Type = TransactionType.Output | (ethTx.Type.HasFlag(TransactionType.TokenApprove)
+                ? TransactionType.TokenCall
+                : TransactionType.ContractCall);
 
             await EthereumAccount
                 .LocalStorage

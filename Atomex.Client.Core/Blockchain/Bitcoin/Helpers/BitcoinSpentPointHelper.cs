@@ -2,14 +2,16 @@
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
-using Serilog;
 
-namespace Atomex.Blockchain.BitcoinBased.Helpers
+namespace Atomex.Blockchain.Bitcoin.Helpers
 {
-    public static class BitcoinBasedSpentPointHelper
+    public static class BitcoinSpentPointHelper
     {
         public static async Task<Result<ITxPoint>> GetSpentPointAsync(
             this CurrencyConfig currency, 
@@ -19,7 +21,7 @@ namespace Atomex.Blockchain.BitcoinBased.Helpers
         {
             try
             {
-                if (!(currency.BlockchainApi is BitcoinBasedBlockchainApi api))
+                if (!(currency.BlockchainApi is BitcoinBlockchainApi api))
                 {
                     Log.Error("Api is null for currency {@currency}", currency.Name);
                     return new Error(Errors.InternalError, $"Api is null for currency {currency.Name}");

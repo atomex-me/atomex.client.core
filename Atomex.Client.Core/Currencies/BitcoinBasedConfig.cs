@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 using NBitcoin;
 
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Core;
 using Atomex.Common.Memory;
 using Atomex.Wallets;
@@ -31,7 +31,7 @@ namespace Atomex
 
         protected BitcoinBasedConfig()
         {
-            TransactionType = typeof(BitcoinBasedTransaction);
+            TransactionType = typeof(BitcoinTransaction);
         }
 
         public override IExtKey CreateExtKey(SecureBytes seed, int keyType) => 
@@ -143,8 +143,8 @@ namespace Atomex
                 .ToString();
         }
 
-        public BitcoinBasedTransaction CreatePaymentTx(
-            IEnumerable<BitcoinBasedTxOutput> unspentOutputs,
+        public BitcoinTransaction CreatePaymentTx(
+            IEnumerable<BitcoinTxOutput> unspentOutputs,
             string destinationAddress,
             string changeAddress,
             long amount,
@@ -162,8 +162,8 @@ namespace Atomex
                 knownRedeems: knownRedeems);
         }
 
-        public BitcoinBasedTransaction CreateP2PkhTx(
-            IEnumerable<BitcoinBasedTxOutput> unspentOutputs,
+        public BitcoinTransaction CreateP2PkhTx(
+            IEnumerable<BitcoinTxOutput> unspentOutputs,
             string destinationAddress,
             string changeAddress,
             long amount,
@@ -180,7 +180,7 @@ namespace Atomex
             var change = BitcoinAddress.Create(changeAddress, Network)
                 .ScriptPubKey;
 
-            return BitcoinBasedTransaction.CreateTransaction(
+            return BitcoinTransaction.CreateTransaction(
                 currency: this,
                 coins: coins,
                 destination: destination,
@@ -191,8 +191,8 @@ namespace Atomex
                 knownRedeems: knownRedeems);
         }
 
-        public BitcoinBasedTransaction CreateP2WPkhTx(
-            IEnumerable<BitcoinBasedTxOutput> unspentOutputs,
+        public BitcoinTransaction CreateP2WPkhTx(
+            IEnumerable<BitcoinTxOutput> unspentOutputs,
             string destinationAddress,
             string changeAddress,
             long amount,
@@ -208,7 +208,7 @@ namespace Atomex
             var change = new BitcoinWitPubKeyAddress(changeAddress, Network)
                 .ScriptPubKey;
 
-            return BitcoinBasedTransaction.CreateTransaction(
+            return BitcoinTransaction.CreateTransaction(
                 currency: this,
                 coins: coins,
                 destination: destination,
@@ -218,8 +218,8 @@ namespace Atomex
                 knownRedeems: knownRedeems);
         }
 
-        public virtual BitcoinBasedTransaction CreateHtlcP2PkhScriptSwapPaymentTx(
-            IEnumerable<BitcoinBasedTxOutput> unspentOutputs,
+        public virtual BitcoinTransaction CreateHtlcP2PkhScriptSwapPaymentTx(
+            IEnumerable<BitcoinTxOutput> unspentOutputs,
             string aliceRefundAddress,
             string bobAddress,
             DateTimeOffset lockTime,
@@ -232,7 +232,7 @@ namespace Atomex
             var coins = unspentOutputs
                 .Select(o => o.Coin);
 
-            var swap = BitcoinBasedSwapTemplate.GenerateHtlcP2PkhSwapPayment(
+            var swap = BitcoinSwapTemplate.GenerateHtlcP2PkhSwapPayment(
                 aliceRefundAddress: aliceRefundAddress,
                 bobAddress: bobAddress,
                 lockTimeStamp: lockTime.ToUnixTimeSeconds(),
@@ -245,7 +245,7 @@ namespace Atomex
             var change = BitcoinAddress.Create(aliceRefundAddress, Network)
                 .ScriptPubKey;
 
-            return BitcoinBasedTransaction.CreateTransaction(
+            return BitcoinTransaction.CreateTransaction(
                 currency: this,
                 coins: coins,
                 destination: swap.PaymentScript,

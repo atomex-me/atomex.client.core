@@ -6,7 +6,7 @@ using NBitcoin;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
@@ -15,7 +15,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
 {
     public class BitcoinBasedSwapInitiatedHelper
     {
-        public static async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public static async Task<Result<ITransaction>> TryToFindPaymentAsync(
             Swap swap,
             CurrencyConfig currency,
             Side side,
@@ -36,7 +36,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
 
                 var redeemScript = refundAddress == null && redeemScriptBase64 != null
                     ? new Script(Convert.FromBase64String(redeemScriptBase64))
-                    : BitcoinBasedSwapTemplate
+                    : BitcoinSwapTemplate
                         .GenerateHtlcP2PkhSwapPayment(
                             aliceRefundAddress: refundAddress,
                             bobAddress: toAddress,
@@ -50,7 +50,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                     .GetDestinationAddress(bitcoinBased.Network)
                     .ToString();
 
-                var api = bitcoinBased.BlockchainApi as BitcoinBasedBlockchainApi;
+                var api = bitcoinBased.BlockchainApi as BitcoinBlockchainApi;
 
                 var outputsResult = await api
                     .GetOutputsAsync(redeemScriptAddress, null, cancellationToken)
@@ -64,7 +64,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
 
                 foreach (var output in outputsResult.Value)
                 {
-                    var o = output as BitcoinBasedTxOutput;
+                    var o = output as BitcoinTxOutput;
 
                     var outputScriptHex = o.Coin.TxOut.ScriptPubKey.ToHex();
 
@@ -87,10 +87,10 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                     if (txResult.Value == null)
                         continue;
 
-                    return txResult.Value as BitcoinBasedTransaction;
+                    return txResult.Value as BitcoinTransaction;
                 }
 
-                return new Result<IBlockchainTransaction>((BitcoinBasedTransaction)null);
+                return new Result<ITransaction>((BitcoinTransaction)null);
             }
             catch (Exception e)
             {

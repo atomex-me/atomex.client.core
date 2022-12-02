@@ -15,14 +15,6 @@ namespace Atomex.Blockchain.Tezos
             int? fromLevel = null,
             CancellationToken cancellationToken = default);
 
-        Task<Result<IEnumerable<TezosTransaction>>> TryGetTransactionsAsync(
-            string address,
-            DateTimeOffset? fromTimeStamp = null,
-            int? fromLevel = null,
-            int attempts = 10,
-            int attemptsIntervalMs = 1000,
-            CancellationToken cancellationToken = default);
-
         Task<Result<bool>> IsRevealedAsync(
             string address,
             CancellationToken cancellationToken = default);
@@ -31,14 +23,6 @@ namespace Atomex.Blockchain.Tezos
             string from,
             string to,
             string parameters,
-            CancellationToken cancellationToken = default);
-
-        Task<Result<IEnumerable<TezosTransaction>>> TryGetTransactionsAsync(
-            string from,
-            string to,
-            string parameters,
-            int attempts = 10,
-            int attemptsIntervalMs = 1000,
             CancellationToken cancellationToken = default);
     }
 }

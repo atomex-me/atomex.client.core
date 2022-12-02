@@ -274,7 +274,7 @@ namespace Atomex.Swaps.Tezos
                 GasLimit     = xtzConfig.RedeemGasLimit,
                 StorageLimit = xtzConfig.RedeemStorageLimit,
                 Params       = CreateRedeemParams(swap),
-                Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
+                Type         = TransactionType.Output | TransactionType.SwapRedeem,
 
                 UseRun              = true,
                 UseSafeStorageLimit = true,
@@ -394,7 +394,7 @@ namespace Atomex.Swaps.Tezos
                 GasLimit     = xtzConfig.RedeemGasLimit,
                 StorageLimit = xtzConfig.RedeemStorageLimit,
                 Params       = CreateRedeemParams(swap),
-                Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRedeem,
+                Type         = TransactionType.Output | TransactionType.SwapRedeem,
 
                 UseRun              = true,
                 UseSafeStorageLimit = true,
@@ -507,7 +507,7 @@ namespace Atomex.Swaps.Tezos
                 GasLimit     = xtzConfig.RefundGasLimit,
                 StorageLimit = xtzConfig.RefundStorageLimit,
                 Params       = CreateRefundParams(swap),
-                Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapRefund,
+                Type         = TransactionType.Output | TransactionType.SwapRefund,
 
                 UseRun              = true,
                 UseSafeStorageLimit = true,
@@ -621,7 +621,7 @@ namespace Atomex.Swaps.Tezos
             return Task.CompletedTask;
         }
 
-        public override async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public override async Task<Result<ITransaction>> TryToFindPaymentAsync(
             Swap swap,
             CancellationToken cancellationToken = default)
         {
@@ -794,7 +794,7 @@ namespace Atomex.Swaps.Tezos
                 GasLimit     = xtzConfig.InitiateGasLimit,
                 StorageLimit = xtzConfig.InitiateStorageLimit,
                 Params       = CreateInitParams(swap, refundTimeStampUtcInSec, (long)rewardForRedeemInMtz),
-                Type         = BlockchainTransactionType.Output | BlockchainTransactionType.SwapPayment,
+                Type         = TransactionType.Output | TransactionType.SwapPayment,
 
                 UseRun              = true,
                 UseSafeStorageLimit = true,
