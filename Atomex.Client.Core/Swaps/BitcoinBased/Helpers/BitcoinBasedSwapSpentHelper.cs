@@ -5,8 +5,6 @@ using System.Threading.Tasks;
 
 using NBitcoin;
 using Serilog;
-
-using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Bitcoin.Helpers;
 using Atomex.Common;
@@ -22,7 +20,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
             CurrencyConfig currency,
             DateTime refundTimeUtc,
             TimeSpan interval,
-            Func<Swap, ITxPoint, CancellationToken, Task> completionHandler = null,
+            Func<Swap, BitcoinTxPoint, CancellationToken, Task> completionHandler = null,
             Func<Swap, CancellationToken, Task> refundTimeReachedHandler = null,
             CancellationToken cancellationToken = default)
         {

@@ -106,7 +106,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (nonceError != null)
-                return nonceError.Value;
+                return nonceError;
 
             TransactionInput txInput;
 
@@ -146,7 +146,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (broadcastError != null)
-                return broadcastError.Value;
+                return broadcastError;
 
             if (txId == null)
                 return new Error(

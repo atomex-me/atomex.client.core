@@ -1,11 +1,23 @@
 ﻿using NBitcoin;
 
-using Atomex.Blockchain.Bitcoin;
-
-namespace Atomex.Common
+namespace Atomex.Blockchain.Bitcoin.Common
 {
     public static class CoinExtensions
     {
+        public static string? GetAddressOrDefault(this Coin coin, Network network)
+        {
+            try
+            {
+                return coin.ScriptPubKey
+                    .GetDestinationAddress(network)
+                    .ToString();
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public static BitcoinOutputType GetOutputType(this Coin coin)
         {
             if (coin.ScriptPubKey.IsScriptType(ScriptType.P2PKH))

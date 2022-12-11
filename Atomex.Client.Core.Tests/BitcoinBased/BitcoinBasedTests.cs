@@ -269,7 +269,7 @@ namespace Atomex.Client.Core.Tests
         {
             var tx = SignHtlcP2PkhScriptSwapRedeemTx(currency);
 
-            var data = (tx.Inputs.First() as BitcoinTxPoint)
+            var data = (tx.Inputs.First() as BitcoinTxPoint_OLD)
                 .ExtractAllPushData();
 
             var secret = data.FirstOrDefault(d => d.SequenceEqual(Common.Secret));

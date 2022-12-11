@@ -305,7 +305,7 @@ namespace Atomex.Wallet.Ethereum
             }
 
             var (txs, getTxsError) = await ((IEthereumBlockchainApi)api)
-                .TryGetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
+                .GetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (getTxsError != null)

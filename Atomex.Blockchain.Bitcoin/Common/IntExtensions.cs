@@ -1,4 +1,4 @@
-﻿namespace Atomex.Common
+﻿namespace Atomex.Blockchain.Bitcoin.Common
 {
     public static class IntExtensions
     {

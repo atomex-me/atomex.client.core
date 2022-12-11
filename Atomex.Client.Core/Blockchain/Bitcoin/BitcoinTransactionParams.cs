@@ -8,6 +8,7 @@ using NBitcoin;
 
 using Atomex.Common;
 using Atomex.Wallet.BitcoinBased;
+using Atomex.Blockchain.Bitcoin.Common;
 
 namespace Atomex.Blockchain.Bitcoin
 {

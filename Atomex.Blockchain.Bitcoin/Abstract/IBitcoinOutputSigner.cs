@@ -1,6 +1,6 @@
 ﻿using NBitcoin;
 
-namespace Atomex.Blockchain.Abstract
+namespace Atomex.Blockchain.Bitcoin.Abstract
 {
     public interface IBitcoinOutputSigner
     {

@@ -4,8 +4,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Serilog;
-
-using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 
@@ -13,7 +11,7 @@ namespace Atomex.Blockchain.Bitcoin.Helpers
 {
     public static class BitcoinSpentPointHelper
     {
-        public static async Task<Result<ITxPoint>> GetSpentPointAsync(
+        public static async Task<Result<BitcoinTxPoint>> GetSpentPointAsync(
             this CurrencyConfig currency, 
             string hash,
             uint index,
@@ -34,7 +32,7 @@ namespace Atomex.Blockchain.Bitcoin.Helpers
                 if (result.HasError)
                 {
                     if (result.Error.Code == (int)HttpStatusCode.NotFound)
-                        return new Result<ITxPoint>((ITxPoint)null);
+                        return new Result<BitcoinTxPoint>((BitcoinTxPoint)null);
 
                     Log.Error(
                         "Error while get spent point for {@currency} tx output {@hash}:{@index}. Code: {@code}. Description {@desc}.",

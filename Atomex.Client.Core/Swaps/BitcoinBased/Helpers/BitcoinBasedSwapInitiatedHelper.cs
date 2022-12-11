@@ -53,7 +53,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                 var api = bitcoinBased.BlockchainApi as BitcoinBlockchainApi;
 
                 var outputsResult = await api
-                    .GetOutputsAsync(redeemScriptAddress, null, cancellationToken)
+                    .GetOutputsAsync(redeemScriptAddress, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (outputsResult == null)

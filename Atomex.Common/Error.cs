@@ -49,6 +49,11 @@ namespace Atomex.Common
         public const int InvalidConnection = 1009;
         public const int InvalidRewardForRedeem = 1010;
 
+        public const int GetBalanceError = 1100;
+        public const int GetTransactionError = 1101;
+        public const int GetOutputsError = 1102;
+        public const int GetInputError = 1103;
+
         public const int TransactionCreationError = 2000;
         public const int TransactionSigningError = 2001;
         public const int TransactionVerificationError = 2002;

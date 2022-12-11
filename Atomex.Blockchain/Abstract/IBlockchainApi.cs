@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Common;
@@ -13,7 +14,7 @@ namespace Atomex.Blockchain.Abstract
         /// <param name="address">Address</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Balance if success, otherwise error</returns>
-        Task<Result<decimal>> GetBalanceAsync(
+        Task<Result<BigInteger>> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default);
 

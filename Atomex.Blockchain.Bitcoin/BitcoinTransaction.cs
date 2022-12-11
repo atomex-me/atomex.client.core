@@ -7,6 +7,7 @@ using NBitcoin;
 using NBitcoin.Policy;
 
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Bitcoin.Common;
 using Atomex.Common;
 
 namespace Atomex.Blockchain.Bitcoin
@@ -14,7 +15,6 @@ namespace Atomex.Blockchain.Bitcoin
     public class BitcoinTransaction : ITransaction
     {
         private readonly Transaction _tx;
-
         public string Id => _tx.GetHash().ToString();
         public string Currency { get; }
         public TransactionStatus Status { get; }
@@ -26,14 +26,30 @@ namespace Atomex.Blockchain.Bitcoin
         public DateTime LockTime => _tx.LockTime.Date.UtcDateTime;
         public BigInteger ResolvedAmount { get; set; }
         public BigInteger ResolvedFee { get; }
-        public BitcoinTxPoint[] Inputs => _tx.Inputs
+        public BitcoinTxInput[] Inputs => _tx.Inputs
             .AsIndexedInputs()
-            .Select(i => new BitcoinTxPoint(i))
+            .Select(i => new BitcoinTxInput
+            {
+                Index = i.Index,
+                PreviousOutput = new BitcoinTxPoint
+                {
+                    Index = i.PrevOut.N,
+                    Hash = i.PrevOut.Hash.ToBytes().ToHexString()
+                },
+                ScriptSig = i.ScriptSig.ToHex(),
+            })
             .ToArray();
 
         public BitcoinTxOutput[] Outputs => _tx.Outputs
             .AsCoins()
-            .Select(c => new BitcoinTxOutput(c))
+            .Select(c => new BitcoinTxOutput
+            {
+                Coin = c,
+                Currency = Currency,
+                SpentTxPoints = null,
+                IsConfirmed = Confirmations > 0,
+                IsSpentConfirmed = false
+            })
             .ToArray();
 
         public BitcoinTransaction(
@@ -62,18 +78,18 @@ namespace Atomex.Blockchain.Bitcoin
         public void Sign(
             Key privateKey,
             BitcoinTxOutput spentOutput,
-            BitcoinBasedConfig bitcoinBasedConfig)
+            Network network)
         {
-            _tx.Sign(new BitcoinSecret(privateKey, bitcoinBasedConfig.Network), spentOutput.Coin);
+            _tx.Sign(new BitcoinSecret(privateKey, network), spentOutput.Coin);
         }
 
         public void Sign(
             Key privateKey,
             BitcoinTxOutput[] spentOutputs,
-            BitcoinBasedConfig bitcoinBasedConfig)
+            Network network)
         {
             foreach (var output in spentOutputs)
-                Sign(privateKey, output, bitcoinBasedConfig);
+                Sign(privateKey, output, network);
         }
 
         public void SetSignature(Script sigScript, BitcoinTxOutput spentOutput)
@@ -102,10 +118,10 @@ namespace Atomex.Blockchain.Bitcoin
 
         public bool Verify(
             BitcoinTxOutput spentOutput,
-            BitcoinBasedConfig bitcoinBasedConfig,
+            Network network,
             bool checkScriptPubKey = true)
         {
-            var result = bitcoinBasedConfig.Network.CreateTransactionBuilder()
+            var result = network.CreateTransactionBuilder()
                 .SetTransactionPolicy(new StandardTransactionPolicy
                 {
                     CheckScriptPubKey = checkScriptPubKey,
@@ -120,10 +136,10 @@ namespace Atomex.Blockchain.Bitcoin
         public bool Verify(
             BitcoinTxOutput spentOutput,
             out Error[] errors,
-            BitcoinBasedConfig bitcoinBasedConfig,
+            Network network,
             bool checkScriptPubKey = true)
         {
-            var result = bitcoinBasedConfig.Network.CreateTransactionBuilder()
+            var result = network.CreateTransactionBuilder()
                 .SetTransactionPolicy(new StandardTransactionPolicy
                 {
                     CheckScriptPubKey = checkScriptPubKey,
@@ -141,10 +157,10 @@ namespace Atomex.Blockchain.Bitcoin
 
         public bool Verify(
             IEnumerable<BitcoinTxOutput> spentOutputs,
-            BitcoinBasedConfig bitcoinBasedConfig,
+            Network network,
             bool checkScriptPubKey = true)
         {
-            var result = bitcoinBasedConfig.Network.CreateTransactionBuilder()
+            var result = network.CreateTransactionBuilder()
                 .SetTransactionPolicy(new StandardTransactionPolicy
                 {
                     CheckScriptPubKey = checkScriptPubKey,
@@ -161,10 +177,10 @@ namespace Atomex.Blockchain.Bitcoin
         public bool Verify(
             IEnumerable<BitcoinTxOutput> spentOutputs,
             out Error[] errors,
-            BitcoinBasedConfig bitcoinBasedConfig,
+            Network network,
             bool checkScriptPubKey = true)
         {
-            var result = bitcoinBasedConfig.Network.CreateTransactionBuilder()
+            var result = network.CreateTransactionBuilder()
                 .SetTransactionPolicy(new StandardTransactionPolicy
                 {
                     CheckScriptPubKey = checkScriptPubKey,
@@ -198,7 +214,7 @@ namespace Atomex.Blockchain.Bitcoin
 
         public byte[] GetSignatureHash(
             BitcoinTxOutput output,
-            Script redeemScript = null,
+            Script? redeemScript = null,
             SigHash sigHash = SigHash.All)
         {
             var coin = redeemScript == null
@@ -222,8 +238,8 @@ namespace Atomex.Blockchain.Bitcoin
                 .ToBytes();
         }
 
-        public byte[] ToBytes() =>
-            _tx.ToBytes();
+        public byte[] ToBytes() => _tx.ToBytes();
+        public string ToHex() => _tx.ToHex();
 
         public void SetSequenceNumber(uint sequenceNumber)
         {
@@ -235,12 +251,13 @@ namespace Atomex.Blockchain.Bitcoin
             _tx.Inputs[inputIndex].Sequence.Value;
 
         public static BitcoinTransaction CreateTransaction(
-            BitcoinBasedConfig currency,
+            string currency,
             IEnumerable<ICoin> coins,
             Script destination,
             Script change,
             long amount,
             long fee,
+            Network network,
             params Script[] knownRedeems)
         {
             return CreateTransaction(
@@ -251,20 +268,22 @@ namespace Atomex.Blockchain.Bitcoin
                 amount: amount,
                 fee: fee,
                 lockTime: DateTimeOffset.MinValue,
+                network: network,
                 knownRedeems: knownRedeems);
         }
 
         public static BitcoinTransaction CreateTransaction(
-            BitcoinBasedConfig currency,
+            string currency,
             IEnumerable<ICoin> coins,
             Script destination,
             Script change,
             long amount,
             long fee,
             DateTimeOffset lockTime,
+            Network network,
             params Script[] knownRedeems)
         {
-            var tx = currency.Network.CreateTransactionBuilder()
+            var tx = network.CreateTransactionBuilder()
                 .SetDustPrevention(false)
                 .SetOptInRBF(true)
                 .AddCoins(coins)
@@ -278,7 +297,7 @@ namespace Atomex.Blockchain.Bitcoin
                 .BuildTransaction(false);
 
             return new BitcoinTransaction(
-                currency: currency.Name,
+                currency: currency,
                 tx: tx,
                 creationTime: DateTimeOffset.UtcNow,
                 fee: (long)tx.GetFee(coins.ToArray()).ToUnit(MoneyUnit.Satoshi));

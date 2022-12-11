@@ -145,11 +145,11 @@ namespace Atomex.Wallet.Tezos
                     message: "Transaction signing error");
 
             var (txId, error) = await xtzConfig.BlockchainApi
-                .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
+                .BroadcastAsync(tx, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)
-                return error.Value;
+                return error;
 
             if (txId == null)
                 return new Error(

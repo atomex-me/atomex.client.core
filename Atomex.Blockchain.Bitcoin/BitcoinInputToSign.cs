@@ -2,8 +2,8 @@
 
 using NBitcoin;
 
-using Atomex.Blockchain.Abstract;
-using Atomex.Common;
+using Atomex.Blockchain.Bitcoin.Abstract;
+using Atomex.Blockchain.Bitcoin.Common;
 
 namespace Atomex.Blockchain.Bitcoin
 {
@@ -34,9 +34,8 @@ namespace Atomex.Blockchain.Bitcoin
         /// </summary>
         public uint Sequence { get; set; }
 
-        public virtual Script CreateSignatureScript(byte[] signature, byte[] publicKey)
-        {
-            return Output.Type switch
+        public virtual Script CreateSignatureScript(byte[] signature, byte[] publicKey) =>
+            Output.Type switch
             {
                 BitcoinOutputType.P2PKH => PayToPubkeyHashTemplate.Instance.GenerateScriptSig(
                     signature: new TransactionSignature(signature, SigHash),
@@ -52,7 +51,6 @@ namespace Atomex.Blockchain.Bitcoin
                 _ => Signer?.CreateSignatureScript(signature, publicKey, KnownRedeemScript)
                     ?? throw new Exception("Signer not specified for P2SH or P2WSH output.")
             };
-        }
 
         public virtual int SizeWithSignature()
         {

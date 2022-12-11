@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+
 using NBitcoin;
 
 namespace Atomex.Blockchain.Bitcoin
@@ -228,7 +229,7 @@ namespace Atomex.Blockchain.Bitcoin
             if (ops.Count < 5)
                 return false;
 
-            return ops[ops.Count - 2].Code == OpcodeType.OP_FALSE;
+            return ops[^2].Code == OpcodeType.OP_FALSE;
         }
 
         /// <summary>
@@ -258,7 +259,7 @@ namespace Atomex.Blockchain.Bitcoin
             if (ops.Count < 4)
                 return false;
 
-            return ops[ops.Count - 2].Code != OpcodeType.OP_FALSE;
+            return ops[^2].Code != OpcodeType.OP_FALSE;
         }
 
         public static IEnumerable<byte[]> ExtractAllPushData(Script script) => script

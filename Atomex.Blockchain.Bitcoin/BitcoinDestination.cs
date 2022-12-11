@@ -1,13 +1,15 @@
-﻿using NBitcoin;
+﻿using System.Numerics;
 
-using Atomex.Common;
+using NBitcoin;
+
+using Atomex.Blockchain.Bitcoin.Common;
 
 namespace Atomex.Blockchain.Bitcoin
 {
-    public class BitcoinDestination
+    public record BitcoinDestination
     {
-        public Script Script { get; set; }
-        public decimal AmountInSatoshi { get; set; }
+        public Script Script { get; init; }
+        public BigInteger AmountInSatoshi { get; init; }
 
         public int Size()
         {
