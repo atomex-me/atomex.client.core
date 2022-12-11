@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 
 using NBitcoin;
 using Serilog;
+
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Bitcoin.Helpers;
 using Atomex.Common;
@@ -70,17 +71,17 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                     {
                         Log.Debug("Output spent control for {@currency} swap {@swapId}", currency.Name, swap.Id);
 
-                        var result = await currency
+                        var (spentPoint, error) = await currency
                             .GetSpentPointAsync(
                                 hash: swap.PaymentTxId,
                                 index: swapOutput.Index,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (result != null && !result.HasError && result.Value != null)
+                        if (error == null && spentPoint != null)
                         {
                             await completionHandler
-                                .Invoke(swap, result.Value, cancellationToken)
+                                .Invoke(swap, spentPoint, cancellationToken)
                                 .ConfigureAwait(false);
 
                             break;

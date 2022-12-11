@@ -201,7 +201,7 @@ namespace Atomex.Swaps.Tezos.Fa12
         {
             var fa12 = Fa12Config;
             
-            var secretResult = await Fa12SwapRedeemedHelper
+            var (secret, error) = await Fa12SwapRedeemedHelper
                 .IsRedeemedAsync(
                     swap: swap,
                     currency: fa12,
@@ -211,7 +211,7 @@ namespace Atomex.Swaps.Tezos.Fa12
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (!secretResult.HasError && secretResult.Value != null)
+            if (error == null && secret != null)
             {
                 await RedeemConfirmedEventHandler(swap, null, cancellationToken)
                     .ConfigureAwait(false);
@@ -239,13 +239,11 @@ namespace Atomex.Swaps.Tezos.Fa12
             if (swap.IsAcceptor &&
                 swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultInitiatorLockTimeInSeconds) < DateTime.UtcNow)
             {
-                var isRefundedByParty = await Fa12SwapRefundedHelper
+                var (isRefundedByParty, isRefundedError) = await Fa12SwapRefundedHelper
                     .IsRefundedAsync(swap, fa12, XtzConfig, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (isRefundedByParty != null &&
-                    !isRefundedByParty.HasError &&
-                    isRefundedByParty.Value)
+                if (isRefundedError == null && isRefundedByParty)
                 {
                     swap.StateFlags |= SwapStateFlags.IsUnsettled;
 
@@ -668,7 +666,7 @@ namespace Atomex.Swaps.Tezos.Fa12
 
             try
             {
-                var isRefundedResult = await Fa12SwapRefundedHelper.IsRefundedAsync(
+                var (isRefunded, error) = await Fa12SwapRefundedHelper.IsRefundedAsync(
                         swap: swap,
                         currency: Fa12Config,
                         tezos: XtzConfig,
@@ -677,9 +675,9 @@ namespace Atomex.Swaps.Tezos.Fa12
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (!isRefundedResult.HasError)
+                if (error == null)
                 {
-                    if (isRefundedResult.Value)
+                    if (isRefunded)
                     {
                         await RefundConfirmedEventHandler(swap, swap.RefundTx, cancellationToken)
                             .ConfigureAwait(false);
@@ -899,8 +897,8 @@ namespace Atomex.Swaps.Tezos.Fa12
             var fa12 = Fa12Config;
             var fa12Api = fa12.BlockchainApi as ITokenBlockchainApi;
 
-            var allowanceResult = await fa12Api
-                .TryGetFa12AllowanceAsync(
+            var (allowance, error) = await fa12Api
+                .GetFa12AllowanceAsync(
                     holderAddress: walletAddress.Address,
                     spenderAddress: fa12.SwapContractAddress,
                     callingAddress: walletAddress.Address,
@@ -908,21 +906,21 @@ namespace Atomex.Swaps.Tezos.Fa12
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (allowanceResult.HasError)
+            if (error != null)
             {
-                Log.Error("Error while getting token allowance for {@address} with code {@code} and description {@description}",
+                Log.Error("Error while getting token allowance for {@address} with code {@code} and message {@message}",
                     walletAddress.Address,
-                    allowanceResult.Error.Code,
-                    allowanceResult.Error.Description);
+                    error.Value.Code,
+                    error.Value.Message);
 
                 return null; // todo: maybe add approve 0
             }
 
             var transactions = new List<TezosTransaction>();
 
-            Log.Debug("Allowance: {@allowance}", allowanceResult.Value);
+            Log.Debug("Allowance: {@allowance}", allowance);
 
-            if (allowanceResult.Value > 0)
+            if (allowance > 0)
             {
                 transactions.Add(new TezosTransaction
                 {
@@ -974,14 +972,12 @@ namespace Atomex.Swaps.Tezos.Fa12
             TezosTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            var broadcastResult = await XtzConfig.BlockchainApi
-                .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
+            var (txId, error) = await XtzConfig.BlockchainApi
+                .BroadcastAsync(tx, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (broadcastResult.HasError)
-                throw new Exception($"Error while broadcast transaction with code {broadcastResult.Error.Code} and description {broadcastResult.Error.Description}");
-
-            var txId = broadcastResult.Value;
+            if (error != null)
+                throw new Exception($"Error while broadcast transaction with code {error.Value.Code} and message {error.Value.Message}");
 
             if (txId == null)
                 throw new Exception("Transaction Id is null");

@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Wallet.Abstract;
+
 using Serilog;
+
+using Atomex.Wallet.Abstract;
 
 namespace Atomex.Swaps.Helpers
 {

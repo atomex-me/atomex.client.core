@@ -52,45 +52,40 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
 
                 var api = bitcoinBased.BlockchainApi as BitcoinBlockchainApi;
 
-                var outputsResult = await api
+                var (outputs, error) = await api
                     .GetOutputsAsync(redeemScriptAddress, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (outputsResult == null)
+                if (error != null)
+                    return error;
+
+                if (outputs == null)
                     return new Error(Errors.RequestError, $"Connection error while getting outputs for {redeemScriptAddress} address");
 
-                if (outputsResult.HasError)
-                    return outputsResult.Error;
-
-                foreach (var output in outputsResult.Value)
+                foreach (var output in outputs)
                 {
-                    var o = output as BitcoinTxOutput;
-
-                    var outputScriptHex = o.Coin.TxOut.ScriptPubKey.ToHex();
+                    var outputScriptHex = output.Coin.TxOut.ScriptPubKey.ToHex();
 
                     if (redeemScript.PaymentScript.ToHex() != outputScriptHex)
                         continue;
 
-                    if (o.Value < requiredAmountInSatoshi)
+                    if (output.Value < requiredAmountInSatoshi)
                         continue;
 
-                    var txResult = await api
-                        .GetTransactionAsync(o.TxId, cancellationToken)
+                    var (tx, txError) = await api
+                        .GetTransactionAsync(output.TxId, cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (txResult == null)
-                        return new Error(Errors.RequestError, $"Connection error while getting tx {o.TxId}");
+                    if (txError != null)
+                        return txError;
 
-                    if (txResult.HasError)
-                        return txResult.Error;
-
-                    if (txResult.Value == null)
+                    if (tx == null)
                         continue;
 
-                    return txResult.Value as BitcoinTransaction;
+                    return tx as BitcoinTransaction;
                 }
 
-                return new Result<ITransaction>((BitcoinTransaction)null);
+                return new Result<ITransaction> { Value = null };
             }
             catch (Exception e)
             {
@@ -114,7 +109,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
                     .Opposite();
 
-                var txResult = await TryToFindPaymentAsync(
+                var (tx, error) = await TryToFindPaymentAsync(
                         swap: swap,
                         currency: currency,
                         side: side,
@@ -125,16 +120,13 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (txResult == null)
-                    return new Error(Errors.RequestError, $"Connection error while getting payment tx");
+                if (error != null)
+                    return error;
 
-                if (txResult.HasError)
-                    return txResult.Error;
-
-                if (txResult.Value == null)
+                if (tx == null)
                     return false;
 
-                return txResult.Value.IsConfirmed;
+                return tx.IsConfirmed;
             }
             catch (Exception e)
             {
@@ -170,21 +162,22 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                             break;
                         }
 
-                        var isInitiatedResult = await IsInitiatedAsync(
+                        var (isInitiated, error) = await IsInitiatedAsync(
                                 swap: swap,
                                 currency: currency,
                                 refundTimeStamp: refundTimeStamp,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (isInitiatedResult.HasError)
+                        if (error != null)
+                        {
                             Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
                                 currency.Name,
                                 swap.Id,
-                                isInitiatedResult.Error.Code,
-                                isInitiatedResult.Error.Description);
-
-                        if (!isInitiatedResult.HasError && isInitiatedResult.Value)
+                                error.Value.Code,
+                                error.Value.Message);
+                        }
+                        else if (error == null && isInitiated)
                         {
                             await initiatedHandler
                                 .Invoke(swap, cancellationToken)

@@ -77,20 +77,20 @@ namespace Atomex.Swaps.Ethereum
                     {
                         var isInitiateTx = tx.Type.HasFlag(TransactionType.SwapPayment);
 
-                        var nonceResult = await EthereumNonceManager.Instance
+                        var (nonce, error) = await EthereumNonceManager.Instance
                             .GetNonceAsync(Erc20Config, tx.From, pending: true, cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (nonceResult.HasError)
+                        if (error != null)
                         {
-                            Log.Error("Nonce getting error with code {@code} and description {@description}",
-                                nonceResult.Error.Code,
-                                nonceResult.Error.Description);
+                            Log.Error("Nonce getting error with code {@code} and message {@message}",
+                                error.Value.Code,
+                                error.Value.Message);
 
                             return;
                         }
 
-                        tx.Nonce = nonceResult.Value;
+                        tx.Nonce = nonce;
 
                         var signResult = await EthereumAccount
                             .SignAsync(tx, cancellationToken)
@@ -188,7 +188,7 @@ namespace Atomex.Swaps.Ethereum
         {
             var erc20Config = Erc20Config;
 
-            var secretResult = await Erc20SwapRedeemedHelper
+            var (secret, error) = await Erc20SwapRedeemedHelper
                 .IsRedeemedAsync(
                     swap: swap,
                     currency: erc20Config,
@@ -197,7 +197,7 @@ namespace Atomex.Swaps.Ethereum
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (!secretResult.HasError && secretResult.Value != null)
+            if (error == null && secret != null)
             {
                 await RedeemConfirmedEventHandler(swap, null, cancellationToken)
                     .ConfigureAwait(false);
@@ -261,15 +261,15 @@ namespace Atomex.Swaps.Ethereum
                     .LockAsync(walletAddress.Address, cancellationToken)
                     .ConfigureAwait(false);
 
-                var nonceResult = await EthereumNonceManager.Instance
+                var (nonce, nonceError) = await EthereumNonceManager.Instance
                     .GetNonceAsync(erc20Config, walletAddress.Address, pending: true, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (nonceResult.HasError)
+                if (nonceError != null)
                 {
-                    Log.Error("Nonce getting error with code {@code} and description {@description}",
-                        nonceResult.Error.Code,
-                        nonceResult.Error.Description);
+                    Log.Error("Nonce getting error with code {@code} and message {@message}",
+                        nonceError.Value.Code,
+                        nonceError.Value.Message);
 
                     return;
                 }
@@ -279,7 +279,7 @@ namespace Atomex.Swaps.Ethereum
                     FromAddress  = walletAddress.Address,
                     HashedSecret = swap.SecretHash,
                     Secret       = swap.Secret,
-                    Nonce        = nonceResult.Value,
+                    Nonce        = nonce,
                     GasPrice     = EthereumConfig.GweiToWei(gasPrice),
                 };
 
@@ -380,15 +380,15 @@ namespace Atomex.Swaps.Ethereum
                 .GetLockAsync(walletAddress.Address, cancellationToken)
                 .ConfigureAwait(false);
 
-            var nonceResult = await EthereumNonceManager.Instance
+            var (nonce, error) = await EthereumNonceManager.Instance
                 .GetNonceAsync(erc20Config, walletAddress.Address, pending: true, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (nonceResult.HasError)
+            if (error != null)
             {
-                Log.Error("Nonce getting error with code {@code} and description {@description}",
-                    nonceResult.Error.Code,
-                    nonceResult.Error.Description);
+                Log.Error("Nonce getting error with code {@code} and message {@message}",
+                    error.Value.Code,
+                    error.Value.Message);
 
                 return;
             }
@@ -398,7 +398,7 @@ namespace Atomex.Swaps.Ethereum
                 FromAddress  = walletAddress.Address,
                 HashedSecret = swap.SecretHash,
                 Secret       = swap.Secret,
-                Nonce        = nonceResult.Value,
+                Nonce        = nonce,
                 GasPrice     = EthereumConfig.GweiToWei(gasPrice),
             };
 
@@ -459,11 +459,11 @@ namespace Atomex.Swaps.Ethereum
             // check swap initiation
             try
             {
-                var txResult = await Erc20SwapInitiatedHelper
+                var (tx, error) = await Erc20SwapInitiatedHelper
                     .TryToFindPaymentAsync(swap, erc20Config, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (!txResult.HasError && txResult.Value == null)
+                if (error == null && tx == null)
                 {
                     // swap not initiated and must be canceled
                     swap.StateFlags |= SwapStateFlags.IsCanceled;
@@ -511,15 +511,15 @@ namespace Atomex.Swaps.Ethereum
                     .LockAsync(walletAddress.Address, cancellationToken)
                     .ConfigureAwait(false);
 
-                var nonceResult = await EthereumNonceManager.Instance
+                var (nonce, error) = await EthereumNonceManager.Instance
                     .GetNonceAsync(erc20Config, walletAddress.Address, pending: true, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (nonceResult.HasError)
+                if (error != null)
                 {
-                    Log.Error("Nonce getting error with code {@code} and description {@description}",
-                        nonceResult.Error.Code,
-                        nonceResult.Error.Description);
+                    Log.Error("Nonce getting error with code {@code} and message {@message}",
+                        error.Value.Code,
+                        error.Value.Message);
 
                     return;
                 }
@@ -529,7 +529,7 @@ namespace Atomex.Swaps.Ethereum
                     FromAddress  = walletAddress.Address,
                     HashedSecret = swap.SecretHash,
                     GasPrice     = EthereumConfig.GweiToWei(gasPrice),
-                    Nonce        = nonceResult.Value,
+                    Nonce        = nonce,
                 };
 
                 message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.RefundGasLimit))
@@ -651,7 +651,7 @@ namespace Atomex.Swaps.Ethereum
 
             try
             {
-                var isRefundedResult = await Erc20SwapRefundedHelper.IsRefundedAsync(
+                var (isRefunded, error) = await Erc20SwapRefundedHelper.IsRefundedAsync(
                         swap: swap,
                         currency: Erc20Config,
                         attempts: EthereumSwap.MaxRefundCheckAttempts,
@@ -659,9 +659,9 @@ namespace Atomex.Swaps.Ethereum
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (!isRefundedResult.HasError)
+                if (error == null)
                 {
-                    if (isRefundedResult.Value)
+                    if (isRefunded)
                     {
                         await RefundConfirmedEventHandler(swap, swap.RefundTx, cancellationToken)
                             .ConfigureAwait(false);
@@ -807,13 +807,13 @@ namespace Atomex.Swaps.Ethereum
                 erc20Config.DigitsMultiplier,
                 erc20Config.DustDigitsMultiplier);
 
-            var nonceResult = await ((IEthereumBlockchainApi)erc20Config.BlockchainApi)
+            var (nonce, error) = await ((IEthereumBlockchainApi)erc20Config.BlockchainApi)
                 .GetTransactionCountAsync(walletAddress.Address, pending: false, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (nonceResult.HasError)
+            if (error != null)
             {
-                Log.Error($"Getting nonce error: {nonceResult.Error.Description}");
+                Log.Error($"Getting nonce error: {error.Value.Message}");
                 return null;
             }
 
@@ -831,7 +831,7 @@ namespace Atomex.Swaps.Ethereum
                 Active          = true,
                 FromAddress     = walletAddress.Address,
                 GasPrice        = EthereumConfig.GweiToWei(gasPrice),
-                Nonce           = nonceResult.Value
+                Nonce           = nonce
             };
 
             var initiateGasLimit = rewardForRedeemInERC20 == 0
@@ -883,13 +883,13 @@ namespace Atomex.Swaps.Ethereum
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var nonceResult = await ((IEthereumBlockchainApi)erc20.BlockchainApi)
+            var (nonce, nonceError) = await ((IEthereumBlockchainApi)erc20.BlockchainApi)
                 .GetTransactionCountAsync(walletAddress.Address, pending: false, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (nonceResult.HasError)
+            if (nonceError != null)
             {
-                Log.Error($"Getting nonce error: {nonceResult.Error.Description}");
+                Log.Error($"Getting nonce error: {nonceError.Value.Message}");
                 return new List<EthereumTransaction>();
             }
 
@@ -897,7 +897,7 @@ namespace Atomex.Swaps.Ethereum
             {
                 var tx = await CreateApproveTx(
                         walletAddress: walletAddress.Address,
-                        nonce: nonceResult.Value,
+                        nonce: nonce,
                         value: 0,
                         gasPrice: gasPrice)
                     .ConfigureAwait(false);
@@ -915,7 +915,7 @@ namespace Atomex.Swaps.Ethereum
 
             var approveTx = await CreateApproveTx(
                     walletAddress: walletAddress.Address,
-                    nonce: nonceResult.Value,
+                    nonce: nonce,
                     value: erc20.TokensToTokenDigits(amountInErc20),
                     gasPrice: gasPrice)
                 .ConfigureAwait(false);
@@ -958,14 +958,12 @@ namespace Atomex.Swaps.Ethereum
             EthereumTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            var broadcastResult = await Erc20Config.BlockchainApi
+            var (txId, error) = await Erc20Config.BlockchainApi
                 .BroadcastAsync(tx, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (broadcastResult.HasError)
-                throw new InternalException(broadcastResult.Error);
-
-            var txId = broadcastResult.Value;
+            if (error != null)
+                throw new InternalException(error.Value);
 
             if (txId == null)
                 throw new Exception("Transaction Id is null");

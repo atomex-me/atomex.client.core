@@ -214,26 +214,26 @@ namespace Atomex.Blockchain.Ethereum.Erc20
             };
         }
 
-        //public static Erc20AddedEventDTO ParseErc20AddedEvent(
-        //    this EtherScanApi.ContractEvent contractEvent)
-        //{
-        //    var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<Erc20AddedEventDTO>();
+        public static Erc20AddedEventDTO ParseErc20AddedEvent(
+            this EtherScanApi.ContractEvent contractEvent)
+        {
+            var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<Erc20AddedEventDTO>();
 
-        //    if (contractEvent.Topics == null ||
-        //        contractEvent.Topics.Count != 2 ||
-        //        contractEvent.EventSignatureHash() != eventSignatureHash)
-        //        throw new Exception("Invalid contract event");
+            if (contractEvent.Topics == null ||
+                contractEvent.Topics.Count != 2 ||
+                contractEvent.EventSignatureHash() != eventSignatureHash)
+                throw new Exception("Invalid contract event");
 
-        //    var initiatorHex = contractEvent.HexData.Substring(PrefixOffset, TopicSizeInHex);
-        //    var valueHex = contractEvent.HexData.Substring(PrefixOffset + TopicSizeInHex, TopicSizeInHex);
+            var initiatorHex = contractEvent.HexData.Substring(PrefixOffset, TopicSizeInHex);
+            var valueHex = contractEvent.HexData.Substring(PrefixOffset + TopicSizeInHex, TopicSizeInHex);
 
-        //    return new Erc20AddedEventDTO
-        //    {
-        //        HashedSecret = Hex.FromString(contractEvent.Topics[1], true),
-        //        Initiator = $"0x{initiatorHex[^AddressLengthInHex..]}",
-        //        Value = new HexBigInteger(valueHex).Value
-        //    };
-        //}
+            return new Erc20AddedEventDTO
+            {
+                HashedSecret = Hex.FromString(contractEvent.Topics[1], true),
+                Initiator = $"0x{initiatorHex[^AddressLengthInHex..]}",
+                Value = new HexBigInteger(valueHex).Value
+            };
+        }
 
         //public static Erc20RedeemedEventDTO ParseErc20RedeemedEvent(
         //    this EtherScanApi.ContractEvent contractEvent)

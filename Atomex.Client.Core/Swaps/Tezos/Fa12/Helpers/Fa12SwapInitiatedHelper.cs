@@ -50,25 +50,25 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
 
             var api = fa12.BlockchainApi as ITezosBlockchainApi;
 
-            var txsResult = await api
-                .TryGetTransactionsAsync(
+            var (txs, error) = await api
+                .GetTransactionsAsync(
                     from: paymentTx.From,
                     to: fa12.SwapContractAddress,
                     parameters: parameters,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (txsResult == null)
+            if (error != null)
+                return error;
+
+            if (txs == null)
                 return new Error(Errors.RequestError, "Can't get Tezos swap contract transactions");
 
-            if (txsResult.HasError)
-                return txsResult.Error;
-
-            foreach (var tx in txsResult.Value)
+            foreach (var tx in txs)
                 if (tx.Status != TransactionStatus.Failed)
                     return tx;
 
-            return new Result<ITransaction>((ITransaction)null);
+            return new Result<ITransaction> { Value = null };
         }
 
         public static async Task<Result<bool>> IsInitiatedAsync(
@@ -104,26 +104,19 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
 
                 var blockchainApi = (ITezosBlockchainApi)tezos.BlockchainApi;
 
-                var txsResult = await blockchainApi
-                    .TryGetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
+                var (txs, error) = await blockchainApi
+                    .GetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (txsResult == null)
-                    return new Error(Errors.RequestError, $"Connection error while getting txs from contract {contractAddress}");
-
-                if (txsResult.HasError)
+                if (error != null)
                 {
                     Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Description: {@desc}",
                         contractAddress,
-                        txsResult.Error.Code,
-                        txsResult.Error.Description);
+                        error.Value.Code,
+                        error.Value.Message);
 
-                    return txsResult.Error;
+                    return error;
                 }
-
-                var txs = txsResult.Value
-                    ?.Cast<TezosTransaction>()
-                    .ToList();
 
                 if (txs == null || !txs.Any())
                     return false;
@@ -154,7 +147,7 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
 
                                 return new Error(
                                     code: Errors.InvalidRewardForRedeem,
-                                    description: $"Invalid redeem fee in initiated event. Expected value is {requiredRewardForRedeemInTokenDigits}, actual is {detectedRedeemFeeAmountInTokenDigits}");
+                                    message: $"Invalid redeem fee in initiated event. Expected value is {requiredRewardForRedeemInTokenDigits}, actual is {detectedRedeemFeeAmountInTokenDigits}");
                             }
 
                             if (detectedRefundTimestamp != refundTimeStamp)
@@ -166,7 +159,7 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
 
                                 return new Error(
                                     code: Errors.InvalidRewardForRedeem,
-                                    description: $"Invalid refund timestamp in initiated event. Expected value is {refundTimeStamp}, actual is {detectedRefundTimestamp}");
+                                    message: $"Invalid refund timestamp in initiated event. Expected value is {refundTimeStamp}, actual is {detectedRefundTimestamp}");
                             }
 
                             return true; // todo: check also token contract transfers
@@ -220,7 +213,7 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
                             break;
                         }
 
-                        var isInitiatedResult = await IsInitiatedAsync(
+                        var (isInitiated, error) = await IsInitiatedAsync(
                                 swap: swap,
                                 currency: currency,
                                 tezos: tezos,
@@ -228,14 +221,15 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (isInitiatedResult.HasError)
+                        if (error != null)
+                        {
                             Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
                                 currency.Name,
                                 swap.Id,
-                                isInitiatedResult.Error.Code,
-                                isInitiatedResult.Error.Description);
-
-                        if (!isInitiatedResult.HasError && isInitiatedResult.Value)
+                                error.Value.Code,
+                                error.Value.Message);
+                        }
+                        else if (error == null && isInitiated)
                         {
                             await initiatedHandler
                                 .Invoke(swap, cancellationToken)

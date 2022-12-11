@@ -258,7 +258,7 @@ namespace Atomex
 
         private async void AtomexClient_SwapReceived(object sender, SwapEventArgs e)
         {
-            var error = await SwapManager
+            var (_, error) = await SwapManager
                 .HandleSwapAsync(new Swap
                 {
                     Id                   = e.Swap.Id,
@@ -285,7 +285,7 @@ namespace Atomex
                 .ConfigureAwait(false);
 
             if (error != null)
-                Log.Error(error.Message);
+                Log.Error(error.Value.Message);
         }
 
         private void AtomexClient_SnapshotUpdated(object sender, SnapshotEventArgs e)

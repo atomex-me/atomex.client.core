@@ -30,26 +30,19 @@ namespace Atomex.Swaps.Tezos.Helpers
 
                 var blockchainApi = (ITezosBlockchainApi)tezos.BlockchainApi;
 
-                var txsResult = await blockchainApi
-                    .TryGetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
+                var (txs, error) = await blockchainApi
+                    .GetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (txsResult == null)
-                    return new Error(Errors.RequestError, $"Connection error while getting txs from contract {contractAddress}");
-
-                if (txsResult.HasError)
+                if (error != null)
                 {
                     Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Description: {@desc}",
                         contractAddress,
-                        txsResult.Error.Code,
-                        txsResult.Error.Description);
+                        error.Value.Code,
+                        error.Value.Message);
 
-                    return txsResult.Error;
+                    return error;
                 }
-
-                var txs = txsResult.Value
-                    ?.Cast<TezosTransaction>()
-                    .ToList();
 
                 if (txs != null)
                 {
@@ -99,17 +92,17 @@ namespace Atomex.Swaps.Tezos.Helpers
             {
                 ++attempt;
 
-                var isRedeemedResult = await IsRedeemedAsync(
+                var (secret, error) = await IsRedeemedAsync(
                         swap: swap,
                         currency: currency,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (isRedeemedResult.HasError && isRedeemedResult.Error.Code != Errors.RequestError) // has error
-                    return isRedeemedResult;
+                if (error != null && error.Value.Code != Errors.RequestError) // has error
+                    return error;
   
-                if (!isRedeemedResult.HasError)
-                    return isRedeemedResult;
+                if (error == null)
+                    return secret;
 
                 await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
                     .ConfigureAwait(false);
@@ -135,23 +128,24 @@ namespace Atomex.Swaps.Tezos.Helpers
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        var isRedeemedResult = await IsRedeemedAsync(
+                        var (secret, error) = await IsRedeemedAsync(
                                 swap: swap,
                                 currency: currency,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (isRedeemedResult.HasError)
+                        if (error != null)
+                        {
                             Log.Error("{@currency} IsRedeemedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
                                 currency.Name,
                                 swap.Id,
-                                isRedeemedResult.Error.Code,
-                                isRedeemedResult.Error.Description);
-
-                        if (!isRedeemedResult.HasError && isRedeemedResult.Value != null) // has secret
+                                error.Value.Code,
+                                error.Value.Message);
+                        }
+                        else if (error == null && secret!= null) // has secret
                         {
                             await redeemedHandler
-                                .Invoke(swap, isRedeemedResult.Value, cancellationToken)
+                                .Invoke(swap, secret, cancellationToken)
                                 .ConfigureAwait(false);
 
                             break;

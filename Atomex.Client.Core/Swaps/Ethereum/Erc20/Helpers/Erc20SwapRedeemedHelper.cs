@@ -28,7 +28,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                 var api = new EtherScanApi(erc20.Name, erc20.BlockchainApiBaseUri);
 
-                var redeemEventsResult = await api.GetContractEventsAsync(
+                var (events, error) = await api.GetContractEventsAsync(
                         address: erc20.SwapContractAddress,
                         fromBlock: erc20.SwapContractBlockNumber,
                         toBlock: ulong.MaxValue,
@@ -37,28 +37,23 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (redeemEventsResult == null)
-                    return new Result<byte[]>(new Error(Errors.RequestError, $"Connection error while trying to get contract {erc20.SwapContractAddress} redeem events"));
-
-                if (redeemEventsResult.HasError)
-                    return new Result<byte[]>(redeemEventsResult.Error);
-
-                var events = redeemEventsResult.Value?.ToList();
+                if (error != null)
+                    return error;
 
                 if (events == null || !events.Any())
-                    return new Result<byte[]>((byte[])null);
+                    return new Result<byte[]> { Value = null };
 
                 var secret = events.Last().ParseRedeemedEvent().Secret;
 
                 Log.Debug("Redeem event received with secret {@secret}", Convert.ToBase64String(secret));
 
-                return new Result<byte[]>(secret);
+                return new Result<byte[]> { Value = secret };
             }
             catch (Exception e)
             {
                 Log.Error(e, "Ethereum ERC20 redeem control task error");
 
-                return new Result<byte[]>(new Error(Errors.InternalError, e.Message));
+                return new Error(Errors.InternalError, e.Message);
             }
         }
 
@@ -75,27 +70,27 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
             {
                 ++attempt;
 
-                var isRedeemedResult = await IsRedeemedAsync(
+                var (secret, error) = await IsRedeemedAsync(
                         swap: swap,
                         currency: currency,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (isRedeemedResult.HasError) // has error
+                if (error != null) // has error
                 {
-                    if (isRedeemedResult.Error.Code != Errors.RequestError) // ignore connection errors
-                        return isRedeemedResult;
+                    if (error.Value.Code != Errors.RequestError) // ignore connection errors
+                        return error;
                 }
-                else if (isRedeemedResult.Value != null) // has secret
+                else if (secret != null) // has secret
                 {
-                    return isRedeemedResult;
+                    return secret;
                 }
 
                 await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
                     .ConfigureAwait(false);
             }
 
-            return new Result<byte[]>(new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for redeem check"));
+            return new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for redeem check");
         }
 
         public static Task StartSwapRedeemedControlAsync(
@@ -115,23 +110,24 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        var isRedeemedResult = await IsRedeemedAsync(
+                        var (secret, error) = await IsRedeemedAsync(
                                 swap: swap,
                                 currency: currency,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (isRedeemedResult.HasError)
-                            Log.Error("{@currency} IsRedeemedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
+                        if (error != null)
+                        {
+                            Log.Error("{@currency} IsRedeemedAsync error for swap {@swap}. Code: {@code}. Message: {@desc}",
                                 currency.Name,
                                 swap.Id,
-                                isRedeemedResult.Error.Code,
-                                isRedeemedResult.Error.Description);
-
-                        if (!isRedeemedResult.HasError && isRedeemedResult.Value != null) // has secret
+                                error.Value.Code,
+                                error.Value.Message);
+                        }
+                        else if (error == null && secret != null) // has secret
                         {
                             await redeemedHandler
-                                .Invoke(swap, isRedeemedResult.Value, cancellationToken)
+                                .Invoke(swap, secret, cancellationToken)
                                 .ConfigureAwait(false);
 
                             break;

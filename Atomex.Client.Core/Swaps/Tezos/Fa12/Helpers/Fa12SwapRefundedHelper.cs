@@ -30,26 +30,19 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
 
                 var blockchainApi = (ITezosBlockchainApi)tezos.BlockchainApi;
 
-                var txsResult = await blockchainApi
-                    .TryGetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
+                var (txs, error) = await blockchainApi
+                    .GetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (txsResult == null)
-                    return new Error(Errors.RequestError, $"Connection error while getting {contractAddress} transactions");
-
-                if (txsResult.HasError)
+                if (error != null)
                 {
                     Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Description: {@desc}",
                         contractAddress,
-                        txsResult.Error.Code,
-                        txsResult.Error.Description);
+                        error.Value.Code,
+                        error.Value.Message);
 
-                    return txsResult.Error;
+                    return error;
                 }
-
-                var txs = txsResult.Value
-                    ?.Cast<TezosTransaction>()
-                    .ToList();
 
                 if (txs != null)
                 {
@@ -93,18 +86,18 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
             {
                 ++attempt;
 
-                var isRefundedResult = await IsRefundedAsync(
+                var (isRefunded, error) = await IsRefundedAsync(
                         swap: swap,
                         currency: currency,
                         tezos: tezos,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (isRefundedResult.HasError && isRefundedResult.Error.Code != Errors.RequestError) // has error
-                    return isRefundedResult;
+                if (error != null && error.Value.Code != Errors.RequestError) // has error
+                    return error;
 
-                if (!isRefundedResult.HasError)
-                    return isRefundedResult;
+                if (error == null)
+                    return isRefunded;
 
                 await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
                     .ConfigureAwait(false);

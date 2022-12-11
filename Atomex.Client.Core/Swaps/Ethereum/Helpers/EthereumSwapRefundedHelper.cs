@@ -2,10 +2,12 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Atomex.Core;
-using Serilog;
 
 namespace Atomex.Swaps.Ethereum.Helpers
 {
@@ -20,11 +22,11 @@ namespace Atomex.Swaps.Ethereum.Helpers
             {
                 Log.Debug("Ethereum: check refund event");
 
-                var ethereum = (Atomex.EthereumConfig)currency;
+                var ethereum = (EthereumConfig)currency;
 
                 var api = new EtherScanApi(ethereum.Name, ethereum.BlockchainApiBaseUri);
 
-                var refundEventsResult = await api
+                var (events, error) = await api
                     .GetContractEventsAsync(
                         address: ethereum.SwapContractAddress,
                         fromBlock: ethereum.SwapContractBlockNumber,
@@ -34,13 +36,8 @@ namespace Atomex.Swaps.Ethereum.Helpers
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (refundEventsResult == null)
-                    return new Error(Errors.RequestError, $"Connection error while getting contract {ethereum.SwapContractAddress} refund event");
-
-                if (refundEventsResult.HasError)
-                    return refundEventsResult.Error;
-
-                var events = refundEventsResult.Value?.ToList();
+                if (error != null)
+                    return error;
 
                 if (events == null || !events.Any())
                     return false;
@@ -70,17 +67,17 @@ namespace Atomex.Swaps.Ethereum.Helpers
             {
                 ++attempt;
 
-                var isRefundedResult = await IsRefundedAsync(
+                var (isRefunded, error) = await IsRefundedAsync(
                         swap: swap,
                         currency: currency,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (isRefundedResult.HasError && isRefundedResult.Error.Code != Errors.RequestError) // has error
-                    return isRefundedResult;
+                if (error != null && error.Value.Code != Errors.RequestError) // has error
+                    return error;
 
-                if (!isRefundedResult.HasError)
-                    return isRefundedResult;
+                if (error == null)
+                    return isRefunded;
 
                 await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
                     .ConfigureAwait(false);

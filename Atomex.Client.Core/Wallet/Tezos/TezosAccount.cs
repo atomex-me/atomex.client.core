@@ -9,12 +9,12 @@ using Serilog;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.Cryptography;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using Atomex.Blockchain.Tezos.Internal;
-using Atomex.Cryptography;
 
 namespace Atomex.Wallet.Tezos
 {

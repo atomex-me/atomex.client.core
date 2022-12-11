@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
@@ -8,7 +9,7 @@ namespace Atomex.Blockchain
 {
     public abstract class BlockchainApi : IBlockchainApi
     {
-        public abstract Task<Result<decimal>> GetBalanceAsync(
+        public abstract Task<Result<BigInteger>> GetBalanceAsync(
             string address,
             CancellationToken cancellationToken = default);
 

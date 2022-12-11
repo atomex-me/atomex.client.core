@@ -25,24 +25,24 @@ namespace Atomex.Swaps.Helpers
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        var broadcastResult = await blockchainApi
-                            .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
+                        var (txId, error) = await blockchainApi
+                            .BroadcastAsync(tx, cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (!broadcastResult.HasError)
+                        if (error == null)
                         {
-                            if (broadcastResult.Value != null)
+                            if (txId != null)
                             {
-                                completionHandler?.Invoke(swap, broadcastResult.Value, cancellationToken);
-                                return broadcastResult.Value;
+                                completionHandler?.Invoke(swap, txId, cancellationToken);
+                                return txId;
                             }
                         }
                         else
                         {
                             Log.Error("Error while broadcast {@currency} tx with. Code: {@code}. Description: {@desc}",
                                 tx.Currency,
-                                broadcastResult.Error.Code,
-                                broadcastResult.Error.Description);
+                                error.Value.Code,
+                                error.Value.Message);
                         }
 
                         await Task.Delay(interval, cancellationToken)

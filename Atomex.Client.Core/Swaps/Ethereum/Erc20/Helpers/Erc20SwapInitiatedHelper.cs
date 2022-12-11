@@ -30,33 +30,27 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
             var api = erc20.BlockchainApi as IEthereumBlockchainApi;
 
-            var blockNoResult = await api
-                .TryGetBlockByTimeStampAsync(swap.TimeStamp.ToUniversalTime().ToUnixTime(), cancellationToken: cancellationToken)
+            var (blockNo, blockError) = await api
+                .GetBlockByTimeStampAsync(swap.TimeStamp.ToUniversalTime().ToUnixTime(), cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (blockNoResult == null)
-                return new Error(Errors.RequestError, "Can't get Ethereum block number by timestamp");
+            if (blockError != null)
+                return blockError;
 
-            if (blockNoResult.HasError)
-                return blockNoResult.Error;
-
-            var txsResult = await api
-                .TryGetTransactionsAsync(
+            var (txs, error) = await api
+                .GetTransactionsAsync(
                     address: erc20.SwapContractAddress,
-                    fromBlock: blockNoResult.Value,
-                    toBlock: blockNoResult.Value + BlocksAhead,
+                    fromBlock: blockNo,
+                    toBlock: blockNo + BlocksAhead,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (txsResult == null)
-                return new Error(Errors.RequestError, "Can't get Ethereum swap contract transactions");
-
-            if (txsResult.HasError)
-                return txsResult.Error;
+            if (error != null)
+                return error;
 
             var savedTx = swap.PaymentTx as EthereumTransaction;
 
-            foreach (var tx in txsResult.Value.Cast<EthereumTransaction>())
+            foreach (var tx in txs.Cast<EthereumTransaction>())
             {
                 if (tx.Amount != 0 ||
                    !tx.Input.Equals(savedTx.Input, StringComparison.OrdinalIgnoreCase) ||
@@ -70,7 +64,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                 return tx;
             }
 
-            return new Result<ITransaction>((ITransaction)null);
+            return new Result<ITransaction> { Value = null };
         }
 
         public static async Task<Result<bool>> IsInitiatedAsync(
@@ -99,25 +93,20 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                 var api = new EtherScanApi(erc20.Name, erc20.BlockchainApiBaseUri);
 
-                var initiateEventsResult = await api
+                var (events, initiateError) = await api
                     .GetContractEventsAsync(
                         address: erc20.SwapContractAddress,
                         fromBlock: erc20.SwapContractBlockNumber,
                         toBlock: ulong.MaxValue,
                         topic0: EventSignatureExtractor.GetSignatureHash<Erc20InitiatedEventDTO>(),
                         topic1: "0x" + swap.SecretHash.ToHexString(),
-                        topic2: "0x000000000000000000000000" + erc20.ERC20ContractAddress[2..],  //??
+                        topic2: "0x000000000000000000000000" + erc20.ERC20ContractAddress[2..], //??
                         topic3: "0x000000000000000000000000" + swap.ToAddress[2..],
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (initiateEventsResult == null)
-                    return new Error(Errors.RequestError, $"Connection error while trying to get contract {erc20.SwapContractAddress} initiate event");
-
-                if (initiateEventsResult.HasError)
-                    return initiateEventsResult.Error;
-
-                var events = initiateEventsResult.Value?.ToList();
+                if (initiateError != null)
+                    return initiateError;
 
                 if (events == null || !events.Any())
                     return false;
@@ -135,7 +124,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                     return new Error(
                         code: Errors.InvalidRefundLockTime,
-                        description: $"Invalid refund time in initiated event. Expected value is {refundTimeStamp}, actual is {(long)initiatedEvent.RefundTimestamp}");
+                        message: $"Invalid refund time in initiated event. Expected value is {refundTimeStamp}, actual is {(long)initiatedEvent.RefundTimestamp}");
                 }
 
                 if (initiatedEvent.Countdown != lockTimeInSec)  //todo: use it
@@ -147,7 +136,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                     return new Error(
                         code: Errors.InvalidRewardForRedeem,
-                        description: $"Invalid countdown in initiated event. Expected value is {lockTimeInSec}, actual is {(long)initiatedEvent.Countdown}");
+                        message: $"Invalid countdown in initiated event. Expected value is {lockTimeInSec}, actual is {(long)initiatedEvent.Countdown}");
                 }
 
                 if (initiatedEvent.RedeemFee != requiredRewardForRedeemInDecimals)
@@ -159,7 +148,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                     return new Error(
                         code: Errors.InvalidRewardForRedeem,
-                        description: $"Invalid redeem fee in initiated event. Expected value is {requiredRewardForRedeemInDecimals}, actual is {(long)initiatedEvent.RedeemFee}");
+                        message: $"Invalid redeem fee in initiated event. Expected value is {requiredRewardForRedeemInDecimals}, actual is {(long)initiatedEvent.RedeemFee}");
                 }
 
                 if (!initiatedEvent.Active)
@@ -171,7 +160,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                     return new Error(
                         code: Errors.InvalidRewardForRedeem,
-                        description: $"Invalid active value in initiated event. Expected value is {true}, actual is {initiatedEvent.Active}");
+                        message: $"Invalid active value in initiated event. Expected value is {true}, actual is {initiatedEvent.Active}");
                 }
 
                 var erc20TransferValues = await GetTransferValuesAsync(
@@ -193,7 +182,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                     return new Error(
                         code: Errors.InvalidSwapPaymentTx,
-                        description: $"Invalid transfer value in erc20 initiated event. Expected value is {initiatedEvent.Value}, actual is {actualTransferValue}");
+                        message: $"Invalid transfer value in erc20 initiated event. Expected value is {initiatedEvent.Value}, actual is {actualTransferValue}");
                 }
 
                 receivedAmountInDecimals = initiatedEvent.Value;
@@ -206,7 +195,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                     (decimal)(requiredAmountInDecimals - requiredRewardForRedeemInDecimals),
                     (decimal)initiatedEvent.Value);
 
-                var addEventsResult = await api
+                var (addEvents, addError) = await api
                     .GetContractEventsAsync(
                         address: erc20.SwapContractAddress,
                         fromBlock: erc20.SwapContractBlockNumber,
@@ -216,13 +205,10 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (addEventsResult == null)
-                    return new Error(Errors.RequestError, $"Connection error while trying to get contract {erc20.SwapContractAddress} add event");
+                if (addError != null)
+                    return addError;
 
-                if (addEventsResult.HasError)
-                    return addEventsResult.Error;
-
-                events = addEventsResult.Value?.ToList();
+                events = addEvents;
 
                 if (events == null || !events.Any())
                     return false;
@@ -248,7 +234,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                         return new Error(
                             code: Errors.InvalidSwapPaymentTx,
-                            description: $"Invalid transfer value in initiated event. Expected value is {@event.Value - receivedAmountInDecimals}, actual is {actualTransferValue}");
+                            message: $"Invalid transfer value in initiated event. Expected value is {@event.Value - receivedAmountInDecimals}, actual is {actualTransferValue}");
                     }
 
                     receivedAmountInDecimals = @event.Value;
@@ -288,7 +274,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                 var api = new EtherScanApi(erc20.Name, erc20.BlockchainApiBaseUri);
 
-                var transferEventsResult = await api
+                var (events, error) = await api
                     .GetContractEventsAsync(
                         address: erc20.ERC20ContractAddress,
                         fromBlock: (ulong) new HexBigInteger(blockNumber).Value,
@@ -299,18 +285,15 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (transferEventsResult == null)
+                if (error != null)
                     return new List<BigInteger>();
-
-                if (transferEventsResult.HasError)
-                    return new List<BigInteger>();
-
-                var events = transferEventsResult.Value?.ToList();
 
                 if (events == null || !events.Any())
                     return new List<BigInteger>();
 
-                return events.Select(e => e.ParseErc20TransferEvent().Value).ToList();
+                return events
+                    .Select(e => e.ParseErc20TransferEvent().Value)
+                    .ToList();
             }
             catch (Exception e)
             {
@@ -349,21 +332,22 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                             break;
                         }
 
-                        var isInitiatedResult = await IsInitiatedAsync(
+                        var (isInitiated, error) = await IsInitiatedAsync(
                                 swap: swap,
                                 currency: currency,
                                 lockTimeInSec: lockTimeInSec,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (isInitiatedResult.HasError)
-                            Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
+                        if (error != null)
+                        {
+                            Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Message: {@desc}",
                                 currency.Name,
                                 swap.Id,
-                                isInitiatedResult.Error.Code,
-                                isInitiatedResult.Error.Description);
-
-                        if (!isInitiatedResult.HasError && isInitiatedResult.Value)
+                                error.Value.Code,
+                                error.Value.Message);
+                        }
+                        else if (error == null && isInitiated)
                         {
                             await initiatedHandler
                                 .Invoke(swap, cancellationToken)

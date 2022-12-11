@@ -1,13 +1,11 @@
-﻿using System;
+﻿using Atomex.Blockchain.Ethereum;
+using Atomex.Common;
+using Atomex.Core;
+using Serilog;
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Serilog;
-
-using Atomex.Blockchain.Ethereum;
-using Atomex.Common;
-using Atomex.Core;
 
 namespace Atomex.Swaps.Ethereum.Helpers
 {
@@ -26,7 +24,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
                   
                 var api = new EtherScanApi(ethereum.Name, ethereum.BlockchainApiBaseUri);
 
-                var redeemEventsResult = await api
+                var (events, error) = await api
                     .GetContractEventsAsync(
                         address: ethereum.SwapContractAddress,
                         fromBlock: ethereum.SwapContractBlockNumber,
@@ -36,13 +34,8 @@ namespace Atomex.Swaps.Ethereum.Helpers
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (redeemEventsResult == null)
-                    return new Error(Errors.RequestError, $"Connection error while getting contract {ethereum.SwapContractAddress} redeem events");
-
-                if (redeemEventsResult.HasError)
-                    return redeemEventsResult.Error;
-
-                var events = redeemEventsResult.Value?.ToList();
+                if (error != null)
+                    return error;
 
                 if (events == null || !events.Any())
                     return (byte[])null;
@@ -74,17 +67,17 @@ namespace Atomex.Swaps.Ethereum.Helpers
             {
                 ++attempt;
 
-                var isRedeemedResult = await IsRedeemedAsync(
+                var (isRedeemed, error) = await IsRedeemedAsync(
                         swap: swap,
                         currency: currency,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (isRedeemedResult.HasError && isRedeemedResult.Error.Code != Errors.RequestError) // has error
-                    return isRedeemedResult;
+                if (error != null && error.Value.Code != Errors.RequestError) // has error
+                    return error;
 
-                if (!isRedeemedResult.HasError)
-                    return isRedeemedResult;
+                if (error == null)
+                    return isRedeemed;
 
                 await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
                     .ConfigureAwait(false);
@@ -110,23 +103,25 @@ namespace Atomex.Swaps.Ethereum.Helpers
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        var isRedeemedResult = await IsRedeemedAsync(
+                        var (secret, error) = await IsRedeemedAsync(
                                 swap: swap,
                                 currency: currency,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (isRedeemedResult.HasError)
-                            Log.Error("{@currency} IsRedeemedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
+                        if (error != null)
+                        {
+                            Log.Error("{@currency} IsRedeemedAsync error for swap {@swap}. Code: {@code}. Message: {@desc}",
                                 currency.Name,
                                 swap.Id,
-                                isRedeemedResult.Error.Code,
-                                isRedeemedResult.Error.Description);
+                                error.Value.Code,
+                                error.Value.Message);
+                        }
 
-                        if (!isRedeemedResult.HasError && isRedeemedResult.Value != null) // has secret
+                        if (error == null && secret != null) // has secret
                         {
                             await redeemedHandler
-                                .Invoke(swap, isRedeemedResult.Value, cancellationToken)
+                                .Invoke(swap, secret, cancellationToken)
                                 .ConfigureAwait(false);
 
                             break;

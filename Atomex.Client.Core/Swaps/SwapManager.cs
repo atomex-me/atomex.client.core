@@ -157,7 +157,7 @@ namespace Atomex.Swaps
         }
 
         /// <inheritdoc/>
-        public async Task<Error> HandleSwapAsync(Swap receivedSwap)
+        public async Task<Result<bool>> HandleSwapAsync(Swap receivedSwap)
         {
             if (!IsRunning)
                 throw new InvalidOperationException("SwapManager not started");
@@ -204,7 +204,7 @@ namespace Atomex.Swaps
         }
 
         /// <inheritdoc/>
-        public async Task<Error> CancelSwapAsync(long id)
+        public async Task<Result<bool>> CancelSwapAsync(long id)
         {
             Log.Debug("CancelSwapAsync for swap {@id}", id);
 
@@ -236,7 +236,7 @@ namespace Atomex.Swaps
                 await UpdateSwapStateAsync(swap, SwapStateFlags.IsCanceled)
                     .ConfigureAwait(false);
 
-                return null; // no error
+                return true; // no error
             }
             catch (Exception e)
             {
@@ -251,7 +251,7 @@ namespace Atomex.Swaps
         }
 
         /// <inheritdoc/>
-        public async Task<Error> ResumeSwapAsync(long id)
+        public async Task<Result<bool>> ResumeSwapAsync(long id)
         {
             Log.Debug("ResumeSwapAsync for swap {@id}", id);
 
@@ -283,7 +283,7 @@ namespace Atomex.Swaps
                 await RestoreSwapAsync(swap, linkedCts.Token)
                     .ConfigureAwait(false);
 
-                return null; // no error
+                return true; // no error
             }
             catch (Exception e)
             {
@@ -298,7 +298,7 @@ namespace Atomex.Swaps
         }
 
         /// <inheritdoc/>
-        public async Task<Error> RestartSwapAsync(long id)
+        public async Task<Result<bool>> RestartSwapAsync(long id)
         {
             Log.Debug("RestartSwapAsync for swap {@id}", id);
 
@@ -332,7 +332,7 @@ namespace Atomex.Swaps
                 await RestoreSwapAsync(swap, linkedCts.Token)
                     .ConfigureAwait(false);
 
-                return null; // no error
+                return true; // no error
             }
             catch (Exception e)
             {
@@ -346,7 +346,7 @@ namespace Atomex.Swaps
             }
         }
 
-        private async Task<Error> HandleSwapByInitiatorAsync(
+        private async Task<Result<bool>> HandleSwapByInitiatorAsync(
             Swap swap,
             Swap receivedSwap,
             CancellationToken cancellationToken = default)
@@ -359,7 +359,7 @@ namespace Atomex.Swaps
 
                 if (receivedSwap.Status == SwapStatus.Accepted)
                 {
-                    var error = await CheckAndSaveAcceptorRequisitesAsync(swap, receivedSwap)
+                    var (_, error) = await CheckAndSaveAcceptorRequisitesAsync(swap, receivedSwap)
                         .ConfigureAwait(false);
 
                     if (error != null)
@@ -376,7 +376,7 @@ namespace Atomex.Swaps
                      swap.Status == SwapStatus.Empty &&
                      receivedSwap.Status == SwapStatus.Accepted)
             {
-                var error = await CheckAndSaveAcceptorRequisitesAsync(swap, receivedSwap)
+                var (_, error) = await CheckAndSaveAcceptorRequisitesAsync(swap, receivedSwap)
                     .ConfigureAwait(false);
 
                 if (error != null)
@@ -398,7 +398,7 @@ namespace Atomex.Swaps
             {
                 if (swap.Status == SwapStatus.Empty || swap.Status == SwapStatus.Initiated)
                 {
-                    var error = await CheckAndSaveAcceptorRequisitesAsync(swap, receivedSwap)
+                    var (_, error) = await CheckAndSaveAcceptorRequisitesAsync(swap, receivedSwap)
                         .ConfigureAwait(false);
 
                     if (error != null)
@@ -412,10 +412,10 @@ namespace Atomex.Swaps
                     .ConfigureAwait(false);
             }
 
-            return null; // no error
+            return true; // no error
         }
 
-        private async Task<Error> HandleSwapByAcceptorAsync(
+        private async Task<Result<bool>> HandleSwapByAcceptorAsync(
             Swap swap,
             Swap receivedSwap,
             CancellationToken cancellationToken = default)
@@ -424,12 +424,14 @@ namespace Atomex.Swaps
                 (receivedSwap.Status == SwapStatus.Empty || receivedSwap.Status == SwapStatus.Initiated))
             {
                 if (swap == null)
+                {
                     swap = await AddSwapAsync(receivedSwap, cancellationToken)
                         .ConfigureAwait(false);
+                }
 
                 if (receivedSwap.Status == SwapStatus.Initiated)
                 {
-                    var error = await CheckAndSaveInitiatorRequisitesAsync(swap, receivedSwap)
+                    var (_, error) = await CheckAndSaveInitiatorRequisitesAsync(swap, receivedSwap)
                         .ConfigureAwait(false);
 
                     if (error != null)
@@ -456,7 +458,7 @@ namespace Atomex.Swaps
                     .ConfigureAwait(false);
             }
 
-            return null; // no error
+            return true; // no error
         }
 
         private async Task UpdateStatusAsync(
@@ -671,7 +673,7 @@ namespace Atomex.Swaps
                 CurrencySwap.DefaultAcceptorLockTimeInSeconds);
         }
 
-        private async Task<Error> CheckAndSaveInitiatorRequisitesAsync(
+        private async Task<Result<bool>> CheckAndSaveInitiatorRequisitesAsync(
             Swap swap,
             Swap receivedSwap)
         {
@@ -684,7 +686,7 @@ namespace Atomex.Swaps
                 await UpdateSwapStateAsync(swap, SwapStateFlags.IsCanceled)
                     .ConfigureAwait(false);
 
-                return null; // no error
+                return true; // no error
             }
 
             // check secret hash
@@ -720,10 +722,10 @@ namespace Atomex.Swaps
             if (swap.PartyRefundAddress == null)
                 swap.PartyRefundAddress = receivedSwap.PartyRefundAddress;
 
-            return null; // no error
+            return true; // no error
         }
 
-        private async Task<Error> CheckAndSaveAcceptorRequisitesAsync(
+        private async Task<Result<bool>> CheckAndSaveAcceptorRequisitesAsync(
             Swap swap,
             Swap receivedSwap)
         {
@@ -736,7 +738,7 @@ namespace Atomex.Swaps
                 await UpdateSwapStateAsync(swap, SwapStateFlags.IsCanceled)
                     .ConfigureAwait(false);
 
-                return null; // no error
+                return true; // no error
             }
 
             // check party requisites
@@ -758,7 +760,7 @@ namespace Atomex.Swaps
             await UpdateSwapStateAsync(swap, SwapStateFlags.Empty)
                 .ConfigureAwait(false);
 
-            return null; // no error
+            return true; // no error
         }
 
         private async Task InitiateSwapAsync(
@@ -855,23 +857,23 @@ namespace Atomex.Swaps
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentSigned) &&
                 !swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentBroadcast))
             {
-                var txResult = await GetCurrencySwap(swap.SoldCurrency)
+                var (tx, error) = await GetCurrencySwap(swap.SoldCurrency)
                     .TryToFindPaymentAsync(swap, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (txResult == null || txResult.HasError)
+                if (error != null || tx == null)
                     return; // can't get tx from blockchain
 
-                if (txResult.Value != null)
+                if (tx != null)
                 {
-                    swap.PaymentTx = txResult.Value;
-                    swap.PaymentTxId = txResult.Value.Id;
+                    swap.PaymentTx = tx;
+                    swap.PaymentTxId = tx.Id;
                     swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
 
                     await UpdateSwapStateAsync(swap, SwapStateFlags.IsPaymentBroadcast)
                         .ConfigureAwait(false);
 
-                    if (txResult.Value.IsConfirmed)
+                    if (tx.IsConfirmed)
                         swap.StateFlags |= SwapStateFlags.IsPaymentConfirmed;
 
                     await UpdateSwapStateAsync(swap, SwapStateFlags.IsPaymentConfirmed)
@@ -889,13 +891,13 @@ namespace Atomex.Swaps
                     var currency = _account.Currencies
                         .GetByName(swap.PaymentTx.Currency);
 
-                    var result = await currency
+                    var (result, error) = await currency
                         .IsTransactionConfirmed(
                             txId: swap.PaymentTx.Id,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (result.HasError || !result.Value.IsConfirmed)
+                    if (error != null || !result.IsConfirmed)
                     {
                         waitForRedeem = false;
 
