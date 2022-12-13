@@ -48,7 +48,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
             foreach (var tx in txs.Cast<EthereumTransaction>())
             {
                 if (tx.Amount != savedTx.Amount ||
-                   !tx.Input.Equals(savedTx.Input, StringComparison.OrdinalIgnoreCase) ||
+                   !tx.Data.Equals(savedTx.Data, StringComparison.OrdinalIgnoreCase) ||
                    !tx.From.Equals(savedTx.From, StringComparison.OrdinalIgnoreCase) ||
                    !tx.To.Equals(savedTx.To, StringComparison.OrdinalIgnoreCase))
                     continue;

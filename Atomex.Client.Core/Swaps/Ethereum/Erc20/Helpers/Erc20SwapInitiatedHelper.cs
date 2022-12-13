@@ -53,7 +53,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
             foreach (var tx in txs.Cast<EthereumTransaction>())
             {
                 if (tx.Amount != 0 ||
-                   !tx.Input.Equals(savedTx.Input, StringComparison.OrdinalIgnoreCase) ||
+                   !tx.Data.Equals(savedTx.Data, StringComparison.OrdinalIgnoreCase) ||
                    !tx.From.Equals(savedTx.From, StringComparison.OrdinalIgnoreCase) ||
                    !tx.To.Equals(erc20.SwapContractAddress, StringComparison.OrdinalIgnoreCase))
                     continue;

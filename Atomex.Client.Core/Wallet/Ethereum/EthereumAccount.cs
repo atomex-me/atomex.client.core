@@ -491,7 +491,7 @@ namespace Atomex.Wallet.Ethereum
             if (isToSelf)
                 tx.Type |= TransactionType.Input;
 
-            if (tx.Input != null)
+            if (tx.Data != null)
             {
                 tx.Type |= TransactionType.ContractCall;
 

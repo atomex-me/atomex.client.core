@@ -276,7 +276,7 @@ namespace Atomex.Blockchain.Ethereum
 
                            From          = tx["from"].Value<string>().ToLowerInvariant(),
                            To            = tx["to"].Value<string>().ToLowerInvariant(),
-                           Input         = tx["input"].Value<string>(),
+                           Data         = tx["input"].Value<string>(),
                            Amount        = new HexBigInteger(tx["value"].Value<string>()),
                            Nonce         = tx["nonce"] != null
                                 ? new HexBigInteger(tx["nonce"].Value<string>()).Value
@@ -693,7 +693,7 @@ namespace Atomex.Blockchain.Ethereum
 
                     From          = tx.From.ToLowerInvariant(),
                     To            = tx.To.ToLowerInvariant(),
-                    Input         = tx.Input,
+                    Data         = tx.Input,
                     Amount        = BigInteger.Parse(tx.Value),
                     Nonce         = tx.Nonce != null
                         ? BigInteger.Parse(tx.Nonce)

@@ -99,7 +99,7 @@ namespace Atomex.Blockchain.Ethereum.Erc20
         public static EthereumTransaction ParseErc20Input(
             this EthereumTransaction transaction)
         {
-            if (transaction.Input == "0x")
+            if (transaction.Data == "0x")
                 return transaction;
 
             if (transaction.IsErc20TransferTransaction())
@@ -115,7 +115,7 @@ namespace Atomex.Blockchain.Ethereum.Erc20
         public static EthereumTransaction ParseErc20TransferInput(
             this EthereumTransaction transaction)
         {
-            var input = transaction.Input[(transaction.Input.Length % InputItemSizeInHex)..];
+            var input = transaction.Data[(transaction.Data.Length % InputItemSizeInHex)..];
             
             transaction.To = $"0x{input.Substring(InputItemSizeInHex - AddressLengthInHex, AddressLengthInHex)}";
             transaction.Amount = new HexBigInteger(input.Substring(InputItemSizeInHex, InputItemSizeInHex)).Value;
@@ -126,7 +126,7 @@ namespace Atomex.Blockchain.Ethereum.Erc20
         public static EthereumTransaction ParseErc20InitiateInput(
             this EthereumTransaction transaction)
         {
-            var input = transaction.Input[(transaction.Input.Length % InputItemSizeInHex)..];
+            var input = transaction.Data[(transaction.Data.Length % InputItemSizeInHex)..];
 
             transaction.Amount = new HexBigInteger(input.Substring(InputItemSizeInHex * 5, InputItemSizeInHex)).Value;
 
@@ -136,7 +136,7 @@ namespace Atomex.Blockchain.Ethereum.Erc20
         public static EthereumTransaction ParseErc20AddInput(
             this EthereumTransaction transaction)
         {
-            var input = transaction.Input[(transaction.Input.Length % InputItemSizeInHex)..];
+            var input = transaction.Data[(transaction.Data.Length % InputItemSizeInHex)..];
 
             transaction.Amount = new HexBigInteger(input.Substring(InputItemSizeInHex * 1, InputItemSizeInHex)).Value;
 

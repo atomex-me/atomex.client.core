@@ -6,7 +6,7 @@
 
         public static bool IsMethodCall(this EthereumTransaction tx, string methodSignatureHash)
         {
-            var signature = tx.Input[..(tx.Input.Length % InputItemSizeInHex)];
+            var signature = tx.Data[..(tx.Data.Length % InputItemSizeInHex)];
 
             return methodSignatureHash.StartsWith(signature);
         }

@@ -40,17 +40,20 @@ namespace Atomex.Blockchain.Ethereum
 
         public string From { get; set; }
         public string To { get; set; }
-        public string Input { get; set; }
+        public BigInteger ChainId { get; set; }
         public BigInteger Amount { get; set; }
         public BigInteger Nonce { get; set; }
         public BigInteger GasPrice { get; set; }
         public BigInteger GasLimit { get; set; }
         public BigInteger GasUsed { get; set; }
+        public string Data { get; set; }
         public string RlpEncodedTx { get; set; }
         public bool ReceiptStatus { get; set; }
         public bool IsInternal { get; set; }
         public int InternalIndex { get; set; }
         public List<EthereumTransaction> InternalTxs { get; set; }
+
+        public byte[] Signature { get; set; }
 
         public EthereumTransaction()
         {
@@ -65,7 +68,7 @@ namespace Atomex.Blockchain.Ethereum
 
             From         = txInput.From.ToLowerInvariant();
             To           = txInput.To.ToLowerInvariant();
-            Input        = txInput.Data;
+            Data         = txInput.Data;
             Amount       = txInput.Value;
             Nonce        = txInput.Nonce;
             GasPrice     = txInput.GasPrice;
@@ -84,10 +87,10 @@ namespace Atomex.Blockchain.Ethereum
                 nonce: Nonce,
                 gasPrice: GasPrice,
                 gasLimit: GasLimit,
-                data: Input,
+                data: Data,
                 chainId: chainId).RawHash;
 
-        public string GetRlpEncoded(int chainId, byte[] signature)
+        public string GetRlpEncoded()
         {
             var tx = new LegacyTransactionChainId(
                 to: To,
@@ -95,10 +98,10 @@ namespace Atomex.Blockchain.Ethereum
                 nonce: Nonce,
                 gasPrice: GasPrice,
                 gasLimit: GasLimit,
-                data: Input,
-                chainId: chainId);
+                data: Data,
+                chainId: ChainId);
 
-            tx.SetSignature(new EthECDSASignature(signature));
+            tx.SetSignature(new EthECDSASignature(Signature));
 
             return tx
                 .GetRLPEncoded()
