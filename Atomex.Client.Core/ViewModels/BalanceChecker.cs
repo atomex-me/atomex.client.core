@@ -5,13 +5,12 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Serilog;
-
-using Atomex.Blockchain.Ethereum;
 using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.TezosTokens;
+using Atomex.Blockchain.Ethereum.Abstract;
 
 namespace Atomex.ViewModels
 {
@@ -88,7 +87,7 @@ namespace Atomex.ViewModels
                             var erc20 = account.Currencies
                                 .Get<Erc20Config>(address.Currency);
 
-                            var api = erc20.BlockchainApi as IEthereumBlockchainApi;
+                            var api = erc20.BlockchainApi as IEthereumApi;
 
                             var balanceResult = await api
                                 .TryGetErc20BalanceAsync(

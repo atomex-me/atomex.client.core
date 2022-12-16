@@ -49,10 +49,19 @@ namespace Atomex.Common
         public const int InvalidConnection = 1009;
         public const int InvalidRewardForRedeem = 1010;
 
+        public const int BroadcastError = 1099;
         public const int GetBalanceError = 1100;
         public const int GetTransactionError = 1101;
         public const int GetOutputsError = 1102;
         public const int GetInputError = 1103;
+        public const int GetReceiptStatusError = 1106;
+        public const int GetRecentBlockHeightError = 1107;
+        public const int GetGasPriceError = 1108;
+        public const int GetErc20BalanceError = 1109;
+        public const int GetErc20TransactionsError = 1110;
+        public const int GetInternalTransactionsError = 1111;
+        public const int GetTransactionsError = 1112;
+        public const int GetBlockNumberError = 1113;
 
         public const int TransactionCreationError = 2000;
         public const int TransactionSigningError = 2001;

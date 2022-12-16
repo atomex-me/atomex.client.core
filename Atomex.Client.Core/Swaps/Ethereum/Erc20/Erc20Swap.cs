@@ -20,6 +20,7 @@ using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Ethereum.Erc20.Helpers;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Ethereum;
+using Atomex.Blockchain.Ethereum.Abstract;
 
 namespace Atomex.Swaps.Ethereum
 {
@@ -274,7 +275,7 @@ namespace Atomex.Swaps.Ethereum
                     return;
                 }
 
-                var message = new Erc20RedeemFunctionMessage
+                var message = new Erc20RedeemMessage
                 {
                     FromAddress  = walletAddress.Address,
                     HashedSecret = swap.SecretHash,
@@ -393,7 +394,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var message = new RedeemFunctionMessage
+            var message = new RedeemMessage
             {
                 FromAddress  = walletAddress.Address,
                 HashedSecret = swap.SecretHash,
@@ -524,7 +525,7 @@ namespace Atomex.Swaps.Ethereum
                     return;
                 }
 
-                var message = new Erc20RefundFunctionMessage
+                var message = new Erc20RefundMessage
                 {
                     FromAddress  = walletAddress.Address,
                     HashedSecret = swap.SecretHash,
@@ -807,7 +808,7 @@ namespace Atomex.Swaps.Ethereum
                 erc20Config.DigitsMultiplier,
                 erc20Config.DustDigitsMultiplier);
 
-            var (nonce, error) = await ((IEthereumBlockchainApi)erc20Config.BlockchainApi)
+            var (nonce, error) = await ((IEthereumApi)erc20Config.BlockchainApi)
                 .GetTransactionCountAsync(walletAddress.Address, pending: false, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -819,7 +820,7 @@ namespace Atomex.Swaps.Ethereum
 
             TransactionInput txInput;
 
-            var initMessage = new Erc20InitiateFunctionMessage
+            var initMessage = new Erc20InitiateMessage
             {
                 HashedSecret    = swap.SecretHash,
                 ERC20Contract   = erc20Config.ERC20ContractAddress,
@@ -868,14 +869,14 @@ namespace Atomex.Swaps.Ethereum
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var allowanceMessage = new Erc20AllowanceFunctionMessage
+            var allowanceMessage = new Erc20AllowanceMessage
             {
                 Owner       = walletAddress.Address,
                 Spender     = erc20.SwapContractAddress,
                 FromAddress = walletAddress.Address
             };
 
-            var allowance = await ((IEthereumBlockchainApi)erc20.BlockchainApi)
+            var allowance = await ((IEthereumApi)erc20.BlockchainApi)
                 .GetErc20AllowanceAsync(
                     erc20: erc20,
                     tokenAddress: erc20.ERC20ContractAddress,
@@ -883,7 +884,7 @@ namespace Atomex.Swaps.Ethereum
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var (nonce, nonceError) = await ((IEthereumBlockchainApi)erc20.BlockchainApi)
+            var (nonce, nonceError) = await ((IEthereumApi)erc20.BlockchainApi)
                 .GetTransactionCountAsync(walletAddress.Address, pending: false, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -933,7 +934,7 @@ namespace Atomex.Swaps.Ethereum
         {
             var erc20Config = Erc20Config;
 
-            var message = new Erc20ApproveFunctionMessage
+            var message = new Erc20ApproveMessage
             {
                 Spender     = erc20Config.SwapContractAddress,
                 Value       = value,

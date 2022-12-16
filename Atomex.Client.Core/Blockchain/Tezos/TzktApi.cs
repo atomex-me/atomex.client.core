@@ -16,7 +16,7 @@ using Atomex.TezosTokens;
 
 namespace Atomex.Blockchain.Tezos.Tzkt
 {
-    public class TzktApi : BlockchainApi, ITezosBlockchainApi, ITokenBlockchainApi
+    public class TzktApi : IBlockchainApi, ITezosBlockchainApi, ITokenBlockchainApi
     {
         private readonly TezosConfig _currency;
         private readonly string _baseUri;

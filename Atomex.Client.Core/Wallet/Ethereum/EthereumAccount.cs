@@ -15,7 +15,8 @@ using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using Atomex.Blockchain.Ethereum.Erc20;
+using Atomex.Blockchain.Ethereum.Erc20.Messages;
+using Atomex.Blockchain.Ethereum.Messages.Swaps.V1;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -495,21 +496,21 @@ namespace Atomex.Wallet.Ethereum
             {
                 tx.Type |= TransactionType.ContractCall;
 
-                if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<InitiateFunctionMessage>()))
+                if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<InitiateMessage>()))
                     tx.Type |= TransactionType.SwapPayment;
-                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RedeemFunctionMessage>()))
+                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RedeemMessage>()))
                     tx.Type |= TransactionType.SwapRedeem;
-                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RefundFunctionMessage>()))
+                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RefundMessage>()))
                     tx.Type |= TransactionType.SwapRefund;
-                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferFunctionMessage>()))
+                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferMessage>()))
                     tx.Type |= TransactionType.TokenTransfer;
-                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveFunctionMessage>()))
+                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveMessage>()))
                     tx.Type |= TransactionType.TokenApprove;
             }
 
-            if (tx.InternalTxs != null)
+            if (tx.InternalTransactions != null)
             {
-                tx.InternalTxs.ForEach(
+                tx.InternalTransactions.ForEach(
                     async t => await ResolveTransactionTypeAsync(t, cancellationToken)
                         .ConfigureAwait(false));
             }

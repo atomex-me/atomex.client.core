@@ -9,6 +9,8 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.Blockchain.Ethereum.Dto.Swaps.V1;
+using Atomex.Blockchain.Ethereum.Abstract;
 
 namespace Atomex.Swaps.Ethereum.Helpers
 {
@@ -23,7 +25,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
         {
             var ethereum = currency as EthereumConfig;
 
-            var api = ethereum.BlockchainApi as IEthereumBlockchainApi;
+            var api = ethereum.BlockchainApi as IEthereumApi;
 
             var (fromBlockNo, fromBlockError) = await api
                 .GetBlockByTimeStampAsync(swap.TimeStamp.ToUniversalTime().ToUnixTime(), cancellationToken: cancellationToken)

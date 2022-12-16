@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Ethereum.Dto.Swaps.V1;
 using Atomex.Common;
 using Xunit;
 

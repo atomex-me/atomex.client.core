@@ -110,7 +110,7 @@ namespace Atomex.Wallet.Ethereum
 
             TransactionInput txInput;
 
-            var message = new Erc20TransferFunctionMessage
+            var message = new Erc20TransferMessage
             {
                 To          = to.ToLowerInvariant(),
                 Value       = erc20Config.TokensToTokenDigits(addressFeeUsage.UsedAmount),

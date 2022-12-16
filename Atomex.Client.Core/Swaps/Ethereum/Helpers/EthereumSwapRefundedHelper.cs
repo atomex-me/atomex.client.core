@@ -8,6 +8,7 @@ using Serilog;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.Blockchain.Ethereum.Dto.Swaps.V1;
 
 namespace Atomex.Swaps.Ethereum.Helpers
 {

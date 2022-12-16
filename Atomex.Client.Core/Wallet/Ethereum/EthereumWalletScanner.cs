@@ -8,6 +8,7 @@ using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Ethereum.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
@@ -304,7 +305,7 @@ namespace Atomex.Wallet.Ethereum
                 return getBalanceError;
             }
 
-            var (txs, getTxsError) = await ((IEthereumBlockchainApi)api)
+            var (txs, getTxsError) = await ((IEthereumApi)api)
                 .GetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -355,10 +356,10 @@ namespace Atomex.Wallet.Ethereum
             {
                 if (txsById.TryGetValue(internalTx.Id, out var tx))
                 {
-                    if (tx.InternalTxs == null)
-                        tx.InternalTxs = new List<EthereumTransaction>();
+                    if (tx.InternalTransactions == null)
+                        tx.InternalTransactions = new List<EthereumTransaction>();
 
-                    tx.InternalTxs.Add(internalTx);
+                    tx.InternalTransactions.Add(internalTx);
                 }
                 else
                 {

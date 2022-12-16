@@ -17,6 +17,7 @@ using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Ethereum.Helpers;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Ethereum;
+using Atomex.Blockchain.Ethereum.Abstract;
 
 namespace Atomex.Swaps.Ethereum
 {
@@ -256,7 +257,7 @@ namespace Atomex.Swaps.Ethereum
                     return;
                 }
 
-                var message = new RedeemFunctionMessage
+                var message = new RedeemMessage
                 {
                     FromAddress  = walletAddress.Address,
                     HashedSecret = swap.SecretHash,
@@ -375,7 +376,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var message = new RedeemFunctionMessage
+            var message = new RedeemMessage
             {
                 FromAddress  = walletAddress.Address,
                 HashedSecret = swap.SecretHash,
@@ -506,7 +507,7 @@ namespace Atomex.Swaps.Ethereum
                     return;
                 }
 
-                var message = new RefundFunctionMessage
+                var message = new RefundMessage
                 {
                     FromAddress  = walletAddress.Address,
                     HashedSecret = swap.SecretHash,
@@ -758,7 +759,7 @@ namespace Atomex.Swaps.Ethereum
                 return null;
             }
 
-            var (nonce, error) = await ((IEthereumBlockchainApi)ethConfig.BlockchainApi)
+            var (nonce, error) = await ((IEthereumApi)ethConfig.BlockchainApi)
                 .GetTransactionCountAsync(walletAddress.Address, pending: false, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -770,7 +771,7 @@ namespace Atomex.Swaps.Ethereum
                     
             TransactionInput txInput;
 
-            var message = new InitiateFunctionMessage
+            var message = new InitiateMessage
             {
                 HashedSecret    = swap.SecretHash,
                 Participant     = swap.PartyAddress,

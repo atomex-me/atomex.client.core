@@ -127,7 +127,7 @@ namespace Atomex.Client.Core.Tests
             {
                 Id          = id,
                 Currency    = Common.EthTestNet.Name,
-                InternalTxs = new List<EthereumTransaction>
+                InternalTransactions = new List<EthereumTransaction>
                 {
                     new EthereumTransaction {Currency = Common.EthTestNet.Name}
                 }
@@ -144,7 +144,7 @@ namespace Atomex.Client.Core.Tests
                 .ConfigureAwait(false);
 
             Assert.NotNull(readTx);
-            Assert.NotNull(readTx.InternalTxs);
+            Assert.NotNull(readTx.InternalTransactions);
             Assert.Equal(id, readTx.Id);
         }
     }

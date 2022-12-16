@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Blockchain.Ethereum;
-using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.Blockchain.Ethereum.Erc20.Dto.Swaps.V1;
 
 namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 {

@@ -14,6 +14,9 @@ using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.EthereumTokens;
+using Atomex.Blockchain.Ethereum.Erc20.Dto.Swaps.V1;
+using Atomex.Blockchain.Ethereum.Erc20.Dto;
+using Atomex.Blockchain.Ethereum.Abstract;
 
 namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 {
@@ -28,7 +31,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
         {
             var erc20 = currency as Erc20Config;
 
-            var api = erc20.BlockchainApi as IEthereumBlockchainApi;
+            var api = erc20.BlockchainApi as IEthereumApi;
 
             var (blockNo, blockError) = await api
                 .GetBlockByTimeStampAsync(swap.TimeStamp.ToUniversalTime().ToUnixTime(), cancellationToken: cancellationToken)
