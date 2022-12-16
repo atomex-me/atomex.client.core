@@ -18,6 +18,7 @@ using Atomex.Core;
 using Atomex.Wallet.Bip;
 using Atomex.Wallets;
 using Atomex.Wallets.Ethereum;
+using Atomex.Blockchain.Ethereum.EtherScan;
 
 namespace Atomex
 {
@@ -128,9 +129,7 @@ namespace Atomex
             SwapContractBlockNumber    = ulong.Parse(configuration[nameof(SwapContractBlockNumber)], CultureInfo.InvariantCulture);
 
             BlockchainApiBaseUri       = configuration[nameof(BlockchainApiBaseUri)];
-            BlockchainApi              = ResolveBlockchainApi(
-                configuration: configuration,
-                currency: this);
+            BlockchainApi              = ResolveBlockchainApi(configuration);
 
             TxExplorerUri              = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri         = configuration[nameof(AddressExplorerUri)];
@@ -142,18 +141,26 @@ namespace Atomex
             Bip44Code                  = Bip44.Ethereum;
         }
 
-        protected static IBlockchainApi ResolveBlockchainApi(
-            IConfiguration configuration,
-            EthereumConfig currency)
+        protected IBlockchainApi ResolveBlockchainApi(IConfiguration configuration)
         {
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();
 
             return blockchainApi switch
             {
-                "etherscan" => new EtherScanApi(currency.Name, currency.BlockchainApiBaseUri),
+                "etherscan" => GetEtherScanApi(),
                 _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
             };
+        }
+
+        public EtherScanApi GetEtherScanApi()
+        {
+            var settings = new EtherScanSettings
+            {
+                ApiToken = "" // TODO: fix
+            };
+
+            return new EtherScanApi(settings);
         }
 
         public override IExtKey CreateExtKey(SecureBytes seed, int keyType) =>
@@ -174,10 +181,6 @@ namespace Atomex
         public override bool IsAddressFromKey(string address, byte[] publicKey) =>
             AddressFromKey(publicKey).ToLowerInvariant()
                 .Equals(address.ToLowerInvariant());
-
-        //public override bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey) =>
-        //    new EthECKey(publicKey, false)
-        //        .Verify(data, EthECDSASignature.FromDER(signature));
 
         public override decimal GetFeeAmount(decimal fee, decimal feePrice) =>
             fee * feePrice / GweiInEth;
@@ -268,16 +271,17 @@ namespace Atomex
 
             try
             {
-                var gasPrice = await gasPriceProvider
-                    .GetGasPriceAsync(cancellationToken: cancellationToken)
+                var (gasPrice, error) = await gasPriceProvider
+                    .GetFastGasPriceAsync(cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (gasPrice == null || gasPrice.HasError || gasPrice.Value == null)
-                    Log.Error("Invalid gas price!" + ((gasPrice?.HasError ?? false) ? " " + gasPrice.Error.Description : ""));
+                if (error != null)
+                {
+                    Log.Error($"Invalid gas price! Message: {error.Value.Message}");
+                    return GasPriceInGwei;
+                }
 
-                return gasPrice != null && !gasPrice.HasError && gasPrice.Value != null
-                    ? Math.Min(gasPrice.Value.High * 1.2m, MaxGasPriceInGwei)
-                    : GasPriceInGwei;
+                return Math.Min(gasPrice * 1.2m, MaxGasPriceInGwei);
             }
             catch (Exception e)
             {

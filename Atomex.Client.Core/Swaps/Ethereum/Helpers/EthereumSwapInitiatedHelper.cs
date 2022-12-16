@@ -11,6 +11,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Blockchain.Ethereum.Dto.Swaps.V1;
 using Atomex.Blockchain.Ethereum.Abstract;
+using Atomex.Blockchain.Ethereum.EtherScan;
 
 namespace Atomex.Swaps.Ethereum.Helpers
 {
@@ -25,10 +26,13 @@ namespace Atomex.Swaps.Ethereum.Helpers
         {
             var ethereum = currency as EthereumConfig;
 
-            var api = ethereum.BlockchainApi as IEthereumApi;
+            var api = ethereum.GetEtherScanApi();
 
             var (fromBlockNo, fromBlockError) = await api
-                .GetBlockByTimeStampAsync(swap.TimeStamp.ToUniversalTime().ToUnixTime(), cancellationToken: cancellationToken)
+                .GetBlockNumberAsync(
+                    timeStamp: swap.TimeStamp.ToUniversalTime(),
+                    blockClosest: ClosestBlock.Before,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (fromBlockError != null)
@@ -84,7 +88,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
                 var requiredAmountInWei = EthereumConfig.EthToWei(requiredAmountInEth);
                 var requiredRewardForRedeemInWei = EthereumConfig.EthToWei(swap.RewardForRedeem);
 
-                var api = new EtherScanApi(ethereum.Name, ethereum.BlockchainApiBaseUri);
+                var api = ethereum.GetEtherScanApi();
 
                 var (events, error) = await api
                     .GetContractEventsAsync(

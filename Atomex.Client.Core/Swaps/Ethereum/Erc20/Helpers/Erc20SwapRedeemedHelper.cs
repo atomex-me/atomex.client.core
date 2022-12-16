@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Ethereum.EtherScan;
+using Atomex.Blockchain.Ethereum.Erc20.Dto.Swaps.V1;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Blockchain.Ethereum.Erc20.Dto.Swaps.V1;
 
 namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 {
@@ -26,7 +27,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                 var erc20 = (EthereumTokens.Erc20Config)currency;
 
-                var api = new EtherScanApi(erc20.Name, erc20.BlockchainApiBaseUri);
+                var api = erc20.GetEtherScanApi();
 
                 var (events, error) = await api.GetContractEventsAsync(
                         address: erc20.SwapContractAddress,
@@ -43,7 +44,10 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                 if (events == null || !events.Any())
                     return new Result<byte[]> { Value = null };
 
-                var secret = events.Last().ParseRedeemedEvent().Secret;
+                var secret = events
+                    .Last()
+                    .ParseErc20RedeemedEvent()
+                    .Secret;
 
                 Log.Debug("Redeem event received with secret {@secret}", Convert.ToBase64String(secret));
 

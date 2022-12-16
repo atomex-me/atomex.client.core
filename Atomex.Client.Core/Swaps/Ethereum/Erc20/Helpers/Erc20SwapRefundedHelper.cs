@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Ethereum.Erc20.Dto.Swaps.V1;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Blockchain.Ethereum.Dto.Swaps.V1;
+using Atomex.EthereumTokens;
 
 namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 {
@@ -23,15 +24,15 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
             {
                 Log.Debug("Ethereum: check refund event");
 
-                var ethereum = (EthereumConfig)currency;
+                var erc20 = (Erc20Config)currency;
 
-                var api = new EtherScanApi(ethereum.Name, ethereum.BlockchainApiBaseUri);
+                var api = erc20.GetEtherScanApi();
 
                 var (events, error) = await api.GetContractEventsAsync(
-                        address: ethereum.SwapContractAddress,
-                        fromBlock: ethereum.SwapContractBlockNumber,
+                        address: erc20.SwapContractAddress,
+                        fromBlock: erc20.SwapContractBlockNumber,
                         toBlock: ulong.MaxValue,
-                        topic0: EventSignatureExtractor.GetSignatureHash<RefundedEventDTO>(),
+                        topic0: EventSignatureExtractor.GetSignatureHash<Erc20RefundedEventDTO>(),
                         topic1: "0x" + swap.SecretHash.ToHexString(),
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);

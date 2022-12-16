@@ -49,14 +49,6 @@ namespace Atomex.Blockchain.Ethereum.Abstract
             CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Gets fastest gas price estimation
-        /// </summary>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Gas price in the first element of the tuple if success, otherwise error in the second element of the tuple</returns>
-        Task<Result<long>> GetFastGasPriceAsync(
-            CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Generates and returns an estimate of how much gas is necessary to allow the transaction to complete.
         /// </summary>
         /// <remarks>

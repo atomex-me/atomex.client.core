@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Atomex.Blockchain.Ethereum.Erc20.Messages;
 using Atomex.Common;
 
 namespace Atomex.Blockchain.Ethereum.Erc20.Abstract
@@ -19,6 +20,11 @@ namespace Atomex.Blockchain.Ethereum.Erc20.Abstract
             string address,
             string token,
             DateTimeOffset fromTimeStamp,
+            CancellationToken cancellationToken = default);
+
+        Task<Result<BigInteger>> GetErc20AllowanceAsync(
+            string tokenAddress,
+            Erc20AllowanceMessage allowanceMessage,
             CancellationToken cancellationToken = default);
 
         /// <summary>

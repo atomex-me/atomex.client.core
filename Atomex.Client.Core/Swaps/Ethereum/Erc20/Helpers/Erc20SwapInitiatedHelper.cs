@@ -10,13 +10,12 @@ using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
-using Atomex.Blockchain.Ethereum.Erc20;
+using Atomex.Blockchain.Ethereum.Erc20.Dto;
+using Atomex.Blockchain.Ethereum.Erc20.Dto.Swaps.V1;
+using Atomex.Blockchain.Ethereum.EtherScan;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.EthereumTokens;
-using Atomex.Blockchain.Ethereum.Erc20.Dto.Swaps.V1;
-using Atomex.Blockchain.Ethereum.Erc20.Dto;
-using Atomex.Blockchain.Ethereum.Abstract;
 
 namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 {
@@ -31,10 +30,13 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
         {
             var erc20 = currency as Erc20Config;
 
-            var api = erc20.BlockchainApi as IEthereumApi;
+            var api = erc20.GetEtherScanApi();
 
             var (blockNo, blockError) = await api
-                .GetBlockByTimeStampAsync(swap.TimeStamp.ToUniversalTime().ToUnixTime(), cancellationToken: cancellationToken)
+                .GetBlockNumberAsync(
+                    timeStamp: swap.TimeStamp.ToUniversalTime(),
+                    blockClosest: ClosestBlock.Before,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (blockError != null)
@@ -94,7 +96,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                     ? erc20.TokensToTokenDigits(swap.RewardForRedeem)
                     : 0;
 
-                var api = new EtherScanApi(erc20.Name, erc20.BlockchainApiBaseUri);
+                var api = erc20.GetEtherScanApi();
 
                 var (events, initiateError) = await api
                     .GetContractEventsAsync(
@@ -275,7 +277,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                 var erc20 = (Erc20Config)currency;
 
-                var api = new EtherScanApi(erc20.Name, erc20.BlockchainApiBaseUri);
+                var api = erc20.GetEtherScanApi();
 
                 var (events, error) = await api
                     .GetContractEventsAsync(

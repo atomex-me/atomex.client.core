@@ -8,9 +8,8 @@ using Atomex.Blockchain.Ethereum.Erc20.Dto.Swaps.V1;
 using Atomex.Blockchain.Ethereum.Erc20.Dto;
 using Atomex.Blockchain.Ethereum.Erc20.Messages.Swaps.V1;
 using Atomex.Blockchain.Ethereum.Erc20.Messages;
-using Atomex.Blockchain.Ethereum.EtherScan;
 
-namespace Atomex.Blockchain.Ethereum.Erc20
+namespace Atomex.Blockchain.Ethereum.EtherScan
 {
     public static class Erc20EtherScanExtensions
     {
@@ -18,27 +17,27 @@ namespace Atomex.Blockchain.Ethereum.Erc20
         private const int AddressLengthInHex = 40;
         private const int TopicSizeInHex = 64;
         private const int InputItemSizeInHex = 64;
-        //private const int SignatureLengthInHex = 32;
-        
+        private const int SignatureLengthInHex = 32;
+
         //public static bool IsErc20ApproveTransaction(this EthereumTransaction transaction)
         //{
         //    return transaction.IsErc20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveFunctionMessage>());
         //}
 
-        public static bool IsErc20TransferTransaction(this EthereumTransaction transaction)
-        {
-            return transaction.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferMessage>());
-        }
+        //public static bool IsErc20TransferTransaction(this EthereumTransaction transaction)
+        //{
+        //    return transaction.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferMessage>());
+        //}
 
-        public static bool IsErc20InitiateTransaction(this EthereumTransaction transaction)
-        {
-            return transaction.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20InitiateMessage>());
-        }
+        //public static bool IsErc20InitiateTransaction(this EthereumTransaction transaction)
+        //{
+        //    return transaction.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20InitiateMessage>());
+        //}
 
-        public static bool IsErc20AddTransaction(this EthereumTransaction transaction)
-        {
-            return transaction.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20AddMessage>());
-        }
+        //public static bool IsErc20AddTransaction(this EthereumTransaction transaction)
+        //{
+        //    return transaction.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20AddMessage>());
+        //}
 
         //public static bool IsErc20RedeemTransaction(this EthereumTransaction transaction)
         //{
@@ -49,16 +48,16 @@ namespace Atomex.Blockchain.Ethereum.Erc20
         //{
         //    return transaction.IsErc20SignatureEqual(FunctionSignatureExtractor.GetSignatureHash<Erc20RefundFunctionMessage>());
         //}
-        
-        public static bool IsErc20ApprovalEvent(this ContractEvent contractEvent)
-        {
-            return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<Erc20ApprovalEventDTO>();
-        }
 
-        public static bool IsErc20TransferEvent(this ContractEvent contractEvent)
-        {
-            return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<Erc20TransferEventDTO>();
-        }
+        //public static bool IsErc20ApprovalEvent(this ContractEvent contractEvent)
+        //{
+        //    return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<Erc20ApprovalEventDTO>();
+        //}
+
+        //public static bool IsErc20TransferEvent(this ContractEvent contractEvent)
+        //{
+        //    return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<Erc20TransferEventDTO>();
+        //}
 
         //public static bool IsErc20InitiatedEvent(this EtherScanApi.ContractEvent contractEvent)
         //{
@@ -100,72 +99,72 @@ namespace Atomex.Blockchain.Ethereum.Erc20
         //    return transaction;
         //}
 
-        public static EthereumTransaction ParseErc20Input(
-            this EthereumTransaction transaction)
-        {
-            if (transaction.Data == "0x")
-                return transaction;
+        //public static EthereumTransaction ParseErc20Input(
+        //    this EthereumTransaction transaction)
+        //{
+        //    if (transaction.Data == "0x")
+        //        return transaction;
 
-            if (transaction.IsErc20TransferTransaction())
-                return transaction.ParseErc20TransferInput();
-            else if (transaction.IsErc20InitiateTransaction())
-                return transaction.ParseErc20InitiateInput();
-            else if (transaction.IsErc20AddTransaction())
-                return transaction.ParseErc20AddInput();
+        //    if (transaction.IsErc20TransferTransaction())
+        //        return transaction.ParseErc20TransferInput();
+        //    else if (transaction.IsErc20InitiateTransaction())
+        //        return transaction.ParseErc20InitiateInput();
+        //    else if (transaction.IsErc20AddTransaction())
+        //        return transaction.ParseErc20AddInput();
 
-            return transaction;
-        }
-        
-        public static EthereumTransaction ParseErc20TransferInput(
-            this EthereumTransaction transaction)
-        {
-            var input = transaction.Data[(transaction.Data.Length % InputItemSizeInHex)..];
-            
-            transaction.To = $"0x{input.Substring(InputItemSizeInHex - AddressLengthInHex, AddressLengthInHex)}";
-            transaction.Amount = new HexBigInteger(input.Substring(InputItemSizeInHex, InputItemSizeInHex)).Value;
+        //    return transaction;
+        //}
 
-            return transaction;
-        }
+        //public static EthereumTransaction ParseErc20TransferInput(
+        //    this EthereumTransaction transaction)
+        //{
+        //    var input = transaction.Data[(transaction.Data.Length % InputItemSizeInHex)..];
 
-        public static EthereumTransaction ParseErc20InitiateInput(
-            this EthereumTransaction transaction)
-        {
-            var input = transaction.Data[(transaction.Data.Length % InputItemSizeInHex)..];
+        //    transaction.To = $"0x{input.Substring(InputItemSizeInHex - AddressLengthInHex, AddressLengthInHex)}";
+        //    transaction.Amount = new HexBigInteger(input.Substring(InputItemSizeInHex, InputItemSizeInHex)).Value;
 
-            transaction.Amount = new HexBigInteger(input.Substring(InputItemSizeInHex * 5, InputItemSizeInHex)).Value;
+        //    return transaction;
+        //}
 
-            return transaction;
-        }
+        //public static EthereumTransaction ParseErc20InitiateInput(
+        //    this EthereumTransaction transaction)
+        //{
+        //    var input = transaction.Data[(transaction.Data.Length % InputItemSizeInHex)..];
 
-        public static EthereumTransaction ParseErc20AddInput(
-            this EthereumTransaction transaction)
-        {
-            var input = transaction.Data[(transaction.Data.Length % InputItemSizeInHex)..];
+        //    transaction.Amount = new HexBigInteger(input.Substring(InputItemSizeInHex * 5, InputItemSizeInHex)).Value;
 
-            transaction.Amount = new HexBigInteger(input.Substring(InputItemSizeInHex * 1, InputItemSizeInHex)).Value;
+        //    return transaction;
+        //}
 
-            return transaction;
-        }
+        //public static EthereumTransaction ParseErc20AddInput(
+        //    this EthereumTransaction transaction)
+        //{
+        //    var input = transaction.Data[(transaction.Data.Length % InputItemSizeInHex)..];
 
-        public static Erc20ApprovalEventDTO ParseErc20ApprovalEvent(
-            this ContractEvent contractEvent)
-        {
-            var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<Erc20ApprovalEventDTO>();
+        //    transaction.Amount = new HexBigInteger(input.Substring(InputItemSizeInHex * 1, InputItemSizeInHex)).Value;
 
-            if (contractEvent.Topics == null ||
-                contractEvent.Topics.Count != 3 ||
-                contractEvent.EventSignatureHash() != eventSignatureHash)
-                throw new Exception("Invalid ERC20 token contract event");
+        //    return transaction;
+        //}
 
-            var valueHex = contractEvent.HexData.Substring(PrefixOffset, TopicSizeInHex);
+        //public static Erc20ApprovalEventDTO ParseErc20ApprovalEvent(
+        //    this ContractEvent contractEvent)
+        //{
+        //    var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<Erc20ApprovalEventDTO>();
 
-            return new Erc20ApprovalEventDTO
-            {
-                Owner = $"0x{contractEvent.Topics[1][^AddressLengthInHex..]}",
-                Spender = $"0x{contractEvent.Topics[2][^AddressLengthInHex..]}",
-                Value = new HexBigInteger(valueHex).Value
-            };
-        }
+        //    if (contractEvent.Topics == null ||
+        //        contractEvent.Topics.Count != 3 ||
+        //        contractEvent.EventSignatureHash() != eventSignatureHash)
+        //        throw new Exception("Invalid ERC20 token contract event");
+
+        //    var valueHex = contractEvent.HexData.Substring(PrefixOffset, TopicSizeInHex);
+
+        //    return new Erc20ApprovalEventDTO
+        //    {
+        //        Owner = $"0x{contractEvent.Topics[1][^AddressLengthInHex..]}",
+        //        Spender = $"0x{contractEvent.Topics[2][^AddressLengthInHex..]}",
+        //        Value = new HexBigInteger(valueHex).Value
+        //    };
+        //}
 
         public static Erc20TransferEventDTO ParseErc20TransferEvent(
             this ContractEvent contractEvent)
@@ -239,22 +238,21 @@ namespace Atomex.Blockchain.Ethereum.Erc20
             };
         }
 
-        //public static Erc20RedeemedEventDTO ParseErc20RedeemedEvent(
-        //    this EtherScanApi.ContractEvent contractEvent)
-        //{
-        //    var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<Erc20RedeemedEventDTO>();
+        public static Erc20RedeemedEventDTO ParseErc20RedeemedEvent(this ContractEvent contractEvent)
+        {
+            var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<Erc20RedeemedEventDTO>();
 
-        //    if (contractEvent.Topics == null ||
-        //        contractEvent.Topics.Count != 2 ||
-        //        contractEvent.EventSignatureHash() != eventSignatureHash)
-        //        throw new Exception("Invalid contract event");
+            if (contractEvent.Topics == null ||
+                contractEvent.Topics.Count != 2 ||
+                contractEvent.EventSignatureHash() != eventSignatureHash)
+                throw new Exception("Invalid contract event");
 
-        //    return new Erc20RedeemedEventDTO
-        //    {
-        //        HashedSecret = Hex.FromString(contractEvent.Topics[1], true),
-        //        Secret = Hex.FromString(contractEvent.HexData, true)
-        //    };
-        //}
+            return new Erc20RedeemedEventDTO
+            {
+                HashedSecret = Hex.FromString(contractEvent.Topics[1], true),
+                Secret = Hex.FromString(contractEvent.HexData, true)
+            };
+        }
 
         //public static Erc20RefundedEventDTO ParseRefundedEvent(
         //    this EtherScanApi.ContractEvent contractEvent)
@@ -272,9 +270,10 @@ namespace Atomex.Blockchain.Ethereum.Erc20
         //    };
         //}
 
-        //public static EthereumTransaction TransformApprovalEvent(
+        //public static Erc20Transaction? TransformApprovalEvent(
         //    this ContractEvent contractEvent,
-        //    //Erc20Config erc20,
+        //    string currency,
+        ////    //Erc20Config erc20,
         //    long lastBlockNumber)
         //{
         //    if (!contractEvent.IsErc20ApprovalEvent())
@@ -282,34 +281,47 @@ namespace Atomex.Blockchain.Ethereum.Erc20
 
         //    var approvalEvent = contractEvent.ParseErc20ApprovalEvent();
 
-        //    var tx = new EthereumTransaction() //todo: make a refactoring
+        //    var tx = new Erc20Transaction() //todo: make a refactoring
         //    {
-        //        Currency      = erc20.Name,
-        //        Id            = contractEvent.HexTransactionHash,
-        //        Type          = TransactionType.Output | TransactionType.TokenApprove,
-        //        Status        = TransactionStatus.Confirmed, //todo: check if true in 100% cases
-        //        CreationTime  = contractEvent.HexTimeStamp[PrefixOffset..].FromHexString(),
+        //        Currency = currency,
+        //        Id = contractEvent.HexTransactionHash,
+        //        Type = TransactionType.Output | TransactionType.TokenApprove | TransactionType.ContractCall,
+        //        Status = TransactionStatus.Confirmed,
+        //        BlockHeight = long.Parse(contractEvent.HexBlockNumber[PrefixOffset..], System.Globalization.NumberStyles.HexNumber),
+        //        BlockTime = ,
+        //        Confirmations = 1 + (int)(lastBlockNumber - long.Parse(contractEvent.HexBlockNumber[PrefixOffset..], System.Globalization.NumberStyles.HexNumber)),
+        //        CreationTime = contractEvent.HexTimeStamp[PrefixOffset..].FromHexString(),
+        //        GasLimit = ,
+        //        GasPrice = new HexBigInteger(contractEvent.HexGasPrice).Value,
+        //        GasUsed = new HexBigInteger(contractEvent.HexGasUsed).Value,
+        //        Nonce = ,
+        //        Transfers = new System.Collections.Generic.List<Erc20Transfer> { }
+        //        //        Currency      = erc20.Name,
+        //        //        Id            = contractEvent.HexTransactionHash,
+        //        //        Type          = TransactionType.Output | TransactionType.TokenApprove,
+        //        //        Status        = TransactionStatus.Confirmed, //todo: check if true in 100% cases
+        //        //        CreationTime  = contractEvent.HexTimeStamp[PrefixOffset..].FromHexString(),
 
-        //        From          = approvalEvent.Owner,
-        //        To            = approvalEvent.Spender,
-        //        Amount        = 0,
-        //        ////Nonce 
-        //        GasPrice      = new HexBigInteger(contractEvent.HexGasPrice).Value,
-        //        GasUsed       = new HexBigInteger(contractEvent.HexGasUsed).Value,
-        //        ReceiptStatus = true,
-        //        IsInternal    = false,
-        //        InternalIndex = 0,
-        //        BlockInfo = new BlockInfo
-        //        {
-        //            Confirmations = 1 + (int)(lastBlockNumber - long.Parse(contractEvent.HexBlockNumber[PrefixOffset..], System.Globalization.NumberStyles.HexNumber)),
-        //            //    //Confirmations = txReceipt.Status != null
-        //            //    //? (int)txReceipt.Status.Value
-        //            //    //: 0,
-        //            //    //BlockHash = tx.BlockHash,
-        //            BlockHeight = long.Parse(contractEvent.HexBlockNumber[PrefixOffset..], System.Globalization.NumberStyles.HexNumber),
-        //            //    //BlockTime = blockTimeStamp,
-        //            //    //FirstSeen = blockTimeStamp
-        //        }
+        //        //        From          = approvalEvent.Owner,
+        //        //        To            = approvalEvent.Spender,
+        //        //        Amount        = 0,
+        //        //        ////Nonce 
+        //        //        GasPrice      = new HexBigInteger(contractEvent.HexGasPrice).Value,
+        //        //        GasUsed       = new HexBigInteger(contractEvent.HexGasUsed).Value,
+        //        //        ReceiptStatus = true,
+        //        //        IsInternal    = false,
+        //        //        InternalIndex = 0,
+        //        //        BlockInfo = new BlockInfo
+        //        //        {
+        //        //            Confirmations = 1 + (int)(lastBlockNumber - long.Parse(contractEvent.HexBlockNumber[PrefixOffset..], System.Globalization.NumberStyles.HexNumber)),
+        //        //            //    //Confirmations = txReceipt.Status != null
+        //        //            //    //? (int)txReceipt.Status.Value
+        //        //            //    //: 0,
+        //        //            //    //BlockHash = tx.BlockHash,
+        //        //            BlockHeight = long.Parse(contractEvent.HexBlockNumber[PrefixOffset..], System.Globalization.NumberStyles.HexNumber),
+        //        //            //    //BlockTime = blockTimeStamp,
+        //        //            //    //FirstSeen = blockTimeStamp
+        //        //        }
         //    };
 
         //    return tx;

@@ -12,7 +12,11 @@ using Serilog;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
-using Atomex.Blockchain.Ethereum.Erc20;
+using Atomex.Blockchain.Ethereum.Abstract;
+using Atomex.Blockchain.Ethereum.Erc20.Abstract;
+using Atomex.Blockchain.Ethereum.Erc20.Messages.Swaps.V1;
+using Atomex.Blockchain.Ethereum.Erc20.Messages;
+using Atomex.Blockchain.Ethereum.Messages.Swaps.V1;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.EthereumTokens;
@@ -20,7 +24,6 @@ using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Ethereum.Erc20.Helpers;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Ethereum;
-using Atomex.Blockchain.Ethereum.Abstract;
 
 namespace Atomex.Swaps.Ethereum
 {
@@ -40,6 +43,9 @@ namespace Atomex.Swaps.Ethereum
             Erc20Account = account ?? throw new ArgumentNullException(nameof(account));
             EthereumAccount = ethereumAccount ?? throw new ArgumentNullException(nameof(ethereumAccount));
         }
+
+        private IEthereumApi GetEthereumApi() => (IEthereumApi)EthConfig.BlockchainApi;
+        private IErc20Api GetErc20Api() => (IErc20Api)Erc20Config.BlockchainApi;
 
         public override async Task PayAsync(
             Swap swap,
@@ -79,7 +85,7 @@ namespace Atomex.Swaps.Ethereum
                         var isInitiateTx = tx.Type.HasFlag(TransactionType.SwapPayment);
 
                         var (nonce, error) = await EthereumNonceManager.Instance
-                            .GetNonceAsync(Erc20Config, tx.From, pending: true, cancellationToken)
+                            .GetNonceAsync(GetEthereumApi(), tx.From, pending: true, cancellationToken)
                             .ConfigureAwait(false);
 
                         if (error != null)
@@ -135,10 +141,10 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
 
                 var isInitiateConfirmed = await WaitPaymentConfirmationAsync(
-                            txId: paymentTx.Id,
-                            timeout: EthereumSwap.InitiationTimeout,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
+                        txId: paymentTx.Id,
+                        timeout: EthereumSwap.InitiationTimeout,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
 
                 if (!isInitiateConfirmed)
                 {
@@ -147,6 +153,7 @@ namespace Atomex.Swaps.Ethereum
                 }
                 
                 swap.StateFlags |= SwapStateFlags.IsPaymentConfirmed;
+
                 await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentConfirmed, cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -263,7 +270,7 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
 
                 var (nonce, nonceError) = await EthereumNonceManager.Instance
-                    .GetNonceAsync(erc20Config, walletAddress.Address, pending: true, cancellationToken)
+                    .GetNonceAsync(GetEthereumApi(), walletAddress.Address, pending: true, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (nonceError != null)
@@ -289,9 +296,9 @@ namespace Atomex.Swaps.Ethereum
 
                 var txInput = message.CreateTransactionInput(erc20Config.SwapContractAddress);
 
-                redeemTx = new EthereumTransaction(erc20Config.Name, txInput)
+                redeemTx = new EthereumTransaction(EthereumConfig.Eth, txInput)
                 {
-                    Type = TransactionType.Output | TransactionType.SwapRedeem
+                    Type = TransactionType.Output | TransactionType.SwapRedeem | TransactionType.ContractCall
                 };
 
                 var signResult = await EthereumAccount
@@ -382,7 +389,7 @@ namespace Atomex.Swaps.Ethereum
                 .ConfigureAwait(false);
 
             var (nonce, error) = await EthereumNonceManager.Instance
-                .GetNonceAsync(erc20Config, walletAddress.Address, pending: true, cancellationToken)
+                .GetNonceAsync(GetEthereumApi(), walletAddress.Address, pending: true, cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)
@@ -408,9 +415,9 @@ namespace Atomex.Swaps.Ethereum
 
             var txInput = message.CreateTransactionInput(erc20Config.SwapContractAddress);
 
-            var redeemTx = new EthereumTransaction(erc20Config.Name, txInput)
+            var redeemTx = new EthereumTransaction(EthereumConfig.Eth, txInput)
             {
-                Type = TransactionType.Output | TransactionType.SwapRedeem
+                Type = TransactionType.Output | TransactionType.SwapRedeem | TransactionType.ContractCall
             };
 
             var signResult = await EthereumAccount
@@ -513,7 +520,11 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
 
                 var (nonce, error) = await EthereumNonceManager.Instance
-                    .GetNonceAsync(erc20Config, walletAddress.Address, pending: true, cancellationToken)
+                    .GetNonceAsync(
+                        api: GetEthereumApi(),
+                        address: walletAddress.Address,
+                        pending: true,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (error != null)
@@ -538,7 +549,7 @@ namespace Atomex.Swaps.Ethereum
 
                 var txInput = message.CreateTransactionInput(erc20Config.SwapContractAddress);
 
-                refundTx = new EthereumTransaction(erc20Config.Name, txInput)
+                refundTx = new EthereumTransaction(EthereumConfig.Eth, txInput)
                 {
                     Type = TransactionType.Output | TransactionType.SwapRefund
                 };
@@ -808,8 +819,11 @@ namespace Atomex.Swaps.Ethereum
                 erc20Config.DigitsMultiplier,
                 erc20Config.DustDigitsMultiplier);
 
-            var (nonce, error) = await ((IEthereumApi)erc20Config.BlockchainApi)
-                .GetTransactionCountAsync(walletAddress.Address, pending: false, cancellationToken)
+            var (nonce, error) = await GetEthereumApi()
+                .GetTransactionsCountAsync(
+                    address: walletAddress.Address,
+                    pending: false,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)
@@ -844,9 +858,9 @@ namespace Atomex.Swaps.Ethereum
 
             txInput = initMessage.CreateTransactionInput(erc20Config.SwapContractAddress);
 
-            return new EthereumTransaction(erc20Config.Name, txInput)
+            return new EthereumTransaction(EthereumConfig.Eth, txInput)
             {
-                Type = TransactionType.Output | TransactionType.SwapPayment
+                Type = TransactionType.Output | TransactionType.SwapPayment | TransactionType.ContractCall
             };
         }
 
@@ -876,16 +890,24 @@ namespace Atomex.Swaps.Ethereum
                 FromAddress = walletAddress.Address
             };
 
-            var allowance = await ((IEthereumApi)erc20.BlockchainApi)
+            var (allowance, allowanceError) = await GetErc20Api()
                 .GetErc20AllowanceAsync(
-                    erc20: erc20,
                     tokenAddress: erc20.ERC20ContractAddress,
                     allowanceMessage: allowanceMessage,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var (nonce, nonceError) = await ((IEthereumApi)erc20.BlockchainApi)
-                .GetTransactionCountAsync(walletAddress.Address, pending: false, cancellationToken)
+            if (allowanceError != null)
+            {
+                Log.Error($"Getting allowance error: {allowanceError.Value.Message}");
+                return new List<EthereumTransaction>();
+            }
+
+            var (nonce, nonceError) = await GetEthereumApi()
+                .GetTransactionsCountAsync(
+                    address: walletAddress.Address,
+                    pending: false,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (nonceError != null)
@@ -894,7 +916,7 @@ namespace Atomex.Swaps.Ethereum
                 return new List<EthereumTransaction>();
             }
 
-            if (allowance.Value > 0)
+            if (allowance > 0)
             {
                 var tx = await CreateApproveTx(
                         walletAddress: walletAddress.Address,
@@ -948,9 +970,9 @@ namespace Atomex.Swaps.Ethereum
 
             var txInput = message.CreateTransactionInput(erc20Config.ERC20ContractAddress);
 
-            return new EthereumTransaction(erc20Config.Name, txInput)
+            return new EthereumTransaction(EthereumConfig.Eth, txInput)
             {
-                Type = TransactionType.Output | TransactionType.TokenApprove
+                Type = TransactionType.Output | TransactionType.TokenApprove | TransactionType.ContractCall
             };
         }
 
@@ -971,29 +993,10 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("TxId {@id} for swap {@swapId}", txId, swap.Id);
 
-            if (tx.Type.HasFlag(TransactionType.SwapPayment))
-                tx = tx.ParseErc20Input();
-
-            // account new unconfirmed transaction
-            await Erc20Account
-                .LocalStorage
-                .UpsertTransactionAsync(
-                    tx: tx,
-                    notifyIfNewOrChanged: true,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            var ethTx = tx.Clone();
-            ethTx.Currency = EthConfig.Name;
-            ethTx.Amount = 0;
-            ethTx.Type = TransactionType.Output | (ethTx.Type.HasFlag(TransactionType.TokenApprove)
-                ? TransactionType.TokenCall
-                : TransactionType.ContractCall);
-
             await EthereumAccount
                 .LocalStorage
                 .UpsertTransactionAsync(
-                    tx: ethTx,
+                    tx: tx,
                     notifyIfNewOrChanged: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -1042,14 +1045,15 @@ namespace Atomex.Swaps.Ethereum
                 await Task.Delay(EthereumSwap.InitiationCheckInterval, cancellationToken)
                     .ConfigureAwait(false);
 
-                var tx = await Erc20Account
+                var tx = await EthereumAccount
                     .LocalStorage
-                    .GetTransactionByIdAsync<EthereumTransaction>(Erc20Config.Name, txId)
+                    .GetTransactionByIdAsync<EthereumTransaction>(EthereumConfig.Eth, txId)
                     .ConfigureAwait(false);
 
-                if (tx is not { IsConfirmed: true }) continue;
+                if (tx.Confirmations == 0)
+                    continue;
 
-                return tx.IsConfirmed;
+                return true;
             }
 
             return false;

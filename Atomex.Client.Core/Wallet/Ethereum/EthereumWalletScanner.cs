@@ -103,7 +103,7 @@ namespace Atomex.Wallet.Ethereum
                             {
                                 freeKeysCount = 0;
 
-                                transactions.AddRange(CollapseInternalTransactions(txs));
+                                transactions.AddRange(txs);
 
                                 // save only active addresses
                                 walletAddresses.Add(walletAddress);
@@ -327,47 +327,7 @@ namespace Atomex.Wallet.Ethereum
 
             walletAddress.LastSuccessfullUpdate = updateTimeStamp;
 
-            return new Result<IEnumerable<EthereumTransaction>>() {
-                Value = CollapseInternalTransactions(txs.Cast<EthereumTransaction>())
-            };
-        }
-
-        private IEnumerable<EthereumTransaction> CollapseInternalTransactions(
-            IEnumerable<EthereumTransaction> txs)
-        {
-            var result = new List<EthereumTransaction>();
-            var txsById = new Dictionary<string, EthereumTransaction>();
-            var internalTxs = new List<EthereumTransaction>();
-
-            foreach (var tx in txs)
-            {
-                if (tx.IsInternal)
-                {
-                    internalTxs.Add(tx);
-                }
-                else
-                {
-                    result.Add(tx);
-                    txsById.TryAdd(tx.Id, tx);
-                }
-            }
-
-            foreach (var internalTx in internalTxs)
-            {
-                if (txsById.TryGetValue(internalTx.Id, out var tx))
-                {
-                    if (tx.InternalTransactions == null)
-                        tx.InternalTransactions = new List<EthereumTransaction>();
-
-                    tx.InternalTransactions.Add(internalTx);
-                }
-                else
-                {
-                    result.Add(internalTx);
-                }
-            }
-
-            return result;
+            return new Result<IEnumerable<EthereumTransaction>> { Value = txs };
         }
     }
 }

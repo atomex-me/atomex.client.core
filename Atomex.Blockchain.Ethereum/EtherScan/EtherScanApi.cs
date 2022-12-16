@@ -5,6 +5,8 @@ using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Nethereum.Contracts;
+using Nethereum.Hex.HexConvertors.Extensions;
 using Nethereum.Hex.HexTypes;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -13,6 +15,7 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum.Abstract;
 using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Blockchain.Ethereum.Erc20.Abstract;
+using Atomex.Blockchain.Ethereum.Erc20.Messages;
 using Atomex.Common;
 using Error = Atomex.Common.Error;
 
@@ -236,7 +239,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
         public async Task<Result<IEnumerable<Erc20Transaction>>> GetErc20TransactionsAsync(
             string address,
-            string token,
+            string tokenContractAddress,
             DateTimeOffset fromTimeStamp,
             CancellationToken cancellationToken = default)
         {
@@ -251,7 +254,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
             var (txs, error) = await GetErc20TransactionsAsync(
                     address: address,
-                    token: token,
+                    tokenContractAddress: tokenContractAddress,
                     fromBlock: fromBlock,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -267,7 +270,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
         public async Task<Result<TransactionsResult<Erc20Transaction>>> GetErc20TransactionsAsync(
             string address,
-            string token,
+            string tokenContractAddress,
             ulong fromBlock = ulong.MinValue,
             ulong toBlock = ulong.MaxValue,
             CancellationToken cancellationToken = default)
@@ -282,7 +285,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             {
                 var requestUri = "api?module=account" +
                     "&action=tokentx" +
-                    $"&contractaddress={Settings.GetTokenContract(token)}" +
+                    $"&contractaddress={Settings.GetTokenContract(tokenContractAddress)}" +
                     $"&address={address}" +
                     $"&startblock={fromBlock}" +
                     $"&endblock={toBlockStr}" +
@@ -319,8 +322,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 {
                     var erc20transfer = new Erc20Transfer
                     {
-                        From = transfer["from"].Value<string>(),
-                        To = transfer["to"].Value<string>(),
+                        From  = transfer["from"].Value<string>(),
+                        To    = transfer["to"].Value<string>(),
                         Value = BigInteger.Parse(transfer["value"].Value<string>())
                     };
 
@@ -335,20 +338,20 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
                         erc20tx = new Erc20Transaction
                         {
-                            Id = hash,
-                            Currency = token,
-                            Status = confirmations > 0
+                            Id           = hash,
+                            Currency     = tokenContractAddress,
+                            Status       = confirmations > 0
                                 ? TransactionStatus.Confirmed
                                 : TransactionStatus.Pending,
                             CreationTime = timeStamp,
-                            BlockTime = timeStamp,
-                            BlockHeight = result["blockNumber"].Value<long>(),
+                            BlockTime    = timeStamp,
+                            BlockHeight  = result["blockNumber"].Value<long>(),
 
-                            Nonce = result["nonce"].Value<long>(),
-                            GasPrice = result["gasPrice"].Value<long>(),
-                            GasLimit = result["gas"].Value<long>(),
-                            GasUsed = result["gasUsed"].Value<long>(),
-                            Transfers = new List<Erc20Transfer>()
+                            Nonce        = result["nonce"].Value<long>(),
+                            GasPrice     = result["gasPrice"].Value<long>(),
+                            GasLimit     = result["gas"].Value<long>(),
+                            GasUsed      = result["gasUsed"].Value<long>(),
+                            Transfers    = new List<Erc20Transfer>()
                         };
 
                         txsIndex.Add(hash, erc20tx);
@@ -367,6 +370,49 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 Transactions = txs,
                 Index = txsIndex
             };
+        }
+
+        public async Task<Result<BigInteger>> GetErc20AllowanceAsync(
+            string tokenAddress,
+            Erc20AllowanceMessage allowanceMessage,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var callData = allowanceMessage
+                    .GetCallData()
+                    .ToHex(prefix: true);
+
+                var requestUri = $"api?module=proxy&action=eth_call&to={tokenAddress}&data={callData}&tag=latest&apikey={Settings.ApiToken}";
+
+                var response = await HttpHelper
+                    .GetAsync(
+                        baseUri: Settings.BaseUri,
+                        relativeUri: requestUri,
+                        requestLimitControl: GetRequestLimitControl(Settings.RequestLimitDelayMs),
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                var content = await response
+                    .Content
+                    .ReadAsStringAsync()
+                    .ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                    return new Error((int)response.StatusCode, "Error status code received");
+
+                var result = JsonConvert.DeserializeObject<JObject>(content);
+
+                var allowanceHex = result?["result"]?.Value<string>();
+
+                return !string.IsNullOrEmpty(allowanceHex)
+                    ? new HexBigInteger(allowanceHex).Value
+                    : 0;
+            }
+            catch (Exception e)
+            {
+                return new Error(Errors.RequestError, e.Message);
+            }
         }
 
         #endregion
@@ -650,25 +696,25 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
             var tx = new EthereumTransaction
             {
-                Id = result["hash"].Value<string>(),
-                Currency = EthereumHelper.Eth,
+                Id           = result["hash"].Value<string>(),
+                Currency     = EthereumHelper.Eth,
                 CreationTime = DateTimeOffset.UtcNow,
-                BlockHeight = result["blockNumber"] != null
+                BlockHeight  = result["blockNumber"] != null
                     ? (long)new HexBigInteger(result["blockNumber"].Value<string>()).Value
                     : 0,
 
-                From = result["from"].Value<string>(),
-                To = result["to"].Value<string>(),
+                From   = result["from"].Value<string>(),
+                To     = result["to"].Value<string>(),
                 // ChainId
-                Amount = new HexBigInteger(result["value"].Value<string>()),
-                Nonce = result["nonce"] != null
+                Amount   = new HexBigInteger(result["value"].Value<string>()),
+                Nonce    = result["nonce"] != null
                     ? new HexBigInteger(result["nonce"].Value<string>()).Value
                     : 0,
                 GasPrice = result["gasPrice"] != null
                     ? new HexBigInteger(result["gasPrice"].Value<string>()).Value
                     : 0,
                 GasLimit = new HexBigInteger(result["gas"].Value<string>()).Value,
-                Data = result["input"]?.Value<string>()
+                Data     = result["input"]?.Value<string>()
                 // IsError
                 // ErrorDescription
                 // InternalTransactions
@@ -856,30 +902,30 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
                     var tx = new EthereumTransaction
                     {
-                        Id = t["hash"].Value<string>(),
-                        Currency = EthereumHelper.Eth,
-                        CreationTime = timeStamp,
-                        BlockTime = timeStamp,
-                        BlockHeight = t["blockNumber"] != null
+                        Id            = t["hash"].Value<string>(),
+                        Currency      = EthereumHelper.Eth,
+                        CreationTime  = timeStamp,
+                        BlockTime     = timeStamp,
+                        BlockHeight   = t["blockNumber"] != null
                             ? t["blockNumber"].Value<long>()
                             : 0,
                         Confirmations = confirmations,
-                        Status = status,
+                        Status        = status,
 
                         // ChainId
-                        From = t["from"].Value<string>(),
-                        To = t["to"].Value<string>(),
-                        Amount = BigInteger.Parse(t["value"].Value<string>()),
-                        Nonce = t["nonce"] != null
+                        From     = t["from"].Value<string>(),
+                        To       = t["to"].Value<string>(),
+                        Amount   = BigInteger.Parse(t["value"].Value<string>()),
+                        Nonce    = t["nonce"] != null
                             ? BigInteger.Parse(t["nonce"].Value<string>())
                             : 0,
                         GasPrice = t["gasPrice"] != null
                             ? BigInteger.Parse(t["gasPrice"].Value<string>())
                             : 0,
                         GasLimit = BigInteger.Parse(t["gas"].Value<string>()),
-                        GasUsed = BigInteger.Parse(t["gasUsed"].Value<string>()),
-                        Data = t["input"]?.Value<string>(),
-                        IsError = isError,
+                        GasUsed  = BigInteger.Parse(t["gasUsed"].Value<string>()),
+                        Data     = t["input"]?.Value<string>(),
+                        IsError  = isError,
 
                         // ErrorDescription,
                         // InternalTransactions
@@ -1003,16 +1049,16 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
                 var tx = new EthereumInternalTransaction
                 {
-                    BlockHeight = internalTx["blockNumber"].Value<long>(),
-                    BlockTime = timeStamp,
-                    Hash = txId ?? internalTx["hash"].Value<string>(),
-                    From = internalTx["from"].Value<string>(),
-                    To = internalTx["to"].Value<string>(),
-                    Value = BigInteger.Parse(internalTx["value"].Value<string>()),
-                    GasLimit = BigInteger.Parse(internalTx["gas"].Value<string>()),
-                    Data = internalTx["input"].Value<string>(),
-                    Type = internalTx["type"].Value<string>(),
-                    IsError = bool.Parse(internalTx["isError"].Value<string>()),
+                    BlockHeight      = internalTx["blockNumber"].Value<long>(),
+                    BlockTime        = timeStamp,
+                    Hash             = txId ?? internalTx["hash"].Value<string>(),
+                    From             = internalTx["from"].Value<string>(),
+                    To               = internalTx["to"].Value<string>(),
+                    Value            = BigInteger.Parse(internalTx["value"].Value<string>()),
+                    GasLimit         = BigInteger.Parse(internalTx["gas"].Value<string>()),
+                    Data             = internalTx["input"].Value<string>(),
+                    Type             = internalTx["type"].Value<string>(),
+                    IsError          = bool.Parse(internalTx["isError"].Value<string>()),
                     ErrorDescription = internalTx["errCode"].Value<string>()
                 };
 
@@ -1045,47 +1091,12 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             return result;
         }
 
-        public static string BlockNumberToTag(
-            ulong blockNumber) =>
+        public static string BlockNumberToTag(ulong blockNumber) =>
             blockNumber switch
             {
                 ulong.MaxValue => "latest",
                 _ => blockNumber.ToString()
             };
-
-        //public async Task<Result<decimal>> GetErc20AllowanceAsync(
-        //    Erc20Config erc20,
-        //    string tokenAddress,
-        //    FunctionMessage allowanceMessage,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    try
-        //    {
-        //        var callData = (allowanceMessage as Erc20AllowanceMessage)
-        //            .GetCallData()
-        //            .ToHex(prefix: true);
-
-        //        return await HttpHelper.GetAsyncResult<decimal>(
-        //            baseUri: BaseUrl,
-        //            requestUri: $"api?module=proxy&action=eth_call&to={tokenAddress}&data={callData}&tag=latest&apikey={ApiKey}",
-        //            responseHandler: (response, content) =>
-        //            {
-        //                var result = JsonConvert.DeserializeObject<JObject>(content);
-
-        //                var allowanceHex = result?["result"]?.Value<string>();
-
-        //                return !string.IsNullOrEmpty(allowanceHex)
-        //                    ? erc20.TokenDigitsToTokens(new HexBigInteger(allowanceHex).Value)
-        //                    : 0;
-        //            },
-        //            cancellationToken: cancellationToken)
-        //        .ConfigureAwait(false);
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        return new Error(Errors.RequestError, e.Message);
-        //    }
-        //}
 
         public async Task<Result<long>> GetFastGasPriceAsync(
             CancellationToken cancellationToken = default)
@@ -1220,7 +1231,10 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 .DeserializeObject<Response<List<ContractEvent>>>(content)
                 .Result;
 
-            return events;
+            return new Result<IEnumerable<ContractEvent>>
+            {
+                Value = events ?? Enumerable.Empty<ContractEvent>()
+            };
         }
 
         public Task<Result<IEnumerable<ContractEvent>>> GetContractEventsAsync(

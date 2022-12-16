@@ -11,13 +11,14 @@ using Serilog;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Ethereum.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Ethereum.Helpers;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Ethereum;
-using Atomex.Blockchain.Ethereum.Abstract;
+using Atomex.Blockchain.Ethereum.Messages.Swaps.V1;
 
 namespace Atomex.Swaps.Ethereum
 {
@@ -31,6 +32,7 @@ namespace Atomex.Swaps.Ethereum
         public static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(30);
         private EthereumConfig EthConfig => Currencies.Get<EthereumConfig>(Currency);
         protected readonly EthereumAccount _account;
+        private IEthereumApi GetEthereumApi() => (IEthereumApi)EthConfig.BlockchainApi;
 
         public EthereumSwap(
             EthereumAccount account,
@@ -69,7 +71,7 @@ namespace Atomex.Swaps.Ethereum
                         .ConfigureAwait(false);
 
                     var (nonce, error) = await EthereumNonceManager.Instance
-                        .GetNonceAsync(EthConfig, paymentTx.From)
+                        .GetNonceAsync(GetEthereumApi(), paymentTx.From)
                         .ConfigureAwait(false);
 
                     if (error != null)
@@ -245,7 +247,11 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
 
                 var (nonce, nonceError) = await EthereumNonceManager.Instance
-                    .GetNonceAsync(ethConfig, walletAddress.Address, pending: true, cancellationToken: cancellationToken)
+                    .GetNonceAsync(
+                        api: GetEthereumApi(),
+                        address: walletAddress.Address,
+                        pending: true,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (nonceError != null)
@@ -364,7 +370,11 @@ namespace Atomex.Swaps.Ethereum
                 .ConfigureAwait(false);
 
             var (nonce, error) = await EthereumNonceManager.Instance
-                .GetNonceAsync(ethConfig, walletAddress.Address, pending: true, cancellationToken)
+                .GetNonceAsync(
+                    api: GetEthereumApi(),
+                    address: walletAddress.Address,
+                    pending: true,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)
@@ -495,7 +505,11 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
 
                 var (nonce, error) = await EthereumNonceManager.Instance
-                    .GetNonceAsync(ethConfig, walletAddress.Address, pending: true, cancellationToken)
+                    .GetNonceAsync(
+                        api: GetEthereumApi(),
+                        address: walletAddress.Address,
+                        pending: true,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (error != null)
@@ -759,8 +773,11 @@ namespace Atomex.Swaps.Ethereum
                 return null;
             }
 
-            var (nonce, error) = await ((IEthereumApi)ethConfig.BlockchainApi)
-                .GetTransactionCountAsync(walletAddress.Address, pending: false, cancellationToken)
+            var (nonce, error) = await GetEthereumApi()
+                .GetTransactionsCountAsync(
+                    address: walletAddress.Address,
+                    pending: false,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)
@@ -870,9 +887,10 @@ namespace Atomex.Swaps.Ethereum
                     .GetTransactionByIdAsync<EthereumTransaction>(EthConfig.Name, txId)
                     .ConfigureAwait(false);
 
-                if (tx is not { IsConfirmed: true }) continue;
+                if (tx.Confirmations == 0)
+                    continue;
 
-                return tx.IsConfirmed;
+                return true;
             }
 
             return false;

@@ -30,7 +30,5 @@ namespace Atomex.Blockchain.Ethereum.Erc20
         public BigInteger GasUsed { get; set; }
 
         public List<Erc20Transfer> Transfers { get; set; }
-
-
     }
 }

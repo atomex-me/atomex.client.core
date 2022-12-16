@@ -1,12 +1,15 @@
-﻿using Atomex.Blockchain.Ethereum;
-using Atomex.Blockchain.Ethereum.Dto.Swaps.V1;
-using Atomex.Common;
-using Atomex.Core;
-using Serilog;
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
+using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Ethereum.Dto.Swaps.V1;
+using Atomex.Blockchain.Ethereum.EtherScan;
+using Atomex.Common;
+using Atomex.Core;
 
 namespace Atomex.Swaps.Ethereum.Helpers
 {
@@ -23,7 +26,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
 
                 var ethereum = (EthereumConfig)currency;
                   
-                var api = new EtherScanApi(ethereum.Name, ethereum.BlockchainApiBaseUri);
+                var api = ethereum.GetEtherScanApi();
 
                 var (events, error) = await api
                     .GetContractEventsAsync(

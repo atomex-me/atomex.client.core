@@ -34,6 +34,16 @@ namespace Atomex.Wallet.Ethereum
             _ethereumAccount = ethereumAccount ?? throw new ArgumentNullException(nameof(ethereumAccount));
         }
 
+        private EtherScanApi GetErc20Api()
+        {
+            var apiSettings = new EtherScanSettings // TODO: use config
+            {
+                BaseUri = Erc20Config.BlockchainApiBaseUri
+            };
+
+            return new EtherScanApi(apiSettings);
+        }
+
         public Task ScanAsync(
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
@@ -64,24 +74,26 @@ namespace Atomex.Wallet.Ethereum
 
                     // todo: if skipUsed == true => skip "disabled" wallets
 
-                    var api = new EtherScanApi(Erc20Config.Name, Erc20Config.BlockchainApiBaseUri);
-                    var txs = new List<EthereumTransaction>();
+                    var api = GetErc20Api(); 
+                    var txs = new List<Erc20Transaction>();
 
                     foreach (var walletAddress in walletAddresses)
                     {
-                        var txsResult = await UpdateAddressAsync(
+                        var (addressTxs, error) = await UpdateAddressAsync(
                                 walletAddress,
                                 api: api,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (txsResult.HasError)
+                        if (error != null)
                         {
-                            Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error while scan {@address}", walletAddress.Address);
+                            Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error while scan {@address}",
+                                walletAddress.Address);
+
                             return;
                         }
 
-                        txs.AddRange(txsResult.Value);
+                        txs.AddRange(addressTxs);
                     }
 
                     if (txs.Any())
@@ -138,24 +150,26 @@ namespace Atomex.Wallet.Ethereum
 
                     // todo: if skipUsed == true => skip "disabled" wallets
 
-                    var api = new EtherScanApi(Erc20Config.Name, Erc20Config.BlockchainApiBaseUri);
-                    var txs = new List<EthereumTransaction>();
+                    var api = GetErc20Api();
+                    var txs = new List<Erc20Transaction>();
 
                     foreach (var walletAddress in walletAddresses)
                     {
-                        var txsResult = await UpdateAddressAsync(
+                        var (addressTxs, error) = await UpdateAddressAsync(
                                 walletAddress,
                                 api: api,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (txsResult.HasError)
+                        if (error != null)
                         {
-                            Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error while scan {@address}", walletAddress.Address);
+                            Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error while scan {@address}",
+                                walletAddress.Address);
+
                             return;
                         }
 
-                        txs.AddRange(txsResult.Value);
+                        txs.AddRange(addressTxs);
                     }
 
                     if (txs.Any())
@@ -210,24 +224,26 @@ namespace Atomex.Wallet.Ethereum
                         return;
                     }
 
-                    var txsResult = await UpdateAddressAsync(
+                    var (addressTxs, error) = await UpdateAddressAsync(
                             walletAddress,
                             api: null,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (txsResult.HasError)
+                    if (error != null)
                     {
-                        Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error while scan {@address}", address);
+                        Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error while scan {@address}",
+                            address);
+
                         return;
                     }
 
-                    if (txsResult.Value.Any())
+                    if (addressTxs.Any())
                     {
                         await _account
                             .LocalStorage
                             .UpsertTransactionsAsync(
-                                txs: txsResult.Value,
+                                txs: addressTxs,
                                 notifyIfNewOrChanged: true,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
@@ -250,7 +266,7 @@ namespace Atomex.Wallet.Ethereum
             }, cancellationToken);
         }
 
-        private async Task<Result<IEnumerable<EthereumTransaction>>> UpdateAddressAsync(
+        private async Task<Result<IEnumerable<Erc20Transaction>>> UpdateAddressAsync(
             WalletAddress walletAddress,
             EtherScanApi api = null,
             CancellationToken cancellationToken = default)
@@ -258,42 +274,38 @@ namespace Atomex.Wallet.Ethereum
             var updateTimeStamp = DateTime.UtcNow;
 
             if (api == null)
-                api = new EtherScanApi(Erc20Config.Name, Erc20Config.BlockchainApiBaseUri);
+                api = GetErc20Api();
 
-            var balanceResult = await api
-                .TryGetErc20BalanceAsync(
+            var (balance, error) = await api
+                .GetErc20BalanceAsync(
                     address: walletAddress.Address,
-                    contractAddress: Erc20Config.ERC20ContractAddress,
+                    token: Erc20Config.ERC20ContractAddress,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (balanceResult.HasError)
+            if (error != null)
             {
-                Log.Error("[Erc20WalletScanner] Error while getting balance for {@address} with code {@code} and description {@description}",
+                Log.Error("[Erc20WalletScanner] Error while getting balance for {@address} with code {@code} and message {@message}",
                     walletAddress.Address,
-                    balanceResult.Error.Code,
-                    balanceResult.Error.Description);
+                    error.Value.Code,
+                    error.Value.Message);
 
-                return balanceResult.Error; // todo: may be return?
+                return error; // todo: may be return?
             }
 
-            var txs = new List<EthereumTransaction>();
-
-            var lastBlockNumberResult = await api
-                .GetBlockNumber()
+            var (lastBlockNumber, lastBlockNumberError) = await api
+                .GetRecentBlockHeightAsync()
                 .ConfigureAwait(false);
 
-            if (lastBlockNumberResult.HasError)
+            if (lastBlockNumberError != null)
             {
                 Log.Error(
-                    "[Erc20WalletScanner] Error while getting last block number with code {@code} and description {@description}",
-                    lastBlockNumberResult.Error.Code,
-                    lastBlockNumberResult.Error.Description);
+                    "[Erc20WalletScanner] Error while getting last block number with code {@code} and message {@message}",
+                    lastBlockNumberError.Value.Code,
+                    lastBlockNumberError.Value.Message);
 
-                return lastBlockNumberResult.Error;
+                return lastBlockNumberError;
             }
-
-            var lastBlockNumber = lastBlockNumberResult.Value;
 
             if (lastBlockNumber <= 0)
             {
@@ -304,42 +316,39 @@ namespace Atomex.Wallet.Ethereum
                 return new Error(Errors.InvalidResponse, "Invalid last block number");
             }
 
-            var events = await GetErc20EventsAsync(walletAddress.Address, cancellationToken)
+            var (txs, txsError) = await api
+                .GetErc20TransactionsAsync(
+                    address: walletAddress.Address,
+                    tokenContractAddress: Erc20Config.ERC20ContractAddress,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (events != null && events.Any())
+            if (txsError != null)
             {
-                foreach (var ev in events)
-                {
-                    var tx = new EthereumTransaction();
+                Log.Error(
+                    "[Erc20WalletScanner] Error while get erc20 transactions",
+                    lastBlockNumber);
 
-                    if (ev.IsErc20ApprovalEvent())
-                        tx = ev.TransformApprovalEvent(Erc20Config, lastBlockNumber);
-                    else if (ev.IsErc20TransferEvent())
-                        tx = ev.TransformTransferEvent(walletAddress.Address, Erc20Config, lastBlockNumber);
-
-                    if (tx != null)
-                        txs.Add(tx);
-                }
+                return new Error(Errors.InvalidResponse, "Error while get erc20 transactions");
             }
 
-            walletAddress.Balance = Erc20Config.TokenDigitsToTokens(balanceResult.Value);
+            walletAddress.Balance = Erc20Config.TokenDigitsToTokens(balance);
             walletAddress.UnconfirmedIncome = 0;
             walletAddress.UnconfirmedOutcome = 0;
-            walletAddress.HasActivity = txs.Any();
+            walletAddress.HasActivity = txs.Transactions.Any();
             walletAddress.LastSuccessfullUpdate = updateTimeStamp;
 
-            return new Result<IEnumerable<EthereumTransaction>>(txs);
+            return new Result<IEnumerable<Erc20Transaction>> { Value = txs.Transactions };
         }
 
-        private async Task<List<ContractEvent>> GetErc20EventsAsync(
+        private async Task<Result<IEnumerable<ContractEvent>>> GetErc20EventsAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
             var currency = Erc20Config;
-            var api = new EtherScanApi(currency.Name, currency.BlockchainApiBaseUri);
+            var api = GetErc20Api();
 
-            var approveEventsResult = await api
+            var (approveEvents, approveEventsError) = await api
                 .GetContractEventsAsync(
                     address: currency.ERC20ContractAddress,
                     fromBlock: currency.SwapContractBlockNumber,
@@ -350,18 +359,18 @@ namespace Atomex.Wallet.Ethereum
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (approveEventsResult.HasError)
+            if (approveEventsError != null)
             {
                 Log.Error(
-                    "[Erc20WalletScanner] Error while scan address transactions for {@address} with code {@code} and description {@description}",
+                    "[Erc20WalletScanner] Error while scan address transactions for {@address} with code {@code} and message {@message}",
                     address,
-                    approveEventsResult.Error.Code,
-                    approveEventsResult.Error.Description);
+                    approveEventsError.Value.Code,
+                    approveEventsError.Value.Message);
 
-                return null;
+                return approveEventsError;
             }
 
-            var outEventsResult = await api
+            var (outEvents, outEventsError) = await api
                 .GetContractEventsAsync(
                     address: currency.ERC20ContractAddress,
                     fromBlock: currency.SwapContractBlockNumber,
@@ -372,18 +381,18 @@ namespace Atomex.Wallet.Ethereum
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (outEventsResult.HasError)
+            if (outEventsError != null)
             {
                 Log.Error(
-                    "[Erc20WalletScanner] Error while scan address transactions for {@address} with code {@code} and description {@description}",
+                    "[Erc20WalletScanner] Error while scan address transactions for {@address} with code {@code} and message {@message}",
                     address,
-                    outEventsResult.Error.Code,
-                    outEventsResult.Error.Description);
+                    outEventsError.Value.Code,
+                    outEventsError.Value.Message);
 
-                return null;
+                return outEventsError;
             }
 
-            var inEventsResult = await api
+            var (inEvents, inEventsError) = await api
                 .GetContractEventsAsync(
                     address: currency.ERC20ContractAddress,
                     fromBlock: currency.SwapContractBlockNumber,
@@ -394,25 +403,23 @@ namespace Atomex.Wallet.Ethereum
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (inEventsResult.HasError)
+            if (inEventsError != null)
             {
                 Log.Error(
-                    "[Erc20WalletScanner] Error while scan address transactions for {@address} with code {@code} and description {@description}",
+                    "[Erc20WalletScanner] Error while scan address transactions for {@address} with code {@code} and message {@message}",
                     address,
-                    inEventsResult.Error.Code,
-                    inEventsResult.Error.Description);
+                    inEventsError.Value.Code,
+                    inEventsError.Value.Message);
 
-                return null;
+                return inEventsError;
             }
 
-            var events = approveEventsResult.Value?
-                .Concat(outEventsResult.Value?.Concat(inEventsResult.Value))
-                .ToList();
-
-            if (events == null || !events.Any()) // address without activity
-                return null;
-
-            return events;
+            return new Result<IEnumerable<ContractEvent>>
+            {
+                Value = approveEvents
+                    .Concat(outEvents)
+                    .Concat(inEvents)
+            };
         }
     }
 }
