@@ -23,6 +23,7 @@ namespace Atomex.Blockchain.Helpers
         }
     }
 
+    [Obsolete("Will be removed")]
     public static class TransactionConfirmationHelper
     {
         private const int NumberOfConfirmations = 1;
