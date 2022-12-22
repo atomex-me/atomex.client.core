@@ -125,15 +125,12 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
         }
 
         public async Task<Result<string>> BroadcastAsync(
-            ITransaction transaction,
+            EthereumTransactionRequest txRequest,
             CancellationToken cancellationToken = default)
         {
-            if (transaction is not EthereumTransaction ethereumTransaction)
-                return new Error(Errors.BroadcastError, "Invalid transaction type");
-
             var requestUri = "api?module=proxy" +
                 "&action=eth_sendRawTransaction" +
-                $"&hex=0x{ethereumTransaction.GetRlpEncoded()}" +
+                $"&hex=0x{txRequest.GetRlpEncoded()}" +
                 $"&apikey={Settings.ApiToken}";
 
             var broadcastAttempts = 20;
@@ -338,20 +335,20 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
                         erc20tx = new Erc20Transaction
                         {
-                            Id           = hash,
-                            Currency     = tokenContractAddress,
-                            Status       = confirmations > 0
+                            Id            = hash,
+                            Currency      = tokenContractAddress,
+                            Status        = confirmations > 0
                                 ? TransactionStatus.Confirmed
                                 : TransactionStatus.Pending,
-                            CreationTime = timeStamp,
-                            BlockTime    = timeStamp,
-                            BlockHeight  = result["blockNumber"].Value<long>(),
-
-                            Nonce        = result["nonce"].Value<long>(),
-                            GasPrice     = result["gasPrice"].Value<long>(),
-                            GasLimit     = result["gas"].Value<long>(),
-                            GasUsed      = result["gasUsed"].Value<long>(),
-                            Transfers    = new List<Erc20Transfer>()
+                            Confirmations = confirmations,
+                            CreationTime  = timeStamp,
+                            BlockTime     = timeStamp,
+                            BlockHeight   = result["blockNumber"].Value<long>(),
+                            Nonce         = result["nonce"].Value<long>(),
+                            GasPrice      = result["gasPrice"].Value<long>(),
+                            GasLimit      = result["gas"].Value<long>(),
+                            GasUsed       = result["gasUsed"].Value<long>(),
+                            Transfers     = new List<Erc20Transfer>(),
                         };
 
                         txsIndex.Add(hash, erc20tx);
@@ -383,7 +380,12 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                     .GetCallData()
                     .ToHex(prefix: true);
 
-                var requestUri = $"api?module=proxy&action=eth_call&to={tokenAddress}&data={callData}&tag=latest&apikey={Settings.ApiToken}";
+                var requestUri = $"api?module=proxy" +
+                    $"&action=eth_call" +
+                    $"&to={tokenAddress}" +
+                    $"&data={callData}" +
+                    $"&tag=latest" +
+                    $"&apikey={Settings.ApiToken}";
 
                 var response = await HttpHelper
                     .GetAsync(

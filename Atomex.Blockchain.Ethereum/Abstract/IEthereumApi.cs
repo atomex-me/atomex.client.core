@@ -10,6 +10,10 @@ namespace Atomex.Blockchain.Ethereum.Abstract
 {
     public interface IEthereumApi : IGasPriceProvider
     {
+        Task<Result<string>> BroadcastAsync(
+            EthereumTransactionRequest txRequest,
+            CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Gets all transactions by address (including internals)
         /// </summary>

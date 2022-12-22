@@ -12,7 +12,7 @@ using Serilog;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
-using Atomex.Blockchain.Ethereum.Erc20;
+using Atomex.Blockchain.Ethereum.Erc20.Messages;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.EthereumTokens;
@@ -101,8 +101,10 @@ namespace Atomex.Wallet.Ethereum
                 .GetLockAsync(addressFeeUsage.WalletAddress.Address, cancellationToken)
                 .ConfigureAwait(false);
 
+            var api = EthConfig.GetEtherScanApi();
+
             var (nonce, nonceError) = await EthereumNonceManager.Instance
-                .GetNonceAsync(EthConfig, addressFeeUsage.WalletAddress.Address, cancellationToken: cancellationToken)
+                .GetNonceAsync(api, addressFeeUsage.WalletAddress.Address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (nonceError != null)
@@ -122,13 +124,15 @@ namespace Atomex.Wallet.Ethereum
 
             txInput = message.CreateTransactionInput(erc20Config.ERC20ContractAddress);
 
-            var tx = new EthereumTransaction(erc20Config.Name, txInput)
-            {
-                Type = TransactionType.Output
-            };
+            var txRequest = new EthereumTransactionRequest(txInput, EthConfig.ChainId);
+
+            //var tx = new EthereumTransaction(EthereumConfig.Eth, txInput)
+            //{
+            //    Type = TransactionType.Output | TransactionType.TokenTransfer | TransactionType.ContractCall
+            //};
 
             var signResult = await _ethereumAccount
-                .SignAsync(tx, cancellationToken)
+                .SignAsync(txRequest, cancellationToken)
                 .ConfigureAwait(false);
 
             if (!signResult)
@@ -136,13 +140,13 @@ namespace Atomex.Wallet.Ethereum
                     code: Errors.TransactionSigningError,
                     message: "Transaction signing error");
 
-            if (!tx.Verify())
+            if (!txRequest.Verify())
                 return new Error(
                     code: Errors.TransactionVerificationError,
                     message: "Transaction verification error");
 
-            var (txId, broadcastError) = await erc20Config.BlockchainApi
-                .BroadcastAsync(tx, cancellationToken)
+            var (txId, broadcastError) = await api
+                .BroadcastAsync(txRequest, cancellationToken)
                 .ConfigureAwait(false);
 
             if (broadcastError != null)
@@ -155,24 +159,13 @@ namespace Atomex.Wallet.Ethereum
 
             Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
-            tx.Amount = erc20Config.TokensToTokenDigits(addressFeeUsage.UsedAmount);
-            tx.To = to.ToLowerInvariant();
+            var tx = new EthereumTransaction(
+                txRequest,
+                type: TransactionType.Output | TransactionType.TokenTransfer | TransactionType.ContractCall);
 
             await LocalStorage
                 .UpsertTransactionAsync(
                     tx: tx,
-                    notifyIfNewOrChanged: true,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            var ethTx = tx.Clone();
-            ethTx.Currency = EthConfig.Name;
-            ethTx.Amount = 0;
-            ethTx.Type = TransactionType.TokenCall;
-
-            await LocalStorage
-                .UpsertTransactionAsync(
-                    tx: ethTx,
                     notifyIfNewOrChanged: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

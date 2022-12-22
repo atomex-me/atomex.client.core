@@ -12,13 +12,13 @@ using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Abstract;
+using Atomex.Blockchain.Ethereum.Messages.Swaps.V1;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Ethereum.Helpers;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Ethereum;
-using Atomex.Blockchain.Ethereum.Messages.Swaps.V1;
 
 namespace Atomex.Swaps.Ethereum
 {
@@ -53,25 +53,27 @@ namespace Atomex.Swaps.Ethereum
                 ? DefaultInitiatorLockTimeInSeconds
                 : DefaultAcceptorLockTimeInSeconds;
 
-            var paymentTx = await CreatePaymentTxAsync(swap, lockTimeInSeconds, cancellationToken)
+            var txRequest = await CreatePaymentTxAsync(swap, lockTimeInSeconds, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (paymentTx == null)
+            if (txRequest == null)
             {
                 Log.Error("Can't create payment transactions");
                 return;
             }
+
+            string txId = null;
 
             try
             {
                 try
                 {
                     await EthereumAccount.AddressLocker
-                        .LockAsync(paymentTx.From, cancellationToken)
+                        .LockAsync(txRequest.From, cancellationToken)
                         .ConfigureAwait(false);
 
                     var (nonce, error) = await EthereumNonceManager.Instance
-                        .GetNonceAsync(GetEthereumApi(), paymentTx.From)
+                        .GetNonceAsync(GetEthereumApi(), txRequest.From)
                         .ConfigureAwait(false);
 
                     if (error != null)
@@ -83,10 +85,10 @@ namespace Atomex.Swaps.Ethereum
                         return;
                     }
 
-                    paymentTx.Nonce = nonce;
+                    txRequest.Nonce = nonce;
 
                     var signResult = await _account
-                        .SignAsync(paymentTx, cancellationToken)
+                        .SignAsync(txRequest, cancellationToken)
                         .ConfigureAwait(false);
 
                     if (!signResult)
@@ -95,29 +97,33 @@ namespace Atomex.Swaps.Ethereum
                         return;
                     }
 
-                    swap.PaymentTx = paymentTx;
+                    //swap.PaymentTx = txRequest;
                     swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
 
                     await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentSigned, cancellationToken)
                         .ConfigureAwait(false);
 
-                    await BroadcastTxAsync(swap, paymentTx, cancellationToken)
+                    txId = await BroadcastTxAsync(
+                            swap,
+                            txRequest,
+                            type: TransactionType.Output | TransactionType.SwapPayment | TransactionType.ContractCall,
+                            cancellationToken)
                         .ConfigureAwait(false);
                 }
                 finally
                 {
-                    EthereumAccount.AddressLocker.Unlock(paymentTx.From);
+                    EthereumAccount.AddressLocker.Unlock(txRequest.From);
                 }
 
-                swap.PaymentTx = paymentTx;
+                //swap.PaymentTx = txRequest;
                 swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
 
                 await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentBroadcast, cancellationToken)
                     .ConfigureAwait(false);
 
                 // check initiate payment tx confirmation
-                var isInitiated = await WaitPaymentConfirmationAsync(paymentTx.Id, InitiationTimeout, cancellationToken)
-                        .ConfigureAwait(false);
+                var isInitiated = await WaitPaymentConfirmationAsync(txId, InitiationTimeout, cancellationToken)
+                    .ConfigureAwait(false);
 
                 if (!isInitiated)
                 {
@@ -126,6 +132,7 @@ namespace Atomex.Swaps.Ethereum
                 }
                 
                 swap.StateFlags |= SwapStateFlags.IsPaymentConfirmed;
+
                 await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentConfirmed, cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -238,7 +245,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            EthereumTransaction redeemTx;
+            string txId = null;
 
             try
             {
@@ -277,13 +284,10 @@ namespace Atomex.Swaps.Ethereum
 
                 var txInput = message.CreateTransactionInput(ethConfig.SwapContractAddress);
 
-                redeemTx = new EthereumTransaction(ethConfig.Name, txInput)
-                {
-                    Type = TransactionType.Output | TransactionType.SwapRedeem
-                };
+                var txRequest = new EthereumTransactionRequest(txInput, EthConfig.ChainId);
 
                 var signResult = await _account
-                    .SignAsync(redeemTx, cancellationToken)
+                    .SignAsync(txRequest, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!signResult)
@@ -292,13 +296,17 @@ namespace Atomex.Swaps.Ethereum
                     return;
                 }
 
-                swap.RedeemTx = redeemTx;
+                //swap.RedeemTx = redeemTx;
                 swap.StateFlags |= SwapStateFlags.IsRedeemSigned;
 
                 await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemSigned, cancellationToken)
                     .ConfigureAwait(false);
 
-                await BroadcastTxAsync(swap, redeemTx, cancellationToken)
+                txId = await BroadcastTxAsync(
+                        swap,
+                        txRequest,
+                        type: TransactionType.Output | TransactionType.SwapRedeem | TransactionType.ContractCall,
+                        cancellationToken)
                     .ConfigureAwait(false);
             }
             catch
@@ -310,7 +318,7 @@ namespace Atomex.Swaps.Ethereum
                 EthereumAccount.AddressLocker.Unlock(walletAddress.Address);
             }
 
-            swap.RedeemTx = redeemTx;
+            //swap.RedeemTx = redeemTx;
             swap.StateFlags |= SwapStateFlags.IsRedeemBroadcast;
 
             await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemBroadcast, cancellationToken)
@@ -319,7 +327,7 @@ namespace Atomex.Swaps.Ethereum
             _ = TrackTransactionConfirmationAsync<EthereumTransaction>(
                 swap: swap,
                 dataRepository: _account.LocalStorage,
-                txId: redeemTx.Id,
+                txId: txId,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
         }
@@ -400,13 +408,10 @@ namespace Atomex.Swaps.Ethereum
 
             var txInput = message.CreateTransactionInput(ethConfig.SwapContractAddress);
 
-            var redeemTx = new EthereumTransaction(ethConfig.Name, txInput)
-            {
-                Type = TransactionType.Output | TransactionType.SwapRedeem
-            };
+            var txRequest = new EthereumTransactionRequest(txInput, EthConfig.ChainId);
 
             var signResult = await _account
-                .SignAsync(redeemTx, cancellationToken)
+                .SignAsync(txRequest, cancellationToken)
                 .ConfigureAwait(false);
 
             if (!signResult)
@@ -415,7 +420,11 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            await BroadcastTxAsync(swap, redeemTx, cancellationToken)
+            var _ = await BroadcastTxAsync(
+                    swap,
+                    txRequest,
+                    type: TransactionType.Output | TransactionType.SwapRedeem | TransactionType.ContractCall,
+                    cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -496,7 +505,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            EthereumTransaction refundTx;
+            string txId = null;
 
             try
             {
@@ -534,13 +543,14 @@ namespace Atomex.Swaps.Ethereum
 
                 var txInput = message.CreateTransactionInput(ethConfig.SwapContractAddress);
 
-                refundTx = new EthereumTransaction(ethConfig.Name, txInput)
-                {
-                    Type = TransactionType.Output | TransactionType.SwapRefund
-                };
+                var txRequest = new EthereumTransactionRequest(txInput, EthConfig.ChainId);
+                //refundTx = new EthereumTransaction(EthereumConfig.Eth, txInput)
+                //{
+                //    Type = TransactionType.Output | TransactionType.SwapRefund | TransactionType.ContractCall
+                //};
 
                 var signResult = await _account
-                    .SignAsync(refundTx, cancellationToken)
+                    .SignAsync(txRequest, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (!signResult)
@@ -549,13 +559,17 @@ namespace Atomex.Swaps.Ethereum
                     return;
                 }
 
-                swap.RefundTx = refundTx;
+                //swap.RefundTx = refundTx;
                 swap.StateFlags |= SwapStateFlags.IsRefundSigned;
 
                 await UpdateSwapAsync(swap, SwapStateFlags.IsRefundSigned, cancellationToken)
                     .ConfigureAwait(false);
 
-                await BroadcastTxAsync(swap, refundTx, cancellationToken)
+                txId = await BroadcastTxAsync(
+                        swap,
+                        txRequest,
+                        type: TransactionType.Output | TransactionType.SwapRefund | TransactionType.ContractCall,
+                        cancellationToken)
                     .ConfigureAwait(false);
             }
             catch
@@ -567,7 +581,7 @@ namespace Atomex.Swaps.Ethereum
                 EthereumAccount.AddressLocker.Unlock(walletAddress.Address);
             }
 
-            swap.RefundTx = refundTx;
+            //swap.RefundTx = refundTx;
             swap.StateFlags |= SwapStateFlags.IsRefundBroadcast;
 
             await UpdateSwapAsync(swap, SwapStateFlags.IsRefundBroadcast, cancellationToken)
@@ -576,7 +590,7 @@ namespace Atomex.Swaps.Ethereum
             _ = TrackTransactionConfirmationAsync<EthereumTransaction>(
                 swap: swap,
                 dataRepository: _account.LocalStorage,
-                txId: refundTx.Id,
+                txId: txId,
                 confirmationHandler: RefundConfirmedEventHandler,
                 cancellationToken: cancellationToken);
         }
@@ -724,7 +738,7 @@ namespace Atomex.Swaps.Ethereum
 
         #region Helpers
 
-        protected virtual async Task<EthereumTransaction> CreatePaymentTxAsync(
+        protected virtual async Task<EthereumTransactionRequest> CreatePaymentTxAsync(
             Swap swap,
             int lockTimeInSeconds,
             CancellationToken cancellationToken = default)
@@ -809,19 +823,23 @@ namespace Atomex.Swaps.Ethereum
 
             txInput = message.CreateTransactionInput(ethConfig.SwapContractAddress);
 
-            return new EthereumTransaction(ethConfig.Name, txInput)
-            {
-                Type = TransactionType.Output | TransactionType.SwapPayment
-            };
+            return new EthereumTransactionRequest(txInput, EthConfig.ChainId);
+            //return new EthereumTransaction(EthereumConfig.Eth, txInput)
+            //{
+            //    Type = TransactionType.Output | TransactionType.SwapPayment | TransactionType.ContractCall
+            //};
         }
 
-        private async Task BroadcastTxAsync(
+        private async Task<string> BroadcastTxAsync(
             Swap swap,
-            EthereumTransaction tx,
+            EthereumTransactionRequest txRequest,
+            TransactionType type,
             CancellationToken cancellationToken = default)
         {
-            var (txId, error) = await EthConfig.BlockchainApi
-                .BroadcastAsync(tx, cancellationToken: cancellationToken)
+            var api = EthConfig.GetEtherScanApi();
+
+            var (txId, error) = await api
+                .BroadcastAsync(txRequest, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)
@@ -832,6 +850,8 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("TxId {@id} for swap {@swapId}", txId, swap.Id);
 
+            var tx = new EthereumTransaction(txRequest, type);
+
             await _account
                 .LocalStorage
                 .UpsertTransactionAsync(
@@ -839,6 +859,8 @@ namespace Atomex.Swaps.Ethereum
                     notifyIfNewOrChanged: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            return txId;
         }
 
         private async Task<BigInteger> EstimateGasAsync<TMessage>(
@@ -887,7 +909,7 @@ namespace Atomex.Swaps.Ethereum
                     .GetTransactionByIdAsync<EthereumTransaction>(EthConfig.Name, txId)
                     .ConfigureAwait(false);
 
-                if (tx.Confirmations == 0)
+                if (!tx.IsConfirmed)
                     continue;
 
                 return true;

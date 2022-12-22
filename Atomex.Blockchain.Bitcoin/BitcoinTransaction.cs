@@ -23,6 +23,8 @@ namespace Atomex.Blockchain.Bitcoin
         public DateTimeOffset? BlockTime { get; }
         public long BlockHeight { get; }
         public long Confirmations { get; }
+        public bool IsConfirmed => Confirmations > 0;
+        public bool IsTypeResolved => Type != TransactionType.Unknown;
         public DateTime LockTime => _tx.LockTime.Date.UtcDateTime;
         public BigInteger ResolvedAmount { get; set; }
         public BigInteger ResolvedFee { get; }
@@ -47,7 +49,7 @@ namespace Atomex.Blockchain.Bitcoin
                 Coin = c,
                 Currency = Currency,
                 SpentTxPoints = null,
-                IsConfirmed = Confirmations > 0,
+                IsConfirmed = IsConfirmed,
                 IsSpentConfirmed = false
             })
             .ToArray();

@@ -42,7 +42,7 @@ namespace Atomex.Blockchain.Abstract
         DateTimeOffset? BlockTime { get; }
         long BlockHeight { get; }
         long Confirmations { get; }
-        bool IsConfirmed => Confirmations > 0;
-        bool IsTypeResolved => Type != TransactionType.Unknown;
+        bool IsConfirmed { get; }
+        bool IsTypeResolved { get; }
     }
 }

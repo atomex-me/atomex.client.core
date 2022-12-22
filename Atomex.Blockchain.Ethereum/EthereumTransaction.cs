@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Numerics;
 
 using Nethereum.RPC.Eth.DTOs;
-using Nethereum.Signer;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Common;
 using TransactionType = Atomex.Blockchain.Abstract.TransactionType;
 
 namespace Atomex.Blockchain.Ethereum
@@ -36,10 +34,11 @@ namespace Atomex.Blockchain.Ethereum
         public DateTimeOffset? BlockTime { get; set; }
         public long BlockHeight { get; set; }
         public long Confirmations { get; set; }
+        public bool IsConfirmed => Confirmations > 0;
+        public bool IsTypeResolved => Type != TransactionType.Unknown;
 
         public string From { get; set; }
         public string To { get; set; }
-        public BigInteger ChainId { get; set; }
         public BigInteger Amount { get; set; }
         public BigInteger Nonce { get; set; }
         public BigInteger GasPrice { get; set; }
@@ -50,57 +49,25 @@ namespace Atomex.Blockchain.Ethereum
         public string ErrorDescription { get; set; }
         public List<EthereumInternalTransaction>? InternalTransactions { get; set; }
 
-        public byte[] Signature { get; set; }
-
         public EthereumTransaction()
         {
+            
         }
 
-        public EthereumTransaction(string currency, TransactionInput txInput)
+        public EthereumTransaction(EthereumTransactionRequest txRequest, TransactionType type = TransactionType.Output)
         {
-            Currency     = currency;
+            Currency     = EthereumHelper.Eth;
             Status       = TransactionStatus.Pending;
-            Type         = TransactionType.Unknown;
+            Type         = type;
             CreationTime = DateTimeOffset.UtcNow;
 
-            From         = txInput.From.ToLowerInvariant();
-            To           = txInput.To.ToLowerInvariant();
-            Data         = txInput.Data;
-            Amount       = txInput.Value;
-            Nonce        = txInput.Nonce;
-            GasPrice     = txInput.GasPrice;
-            GasLimit     = txInput.Gas;
+            From     = txRequest.From.ToLowerInvariant();
+            To       = txRequest.To.ToLowerInvariant();
+            Data     = txRequest.Data;
+            Amount   = txRequest.Amount;
+            Nonce    = txRequest.Nonce;
+            GasPrice = txRequest.GasPrice;
+            GasLimit = txRequest.GasLimit;
         }
-
-        public byte[] GetRawHash(int chainId) =>
-            new LegacyTransactionChainId(
-                to: To,
-                amount: Amount,
-                nonce: Nonce,
-                gasPrice: GasPrice,
-                gasLimit: GasLimit,
-                data: Data,
-                chainId: chainId).RawHash;
-
-        public string GetRlpEncoded()
-        {
-            var tx = new LegacyTransactionChainId(
-                to: To,
-                amount: Amount,
-                nonce: Nonce,
-                gasPrice: GasPrice,
-                gasLimit: GasLimit,
-                data: Data,
-                chainId: ChainId);
-
-            tx.SetSignature(new EthECDSASignature(Signature));
-
-            return tx
-                .GetRLPEncoded()
-                .ToHexString();
-        }
-
-        public bool Verify() => TransactionVerificationAndRecovery
-            .VerifyTransaction(GetRlpEncoded());
     }
 }

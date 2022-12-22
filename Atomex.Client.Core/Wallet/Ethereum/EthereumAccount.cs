@@ -107,27 +107,41 @@ namespace Atomex.Wallet.Ethereum
                 .GetLockAsync(addressFeeUsage.WalletAddress.Address, cancellationToken)
                 .ConfigureAwait(false);
 
+            var api = ethConfig.GetEtherScanApi();
+
             var (nonce, nonceError) = await EthereumNonceManager.Instance
-                .GetNonceAsync(ethConfig, addressFeeUsage.WalletAddress.Address, cancellationToken: cancellationToken)
+                .GetNonceAsync(api, addressFeeUsage.WalletAddress.Address, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (nonceError != null)
                 return nonceError.Value;
-
-            var tx = new EthereumTransaction
+            
+            var txRequest = new EthereumTransactionRequest
             {
-                Currency     = ethConfig.Name,
-                Type         = TransactionType.Output,
-                CreationTime = DateTime.UtcNow,
-                From         = addressFeeUsage.WalletAddress.Address,
-                To           = to.ToLowerInvariant(),
-                Amount       = EthereumConfig.EthToWei(addressFeeUsage.UsedAmount),
-                Nonce        = nonce,
-                GasPrice     = new BigInteger(EthereumConfig.GweiToWei(gasPrice)),
-                GasLimit     = new BigInteger(gasLimit),
+                From     = addressFeeUsage.WalletAddress.Address,
+                To       = to.ToLowerInvariant(),
+                Amount   = EthereumConfig.EthToWei(addressFeeUsage.UsedAmount),
+                Nonce    = nonce,
+                GasPrice = new BigInteger(EthereumConfig.GweiToWei(gasPrice)),
+                GasLimit = new BigInteger(gasLimit),
+                ChainId  = ethConfig.ChainId,
+                Data     = null
             };
 
-            var signResult = await SignAsync(tx, cancellationToken)
+            //var tx = new EthereumTransaction
+            //{
+            //    Currency     = ethConfig.Name,
+            //    Type         = TransactionType.Output,
+            //    CreationTime = DateTime.UtcNow,
+            //    From         = addressFeeUsage.WalletAddress.Address,
+            //    To           = to.ToLowerInvariant(),
+            //    Amount       = EthereumConfig.EthToWei(addressFeeUsage.UsedAmount),
+            //    Nonce        = nonce,
+            //    GasPrice     = new BigInteger(EthereumConfig.GweiToWei(gasPrice)),
+            //    GasLimit     = new BigInteger(gasLimit),
+            //};
+
+            var signResult = await SignAsync(txRequest, cancellationToken)
                 .ConfigureAwait(false);
 
             if (!signResult)
@@ -135,13 +149,13 @@ namespace Atomex.Wallet.Ethereum
                     code: Errors.TransactionSigningError,
                     message: "Transaction signing error");
 
-            if (!tx.Verify())
+            if (!txRequest.Verify())
                 return new Error(
                     code: Errors.TransactionVerificationError,
                     message: "Transaction verification error");
 
-            var (txId, broadcastError) = await ethConfig.BlockchainApi
-                .TryBroadcastAsync(tx, cancellationToken: cancellationToken)
+            var (txId, broadcastError) = await api
+                .BroadcastAsync(txRequest, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (broadcastError != null)
@@ -154,6 +168,8 @@ namespace Atomex.Wallet.Ethereum
 
             Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
+            var tx = new EthereumTransaction(txRequest, type: TransactionType.Output);
+
             await LocalStorage
                 .UpsertTransactionAsync(
                     tx: tx,
@@ -165,21 +181,19 @@ namespace Atomex.Wallet.Ethereum
         }
 
         public async Task<bool> SignAsync(
-            EthereumTransaction tx,
+            EthereumTransactionRequest txRequest,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 var walletAddress = await GetAddressAsync(
-                        address: tx.From,
+                        address: txRequest.From,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                var signature = await Wallet
-                    .SignHashAsync(tx.GetRawHash(EthConfig.ChainId), walletAddress, EthConfig, cancellationToken)
+                txRequest.Signature = await Wallet
+                    .SignHashAsync(txRequest.GetRawHash(), walletAddress, EthConfig, cancellationToken)
                     .ConfigureAwait(false);
-
-                tx.RlpEncodedTx = tx.GetRlpEncoded(EthConfig.ChainId, signature);
 
                 return true;
             }
@@ -506,13 +520,6 @@ namespace Atomex.Wallet.Ethereum
                     tx.Type |= TransactionType.TokenTransfer;
                 else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveMessage>()))
                     tx.Type |= TransactionType.TokenApprove;
-            }
-
-            if (tx.InternalTransactions != null)
-            {
-                tx.InternalTransactions.ForEach(
-                    async t => await ResolveTransactionTypeAsync(t, cancellationToken)
-                        .ConfigureAwait(false));
             }
         }
 

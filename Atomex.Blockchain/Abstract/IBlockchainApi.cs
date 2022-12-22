@@ -27,15 +27,5 @@ namespace Atomex.Blockchain.Abstract
         Task<Result<ITransaction>> GetTransactionAsync(
             string txId,
             CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Broadcast <paramref name="transaction"/> to network
-        /// </summary>
-        /// <param name="transaction">Transaction</param>
-        /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>Transaction id if success, otherwise error</returns>
-        Task<Result<string>> BroadcastAsync(
-            ITransaction transaction,
-            CancellationToken cancellationToken = default);
     }
 }
