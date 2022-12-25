@@ -11,6 +11,7 @@ using Newtonsoft.Json.Linq;
 
 using Atomex.Common;
 using Atomex.Blockchain.Tezos.Internal;
+using Serilog;
 
 namespace Atomex.Wallets.Tezos
 {
@@ -42,9 +43,14 @@ namespace Atomex.Wallets.Tezos
                     var operationResult = metaData?["operation_result"];
 
                     if (operationResult?["status"]?.ToString() != "applied")
+                    {
+                        const string description = "At least one of the operations is not applied";
+                        Log.Error("Autofill error: {Description}. Operation Result is {Result}", description,
+                            operationResult?["status"]?.ToString());
                         return new Error(
                             code: Errors.AutoFillError,
-                            description: "At least one of the operations is not applied");
+                            description: description);
+                    }
 
                     var counter = result["counter"]?.ToString() ?? null;
 
@@ -56,9 +62,13 @@ namespace Atomex.Wallets.Tezos
                         managedOperationContent.Counter.ToString() == counter);
 
                     if (operation == null)
+                    {
+                        var description = $"Can't find request with managed operation content and counter {counter}";
+                        Log.Error("Autofill error: {Description}", description);
                         return new Error(
                             code: Errors.AutoFillError,
-                            description: $"Can't find request with managed operation content and counter {counter}");
+                            description: description);                        
+                    }
 
                     // gas limit
                     var gas = (int)tezosConfig.GasReserve
@@ -111,6 +121,7 @@ namespace Atomex.Wallets.Tezos
             }
             catch (Exception e)
             {
+                Log.Error(e, "Autofill error: {Message}", e.Message);
                 return new Error(Errors.AutoFillError, e.Message);
             }
         }
