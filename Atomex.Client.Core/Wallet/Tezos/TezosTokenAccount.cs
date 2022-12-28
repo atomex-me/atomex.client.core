@@ -90,7 +90,9 @@ namespace Atomex.Wallet.Tezos
                 ? tokenConfig.DigitsMultiplier
                 : (decimal)Math.Pow(10, addressFeeUsage.WalletAddress.TokenBalance.Decimals);
 
-            var addressAmountInDigits = addressFeeUsage.UsedAmount.ToTokenDigits(digitsMultiplier);
+            var addressAmountInDigits = digitsMultiplier == 0 ?
+                addressFeeUsage.UsedAmount :
+                addressFeeUsage.UsedAmount.ToTokenDigits(digitsMultiplier);
 
             Log.Debug("Send {@amount} tokens from address {@address} with available balance {@balance}",
                 addressAmountInDigits,
