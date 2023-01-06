@@ -5,24 +5,23 @@ using System.Threading.Tasks;
 
 using Atomex.Common;
 
-namespace Atomex.Blockchain.Tezos
+namespace Atomex.Blockchain.Tezos.Abstract
 {
-    public interface ITezosBlockchainApi
+    public interface ITezosApi
     {
-        Task<Result<IEnumerable<TezosTransaction>>> GetTransactionsAsync(
+        Task<Result<IEnumerable<TezosOperation>>> GetOperationsAsync(
             string address,
             DateTimeOffset? fromTimeStamp = null,
-            int? fromLevel = null,
+            CancellationToken cancellationToken = default);
+
+        Task<Result<IEnumerable<TezosOperation>>> GetTransactionsAsync(
+            string from,
+            string to,
+            string parameters,
             CancellationToken cancellationToken = default);
 
         Task<Result<bool>> IsRevealedAsync(
             string address,
-            CancellationToken cancellationToken = default);
-
-        Task<Result<IEnumerable<TezosTransaction>>> GetTransactionsAsync(
-            string from,
-            string to,
-            string parameters,
             CancellationToken cancellationToken = default);
     }
 }

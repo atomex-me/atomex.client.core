@@ -321,7 +321,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                     {
                         From  = transfer["from"].Value<string>(),
                         To    = transfer["to"].Value<string>(),
-                        Value = BigInteger.Parse(transfer["value"].Value<string>())
+                        Value = BigInteger.Parse(transfer["value"].Value<string>()),
+                        Type  = TransactionType.Unknown
                     };
 
                     var hash = transfer["hash"].Value<string>();
@@ -348,7 +349,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                             GasPrice      = result["gasPrice"].Value<long>(),
                             GasLimit      = result["gas"].Value<long>(),
                             GasUsed       = result["gasUsed"].Value<long>(),
-                            Transfers     = new List<Erc20Transfer>(),
+                            Transfers     = new List<Erc20Transfer>()
                         };
 
                         txsIndex.Add(hash, erc20tx);
@@ -478,8 +479,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             {
                 if (txs!.Index.TryGetValue(internalTx.Hash, out var existsTx))
                 {
-                    if (existsTx.InternalTransactions == null)
-                        existsTx.InternalTransactions = new List<EthereumInternalTransaction>();
+                    existsTx.InternalTransactions ??= new List<EthereumInternalTransaction>();
 
                     existsTx.InternalTransactions.Add(internalTx);
                 }

@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Atomex.Blockchain.Tezos
+namespace Atomex.Blockchain.Tezos.Tzkt
 {
     public class TokenContract
     {

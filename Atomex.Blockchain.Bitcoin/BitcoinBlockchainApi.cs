@@ -27,7 +27,7 @@ namespace Atomex.Blockchain.Bitcoin
             CancellationToken cancellationToken = default);
 
         public abstract Task<Result<string>> BroadcastAsync(
-            ITransaction transaction,
+            BitcoinTransaction tx,
             CancellationToken cancellationToken = default);
 
         public abstract Task<Result<BitcoinTxInput>> GetInputAsync(

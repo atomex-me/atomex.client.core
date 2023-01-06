@@ -1,6 +1,5 @@
 using Newtonsoft.Json;
-
-using Atomex.Common;
+using Atomex.Blockchain.Tezos.Common;
 
 namespace Atomex.Blockchain.Tezos.Tzkt
 {

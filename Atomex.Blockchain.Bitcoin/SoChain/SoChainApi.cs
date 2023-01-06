@@ -272,12 +272,10 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
         }
 
         public override async Task<Result<string>> BroadcastAsync(
-            ITransaction transaction,
+            BitcoinTransaction tx,
             CancellationToken cancellationToken = default)
         {
             var requestUri = $"api/v2/send_tx/{_settings.Network}";
-
-            var tx = (BitcoinTransaction)transaction;
             var txHex = tx.ToHex();
 
             _logger?.LogDebug("TxHex: {@txHex}", txHex);
@@ -391,8 +389,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
                 if (tx.Outgoing == null)
                     continue;
 
-                if (outputsIndex == null)
-                    outputsIndex = outputs.ToDictionary(output => $"{output.TxId}:{output.Index}", output => output);
+                outputsIndex ??= outputs.ToDictionary(output => $"{output.TxId}:{output.Index}", output => output);
 
                 var txId = tx.TxId;
                 var value = tx.Outgoing.Value;
@@ -424,8 +421,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
                 }
             }
 
-            if (outputsIndex != null)
-                outputsIndex.Clear();
+            outputsIndex?.Clear();
 
             var balance = decimal.Parse(responseData.Data.Balance, CultureInfo.InvariantCulture);
             var received = decimal.Parse(responseData.Data.ReceivedValue, CultureInfo.InvariantCulture);

@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
+using Atomex.Blockchain;
 
 namespace Atomex.Wallet.Tezos
 {

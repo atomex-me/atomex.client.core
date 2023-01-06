@@ -1,6 +1,5 @@
 ﻿using System;
-
-using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.Core

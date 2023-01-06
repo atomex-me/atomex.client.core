@@ -44,10 +44,10 @@ namespace Atomex.Wallet.Tezos
                         (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : InternalLookAhead)
                     };
 
-                    var tzktApi = new TzktApi(XtzConfig);
+                    var tzktApi = new TzktApi(XtzConfig.GetTzktSettings());
                     var updateTimeStamp = DateTime.UtcNow;
 
-                    var txs = new List<TezosTransaction>();
+                    var operations = new List<TezosOperation>();
                     var walletAddresses = new List<WalletAddress>();
 
                     WalletAddress defautWalletAddress = null;
@@ -78,19 +78,19 @@ namespace Atomex.Wallet.Tezos
                                 defautWalletAddress = walletAddress;
                             }
 
-                            var txsResult = await UpdateAddressAsync(
+                            var (ops, error) = await UpdateAddressAsync(
                                     walletAddress,
                                     tzktApi: tzktApi,
                                     cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
 
-                            if (txsResult.HasError)
+                            if (error != null)
                             {
                                 Log.Error("[TezosWalletScanner] ScanAsync error while scan {@address}", walletAddress.Address);
                                 return;
                             }
 
-                            if (!walletAddress.HasActivity && !txsResult.Value.Any()) // address without activity
+                            if (!walletAddress.HasActivity && !ops.Any()) // address without activity
                             {
                                 freeKeysCount++;
 
@@ -104,7 +104,7 @@ namespace Atomex.Wallet.Tezos
                             {
                                 freeKeysCount = 0;
 
-                                txs.AddRange(CollapseInternalTransactions(txsResult.Value));
+                                operations.AddRange(ops);
 
                                 // save only active addresses
                                 walletAddresses.Add(walletAddress);
@@ -121,12 +121,12 @@ namespace Atomex.Wallet.Tezos
                         }
                     }
 
-                    if (txs.Any())
+                    if (operations.Any())
                     {
                         var upsertResult = await _account
                             .LocalStorage
                             .UpsertTransactionsAsync(
-                                txs: txs,
+                                txs: operations,
                                 notifyIfNewOrChanged: true,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
@@ -175,32 +175,32 @@ namespace Atomex.Wallet.Tezos
 
                     // todo: if skipUsed == true => skip "disabled" wallets
 
-                    var tzktApi = new TzktApi(XtzConfig);
-                    var txs = new List<TezosTransaction>();
+                    var tzktApi = new TzktApi(XtzConfig.GetTzktSettings());
+                    var operations = new List<TezosOperation>();
 
                     foreach (var walletAddress in walletAddresses)
                     {
-                        var txsResult = await UpdateAddressAsync(
+                        var (ops, error) = await UpdateAddressAsync(
                                 walletAddress,
                                 tzktApi: tzktApi,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (txsResult.HasError)
+                        if (error != null)
                         {
                             Log.Error("[TezosWalletScanner] UpdateBalanceAsync error while scan {@address}", walletAddress.Address);
                             return;
                         }
 
-                        txs.AddRange(txsResult.Value);
+                        operations.AddRange(ops);
                     }
 
-                    if (txs.Any())
+                    if (operations.Any())
                     {
                         var _ = await _account
                             .LocalStorage
                             .UpsertTransactionsAsync(
-                                txs: txs,
+                                txs: operations,
                                 notifyIfNewOrChanged: true,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
@@ -247,24 +247,24 @@ namespace Atomex.Wallet.Tezos
                         return;
                     }
 
-                    var txsResult = await UpdateAddressAsync(
+                    var (ops, error) = await UpdateAddressAsync(
                             walletAddress,
                             tzktApi: null,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (txsResult.HasError)
+                    if (error != null)
                     {
                         Log.Error("[TezosWalletScanner] UpdateBalanceAsync error while scan {@address}", address);
                         return;
                     }
 
-                    if (txsResult.Value.Any())
+                    if (ops.Any())
                     {
                         await _account
                             .LocalStorage
                             .UpsertTransactionsAsync(
-                                txs: txsResult.Value,
+                                txs: ops,
                                 notifyIfNewOrChanged: true,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
@@ -287,37 +287,36 @@ namespace Atomex.Wallet.Tezos
             }, cancellationToken);
         }
 
-        private async Task<Result<IEnumerable<TezosTransaction>>> UpdateAddressAsync(
+        private async Task<Result<IEnumerable<TezosOperation>>> UpdateAddressAsync(
             WalletAddress walletAddress,
             TzktApi tzktApi = null,
             CancellationToken cancellationToken = default)
         {
             var updateTimeStamp = DateTime.UtcNow;
 
-            if (tzktApi == null)
-                tzktApi = new TzktApi(XtzConfig);
+            tzktApi ??= new TzktApi(XtzConfig.GetTzktSettings());
 
-            var accountResult = await tzktApi
+            var (account, accountError) = await tzktApi
                 .GetAccountAsync(walletAddress.Address, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (accountResult.HasError)
+            if (accountError != null)
             {
                 Log.Error("[TezosWalletScanner] ScanAddressAsync error. Can't get account for address: {@address}. Code: {@code}. Description: {@description}",
                     walletAddress.Address,
-                    accountResult.Error.Code,
-                    accountResult.Error.Description);
+                    accountError.Value.Code,
+                    accountError.Value.Message);
 
-                return accountResult.Error;
+                return accountError;
             }
 
-            walletAddress.Balance = accountResult.Value.Balance.ToTez();
+            walletAddress.Balance = account.Balance.ToTez();
             walletAddress.UnconfirmedIncome = 0;
             walletAddress.UnconfirmedOutcome = 0;
-            walletAddress.HasActivity = accountResult.Value.NumberOfTransactions > 0 || accountResult.Value.TokenBalancesCount > 0;
+            walletAddress.HasActivity = account.NumberOfTransactions > 0 || account.TokenBalancesCount > 0;
 
-            var txsResult = await tzktApi
-                .GetTransactionsAsync(
+            var (ops, opsError) = await tzktApi
+                .GetOperationsAsync(
                     address: walletAddress.Address,
                     fromTimeStamp: walletAddress.LastSuccessfullUpdate != DateTime.MinValue
                         ? walletAddress.LastSuccessfullUpdate
@@ -325,59 +324,19 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (txsResult.HasError)
+            if (opsError != null)
             {
                 Log.Error("[TezosWalletScanner] UpdateBalanceAsync error. Can't get txs for address: {@address}. Code: {@code}. Description: {@description}",
                     walletAddress.Address,
-                    txsResult.Error.Code,
-                    txsResult.Error.Description);
+                    opsError.Value.Code,
+                    opsError.Value.Message);
 
-                return txsResult.Error;
+                return opsError;
             }
-
-            var txs = CollapseInternalTransactions(txsResult.Value);
 
             walletAddress.LastSuccessfullUpdate = updateTimeStamp;
 
-            return new Result<IEnumerable<TezosTransaction>>(txs);
-        }
-
-        private IEnumerable<TezosTransaction> CollapseInternalTransactions(
-            IEnumerable<TezosTransaction> txs)
-        {
-            var result = new List<TezosTransaction>();
-            var txsById = new Dictionary<string, TezosTransaction>();
-            var internalTxs = new List<TezosTransaction>();
-
-            foreach (var tx in txs)
-            {
-                if (tx.IsInternal)
-                {
-                    internalTxs.Add(tx);
-                }
-                else
-                {
-                    result.Add(tx);
-                    txsById.TryAdd(tx.Id, tx);
-                }
-            }
-
-            foreach (var internalTx in internalTxs)
-            {
-                if (txsById.TryGetValue(internalTx.Id, out var tx))
-                {
-                    if (tx.InternalTxs == null)
-                        tx.InternalTxs = new List<TezosTransaction>();
-
-                    tx.InternalTxs.Add(internalTx);
-                }
-                else
-                {
-                    result.Add(internalTx);
-                }
-            }
-
-            return result;
+            return new Result<IEnumerable<TezosOperation>> { Value = ops };
         }
     }
 }

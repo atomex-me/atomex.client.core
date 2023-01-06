@@ -17,6 +17,8 @@ using Atomex.Common.Bson;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet;
+using Atomex.Blockchain.Tezos.Tzkt;
+using Atomex.Blockchain;
 
 namespace Atomex.LiteDb
 {
@@ -42,7 +44,7 @@ namespace Atomex.LiteDb
         private const string HasActivityKey = nameof(WalletAddress.HasActivity);
         private const string TokenContractKey = nameof(TokenBalance) + "." + nameof(TokenBalance.Contract);
         private const string TokenIdKey = nameof(TokenBalance) + "." + nameof(TokenBalance.TokenId);
-        private const string TransferContract = nameof(TokenTransfer.Contract);
+        private const string TransferContract = nameof(TezosTokenTransfer.Contract);
         private const string KeyTypeKey = nameof(WalletAddress.KeyType);
 
         public event EventHandler<BalanceChangedEventArgs> BalanceChanged;
@@ -459,7 +461,7 @@ namespace Atomex.LiteDb
         }
 
         public Task<int> UpsertTokenTransfersAsync(
-            IEnumerable<TokenTransfer> tokenTransfers)
+            IEnumerable<TezosTokenTransfer> tokenTransfers)
         {
             try
             {
@@ -480,7 +482,7 @@ namespace Atomex.LiteDb
             return Task.FromResult(0);
         }
 
-        public Task<IEnumerable<TokenTransfer>> GetTokenTransfersAsync(
+        public Task<IEnumerable<TezosTokenTransfer>> GetTokenTransfersAsync(
             string contractAddress,
             int offset = 0,
             int limit = int.MaxValue)
@@ -489,17 +491,17 @@ namespace Atomex.LiteDb
             {
                 var transfers = _db.GetCollection(TezosTokensTransfers)
                     .Find(Query.EQ(TransferContract, contractAddress), skip: offset, limit: limit)
-                    .Select(d => _bsonMapper.ToObject<TokenTransfer>(d))
+                    .Select(d => _bsonMapper.ToObject<TezosTokenTransfer>(d))
                     .ToList();
 
-                return Task.FromResult<IEnumerable<TokenTransfer>>(transfers);
+                return Task.FromResult<IEnumerable<TezosTokenTransfer>>(transfers);
             }
             catch (Exception e)
             {
                 Log.Error(e, "Error getting tezos tokens transfers");
             }
 
-            return Task.FromResult(Enumerable.Empty<TokenTransfer>());
+            return Task.FromResult(Enumerable.Empty<TezosTokenTransfer>());
         }
 
         public Task<int> UpsertTokenContractsAsync(

@@ -10,6 +10,7 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
+using Atomex.Blockchain.Tezos.Abstract;
 
 namespace Atomex.Swaps.Tezos.Helpers
 {
@@ -28,10 +29,10 @@ namespace Atomex.Swaps.Tezos.Helpers
 
                 var contractAddress = tezos.SwapContractAddress;
 
-                var blockchainApi = (ITezosBlockchainApi)tezos.BlockchainApi;
+                var blockchainApi = (ITezosApi)tezos.BlockchainApi;
 
                 var (txs, error) = await blockchainApi
-                    .GetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
+                    .GetOperationsAsync(contractAddress, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (error != null)
@@ -185,7 +186,7 @@ namespace Atomex.Swaps.Tezos.Helpers
             }, cancellationToken);
         }
 
-        public static bool IsSwapRedeem(TezosTransaction tx, byte[] secretHash)
+        public static bool IsSwapRedeem(TezosOperation tx, byte[] secretHash)
         {
             try
             {
@@ -218,7 +219,7 @@ namespace Atomex.Swaps.Tezos.Helpers
             return redeemParams?["bytes"]?.Value<string>();
         }
 
-        public static byte[] GetSecret(TezosTransaction tx)
+        public static byte[] GetSecret(TezosOperation tx)
         {
             var entrypoint = tx.Params?["entrypoint"]?.ToString();
 

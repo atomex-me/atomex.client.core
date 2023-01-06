@@ -200,7 +200,7 @@ namespace Atomex.Swaps.Tezos
                 swap.RedeemTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
             {
                 // redeem already broadcast
-                _ = TrackTransactionConfirmationAsync<TezosTransaction>(
+                _ = TrackTransactionConfirmationAsync<TezosOperation>(
                     swap: swap,
                     dataRepository: _account.LocalStorage,
                     txId: swap.RedeemTx.Id,
@@ -263,7 +263,7 @@ namespace Atomex.Swaps.Tezos
                 return;
             }
 
-            var redeemTx = new TezosTransaction
+            var redeemTx = new TezosOperation
             {
                 Currency     = xtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -338,7 +338,7 @@ namespace Atomex.Swaps.Tezos
             await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemBroadcast, cancellationToken)
                 .ConfigureAwait(false);
 
-            _ = TrackTransactionConfirmationAsync<TezosTransaction>(
+            _ = TrackTransactionConfirmationAsync<TezosOperation>(
                 swap: swap,
                 dataRepository: _account.LocalStorage,
                 txId: redeemTx.Id,
@@ -383,7 +383,7 @@ namespace Atomex.Swaps.Tezos
                 Log.Error("Insufficient funds for redeem for party");
             }
 
-            var redeemForPartyTx = new TezosTransaction
+            var redeemForPartyTx = new TezosOperation
             {
                 Currency     = xtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -458,7 +458,7 @@ namespace Atomex.Swaps.Tezos
                 swap.RefundTx.CreationTime != null &&
                 swap.RefundTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
             {
-                _ = TrackTransactionConfirmationAsync<TezosTransaction>(
+                _ = TrackTransactionConfirmationAsync<TezosOperation>(
                     swap: swap,
                     dataRepository: _account.LocalStorage,
                     txId: swap.RefundTx.Id,
@@ -497,7 +497,7 @@ namespace Atomex.Swaps.Tezos
                 Log.Error("Insufficient funds for refund");
             }
 
-            var refundTx = new TezosTransaction
+            var refundTx = new TezosOperation
             {
                 Currency     = xtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -571,7 +571,7 @@ namespace Atomex.Swaps.Tezos
             await UpdateSwapAsync(swap, SwapStateFlags.IsRefundBroadcast, cancellationToken)
                 .ConfigureAwait(false);
 
-            _ = TrackTransactionConfirmationAsync<TezosTransaction>(
+            _ = TrackTransactionConfirmationAsync<TezosOperation>(
                 swap: swap,
                 dataRepository: _account.LocalStorage,
                 txId: refundTx.Id,
@@ -722,7 +722,7 @@ namespace Atomex.Swaps.Tezos
 
         #region Helpers
 
-        protected virtual async Task<TezosTransaction> CreatePaymentTxAsync(
+        protected virtual async Task<TezosOperation> CreatePaymentTxAsync(
             Swap swap,
             int lockTimeSeconds,
             CancellationToken cancellationToken = default)
@@ -783,7 +783,7 @@ namespace Atomex.Swaps.Tezos
                 return null;
             }
 
-            return new TezosTransaction
+            return new TezosOperation
             {
                 Currency     = xtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -804,7 +804,7 @@ namespace Atomex.Swaps.Tezos
 
         private async Task BroadcastTxAsync(
             Swap swap,
-            TezosTransaction tx,
+            TezosOperation tx,
             CancellationToken cancellationToken = default)
         {
             var broadcastResult = await XtzConfig.BlockchainApi
@@ -845,7 +845,7 @@ namespace Atomex.Swaps.Tezos
 
                 var tx = await _account
                     .LocalStorage
-                    .GetTransactionByIdAsync<TezosTransaction>(XtzConfig.Name, txId)
+                    .GetTransactionByIdAsync<TezosOperation>(XtzConfig.Name, txId)
                     .ConfigureAwait(false);
 
                 if (tx is not { IsConfirmed: true }) continue;

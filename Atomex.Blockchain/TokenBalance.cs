@@ -1,6 +1,6 @@
 ﻿using Atomex.Common;
 
-namespace Atomex.Blockchain.Tezos
+namespace Atomex.Blockchain
 {
     public class TokenBalance : Token
     {

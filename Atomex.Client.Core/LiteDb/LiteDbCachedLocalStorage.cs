@@ -12,6 +12,7 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet;
+using Atomex.Blockchain.Tezos.Tzkt;
 
 namespace Atomex.LiteDb
 {
@@ -236,7 +237,7 @@ namespace Atomex.LiteDb
         }
 
         public async Task<int> UpsertTokenTransfersAsync(
-            IEnumerable<TokenTransfer> tokenTransfers)
+            IEnumerable<TezosTokenTransfer> tokenTransfers)
         {
             var upsertResult = await _liteDbLocalStorage
                 .UpsertTokenTransfersAsync(tokenTransfers)
@@ -247,7 +248,7 @@ namespace Atomex.LiteDb
             return upsertResult;
         }
 
-        public Task<IEnumerable<TokenTransfer>> GetTokenTransfersAsync(
+        public Task<IEnumerable<TezosTokenTransfer>> GetTokenTransfersAsync(
             string contractAddress,
             int offset = 0,
             int limit = int.MaxValue)

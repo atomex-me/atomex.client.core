@@ -20,7 +20,7 @@ namespace Atomex.Wallet.Tezos
 
             var unconfirmedTxs = (await tezosAccount
                 .LocalStorage
-                .GetUnconfirmedTransactionsAsync<TezosTransaction>("XTZ")
+                .GetUnconfirmedTransactionsAsync<TezosOperation>("XTZ")
                 .ConfigureAwait(false))
                 .Where(t => t.From == fromAddress &&
                             t.CreationTime != null &&

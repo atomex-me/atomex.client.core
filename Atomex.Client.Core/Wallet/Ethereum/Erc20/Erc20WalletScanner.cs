@@ -6,9 +6,7 @@ using System.Threading.Tasks;
 
 using Serilog;
 
-using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Erc20;
-using Atomex.Blockchain.Ethereum.Erc20.Dto;
 using Atomex.Blockchain.Ethereum.EtherScan;
 using Atomex.Common;
 using Atomex.Core;
@@ -98,10 +96,12 @@ namespace Atomex.Wallet.Ethereum
 
                     if (txs.Any())
                     {
+                        var uniqueTxs = DistinctTransactions(txs);
+
                         var _ = await _account
                             .LocalStorage
                             .UpsertTransactionsAsync(
-                                txs: txs,
+                                txs: uniqueTxs,
                                 notifyIfNewOrChanged: true,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
@@ -174,10 +174,12 @@ namespace Atomex.Wallet.Ethereum
 
                     if (txs.Any())
                     {
+                        var uniqueTxs = DistinctTransactions(txs);
+
                         var _ = await _account
                             .LocalStorage
                             .UpsertTransactionsAsync(
-                                txs: txs,
+                                txs: uniqueTxs,
                                 notifyIfNewOrChanged: true,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
@@ -240,6 +242,17 @@ namespace Atomex.Wallet.Ethereum
 
                     if (addressTxs.Any())
                     {
+                        foreach (var tx in addressTxs)
+                        {
+                            var existsTx = await _account
+                                .LocalStorage
+                                .GetTransactionByIdAsync<Erc20Transaction>(_account.Currency, tx.Id)
+                                .ConfigureAwait(false);
+
+                            if (existsTx != null)
+                                tx.Transfers = UnionTransfers(tx, existsTx);
+                        }
+
                         await _account
                             .LocalStorage
                             .UpsertTransactionsAsync(
@@ -273,8 +286,7 @@ namespace Atomex.Wallet.Ethereum
         {
             var updateTimeStamp = DateTime.UtcNow;
 
-            if (api == null)
-                api = GetErc20Api();
+            api ??= GetErc20Api();
 
             var (balance, error) = await api
                 .GetErc20BalanceAsync(
@@ -341,85 +353,40 @@ namespace Atomex.Wallet.Ethereum
             return new Result<IEnumerable<Erc20Transaction>> { Value = txs.Transactions };
         }
 
-        private async Task<Result<IEnumerable<ContractEvent>>> GetErc20EventsAsync(
-            string address,
-            CancellationToken cancellationToken = default)
+        private IEnumerable<Erc20Transaction> DistinctTransactions(IEnumerable<Erc20Transaction> transactions)
         {
-            var currency = Erc20Config;
-            var api = GetErc20Api();
+            // todo: try to implement using OrderedDictionary
+            return transactions
+                .GroupBy(t => t.Id)
+                .Select(g =>
+                {
+                    var firstTx = g.First();
 
-            var (approveEvents, approveEventsError) = await api
-                .GetContractEventsAsync(
-                    address: currency.ERC20ContractAddress,
-                    fromBlock: currency.SwapContractBlockNumber,
-                    toBlock: ulong.MaxValue,
-                    topic0: EventSignatureExtractor.GetSignatureHash<Erc20ApprovalEventDTO>(),
-                    topic1: "0x000000000000000000000000" + address[2..],
-                    topic2: "0x000000000000000000000000" + currency.SwapContractAddress[2..],
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+                    if (g.Count() == 1)
+                        return firstTx;
 
-            if (approveEventsError != null)
-            {
-                Log.Error(
-                    "[Erc20WalletScanner] Error while scan address transactions for {@address} with code {@code} and message {@message}",
-                    address,
-                    approveEventsError.Value.Code,
-                    approveEventsError.Value.Message);
+                    firstTx.Transfers = UnionTransfers(g);
 
-                return approveEventsError;
-            }
-
-            var (outEvents, outEventsError) = await api
-                .GetContractEventsAsync(
-                    address: currency.ERC20ContractAddress,
-                    fromBlock: currency.SwapContractBlockNumber,
-                    toBlock: ulong.MaxValue,
-                    topic0: EventSignatureExtractor.GetSignatureHash<Erc20TransferEventDTO>(),
-                    topic1: "0x000000000000000000000000" + address[2..],
-                    topic2: null,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            if (outEventsError != null)
-            {
-                Log.Error(
-                    "[Erc20WalletScanner] Error while scan address transactions for {@address} with code {@code} and message {@message}",
-                    address,
-                    outEventsError.Value.Code,
-                    outEventsError.Value.Message);
-
-                return outEventsError;
-            }
-
-            var (inEvents, inEventsError) = await api
-                .GetContractEventsAsync(
-                    address: currency.ERC20ContractAddress,
-                    fromBlock: currency.SwapContractBlockNumber,
-                    toBlock: ulong.MaxValue,
-                    topic0: EventSignatureExtractor.GetSignatureHash<Erc20TransferEventDTO>(),
-                    topic1: null,
-                    topic2: "0x000000000000000000000000" + address[2..],
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            if (inEventsError != null)
-            {
-                Log.Error(
-                    "[Erc20WalletScanner] Error while scan address transactions for {@address} with code {@code} and message {@message}",
-                    address,
-                    inEventsError.Value.Code,
-                    inEventsError.Value.Message);
-
-                return inEventsError;
-            }
-
-            return new Result<IEnumerable<ContractEvent>>
-            {
-                Value = approveEvents
-                    .Concat(outEvents)
-                    .Concat(inEvents)
-            };
+                    return firstTx;
+                });
         }
+
+        private List<Erc20Transfer> UnionTransfers(IEnumerable<Erc20Transaction> txs)
+        {
+            var transfers = new List<Erc20Transfer>(txs.Sum(t => t.Transfers.Count));
+
+            foreach (var tx in txs)
+                transfers.AddRange(tx.Transfers);
+
+            transfers.Distinct(new Common.EqualityComparer<Erc20Transfer>(
+                (t1, t2) => t1.From.Equals(t2.From) && t1.To.Equals(t2.To) && t1.Value.Equals(t2.Value),
+                t => t.From.GetHashCode() ^ t.To.GetHashCode() ^ t.Value.GetHashCode()
+            ));
+
+            return transfers;
+        }
+
+        private List<Erc20Transfer> UnionTransfers(params Erc20Transaction[] txs) =>
+            UnionTransfers(txs.AsEnumerable());
     }
 }

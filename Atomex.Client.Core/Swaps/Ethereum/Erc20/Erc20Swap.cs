@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 using System.Threading;
@@ -24,7 +25,6 @@ using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Ethereum.Erc20.Helpers;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Ethereum;
-using System.Linq;
 
 namespace Atomex.Swaps.Ethereum
 {

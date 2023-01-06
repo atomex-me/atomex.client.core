@@ -9,6 +9,7 @@ using Serilog;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.Blockchain.Tezos.Abstract;
 
 namespace Atomex.Swaps.Tezos.Helpers
 {
@@ -27,10 +28,10 @@ namespace Atomex.Swaps.Tezos.Helpers
 
                 var contractAddress = tezos.SwapContractAddress;
 
-                var blockchainApi = (ITezosBlockchainApi)tezos.BlockchainApi;
+                var blockchainApi = (ITezosApi)tezos.BlockchainApi;
 
                 var (txs, error) = await blockchainApi
-                    .GetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
+                    .GetOperationsAsync(contractAddress, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (error != null)
@@ -103,7 +104,7 @@ namespace Atomex.Swaps.Tezos.Helpers
             return new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for refund check");
         }
 
-        public static bool IsSwapRefund(TezosTransaction tx, byte[] secretHash)
+        public static bool IsSwapRefund(TezosOperation tx, byte[] secretHash)
         {
             try
             {

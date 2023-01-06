@@ -2,29 +2,24 @@ using System;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
-using Atomex.ViewModels;
 
 namespace Atomex.Blockchain.Tezos
 {
-    public class TokenTransfer : ITransaction
+    public class TezosTokenTransfer : ITransaction
     {
         public string Id { get; set; }
         public string Currency { get; set; }
-        public BlockInfo BlockInfo => new()
-        {
-            BlockHash     = null,
-            BlockHeight   = Level,
-            BlockTime     = TimeStamp.UtcDateTime,
-            Confirmations = 1,
-            FirstSeen     = TimeStamp.UtcDateTime
-        };
-        public TransactionStatus Status { get; set; } = TransactionStatus.Confirmed;
+        public TransactionStatus Status => Confirmations > 0
+            ? TransactionStatus.Confirmed
+            : TransactionStatus.Failed;
         public TransactionType Type { get; set; }
-        public DateTime? CreationTime => TimeStamp.UtcDateTime;
-        public bool IsConfirmed => true;
+        public DateTimeOffset? CreationTime { get; set; }
+        public DateTimeOffset? BlockTime { get; set; }
+        public long BlockHeight { get; set; }
+        public long Confirmations { get; set; }
+        public bool IsConfirmed => Confirmations > 0;
+        public bool IsTypeResolved { get; set; }
         public string Contract => Token.Contract;
-        public DateTimeOffset TimeStamp { get; set; }
-        public int Level { get; set; }
         public string From { get; set; }
         public string To { get; set; }
         public string Amount { get; set; }

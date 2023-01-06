@@ -3,7 +3,7 @@
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
-namespace Atomex.Common
+namespace Atomex.Blockchain.Tezos.Common
 {
     public class ObjectAsRawStringJsonConverter : JsonConverter
     {

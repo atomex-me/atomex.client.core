@@ -118,7 +118,7 @@ namespace Atomex.TezosTokens
             TokenId                 = 0;
 
             ViewContractAddress     = configuration["ViewContract"];
-            TransactionType         = typeof(TezosTransaction);
+            TransactionType         = typeof(TezosOperation);
 
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Tezos;

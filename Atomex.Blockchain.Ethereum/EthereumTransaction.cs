@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Numerics;
 
-using Nethereum.RPC.Eth.DTOs;
-
 using Atomex.Blockchain.Abstract;
 using TransactionType = Atomex.Blockchain.Abstract.TransactionType;
 

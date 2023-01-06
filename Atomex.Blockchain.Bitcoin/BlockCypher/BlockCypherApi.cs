@@ -56,10 +56,9 @@ namespace Atomex.Blockchain.BlockCypher
         }
 
         public override async Task<Result<string>> BroadcastAsync(
-            ITransaction transaction,
+            BitcoinTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            var tx = (BitcoinTransaction)transaction;
             var txHex = tx.ToBytes().ToHexString();
 
             var requestUri = $"/{_settings.Coin}/{_settings.Network}/txs/push" + (_settings.ApiToken != null ? $"?token={_settings.ApiToken}" : "");

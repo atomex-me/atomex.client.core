@@ -95,7 +95,7 @@ namespace Atomex.Wallet.Tezos
 
             var storageLimit = Math.Max(tokenConfig.TransferStorageLimit - tokenConfig.ActivationStorage, 0); // without activation storage fee
 
-            var tx = new TezosTransaction
+            var tx = new TezosOperation
             {
                 Currency     = xtzConfig.Name,
                 CreationTime = DateTime.UtcNow,

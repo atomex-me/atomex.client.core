@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract
@@ -83,9 +84,9 @@ namespace Atomex.Wallet.Abstract
             IEnumerable<WalletAddress> walletAddresses);
 
         Task<int> UpsertTokenTransfersAsync(
-            IEnumerable<TokenTransfer> tokenTransfers);
+            IEnumerable<TezosTokenTransfer> tokenTransfers);
 
-        Task<IEnumerable<TokenTransfer>> GetTokenTransfersAsync(
+        Task<IEnumerable<TezosTokenTransfer>> GetTokenTransfersAsync(
             string contractAddress,
             int offset = 0,
             int limit = 20);

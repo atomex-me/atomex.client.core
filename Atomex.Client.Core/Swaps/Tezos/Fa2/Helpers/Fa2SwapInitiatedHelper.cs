@@ -12,6 +12,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Swaps.Abstract;
+using Atomex.Blockchain.Tezos.Abstract;
 
 namespace Atomex.Swaps.Tezos.Fa2.Helpers
 {
@@ -24,7 +25,7 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
         {
             var fa2 = currency as Fa2Config;
 
-            if (swap.PaymentTx is not TezosTransaction paymentTx)
+            if (swap.PaymentTx is not TezosOperation paymentTx)
                 throw new ArgumentNullException("Swap payment transaction is null");
 
             var lockTimeInSeconds = swap.IsInitiator
@@ -49,7 +50,7 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
                 $"&parameter.totalAmount={requiredAmountInTokens.ToTokenDigits(fa2.DigitsMultiplier)}" +
                 $"&parameter.payoffAmount={(long)rewardForRedeemInTokenDigits}";
 
-            var api = fa2.BlockchainApi as ITezosBlockchainApi;
+            var api = fa2.BlockchainApi as ITezosApi;
 
             var (txs, error) = await api
                 .GetTransactionsAsync(
@@ -103,10 +104,10 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
 
                 long detectedRefundTimestamp = 0;
 
-                var blockchainApi = (ITezosBlockchainApi)tezos.BlockchainApi;
+                var blockchainApi = (ITezosApi)tezos.BlockchainApi;
 
                 var (txs, error) = await blockchainApi
-                    .GetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
+                    .GetOperationsAsync(contractAddress, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (error != null)
@@ -265,7 +266,7 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
         }
 
         public static bool IsSwapInit(
-            TezosTransaction tx,
+            TezosOperation tx,
             string secretHash,
             string tokenContractAddress,
             string participant,
@@ -353,7 +354,7 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
             return true;
         }
 
-        public static decimal GetAmount(TezosTransaction tx)
+        public static decimal GetAmount(TezosOperation tx)
         {
             if (tx.Params == null)
                 return 0m;
@@ -373,7 +374,7 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
             return initParams?["args"]?[1]?["args"]?[1]?["int"]?.ToObject<decimal>() ?? 0m;
         }
 
-        public static long GetRefundTimestamp(TezosTransaction tx)
+        public static long GetRefundTimestamp(TezosOperation tx)
         {
             if (tx.Params == null)
                 return 0;
@@ -393,7 +394,7 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
             return TezosConfig.ParseTimestamp(initParams?["args"]?[0]?["args"]?[1]?["args"]?[1]);
         }
 
-        public static decimal GetRedeemFee(TezosTransaction tx)
+        public static decimal GetRedeemFee(TezosOperation tx)
         {
             if (tx.Params == null)
                 return 0;

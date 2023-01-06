@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,7 +9,20 @@ using Microsoft.Extensions.Logging;
 
 namespace Atomex.Common
 {
-    public class HttpRequestHeaders : List<KeyValuePair<string, IEnumerable<string>>> { };
+    public class HttpRequestHeaders : List<KeyValuePair<string, IEnumerable<string>>>
+    {
+        public HttpRequestHeaders() { }
+        public HttpRequestHeaders(IEnumerable<KeyValuePair<string, IEnumerable<string>>> values)
+        {
+            AddRange(values);
+        }
+        public HttpRequestHeaders(IEnumerable<KeyValuePair<string, string>> values)
+            : this(values.Select(pair => new KeyValuePair<string, IEnumerable<string>>(
+                key: pair.Key,
+                value: new string[] { pair.Value })))
+        {
+        }
+    };
 
     public static class HttpHelper
     {

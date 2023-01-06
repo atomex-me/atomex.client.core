@@ -225,7 +225,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                 swap.RedeemTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
             {
                 // redeem already broadcast
-                _ = TrackTransactionConfirmationAsync<TezosTransaction>(
+                _ = TrackTransactionConfirmationAsync<TezosOperation>(
                     swap: swap,
                     dataRepository: Fa2Account.LocalStorage,
                     txId: swap.RedeemTx.Id,
@@ -292,7 +292,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                 return;
             }
 
-            var redeemTx = new TezosTransaction
+            var redeemTx = new TezosOperation
             {
                 Currency     = XtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -367,7 +367,7 @@ namespace Atomex.Swaps.Tezos.Fa2
             await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemBroadcast, cancellationToken)
                 .ConfigureAwait(false);
 
-            _ = TrackTransactionConfirmationAsync<TezosTransaction>(
+            _ = TrackTransactionConfirmationAsync<TezosOperation>(
                 swap: swap,
                 dataRepository: Fa2Account.LocalStorage,
                 txId: redeemTx.Id,
@@ -412,7 +412,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                 Log.Error("Insufficient funds for redeem for party");
             }
 
-            var redeemTx = new TezosTransaction
+            var redeemTx = new TezosOperation
             {
                 Currency     = XtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -476,7 +476,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                 swap.RefundTx.CreationTime != null &&
                 swap.RefundTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
             {
-                _ = TrackTransactionConfirmationAsync<TezosTransaction>(
+                _ = TrackTransactionConfirmationAsync<TezosOperation>(
                     swap: swap,
                     dataRepository: Fa2Account.LocalStorage,
                     txId: swap.RefundTx.Id,
@@ -515,7 +515,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                 Log.Error("Insufficient funds for refund");
             }
 
-            var refundTx = new TezosTransaction
+            var refundTx = new TezosOperation
             {
                 Currency     = XtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -589,7 +589,7 @@ namespace Atomex.Swaps.Tezos.Fa2
             await UpdateSwapAsync(swap, SwapStateFlags.IsRefundBroadcast, cancellationToken)
                 .ConfigureAwait(false);
 
-            _ = TrackTransactionConfirmationAsync<TezosTransaction>(
+            _ = TrackTransactionConfirmationAsync<TezosOperation>(
                 swap: swap,
                 dataRepository: Fa2Account.LocalStorage,
                 txId: refundTx.Id,
@@ -758,7 +758,7 @@ namespace Atomex.Swaps.Tezos.Fa2
 
                 var tx = await Fa2Account
                     .LocalStorage
-                    .GetTransactionByIdAsync<TezosTransaction>(XtzConfig.Name, txId)
+                    .GetTransactionByIdAsync<TezosOperation>(XtzConfig.Name, txId)
                     .ConfigureAwait(false);
 
                 if (tx is not { IsConfirmed: true }) continue;
@@ -780,7 +780,7 @@ namespace Atomex.Swaps.Tezos.Fa2
             return requiredAmountInTokens;
         }
 
-        protected async Task<TezosTransaction> CreatePaymentTxAsync(
+        protected async Task<TezosOperation> CreatePaymentTxAsync(
             Swap swap,
             int lockTimeSeconds,
             CancellationToken cancellationToken = default)
@@ -856,7 +856,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                 fa2.DigitsMultiplier,
                 fa2.DustDigitsMultiplier);
                 
-            return new TezosTransaction
+            return new TezosOperation
             {
                 Currency     = XtzConfig.Name,
                 CreationTime = DateTime.UtcNow,
@@ -880,9 +880,9 @@ namespace Atomex.Swaps.Tezos.Fa2
             };
         }
 
-        private async Task<IList<TezosTransaction>> CreateApproveTxsAsync(
+        private async Task<IList<TezosOperation>> CreateApproveTxsAsync(
             Swap swap,
-            TezosTransaction paymentTx,
+            TezosOperation paymentTx,
             CancellationToken cancellationToken = default)
         {
             Log.Debug("Create approve txs for swap {@swap}", swap.Id);
@@ -918,13 +918,13 @@ namespace Atomex.Swaps.Tezos.Fa2
                 return null; // todo: maybe add approve 0
             }
 
-            var transactions = new List<TezosTransaction>();
+            var transactions = new List<TezosOperation>();
 
             Log.Debug("Is operator active: {@allowance}", isOperatorActive);
 
             if (!isOperatorActive)
             {
-                transactions.Add(new TezosTransaction
+                transactions.Add(new TezosOperation
                 {
                     Currency     = XtzConfig.Name,
                     CreationTime = DateTime.UtcNow,
@@ -950,7 +950,7 @@ namespace Atomex.Swaps.Tezos.Fa2
 
         private async Task BroadcastTxAsync(
             Swap swap,
-            TezosTransaction tx,
+            TezosOperation tx,
             CancellationToken cancellationToken = default)
         {
             var (txId, error) = await XtzConfig.BlockchainApi

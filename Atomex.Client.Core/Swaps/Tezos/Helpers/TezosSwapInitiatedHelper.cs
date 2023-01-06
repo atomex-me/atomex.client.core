@@ -11,6 +11,7 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
+using Atomex.Blockchain.Tezos.Abstract;
 
 namespace Atomex.Swaps.Tezos.Helpers
 {
@@ -23,7 +24,7 @@ namespace Atomex.Swaps.Tezos.Helpers
         {
             var tezos = currency as TezosConfig;
 
-            if (swap.PaymentTx is not TezosTransaction paymentTx)
+            if (swap.PaymentTx is not TezosOperation paymentTx)
                 return new Error(Errors.SwapError, "Saved tx is null");
 
             var lockTimeInSeconds = swap.IsInitiator
@@ -43,7 +44,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                 $"&parameter.settings.hashed_secret={swap.SecretHash.ToHexString()}" +
                 $"&parameter.settings.payoff={(long)rewardForRedeemInMtz}";
 
-            var api = tezos.BlockchainApi as ITezosBlockchainApi;
+            var api = tezos.BlockchainApi as ITezosApi;
 
             var (txs, error) = await api
                 .GetTransactionsAsync(
@@ -92,10 +93,10 @@ namespace Atomex.Swaps.Tezos.Helpers
                 var detectedAmountInMtz = 0m;
                 var detectedRedeemFeeAmountInMtz = 0m;
 
-                var blockchainApi = (ITezosBlockchainApi)tezos.BlockchainApi;
+                var blockchainApi = (ITezosApi)tezos.BlockchainApi;
 
                 var (txs, error) = await blockchainApi
-                    .GetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
+                    .GetOperationsAsync(contractAddress, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (error != null)
@@ -244,7 +245,7 @@ namespace Atomex.Swaps.Tezos.Helpers
         }
 
         public static bool IsSwapInit(
-            TezosTransaction tx,
+            TezosOperation tx,
             long refundTimestamp,
             byte[] secretHash,
             string participant)
@@ -305,7 +306,7 @@ namespace Atomex.Swaps.Tezos.Helpers
         }
 
         public static bool IsSwapAdd(
-            TezosTransaction tx,
+            TezosOperation tx,
             byte[] secretHash)
         {
             try
@@ -337,7 +338,7 @@ namespace Atomex.Swaps.Tezos.Helpers
         }
 
         public static decimal GetRedeemFee(
-            TezosTransaction tx)
+            TezosOperation tx)
         {
             var entrypoint = tx.Params?["entrypoint"]?.ToString();
 

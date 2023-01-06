@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -163,11 +164,11 @@ namespace Atomex
             BbUri                   = configuration[nameof(BbUri)];
             BbApiUri                = configuration[nameof(BbApiUri)];
 
-            BlockchainApi           = ResolveBlockchainApi(configuration, this);
+            BlockchainApi           = ResolveBlockchainApi(configuration);
             TxExplorerUri           = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
             SwapContractAddress     = configuration["SwapContract"];
-            TransactionType         = typeof(TezosTransaction);
+            TransactionType         = typeof(TezosOperation);
 
             IsSwapAvailable         = true;
             Bip44Code               = Bip44.Tezos;
@@ -177,19 +178,27 @@ namespace Atomex
             IpfsGatewayUri          = configuration[nameof(IpfsGatewayUri)];
         }
 
-        protected static IBlockchainApi ResolveBlockchainApi(
-            IConfiguration configuration,
-            TezosConfig tezos)
+        protected IBlockchainApi ResolveBlockchainApi(
+            IConfiguration configuration)
         {
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();
 
             return blockchainApi switch
             {
-                "tzkt" => new TzktApi(tezos),
+                "tzkt" => new TzktApi(GetTzktSettings()),
                 _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
             };
         }
+
+        public TzktSettings GetTzktSettings() => new()
+        {
+            BaseUri = BaseUri,
+            Headers = new Dictionary<string, string>
+            {
+                { "User-Agent", "Atomex" }
+            }
+        };
 
         public override IExtKey CreateExtKey(SecureBytes seed, int keyType) =>
             keyType switch

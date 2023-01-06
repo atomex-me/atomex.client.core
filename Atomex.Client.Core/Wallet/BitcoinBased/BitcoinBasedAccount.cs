@@ -108,12 +108,12 @@ namespace Atomex.Wallet.BitcoinBased
                     code: Errors.TransactionSigningError,
                     message: "Transaction signing error");
 
-            if (!tx.Verify(from, out var errors, config))
+            if (!tx.Verify(from, out var errors, config.Network))
                 return new Error(
                     code: Errors.TransactionVerificationError,
                     message: $"Transaction verification error: {string.Join(", ", errors.Select(e => e.Message))}");
 
-            var (txId, error) = await config.BlockchainApi
+            var (txId, error) = await ((BitcoinBlockchainApi)config.BlockchainApi)
                 .BroadcastAsync(tx, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -314,12 +314,9 @@ namespace Atomex.Wallet.BitcoinBased
                 };
             }
 
-            if (feeRate == null)
-            {
-                feeRate = await Config
-                    .GetFeeRateAsync(cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-            }
+            feeRate ??= await Config
+                .GetFeeRateAsync(cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
             var inputsToSign = outputs
                 .Select(o => new BitcoinInputToSign { Output = o })

@@ -90,7 +90,7 @@ namespace Atomex.Wallet.Tezos
                 ? Math.Max(xtzConfig.StorageLimit - xtzConfig.ActivationStorage, 0) // without activation storage fee
                 : xtzConfig.StorageLimit;
 
-            var tx = new TezosTransaction
+            var tx = new TezosOperation
             {
                 Currency      = xtzConfig.Name,
                 CreationTime  = DateTime.UtcNow,
@@ -164,7 +164,7 @@ namespace Atomex.Wallet.Tezos
 
 
         public async Task<bool> SignAsync(
-            TezosTransaction tx,
+            TezosOperation tx,
             CancellationToken cancellationToken = default)
         {
             try
@@ -532,7 +532,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             return await LocalStorage
-                .GetUnconfirmedTransactionsAsync<TezosTransaction>(Currency)
+                .GetUnconfirmedTransactionsAsync<TezosOperation>(Currency)
                 .ConfigureAwait(false);
         }
 
