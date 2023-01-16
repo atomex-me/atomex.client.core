@@ -11,7 +11,8 @@ namespace Atomex.Blockchain.Tezos
     public class TezosOperationRequest
     {
         public string Branch { get; set; }
-        public byte[] Signature { get; set; }
+        public byte[]? Signature { get; set; }
+        public string? From => (OperationsContents.FirstOrDefault(o => o is ManagerOperationContent) as ManagerOperationContent)?.Source;
 
         public IEnumerable<OperationContent> OperationsContents { get; }
 

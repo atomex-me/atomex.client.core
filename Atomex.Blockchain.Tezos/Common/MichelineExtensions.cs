@@ -23,18 +23,15 @@ namespace Atomex.Blockchain.Tezos.Common
             if (parameters != null)
                 return TryExtractMichelineValue(parameters);
 
-            if (parameter.Value is not JsonElement value)
-                return null;
-
             try
             {
-                if (value.ValueKind == JsonValueKind.Object)
+                if (parameter.Value.ValueKind == JsonValueKind.Object)
                 {
-                    return Micheline.FromJson(value.GetRawText());
+                    return Micheline.FromJson(parameter.Value.GetRawText());
                 }
-                else if (value.ValueKind == JsonValueKind.String)
+                else if (parameter.Value.ValueKind == JsonValueKind.String)
                 {
-                    return Micheline.FromJson(value.GetString());
+                    return Micheline.FromJson(parameter.Value.GetString());
                 }
                 else return null;
             }

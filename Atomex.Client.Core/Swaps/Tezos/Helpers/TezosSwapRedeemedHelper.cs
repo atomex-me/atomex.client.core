@@ -1,16 +1,13 @@
 ﻿using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Newtonsoft.Json.Linq;
 using Serilog;
 
-using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Swaps.Abstract;
-using Atomex.Blockchain.Tezos.Abstract;
+using Atomex.Blockchain.Tezos.Tzkt;
+using Atomex.Blockchain.Tezos.Tzkt.Swaps.V1;
 
 namespace Atomex.Swaps.Tezos.Helpers
 {
@@ -28,16 +25,21 @@ namespace Atomex.Swaps.Tezos.Helpers
                 var tezos = (TezosConfig)currency;
 
                 var contractAddress = tezos.SwapContractAddress;
+                var secretHash = swap.SecretHash.ToHexString();
 
-                var blockchainApi = (ITezosApi)tezos.BlockchainApi;
+                var api = new TzktApi(tezos.GetTzktSettings());
 
-                var (txs, error) = await blockchainApi
-                    .GetOperationsAsync(contractAddress, cancellationToken: cancellationToken)
+                var (ops, error) = await api
+                    .FindRedeemsAsync(
+                        secretHash: secretHash,
+                        contractAddress: contractAddress,
+                        timeStamp: (ulong)swap.TimeStamp.ToUnixTimeSeconds(),
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (error != null)
                 {
-                    Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Description: {@desc}",
+                    Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Message: {@desc}",
                         contractAddress,
                         error.Value.Code,
                         error.Value.Message);
@@ -45,28 +47,12 @@ namespace Atomex.Swaps.Tezos.Helpers
                     return error;
                 }
 
-                if (txs != null)
+                foreach (var op in ops)
                 {
-                    foreach (var tx in txs)
+                    if (op.IsRedeem(contractAddress, secretHash, out var secret))
                     {
-                        if (tx.To == contractAddress && IsSwapRedeem(tx, swap.SecretHash))
-                        {
-                            // redeem!
-                            var secret = GetSecret(tx);
-
-                            Log.Debug("Redeem event received with secret {@secret}", Convert.ToBase64String(secret));
-
-                            return secret;
-                        }
-
-                        if (tx.BlockInfo?.BlockTime == null)
-                            continue;
-
-                        var blockTimeUtc = tx.BlockInfo.BlockTime.Value.ToUniversalTime();
-                        var swapTimeUtc = swap.TimeStamp.ToUniversalTime();
-
-                        if (blockTimeUtc < swapTimeUtc)
-                            break;
+                        Log.Debug("Redeem event received with secret {@secret}", secret);
+                        return Hex.FromString(secret);
                     }
                 }
             }
@@ -184,54 +170,6 @@ namespace Atomex.Swaps.Tezos.Helpers
                 }
 
             }, cancellationToken);
-        }
-
-        public static bool IsSwapRedeem(TezosOperation tx, byte[] secretHash)
-        {
-            try
-            {
-                if (tx.Params == null)
-                    return false;
-
-                var entrypoint = tx.Params?["entrypoint"]?.ToString();
-
-                var paramSecretHex = entrypoint switch
-                {
-                    "default"  => GetSecret(tx.Params?["value"]?["args"]?[0]?["args"]?[0]),
-                    "withdraw" => GetSecret(tx.Params?["value"]?["args"]?[0]),
-                    "redeem"   => GetSecret(tx.Params?["value"]),
-                    _ => ""
-                };
-
-                var paramSecretBytes = Hex.FromString(paramSecretHex);
-                var paramSecretHashBytes = CurrencySwap.CreateSwapSecretHash(paramSecretBytes);
-
-                return paramSecretHashBytes.SequenceEqual(secretHash);
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
-
-        private static string GetSecret(JToken redeemParams)
-        {
-            return redeemParams?["bytes"]?.Value<string>();
-        }
-
-        public static byte[] GetSecret(TezosOperation tx)
-        {
-            var entrypoint = tx.Params?["entrypoint"]?.ToString();
-
-            var secretInHex = entrypoint switch
-            {
-                "default"  => GetSecret(tx.Params?["value"]?["args"]?[0]?["args"]?[0]),
-                "withdraw" => GetSecret(tx.Params?["value"]?["args"]?[0]),
-                "redeem"   => GetSecret(tx.Params?["value"]),
-                _          => ""
-            };
-
-            return Hex.FromString(secretInHex);
         }
     }
 }

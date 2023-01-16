@@ -3,15 +3,15 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Newtonsoft.Json.Linq;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Tzkt;
+using Atomex.Blockchain.Tezos.Tzkt.Swaps.V1;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
-using Atomex.Blockchain.Tezos.Abstract;
 
 namespace Atomex.Swaps.Tezos.Helpers
 {
@@ -24,45 +24,36 @@ namespace Atomex.Swaps.Tezos.Helpers
         {
             var tezos = currency as TezosConfig;
 
-            if (swap.PaymentTx is not TezosOperation paymentTx)
-                return new Error(Errors.SwapError, "Saved tx is null");
-
             var lockTimeInSeconds = swap.IsInitiator
                 ? CurrencySwap.DefaultInitiatorLockTimeInSeconds
                 : CurrencySwap.DefaultAcceptorLockTimeInSeconds;
-
-            var refundTime = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds))
-                .ToString("yyyy-MM-ddTHH:mm:ssZ");
 
             var rewardForRedeemInMtz = swap.IsInitiator
                 ? swap.PartyRewardForRedeem.ToMicroTez()
                 : 0;
 
-            var parameters = "entrypoint=initiate" +
-                $"&parameter.participant={swap.PartyAddress}" +
-                $"&parameter.settings.refund_time={refundTime}" +
-                $"&parameter.settings.hashed_secret={swap.SecretHash.ToHexString()}" +
-                $"&parameter.settings.payoff={(long)rewardForRedeemInMtz}";
+            var api = new TzktApi(tezos.GetTzktSettings());
 
-            var api = tezos.BlockchainApi as ITezosApi;
-
-            var (txs, error) = await api
-                .GetTransactionsAsync(
-                    from: paymentTx.From,
-                    to: tezos.SwapContractAddress,
-                    parameters: parameters,
+            var (ops, error) = await api
+                .FindLocksAsync(
+                    secretHash: swap.SecretHash.ToHexString(),
+                    contractAddress: tezos.SwapContractAddress,
+                    address: swap.PartyAddress,
+                    timeStamp: (ulong)swap.TimeStamp.ToUnixTimeSeconds(),
+                    lockTime: (ulong)lockTimeInSeconds,
+                    payoff: rewardForRedeemInMtz,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)
                 return error;
 
-            if (txs == null)
+            if (ops == null)
                 return new Error(Errors.RequestError, "Can't get Tezos swap contract transactions");
 
-            foreach (var tx in txs)
-                if (tx.Status != TransactionStatus.Failed)
-                    return tx;
+            foreach (var op in ops)
+                if (op.Status != TransactionStatus.Failed)
+                    return op;
 
             return new Result<ITransaction> { Value = null };
         }
@@ -89,19 +80,26 @@ namespace Atomex.Swaps.Tezos.Helpers
 
                 var requiredRewardForRedeemInMtz = swap.RewardForRedeem.ToMicroTez();
 
+                var secretHash = swap.SecretHash.ToHexString();
                 var contractAddress = tezos.SwapContractAddress;
-                var detectedAmountInMtz = 0m;
-                var detectedRedeemFeeAmountInMtz = 0m;
+                var timeStamp = swap.TimeStamp.ToUnixTimeSeconds();
+                var lockTime = refundTimeStamp - timeStamp;
 
-                var blockchainApi = (ITezosApi)tezos.BlockchainApi;
+                var api = new TzktApi(tezos.GetTzktSettings());
 
-                var (txs, error) = await blockchainApi
-                    .GetOperationsAsync(contractAddress, cancellationToken: cancellationToken)
+                var (locks, error) = await api
+                    .FindLocksAsync(
+                        secretHash: secretHash,
+                        contractAddress: contractAddress,
+                        address: swap.ToAddress,
+                        timeStamp: (ulong)timeStamp,
+                        lockTime: (ulong)lockTime,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (error != null)
                 {
-                    Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Description: {@desc}",
+                    Log.Error("Error while get locks transactions from contract {@contract}. Code: {@code}. Message: {@mes}",
                         contractAddress,
                         error.Value.Code,
                         error.Value.Message);
@@ -109,50 +107,76 @@ namespace Atomex.Swaps.Tezos.Helpers
                     return error;
                 }
 
-                if (txs == null || !txs.Any())
+                if (locks == null || !locks.Any())
                     return false;
 
-                foreach (var tx in txs)
+                var (addLocks, addLocksError) = await TzktSwapHelper
+                    .FindAdditionalLocksAsync(
+                        api: api,
+                        secretHash: secretHash,
+                        contractAddress: contractAddress,
+                        timeStamp: (ulong)timeStamp,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (addLocksError != null)
                 {
-                    if (tx.IsConfirmed && tx.To == contractAddress)
-                    {
-                        var detectedPayment = false;
+                    Log.Error("Error while get additional locks transactions from contract {@contract}. Code: {@code}. Message: {@mes}",
+                        contractAddress,
+                        addLocksError.Value.Code,
+                        addLocksError.Value.Message);
 
-                        if (IsSwapInit(tx, refundTimeStamp, swap.SecretHash, swap.ToAddress))
-                        {
-                            // init payment to secret hash!
-                            detectedPayment = true;
-                            detectedAmountInMtz += tx.Amount;
-                            detectedRedeemFeeAmountInMtz = GetRedeemFee(tx);
-                        }
-                        else if (IsSwapAdd(tx, swap.SecretHash))
-                        {
-                            detectedPayment = true;
-                            detectedAmountInMtz += tx.Amount;
-                        }
+                    return addLocksError;
+                }
 
-                        if (detectedPayment && detectedAmountInMtz >= requiredAmountInMtz)
-                        {
-                            if (swap.IsAcceptor && detectedRedeemFeeAmountInMtz != requiredRewardForRedeemInMtz)
-                            {
-                                Log.Debug(
-                                    "Invalid redeem fee in initiated event. Expected value is {@expected}, actual is {@actual}",
-                                    requiredRewardForRedeemInMtz,
-                                    detectedRedeemFeeAmountInMtz);
+                var operations = (addLocks != null && addLocks.Any())
+                    ? locks.Concat(addLocks)
+                    : locks;
 
-                                return new Error(
-                                    code: Errors.InvalidRewardForRedeem,
-                                    message: $"Invalid redeem fee in initiated event. Expected value is {requiredRewardForRedeemInMtz}, actual is {detectedRedeemFeeAmountInMtz}");
-                            }
+                var detectedAmountInMtz = 0m;
+                var detectedRedeemFeeAmountInMtz = 0m;
 
-                            return true;
-                        }
-                    }
-
-                    if (tx.BlockInfo?.BlockTime == null)
+                foreach (var op in operations)
+                {
+                    if (!op.IsConfirmed)
                         continue;
 
-                    var blockTimeUtc = tx.BlockInfo.BlockTime.Value.ToUniversalTime();
+                    if (op.TryFindInitiate(
+                        contractAddress: contractAddress,
+                        secretHash: swap.SecretHash.ToHexString(),
+                        refundTime: refundTimeStamp,
+                        participant: swap.ToAddress,
+                        payoff: requiredRewardForRedeemInMtz,
+                        initiateTx: out var initiateTx))
+                    {
+                        detectedAmountInMtz += initiateTx.Amount;
+                    }
+                    else if (op.TryFindAdd(
+                        contractAddress: contractAddress,
+                        secretHash: swap.SecretHash.ToHexString(),
+                        out var addTx))
+                    {
+                        detectedAmountInMtz += addTx.Amount;
+                    }
+
+                    if (detectedAmountInMtz >= requiredAmountInMtz)
+                    {
+                        if (swap.IsAcceptor && detectedRedeemFeeAmountInMtz != requiredRewardForRedeemInMtz)
+                        {
+                            Log.Debug(
+                                "Invalid redeem fee in initiated event. Expected value is {@expected}, actual is {@actual}",
+                                requiredRewardForRedeemInMtz,
+                                detectedRedeemFeeAmountInMtz);
+
+                            return new Error(
+                                code: Errors.InvalidRewardForRedeem,
+                                message: $"Invalid redeem fee in initiated event. Expected value is {requiredRewardForRedeemInMtz}, actual is {detectedRedeemFeeAmountInMtz}");
+                        }
+
+                        return true;
+                    }
+
+                    var blockTimeUtc = op.BlockTime.Value.ToUniversalTime();
                     var swapTimeUtc = swap.TimeStamp.ToUniversalTime();
 
                     if (blockTimeUtc < swapTimeUtc)
@@ -242,119 +266,6 @@ namespace Atomex.Swaps.Tezos.Helpers
                 }
 
             }, cancellationToken);
-        }
-
-        public static bool IsSwapInit(
-            TezosOperation tx,
-            long refundTimestamp,
-            byte[] secretHash,
-            string participant)
-        {
-            try
-            {
-                if (tx.Params == null)
-                    return false;
-
-                var entrypoint = tx.Params?["entrypoint"]?.ToString();
-
-                return entrypoint switch
-                {
-                    "default"  => IsSwapInit(tx.Params?["value"]?["args"]?[0]?["args"]?[0], secretHash.ToHexString(), participant, refundTimestamp),
-                    "fund"     => IsSwapInit(tx.Params?["value"]?["args"]?[0], secretHash.ToHexString(), participant, refundTimestamp),
-                    "initiate" => IsSwapInit(tx.Params?["value"], secretHash.ToHexString(), participant, refundTimestamp),
-                    _          => false
-                };
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
-
-        private static bool IsSwapInit(
-            JToken initParams,
-            string secretHash,
-            string participantAddress,
-            long refundTimeStamp)
-        {
-            if (initParams?["args"]?[1]?["args"]?[0]?["args"]?[0]?["bytes"]?.Value<string>() != secretHash)
-                return false;
-
-            try
-            {
-                var timestamp = TezosConfig.ParseTimestamp(initParams?["args"]?[1]?["args"]?[0]?["args"]?[1]);
-                if (timestamp < refundTimeStamp)
-                {
-                    Log.Debug($"IsSwapInit: refundTimeStamp is less than expected (should be at least {refundTimeStamp})");
-                    return false;
-                }
-
-                var address = TezosConfig.ParseAddress(initParams?["args"]?[0]);
-                if (address != participantAddress)
-                {
-                    Log.Debug($"IsSwapInit: participantAddress is unexpected (should be {participantAddress})");
-                    return false;
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error($"IsSwapInit: {e.Message}");
-                return false;
-            }
-
-            return true;
-        }
-
-        public static bool IsSwapAdd(
-            TezosOperation tx,
-            byte[] secretHash)
-        {
-            try
-            {
-                if (tx.Params == null)
-                    return false;
-
-                var entrypoint = tx.Params?["entrypoint"]?.ToString();
-
-                return entrypoint switch
-                {
-                    "default" => IsSwapAdd(tx.Params?["value"]?["args"]?[0]?["args"]?[0], secretHash.ToHexString()) && tx.Params?["value"]?["prim"]?.Value<string>() == "Left",
-                    "fund"    => IsSwapAdd(tx.Params?["value"]?["args"]?[0], secretHash.ToHexString()),
-                    "add"     => IsSwapAdd(tx.Params?["value"], secretHash.ToHexString()),
-                    _         => false
-                };
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
-
-        private static bool IsSwapAdd(
-            JToken addParams,
-            string secretHash)
-        {
-            return addParams?["bytes"]?.Value<string>() == secretHash;
-        }
-
-        public static decimal GetRedeemFee(
-            TezosOperation tx)
-        {
-            var entrypoint = tx.Params?["entrypoint"]?.ToString();
-
-            return entrypoint switch
-            {
-                "default"  => GetRedeemFee(tx.Params?["value"]?["args"]?[0]?["args"]?[0]),
-                "fund"     => GetRedeemFee(tx.Params?["value"]?["args"]?[0]),
-                "initiate" => GetRedeemFee(tx.Params?["value"]),
-                _          => 0
-            };
-        }
-
-        private static decimal GetRedeemFee(
-            JToken initiateParams)
-        {
-            return decimal.Parse(initiateParams["args"][1]["args"][1]["int"].ToString());
         }
     }
 }

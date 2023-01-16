@@ -11,7 +11,6 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Abstract;
 using Atomex.Blockchain.Tezos.Common;
 using Atomex.Blockchain.Tezos.Operations;
-using Newtonsoft.Json.Schema;
 
 namespace Atomex.Blockchain.Tezos.Tzkt
 {
@@ -27,7 +26,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         public Dictionary<string, string> Headers { get; set; }
         public List<TzktTokenContractSettings> TokenContracts { get; set; }
 
-        public string GetTokenContract(string token) =>
+        public string? GetTokenContract(string token) =>
             TokenContracts?.FirstOrDefault(s => s.Token == token)?.Address;
     }
 
@@ -59,43 +58,13 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             return (BigInteger)account.Balance;
         }
 
-        public async Task<Result<ITransaction>> GetTransactionAsync(
-            string txId,
-            CancellationToken cancellationToken = default)
-        {
-            var micheline = MichelineFormat.RawMichelineString;
-
-            var requestUri = $"operations/{txId}?micheline={(int)micheline}";
-
-            var response = await HttpHelper
-                .GetAsync(
-                    baseUri: Settings.BaseUri,
-                    relativeUri: requestUri,
-                    headers: GetHeaders(),
-                    requestLimitControl: null,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!response.IsSuccessStatusCode)
-                return new Error((int)response.StatusCode, "Error status code received");
-
-            var content = await response
-                .Content
-                .ReadAsStringAsync()
-                .ConfigureAwait(false);
-
-            var operations = JsonSerializer.Deserialize<IEnumerable<Operation>>(content);
-
-            return new TezosOperation(operations);
-        }
-
-        public async Task<Result<Account>> GetAccountAsync(
+        public async Task<Result<Account?>> GetAccountAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
             var requestUri = $"accounts/{address}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: requestUri,
@@ -115,19 +84,40 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             return JsonSerializer.Deserialize<Account>(content);
         }
 
-        public Task<Result<IEnumerable<TezosOperation>>> GetOperationsAsync(
-            string address,
-            DateTimeOffset? fromTimeStamp = null,
+        public async Task<Result<ITransaction>> GetTransactionAsync(
+            string txId,
             CancellationToken cancellationToken = default)
         {
-            return GetOperationsAsync(
-                address: address,
-                fromTimeStamp: fromTimeStamp,
-                filter: null,
-                michelineFormat: MichelineFormat.RawMichelineString,
-                cancellationToken: cancellationToken);
+            var michelineFormat = MichelineFormat.Json;
+
+            var requestUri = $"operations/{txId}?micheline={(int)michelineFormat}";
+
+            using var response = await HttpHelper
+                .GetAsync(
+                    baseUri: Settings.BaseUri,
+                    relativeUri: requestUri,
+                    headers: GetHeaders(),
+                    requestLimitControl: null,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+                return new Error((int)response.StatusCode, "Error status code received");
+
+            var content = await response
+                .Content
+                .ReadAsStringAsync()
+                .ConfigureAwait(false);
+
+            var operations = JsonSerializer.Deserialize<IEnumerable<Operation>>(content);
+
+            if (operations == null || !operations.Any())
+                return new Error(Errors.GetTransactionError, "Operations is null or empty");
+
+            return new TezosOperation(operations, michelineFormat);
         }
 
+        [Obsolete("Use get operations by address")]
         public async Task<Result<IEnumerable<TezosOperation>>> GetTransactionsAsync(
             string from,
             string to,
@@ -136,7 +126,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         {
             const int limit = 1000;
             var received = limit;
-            var lastId = 0;
+            var lastId = 0L;
 
             var accountOperations = new List<Operation>();
 
@@ -148,7 +138,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     $"&{parameters}" +
                     (lastId != 0 ? $"&lastId={lastId}" : "");
 
-                var response = await HttpHelper.GetAsync(
+                using var response = await HttpHelper.GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: requestUri,
                     headers: GetHeaders(),
@@ -178,20 +168,33 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             {
                 Value = accountOperations
                     .GroupBy(o => o.Hash)
-                    .Select((og) => new TezosOperation(og))
+                    .Select((og) => new TezosOperation(og, MichelineFormat.Json))
             };
         }
 
-        public async Task<Result<IEnumerable<TezosOperation>>> GetOperationsAsync(
+        public Task<Result<IEnumerable<TezosOperation>>> GetOperationsByAddressAsync(
+            string address,
+            DateTimeOffset? fromTimeStamp = null,
+            CancellationToken cancellationToken = default)
+        {
+            return GetOperationsByAddressAsync(
+                address: address,
+                fromTimeStamp: fromTimeStamp,
+                filter: null,
+                michelineFormat: MichelineFormat.Json,
+                cancellationToken: cancellationToken);
+        }
+
+        public async Task<Result<IEnumerable<TezosOperation>>> GetOperationsByAddressAsync(
             string address,
             DateTimeOffset? fromTimeStamp = null,
             string? filter = null,
-            MichelineFormat michelineFormat = MichelineFormat.RawMichelineString,
+            MichelineFormat michelineFormat = MichelineFormat.Json,
             CancellationToken cancellationToken = default)
         {
             const int limit = 1000;
             var received = limit;
-            var lastId = 0;
+            var lastId = 0L;
 
             var accountOperations = new List<Operation>();
 
@@ -204,7 +207,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     (filter != null ? $"&{filter}" : "") +
                     (lastId != 0 ? $"&lastId={lastId}" : "");
 
-                var response = await HttpHelper.GetAsync(
+                using var response = await HttpHelper.GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: requestUri,
                     headers: GetHeaders(),
@@ -234,7 +237,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             {
                 Value = accountOperations
                     .GroupBy(o => o.Hash)
-                    .Select((og) => new TezosOperation(og))
+                    .Select((og) => new TezosOperation(og, michelineFormat))
             };
         }
 
@@ -273,7 +276,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         public async Task<Result<string>> GetHeaderAsync(
             CancellationToken cancellationToken = default)
         {
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: $"head",
@@ -290,9 +293,14 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 .ReadAsStringAsync()
                 .ConfigureAwait(false);
 
-            return JsonSerializer.Deserialize<JsonElement>(content)
+            var hash = JsonSerializer.Deserialize<JsonElement>(content)
                 .GetProperty("hash")
                 .GetString();
+
+            if (hash == null)
+                return new Error(Errors.GetHeaderError, "Get header error");
+
+            return hash;
         }
 
         private HttpRequestHeaders? GetHeaders() => Settings.Headers != null
@@ -310,7 +318,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             {
                 var requestUri = $"contracts/{tokenContractAddress}/bigmaps/operators/keys/{{\"owner\":\"{holderAddress}\",\"operator\":\"{spenderAddress}\",\"token_id\":\"{tokenId}\"}}";
 
-                var response = await HttpHelper
+                using var response = await HttpHelper
                     .GetAsync(
                         baseUri: Settings.BaseUri,
                         relativeUri: requestUri,
@@ -403,199 +411,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         //    }
         //}
 
-        //public async Task<Result<IEnumerable<TezosOperation>>> GetTransactionsAsync(
-        //    string address,
-        //    DateTimeOffset? fromTimeStamp = null,
-        //    int? fromLevel = null,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var requestUri = $"accounts/{address}/operations?type=transaction&micheline=2";
-
-        //    if (fromTimeStamp != null)
-        //        requestUri += $"&timestamp.ge={fromTimeStamp.Value.ToUtcIso8601()}";
-
-        //    if (fromLevel != null)
-        //        requestUri += $"&level.ge={fromLevel.Value}";
-
-        //    var txsResult = await HttpHelper
-        //        .GetAsyncResult(
-        //            baseUri: _baseUri,
-        //            requestUri: requestUri,
-        //            headers: _headers,
-        //            responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)),
-        //            cancellationToken: cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    if (txsResult == null)
-        //        return new Error(Errors.RequestError, $"Connection error while getting input transactions for address {address}");
-
-        //    if (txsResult.HasError)
-        //        return txsResult.Error;
-
-        //    return new Result<IEnumerable<TezosOperation>>(txsResult.Value);
-        //}
-
-        //public async Task<Result<IEnumerable<TezosOperation>>> GetTransactionsAsync(
-        //    string from,
-        //    string to,
-        //    string parameters,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return await HttpHelper
-        //        .GetAsyncResult(
-        //            baseUri: _baseUri,
-        //            requestUri: $"operations/transactions?sender={from}&target={to}&{parameters}",
-        //            headers: _headers,
-        //            responseHandler: (response, content) => ParseTxs(JsonConvert.DeserializeObject<JArray>(content)),
-        //            cancellationToken: cancellationToken)
-        //        .ConfigureAwait(false);
-        //}
-
-        //public async Task<Result<Account>> GetAccountAsync(
-        //    string address,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    return await HttpHelper.GetAsyncResult<Account>(
-        //            baseUri: _baseUri,
-        //            requestUri: $"accounts/{address}",
-        //            headers: _headers,
-        //            responseHandler: (response, content) => System.Text.Json.JsonSerializer.Deserialize<Account>(content),
-        //            cancellationToken: cancellationToken)
-        //        .ConfigureAwait(false);
-        //}
-
-        //public async Task<Result<decimal>> GetHeadLevelAsync(
-        //     CancellationToken cancellationToken = default)
-        //{
-        //    return await HttpHelper.GetAsyncResult<decimal>(
-        //            baseUri: _baseUri,
-        //            requestUri: $"head",
-        //            headers: _headers,
-        //            responseHandler: (response, content) =>
-        //            {
-        //                var head = JsonConvert.DeserializeObject<JObject>(content);
-
-        //                return head["level"].Value<decimal>();
-        //            },
-        //            cancellationToken: cancellationToken)
-        //        .ConfigureAwait(false);
-        //}
-
-        //public async Task<Result<bool>> IsAllocatedAsync(
-        //    string address,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var account = await GetAccountAsync(address, cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    if (account == null)
-        //        return new Error(Errors.InvalidResponse, $"[TzktApi] Account for address {address} is null");
-
-        //    if (account.HasError)
-        //        return account.Error;
-
-        //    return account.Value?.Balance > 0;
-        //}
-
-        //public async Task<Result<bool>> IsRevealedAsync(
-        //    string address,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var account = await GetAccountAsync(address, cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    if (account == null)
-        //        return new Error(Errors.InvalidResponse, $"[TzktApi] Account for address {address} is null");
-
-        //    if (account.HasError)
-        //        return account.Error;
-
-        //    return account.Value?.Revealed ?? false;
-        //}
-
-        //private Result<IEnumerable<TezosOperation>> ParseTxs(JArray data)
-        //{
-        //    var result = new List<TezosOperation>();
-
-        //    foreach (var op in data)
-        //    {
-        //        if (op is not JObject transaction)
-        //            return new Error(Errors.NullOperation, "Null operation in response");
-
-        //        var state = StateFromStatus(transaction["status"]?.Value<string>());
-
-        //        var alias = $"{transaction["sender"]?["alias"]?.Value<string>() ?? string.Empty}/{transaction["target"]?["alias"]?.Value<string>() ?? string.Empty}";
-
-        //        if (alias.Length == 1)
-        //            alias = string.Empty;
-
-        //        var tx = new TezosOperation()
-        //        {
-        //            Id       = transaction["hash"].ToString(),
-        //            Currency = _currency.Name,
-        //            Status    = state,
-        //            Type     = TransactionType.Unknown,
-        //            CreationTime = DateTime.SpecifyKind(DateTime.Parse(transaction["timestamp"].ToString()), DateTimeKind.Utc),
-
-        //            GasUsed = transaction["gasUsed"].Value<decimal>(),
-        //            Burn = transaction["storageFee"].Value<decimal>() +
-        //                   transaction["allocationFee"].Value<decimal>(),
-
-        //            Alias = alias,
-
-        //            IsInternal = transaction.ContainsKey("nonce"),
-        //            InternalIndex = transaction["nonce"]?.Value<int>() ?? 0,
-
-        //            BlockInfo = new BlockInfo
-        //            {
-        //                Confirmations = state == TransactionStatus.Failed ? 0 : 1,
-        //                BlockHash     = null,
-        //                BlockHeight   = transaction["level"].Value<long>(),
-        //                BlockTime     = DateTime.SpecifyKind(DateTime.Parse(transaction["timestamp"].ToString()), DateTimeKind.Utc),
-        //                FirstSeen     = DateTime.SpecifyKind(DateTime.Parse(transaction["timestamp"].ToString()), DateTimeKind.Utc)
-        //            }
-        //        };
-
-
-        //        tx.From   = transaction["sender"]?["address"]?.ToString();
-        //        tx.To     = transaction["target"]?["address"]?.ToString();
-        //        tx.Amount = transaction["amount"].Value<decimal>();
-        //        tx.Alias  = alias;
-
-        //        if (tx.IsInternal)
-        //        {
-        //            tx.InternalIndex = transaction["nonce"]?.Value<int>() ?? 0;
-        //        }
-        //        else
-        //        {
-        //            var txParameters = transaction.ContainsKey("parameter")
-        //                ? transaction["parameter"].Value<JObject>()
-        //                : null;
-
-        //            tx.Params       = txParameters;
-        //            tx.Fee          = transaction["bakerFee"].Value<decimal>();
-        //            tx.GasLimit     = transaction["gasLimit"].Value<decimal>();
-        //            tx.StorageLimit = transaction["storageLimit"].Value<decimal>();
-        //            tx.StorageUsed = transaction["storageUsed"].Value<decimal>();
-        //        }
-
-        //        if (tx != null)
-        //            result.Add(tx);
-        //    }
-
-        //    return result;
-        //}
-
-        //public static TransactionStatus StateFromStatus(string status) =>
-        //    status switch
-        //    {
-        //        "applied"     => TransactionStatus.Confirmed,
-        //        "backtracked" => TransactionStatus.Failed,
-        //        "skipped"     => TransactionStatus.Failed,
-        //        "failed"      => TransactionStatus.Failed,
-        //        _             => TransactionStatus.Unknown
-        //    };
-
         #region ITokenBlockchainApi
 
         //public async Task<Result<decimal>> GetFa12AllowanceAsync(
@@ -652,34 +467,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         //            ?[0]
         //            ?["int"]
         //            ?.Value<decimal>() ?? 0;
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        return new Error(Errors.RequestError, e.Message);
-        //    }
-        //}
-
-        //public async Task<Result<bool>> IsFa2TokenOperatorActiveAsync(
-        //    string holderAddress,
-        //    string spenderAddress,
-        //    string tokenContractAddress,
-        //    int tokenId,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    try
-        //    {
-        //        var requestUri = $"contracts/{tokenContractAddress}/bigmaps/operators/keys/{{\"owner\":\"{holderAddress}\",\"operator\":\"{spenderAddress}\",\"token_id\":\"{tokenId}\"}}";
-
-        //        var result = await HttpHelper.GetAsyncResult<JObject>(
-        //            baseUri: _baseUri,
-        //            requestUri: requestUri,
-        //            responseHandler: (response, content) => JsonConvert.DeserializeObject<JObject>(content),
-        //            cancellationToken: cancellationToken);
-
-        //        if (result.HasError)
-        //            return false;
-
-        //        return result?.Value?["active"]?.Value<bool>() ?? false;
         //    }
         //    catch (Exception e)
         //    {

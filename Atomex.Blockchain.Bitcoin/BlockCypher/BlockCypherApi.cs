@@ -104,7 +104,7 @@ namespace Atomex.Blockchain.BlockCypher
         {
             var requestUri = $"/{_settings.Coin}/{_settings.Network}/addrs/{address}/balance" + (_settings.ApiToken != null ? $"?token={_settings.ApiToken}" : "");
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: _settings.BaseUri,
                     relativeUri: requestUri,
@@ -177,7 +177,7 @@ namespace Atomex.Blockchain.BlockCypher
         {
             var requestUri = $"/{_settings.Coin}/{_settings.Network}/txs/{txId}?includeHex=true&instart=0&outstart=0&limit=1000" + (_settings.ApiToken != null ? $"&token={_settings.ApiToken}" : "");
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: _settings.BaseUri,
                     relativeUri: requestUri,
@@ -238,7 +238,7 @@ namespace Atomex.Blockchain.BlockCypher
         {
             var requestUri = $"/{_settings.Coin}/{_settings.Network}/txs/{txId}" + (_settings.ApiToken != null ? $"?token={_settings.ApiToken}" : "");
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: _settings.BaseUri,
                     relativeUri: requestUri,
@@ -301,7 +301,7 @@ namespace Atomex.Blockchain.BlockCypher
         {
             var requestUri = $"/{_settings.Coin}/{_settings.Network}/addrs/{address}/full?txlimit=1000" + (_settings.ApiToken != null ? $"&token={_settings.ApiToken}" : "");
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: _settings.BaseUri,
                     relativeUri: requestUri,

@@ -9,7 +9,7 @@ namespace Atomex.Blockchain.Tezos.Abstract
 {
     public interface ITezosApi
     {
-        Task<Result<IEnumerable<TezosOperation>>> GetOperationsAsync(
+        Task<Result<IEnumerable<TezosOperation>>> GetOperationsByAddressAsync(
             string address,
             DateTimeOffset? fromTimeStamp = null,
             CancellationToken cancellationToken = default);

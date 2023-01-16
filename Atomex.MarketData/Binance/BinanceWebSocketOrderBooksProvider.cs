@@ -128,7 +128,7 @@ namespace Atomex.MarketData.Binance
             int updateSpeed,
             CancellationToken cancellationToken = default)
         {
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: BaseUrl,
                     relativeUri: $"depth?symbol={symbol.ToUpper()}&limit={SnapshotLimit}",

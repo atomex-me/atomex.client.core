@@ -10,13 +10,13 @@ using Serilog;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Ethereum.Erc20.Messages;
+using Atomex.Blockchain.Ethereum.Messages.Swaps.V1;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
-using Atomex.Blockchain.Ethereum.Erc20.Messages;
-using Atomex.Blockchain.Ethereum.Messages.Swaps.V1;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -127,19 +127,6 @@ namespace Atomex.Wallet.Ethereum
                 ChainId  = ethConfig.ChainId,
                 Data     = null
             };
-
-            //var tx = new EthereumTransaction
-            //{
-            //    Currency     = ethConfig.Name,
-            //    Type         = TransactionType.Output,
-            //    CreationTime = DateTime.UtcNow,
-            //    From         = addressFeeUsage.WalletAddress.Address,
-            //    To           = to.ToLowerInvariant(),
-            //    Amount       = EthereumConfig.EthToWei(addressFeeUsage.UsedAmount),
-            //    Nonce        = nonce,
-            //    GasPrice     = new BigInteger(EthereumConfig.GweiToWei(gasPrice)),
-            //    GasLimit     = new BigInteger(gasLimit),
-            //};
 
             var signResult = await SignAsync(txRequest, cancellationToken)
                 .ConfigureAwait(false);

@@ -9,7 +9,7 @@ namespace Atomex.Blockchain.Tezos.Operations
     public class Operation
     {
         [JsonPropertyName("id")]
-        public int Id { get; set; }
+        public long Id { get; set; }
         [JsonPropertyName("type")]
         public string Type { get; set; }
         [JsonPropertyName("level")]

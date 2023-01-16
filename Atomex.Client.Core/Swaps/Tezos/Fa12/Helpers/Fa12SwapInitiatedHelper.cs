@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Linq;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Newtonsoft.Json.Linq;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
-using Atomex.Blockchain.Tezos.Abstract;
+using Atomex.Blockchain.Tezos.Tzkt;
+using Atomex.Blockchain.Tezos.Tzkt.Swaps.V1;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.TezosTokens;
@@ -25,49 +26,41 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
         {
             var fa12 = currency as Fa12Config;
 
-            if (swap.PaymentTx is not TezosOperation paymentTx)
-                throw new ArgumentNullException("Swap payment transaction is null");
-
             var lockTimeInSeconds = swap.IsInitiator
                 ? CurrencySwap.DefaultInitiatorLockTimeInSeconds
                 : CurrencySwap.DefaultAcceptorLockTimeInSeconds;
-
-            var refundTime = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds))
-                .ToString("yyyy-MM-ddTHH:mm:ssZ");
 
             var rewardForRedeemInTokenDigits = swap.IsInitiator
                 ? swap.PartyRewardForRedeem.ToTokenDigits(fa12.DigitsMultiplier)
                 : 0;
 
             var requiredAmountInTokens = Fa12Swap.RequiredAmountInTokens(swap, fa12);
+            var requiredAmountInTokensDigits = requiredAmountInTokens.ToTokenDigits(fa12.DigitsMultiplier);
 
-            var parameters = "entrypoint=initiate" +
-                $"&parameter.refundTime={refundTime}" +
-                $"&parameter.participant={swap.PartyAddress}" +
-                $"&parameter.totalAmount={requiredAmountInTokens.ToTokenDigits(fa12.DigitsMultiplier)}" +
-                $"&parameter.hashedSecret={swap.SecretHash.ToHexString()}" +
-                $"&parameter.payoffAmount={(long)rewardForRedeemInTokenDigits}" +
-                $"&parameter.tokenAddress={fa12.TokenContractAddress}";
+            var api = new TzktApi(fa12.GetTzktSettings());
 
-            var api = fa12.BlockchainApi as ITezosApi;
-
-            var (txs, error) = await api
-                .GetTransactionsAsync(
-                    from: paymentTx.From,
-                    to: fa12.SwapContractAddress,
-                    parameters: parameters,
+            var (ops, error) = await api
+                .FindFa12LocksAsync(
+                    secretHash: swap.SecretHash.ToHexString(),
+                    contractAddress: fa12.SwapContractAddress,
+                    address: swap.PartyAddress,
+                    timeStamp: (ulong)swap.TimeStamp.ToUnixTimeSeconds(),
+                    lockTime: (ulong)lockTimeInSeconds,
+                    tokenContract: fa12.TokenContractAddress,
+                    totalAmount: new BigInteger(requiredAmountInTokensDigits),
+                    payoffAmount: new BigInteger(rewardForRedeemInTokenDigits),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)
                 return error;
 
-            if (txs == null)
-                return new Error(Errors.RequestError, "Can't get Tezos swap contract transactions");
+            if (ops == null)
+                return new Error(Errors.RequestError, "Can't get Fa12 swap contract transactions");
 
-            foreach (var tx in txs)
-                if (tx.Status != TransactionStatus.Failed)
-                    return tx;
+            foreach (var op in ops)
+                if (op.Status != TransactionStatus.Failed)
+                    return op;
 
             return new Result<ITransaction> { Value = null };
         }
@@ -97,16 +90,24 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
                     ? swap.RewardForRedeem.ToTokenDigits(fa12.DigitsMultiplier)
                     : 0;
 
+                var secretHash = swap.SecretHash.ToHexString();
                 var contractAddress = fa12.SwapContractAddress;
-                var detectedAmountInTokenDigits = 0m;
-                var detectedRedeemFeeAmountInTokenDigits = 0m;
+                var timeStamp = swap.TimeStamp.ToUnixTimeSeconds();
+                var lockTime = refundTimeStamp - timeStamp;
 
-                long detectedRefundTimestamp = 0;
+                var api = new TzktApi(tezos.GetTzktSettings());
 
-                var blockchainApi = (ITezosApi)tezos.BlockchainApi;
-
-                var (txs, error) = await blockchainApi
-                    .GetOperationsAsync(contractAddress, cancellationToken: cancellationToken)
+                var (ops, error) = await api
+                    .FindFa12LocksAsync(
+                        secretHash: secretHash,
+                        contractAddress: contractAddress,
+                        address: swap.ToAddress,
+                        timeStamp: (ulong)timeStamp,
+                        lockTime: (ulong)lockTime,
+                        tokenContract: fa12.TokenContractAddress,
+                        totalAmount: new BigInteger(requiredAmountInTokenDigits),
+                        payoffAmount: new BigInteger(requiredRewardForRedeemInTokenDigits),
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (error != null)
@@ -119,63 +120,7 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
                     return error;
                 }
 
-                if (txs == null || !txs.Any())
-                    return false;
-
-                foreach (var tx in txs)
-                {
-                    if (tx.IsConfirmed && tx.To == contractAddress)
-                    {
-                        var detectedPayment = false;
-
-                        if (IsSwapInit(tx, swap.SecretHash.ToHexString(), fa12.TokenContractAddress, swap.ToAddress, refundTimeStamp))
-                        {
-                            // init payment to secret hash!
-                            detectedPayment = true;
-                            detectedAmountInTokenDigits += GetAmount(tx);
-                            detectedRedeemFeeAmountInTokenDigits = GetRedeemFee(tx);
-                            detectedRefundTimestamp = GetRefundTimestamp(tx);
-                        }
-
-                        if (detectedPayment && detectedAmountInTokenDigits >= requiredAmountInTokenDigits)
-                        {
-                            if (swap.IsAcceptor && detectedRedeemFeeAmountInTokenDigits != requiredRewardForRedeemInTokenDigits)
-                            {
-                                Log.Debug(
-                                    "Invalid redeem fee in initiated event. Expected value is {@expected}, actual is {@actual}",
-                                    requiredRewardForRedeemInTokenDigits,
-                                    detectedRedeemFeeAmountInTokenDigits);
-
-                                return new Error(
-                                    code: Errors.InvalidRewardForRedeem,
-                                    message: $"Invalid redeem fee in initiated event. Expected value is {requiredRewardForRedeemInTokenDigits}, actual is {detectedRedeemFeeAmountInTokenDigits}");
-                            }
-
-                            if (detectedRefundTimestamp != refundTimeStamp)
-                            {
-                                Log.Debug(
-                                    "Invalid refund timestamp in initiated event. Expected value is {@expected}, actual is {@actual}",
-                                    refundTimeStamp,
-                                    detectedRefundTimestamp);
-
-                                return new Error(
-                                    code: Errors.InvalidRewardForRedeem,
-                                    message: $"Invalid refund timestamp in initiated event. Expected value is {refundTimeStamp}, actual is {detectedRefundTimestamp}");
-                            }
-
-                            return true; // todo: check also token contract transfers
-                        }
-                    }
-
-                    if (tx.BlockInfo?.BlockTime == null)
-                        continue;
-
-                    var blockTimeUtc = tx.BlockInfo.BlockTime.Value.ToUniversalTime();
-                    var swapTimeUtc = swap.TimeStamp.ToUniversalTime();
-
-                    if (blockTimeUtc < swapTimeUtc)
-                        return false;
-                }
+                return ops != null && ops.Any(op => op.IsConfirmed);
             }
             catch (Exception e)
             {
@@ -183,8 +128,6 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
 
                 return new Error(Errors.InternalError, e.Message);
             }
-
-            return false;
         }
 
         public static Task StartSwapInitiatedControlAsync(
@@ -197,7 +140,9 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
             Func<Swap, CancellationToken, Task> canceledHandler,
             CancellationToken cancellationToken = default)
         {
-            Log.Debug("StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} started", currency.Name, swap.Id);
+            Log.Debug("StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} started",
+                currency.Name,
+                swap.Id);
 
             return Task.Run(async () =>
             {
@@ -224,7 +169,7 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
 
                         if (error != null)
                         {
-                            Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
+                            Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Message: {@desc}",
                                 currency.Name,
                                 swap.Id,
                                 error.Value.Code,
@@ -262,135 +207,6 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
                 }
 
             }, cancellationToken);
-        }
-
-        public static bool IsSwapInit(
-            TezosOperation tx,
-            string secretHash,
-            string tokenContractAddress,
-            string participant,
-            long refundTimeStamp)
-        {
-            try
-            {
-                if (tx.Params == null)
-                    return false;
-
-                var entrypoint = tx.Params?["entrypoint"]?.ToString();
-
-                return entrypoint switch
-                {
-                    "default" => IsSwapInit(tx.Params?["value"]?["args"]?[0]?["args"]?[0], secretHash, tokenContractAddress, participant, refundTimeStamp),
-                    "initiate" => IsSwapInit(tx.Params?["value"], secretHash, tokenContractAddress, participant, refundTimeStamp),
-                    _ => false
-                };
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
-
-        private static bool IsSwapInit(
-            JToken initParams,
-            string secretHash,
-            string tokenContractAddress,
-            string participantAddress,
-            long refundTimeStamp)
-        {
-            if (initParams?["args"]?[0]?["args"]?[0]?["args"]?[0]?["bytes"]?.Value<string>() != secretHash)
-                return false;
-
-            try
-            {
-                var timestamp = TezosConfig.ParseTimestamp(initParams?["args"]?[0]?["args"]?[1]?["args"]?[1]);
-                if (timestamp < refundTimeStamp)
-                {
-                    Log.Debug($"IsSwapInit: refundTimeStamp is less than expected (should be at least {refundTimeStamp})");
-                    return false;
-                }
-
-                var address = TezosConfig.ParseAddress(initParams?["args"]?[0]?["args"]?[0]?["args"]?[1]);
-                if (address != participantAddress)
-                {
-                    Log.Debug($"IsSwapInit: participantAddress is unexpected (should be {participantAddress})");
-                    return false;
-                }
-
-                var tokenAddress = TezosConfig.ParseAddress(initParams?["args"]?[1]?["args"]?[0]);
-                if (tokenAddress != tokenContractAddress)
-                {
-                    Log.Debug($"IsSwapInit: tokenContractAddress is unexpected (should be {tokenContractAddress})");
-                    return false;
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error($"IsSwapInit: {e.Message}");
-                return false;
-            }
-
-            return true;
-        }
-
-        public static decimal GetAmount(TezosOperation tx)
-        {
-            if (tx.Params == null)
-                return 0;
-
-            var entrypoint = tx.Params?["entrypoint"]?.ToString();
-
-            return entrypoint switch
-            {
-                "default" => GetAmount(tx.Params?["value"]?["args"]?[0]?["args"]?[0]),
-                "initiate" => GetAmount(tx.Params?["value"]),
-                _ => 0
-            };
-        }
-
-        private static decimal GetAmount(JToken initParams)
-        {
-            return decimal.Parse(initParams?["args"]?[1]?["args"]?[1]?["int"].ToString());
-        }
-
-        public static decimal GetRedeemFee(TezosOperation tx)
-        {
-            if (tx.Params == null)
-                return 0;
-
-            var entrypoint = tx.Params?["entrypoint"]?.ToString();
-
-            return entrypoint switch
-            {
-                "default" => GetRedeemFee(tx.Params?["value"]?["args"]?[0]?["args"]?[0]),
-                "initiate" => GetRedeemFee(tx.Params?["value"]),
-                _ => 0
-            };
-        }
-
-        private static decimal GetRedeemFee(JToken initParams)
-        {
-            return decimal.Parse(initParams?["args"][0]["args"][1]["args"][0]["int"].ToString());
-        }
-
-        public static long GetRefundTimestamp(TezosOperation tx)
-        {
-            if (tx.Params == null)
-                return 0;
-
-            var entrypoint = tx.Params?["entrypoint"]?.ToString();
-
-            return entrypoint switch
-            {
-                "default" => GetRefundTimestamp(tx.Params?["value"]?["args"]?[0]?["args"]?[0]),
-                "initiate" => GetRefundTimestamp(tx.Params?["value"]),
-                _ => 0
-            };
-        }
-
-        public static long GetRefundTimestamp(JToken initParams)
-        {
-            return initParams?["args"]?[0]?["args"]?[1]?["args"]?[1]?["int"]?.ToObject<long>() ?? 0;
         }
     }
 }

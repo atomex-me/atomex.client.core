@@ -21,7 +21,7 @@ namespace Atomex.Blockchain.Bitcoin
 
         public static async Task<Result<FeeRate>> GetFeeRateAsync(CancellationToken cancellationToken)
         {
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: BaseUrl,
                     relativeUri: "getbitcoinfees",

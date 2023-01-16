@@ -35,6 +35,7 @@ namespace Atomex.Common
         public const int RequestError = 7;
         public const int MaxAttemptsCountReached = 8;
         public const int InvalidResponse = 9;
+        public const int SigningError = 10;
         // from 1xx to 5xx the same with HTTP codes
 
         public const int IsCriminalWallet = 1000;
@@ -62,6 +63,7 @@ namespace Atomex.Common
         public const int GetInternalTransactionsError = 1111;
         public const int GetTransactionsError = 1112;
         public const int GetBlockNumberError = 1113;
+        public const int GetHeaderError = 1114;
 
         public const int TransactionCreationError = 2000;
         public const int TransactionSigningError = 2001;
@@ -99,5 +101,6 @@ namespace Atomex.Common
         public const int RpcResponseError = 5005;
         public const int AddressNotFound = 5006;
         public const int AutoFillError = 5007;
+        public const int OperationBatchingError = 5008;
     }
 }

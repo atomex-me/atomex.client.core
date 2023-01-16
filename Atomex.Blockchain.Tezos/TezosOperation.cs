@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Tezos.Common;
 using Atomex.Blockchain.Tezos.Operations;
 
 namespace Atomex.Blockchain.Tezos
@@ -22,9 +23,11 @@ namespace Atomex.Blockchain.Tezos
         public string? From => Operations.FirstOrDefault()?.Sender?.Address;
 
         public IEnumerable<Operation> Operations { get; }
+        public MichelineFormat ParametersFormat { get; }
 
         public TezosOperation(
             IEnumerable<Operation> operations,
+            MichelineFormat operationParametersFormat,
             int recentBlockLevel = 0)
         {
             if (operations == null)
@@ -34,6 +37,7 @@ namespace Atomex.Blockchain.Tezos
                 throw new ArgumentException("At least one operation is required", nameof(operations));
 
             Operations = operations;
+            ParametersFormat = operationParametersFormat;
 
             var firstOperation = Operations.First();
 

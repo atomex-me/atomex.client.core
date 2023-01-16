@@ -78,7 +78,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
         {
             var requestUri = $"api/v2/get_tx_inputs/{_settings.Network}/{txId}/{inputNo}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: _settings.BaseUri,
                     relativeUri: requestUri,
@@ -129,7 +129,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
         {
             var requestUri = $"api/v2/get_tx_unspent/{_settings.Network}/{address}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: _settings.BaseUri,
                     relativeUri: requestUri,
@@ -185,7 +185,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
         {
             var requestUri = $"api/v2/tx/{_settings.Network}/{txId}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: _settings.BaseUri,
                     relativeUri: requestUri,
@@ -241,7 +241,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
         {
             var requestUri = $"api/v2/is_tx_spent/{_settings.Network}/{txId}/{outputNo}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: _settings.BaseUri,
                     relativeUri: requestUri,
@@ -316,7 +316,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
         {
             var requestUri = $"api/v2/address/{_settings.Network}/{address}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: _settings.BaseUri,
                     relativeUri: requestUri,

@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Atomex.Blockchain.Tezos.Operations
 {
@@ -7,6 +8,6 @@ namespace Atomex.Blockchain.Tezos.Operations
         [JsonPropertyName("entrypoint")]
         public string Entrypoint { get; set; }
         [JsonPropertyName("value")]
-        public object Value { get; set; }
+        public JsonElement Value { get; set; }
     }
 }

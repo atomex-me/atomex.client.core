@@ -200,6 +200,13 @@ namespace Atomex
             }
         };
 
+        public TezosRpcSettings GetRpcSettings() => new()
+        {
+            Url = RpcNodeUri,
+            ChainId = ChainId.Main,
+            UserAgent = "Atomex"
+        };
+
         public override IExtKey CreateExtKey(SecureBytes seed, int keyType) =>
             keyType switch
             {

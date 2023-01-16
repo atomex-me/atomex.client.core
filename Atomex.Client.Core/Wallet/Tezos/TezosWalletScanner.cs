@@ -316,7 +316,7 @@ namespace Atomex.Wallet.Tezos
             walletAddress.HasActivity = account.NumberOfTransactions > 0 || account.TokenBalancesCount > 0;
 
             var (ops, opsError) = await tzktApi
-                .GetOperationsAsync(
+                .GetOperationsByAddressAsync(
                     address: walletAddress.Address,
                     fromTimeStamp: walletAddress.LastSuccessfullUpdate != DateTime.MinValue
                         ? walletAddress.LastSuccessfullUpdate

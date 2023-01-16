@@ -29,9 +29,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Blockchain", "Atomex
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Blockchain.Bitcoin", "Atomex.Blockchain.Bitcoin\Atomex.Blockchain.Bitcoin.csproj", "{FEE071D9-795A-4CB0-93D2-E97B36B01111}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atomex.Blockchain.Tezos", "Atomex.Blockchain.Tezos\Atomex.Blockchain.Tezos.csproj", "{594D33CA-2E66-4C87-AF7C-CE0F9B410E05}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Blockchain.Tezos", "Atomex.Blockchain.Tezos\Atomex.Blockchain.Tezos.csproj", "{594D33CA-2E66-4C87-AF7C-CE0F9B410E05}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atomex.Blockchain.Ethereum", "Atomex.Blockchain.Ethereum\Atomex.Blockchain.Ethereum.csproj", "{EDFCAD01-EB3A-4874-973A-3B08E4C0B97C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Atomex.Blockchain.Ethereum", "Atomex.Blockchain.Ethereum\Atomex.Blockchain.Ethereum.csproj", "{EDFCAD01-EB3A-4874-973A-3B08E4C0B97C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Atomex.Tests", "Atomex.Tests\Atomex.Tests.csproj", "{7C9BF84B-8590-4D91-B584-8DBE0A377040}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -223,6 +225,18 @@ Global
 		{EDFCAD01-EB3A-4874-973A-3B08E4C0B97C}.Release|x64.Build.0 = Release|Any CPU
 		{EDFCAD01-EB3A-4874-973A-3B08E4C0B97C}.Release|x86.ActiveCfg = Release|Any CPU
 		{EDFCAD01-EB3A-4874-973A-3B08E4C0B97C}.Release|x86.Build.0 = Release|Any CPU
+		{7C9BF84B-8590-4D91-B584-8DBE0A377040}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C9BF84B-8590-4D91-B584-8DBE0A377040}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C9BF84B-8590-4D91-B584-8DBE0A377040}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7C9BF84B-8590-4D91-B584-8DBE0A377040}.Debug|x64.Build.0 = Debug|Any CPU
+		{7C9BF84B-8590-4D91-B584-8DBE0A377040}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7C9BF84B-8590-4D91-B584-8DBE0A377040}.Debug|x86.Build.0 = Debug|Any CPU
+		{7C9BF84B-8590-4D91-B584-8DBE0A377040}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C9BF84B-8590-4D91-B584-8DBE0A377040}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C9BF84B-8590-4D91-B584-8DBE0A377040}.Release|x64.ActiveCfg = Release|Any CPU
+		{7C9BF84B-8590-4D91-B584-8DBE0A377040}.Release|x64.Build.0 = Release|Any CPU
+		{7C9BF84B-8590-4D91-B584-8DBE0A377040}.Release|x86.ActiveCfg = Release|Any CPU
+		{7C9BF84B-8590-4D91-B584-8DBE0A377040}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

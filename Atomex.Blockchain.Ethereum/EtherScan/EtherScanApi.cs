@@ -79,7 +79,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 $"&address={address}" +
                 $"&apikey={Settings.ApiToken}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: requestUri,
@@ -208,7 +208,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 $"&tag=latest" +
                 $"&apikey={Settings.ApiToken}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: requestUri,
@@ -291,7 +291,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                     $"&sort=asc" +
                     $"&apikey={Settings.ApiToken}";
 
-                var response = await HttpHelper
+                using var response = await HttpHelper
                     .GetAsync(
                         baseUri: Settings.BaseUri,
                         relativeUri: requestUri,
@@ -388,7 +388,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                     $"&tag=latest" +
                     $"&apikey={Settings.ApiToken}";
 
-                var response = await HttpHelper
+                using var response = await HttpHelper
                     .GetAsync(
                         baseUri: Settings.BaseUri,
                         relativeUri: requestUri,
@@ -520,7 +520,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 $"&tag={tag}" +
                 $"&apikey={Settings.ApiToken}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: requestUri,
@@ -559,7 +559,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 $"&txhash={txId}" +
                 $"&apikey={Settings.ApiToken}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: requestUri,
@@ -674,7 +674,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 $"&txhash={txId}" +
                 $"&apikey={Settings.ApiToken}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: requestUri,
@@ -732,7 +732,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 $"&action=eth_blockNumber" +
                 $"&apikey={Settings.ApiToken}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: requestUri,
@@ -769,7 +769,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 $"&tag=0x{blockHeight:X}" +
                 $"&apikey={Settings.ApiToken}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: requestUri,
@@ -808,7 +808,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 $"&closest={blockClosest.ToString().ToLower()}" +
                 $"&apikey={Settings.ApiToken}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: requestUri,
@@ -857,7 +857,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                     $"&sort=asc" +
                     $"&apikey={Settings.ApiToken}";
 
-                var response = await HttpHelper
+                using var response = await HttpHelper
                     .GetAsync(
                         baseUri: Settings.BaseUri,
                         relativeUri: requestUri,
@@ -971,7 +971,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                     $"&sort=asc" +
                     $"&apikey={Settings.ApiToken}";
 
-                var response = await HttpHelper
+                using var response = await HttpHelper
                     .GetAsync(
                         baseUri: Settings.BaseUri,
                         relativeUri: requestUri,
@@ -1013,7 +1013,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 $"&txhash={txId}" +
                 $"&apikey={Settings.ApiToken}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: requestUri,
@@ -1122,7 +1122,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 "&action=gasoracle" +
                 $"&apikey={Settings.ApiToken}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: requestUri,
@@ -1168,7 +1168,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 (data != null ? $"&data={data}" : "") +
                 $"&apikey={Settings.ApiToken}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: requestUri,
@@ -1213,7 +1213,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 $"&toBlock={toBlockStr}{topicsStr}" +
                 $"&apikey={Settings.ApiToken}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: Settings.BaseUri,
                     relativeUri: uri,

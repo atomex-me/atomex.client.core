@@ -9,7 +9,6 @@ using Netezos.Forging.Models;
 using Newtonsoft.Json.Linq;
 
 using Atomex.Common;
-using Atomex.Blockchain.Tezos.Internal;
 
 namespace Atomex.Wallets.Tezos
 {
@@ -40,7 +39,7 @@ namespace Atomex.Wallets.Tezos
                     if (operationResult?["status"]?.ToString() != "applied")
                         return new Error(
                             code: Errors.AutoFillError,
-                            description: "At least one of the operations is not applied");
+                            message: "At least one of the operations is not applied");
 
                     var counter = result["counter"]?.ToString() ?? null;
 
@@ -54,7 +53,7 @@ namespace Atomex.Wallets.Tezos
                     if (operation == null)
                         return new Error(
                             code: Errors.AutoFillError,
-                            description: $"Can't find request with managed operation content and counter {counter}");
+                            message: $"Can't find request with managed operation content and counter {counter}");
 
                     // gas limit
                     var gas = (int)tezosConfig.GasReserve

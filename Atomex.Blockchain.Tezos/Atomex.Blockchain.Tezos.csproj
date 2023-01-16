@@ -14,4 +14,8 @@
     <ProjectReference Include="..\Atomex.Blockchain\Atomex.Blockchain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Swaps\V1\" />
+  </ItemGroup>
+
 </Project>

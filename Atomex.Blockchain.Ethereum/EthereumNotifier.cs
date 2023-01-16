@@ -147,7 +147,7 @@ namespace Atomex.Blockchain.Ethereum
 
                 var requestUri = requestBuilder.ToString();
 
-                var response = await HttpHelper
+                using var response = await HttpHelper
                     .GetAsync(
                         baseUri: BaseUrl,
                         relativeUri: requestUri,
@@ -224,7 +224,7 @@ namespace Atomex.Blockchain.Ethereum
         {
             var requestUri = $"api?module=proxy&action=eth_blockNumber&apikey={ApiKey}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: BaseUrl,
                     relativeUri: requestUri,

@@ -3,14 +3,13 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Newtonsoft.Json.Linq;
 using Serilog;
 
-using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Tzkt;
+using Atomex.Blockchain.Tezos.Tzkt.Swaps.V1;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.TezosTokens;
-using Atomex.Blockchain.Tezos.Abstract;
 
 namespace Atomex.Swaps.Tezos.Fa2.Helpers
 {
@@ -29,16 +28,21 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
                 var fa2 = (Fa2Config)currency;
 
                 var contractAddress = fa2.SwapContractAddress;
+                var secretHash = swap.SecretHash.ToHexString();
 
-                var blockchainApi = (ITezosApi)tezos.BlockchainApi;
+                var api = new TzktApi(tezos.GetTzktSettings());
 
-                var (txs, error) = await blockchainApi
-                    .GetOperationsAsync(contractAddress, cancellationToken: cancellationToken)
+                var (refunds, error) = await api
+                    .FindRefundsAsync(
+                        secretHash: secretHash,
+                        contractAddress: contractAddress,
+                        fromTimeStamp: (ulong)swap.TimeStamp.ToUnixTimeSeconds(),
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (error != null)
                 {
-                    Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Description: {@desc}",
+                    Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Message: {@desc}",
                         contractAddress,
                         error.Value.Code,
                         error.Value.Message);
@@ -46,23 +50,7 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
                     return error;
                 }
 
-                if (txs != null)
-                {
-                    foreach (var tx in txs)
-                    {
-                        if (tx.To == contractAddress && IsSwapRefund(tx, swap.SecretHash))
-                            return true;
-
-                        if (tx.BlockInfo?.BlockTime == null)
-                            continue;
-
-                        var blockTimeUtc = tx.BlockInfo.BlockTime.Value.ToUniversalTime();
-                        var swapTimeUtc = swap.TimeStamp.ToUniversalTime();
-
-                        if (blockTimeUtc < swapTimeUtc)
-                            break;
-                    }
-                }
+                return refunds.Any(op => op.IsRefund(contractAddress, secretHash));
             }
             catch (Exception e)
             {
@@ -70,8 +58,6 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
 
                 return new Error(Errors.InternalError, e.Message);
             }
-
-            return false;
         }
 
         public static async Task<Result<bool>> IsRefundedAsync(
@@ -106,40 +92,6 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
             }
 
             return new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for refund check");
-        }
-
-        public static bool IsSwapRefund(TezosOperation tx, byte[] secretHash)
-        {
-            try
-            {
-                if (tx.Params == null)
-                    return false;
-
-                var entrypoint = tx.Params?["entrypoint"]?.ToString();
-
-                var paramSecretHash = entrypoint switch
-                {
-                    "default" => GetSecretHash(tx.Params?["value"]?["args"]?[0]),
-                    "refund" => GetSecretHash(tx.Params?["value"]),
-                    _ => null
-                };
-
-                if (paramSecretHash == null)
-                    return false;
-
-                var paramSecretHashBytes = Hex.FromString(paramSecretHash);
-
-                return paramSecretHashBytes.SequenceEqual(secretHash);
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
-
-        private static string GetSecretHash(JToken refundParams)
-        {
-            return refundParams?["bytes"]?.Value<string>();
         }
     }
 }
