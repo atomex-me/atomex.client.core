@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Atomex.Blockchain.Tezos.Operations
+namespace Atomex.Blockchain.Tezos.Tzkt.Operations
 {
     public class Parameter
     {

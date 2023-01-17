@@ -1,8 +1,8 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace Atomex.Blockchain.Tezos.Operations
+namespace Atomex.Blockchain.Tezos.Tzkt.Operations
 {
-    public class DoubleEndorsingOperation : Operation
+    public class DoubleBakingOperation : Operation
     {
         [JsonPropertyName("accusedLevel")]
         public int AccusedLevel { get; set; }

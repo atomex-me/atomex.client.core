@@ -1,8 +1,7 @@
 ﻿using System.Text.Json;
 
 using Netezos.Encoding;
-
-using Atomex.Blockchain.Tezos.Operations;
+using Atomex.Blockchain.Tezos.Tzkt.Operations;
 
 namespace Atomex.Blockchain.Tezos.Common
 {

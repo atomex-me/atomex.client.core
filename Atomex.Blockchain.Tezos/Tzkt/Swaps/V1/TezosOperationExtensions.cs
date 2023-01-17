@@ -5,7 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 using Atomex.Blockchain.Tezos.Common;
-using Atomex.Blockchain.Tezos.Operations;
+using Atomex.Blockchain.Tezos.Tzkt.Operations;
 using Atomex.Common;
 using Atomex.Cryptography.Abstract;
 

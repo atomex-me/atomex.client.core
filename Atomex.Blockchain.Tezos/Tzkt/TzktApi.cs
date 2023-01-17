@@ -10,7 +10,7 @@ using Atomex.Common;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Abstract;
 using Atomex.Blockchain.Tezos.Common;
-using Atomex.Blockchain.Tezos.Operations;
+using Atomex.Blockchain.Tezos.Tzkt.Operations;
 
 namespace Atomex.Blockchain.Tezos.Tzkt
 {

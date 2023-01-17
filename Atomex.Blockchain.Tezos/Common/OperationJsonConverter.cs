@@ -2,13 +2,13 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-using Atomex.Blockchain.Tezos.Operations;
+using Atomex.Blockchain.Tezos.Tzkt.Operations;
 
 namespace Atomex.Blockchain.Tezos.Common
 {
-    public class OperationJsonConverter : JsonConverter<Operation>
+    public class OperationJsonConverter : JsonConverter<Operation?>
     {
-        public override Operation Read(
+        public override Operation? Read(
             ref Utf8JsonReader reader,
             Type typeToConvert,
             JsonSerializerOptions options)
@@ -44,7 +44,7 @@ namespace Atomex.Blockchain.Tezos.Common
 
         public override void Write(
             Utf8JsonWriter writer,
-            Operation value,
+            Operation? value,
             JsonSerializerOptions options)
         {
             JsonSerializer.Serialize(writer, value, options);

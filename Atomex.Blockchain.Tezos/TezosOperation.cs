@@ -4,7 +4,7 @@ using System.Linq;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Common;
-using Atomex.Blockchain.Tezos.Operations;
+using Atomex.Blockchain.Tezos.Tzkt.Operations;
 
 namespace Atomex.Blockchain.Tezos
 {
@@ -51,6 +51,21 @@ namespace Atomex.Blockchain.Tezos
             Confirmations = recentBlockLevel != 0
                 ? recentBlockLevel - firstOperation.BlockLevel
                 : Math.Max((long)(DateTimeOffset.UtcNow - firstOperation.BlockTime).TotalMinutes, 0); // approximate confirmations
+        }
+
+        public TezosOperation(
+            TezosOperationRequest operationRequest,
+            string operationId)
+        {
+            Id            = operationId;
+            Currency      = TezosHelper.Xtz;
+            Status        = TransactionStatus.Pending;
+            CreationTime  = DateTimeOffset.UtcNow;
+            BlockTime     = null;
+            BlockHeight   = 0;
+            Confirmations = 0;
+
+            Operations = operationRequest.OperationsContents.Select(oc => )
         }
 
         public bool IsManaged() => Operations

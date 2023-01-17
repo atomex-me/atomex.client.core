@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 using Atomex.Blockchain.Tezos.Common;
 
-namespace Atomex.Blockchain.Tezos.Operations
+namespace Atomex.Blockchain.Tezos.Tzkt.Operations
 {
     [JsonConverter(typeof(OperationJsonConverter))]
     public class Operation

@@ -1,4 +1,4 @@
-﻿namespace Atomex.Blockchain.Tezos.Operations
+﻿namespace Atomex.Blockchain.Tezos.Tzkt.Operations
 {
     public class RevealOperation : ManagerOperation
     {
