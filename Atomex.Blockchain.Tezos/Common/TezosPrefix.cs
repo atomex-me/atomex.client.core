@@ -1,6 +1,6 @@
-﻿namespace Atomex.Blockchain.Tezos.Internal
+﻿namespace Atomex.Blockchain.Tezos.Common
 {
-    public static class Prefix
+    public static class TezosPrefix
     {
         public static readonly byte[] Tz1 = { 6, 161, 159 };
         public static readonly byte[] Tz2 = { 6, 161, 161 };

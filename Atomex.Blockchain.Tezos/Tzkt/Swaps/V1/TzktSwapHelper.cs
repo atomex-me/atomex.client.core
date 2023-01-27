@@ -21,9 +21,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt.Swaps.V1
             BigInteger? payoff = null,
             CancellationToken cancellationToken = default)
         {
-            var filter = "type=transaction" +
-                $"&entrypoint=initiate" +
-                $"&parameter.settings.hashed_secret={secretHash}" +
+            var parameter = $"parameter.settings.hashed_secret={secretHash}" +
                 $"&parameter.participant={address}" +
                 $"&parameter.settings.refund_time={(timeStamp + lockTime).ToIso8601()}" +
                 (payoff != null ? $"&parameter.settings.payoff={payoff.Value}" : "");
@@ -31,8 +29,10 @@ namespace Atomex.Blockchain.Tezos.Tzkt.Swaps.V1
             var (ops, error) = await api
                 .GetOperationsByAddressAsync(
                     address: contractAddress,
-                    fromTimeStamp: DateTimeExtensions.FromUnixTimeSeconds(timeStamp),
-                    filter: filter,
+                    timeStamp: new DateTimeParameter(DateTimeExtensions.FromUnixTimeSeconds(timeStamp), EqualityType.Ge),
+                    type: "transaction",
+                    entrypoint: "initiate",
+                    parameter: parameter,
                     michelineFormat: MichelineFormat.Json,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -55,9 +55,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt.Swaps.V1
             BigInteger? payoffAmount = null,
             CancellationToken cancellationToken = default)
         {
-            var filter = "type=transaction" +
-                "&entrypoint=initiate" +
-                $"&parameter.hashedSecret={secretHash}" +
+            var parameter = $"parameter.hashedSecret={secretHash}" +
                 $"&parameter.refundTime={(timeStamp + lockTime).ToIso8601()}" +
                 $"&parameter.participant={address}" +
                 $"&parameter.tokenAddress={tokenContract}" +
@@ -67,8 +65,10 @@ namespace Atomex.Blockchain.Tezos.Tzkt.Swaps.V1
             var (ops, error) = await api
                 .GetOperationsByAddressAsync(
                     address: contractAddress,
-                    fromTimeStamp: DateTimeExtensions.FromUnixTimeSeconds(timeStamp),
-                    filter: filter,
+                    timeStamp: new DateTimeParameter(DateTimeExtensions.FromUnixTimeSeconds(timeStamp), EqualityType.Ge),
+                    type: "transaction",
+                    entrypoint: "initiate",
+                    parameter: parameter,
                     michelineFormat: MichelineFormat.Json,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -92,9 +92,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt.Swaps.V1
             BigInteger? payoffAmount = null,
             CancellationToken cancellationToken = default)
         {
-            var filter = "type=transaction" +
-                "&entrypoint=initiate" +
-                $"&parameter.hashedSecret={secretHash}" +
+            var parameter = $"parameter.hashedSecret={secretHash}" +
                 $"&parameter.refundTime={(timeStamp + lockTime).ToIso8601()}" +
                 $"&parameter.participant={address}" +
                 $"&parameter.tokenAddress={tokenContract}" +
@@ -105,8 +103,10 @@ namespace Atomex.Blockchain.Tezos.Tzkt.Swaps.V1
             var (ops, error) = await api
                 .GetOperationsByAddressAsync(
                     address: contractAddress,
-                    fromTimeStamp: DateTimeExtensions.FromUnixTimeSeconds(timeStamp),
-                    filter: filter,
+                    timeStamp: new DateTimeParameter(DateTimeExtensions.FromUnixTimeSeconds(timeStamp), EqualityType.Ge),
+                    type: "transaction",
+                    entrypoint: "initiate",
+                    parameter: parameter,
                     michelineFormat: MichelineFormat.Json,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -124,15 +124,15 @@ namespace Atomex.Blockchain.Tezos.Tzkt.Swaps.V1
             ulong timeStamp,
             CancellationToken cancellationToken = default)
         {
-            var filter = "type=transaction" +
-                $"&entrypoint=add" +
-                $"&parameter={secretHash}";
+            var parameter = $"parameter={secretHash}";
 
             var (ops, error) = await api
                 .GetOperationsByAddressAsync(
                     address: contractAddress,
-                    fromTimeStamp: DateTimeExtensions.FromUnixTimeSeconds(timeStamp),
-                    filter: filter,
+                    timeStamp: new DateTimeParameter(DateTimeExtensions.FromUnixTimeSeconds(timeStamp), EqualityType.Ge),
+                    type: "transaction",
+                    entrypoint: "add",
+                    parameter: parameter,
                     michelineFormat: MichelineFormat.Json,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -153,15 +153,16 @@ namespace Atomex.Blockchain.Tezos.Tzkt.Swaps.V1
             const int redeemTimeOutInSec = 86400; // 24 hours
             var redeemTimeOut = DateTimeExtensions.FromUnixTimeSeconds(timeStamp + redeemTimeOutInSec);
 
-            var filter = "type=transaction" +
-                $"&entrypoint=redeem" +
-                $"&timestamp.lt={redeemTimeOut.ToIso8601()}";
-
             var (ops, error) = await api
                 .GetOperationsByAddressAsync(
                     address: contractAddress,
-                    fromTimeStamp: DateTimeExtensions.FromUnixTimeSeconds(timeStamp),
-                    filter: filter,
+                    timeStamp: new DateTimeParameter
+                    {
+                        { DateTimeExtensions.FromUnixTimeSeconds(timeStamp), EqualityType.Ge },
+                        { redeemTimeOut, EqualityType.Lt }
+                    },
+                    type: "transaction",
+                    entrypoint: "redeem",
                     michelineFormat: MichelineFormat.Json,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -183,15 +184,15 @@ namespace Atomex.Blockchain.Tezos.Tzkt.Swaps.V1
             ulong fromTimeStamp,
             CancellationToken cancellationToken = default)
         {
-            var filter = "type=transaction" +
-                $"&entrypoint=refund" +
-                $"&parameter={secretHash}";
+            var parameter = $"parameter={secretHash}";
 
             var (ops, error) = await api
                 .GetOperationsByAddressAsync(
                     address: contractAddress,
-                    fromTimeStamp: DateTimeExtensions.FromUnixTimeSeconds(fromTimeStamp),
-                    filter: filter,
+                    timeStamp: new DateTimeParameter(DateTimeExtensions.FromUnixTimeSeconds(fromTimeStamp), EqualityType.Ge),
+                    type: "transaction",
+                    entrypoint: "refund",
+                    parameter: parameter,
                     michelineFormat: MichelineFormat.Json,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

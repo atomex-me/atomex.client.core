@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
-
-using Atomex.Abstract;
+﻿using Atomex.Abstract;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.Wallet.Tezos
@@ -26,7 +24,7 @@ namespace Atomex.Wallet.Tezos
 
         #region Helpers
 
-        protected override JObject CreateTransferParams(
+        protected override string CreateTransferParams(
             string from,
             string to,
             decimal amount)
@@ -34,59 +32,13 @@ namespace Atomex.Wallet.Tezos
             return CreateTransferParams(_tokenId, from, to, amount);
         }
 
-        private JObject CreateTransferParams(
+        private string CreateTransferParams(
             int tokenId,
             string from,
             string to,
             decimal amount)
         {
-            return JObject.FromObject(new
-            {
-                entrypoint = "transfer",
-                value = new object[]
-                {
-                    new
-                    {
-                        prim = "Pair",
-                        args = new object[]
-                        {
-                            new
-                            {
-                                @string = from
-                            },
-                            new object[]
-                            {
-                                new
-                                {
-                                    prim = "Pair",
-                                    args = new object[]
-                                    {
-                                        new
-                                        {
-                                            @string = to,
-                                        },
-                                        new
-                                        {
-                                            prim = "Pair",
-                                            args = new object[]
-                                            {
-                                                new
-                                                {
-                                                    @int = tokenId.ToString()
-                                                },
-                                                new
-                                                {
-                                                    @int = string.Format("{0:0}", amount)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            return $"[{{'prim':'Pair','args':[{{'string':'{from}'}},[{{'prim':'Pair','args':[{{'string':'{to}'}},{{'prim':'Pair','args':[{{'int':'{tokenId}','int':'{string.Format("{0:0}", amount)}'}}]}}]}}]]}}]";
         }
 
         #endregion Helpers

@@ -423,11 +423,8 @@ namespace Atomex.Swaps
             if ((swap == null || (swap != null && swap.Status == SwapStatus.Empty)) &&
                 (receivedSwap.Status == SwapStatus.Empty || receivedSwap.Status == SwapStatus.Initiated))
             {
-                if (swap == null)
-                {
-                    swap = await AddSwapAsync(receivedSwap, cancellationToken)
+                swap ??= await AddSwapAsync(receivedSwap, cancellationToken)
                         .ConfigureAwait(false);
-                }
 
                 if (receivedSwap.Status == SwapStatus.Initiated)
                 {
@@ -713,14 +710,12 @@ namespace Atomex.Swaps
             if (receivedSwap.RewardForRedeem < 0)
                 return new Error(Errors.InvalidRewardForRedeem, $"Incorrect reward for redeem for swap {swap.Id}");
 
-            if (swap.PartyAddress == null)
-                swap.PartyAddress = receivedSwap.PartyAddress;
+            swap.PartyAddress ??= receivedSwap.PartyAddress;
 
             if (swap.PartyRewardForRedeem == 0 && receivedSwap.PartyRewardForRedeem > 0)
                 swap.PartyRewardForRedeem = receivedSwap.PartyRewardForRedeem;
 
-            if (swap.PartyRefundAddress == null)
-                swap.PartyRefundAddress = receivedSwap.PartyRefundAddress;
+            swap.PartyRefundAddress ??= receivedSwap.PartyRefundAddress;
 
             return true; // no error
         }
@@ -748,14 +743,12 @@ namespace Atomex.Swaps
             if (receivedSwap.RewardForRedeem < 0)
                 return new Error(Errors.InvalidRewardForRedeem, $"Incorrect reward for redeem for swap {swap.Id}");
 
-            if (swap.PartyAddress == null)
-                swap.PartyAddress = receivedSwap.PartyAddress;
+            swap.PartyAddress ??= receivedSwap.PartyAddress;
 
             if (swap.PartyRewardForRedeem == 0 && receivedSwap.PartyRewardForRedeem > 0)
                 swap.PartyRewardForRedeem = receivedSwap.PartyRewardForRedeem;
 
-            if (swap.PartyRefundAddress == null)
-                swap.PartyRefundAddress = receivedSwap.PartyRefundAddress;
+            swap.PartyRefundAddress ??= receivedSwap.PartyRefundAddress;
 
             await UpdateSwapStateAsync(swap, SwapStateFlags.Empty)
                 .ConfigureAwait(false);

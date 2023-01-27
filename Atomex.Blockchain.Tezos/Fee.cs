@@ -1,4 +1,4 @@
-﻿namespace Atomex.Wallet.Tezos
+﻿namespace Atomex.Blockchain.Tezos
 {
     public class Fee : Parameter<long>
     {

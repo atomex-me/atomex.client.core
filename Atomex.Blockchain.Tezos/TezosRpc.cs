@@ -2,6 +2,8 @@
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -15,6 +17,16 @@ namespace Atomex.Blockchain.Tezos
         Test = 1
     }
 
+    public class TezosRpcAccount
+    {
+        [JsonPropertyName("balance")]
+        public string Balance { get; set; }
+        [JsonPropertyName("delegate")]
+        public string Delegate { get; set; }
+        [JsonPropertyName("counter")]
+        public string Counter { get; set; }
+    }
+
     public class TezosRpcSettings
     {
         public string Url { get; set; }
@@ -25,6 +37,7 @@ namespace Atomex.Blockchain.Tezos
     public class TezosRpc
     {
         private readonly TezosRpcSettings _settings;
+        private string _chainId => _settings.ChainId.ToString().ToLowerInvariant();
 
         public TezosRpc(TezosRpcSettings settings)
         {
@@ -36,7 +49,7 @@ namespace Atomex.Blockchain.Tezos
             CancellationToken cancellationToken = default)
         {
             return QueryAsync(
-                query: $"injection/operation?chain={_settings.ChainId}",
+                query: $"injection/operation?chain={_chainId}",
                 data: $"\"{signedBytesInHex}\"",
                 cancellationToken: cancellationToken);
         }
@@ -57,7 +70,7 @@ namespace Atomex.Blockchain.Tezos
             "}";
 
             return QueryAsync(
-                query: $"chains/{_settings.ChainId}/blocks/head/helpers/scripts/run_operation",
+                query: $"chains/{_chainId}/blocks/head/helpers/scripts/run_operation",
                 data: contents,
                 cancellationToken: cancellationToken);
         }
@@ -77,7 +90,7 @@ namespace Atomex.Blockchain.Tezos
             "}]";
 
             return QueryAsync(
-                query: $"chains/{_settings.ChainId}/blocks/head/helpers/preapply/operations",
+                query: $"chains/{_chainId}/blocks/head/helpers/preapply/operations",
                 data: contents,
                 cancellationToken: cancellationToken);
         }
@@ -93,9 +106,23 @@ namespace Atomex.Blockchain.Tezos
             "}";
 
             return QueryAsync(
-                query: $"chains/{_settings.ChainId}/blocks/head/helpers/forge/operations",
+                query: $"chains/{_chainId}/blocks/head/helpers/forge/operations",
                 data: contents,
                 cancellationToken: cancellationToken);
+        }
+
+        public async Task<TezosRpcAccount> GetAccountAsync(
+            string address,
+            string blockHash = "head",
+            CancellationToken cancellationToken = default)
+        {
+            var response = await QueryAsync(
+                    query: $"chains/{_chainId}/blocks/{blockHash}/context/contracts/{address}",
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            return JsonSerializer.Deserialize<TezosRpcAccount>(response)!;
+
         }
 
         public Task<string> GetManagerKeyAsync(
@@ -103,7 +130,7 @@ namespace Atomex.Blockchain.Tezos
             CancellationToken cancellationToken = default)
         {
             return QueryAsync(
-                query: $"chains/{_settings.ChainId}/blocks/head/context/contracts/{address}/manager_key",
+                query: $"chains/{_chainId}/blocks/head/context/contracts/{address}/manager_key",
                 cancellationToken: cancellationToken);
         }
 
@@ -112,7 +139,7 @@ namespace Atomex.Blockchain.Tezos
             CancellationToken cancellationToken = default)
         {
             return QueryAsync(
-                query: $"chains/{_settings.ChainId}/blocks/head{(offset != 0 ? $"~{offset}" : "")}/header",
+                query: $"chains/{_chainId}/blocks/head{(offset != 0 ? $"~{offset}" : "")}/header",
                 cancellationToken: cancellationToken);
         }
 
@@ -121,7 +148,7 @@ namespace Atomex.Blockchain.Tezos
             CancellationToken cancellationToken = default)
         {
             return QueryAsync(
-                query: $"chains/{_settings.ChainId}/blocks/head/context/delegates/{address}",
+                query: $"chains/{_chainId}/blocks/head/context/delegates/{address}",
                 cancellationToken: cancellationToken);
         }
 

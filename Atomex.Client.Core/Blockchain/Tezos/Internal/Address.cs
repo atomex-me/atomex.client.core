@@ -1,4 +1,5 @@
-﻿using Atomex.Cryptography;
+﻿using Atomex.Blockchain.Tezos.Common;
+using Atomex.Cryptography;
 
 namespace Atomex.Blockchain.Tezos.Internal
 {
@@ -18,15 +19,15 @@ namespace Atomex.Blockchain.Tezos.Internal
         }
 
         public static bool CheckTz1Address(string address) =>
-            CheckAddress(address, Prefix.Tz1);
+            CheckAddress(address, TezosPrefix.Tz1);
 
         public static bool CheckTz2Address(string address) =>
-            CheckAddress(address, Prefix.Tz2);
+            CheckAddress(address, TezosPrefix.Tz2);
 
         public static bool CheckTz3Address(string address) =>
-            CheckAddress(address, Prefix.Tz3);
+            CheckAddress(address, TezosPrefix.Tz3);
 
         public static bool CheckKtAddress(string address) =>
-            CheckAddress(address, Prefix.KT);
+            CheckAddress(address, TezosPrefix.KT);
     }
 }

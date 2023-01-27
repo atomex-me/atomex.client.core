@@ -2,7 +2,7 @@
 
 namespace Atomex.Blockchain.Tezos.Tzkt.Operations
 {
-    public class DoubleEndorsingOperation : Operation
+    public class DoublePreendorsingOperation : Operation
     {
         [JsonPropertyName("accusedLevel")]
         public int AccusedLevel { get; set; }
@@ -14,11 +14,5 @@ namespace Atomex.Blockchain.Tezos.Tzkt.Operations
         public Alias Offender { get; set; }
         [JsonPropertyName("offenderLoss")]
         public long OffenderLoss { get; set; }
-        [JsonPropertyName("offenderLostDeposits")]
-        public long OffenderLostDeposits { get; set; }
-        [JsonPropertyName("offenderLostRewards")]
-        public long OffenderLostRewards { get; set; }
-        [JsonPropertyName("offenderLostFees")]
-        public long OffenderLostFees { get; set; }
     }
 }

@@ -4,10 +4,10 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Newtonsoft.Json.Linq;
 using Serilog;
 
 using Atomex.Abstract;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
@@ -64,7 +64,6 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var tokenConfig = TokenConfig;
-            var xtzConfig = XtzConfig;
 
             var addressFeeUsage = await CalculateFundsUsageAsync(
                     from: from,
@@ -95,78 +94,23 @@ namespace Atomex.Wallet.Tezos
 
             var storageLimit = Math.Max(tokenConfig.TransferStorageLimit - tokenConfig.ActivationStorage, 0); // without activation storage fee
 
-            var tx = new TezosOperation
-            {
-                Currency     = xtzConfig.Name,
-                CreationTime = DateTime.UtcNow,
-                From         = from,
-                To           = _tokenContract,
-                Fee          = addressFeeUsage.UsedFee.ToMicroTez(),
-                GasLimit     = tokenConfig.TransferGasLimit,
-                StorageLimit = storageLimit,
-                Params       = CreateTransferParams(from, to, addressAmountInDigits),
-                Type         = TransactionType.Output | TransactionType.TokenCall,
-
-                UseRun              = useDefaultFee,
-                UseSafeStorageLimit = true,
-                UseOfflineCounter   = true
-            };
-
-            using var addressLock = await _tezosAccount.AddressLocker
-                .GetLockAsync(from, cancellationToken)
-                .ConfigureAwait(false);
-
-            // temporary fix: check operation sequence
-            await TezosOperationsSequencer
-                .WaitAsync(from, _tezosAccount, cancellationToken)
-                .ConfigureAwait(false);
-
-            using var securePublicKey = Wallet.GetPublicKey(
-                currency: xtzConfig,
-                keyIndex: addressFeeUsage.WalletAddress.KeyIndex,
-                keyType: addressFeeUsage.WalletAddress.KeyType);
-
-            // fill operation
-            var (fillResult, isRunSuccess, hasReveal) = await tx
-                .FillOperationsAsync(
-                    securePublicKey: securePublicKey,
-                    tezosConfig: xtzConfig,
-                    headOffset: TezosConfig.HeadOffset,
+            var (result, error) = await _tezosAccount
+                .SendTransactionAsync(
+                    from: from,
+                    to: _tokenContract,
+                    amount: 0,
+                    fee: Fee.FromValue(addressFeeUsage.UsedFee.ToMicroTez()),
+                    gasLimit: GasLimit.FromValue((int)tokenConfig.TransferGasLimit),
+                    storageLimit: StorageLimit.FromValue((int)storageLimit),
+                    entrypoint: "transfer",
+                    parameters: CreateTransferParams(from, to, addressAmountInDigits),
                     cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            var signResult = await _tezosAccount
-                .SignAsync(tx, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (!signResult)
-                return new Error(
-                    code: Errors.TransactionSigningError,
-                    message: "Transaction signing error");
-
-            var (txId, error) = await xtzConfig.BlockchainApi
-                .BroadcastAsync(tx, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)
                 return error;
 
-            if (txId == null)
-                return new Error(
-                    code: Errors.TransactionBroadcastError,
-                    message: "Transaction Id is null");
-
-            Log.Debug("Transaction successfully sent with txId: {@id}", txId);
-
-             var _ = await _tezosAccount
-                .LocalStorage
-                .UpsertTransactionAsync(
-                    tx: tx,
-                    notifyIfNewOrChanged: true,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            return txId;
+            return result.OperationId;
         }
 
         public async Task<decimal> EstimateFeeAsync(
@@ -686,7 +630,7 @@ namespace Atomex.Wallet.Tezos
 
         #region Helpers
 
-        protected abstract JObject CreateTransferParams(
+        protected abstract string CreateTransferParams(
             string from,
             string to,
             decimal amount);

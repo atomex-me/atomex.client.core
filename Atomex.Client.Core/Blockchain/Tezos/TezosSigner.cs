@@ -1,5 +1,5 @@
 ﻿using System;
-
+using Atomex.Blockchain.Tezos.Common;
 using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Common;
 using Atomex.Cryptography;
@@ -46,7 +46,7 @@ namespace Atomex.Blockchain.Tezos
             return new SignedMessage
             {
                 SignedHash       = signature,
-                EncodedSignature = Base58Check.Encode(signature, Prefix.Edsig),
+                EncodedSignature = Base58Check.Encode(signature, TezosPrefix.Edsig),
                 SignedBytes      = data.ToHexString() + signature.ToHexString()
             };
         }

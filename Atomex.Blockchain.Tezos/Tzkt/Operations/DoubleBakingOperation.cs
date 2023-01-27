@@ -12,6 +12,8 @@ namespace Atomex.Blockchain.Tezos.Tzkt.Operations
         public long AccuserRewards { get; set; }
         [JsonPropertyName("offender")]
         public Alias Offender { get; set; }
+        [JsonPropertyName("offenderLoss")]
+        public long OffenderLoss { get; set; }
         [JsonPropertyName("offenderLostDeposits")]
         public long OffenderLostDeposits { get; set; }
         [JsonPropertyName("offenderLostRewards")]

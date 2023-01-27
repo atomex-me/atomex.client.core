@@ -65,7 +65,9 @@ namespace Atomex.Blockchain.Tezos
             BlockHeight   = 0;
             Confirmations = 0;
 
-            Operations = operationRequest.OperationsContents.Select(oc => )
+            Operations = operationRequest.OperationsContents
+                .Select(oc => oc.ToOperation(operationId));
+            ParametersFormat = MichelineFormat.RawMicheline;
         }
 
         public bool IsManaged() => Operations

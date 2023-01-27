@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Atomex.Blockchain.Tezos.Common;
 using Atomex.Common;
 
 namespace Atomex.Blockchain.Tezos.Abstract
@@ -11,13 +11,7 @@ namespace Atomex.Blockchain.Tezos.Abstract
     {
         Task<Result<IEnumerable<TezosOperation>>> GetOperationsByAddressAsync(
             string address,
-            DateTimeOffset? fromTimeStamp = null,
-            CancellationToken cancellationToken = default);
-
-        Task<Result<IEnumerable<TezosOperation>>> GetTransactionsAsync(
-            string from,
-            string to,
-            string parameters,
+            DateTimeParameter? timeStamp = null,
             CancellationToken cancellationToken = default);
 
         Task<Result<bool>> IsRevealedAsync(

@@ -1,6 +1,4 @@
-﻿using Newtonsoft.Json.Linq;
-
-using Atomex.Abstract;
+﻿using Atomex.Abstract;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.Wallet.Tezos
@@ -26,41 +24,12 @@ namespace Atomex.Wallet.Tezos
 
         #region Helpers
 
-        protected override JObject CreateTransferParams(
+        protected override string CreateTransferParams(
             string from,
             string to,
             decimal amount)
         {
-            return JObject.FromObject(new
-            {
-                entrypoint = "transfer",
-                value = new
-                {
-                    prim = "Pair",
-                    args = new object[]
-                    {
-                        new
-                        {
-                            @string = from
-                        },
-                        new
-                        {
-                            prim = "Pair",
-                            args = new object[]
-                            {
-                                new
-                                {
-                                    @string = to
-                                },
-                                new
-                                {
-                                    @int = amount.ToString()
-                                }
-                            }
-                        }
-                    }
-                }
-            });
+            return $"{{'prim':'Pair','args':[{{'string':'{from}'}},{{'prim':'Pair','args':[{{'string':'{to}'}},{{'int':'{amount}'}}]}}]}}";
         }
 
         #endregion Helpers

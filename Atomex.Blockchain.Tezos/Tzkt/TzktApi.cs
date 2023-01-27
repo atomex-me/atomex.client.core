@@ -33,7 +33,8 @@ namespace Atomex.Blockchain.Tezos.Tzkt
     public class TzktApi : IBlockchainApi, ITezosApi
     {
         public const string Uri = "https://api.tzkt.io/v1/";
-        public const int PageSize = 10000;
+        public const int TokenBalanceLimit = 10000;
+        public const int TokenTransfersLimit = 10000;
 
         public TzktSettings Settings { get; set; }
 
@@ -117,102 +118,52 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             return new TezosOperation(operations, michelineFormat);
         }
 
-        [Obsolete("Use get operations by address")]
-        public async Task<Result<IEnumerable<TezosOperation>>> GetTransactionsAsync(
-            string from,
-            string to,
-            string parameters,
-            CancellationToken cancellationToken = default)
-        {
-            const int limit = 1000;
-            var received = limit;
-            var lastId = 0L;
-
-            var accountOperations = new List<Operation>();
-
-            while (received == limit)
-            {
-                var requestUri = $"operations/transactions?" +
-                    $"sender={from}" +
-                    $"&target={to}" +
-                    $"&{parameters}" +
-                    (lastId != 0 ? $"&lastId={lastId}" : "");
-
-                using var response = await HttpHelper.GetAsync(
-                    baseUri: Settings.BaseUri,
-                    relativeUri: requestUri,
-                    headers: GetHeaders(),
-                    requestLimitControl: null,
-                    cancellationToken: cancellationToken);
-
-                if (!response.IsSuccessStatusCode)
-                    return new Error((int)response.StatusCode, "Error status code received");
-
-                var content = await response
-                    .Content
-                    .ReadAsStringAsync()
-                    .ConfigureAwait(false);
-
-                var operations = JsonSerializer.Deserialize<IEnumerable<Operation>>(content);
-
-                received = operations.Count();
-
-                if (received > 0)
-                {
-                    accountOperations.AddRange(operations);
-                    lastId = operations.LastOrDefault()?.Id ?? 0;
-                }
-            };
-
-            return new Result<IEnumerable<TezosOperation>>
-            {
-                Value = accountOperations
-                    .GroupBy(o => o.Hash)
-                    .Select((og) => new TezosOperation(og, MichelineFormat.Json))
-            };
-        }
-
         public Task<Result<IEnumerable<TezosOperation>>> GetOperationsByAddressAsync(
             string address,
-            DateTimeOffset? fromTimeStamp = null,
+            DateTimeParameter? timeStamp = null,
             CancellationToken cancellationToken = default)
         {
             return GetOperationsByAddressAsync(
                 address: address,
-                fromTimeStamp: fromTimeStamp,
-                filter: null,
+                timeStamp: timeStamp,
                 michelineFormat: MichelineFormat.Json,
                 cancellationToken: cancellationToken);
         }
 
         public async Task<Result<IEnumerable<TezosOperation>>> GetOperationsByAddressAsync(
             string address,
-            DateTimeOffset? fromTimeStamp = null,
-            string? filter = null,
+            DateTimeParameter? timeStamp = null,
+            string? type = null,
+            string? entrypoint = null,
+            string? parameter = null,
             MichelineFormat michelineFormat = MichelineFormat.Json,
             CancellationToken cancellationToken = default)
         {
-            const int limit = 1000;
-            var received = limit;
+            const int LimitPerRequest = 1000;
+            var receivedByRequest = 0;
             var lastId = 0L;
 
             var accountOperations = new List<Operation>();
 
-            while (received == limit)
+            do
             {
                 var requestUri = $"accounts/{address}/operations?" +
-                    (fromTimeStamp != null ? $"timestamp.ge={fromTimeStamp.Value.ToIso8601()}" : "") +
-                    $"&limit={limit}" +
+                    (timeStamp != null ? timeStamp.Value.ToString("timestamp", d => d.ToIso8601()) : "") +
+                    $"&limit={LimitPerRequest}" +
                     $"&micheline={(int)michelineFormat}" +
-                    (filter != null ? $"&{filter}" : "") +
+                    (type != null ? $"&type={type}" : "") +
+                    (entrypoint != null ? $"&entrypoint={entrypoint}" : "") +
+                    (parameter != null ? $"&{parameter}" : "") +
                     (lastId != 0 ? $"&lastId={lastId}" : "");
 
-                using var response = await HttpHelper.GetAsync(
-                    baseUri: Settings.BaseUri,
-                    relativeUri: requestUri,
-                    headers: GetHeaders(),
-                    requestLimitControl: null,
-                    cancellationToken: cancellationToken);
+                using var response = await HttpHelper
+                    .GetAsync(
+                        baseUri: Settings.BaseUri,
+                        relativeUri: requestUri,
+                        headers: GetHeaders(),
+                        requestLimitControl: null,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
 
                 if (!response.IsSuccessStatusCode)
                     return new Error((int)response.StatusCode, "Error status code received");
@@ -224,14 +175,15 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
                 var operations = JsonSerializer.Deserialize<IEnumerable<Operation>>(content);
 
-                received = operations.Count();
+                receivedByRequest = operations.Count();
 
-                if (received > 0)
+                if (receivedByRequest > 0)
                 {
                     accountOperations.AddRange(operations);
                     lastId = operations.LastOrDefault()?.Id ?? 0;
                 }
-            };
+            }
+            while (receivedByRequest == LimitPerRequest);
 
             return new Result<IEnumerable<TezosOperation>>
             {
@@ -255,6 +207,28 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 return false;
 
             return account.Revealed;
+        }
+
+        public async Task<Result<bool>> IsAllocatedAsync(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            var (account, error) = await GetAccountAsync(address, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (error != null)
+                return error;
+
+            if (account == null)
+                return false;
+
+            if (account.Type == "empty")
+                return false;
+
+            if (account.Type == "user")
+                return account.Balance > 0;
+
+            return true;
         }
 
         public async Task<Result<int>> GetCounterAsync(
@@ -348,6 +322,212 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             }
         }
 
+        public async Task<Result<List<TokenBalance>>> GetTokenBalanceAsync(
+            IEnumerable<string> addresses,
+            IEnumerable<string>? tokenContracts = null,
+            IEnumerable<int>? tokenIds = null,
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default)
+        {
+            var result = new List<TokenBalance>();
+
+            var accountsFilter = addresses.Count() == 1
+                ? $"account={addresses.First()}"
+                : $"account.in={string.Join(',', addresses)}";
+
+            var tokenContractsFilter = tokenContracts != null
+                ? tokenContracts.Count() == 1
+                    ? $"&token.contract={tokenContracts.First()}"
+                    : $"&token.contract.in={string.Join(',', tokenContracts)}"
+                : "";
+
+            var tokenIdsFilter = tokenIds != null
+                ? tokenIds.Count() == 1
+                    ? $"&token.tokenId={tokenIds.First()}"
+                    : $"&token.tokenId.in={string.Join(',', tokenIds)}"
+                : "";
+
+            while (true)
+            {
+                var requestUri = $"tokens/balances?" +
+                    accountsFilter +
+                    tokenContractsFilter +
+                    tokenIdsFilter +
+                    $"&offset={offset}" +
+                    $"&limit={Math.Min(limit, TokenBalanceLimit)}";
+
+                using var response = await HttpHelper
+                    .GetAsync(
+                        baseUri: Settings.BaseUri,
+                        relativeUri: requestUri,
+                        headers: GetHeaders(),
+                        requestLimitControl: null,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                    return new Error((int)response.StatusCode, "Error status code received");
+
+                var content = await response
+                    .Content
+                    .ReadAsStringAsync()
+                    .ConfigureAwait(false);
+
+                var tokenBalanceResponse = JsonSerializer.Deserialize<List<TokenBalanceResponse>>(content);
+
+                if (tokenBalanceResponse == null || !tokenBalanceResponse.Any())
+                    break; // no more pages
+
+                result.AddRange(tokenBalanceResponse.Select(r => r.ToTokenBalance()));
+
+                limit -= tokenBalanceResponse.Count;
+                offset += tokenBalanceResponse.Count;
+
+                if (limit <= 0)
+                    break; // completed
+            }
+
+            return result;
+        }
+
+        public async Task<Result<List<TezosTokenTransfer>>> GetTokenTransfersAsync(
+            IEnumerable<string> addresses,
+            IEnumerable<string>? tokenContracts = null,
+            IEnumerable<int>? tokenIds = null,
+            DateTimeParameter? timeStamp = null,
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default)
+        {
+            var tokenContractsFilter = tokenContracts != null
+                ? tokenContracts.Count() == 1
+                    ? $"&token.contract={tokenContracts.First()}"
+                    : $"&token.contract.in={string.Join(',', tokenContracts)}"
+                : "";
+
+            var tokenIdsFilter = tokenIds != null
+                ? tokenIds.Count() == 1
+                    ? $"&token.tokenId={tokenIds.First()}"
+                    : $"&token.tokenId.in={string.Join(',', tokenIds)}"
+                : "";
+
+            var timeStampFilter = timeStamp != null
+                ? timeStamp.Value.ToString("timestamp", d => d.ToUtcIso8601())
+                : "";
+
+            var accountsFilter = addresses.Count() == 1
+                ? $"anyof.from.to={addresses.First()}"
+                : $"anyof.from.to.in={string.Join(',', addresses)}";
+
+            var transfers = new List<TezosTokenTransfer>();
+
+            while (true)
+            {
+                var requestUri = "tokens/transfers?" +
+                    accountsFilter +
+                    tokenContractsFilter +
+                    tokenIdsFilter +
+                    timeStampFilter +
+                    $"&offset={offset}" +
+                    $"&limit={Math.Min(limit, TokenTransfersLimit)}";
+
+                using var response = await HttpHelper
+                    .GetAsync(
+                        baseUri: Settings.BaseUri,
+                        relativeUri: requestUri,
+                        headers: GetHeaders(),
+                        requestLimitControl: null,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (!response.IsSuccessStatusCode)
+                    return new Error((int)response.StatusCode, "Error status code received");
+
+                var content = await response
+                    .Content
+                    .ReadAsStringAsync()
+                    .ConfigureAwait(false);
+
+                var tokenTransfersResponse = JsonSerializer.Deserialize<List<TokenTransferResponse>>(content);
+
+                if (tokenTransfersResponse == null || !tokenTransfersResponse.Any())
+                    break; // no more pages
+
+                // hint: don't increase value of this variable
+                // Otherwise TzKT API can response with 414 Request-URI Too Large
+                const int MaxOperationIdsPerRequest = 100;
+
+                var uniqueOperationIds = tokenTransfersResponse
+                    .Select(tokenTransfer => tokenTransfer.TransactionId)
+                    .Distinct()
+                    .ToList();
+
+                var operations = new List<TokenOperation>();
+                var operationsIdsGroupsCount = Math.Ceiling(uniqueOperationIds.Count / (decimal)MaxOperationIdsPerRequest);
+
+                for (var i = 0; i < operationsIdsGroupsCount; i++)
+                {
+                    var operationIdsGroup = uniqueOperationIds
+                        .Skip(i * MaxOperationIdsPerRequest)
+                        .Take(MaxOperationIdsPerRequest);
+
+                    var operationIdsGroupString = string.Join(',', operationIdsGroup);
+
+                    var operationRequestUri = $"operations/transactions?" +
+                        $"id.in={operationIdsGroupString}" +
+                        $"&select=hash,counter,nonce,id" +
+                        $"&limit={MaxOperationIdsPerRequest}";
+
+                    using var operationResponse = await HttpHelper
+                        .GetAsync(
+                            baseUri: Settings.BaseUri,
+                            relativeUri: requestUri,
+                            headers: GetHeaders(),
+                            requestLimitControl: null,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (!operationResponse.IsSuccessStatusCode)
+                        return new Error((int)operationResponse.StatusCode, "Error status code received");
+
+                    content = await operationResponse
+                        .Content
+                        .ReadAsStringAsync()
+                        .ConfigureAwait(false);
+
+                    var tokenOperationsResponse = JsonSerializer.Deserialize<List<TokenOperation>>(content);
+
+                    if (tokenOperationsResponse != null && tokenOperationsResponse.Any())
+                        operations.AddRange(tokenOperationsResponse);
+                }
+
+                transfers.AddRange(tokenTransfersResponse.Select(t =>
+                {
+                    var tokenOperation = operations
+                        .Find(to => to.Id == t.TransactionId);
+
+                    return t.ToTokenTransfer(
+                        tokenOperation?.Hash ?? string.Empty,
+                        tokenOperation?.Counter ?? 0,
+                        tokenOperation?.Nonce
+                    );
+                }));
+
+                limit -= tokenTransfersResponse.Count;
+                offset += tokenTransfersResponse.Count;
+
+                if (limit <= 0)
+                    break; // completed
+            }
+
+            return transfers
+                .Distinct(new Atomex.Common.EqualityComparer<TezosTokenTransfer>(
+                    (t1, t2) => t1.Id.Equals(t2.Id),
+                    t => t.Id.GetHashCode()))
+                .ToList();
+        }
+
         //public override async Task<Result<string>> BroadcastAsync(
         //    ITransaction transaction,
         //    CancellationToken cancellationToken = default)
@@ -411,8 +591,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         //    }
         //}
 
-        #region ITokenBlockchainApi
-
         //public async Task<Result<decimal>> GetFa12AllowanceAsync(
         //    string holderAddress,
         //    string spenderAddress,
@@ -474,8 +652,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         //    }
         //}
 
-        #endregion
-
         //private JObject CreateGetAllowanceParams(
         //    string holderAddress,
         //    string spenderAddress,
@@ -511,212 +687,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         //            prim = "Pair"
         //        }
         //    });
-        //}
-
-        //public async Task<Result<List<TokenBalance>>> GetTokenBalanceAsync(
-        //    IEnumerable<string> addresses,
-        //    IEnumerable<string> tokenContracts = null,
-        //    IEnumerable<int> tokenIds = null,
-        //    int offset = 0,
-        //    int limit = PageSize,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var hasPages = true;
-        //    var result = new List<TokenBalance>();
-
-        //    var accountsFilter = addresses.Count() == 1
-        //        ? $"account={addresses.First()}"
-        //        : $"account.in={string.Join(',', addresses)}";
-
-        //    var tokenContractsFilter = tokenContracts != null
-        //        ? tokenContracts.Count() == 1
-        //            ? $"&token.contract={tokenContracts.First()}"
-        //            : $"&token.contract.in={string.Join(',', tokenContracts)}"
-        //        : "";
-
-        //    var tokenIdsFilter = tokenIds != null
-        //        ? tokenIds.Count() == 1
-        //            ? $"&token.tokenId={tokenIds.First()}"
-        //            : $"&token.tokenId.in={string.Join(',', tokenIds)}"
-        //        : "";
-
-        //    while (hasPages)
-        //    {
-        //        var requestUri = $"tokens/balances?" +
-        //            accountsFilter +
-        //            tokenContractsFilter +
-        //            tokenIdsFilter +
-        //            $"&offset={offset}" +
-        //            $"&limit={limit}";
-
-        //        var res = await HttpHelper
-        //            .GetAsyncResult<List<TokenBalanceResponse>>(
-        //                baseUri: _baseUri,
-        //                requestUri: requestUri,
-        //                responseHandler: (response, content) => JsonConvert.DeserializeObject<List<TokenBalanceResponse>>(content),
-        //                cancellationToken: cancellationToken)
-        //            .ConfigureAwait(false);
-
-        //        if (res.HasError)
-        //            return res.Error;
-
-        //        if (res.Value.Any())
-        //        {
-        //            result.AddRange(res.Value.Select(x => x.ToTokenBalance()));
-        //            offset += res.Value.Count;
-
-        //            if (res.Value.Count < PageSize)
-        //                hasPages = false;
-        //        }
-        //        else
-        //        {
-        //            hasPages = false;
-        //        }
-        //    }
-
-        //    return result;
-        //}
-
-        //public async Task<Result<List<TokenTransfer>>> GetTokenTransfersAsync(
-        //    IEnumerable<string> addresses,
-        //    IEnumerable<string> tokenContracts = null,
-        //    IEnumerable<int> tokenIds = null,
-        //    DateTimeOffset? from = null,
-        //    DateTimeOffset? to = null,
-        //    int offset = 0,
-        //    int limit = PageSize,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var tokenContractsFilter = tokenContracts != null
-        //        ? tokenContracts.Count() == 1
-        //            ? $"&token.contract={tokenContracts.First()}"
-        //            : $"&token.contract.in={string.Join(',', tokenContracts)}"
-        //        : "";
-
-        //    var tokenIdsFilter = tokenIds != null
-        //        ? tokenIds.Count() == 1
-        //            ? $"&token.tokenId={tokenIds.First()}"
-        //            : $"&token.tokenId.in={string.Join(',', tokenIds)}"
-        //        : "";
-
-        //    var fromTimeStampFilter = from != null
-        //        ? $"&timestamp.gt={from.Value.ToUtcIso8601()}"
-        //        : "";
-
-        //    var toTimeStampFilter = to != null
-        //        ? $"&timestamp.le={to.Value.ToUtcIso8601()}"
-        //        : "";
-
-        //    // todo: use `anyof.from.to.in` after release in TzKT
-        //    var accountsFilters = addresses.Count() == 1
-        //        ? new string[] {
-        //            $"anyof.from.to={addresses.First()}"
-        //        }
-        //        : new string[] {
-        //            $"from.in={string.Join(',', addresses)}",
-        //            $"to.in={string.Join(',', addresses)}"
-        //        };
-
-        //    var transfers = new List<TokenTransfer>();
-
-        //    // todo: use `anyof.from.to.in` after release in TzKT
-        //    foreach (var accountFilter in accountsFilters)
-        //    {
-        //        var hasPages = true;
-        //        var transfersCount = 0;
-
-        //        while (hasPages && transfersCount < limit)
-        //        {
-        //            var requestLimit = Math.Min(limit - transfersCount, PageSize);
-
-        //            var requestUri = "tokens/transfers?" +
-        //                accountFilter +
-        //                tokenContractsFilter +
-        //                tokenIdsFilter +
-        //                fromTimeStampFilter +
-        //                toTimeStampFilter +
-        //                $"&offset={offset}" +
-        //                $"&limit={requestLimit}";
-
-        //            var tokenTransfersRes = await HttpHelper
-        //                .GetAsyncResult<List<TokenTransferResponse>>(
-        //                    baseUri: _baseUri,
-        //                    requestUri: requestUri,
-        //                    responseHandler: (_, content) => JsonConvert.DeserializeObject<List<TokenTransferResponse>>(content),
-        //                    cancellationToken: cancellationToken)
-        //                .ConfigureAwait(false);
-
-        //            if (tokenTransfersRes.HasError)
-        //                return tokenTransfersRes.Error;
-
-        //            if (tokenTransfersRes.Value.Any())
-        //            {
-        //                // hint: don't increase value of this variable
-        //                // Otherwise TzKT API can response with 414 Request-URI Too Large
-        //                const int MaxOperationIdsPerRequest = 100;
-
-        //                var uniqueOperationIds = tokenTransfersRes.Value
-        //                    .Select(tokenTransfer => tokenTransfer.TransactionId)
-        //                    .Distinct()
-        //                    .ToList();
-
-        //                var operations = new List<TokenOperation>();
-
-        //                var operationsIdsGroupsCount = Math.Ceiling(uniqueOperationIds.Count / (decimal)MaxOperationIdsPerRequest);
-
-        //                for (var i = 0; i < operationsIdsGroupsCount; i++)
-        //                {
-        //                    var operationIdsGroup = uniqueOperationIds
-        //                        .Skip(i * MaxOperationIdsPerRequest)
-        //                        .Take(MaxOperationIdsPerRequest);
-
-        //                    var operationIdsGroupString = string.Join(',', operationIdsGroup);
-
-        //                    var tokenOperationsRes = await HttpHelper
-        //                        .GetAsyncResult<List<TokenOperation>>(
-        //                            baseUri: _baseUri,
-        //                            requestUri: $"operations/transactions?id.in={operationIdsGroupString}&select=hash,counter,nonce,id&limit={MaxOperationIdsPerRequest}",
-        //                            responseHandler: (_, content) => JsonConvert.DeserializeObject<List<TokenOperation>>(content),
-        //                            cancellationToken: cancellationToken)
-        //                        .ConfigureAwait(false);
-
-        //                    if (tokenOperationsRes.HasError)
-        //                        return tokenOperationsRes.Error;
-
-        //                    operations.AddRange(tokenOperationsRes.Value);
-        //                }
-
-        //                transfers.AddRange(tokenTransfersRes.Value.Select(tokenTransfer =>
-        //                    {
-        //                        var tokenOperation = operations
-        //                            .Find(to => to.Id == tokenTransfer.TransactionId);
-
-        //                        return tokenTransfer.ToTokenTransfer(
-        //                            tokenOperation?.Hash ?? string.Empty,
-        //                            tokenOperation?.Counter ?? 0,
-        //                            tokenOperation?.Nonce
-        //                        );
-        //                    })
-        //                );
-
-        //                transfersCount += tokenTransfersRes.Value.Count;
-        //                offset += tokenTransfersRes.Value.Count;
-
-        //                if (tokenTransfersRes.Value.Count < limit)
-        //                    hasPages = false;
-        //            }
-        //            else
-        //            {
-        //                hasPages = false;
-        //            }
-        //        }
-        //    }
-
-        //    return transfers
-        //        .Distinct(new Common.EqualityComparer<TokenTransfer>(
-        //            (t1,t2) => t1.Id.Equals(t2.Id),
-        //            t => t.Id.GetHashCode()))
-        //        .ToList();
         //}
     }
 }

@@ -9,6 +9,7 @@ using Newtonsoft.Json.Linq;
 
 using Atomex.Common;
 using Atomex.Cryptography;
+using Atomex.Blockchain.Tezos.Common;
 
 namespace Atomex.Blockchain.Tezos.Internal
 {
@@ -35,7 +36,7 @@ namespace Atomex.Blockchain.Tezos.Internal
                 arrOps = new JArray(operations);
 
             var res = blockHeadHash != null
-                ? Base58Check.Decode(blockHeadHash, Prefix.b).ToHexString()
+                ? Base58Check.Decode(blockHeadHash, TezosPrefix.b).ToHexString()
                 : "";
 
             foreach (JObject op in arrOps)

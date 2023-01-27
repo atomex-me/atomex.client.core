@@ -17,7 +17,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt.Operations
         [JsonPropertyName("amount")]
         public long Amount { get; set; }
         [JsonPropertyName("parameter")]
-        public Parameter Parameter { get; set; }
+        public Parameter? Parameter { get; set; }
         [JsonPropertyName("hasInternals")]
         public bool HasInternals { get; set; }
     }

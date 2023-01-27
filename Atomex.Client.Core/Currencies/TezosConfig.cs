@@ -18,6 +18,7 @@ using Atomex.Cryptography;
 using Atomex.Wallet.Bip;
 using Atomex.Wallets.Keys;
 using Atomex.Wallets;
+using Atomex.Blockchain.Tezos.Common;
 
 namespace Atomex
 {
@@ -83,6 +84,8 @@ namespace Atomex
         public string ThumbsApiUri { get; protected set; }
         public string IpfsGatewayUri { get; protected set; }
         public string CatavaApiUri { get; protected set; }
+
+        public string ChainId { get; set; } = "NetXdQprcVkpaWU";
 
         public TezosConfig()
         {
@@ -203,7 +206,7 @@ namespace Atomex
         public TezosRpcSettings GetRpcSettings() => new()
         {
             Url = RpcNodeUri,
-            ChainId = ChainId.Main,
+            ChainId = Blockchain.Tezos.ChainId.Main,
             UserAgent = "Atomex"
         };
 
@@ -222,7 +225,7 @@ namespace Atomex
             
             return Base58Check.Encode(
                 data: new HmacBlake2b(HmacBlake2b.DefaultKeySize, PkHashSize).Mac(key: null, publicKey),
-                prefix: Prefix.Tz1);
+                prefix: TezosPrefix.Tz1);
         }
 
         public override bool IsValidAddress(string address) =>
@@ -311,10 +314,10 @@ namespace Atomex
         }
 
         private static bool CheckAddress(string address) =>
-            CheckAddress(address, Prefix.Tz1) ||
-            CheckAddress(address, Prefix.Tz2) ||
-            CheckAddress(address, Prefix.Tz3) ||
-            CheckAddress(address, Prefix.KT);
+            CheckAddress(address, TezosPrefix.Tz1) ||
+            CheckAddress(address, TezosPrefix.Tz2) ||
+            CheckAddress(address, TezosPrefix.Tz3) ||
+            CheckAddress(address, TezosPrefix.KT);
 
         public static string ParseAddress(JToken michelineExpr)
         {
@@ -337,10 +340,10 @@ namespace Atomex
 
                 var data = hex[..4] switch
                 {
-                    "0000" => Prefix.Tz1.ConcatArrays(raw.SubArray(2)),
-                    "0001" => Prefix.Tz2.ConcatArrays(raw.SubArray(2)),
-                    "0002" => Prefix.Tz3.ConcatArrays(raw.SubArray(2)),
-                    _ => raw[0] == 0x01 && raw[21] == 0x00 ? Prefix.KT.ConcatArrays(raw.SubArray(1, 20)) : null
+                    "0000" => TezosPrefix.Tz1.ConcatArrays(raw.SubArray(2)),
+                    "0001" => TezosPrefix.Tz2.ConcatArrays(raw.SubArray(2)),
+                    "0002" => TezosPrefix.Tz3.ConcatArrays(raw.SubArray(2)),
+                    _ => raw[0] == 0x01 && raw[21] == 0x00 ? TezosPrefix.KT.ConcatArrays(raw.SubArray(1, 20)) : null
                 };
                 if (data == null)
                     throw new ArgumentException($"Unknown address prefix: {hex}");

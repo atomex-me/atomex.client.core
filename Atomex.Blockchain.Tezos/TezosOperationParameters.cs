@@ -1,8 +1,6 @@
 ﻿using Netezos.Forging.Models;
 
-using Atomex.Wallet.Tezos;
-
-namespace Atomex.Wallets.Tezos
+namespace Atomex.Blockchain.Tezos
 {
     public class TezosOperationParameters
     {

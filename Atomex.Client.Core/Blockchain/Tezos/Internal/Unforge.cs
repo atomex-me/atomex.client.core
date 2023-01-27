@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Linq;
+using Atomex.Blockchain.Tezos.Common;
 using Atomex.Common;
 using Atomex.Cryptography;
 
@@ -17,9 +18,9 @@ namespace Atomex.Blockchain.Tezos.Internal
             {
                 return bytes[1] switch
                 {
-                    0x00 => Base58Check.Encode(bytes.SubArray(2), Prefix.Tz1),
-                    0x01 => Base58Check.Encode(bytes.SubArray(2), Prefix.Tz2),
-                    0x02 => Base58Check.Encode(bytes.SubArray(2), Prefix.Tz3),
+                    0x00 => Base58Check.Encode(bytes.SubArray(2), TezosPrefix.Tz1),
+                    0x01 => Base58Check.Encode(bytes.SubArray(2), TezosPrefix.Tz2),
+                    0x02 => Base58Check.Encode(bytes.SubArray(2), TezosPrefix.Tz3),
                     _ => throw new Exception($"Value address exception. Invalid prefix {prefix}"),
                 };
             }
@@ -27,7 +28,7 @@ namespace Atomex.Blockchain.Tezos.Internal
             {
                 if (bytes.Last() == 0x00)
                 {
-                    return Base58Check.Encode(bytes.SubArray(1, bytes.Length - 2), Prefix.KT);
+                    return Base58Check.Encode(bytes.SubArray(1, bytes.Length - 2), TezosPrefix.KT);
                 }
                 else throw new Exception($"Value address exception. Invalid suffix {bytes.Last()}");
             }

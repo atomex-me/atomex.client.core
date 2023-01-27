@@ -102,5 +102,6 @@ namespace Atomex.Common
         public const int AddressNotFound = 5006;
         public const int AutoFillError = 5007;
         public const int OperationBatchingError = 5008;
+        public const int GetFa12AllowanceError = 5009;
     }
 }

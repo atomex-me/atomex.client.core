@@ -29,36 +29,26 @@ namespace Atomex.Wallet.Tezos
             string address,
             CancellationToken cancellationToken)
         {
-            if (_cache.TryGetValue(address, out var cacheValue))
-            {
-                if (cacheValue.TimeStamp + UpdateInterval > DateTimeOffset.UtcNow)
-                    return cacheValue.Allocated;
-            }
+            if (_cache.TryGetValue(address, out var cacheValue) && cacheValue.TimeStamp + UpdateInterval > DateTimeOffset.UtcNow)
+                return cacheValue.Allocated;
 
-            var isAllocatedResult = await new TzktApi(_tezosConfig)
+            var (isAllocated, error) = await new TzktApi(_tezosConfig.GetTzktSettings())
                 .IsAllocatedAsync(address, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (isAllocatedResult == null)
+            if (error != null && error.Value.Code != (int)HttpStatusCode.NotFound)
             {
-                Log.Error("Error while checking allocation status for address {@address}", address);
-
-                return false;
-            }
-
-            if (isAllocatedResult.HasError && isAllocatedResult.Error.Code != (int)HttpStatusCode.NotFound)
-            {
-                Log.Error("Error while checking allocation status for address {@address}. Code: {@code}. Description: {@desc}",
+                Log.Error("Error while checking allocation status for address {@address}. Code: {@code}. Message: {@message}",
                     address,
-                    isAllocatedResult.Error.Code,
-                    isAllocatedResult.Error.Description);
+                    error.Value.Code,
+                    error.Value.Message);
 
                 return false;
             }
 
-            _cache[address] = new TezosAddressAllocationCache(isAllocatedResult.Value, DateTimeOffset.UtcNow);
+            _cache[address] = new TezosAddressAllocationCache(isAllocated, DateTimeOffset.UtcNow);
 
-            return isAllocatedResult.Value;
+            return isAllocated;
         }
     }
 }

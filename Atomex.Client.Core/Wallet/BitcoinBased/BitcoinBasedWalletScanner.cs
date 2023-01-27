@@ -16,6 +16,12 @@ namespace Atomex.Wallet.BitcoinBased
 {
     public class BitcoinBasedWalletScanner : ICurrencyWalletScanner
     {
+        private class AddressScanResult
+        {
+            public IEnumerable<BitcoinTxOutput> Outputs { get; set; }
+            public IEnumerable<BitcoinTransaction> Transactions { get; set; }
+        }
+
         private const int DefaultInternalLookAhead = 3;
         private const int DefaultExternalLookAhead = 3;
 
@@ -29,131 +35,127 @@ namespace Atomex.Wallet.BitcoinBased
             _account = account ?? throw new ArgumentNullException(nameof(account));
         }
 
-        public Task ScanAsync(
+        public async Task ScanAsync(
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(async () =>
+            try
             {
-                try
+                var scanParams = new[]
                 {
-                    var scanParams = new[]
+                    (Chain : Bip44.Internal, LookAhead : InternalLookAhead),
+                    (Chain : Bip44.External, LookAhead : ExternalLookAhead),
+                };
+
+                var api = BitcoinBasedConfig.BlockchainApi as BitcoinBlockchainApi;
+
+                var outputs = new List<BitcoinTxOutput>();
+                var txs = new List<BitcoinTransaction>();
+                var walletAddresses = new List<WalletAddress>();
+
+                WalletAddress defautWalletAddress = null;
+
+                foreach (var (chain, lookAhead) in scanParams)
+                {
+                    var freeKeysCount = 0;
+                    var account = 0u;
+                    var index = 0u;
+
+                    while (true)
                     {
-                        (Chain : Bip44.Internal, LookAhead : InternalLookAhead),
-                        (Chain : Bip44.External, LookAhead : ExternalLookAhead),
-                    };
+                        cancellationToken.ThrowIfCancellationRequested();
 
-                    var api = BitcoinBasedConfig.BlockchainApi as BitcoinBlockchainApi;
-
-                    var outputs = new List<BitcoinTxOutput>();
-                    var txs = new List<BitcoinTransaction>();
-                    var walletAddresses = new List<WalletAddress>();
-
-                    WalletAddress defautWalletAddress = null;
-
-                    foreach (var (chain, lookAhead) in scanParams)
-                    {
-                        var freeKeysCount = 0;
-                        var account = 0u;
-                        var index = 0u;
-
-                        while (true)
-                        {
-                            cancellationToken.ThrowIfCancellationRequested();
-
-                            var walletAddress = await _account
-                                .DivideAddressAsync(
-                                    account: account,
-                                    chain: chain,
-                                    index: index,
-                                    keyType: CurrencyConfig.StandardKey)
-                                .ConfigureAwait(false);
-
-                            if (walletAddress.KeyType == CurrencyConfig.StandardKey &&
-                                walletAddress.KeyIndex.Chain == Bip44.External &&
-                                walletAddress.KeyIndex.Account == 0 &&
-                                walletAddress.KeyIndex.Index == 0)
-                            {
-                                defautWalletAddress = walletAddress;
-                            }
-
-                            var outputsResult = await UpdateAddressAsync(
-                                    walletAddress: walletAddress,
-                                    api: api,
-                                    cancellationToken: cancellationToken)
-                                .ConfigureAwait(false);
-
-                            if (outputsResult.HasError)
-                            {
-                                Log.Error("[BitcoinBasedWalletScanner] ScanAsync error while scan {@address}", walletAddress.Address);
-                                return;
-                            }
-
-                            if (!walletAddress.HasActivity && !outputsResult.Value.Item1.Any()) // address without activity
-                            {
-                                freeKeysCount++;
-
-                                if (freeKeysCount >= lookAhead)
-                                {
-                                    Log.Debug("[BitcoinBasedWalletScanner] {@lookAhead} free keys found. Chain scan completed", lookAhead);
-                                    break;
-                                }
-                            }
-                            else // address has activity
-                            {
-                                freeKeysCount = 0;
-
-                                outputs.AddRange(outputsResult.Value.Item1);
-                                txs.AddRange(outputsResult.Value.Item2);
-
-                                // save only active addresses
-                                walletAddresses.Add(walletAddress);
-                            }
-
-                            index++;
-                        }
-                    }
-
-                    if (outputs.Any())
-                    {
-                        var upsertResult = await _account
-                            .LocalStorage
-                            .UpsertOutputsAsync(
-                                outputs: outputs,
-                                currency: _account.Currency,
-                                network: BitcoinBasedConfig.Network)
+                        var walletAddress = await _account
+                            .DivideAddressAsync(
+                                account: account,
+                                chain: chain,
+                                index: index,
+                                keyType: CurrencyConfig.StandardKey)
                             .ConfigureAwait(false);
-                    }
 
-                    if (txs.Any())
-                    {
-                        var upsertResult = await _account
-                            .LocalStorage
-                            .UpsertTransactionsAsync(
-                                txs,
-                                notifyIfNewOrChanged: true,
+                        if (walletAddress.KeyType == CurrencyConfig.StandardKey &&
+                            walletAddress.KeyIndex.Chain == Bip44.External &&
+                            walletAddress.KeyIndex.Account == 0 &&
+                            walletAddress.KeyIndex.Index == 0)
+                        {
+                            defautWalletAddress = walletAddress;
+                        }
+
+                        var (updateResult, error) = await UpdateAddressAsync(
+                                walletAddress: walletAddress,
+                                api: api,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
+
+                        if (error != null)
+                        {
+                            Log.Error("[BitcoinBasedWalletScanner] ScanAsync error while scan {@address}", walletAddress.Address);
+                            return;
+                        }
+
+                        if (!walletAddress.HasActivity && !updateResult.Outputs.Any()) // address without activity
+                        {
+                            freeKeysCount++;
+
+                            if (freeKeysCount >= lookAhead)
+                            {
+                                Log.Debug("[BitcoinBasedWalletScanner] {@lookAhead} free keys found. Chain scan completed", lookAhead);
+                                break;
+                            }
+                        }
+                        else // address has activity
+                        {
+                            freeKeysCount = 0;
+
+                            outputs.AddRange(updateResult.Outputs);
+                            txs.AddRange(updateResult.Transactions);
+
+                            // save only active addresses
+                            walletAddresses.Add(walletAddress);
+                        }
+
+                        index++;
                     }
+                }
 
-                    if (!walletAddresses.Any())
-                        walletAddresses.Add(defautWalletAddress);
-
-                    var _ = await _account
+                if (outputs.Any())
+                {
+                    var upsertResult = await _account
                         .LocalStorage
-                        .UpsertAddressesAsync(walletAddresses)
+                        .UpsertOutputsAsync(
+                            outputs: outputs,
+                            currency: _account.Currency,
+                            network: BitcoinBasedConfig.Network)
                         .ConfigureAwait(false);
                 }
-                catch (OperationCanceledException)
+
+                if (txs.Any())
                 {
-                    Log.Debug("[BitcoinBasedWalletScanner] ScanAsync canceled");
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "[BitcoinBasedWalletScanner] ScanAsync error: {@message}", e.Message);
+                    var upsertResult = await _account
+                        .LocalStorage
+                        .UpsertTransactionsAsync(
+                            txs,
+                            notifyIfNewOrChanged: true,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
                 }
 
-            }, cancellationToken);
+                if (!walletAddresses.Any())
+                    walletAddresses.Add(defautWalletAddress);
+
+                var _ = await _account
+                    .LocalStorage
+                    .UpsertAddressesAsync(walletAddresses)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("[BitcoinBasedWalletScanner] ScanAsync canceled");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[BitcoinBasedWalletScanner] ScanAsync error: {@message}", e.Message);
+            }
         }
 
         [Obsolete("Use UpdateBalanceAsync instead")]
@@ -164,206 +166,203 @@ namespace Atomex.Wallet.BitcoinBased
             return UpdateBalanceAsync(address, cancellationToken);
         }
 
-        public Task UpdateBalanceAsync(
+        public async Task UpdateBalanceAsync(
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(async () =>
+            try
             {
-                try
+                var updateTimeStamp = DateTime.UtcNow;
+
+                var walletAddresses = await _account
+                    .GetAddressesAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                // todo: if skipUsed == true => skip "disabled" wallets
+
+                var api = BitcoinBasedConfig.BlockchainApi as BitcoinBlockchainApi;
+                var outputs = new List<BitcoinTxOutput>();
+                var txs = new List<BitcoinTransaction>();
+
+                foreach (var walletAddress in walletAddresses)
                 {
-                    var updateTimeStamp = DateTime.UtcNow;
-
-                    var walletAddresses = await _account
-                        .GetAddressesAsync(cancellationToken)
-                        .ConfigureAwait(false);
-
-                    // todo: if skipUsed == true => skip "disabled" wallets
-
-                    var api = BitcoinBasedConfig.BlockchainApi as BitcoinBlockchainApi;
-                    var outputs = new List<BitcoinTxOutput>();
-                    var txs = new List<BitcoinTransaction>();
-
-                    foreach (var walletAddress in walletAddresses)
-                    {
-                        var updateResult = await UpdateAddressAsync(
-                                walletAddress,
-                                api: api,
-                                cancellationToken: cancellationToken)
-                            .ConfigureAwait(false);
-
-                        if (updateResult.HasError)
-                        {
-                            Log.Error("[BitcoinBasedWalletScanner] UpdateBalanceAsync error while scan {@address}", walletAddress.Address);
-                            return;
-                        }
-
-                        outputs.AddRange(updateResult.Value.Item1);
-                        txs.AddRange(updateResult.Value.Item2);
-                    }
-
-                    if (outputs.Any())
-                    {
-                        var upsertResult = await _account
-                            .LocalStorage
-                            .UpsertOutputsAsync(
-                                outputs: outputs,
-                                currency: _account.Currency,
-                                network: BitcoinBasedConfig.Network)
-                            .ConfigureAwait(false);
-                    }
-
-                    if (txs.Any())
-                    {
-                        var upsertResult = await _account
-                            .LocalStorage
-                            .UpsertTransactionsAsync(
-                                txs,
-                                notifyIfNewOrChanged: true,
-                                cancellationToken: cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-
-                    if (walletAddresses.Any())
-                    {
-                        var _ = await _account
-                            .LocalStorage
-                            .UpsertAddressesAsync(walletAddresses)
-                            .ConfigureAwait(false);
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    Log.Debug("[BitcoinBasedWalletScanner] UpdateBalanceAsync canceled");
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "[BitcoinBasedWalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
-                }
-
-            }, cancellationToken);
-        }
-
-        public Task UpdateBalanceAsync(
-            string address,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.Run(async () =>
-            {
-                try
-                {
-                    Log.Debug("[BitcoinBasedWalletScanner] UpdateBalanceAsync for address {@address}", address);
-
-                    var walletAddress = await _account
-                        .LocalStorage
-                        .GetWalletAddressAsync(_account.Currency, address)
-                        .ConfigureAwait(false);
-
-                    if (walletAddress == null)
-                    {
-                        Log.Error("[BitcoinBasedWalletScanner] UpdateBalanceAsync error. Can't find address {@address} in local db", address);
-                        return;
-                    }
-
-                    var updateResult = await UpdateAddressAsync(
+                    var (updateResult, error) = await UpdateAddressAsync(
                             walletAddress,
-                            api: null,
+                            api: api,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (updateResult.HasError)
+                    if (error != null)
                     {
-                        Log.Error("[BitcoinBasedWalletScanner] UpdateBalanceAsync error while scan {@address}", address);
+                        Log.Error("[BitcoinBasedWalletScanner] UpdateBalanceAsync error while scan {@address}", walletAddress.Address);
                         return;
                     }
 
-                    if (updateResult.Value.Item1.Any())
-                    {
-                        await _account
-                            .LocalStorage
-                            .UpsertOutputsAsync(
-                                outputs: updateResult.Value.Item1,
-                                currency: _account.Currency,
-                                network: BitcoinBasedConfig.Network)
-                            .ConfigureAwait(false);
-                    }
+                    outputs.AddRange(updateResult.Outputs);
+                    txs.AddRange(updateResult.Transactions);
+                }
 
-                    if (updateResult.Value.Item2.Any())
-                    {
-                        var upsertResult = await _account
-                            .LocalStorage
-                            .UpsertTransactionsAsync(
-                                updateResult.Value.Item2,
-                                notifyIfNewOrChanged: true,
-                                cancellationToken: cancellationToken)
-                            .ConfigureAwait(false);
-                    }
+                if (outputs.Any())
+                {
+                    var upsertResult = await _account
+                        .LocalStorage
+                        .UpsertOutputsAsync(
+                            outputs: outputs,
+                            currency: _account.Currency,
+                            network: BitcoinBasedConfig.Network)
+                        .ConfigureAwait(false);
+                }
 
+                if (txs.Any())
+                {
+                    var upsertResult = await _account
+                        .LocalStorage
+                        .UpsertTransactionsAsync(
+                            txs,
+                            notifyIfNewOrChanged: true,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                if (walletAddresses.Any())
+                {
                     var _ = await _account
                         .LocalStorage
-                        .UpsertAddressAsync(walletAddress)
+                        .UpsertAddressesAsync(walletAddresses)
                         .ConfigureAwait(false);
-
                 }
-                catch (OperationCanceledException)
-                {
-                    Log.Debug("[BitcoinBasedWalletScanner] UpdateBalanceAsync canceled");
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "[BitcoinBasedWalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
-                }
-
-            }, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("[BitcoinBasedWalletScanner] UpdateBalanceAsync canceled");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[BitcoinBasedWalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
+            }
         }
 
-        private async Task<Result<(IEnumerable<BitcoinTxOutput>, IEnumerable<BitcoinTransaction>)>> UpdateAddressAsync(
+        public async Task UpdateBalanceAsync(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                Log.Debug("[BitcoinBasedWalletScanner] UpdateBalanceAsync for address {@address}", address);
+
+                var walletAddress = await _account
+                    .LocalStorage
+                    .GetWalletAddressAsync(_account.Currency, address)
+                    .ConfigureAwait(false);
+
+                if (walletAddress == null)
+                {
+                    Log.Error("[BitcoinBasedWalletScanner] UpdateBalanceAsync error. Can't find address {@address} in local db", address);
+                    return;
+                }
+
+                var (updateResult, error) = await UpdateAddressAsync(
+                        walletAddress,
+                        api: null,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (error != null)
+                {
+                    Log.Error("[BitcoinBasedWalletScanner] UpdateBalanceAsync error while scan {@address}", address);
+                    return;
+                }
+
+                if (updateResult.Outputs.Any())
+                {
+                    await _account
+                        .LocalStorage
+                        .UpsertOutputsAsync(
+                            outputs: updateResult.Outputs,
+                            currency: _account.Currency,
+                            network: BitcoinBasedConfig.Network)
+                        .ConfigureAwait(false);
+                }
+
+                if (updateResult.Transactions.Any())
+                {
+                    var upsertResult = await _account
+                        .LocalStorage
+                        .UpsertTransactionsAsync(
+                            updateResult.Transactions,
+                            notifyIfNewOrChanged: true,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                var _ = await _account
+                    .LocalStorage
+                    .UpsertAddressAsync(walletAddress)
+                    .ConfigureAwait(false);
+
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("[BitcoinBasedWalletScanner] UpdateBalanceAsync canceled");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[BitcoinBasedWalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
+            }
+        }
+
+        private async Task<Result<AddressScanResult>> UpdateAddressAsync(
             WalletAddress walletAddress,
             BitcoinBlockchainApi api = null,
             CancellationToken cancellationToken = default)
         {
             var updateTimeStamp = DateTime.UtcNow;
 
-            if (api == null)
-                api = BitcoinBasedConfig.BlockchainApi as BitcoinBlockchainApi;
+            api ??= BitcoinBasedConfig.BlockchainApi as BitcoinBlockchainApi;
 
-            var addressInfo = await api
+            var (addressInfo, addressInfoError) = await api
                 .GetAddressInfo(walletAddress.Address, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (addressInfo.HasError)
+            if (addressInfoError != null)
             {
-                Log.Error("[BitcoinBasedWalletScanner] UpdateAddressAsync error while getting address info for {@address} with code {@code} and description {@description}",
+                Log.Error("[BitcoinBasedWalletScanner] UpdateAddressAsync error while getting address info for {@address} with code {@code} and message {@message}",
                     walletAddress.Address,
-                    addressInfo.Error.Code,
-                    addressInfo.Error.Description);
+                    addressInfoError.Value.Code,
+                    addressInfoError.Value.Message);
             }
 
-            walletAddress.Balance = addressInfo.Value.Balance;
-            walletAddress.UnconfirmedIncome = addressInfo.Value.UnconfirmedIncome;
-            walletAddress.UnconfirmedOutcome = addressInfo.Value.UnconfirmedOutcome;
-            walletAddress.HasActivity = addressInfo.Value.Outputs.Any();
+            walletAddress.Balance               = addressInfo.Balance;
+            walletAddress.UnconfirmedIncome     = addressInfo.UnconfirmedIncome;
+            walletAddress.UnconfirmedOutcome    = addressInfo.UnconfirmedOutcome;
+            walletAddress.HasActivity           = addressInfo.Outputs.Any();
             walletAddress.LastSuccessfullUpdate = updateTimeStamp;
 
-            if (!addressInfo.Value.Outputs.Any())
-                new Result<(IEnumerable<BitcoinTxOutput>, IEnumerable<BitcoinTransaction>)>((
-                    addressInfo.Value.Outputs,
-                    Enumerable.Empty<BitcoinTransaction>()));
+            if (!addressInfo.Outputs.Any())
+                return new Result<AddressScanResult> {
+                    Value = new AddressScanResult {
+                        Outputs = addressInfo.Outputs,
+                        Transactions = Enumerable.Empty<BitcoinTransaction>()
+                    }
+                };
 
-            var txsResult = await UpdateTransactionsAsync(addressInfo.Value.Outputs, cancellationToken)
+            var (txs, txsError) = await UpdateTransactionsAsync(addressInfo.Outputs, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (txsResult.HasError)
+            if (txsError != null)
             {
-                Log.Error("[BitcoinBasedWalletScanner] UpdateAddressAsync error while getting transactions for {@address} with code {@code} and description {@description}",
+                Log.Error("[BitcoinBasedWalletScanner] UpdateAddressAsync error while getting transactions for {@address} with code {@code} and message {@message}",
                     walletAddress.Address,
-                    addressInfo.Error.Code,
-                    addressInfo.Error.Description);
+                    txsError.Value.Code,
+                    txsError.Value.Message);
             }
 
-            return new Result<(IEnumerable<BitcoinTxOutput>, IEnumerable<BitcoinTransaction>)>((
-                addressInfo.Value.Outputs,
-                txsResult.Value));
+            return new Result<AddressScanResult> {
+                Value = new AddressScanResult {
+                    Outputs = addressInfo.Outputs,
+                    Transactions = txs
+                }
+            };
         }
 
         [Obsolete("Transactions can be partially collected from outputs without full tx data requests")]
@@ -377,9 +376,10 @@ namespace Atomex.Wallet.BitcoinBased
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var txIds = output.IsSpent
-                    ? new[] { output.TxId, output.SpentTxPoint.Hash }
-                    : new[] { output.TxId };
+                var txIds = new List<string> { output.TxId };
+
+                if (output.IsSpent)
+                    txIds.AddRange(output.SpentTxPoints.Select(p => p.Hash));
 
                 foreach (var txId in txIds)
                 {
@@ -397,29 +397,21 @@ namespace Atomex.Wallet.BitcoinBased
 
                     Log.Debug("[BitcoinBasedWalletScanner] Scan {@currency} transaction {@txId}", _account.Currency, txId);
 
-                    var txResult = await BitcoinBasedConfig
+                    var (tx, error) = await BitcoinBasedConfig
                         .BlockchainApi
                         .GetTransactionAsync(txId, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (txResult == null)
-                    {
-                        Log.Error("[BitcoinBasedWalletScanner] Error while get transactions {@txId}", txId);
-                        continue;
-                    }
-
-                    if (txResult.HasError)
+                    if (error != null)
                     {
                         Log.Error(
-                            "[BitcoinBasedWalletScanner] Error while get transactions {@txId}. Code: {@code}. Description: {@desc}",
+                            "[BitcoinBasedWalletScanner] Error while get transactions {@txId}. Code: {@code}. Message: {@message}",
                             txId,
-                            txResult.Error.Code,
-                            txResult.Error.Description);
+                            error.Value.Code,
+                            error.Value.Message);
 
                         continue;
                     }
-
-                    var tx = txResult.Value;
 
                     if (tx == null)
                     {

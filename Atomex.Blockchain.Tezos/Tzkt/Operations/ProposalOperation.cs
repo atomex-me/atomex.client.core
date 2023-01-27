@@ -10,6 +10,8 @@ namespace Atomex.Blockchain.Tezos.Tzkt.Operations
         public ProposalAlias Proposal { get; set; }
         [JsonPropertyName("delegate")]
         public Alias Delegate { get; set; }
+        [JsonPropertyName("votingPower")]
+        public int VotingPower { get; set; }
         [JsonPropertyName("rolls")]
         public int Rolls { get; set; }
         [JsonPropertyName("duplicated")]

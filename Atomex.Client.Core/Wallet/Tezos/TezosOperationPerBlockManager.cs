@@ -16,10 +16,29 @@ namespace Atomex.Wallets.Tezos
 {
     public class TezosAddressOperatioPerBlockManager : IDisposable
     {
+        private class TezosOperationCompletionEvent
+        {
+            public TezosOperationCompletionEvent(IEnumerable<TezosOperationParameters> operationsParameters)
+            {
+                OperationsParameters = operationsParameters ?? throw new ArgumentNullException(nameof(operationsParameters));
+                CompletionEvent = new ManualResetEventAsync(isSet: false);
+            }
+
+            public IEnumerable<TezosOperationParameters> OperationsParameters { get; }
+            public ManualResetEventAsync CompletionEvent { get; }
+            public TezosOperationRequestResult Result { get; private set; }
+
+            public void CompleteWithResult(TezosOperationRequestResult result)
+            {
+                Result = result;
+                CompletionEvent.Set();
+            }
+        }
+
         private const int ConfirmationCheckIntervalSec = 5;
 
         private readonly TezosAccount _account;
-        private readonly AsyncQueue<TezosOperationGroup> _operationsQueue;
+        private readonly AsyncQueue<TezosOperationCompletionEvent> _operationsQueue;
         private CancellationTokenSource _cts;
         private Task _worker;
         
@@ -34,28 +53,25 @@ namespace Atomex.Wallets.Tezos
         public TezosAddressOperatioPerBlockManager(TezosAccount account)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
-            _operationsQueue = new AsyncQueue<TezosOperationGroup>();
+            _operationsQueue = new AsyncQueue<TezosOperationCompletionEvent>();
             _confirmedEvent = new ManualResetEventAsync(isSet: false);
         }
 
-        public async Task<Result<TezosOperation>> SendOperationAsync(
+        public async Task<Result<TezosOperationRequestResult>> SendOperationAsync(
             IEnumerable<TezosOperationParameters> operationsParameters,
             CancellationToken cancellationToken = default)
         {
-            var operationGroup = new TezosOperationGroup(operationsParameters);
+            var operationCompletionEvent = new TezosOperationCompletionEvent(operationsParameters);
 
-            _operationsQueue.Add(operationGroup);
+            _operationsQueue.Add(operationCompletionEvent);
 
             // wait for completion
-            await operationGroup
+            await operationCompletionEvent
                 .CompletionEvent
                 .WaitAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            if (operationGroup.Error != null)
-                return operationGroup.Error;
-
-            return operationGroup.Operation;
+            return operationCompletionEvent.Result;
         }
 
         public void Start()
@@ -81,20 +97,19 @@ namespace Atomex.Wallets.Tezos
 
         private async Task DoWork()
         {
-            List<TezosOperationGroup> operationGroups = null;
+            List<TezosOperationCompletionEvent> operationCompletionEvents = null;
 
             while (!_cts.IsCancellationRequested)
             {
-                operationGroups?.Clear();
+                operationCompletionEvents?.Clear();
 
                 try
                 {
                     // check if there are unconfirmed operations
                     var unconfirmedOperations = await _account
                         .LocalStorage
-                        .GetUnconfirmedTransactionsAsync<TezosOperationRequest>(
-                            currency: _account.Currency,
-                            cancellationToken: _cts.Token)
+                        .GetUnconfirmedTransactionsAsync<TezosOperation>(
+                            currency: _account.Currency)
                         .ConfigureAwait(false);
 
                     while (unconfirmedOperations.Any())
@@ -108,44 +123,71 @@ namespace Atomex.Wallets.Tezos
                         unconfirmedOperations = await _account
                             .LocalStorage
                             .GetUnconfirmedTransactionsAsync<TezosOperation>(
-                                currency: _account.Currency,
-                                cancellationToken: _cts.Token)
+                                currency: _account.Currency)
                             .ConfigureAwait(false);
                     }
 
                     // get all operation groups from the queue
-                    operationGroups = await GetOperationGroupsFromQueueAsync(_operationsQueue, _cts.Token)
+                    operationCompletionEvents = await GetOperationGroupsFromQueueAsync(_operationsQueue, _cts.Token)
                         .ConfigureAwait(false);
 
                     var operationsParameters = new List<TezosOperationParameters>();
 
-                    foreach (var og in operationGroups)
+                    foreach (var og in operationCompletionEvents)
                         operationsParameters.AddRange(og.OperationsParameters);
 
+                    var from = operationsParameters.First().From;
+
+                    var walletAddress = await _account
+                        .GetAddressAsync(from, _cts.Token)
+                        .ConfigureAwait(false);
+
+                    var tezosConfig = _account.Config;
+
+                    using var securePublicKey = _account.Wallet
+                        .GetPublicKey(tezosConfig, walletAddress.KeyIndex, walletAddress.KeyType);
+
+                    var publicKey = securePublicKey.ToUnsecuredBytes();
+
+                    var rpcSettings = tezosConfig.GetRpcSettings();
+                    var rpc = new TezosRpc(rpcSettings);
+
                     // fill operation
-                    var (operation, fillingError) = await TezosOperationFiller
+                    var (operationRequest, fillingError) = await rpc
                         .FillOperationAsync(
                             operationsRequests: operationsParameters,
-                            account: _account,
+                            publicKey: publicKey,
+                            settings: new TezosFillOperationSettings
+                            {
+                                ActivationStorageLimit   = (int)tezosConfig.ActivationStorage,
+                                ChainId                  = tezosConfig.ChainId,
+                                HeadSizeInBytes          = (int)tezosConfig.HeadSizeInBytes,
+                                MinimalFee               = (int)tezosConfig.MinimalFee,
+                                MinimalNanotezPerByte    = tezosConfig.MinimalNanotezPerByte,
+                                MinimalNanotezPerGasUnit = tezosConfig.MinimalNanotezPerGasUnit,
+                                ReserveGasLimit          = (int)tezosConfig.GasReserve,
+                                RevealGasLimit           = (int)tezosConfig.RevealGasLimit,
+                                SignatureSizeInBytes     = (int)tezosConfig.SigSizeInBytes
+                            },
                             cancellationToken: _cts.Token)
                         .ConfigureAwait(false);
 
-                    var (txId, sendingError) = await _account
-                        .SendOperationAsync(operation, _cts.Token)
+                    var (operationId, sendingError) = await _account
+                        .SendOperationAsync(operationRequest, _cts.Token)
                         .ConfigureAwait(false);
 
                     if (sendingError != null)
                     {
                         // notify all subscribers about error
-                        foreach (var op in operationGroups)
-                            op.CompleteWithError(sendingError);
+                        foreach (var op in operationCompletionEvents)
+                            op.CompleteWithResult(TezosOperationRequestResult.FromError(operationRequest, sendingError.Value));
 
                         continue;
                     }
 
                     // notify all subscribers
-                    foreach (var op in operationGroups)
-                        op.CompleteWithOperation(operation);
+                    foreach (var op in operationCompletionEvents)
+                        op.CompleteWithResult(TezosOperationRequestResult.FromOperation(operationRequest, operationId));
                 }
                 catch (OperationCanceledException)
                 {
@@ -158,18 +200,18 @@ namespace Atomex.Wallets.Tezos
                     var error = new Error(Errors.OperationBatchingError, ex.Message);
 
                     // notify all subscribers about error
-                    if (operationGroups != null)
-                        foreach (var op in operationGroups)
-                            op.CompleteWithError(error);
+                    if (operationCompletionEvents != null)
+                        foreach (var op in operationCompletionEvents)
+                            op.CompleteWithResult(TezosOperationRequestResult.FromError(request: null, error));
                 }
             }
         }
 
-        public static async Task<List<TezosOperationGroup>> GetOperationGroupsFromQueueAsync(
-            AsyncQueue<TezosOperationGroup> queue,
+        private static async Task<List<TezosOperationCompletionEvent>> GetOperationGroupsFromQueueAsync(
+            AsyncQueue<TezosOperationCompletionEvent> queue,
             CancellationToken cancellationToken)
         {
-            var operationGroups = new List<TezosOperationGroup>();
+            var operationGroups = new List<TezosOperationCompletionEvent>();
 
             do
             {
@@ -216,7 +258,7 @@ namespace Atomex.Wallets.Tezos
             _batchers = new ConcurrentDictionary<string, Lazy<TezosAddressOperatioPerBlockManager>>();
         }
 
-        public async Task<Result<TezosOperation>> SendOperationsAsync(
+        public async Task<Result<TezosOperationRequestResult>> SendOperationsAsync(
             TezosAccount account,
             IEnumerable<TezosOperationParameters> operationsParameters,
             CancellationToken cancellationToken = default)

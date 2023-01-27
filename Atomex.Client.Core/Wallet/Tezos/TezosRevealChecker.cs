@@ -29,36 +29,26 @@ namespace Atomex.Wallet.Tezos
             string address,
             CancellationToken cancellationToken)
         {
-            if (_cache.TryGetValue(address, out var cacheValue))
-            {
-                if (cacheValue.TimeStamp + UpdateInterval > DateTimeOffset.UtcNow)
-                    return cacheValue.Revealed;
-            }
+            if (_cache.TryGetValue(address, out var cacheValue) && cacheValue.TimeStamp + UpdateInterval > DateTimeOffset.UtcNow)
+                return cacheValue.Revealed;
 
-            var isRevealedResult = await new TzktApi(_tezosConfig)
+            var (isRevealed, error) = await new TzktApi(_tezosConfig.GetTzktSettings())
                 .IsRevealedAsync(address, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (isRevealedResult == null)
+            if (error != null && error.Value.Code != (int)HttpStatusCode.NotFound)
             {
-                Log.Error("Error while checking reveal status for address {@address}", address);
-
-                return false;
-            }
-
-            if (isRevealedResult.HasError && isRevealedResult.Error.Code != (int)HttpStatusCode.NotFound)
-            {
-                Log.Error("Error while checking reveal status for address {@address}. Code: {@code}. Description: {@desc}",
+                Log.Error("Error while checking reveal status for address {@address}. Code: {@code}. Message: {@message}",
                     address,
-                    isRevealedResult.Error.Code,
-                    isRevealedResult.Error.Description);
+                    error.Value.Code,
+                    error.Value.Message);
 
                 return false;
             }
 
-            _cache[address] = new TezosAddressRevealCache(isRevealedResult.Value, DateTimeOffset.UtcNow);
+            _cache[address] = new TezosAddressRevealCache(isRevealed, DateTimeOffset.UtcNow);
 
-            return isRevealedResult.Value;
+            return isRevealed;
         }
     }
 }

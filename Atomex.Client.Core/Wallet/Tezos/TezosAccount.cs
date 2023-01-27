@@ -38,7 +38,6 @@ namespace Atomex.Wallet.Tezos
             }
         }
 
-
         private readonly TezosRevealChecker _tezosRevealChecker;
         private readonly TezosAllocationChecker _tezosAllocationChecker;
 
@@ -56,128 +55,20 @@ namespace Atomex.Wallet.Tezos
 
         public TezosConfig Config => Currencies.Get<TezosConfig>(Currency);
 
-        //public async Task<Result<string>> SendAsync(
-        //    string from,
-        //    string to,
-        //    decimal amount,
-        //    decimal fee,
-        //    bool useDefaultFee = true,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    //if (from == to)
-        //    //    return new Error(
-        //    //        code: Errors.SendingAndReceivingAddressesAreSame,
-        //    //        description: "Sending and receiving addresses are the same.");
-
-        //    var xtzConfig = Config;
-
-        //    var addressFeeUsage = await CalculateFundsUsageAsync(
-        //            from: from,
-        //            to: to,
-        //            amount: amount,
-        //            fee: fee,
-        //            feeUsagePolicy: useDefaultFee
-        //                ? FeeUsagePolicy.EstimatedFee
-        //                : FeeUsagePolicy.FeePerTransaction,
-        //            transactionType: TransactionType.Output,
-        //            cancellationToken: cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    if (addressFeeUsage == null)
-        //        return new Error(
-        //            code: Errors.InsufficientFunds,
-        //            message: "Insufficient funds");
-
-        //    var isActive = await IsAllocatedDestinationAsync(to, cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    // todo: min fee control
-        //    var addressAmountMtz = addressFeeUsage.UsedAmount.ToMicroTez();
-
-        //    Log.Debug("Send {@amount} XTZ from address {@address} with available balance {@balance}",
-        //        addressFeeUsage.UsedAmount,
-        //        addressFeeUsage.WalletAddress.Address,
-        //        addressFeeUsage.WalletAddress.AvailableBalance());
-
-        //    var storageLimit = isActive
-        //        ? Math.Max(xtzConfig.StorageLimit - xtzConfig.ActivationStorage, 0) // without activation storage fee
-        //        : xtzConfig.StorageLimit;
-
-        //    var tx = new TezosOperation
-        //    {
-        //        Currency      = xtzConfig.Name,
-        //        CreationTime  = DateTime.UtcNow,
-        //        From          = addressFeeUsage.WalletAddress.Address,
-        //        To            = to,
-        //        Amount        = Math.Round(addressAmountMtz, 0),
-        //        Fee           = addressFeeUsage.UsedFee.ToMicroTez(),
-        //        GasLimit      = xtzConfig.GasLimit,
-        //        StorageLimit  = storageLimit,
-        //        Type          = TransactionType.Output,
-
-        //        UseRun              = false, //useDefaultFee,
-        //        UseSafeStorageLimit = false,
-        //        UseOfflineCounter   = true
-        //    };
-
-        //    using var addressLock = await AddressLocker
-        //        .GetLockAsync(addressFeeUsage.WalletAddress.Address, cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    // temporary fix: check operation sequence
-        //    await TezosOperationsSequencer
-        //        .WaitAsync(addressFeeUsage.WalletAddress.Address, this, cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    using var securePublicKey = Wallet.GetPublicKey(
-        //        currency: xtzConfig,
-        //        keyIndex: addressFeeUsage.WalletAddress.KeyIndex,
-        //        keyType: addressFeeUsage.WalletAddress.KeyType);
-
-        //    // fill operation
-        //    var (fillResult, isRunSuccess, hasReveal) = await tx
-        //        .FillOperationsAsync(
-        //            securePublicKey: securePublicKey,
-        //            tezosConfig: xtzConfig,
-        //            headOffset: TezosConfig.HeadOffset,
-        //            cancellationToken: cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    var signResult = await SignAsync(tx, cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    if (!signResult)
-        //        return new Error(
-        //            code: Errors.TransactionSigningError,
-        //            message: "Transaction signing error");
-
-        //    var (txId, broadcastError) = await xtzConfig.BlockchainApi
-        //        .BroadcastAsync(tx, cancellationToken: cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    if (broadcastError != null)
-        //        return broadcastError;
-
-        //    if (txId == null)
-        //        return new Error(
-        //            code: Errors.TransactionBroadcastError,
-        //            message: "Transaction Id is null");
-
-        //    Log.Debug("Transaction successfully sent with txId: {@id}", txId);
-
-        //    var _ = await LocalStorage
-        //        .UpsertTransactionAsync(
-        //            tx: tx,
-        //            notifyIfNewOrChanged: true,
-        //            cancellationToken: cancellationToken)
-        //        .ConfigureAwait(false);
-
-        //    return txId;
-        //}
-
         #region Sending
 
-        public async Task<Result<TezosOperation>> SendTransactionAsync(
+        public Task<Result<TezosOperationRequestResult>> SendTransactionsAsync(
+            IEnumerable<TezosOperationParameters> transactions,
+            CancellationToken cancellationToken = default)
+        {
+            return OperationsBatcher
+                .SendOperationsAsync(
+                    account: this,
+                    operationsParameters: transactions,
+                    cancellationToken: cancellationToken);
+        }
+
+        public async Task<Result<TezosOperationRequestResult>> SendTransactionAsync(
             string from,
             string to,
             long amount,
@@ -257,11 +148,11 @@ namespace Atomex.Wallet.Tezos
         }
 
         internal async Task<Result<string>> SendOperationAsync(
-            TezosOperationRequest operation,
+            TezosOperationRequest operationRequest,
             CancellationToken cancellationToken = default)
         {
             // sign the operation
-            var (_, error) = await SignAsync(operation, cancellationToken)
+            var (_, error) = await SignAsync(operationRequest, cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)
@@ -269,31 +160,25 @@ namespace Atomex.Wallet.Tezos
 
             var rpc = new TezosRpc(Config.GetRpcSettings());
 
-            var forgedOperationBytes = await operation
+            var forgedOperationBytes = await operationRequest
                 .ForgeAsync()
                 .ConfigureAwait(false);
 
-            var signedBytesInHex = forgedOperationBytes.ToHexString() + operation.Signature.ToHexString();
+            var signedBytesInHex = forgedOperationBytes.ToHexString() + operationRequest.Signature.ToHexString();
 
             var operationId = await rpc
                 .InjectOperationsAsync(signedBytesInHex, cancellationToken)
                 .ConfigureAwait(false);
 
-            //var api = new TezosApi(
-            //    settings: currencyConfig.ApiSettings,
-            //    logger: Logger);
-
-            //var (txId, broadcastError) = await api
-            //    .BroadcastAsync(operation, cancellationToken)
-            //    .ConfigureAwait(false);
-
-            //if (broadcastError != null)
-            //    return (tx: null, error: broadcastError);
+            var operation = new TezosOperation(operationRequest, operationId);
 
             // save operation in local db
-            //var upsertResult = LocalStorage
-            //    .UpsertTransactionAsync(operation, cancellationToken)
-            //    .ConfigureAwait(false);
+            await LocalStorage
+                .UpsertTransactionAsync(
+                    tx: operation,
+                    notifyIfNewOrChanged: true,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
             return operationId;
         }

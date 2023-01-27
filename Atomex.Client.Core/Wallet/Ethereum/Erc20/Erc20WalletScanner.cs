@@ -42,89 +42,83 @@ namespace Atomex.Wallet.Ethereum
             return new EtherScanApi(apiSettings);
         }
 
-        public Task ScanAsync(
+        public async Task ScanAsync(
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(async () =>
+            try
             {
-                try
-                {
-                    var updateTimeStamp = DateTime.UtcNow;
+                var updateTimeStamp = DateTime.UtcNow;
 
-                    var ethAddresses = await _ethereumAccount
-                        .GetAddressesAsync(cancellationToken)
+                var ethAddresses = await _ethereumAccount
+                    .GetAddressesAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                var walletAddresses = ethAddresses.Select(w => new WalletAddress
+                {
+                    Address               = w.Address,
+                    Currency              = _account.Currency,
+                    HasActivity           = false,
+                    KeyIndex              = w.KeyIndex,
+                    KeyType               = w.KeyType,
+                    LastSuccessfullUpdate = DateTime.MinValue,
+                    Balance               = 0,
+                    UnconfirmedIncome     = 0,
+                    UnconfirmedOutcome    = 0,
+                    TokenBalance          = null
+                });
+
+                // todo: if skipUsed == true => skip "disabled" wallets
+
+                var api = GetErc20Api(); 
+                var txs = new List<Erc20Transaction>();
+
+                foreach (var walletAddress in walletAddresses)
+                {
+                    var (addressTxs, error) = await UpdateAddressAsync(
+                            walletAddress,
+                            api: api,
+                            cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    var walletAddresses = ethAddresses.Select(w => new WalletAddress
+                    if (error != null)
                     {
-                        Address               = w.Address,
-                        Currency              = _account.Currency,
-                        HasActivity           = false,
-                        KeyIndex              = w.KeyIndex,
-                        KeyType               = w.KeyType,
-                        LastSuccessfullUpdate = DateTime.MinValue,
-                        Balance               = 0,
-                        UnconfirmedIncome     = 0,
-                        UnconfirmedOutcome    = 0,
-                        TokenBalance          = null
-                    });
-
-                    // todo: if skipUsed == true => skip "disabled" wallets
-
-                    var api = GetErc20Api(); 
-                    var txs = new List<Erc20Transaction>();
-
-                    foreach (var walletAddress in walletAddresses)
-                    {
-                        var (addressTxs, error) = await UpdateAddressAsync(
-                                walletAddress,
-                                api: api,
-                                cancellationToken: cancellationToken)
-                            .ConfigureAwait(false);
-
-                        if (error != null)
-                        {
-                            Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error while scan {@address}",
-                                walletAddress.Address);
-
-                            return;
-                        }
-
-                        txs.AddRange(addressTxs);
+                        Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error while scan {@address}", walletAddress.Address);
+                        return;
                     }
 
-                    if (txs.Any())
-                    {
-                        var uniqueTxs = DistinctTransactions(txs);
-
-                        var _ = await _account
-                            .LocalStorage
-                            .UpsertTransactionsAsync(
-                                txs: uniqueTxs,
-                                notifyIfNewOrChanged: true,
-                                cancellationToken: cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-
-                    if (walletAddresses.Any())
-                    {
-                        var _ = await _account
-                            .LocalStorage
-                            .UpsertAddressesAsync(walletAddresses)
-                            .ConfigureAwait(false);
-                    }
+                    txs.AddRange(addressTxs);
                 }
-                catch (OperationCanceledException)
+
+                if (txs.Any())
                 {
-                    Log.Debug("[Erc20WalletScanner] ScanAsync canceled");
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "[Erc20WalletScanner] ScanAsync error: {@message}", e.Message);
+                    var uniqueTxs = DistinctTransactions(txs);
+
+                    var _ = await _account
+                        .LocalStorage
+                        .UpsertTransactionsAsync(
+                            txs: uniqueTxs,
+                            notifyIfNewOrChanged: true,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
                 }
 
-            }, cancellationToken);
+                if (walletAddresses.Any())
+                {
+                    var _ = await _account
+                        .LocalStorage
+                        .UpsertAddressesAsync(walletAddresses)
+                        .ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("[Erc20WalletScanner] ScanAsync canceled");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[Erc20WalletScanner] ScanAsync error: {@message}", e.Message);
+            }
         }
 
         public Task ScanAsync(
@@ -134,149 +128,137 @@ namespace Atomex.Wallet.Ethereum
             return UpdateBalanceAsync(address, cancellationToken);
         }
 
-        public Task UpdateBalanceAsync(
+        public async Task UpdateBalanceAsync(
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(async () =>
+            try
             {
-                try
+                var updateTimeStamp = DateTime.UtcNow;
+
+                var walletAddresses = await _account
+                    .GetAddressesAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                // todo: if skipUsed == true => skip "disabled" wallets
+
+                var api = GetErc20Api();
+                var txs = new List<Erc20Transaction>();
+
+                foreach (var walletAddress in walletAddresses)
                 {
-                    var updateTimeStamp = DateTime.UtcNow;
-
-                    var walletAddresses = await _account
-                        .GetAddressesAsync(cancellationToken)
-                        .ConfigureAwait(false);
-
-                    // todo: if skipUsed == true => skip "disabled" wallets
-
-                    var api = GetErc20Api();
-                    var txs = new List<Erc20Transaction>();
-
-                    foreach (var walletAddress in walletAddresses)
-                    {
-                        var (addressTxs, error) = await UpdateAddressAsync(
-                                walletAddress,
-                                api: api,
-                                cancellationToken: cancellationToken)
-                            .ConfigureAwait(false);
-
-                        if (error != null)
-                        {
-                            Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error while scan {@address}",
-                                walletAddress.Address);
-
-                            return;
-                        }
-
-                        txs.AddRange(addressTxs);
-                    }
-
-                    if (txs.Any())
-                    {
-                        var uniqueTxs = DistinctTransactions(txs);
-
-                        var _ = await _account
-                            .LocalStorage
-                            .UpsertTransactionsAsync(
-                                txs: uniqueTxs,
-                                notifyIfNewOrChanged: true,
-                                cancellationToken: cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-
-                    if (walletAddresses.Any())
-                    {
-                        var _ = await _account
-                            .LocalStorage
-                            .UpsertAddressesAsync(walletAddresses)
-                            .ConfigureAwait(false);
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    Log.Debug("[Erc20WalletScanner] UpdateBalanceAsync canceled");
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "[Erc20WalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
-                }
-
-            }, cancellationToken);
-        }
-
-        public Task UpdateBalanceAsync(
-            string address,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.Run(async () =>
-            {
-                try
-                {
-                    Log.Debug("[Erc20WalletScanner] UpdateBalanceAsync for address {@address}", address);
-
-                    var walletAddress = await _account
-                        .LocalStorage
-                        .GetWalletAddressAsync(_account.Currency, address)
-                        .ConfigureAwait(false);
-
-                    if (walletAddress == null)
-                    {
-                        Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error. Can't find address {@address} in local db", address);
-                        return;
-                    }
-
                     var (addressTxs, error) = await UpdateAddressAsync(
                             walletAddress,
-                            api: null,
+                            api: api,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
                     if (error != null)
                     {
-                        Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error while scan {@address}",
-                            address);
-
+                        Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error while scan {@address}", walletAddress.Address);
                         return;
                     }
 
-                    if (addressTxs.Any())
-                    {
-                        foreach (var tx in addressTxs)
-                        {
-                            var existsTx = await _account
-                                .LocalStorage
-                                .GetTransactionByIdAsync<Erc20Transaction>(_account.Currency, tx.Id)
-                                .ConfigureAwait(false);
+                    txs.AddRange(addressTxs);
+                }
 
-                            if (existsTx != null)
-                                tx.Transfers = UnionTransfers(tx, existsTx);
-                        }
-
-                        await _account
-                            .LocalStorage
-                            .UpsertTransactionsAsync(
-                                txs: addressTxs,
-                                notifyIfNewOrChanged: true,
-                                cancellationToken: cancellationToken)
-                            .ConfigureAwait(false);
-                    }
+                if (txs.Any())
+                {
+                    var uniqueTxs = DistinctTransactions(txs);
 
                     var _ = await _account
                         .LocalStorage
-                        .UpsertAddressAsync(walletAddress)
+                        .UpsertTransactionsAsync(
+                            txs: uniqueTxs,
+                            notifyIfNewOrChanged: true,
+                            cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
-                catch (OperationCanceledException)
+
+                if (walletAddresses.Any())
                 {
-                    Log.Debug("[Erc20WalletScanner] UpdateBalanceAsync canceled");
+                    var _ = await _account
+                        .LocalStorage
+                        .UpsertAddressesAsync(walletAddresses)
+                        .ConfigureAwait(false);
                 }
-                catch (Exception e)
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("[Erc20WalletScanner] UpdateBalanceAsync canceled");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[Erc20WalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
+            }
+        }
+
+        public async Task UpdateBalanceAsync(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                Log.Debug("[Erc20WalletScanner] UpdateBalanceAsync for address {@address}", address);
+
+                var walletAddress = await _account
+                    .LocalStorage
+                    .GetWalletAddressAsync(_account.Currency, address)
+                    .ConfigureAwait(false);
+
+                if (walletAddress == null)
                 {
-                    Log.Error(e, "[Erc20WalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
+                    Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error. Can't find address {@address} in local db", address);
+                    return;
                 }
 
-            }, cancellationToken);
+                var (addressTxs, error) = await UpdateAddressAsync(
+                        walletAddress,
+                        api: null,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (error != null)
+                {
+                    Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error while scan {@address}", address);
+                    return;
+                }
+
+                if (addressTxs.Any())
+                {
+                    foreach (var tx in addressTxs)
+                    {
+                        var existsTx = await _account
+                            .LocalStorage
+                            .GetTransactionByIdAsync<Erc20Transaction>(_account.Currency, tx.Id)
+                            .ConfigureAwait(false);
+
+                        if (existsTx != null)
+                            tx.Transfers = UnionTransfers(tx, existsTx);
+                    }
+
+                    await _account
+                        .LocalStorage
+                        .UpsertTransactionsAsync(
+                            txs: addressTxs,
+                            notifyIfNewOrChanged: true,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                var _ = await _account
+                    .LocalStorage
+                    .UpsertAddressAsync(walletAddress)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("[Erc20WalletScanner] UpdateBalanceAsync canceled");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[Erc20WalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
+            }
         }
 
         private async Task<Result<IEnumerable<Erc20Transaction>>> UpdateAddressAsync(

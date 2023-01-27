@@ -8,6 +8,5 @@ namespace Atomex.Wallet.Abstract
         public decimal UsedAmount { get; set; }
         public decimal UsedFee { get; set; }
         public decimal UsedStorageFee { get; set; }
-
     }
 }

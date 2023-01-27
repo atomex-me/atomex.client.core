@@ -1,4 +1,4 @@
-﻿namespace Atomex.Wallet.Tezos
+﻿namespace Atomex.Blockchain.Tezos
 {
     public class StorageLimit : Parameter<int>
     {
