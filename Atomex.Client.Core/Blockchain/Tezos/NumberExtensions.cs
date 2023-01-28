@@ -1,4 +1,6 @@
-﻿using System;
+﻿using System.Numerics;
+
+using Atomex.Common;
 
 namespace Atomex.Blockchain.Tezos
 {
@@ -7,8 +9,8 @@ namespace Atomex.Blockchain.Tezos
         public static decimal ToTez(this decimal mtz) =>
             mtz / TezosConfig.XtzDigitsMultiplier;
 
-        public static decimal ToTokenDigits(this decimal tokens, decimal tokenDigitsMultiplier) =>
-            Math.Floor(tokens * tokenDigitsMultiplier);
+        public static BigInteger ToTokenDigits(this decimal tokens, decimal tokenDigitsMultiplier) =>
+            tokens.Multiply(new BigInteger(tokenDigitsMultiplier));
 
         public static decimal FromTokenDigits(this decimal tokensInDigigts, decimal tokenDigitsMultiplier) =>
             tokensInDigigts / tokenDigitsMultiplier;

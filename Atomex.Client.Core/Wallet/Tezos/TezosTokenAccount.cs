@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -633,7 +634,7 @@ namespace Atomex.Wallet.Tezos
         protected abstract string CreateTransferParams(
             string from,
             string to,
-            decimal amount);
+            BigInteger amount);
 
         #endregion Helpers
 

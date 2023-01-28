@@ -157,18 +157,7 @@ namespace Atomex.Wallets.Tezos
                         .FillOperationAsync(
                             operationsRequests: operationsParameters,
                             publicKey: publicKey,
-                            settings: new TezosFillOperationSettings
-                            {
-                                ActivationStorageLimit   = (int)tezosConfig.ActivationStorage,
-                                ChainId                  = tezosConfig.ChainId,
-                                HeadSizeInBytes          = (int)tezosConfig.HeadSizeInBytes,
-                                MinimalFee               = (int)tezosConfig.MinimalFee,
-                                MinimalNanotezPerByte    = tezosConfig.MinimalNanotezPerByte,
-                                MinimalNanotezPerGasUnit = tezosConfig.MinimalNanotezPerGasUnit,
-                                ReserveGasLimit          = (int)tezosConfig.GasReserve,
-                                RevealGasLimit           = (int)tezosConfig.RevealGasLimit,
-                                SignatureSizeInBytes     = (int)tezosConfig.SigSizeInBytes
-                            },
+                            settings: tezosConfig.GetFillOperationSettings(),
                             cancellationToken: _cts.Token)
                         .ConfigureAwait(false);
 

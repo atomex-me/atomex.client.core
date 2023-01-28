@@ -370,5 +370,18 @@ namespace Atomex
 
             throw new ArgumentException($"Either int or string are accepted: {michelineExpr}");
         }
+
+        public TezosFillOperationSettings GetFillOperationSettings() => new()
+        {
+            ActivationStorageLimit   = (int)ActivationStorage,
+            ChainId                  = ChainId,
+            HeadSizeInBytes          = (int)HeadSizeInBytes,
+            MinimalFee               = (int)MinimalFee,
+            MinimalNanotezPerByte    = MinimalNanotezPerByte,
+            MinimalNanotezPerGasUnit = MinimalNanotezPerGasUnit,
+            ReserveGasLimit          = (int)GasReserve,
+            RevealGasLimit           = (int)RevealGasLimit,
+            SignatureSizeInBytes     = (int)SigSizeInBytes
+        };
     }
 }

@@ -9,12 +9,11 @@ using Netezos.Forging;
 using Netezos.Forging.Models;
 using Newtonsoft.Json.Linq;
 
-using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Common;
 using Atomex.Common;
 using Atomex.Cryptography;
 
-namespace Atomex.Wallets.Tezos
+namespace Atomex.Blockchain.Tezos
 {
     public class TezosFillOperationSettings
     {
@@ -42,7 +41,7 @@ namespace Atomex.Wallets.Tezos
             var from = operationsRequests.First().From;
 
             // get header
-            var currentHeaderHash = await rpc
+            var currentHeader = await rpc
                 .GetHeaderAsync(offset: 0, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -59,7 +58,7 @@ namespace Atomex.Wallets.Tezos
                 .GetAccountAsync(from, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var counter = int.Parse(accountInfo.Counter);
+            var counter = int.Parse(accountInfo.Counter) + 1;
 
             var operations = new List<ManagerOperationContent>();
 
@@ -85,23 +84,23 @@ namespace Atomex.Wallets.Tezos
                 operations.Add(request.Content);
             }
 
-            var headerHash = headOffset != 0
+            var header = headOffset != 0
                 ? await rpc
                     .GetHeaderAsync(offset: headOffset, cancellationToken)
                     .ConfigureAwait(false)
-                : currentHeaderHash;
+                : currentHeader;
 
             var needAutoFill = operationsRequests.Any(opr =>
-                (opr.Fee != null && opr.Fee.UseNetwork) ||
-                (opr.GasLimit != null && opr.GasLimit.UseNetwork) ||
-                (opr.StorageLimit != null && opr.StorageLimit.UseNetwork));
+                opr.Fee != null && opr.Fee.UseNetwork ||
+                opr.GasLimit != null && opr.GasLimit.UseNetwork ||
+                opr.StorageLimit != null && opr.StorageLimit.UseNetwork);
 
             if (needAutoFill)
             {
                 var autoFillError = await rpc
                     .AutoFillAsync(
                         requests: operationsRequests,
-                        blockHash: headerHash,
+                        blockHash: header.Hash,
                         settings: settings,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
@@ -111,7 +110,7 @@ namespace Atomex.Wallets.Tezos
 
             return new TezosOperationRequest(
                 operationsContents: operations,
-                branch: headerHash);
+                branch: header.Hash);
         }
 
         public static async Task<Result<bool>> AutoFillAsync(

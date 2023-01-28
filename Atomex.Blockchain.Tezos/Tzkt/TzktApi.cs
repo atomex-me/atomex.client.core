@@ -11,6 +11,7 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Abstract;
 using Atomex.Blockchain.Tezos.Common;
 using Atomex.Blockchain.Tezos.Tzkt.Operations;
+using Newtonsoft.Json.Linq;
 
 namespace Atomex.Blockchain.Tezos.Tzkt
 {
@@ -589,104 +590,6 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
         //        return new Error(Errors.RequestError, e.Message);
         //    }
-        //}
-
-        //public async Task<Result<decimal>> GetFa12AllowanceAsync(
-        //    string holderAddress,
-        //    string spenderAddress,
-        //    string callingAddress,
-        //    SecureBytes securePublicKey,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var tokenConfig = _currency as Fa12Config;
-
-        //    try
-        //    {
-        //        var rpc = new Rpc(_rpcNodeUri);
-
-        //        var tx = new TezosOperation
-        //        {
-        //            Currency          = tokenConfig.Name,
-        //            From              = callingAddress,
-        //            To                = tokenConfig.TokenContractAddress,
-        //            Fee               = 0, //token.GetAllowanceFee,
-        //            GasLimit          = tokenConfig.GetAllowanceGasLimit,
-        //            StorageLimit      = 0, //token.GetAllowanceStorageLimit,
-        //            Params            = CreateGetAllowanceParams(holderAddress, spenderAddress, tokenConfig.ViewContractAddress),
-
-        //            UseRun            = false,
-        //            UseOfflineCounter = false
-        //        };
-
-        //        _ = await tx
-        //            .FillOperationsAsync(
-        //                securePublicKey: securePublicKey,
-        //                tezosConfig: tokenConfig,
-        //                cancellationToken: cancellationToken)
-        //            .ConfigureAwait(false);
-
-        //        var runResults = await rpc
-        //            .RunOperations(tx.Head, tx.Operations)
-        //            .ConfigureAwait(false);
-
-        //        return runResults
-        //            ?["contents"]
-        //            ?.LastOrDefault()
-        //            ?["metadata"]
-        //            ?["internal_operation_results"]
-        //            ?[0]
-        //            ?["result"]
-        //            ?["errors"]
-        //            ?[1]
-        //            ?["with"]
-        //            ?["args"]
-        //            ?[0]
-        //            ?["args"]
-        //            ?[0]
-        //            ?["int"]
-        //            ?.Value<decimal>() ?? 0;
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        return new Error(Errors.RequestError, e.Message);
-        //    }
-        //}
-
-        //private JObject CreateGetAllowanceParams(
-        //    string holderAddress,
-        //    string spenderAddress,
-        //    string viewContractAddress)
-        //{
-        //    return JObject.FromObject(new
-        //    {
-        //        entrypoint = "getAllowance",
-        //        value = new
-        //        {
-        //            args = new object[]
-        //            {
-        //                new
-        //                {
-        //                    args = new object[]
-        //                    {
-        //                        new
-        //                        {
-        //                            @string = holderAddress
-        //                        },
-        //                        new
-        //                        {
-        //                            @string = spenderAddress
-        //                        }
-        //                    },
-        //                    prim = "Pair"
-        //                },
-        //                new
-        //                {
-        //                    @string = viewContractAddress + "%viewNat"
-        //                }
-        //            },
-        //            prim = "Pair"
-        //        }
-        //    });
         //}
     }
 }

@@ -47,8 +47,8 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
                     timeStamp: (ulong)swap.TimeStamp.ToUnixTimeSeconds(),
                     lockTime: (ulong)lockTimeInSeconds,
                     tokenContract: fa12.TokenContractAddress,
-                    totalAmount: new BigInteger(requiredAmountInTokensDigits),
-                    payoffAmount: new BigInteger(rewardForRedeemInTokenDigits),
+                    totalAmount: requiredAmountInTokensDigits,
+                    payoffAmount: rewardForRedeemInTokenDigits,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -105,8 +105,8 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
                         timeStamp: (ulong)timeStamp,
                         lockTime: (ulong)lockTime,
                         tokenContract: fa12.TokenContractAddress,
-                        totalAmount: new BigInteger(requiredAmountInTokenDigits),
-                        payoffAmount: new BigInteger(requiredRewardForRedeemInTokenDigits),
+                        totalAmount: requiredAmountInTokenDigits,
+                        payoffAmount: requiredRewardForRedeemInTokenDigits,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

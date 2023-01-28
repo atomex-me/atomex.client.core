@@ -1,4 +1,6 @@
-﻿using Atomex.Abstract;
+﻿using System.Numerics;
+
+using Atomex.Abstract;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.Wallet.Tezos
@@ -27,7 +29,7 @@ namespace Atomex.Wallet.Tezos
         protected override string CreateTransferParams(
             string from,
             string to,
-            decimal amount)
+            BigInteger amount)
         {
             return CreateTransferParams(_tokenId, from, to, amount);
         }
@@ -36,9 +38,9 @@ namespace Atomex.Wallet.Tezos
             int tokenId,
             string from,
             string to,
-            decimal amount)
+            BigInteger amount)
         {
-            return $"[{{'prim':'Pair','args':[{{'string':'{from}'}},[{{'prim':'Pair','args':[{{'string':'{to}'}},{{'prim':'Pair','args':[{{'int':'{tokenId}','int':'{string.Format("{0:0}", amount)}'}}]}}]}}]]}}]";
+            return $"[{{\"prim\":\"Pair\",\"args\":[{{\"string\":\"{from}\"}},[{{\"prim\":\"Pair\",\"args\":[{{\"string\":\"{to}\"}},{{\"prim\":\"Pair\",\"args\":[{{\"int\":\"{tokenId}\",\"int\":\"{amount}\"}}]}}]}}]]}}]";
         }
 
         #endregion Helpers

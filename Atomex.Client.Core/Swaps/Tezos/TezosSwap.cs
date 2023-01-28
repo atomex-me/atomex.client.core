@@ -137,9 +137,9 @@ namespace Atomex.Swaps.Tezos
 
             // check initiate payment tx confirmation
             var isInitiated = await WaitPaymentConfirmationAsync(
-                    result.OperationId,
-                    InitiationTimeout,
-                    cancellationToken)
+                    txId: result.OperationId,
+                    timeout: InitiationTimeout,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
                         
             if (!isInitiated)
@@ -636,17 +636,17 @@ namespace Atomex.Swaps.Tezos
             long refundTimestampInUtcSec,
             long redeemFeeInMtz)
         {
-            return $"{{'prim':'Pair','args':[{{'string':'{swap.PartyAddress}'}},{{'prim':'Pair','args':[{{'prim':'Pair','args':[{{'bytes':'{swap.SecretHash.ToHexString()}'}},{{'int':'{refundTimestampInUtcSec}'}}]}},{{'int':'{redeemFeeInMtz}'}}]}}]}}";
+            return $"{{\"prim\":\"Pair\",\"args\":[{{\"string\":\"{swap.PartyAddress}\"}},{{\"prim\":\"Pair\",\"args\":[{{\"prim\":\"Pair\",\"args\":[{{\"bytes\":\"{swap.SecretHash.ToHexString()}\"}},{{\"int\":\"{refundTimestampInUtcSec}\"}}]}},{{\"int\":\"{redeemFeeInMtz}\"}}]}}]}}";
         }
 
         private string GetRedeemParameters(Swap swap)
         {
-            return $"{{'bytes':'{swap.Secret.ToHexString()}'}}";
+            return $"{{\"bytes\":\"{swap.Secret.ToHexString()}\"}}";
         }
 
         private string GetRefundParameters(Swap swap)
         {
-            return $"{{'bytes':'{swap.SecretHash.ToHexString()}'}}";
+            return $"{{\"bytes\":\"{swap.SecretHash.ToHexString()}\"}}";
         }
 
         #endregion Helpers

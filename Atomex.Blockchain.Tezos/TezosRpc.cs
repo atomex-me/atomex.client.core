@@ -27,6 +27,42 @@ namespace Atomex.Blockchain.Tezos
         public string Counter { get; set; }
     }
 
+    public class TezosRpcHeader
+    {
+        [JsonPropertyName("protocol")]
+        public string Protocol { get; set; }
+        [JsonPropertyName("chain_id")]
+        public string ChainId { get; set; }
+        [JsonPropertyName("hash")]
+        public string Hash { get; set; }
+        [JsonPropertyName("level")]
+        public long Level { get; set; }
+        [JsonPropertyName("proto")]
+        public int Proto { get; set; }
+        [JsonPropertyName("predecessor")]
+        public string Predecessor { get; set; }
+        [JsonPropertyName("timestamp")]
+        public string TimeStamp { get; set; }
+        [JsonPropertyName("validation_pass")]
+        public int ValidationPass { get; set; }
+        [JsonPropertyName("operations_hash")]
+        public string OperationsHash { get; set; }
+        [JsonPropertyName("fitness")]
+        public string[] Fitness { get; set; }
+        [JsonPropertyName("context")]
+        public string Context { get; set; }
+        [JsonPropertyName("payload_hash")]
+        public string PayloadHash { get; set; }
+        [JsonPropertyName("payload_round")]
+        public int PayloadRound { get; set; }
+        [JsonPropertyName("proof_of_work_nonce")]
+        public string ProofOfWorkNonce { get; set; }
+        [JsonPropertyName("liquidity_baking_toggle_vote")]
+        public string LiquidityBakingToggleVote { get; set; }
+        [JsonPropertyName("signature")]
+        public string Signature { get; set; }
+    }
+
     public class TezosRpcSettings
     {
         public string Url { get; set; }
@@ -122,7 +158,6 @@ namespace Atomex.Blockchain.Tezos
                 .ConfigureAwait(false);
 
             return JsonSerializer.Deserialize<TezosRpcAccount>(response)!;
-
         }
 
         public Task<string> GetManagerKeyAsync(
@@ -134,13 +169,15 @@ namespace Atomex.Blockchain.Tezos
                 cancellationToken: cancellationToken);
         }
 
-        public Task<string> GetHeaderAsync(
+        public async Task<TezosRpcHeader> GetHeaderAsync(
             int offset = 0,
             CancellationToken cancellationToken = default)
         {
-            return QueryAsync(
+            var response = await QueryAsync(
                 query: $"chains/{_chainId}/blocks/head{(offset != 0 ? $"~{offset}" : "")}/header",
                 cancellationToken: cancellationToken);
+
+            return JsonSerializer.Deserialize<TezosRpcHeader>(response)!;
         }
 
         public Task<string> GetDelegateAsync(
