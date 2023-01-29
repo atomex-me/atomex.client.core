@@ -3,8 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.SoChain;
@@ -60,15 +59,15 @@ namespace Atomex.Services
                     await Task.WhenAll(startTasks)
                         .ConfigureAwait(false);
 
-                    _log.Information("BalanceUpdater successfully started");
+                    _log.LogInformation("BalanceUpdater successfully started");
                 }
                 catch (OperationCanceledException)
                 {
-                    _log.Debug("BalanceUpdater canceled");
+                    _log.LogDebug("BalanceUpdater canceled");
                 }
                 catch (Exception e)
                 {
-                    _log.Error(e, "Unconfirmed BalanceUpdater error");
+                    _log.LogError(e, "Unconfirmed BalanceUpdater error");
                 }
 
             }, _cts.Token);
@@ -93,13 +92,13 @@ namespace Atomex.Services
                 }
                 catch (Exception e)
                 {
-                    _log.Error(e, "Error while stopping BalanceUpdater");
+                    _log.LogError(e, "Error while stopping BalanceUpdater");
                 }
             });
 
             _cts.Cancel();
             _isRunning = false;
-            _log.Information("BalanceUpdater stopped");
+            _log.LogInformation("BalanceUpdater stopped");
         }
 
         private void InitChainBalanceUpdaters()
@@ -119,7 +118,7 @@ namespace Atomex.Services
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error while initializing chain balance updaters");
+                _log.LogError(e, "Error while initializing chain balance updaters");
             }
         }
     }

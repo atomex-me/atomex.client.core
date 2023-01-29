@@ -1,6 +1,8 @@
 using System;
 using System.Text.Json.Serialization;
 
+using Atomex.Blockchain.Abstract;
+
 namespace Atomex.Blockchain.Tezos.Tzkt
 {
     public class TokenTransferResponse
@@ -84,6 +86,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 BlockTime     = Timestamp,
                 BlockHeight   = Level,
                 Confirmations = 1, // todo: HEAD - LEVEL
+                Status        = TransactionStatus.Confirmed,
 
                 From          = From?.Address,
                 To            = To?.Address,

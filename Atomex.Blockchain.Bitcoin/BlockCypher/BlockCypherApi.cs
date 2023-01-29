@@ -20,7 +20,7 @@ namespace Atomex.Blockchain.BlockCypher
 {
     public class BlockCypherSettings
     {
-        public string BaseUri { get; set; } = "https://api.blockcypher.com/v1/";
+        public string BaseUrl { get; set; } = "https://api.blockcypher.com/v1/";
         public string? ApiToken { get; set; }
         public string Coin { get; set; }
         public string Network { get; set; }
@@ -70,7 +70,7 @@ namespace Atomex.Blockchain.BlockCypher
 
             var response = await HttpHelper
                 .PostAsync(
-                    baseUri: _settings.BaseUri,
+                    baseUri: _settings.BaseUrl,
                     relativeUri: requestUri,
                     content: requestContent,
                     requestLimitControl: GetRequestLimitControl(_settings.RequestLimitDelayMs),
@@ -106,7 +106,7 @@ namespace Atomex.Blockchain.BlockCypher
 
             using var response = await HttpHelper
                 .GetAsync(
-                    baseUri: _settings.BaseUri,
+                    baseUri: _settings.BaseUrl,
                     relativeUri: requestUri,
                     requestLimitControl: GetRequestLimitControl(_settings.RequestLimitDelayMs),
                     cancellationToken: cancellationToken)
@@ -179,7 +179,7 @@ namespace Atomex.Blockchain.BlockCypher
 
             using var response = await HttpHelper
                 .GetAsync(
-                    baseUri: _settings.BaseUri,
+                    baseUri: _settings.BaseUrl,
                     relativeUri: requestUri,
                     requestLimitControl: GetRequestLimitControl(_settings.RequestLimitDelayMs),
                     cancellationToken: cancellationToken)
@@ -240,7 +240,7 @@ namespace Atomex.Blockchain.BlockCypher
 
             using var response = await HttpHelper
                 .GetAsync(
-                    baseUri: _settings.BaseUri,
+                    baseUri: _settings.BaseUrl,
                     relativeUri: requestUri,
                     requestLimitControl: GetRequestLimitControl(_settings.RequestLimitDelayMs),
                     cancellationToken: cancellationToken)
@@ -303,7 +303,7 @@ namespace Atomex.Blockchain.BlockCypher
 
             using var response = await HttpHelper
                 .GetAsync(
-                    baseUri: _settings.BaseUri,
+                    baseUri: _settings.BaseUrl,
                     relativeUri: requestUri,
                     requestLimitControl: GetRequestLimitControl(_settings.RequestLimitDelayMs),
                     cancellationToken: cancellationToken)

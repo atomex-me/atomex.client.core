@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Globalization;
 using System.Numerics;
 
 namespace Atomex.Common
@@ -98,5 +99,11 @@ namespace Atomex.Common
 
         public static BigInteger ToBigInteger(this decimal d, int decimals) =>
             d.Multiply(BigInteger.Pow(10, decimals));
+
+        public static string GetFormatWithPrecision(int precision) =>
+            "0." + new string('#', precision);
+
+        public static string FormatWithPrecision(this decimal d, int precision) =>
+            d.ToString(GetFormatWithPrecision(precision), CultureInfo.CurrentCulture);
     }
 }

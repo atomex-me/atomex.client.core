@@ -20,7 +20,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
 {
     public class SoChainSettings
     {
-        public string BaseUri { get; set; } = "https://sochain.com/";
+        public string BaseUrl { get; set; } = "https://sochain.com/";
         public string Network { get; set; }
         public int RequestLimitDelayMs { get; set; } = 1000;
         public int Decimals { get; set; } = 8;
@@ -80,7 +80,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
 
             using var response = await HttpHelper
                 .GetAsync(
-                    baseUri: _settings.BaseUri,
+                    baseUri: _settings.BaseUrl,
                     relativeUri: requestUri,
                     requestLimitControl: GetRequestLimitControl(_settings.RequestLimitDelayMs),
                     cancellationToken: cancellationToken)
@@ -131,7 +131,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
 
             using var response = await HttpHelper
                 .GetAsync(
-                    baseUri: _settings.BaseUri,
+                    baseUri: _settings.BaseUrl,
                     relativeUri: requestUri,
                     requestLimitControl: GetRequestLimitControl(_settings.RequestLimitDelayMs),
                     cancellationToken: cancellationToken)
@@ -187,7 +187,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
 
             using var response = await HttpHelper
                 .GetAsync(
-                    baseUri: _settings.BaseUri,
+                    baseUri: _settings.BaseUrl,
                     relativeUri: requestUri,
                     requestLimitControl: GetRequestLimitControl(_settings.RequestLimitDelayMs),
                     cancellationToken: cancellationToken)
@@ -243,7 +243,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
 
             using var response = await HttpHelper
                 .GetAsync(
-                    baseUri: _settings.BaseUri,
+                    baseUri: _settings.BaseUrl,
                     relativeUri: requestUri,
                     requestLimitControl: GetRequestLimitControl(_settings.RequestLimitDelayMs),
                     cancellationToken: cancellationToken)
@@ -287,7 +287,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
 
             var response = await HttpHelper
                 .PostAsync(
-                    baseUri: _settings.BaseUri,
+                    baseUri: _settings.BaseUrl,
                     relativeUri: requestUri,
                     content: requestContent,
                     requestLimitControl: GetRequestLimitControl(_settings.RequestLimitDelayMs),
@@ -318,7 +318,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
 
             using var response = await HttpHelper
                 .GetAsync(
-                    baseUri: _settings.BaseUri,
+                    baseUri: _settings.BaseUrl,
                     relativeUri: requestUri,
                     requestLimitControl: GetRequestLimitControl(_settings.RequestLimitDelayMs),
                     cancellationToken: cancellationToken)

@@ -2,13 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.EthereumTokens;
 using Atomex.Services.Abstract;
 using Atomex.Wallet.Abstract;
-using Serilog;
-
 
 namespace Atomex.Services.BalanceUpdaters
 {
@@ -21,7 +21,6 @@ namespace Atomex.Services.BalanceUpdaters
 
         private readonly IList<IErc20Notifier> _notifiers = new List<IErc20Notifier>();
         private ISet<string> _addresses;
-
 
         public Erc20BalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, IWalletScanner walletScanner, ILogger log)
         {
@@ -50,7 +49,7 @@ namespace Atomex.Services.BalanceUpdaters
                 {
                     if (currency is Erc20Config erc20Currency)
                     {
-                        _notifiers.Add(new Erc20Notifier(baseUri, erc20Currency, _log));
+                        _notifiers.Add(new Erc20Notifier(baseUri, erc20Currency.Name, erc20Currency.ERC20ContractAddress, _log));
                     }
                 }
 
@@ -63,7 +62,7 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error on starting ERC20BalanceUpdater");
+                _log.LogError(e, "Error on starting ERC20BalanceUpdater");
             }
         }
 
@@ -75,10 +74,9 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error on stopping ERC20BalanceUpdater");
+                _log.LogError(e, "Error on stopping ERC20BalanceUpdater");
             }
         }
-
 
         private async Task<ISet<string>> GetAddressesAsync()
         {
@@ -109,7 +107,7 @@ namespace Atomex.Services.BalanceUpdaters
 
                 if (newAddresses.Any())
                 {
-                    Log.Information("ERC20BalanceUpdater adds new addresses {@Addresses}", newAddresses);
+                    _log.LogInformation("ERC20BalanceUpdater adds new addresses {@Addresses}", newAddresses);
                     await Task.WhenAll(
                             _notifiers.Select(n => n.SubscribeOnEventsAsync(newAddresses, BalanceUpdatedHandler)))
                         .ConfigureAwait(false);
@@ -118,7 +116,7 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error on handling ERC20 balance update");
+                _log.LogError(e, "Error on handling ERC20 balance update");
             }
         }
     }

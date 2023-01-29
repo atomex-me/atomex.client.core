@@ -31,7 +31,7 @@ namespace Atomex.ViewModels
             public decimal RewardForRedeem { get; set; }
             public decimal MakerNetworkFee { get; set; }
             public decimal ReservedForSwaps { get; set; }
-            public Error Error { get; set; }
+            public Error? Error { get; set; }
 
             public bool HasRewardForRedeem => RewardForRedeem != 0;
         }

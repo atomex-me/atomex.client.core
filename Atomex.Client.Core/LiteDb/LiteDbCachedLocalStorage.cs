@@ -37,7 +37,6 @@ namespace Atomex.LiteDb
             _liteDbLocalStorage = new LiteDbLocalStorage(
                 pathToDb,
                 password,
-                currencies,
                 network,
                 migrationComplete
                 );

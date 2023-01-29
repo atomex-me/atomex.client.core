@@ -643,6 +643,54 @@ namespace Atomex.Wallet.Tezos
         public Task<IEnumerable<ITransaction>> GetUnconfirmedTransactionsAsync(
             CancellationToken cancellationToken = default) => Task.FromResult(Enumerable.Empty<ITransaction>());
 
+        public async Task ResolveTransactionsTypesAsync(
+            IEnumerable<ITransaction> txs,
+            CancellationToken cancellationToken = default)
+        {
+            var resolved = new List<ITransaction>();
+
+            foreach (var tx in txs.Cast<TezosTokenTransfer>())
+            {
+                if (tx.IsTypeResolved)
+                    continue;
+
+                await ResolveTransactionTypeAsync(tx, cancellationToken)
+                    .ConfigureAwait(false);
+
+                resolved.Add(tx);
+            }
+
+            await LocalStorage
+                .UpsertTransactionsAsync(
+                    txs,
+                    notifyIfNewOrChanged: true,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        private async Task ResolveTransactionTypeAsync(
+            TezosTokenTransfer tx,
+            CancellationToken cancellationToken = default)
+        {
+            tx.Type = TransactionType.Unknown;
+
+            var fromAddress = await GetAddressAsync(tx.From, cancellationToken)
+                .ConfigureAwait(false);
+
+            var isFromSelf = fromAddress != null;
+
+            if (isFromSelf)
+                tx.Type |= TransactionType.Output;
+
+            var toAddress = await GetAddressAsync(tx.To, cancellationToken)
+               .ConfigureAwait(false);
+
+            var isToSelf = toAddress != null;
+
+            if (isToSelf)
+                tx.Type |= TransactionType.Input;
+        }
+
         #endregion Transactions
     }
 }

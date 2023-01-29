@@ -12,7 +12,7 @@ using Atomex.Common;
 
 namespace Atomex.Blockchain.Tezos
 {
-    public static class TezosRpcExtensions
+    public static class TezosRpcFa12Extensions
     {
         private const int GetAllowanceGasLimit = 100000;
 

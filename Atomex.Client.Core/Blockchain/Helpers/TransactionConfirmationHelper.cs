@@ -35,35 +35,33 @@ namespace Atomex.Blockchain.Helpers
         {
             try
             {
-                var txResult = await currency.BlockchainApi
+                var (tx, error) = await currency.BlockchainApi
                     .GetTransactionAsync(txId, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (txResult != null && txResult.HasError)
+                if (error != null)
                 {
-                    if (txResult.Error.Code == (int)HttpStatusCode.NotFound ||
-                        txResult.Error.Code == (int)HttpStatusCode.GatewayTimeout ||
-                        txResult.Error.Code == (int)HttpStatusCode.ServiceUnavailable ||
-                        txResult.Error.Code == (int)HttpStatusCode.InternalServerError ||
-                        txResult.Error.Code == HttpHelper.SslHandshakeFailed ||
-                        txResult.Error.Code == Errors.RequestError)
+                    if (error.Value.Code == (int)HttpStatusCode.NotFound ||
+                        error.Value.Code == (int)HttpStatusCode.GatewayTimeout ||
+                        error.Value.Code == (int)HttpStatusCode.ServiceUnavailable ||
+                        error.Value.Code == (int)HttpStatusCode.InternalServerError ||
+                        error.Value.Code == HttpHelper.SslHandshakeFailed ||
+                        error.Value.Code == Errors.RequestError)
                         return new ConfirmationCheckResult(false, null);
 
-                    Log.Error("Error while get {@currency} transaction {@txId}. Code: {@code}. Description: {@desc}",
+                    Log.Error("Error while get {@currency} transaction {@txId}. Code: {@code}. Message: {@message}",
                         currency.Name,
                         txId,
-                        txResult.Error.Code,
-                        txResult.Error.Description);
+                        error.Value.Code,
+                        error.Value.Message);
 
-                    return txResult.Error;
+                    return error;
                 }
-
-                var tx = txResult.Value;
 
                 if (tx != null && tx.Status == TransactionStatus.Failed)
                     return new ConfirmationCheckResult(false, tx);
 
-                if (tx == null || tx.BlockInfo == null || tx.BlockInfo.Confirmations < NumberOfConfirmations)
+                if (tx == null || tx.Confirmations < NumberOfConfirmations)
                     return new ConfirmationCheckResult(false, null);
 
                 return new ConfirmationCheckResult(true, tx);

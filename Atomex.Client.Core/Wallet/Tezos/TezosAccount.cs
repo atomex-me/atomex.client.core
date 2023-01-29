@@ -555,6 +555,70 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
         }
 
+        public override async Task ResolveTransactionsTypesAsync(
+            IEnumerable<ITransaction> txs,
+            CancellationToken cancellationToken = default)
+        {
+            var resolved = new List<ITransaction>();
+
+            foreach (var tx in txs.Cast<TezosOperation>())
+            {
+                if (tx.IsTypeResolved)
+                    continue;
+
+                await ResolveTransactionTypeAsync(tx, cancellationToken)
+                    .ConfigureAwait(false);
+
+                resolved.Add(tx);
+            }
+
+            await LocalStorage
+                .UpsertTransactionsAsync(
+                    txs,
+                    notifyIfNewOrChanged: true,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        private async Task ResolveTransactionTypeAsync(
+            TezosOperation tx,
+            CancellationToken cancellationToken = default)
+        {
+            tx.Type = TransactionType.Unknown;
+
+            var fromAddress = await GetAddressAsync(tx.From, cancellationToken)
+                .ConfigureAwait(false);
+
+            var isFromSelf = fromAddress != null;
+
+            if (isFromSelf)
+                tx.Type |= TransactionType.Output;
+
+            //var toAddress = await GetAddressAsync(tx.To, cancellationToken)
+            //   .ConfigureAwait(false);
+
+            //var isToSelf = toAddress != null;
+
+            //if (isToSelf)
+            //    tx.Type |= TransactionType.Input;
+
+            //if (tx.Data != null)
+            //{
+            //    tx.Type |= TransactionType.ContractCall;
+
+            //    if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<InitiateMessage>()))
+            //        tx.Type |= TransactionType.SwapPayment;
+            //    else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RedeemMessage>()))
+            //        tx.Type |= TransactionType.SwapRedeem;
+            //    else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RefundMessage>()))
+            //        tx.Type |= TransactionType.SwapRefund;
+            //    else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferMessage>()))
+            //        tx.Type |= TransactionType.TokenTransfer;
+            //    else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveMessage>()))
+            //        tx.Type |= TransactionType.TokenApprove;
+            //}
+        }
+
         #endregion Transactions
     }
 }

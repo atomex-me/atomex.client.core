@@ -5,7 +5,6 @@ using System.Threading.Tasks;
 using NBitcoin;
 using Serilog;
 
-using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
 using Atomex.Core;
@@ -15,7 +14,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
 {
     public class BitcoinBasedSwapInitiatedHelper
     {
-        public static async Task<Result<ITransaction>> TryToFindPaymentAsync(
+        public static async Task<Result<BitcoinTransaction>> TryToFindPaymentAsync(
             Swap swap,
             CurrencyConfig currency,
             Side side,
@@ -85,7 +84,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                     return tx as BitcoinTransaction;
                 }
 
-                return new Result<ITransaction> { Value = null };
+                return new Result<BitcoinTransaction> { Value = null };
             }
             catch (Exception e)
             {

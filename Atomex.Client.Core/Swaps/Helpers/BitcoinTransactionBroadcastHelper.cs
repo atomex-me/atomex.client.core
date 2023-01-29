@@ -5,18 +5,18 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Core;
-using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Bitcoin;
 
 namespace Atomex.Swaps.Helpers
 {
-    public static class TransactionBroadcastHelper
+    public static class BitcoinTransactionBroadcastHelper
     {
         public static Task<string> ForceBroadcast(
-            this ITransaction tx,
-            IBlockchainApi blockchainApi,
+            this BitcoinTransaction tx,
+            BitcoinBlockchainApi blockchainApi,
             Swap swap,
             TimeSpan interval,
-            Action<Swap, string, CancellationToken> completionHandler = null,
+            Action<Swap, BitcoinTransaction, string, CancellationToken> completionHandler = null,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -33,13 +33,13 @@ namespace Atomex.Swaps.Helpers
                         {
                             if (txId != null)
                             {
-                                completionHandler?.Invoke(swap, txId, cancellationToken);
+                                completionHandler?.Invoke(swap, tx, txId, cancellationToken);
                                 return txId;
                             }
                         }
                         else
                         {
-                            Log.Error("Error while broadcast {@currency} tx with. Code: {@code}. Description: {@desc}",
+                            Log.Error("Error while broadcast {@currency} tx with. Code: {@code}. Message: {@message}",
                                 tx.Currency,
                                 error.Value.Code,
                                 error.Value.Message);

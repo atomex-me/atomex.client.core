@@ -17,7 +17,7 @@ namespace Atomex.Blockchain.Bitcoin
         private readonly Transaction _tx;
         public string Id => _tx.GetHash().ToString();
         public string Currency { get; }
-        public TransactionStatus Status { get; }
+        public TransactionStatus Status { get; set; }
         public TransactionType Type { get; set; }
         public DateTimeOffset? CreationTime { get; }
         public DateTimeOffset? BlockTime { get; }

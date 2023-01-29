@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
+using Atomex.Blockchain;
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
@@ -80,7 +81,7 @@ namespace Atomex.ViewModels
                                 HasActivity = false,
                                 KeyIndex    = w.KeyIndex,
                                 KeyType     = w.KeyType,
-                                TokenBalance = new Blockchain.Tezos.TokenBalance
+                                TokenBalance = new TokenBalance
                                 {
                                     Contract = tokenContract,
                                     Balance  = "0",

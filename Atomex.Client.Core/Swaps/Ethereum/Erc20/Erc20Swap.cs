@@ -217,19 +217,20 @@ namespace Atomex.Swaps.Ethereum
 
             if (error == null && secret != null)
             {
-                await RedeemConfirmedEventHandler(swap, null, cancellationToken)
+                await RedeemConfirmedEventHandler(swap, cancellationToken)
                     .ConfigureAwait(false);
 
                 return;
             }
 
-            if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast))
+            if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast) &&
+                swap.LastRedeemTryTimeStamp + TimeSpan.FromMinutes(30) > DateTime.UtcNow)
             {
                 // redeem already broadcast
                 _ = TrackTransactionConfirmationAsync<EthereumTransaction>(
                     swap: swap,
-                    dataRepository: Erc20Account.LocalStorage,
-                    txId: swap.RedeemTx.Id,
+                    localStorage: Erc20Account.LocalStorage,
+                    txId: swap.RedeemTxId,
                     confirmationHandler: RedeemConfirmedEventHandler,
                     cancellationToken: cancellationToken);
 
@@ -318,7 +319,6 @@ namespace Atomex.Swaps.Ethereum
                     return;
                 }
 
-                //swap.RedeemTx = redeemTx;
                 swap.StateFlags |= SwapStateFlags.IsRedeemSigned;
 
                 await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemSigned, cancellationToken)
@@ -340,7 +340,8 @@ namespace Atomex.Swaps.Ethereum
                 EthereumAccount.AddressLocker.Unlock(walletAddress.Address);
             }
 
-            //swap.RedeemTx = redeemTx;
+            swap.RedeemTxId = txId;
+            swap.LastRedeemTryTimeStamp = DateTime.UtcNow;
             swap.StateFlags |= SwapStateFlags.IsRedeemBroadcast;
 
             await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemBroadcast, cancellationToken)
@@ -348,7 +349,7 @@ namespace Atomex.Swaps.Ethereum
 
             _ = TrackTransactionConfirmationAsync<EthereumTransaction>(
                 swap: swap,
-                dataRepository: Erc20Account.LocalStorage,
+                localStorage: Erc20Account.LocalStorage,
                 txId: txId,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -453,14 +454,12 @@ namespace Atomex.Swaps.Ethereum
             var erc20Config = Erc20Config;
 
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast) &&
-                swap.RefundTx != null &&
-                swap.RefundTx.CreationTime != null &&
-                swap.RefundTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(20) > DateTime.UtcNow)
+                swap.LastRefundTryTimeStamp + TimeSpan.FromMinutes(20) > DateTime.UtcNow)
             {
                 _ = TrackTransactionConfirmationAsync<EthereumTransaction>(
                     swap: swap,
-                    dataRepository: Erc20Account.LocalStorage,
-                    txId: swap.RefundTx.Id,
+                    localStorage: Erc20Account.LocalStorage,
+                    txId: swap.RefundTxId,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
 
@@ -573,7 +572,6 @@ namespace Atomex.Swaps.Ethereum
                     return;
                 }
 
-                //swap.RefundTx = refundTx;
                 swap.StateFlags |= SwapStateFlags.IsRefundSigned;
 
                 await UpdateSwapAsync(swap, SwapStateFlags.IsRefundSigned, cancellationToken)
@@ -595,7 +593,8 @@ namespace Atomex.Swaps.Ethereum
                 EthereumAccount.AddressLocker.Unlock(walletAddress.Address);
             }
 
-            //swap.RefundTx = refundTx;
+            swap.RefundTxId = txId;
+            swap.LastRefundTryTimeStamp = DateTime.UtcNow;
             swap.StateFlags |= SwapStateFlags.IsRefundBroadcast;
 
             await UpdateSwapAsync(swap, SwapStateFlags.IsRefundBroadcast, cancellationToken)
@@ -603,7 +602,7 @@ namespace Atomex.Swaps.Ethereum
 
             _ = TrackTransactionConfirmationAsync<EthereumTransaction>(
                 swap: swap,
-                dataRepository: Erc20Account.LocalStorage,
+                localStorage: Erc20Account.LocalStorage,
                 txId: txId,
                 confirmationHandler: RefundConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -688,7 +687,7 @@ namespace Atomex.Swaps.Ethereum
                 {
                     if (isRefunded)
                     {
-                        await RefundConfirmedEventHandler(swap, swap.RefundTx, cancellationToken)
+                        await RefundConfirmedEventHandler(swap, cancellationToken)
                             .ConfigureAwait(false);
                     }
                     else

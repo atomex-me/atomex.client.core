@@ -109,9 +109,9 @@ namespace Atomex.Swaps.Abstract
 
         protected Task TrackTransactionConfirmationAsync<T>(
             Swap swap,
-            ILocalStorage dataRepository,
+            ILocalStorage localStorage,
             string txId,
-            Func<Swap, ITransaction, CancellationToken, Task> confirmationHandler,
+            Func<Swap, CancellationToken, Task> confirmationHandler,
             CancellationToken cancellationToken = default) where T : ITransaction
         {
             return Task.Run(async () =>
@@ -124,7 +124,7 @@ namespace Atomex.Swaps.Abstract
                             ? TezosConfig.Xtz
                             : Currency;
 
-                        var tx = await dataRepository
+                        var tx = await localStorage
                             .GetTransactionByIdAsync<T>(currency, txId)
                             .ConfigureAwait(false);
 
@@ -133,7 +133,7 @@ namespace Atomex.Swaps.Abstract
 
                         if (tx.IsConfirmed)
                         {
-                            await confirmationHandler.Invoke(swap, tx, cancellationToken)
+                            await confirmationHandler.Invoke(swap, cancellationToken)
                                 .ConfigureAwait(false);
 
                             break;
@@ -281,7 +281,6 @@ namespace Atomex.Swaps.Abstract
 
         protected async Task RedeemConfirmedEventHandler(
             Swap swap,
-            ITransaction tx,
             CancellationToken cancellationToken = default)
         {
             swap.StateFlags |= SwapStateFlags.IsRedeemConfirmed;
@@ -327,7 +326,6 @@ namespace Atomex.Swaps.Abstract
 
         protected async Task RefundConfirmedEventHandler(
             Swap swap,
-            ITransaction tx,
             CancellationToken cancellationToken = default)
         {
             swap.StateFlags |= SwapStateFlags.IsRefundConfirmed;

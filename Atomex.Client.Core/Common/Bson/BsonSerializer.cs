@@ -1,9 +1,10 @@
 ﻿using System;
+
 using LiteDB;
 
 namespace Atomex.Common.Bson
 {
-    public class BsonSerializer<T>
+    public abstract class BsonSerializer<T>
     {
         protected const string IdKey = "_id";
 
@@ -18,14 +19,7 @@ namespace Atomex.Common.Bson
                 deserialize: Deserialize);
         }
 
-        public virtual T Deserialize(BsonValue bsonValue)
-        {
-            throw new NotImplementedException();
-        }
-
-        public virtual BsonValue Serialize(T obj)
-        {
-            throw new NotImplementedException();
-        }
+        public abstract T Deserialize(BsonValue bsonValue);
+        public abstract BsonValue Serialize(T obj);
     }
 }

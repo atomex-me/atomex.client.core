@@ -5,8 +5,8 @@ using Microsoft.Extensions.Configuration;
 using NBitcoin;
 
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Bitcoin.SoChain;
 using Atomex.Blockchain.BlockCypher;
-using Atomex.Blockchain.SoChain;
 using Atomex.Common;
 using Atomex.Wallet.Bip;
 
@@ -94,8 +94,19 @@ namespace Atomex
 
             return blockchainApi switch
             {
-                "sochain"     => new SoChainApi(this, configuration),
-                "blockcypher" => new BlockCypherApi(this, configuration),
+                "sochain" => new SoChainApi(Name, new SoChainSettings
+                {
+                    BaseUrl = configuration["SoChain:BaseUrl"],
+                    Network = configuration["SoChain:Network"],
+                    Decimals = Digits
+                }),
+                "blockcypher" => new BlockCypherApi(Name, new BlockCypherSettings
+                {
+                    BaseUrl = configuration["BlockCypher:BaseUrl"],
+                    Network = configuration["BlockCypher:Network"],
+                    Coin = configuration["BlockCypher:Coin"],
+                    Decimals = Digits
+                }),
                 _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
             };
         }

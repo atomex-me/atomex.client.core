@@ -20,17 +20,14 @@ namespace Atomex.Swaps.BitcoinBased
             Account = account ?? throw new ArgumentNullException(nameof(account));
         }
 
-        public async Task<BitcoinTransaction> SignPaymentTxAsync(
-            BitcoinTransaction paymentTx)
+        public async Task<BitcoinTransaction> SignPaymentTxAsync(BitcoinTransaction tx)
         {
-            var tx = paymentTx.Clone();
-
             var outputs = await Account
                 .GetAvailableOutputsAsync()
                 .ConfigureAwait(false);
 
             var spentOutputs = outputs
-                .Where(o => { return tx.Inputs.FirstOrDefault(i => i.Hash == o.TxId && i.Index == o.Index) != null; })
+                .Where(o => { return tx.Inputs.FirstOrDefault(i => i.PreviousOutput.Hash == o.TxId && i.Index == o.Index) != null; })
                 .ToList();
 
             var result = await Account
@@ -45,7 +42,7 @@ namespace Atomex.Swaps.BitcoinBased
                 return null;
             }
 
-            if (!tx.Verify(spentOutputs, out var errors, Account.Config))
+            if (!tx.Verify(spentOutputs, out var errors, Account.Config.Network))
             {
                 Log.Error("Payment transaction verify errors: {errors}", errors);
                 return null;
@@ -64,13 +61,11 @@ namespace Atomex.Swaps.BitcoinBased
         }
 
         public async Task<BitcoinTransaction> SignHtlcSwapRefundForP2ShTxAsync(
-            BitcoinTransaction refundTx,
+            BitcoinTransaction tx,
             BitcoinTransaction paymentTx,
             WalletAddress refundAddress,
             byte[] redeemScript)
         {
-            var tx = refundTx.Clone();
-
             if (tx.Inputs.Length != 1)
             {
                 Log.Error("Refund transaction has zero or more than one input");
@@ -88,7 +83,7 @@ namespace Atomex.Swaps.BitcoinBased
             }
 
             // firstly check, if transaction is already signed
-            if (tx.Verify(spentOutput, Account.Config))
+            if (tx.Verify(spentOutput, Account.Config.Network))
                 return tx;
 
             // clean any signature, if exists
@@ -121,7 +116,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             tx.SetSignature(refundScriptSig, spentOutput);
 
-            if (!tx.Verify(spentOutput, out var errors, Account.Config))
+            if (!tx.Verify(spentOutput, out var errors, Account.Config.Network))
             {
                 Log.Error("Refund transaction verify errors: {errors}", errors);
                 return null;
@@ -141,14 +136,12 @@ namespace Atomex.Swaps.BitcoinBased
         }
 
         public async Task<BitcoinTransaction> SignHtlcSwapRedeemForP2ShTxAsync(
-            BitcoinTransaction redeemTx,
+            BitcoinTransaction tx,
             BitcoinTransaction paymentTx,
             WalletAddress redeemAddress,
             byte[] secret,
             byte[] redeemScript)
         {
-            var tx = redeemTx.Clone();
-
             var spentOutput = paymentTx.Outputs
                 .Cast<BitcoinTxOutput>()
                 .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));
@@ -187,7 +180,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             tx.SetSignature(redeemScriptSig, spentOutput);
 
-            if (!tx.Verify(spentOutput, out var errors, Account.Config))
+            if (!tx.Verify(spentOutput, out var errors, Account.Config.Network))
             {
                 Log.Error("Redeem transaction verify errors: {errors}", errors);
                 return null;

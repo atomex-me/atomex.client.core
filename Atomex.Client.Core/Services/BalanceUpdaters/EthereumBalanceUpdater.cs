@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+
 using Atomex.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Services.Abstract;
 using Atomex.Wallet.Abstract;
-using Serilog;
-
 
 namespace Atomex.Services.BalanceUpdaters
 {
@@ -20,7 +20,6 @@ namespace Atomex.Services.BalanceUpdaters
         private readonly IWalletScanner _walletScanner;
 
         private ISet<string> _addresses;
-
 
         public EthereumBalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, IWalletScanner walletScanner, ILogger log)
         {
@@ -53,7 +52,7 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error on starting EthereumBalanceUpdater");
+                _log.LogError(e, "Error on starting EthereumBalanceUpdater");
             }
         }
 
@@ -65,10 +64,9 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error on stopping EthereumBalanceUpdater");
+                _log.LogError(e, "Error on stopping EthereumBalanceUpdater");
             }
         }
-
 
         private async Task<ISet<string>> GetAddressesAsync()
         {
@@ -99,14 +97,14 @@ namespace Atomex.Services.BalanceUpdaters
 
                 if (newAddresses.Any())
                 {
-                    Log.Information("EthereumBalanceUpdater adds new addresses {@Addresses}", newAddresses);
+                    _log.LogInformation("EthereumBalanceUpdater adds new addresses {@Addresses}", newAddresses);
                     _notifier.SubscribeOnBalanceUpdate(newAddresses, BalanceUpdatedHandler);
                     _addresses.UnionWith(newAddresses);
                 }
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error on handling Ethereum balance update");
+                _log.LogError(e, "Error on handling Ethereum balance update");
             }
         }
     }

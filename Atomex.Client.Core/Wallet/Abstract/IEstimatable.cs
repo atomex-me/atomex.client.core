@@ -37,7 +37,7 @@ namespace Atomex.Wallet.Abstract
         public decimal Amount { get; set; }
         public decimal Fee { get; set; }
         public decimal Reserved { get; set; }
-        public Error Error { get; set; }
+        public Error? Error { get; set; }
         public string ErrorHint { get; set; }
     }
 

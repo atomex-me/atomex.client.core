@@ -36,7 +36,7 @@ namespace Atomex.Blockchain.Abstract
     {
         string Id { get; }
         string Currency { get; }
-        TransactionStatus Status { get; }
+        TransactionStatus Status { get; set; }
         TransactionType Type { get; }
         DateTimeOffset? CreationTime { get; }
         DateTimeOffset? BlockTime { get; }
@@ -44,5 +44,7 @@ namespace Atomex.Blockchain.Abstract
         long Confirmations { get; }
         bool IsConfirmed { get; }
         bool IsTypeResolved { get; }
+
+        public void Fail() => Status = TransactionStatus.Failed;
     }
 }

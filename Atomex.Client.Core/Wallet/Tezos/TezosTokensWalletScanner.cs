@@ -165,9 +165,6 @@ namespace Atomex.Wallet.Tezos
                 await UpdateAndSaveTokenTransfersAsync(
                         tzktApi,
                         changedAddresses: changedAddresses.Select(w => w.Address),
-                        allAddresses: uniqueLocalAddresses
-                            .Concat(newTokenAddresses.Select(w => w.Address))
-                            .Distinct(),
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -284,9 +281,6 @@ namespace Atomex.Wallet.Tezos
                 await UpdateAndSaveTokenTransfersAsync(
                         tzktApi,
                         changedAddresses: changedAddresses.Select(w => w.Address),
-                        allAddresses: xtzLocalAddresses.Select(w => w.Address)
-                            .Concat(newTokenAddresses.Select(w => w.Address))
-                            .Distinct(),
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -414,10 +408,6 @@ namespace Atomex.Wallet.Tezos
                 await UpdateAndSaveTokenTransfersAsync(
                         tzktApi,
                         changedAddresses: changedAddresses.Select(w => w.Address),
-                        allAddresses: xtzLocalAddresses.Select(w => w.Address)
-                            .Concat(allTokensLocalAddresses.Select(w => w.Address))
-                            .Concat(newTokenAddresses.Select(w => w.Address))
-                            .Distinct(),
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -538,9 +528,6 @@ namespace Atomex.Wallet.Tezos
                 await UpdateAndSaveTokenTransfersAsync(
                         tzktApi,
                         changedAddresses: changedAddresses.Select(w => w.Address),
-                        allAddresses: xtzLocalAddresses.Select(w => w.Address)
-                            .Concat(newTokenAddresses.Select(w => w.Address))
-                            .Distinct(),
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -572,7 +559,6 @@ namespace Atomex.Wallet.Tezos
         private async Task UpdateAndSaveTokenTransfersAsync(
             TzktApi tzktApi,
             IEnumerable<string> changedAddresses,
-            IEnumerable<string> allAddresses,
             CancellationToken cancellationToken = default)
         {
             // scan transfers if need
@@ -593,17 +579,6 @@ namespace Atomex.Wallet.Tezos
 
             if (transfers?.Any() ?? false)
             {
-                var localAddressesHashSet = allAddresses.ToHashSet();
-
-                // resolve transfers type
-                foreach (var transfer in transfers)
-                {
-                    if (localAddressesHashSet.Contains(transfer.From))
-                        transfer.Type |= TransactionType.Output;
-                    if (localAddressesHashSet.Contains(transfer.To))
-                        transfer.Type |= TransactionType.Input;
-                }
-
                 await _tezosAccount
                     .LocalStorage
                     .UpsertTokenTransfersAsync(transfers)

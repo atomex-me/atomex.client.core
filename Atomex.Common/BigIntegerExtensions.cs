@@ -55,5 +55,17 @@ namespace Atomex.Common
 
             return result + (decimal)remainder / (decimal)divisor;
         }
+
+        public static decimal Divide(this BigInteger value, BigInteger divisor)
+        {
+            var integerPart = BigInteger.DivRem(value, divisor, out var remainder);
+
+            var result = (decimal)integerPart; // throw overflow if integerPart bigger than decimal type
+
+            if (remainder.IsZero)
+                return result;
+
+            return result + (decimal)remainder / (decimal)divisor;
+        }
     }
 }

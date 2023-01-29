@@ -9,9 +9,7 @@ namespace Atomex.Blockchain.Tezos
     {
         public string Id { get; set; }
         public string Currency { get; set; }
-        public TransactionStatus Status => Confirmations > 0
-            ? TransactionStatus.Confirmed
-            : TransactionStatus.Failed;
+        public TransactionStatus Status { get; set; }
         public TransactionType Type { get; set; }
         public DateTimeOffset? CreationTime { get; set; }
         public DateTimeOffset? BlockTime { get; set; }

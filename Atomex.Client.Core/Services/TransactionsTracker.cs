@@ -118,13 +118,13 @@ namespace Atomex.Services
                         var currency = _account.Currencies
                             .GetByName(tx.Currency);
 
-                        var result = await currency
+                        var (result, error) = await currency
                             .IsTransactionConfirmed(
                                 txId: tx.Id,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (result.HasError)
+                        if (error != null)
                         {
                             await Task.Delay(TransactionConfirmationCheckInterval(tx?.Currency), cancellationToken)
                                 .ConfigureAwait(false);
@@ -132,9 +132,9 @@ namespace Atomex.Services
                             continue;
                         }
 
-                        if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.Status == TransactionStatus.Failed)
+                        if (result.IsConfirmed || result.Transaction != null && result.Transaction.Status == TransactionStatus.Failed)
                         {
-                            TransactionProcessedHandler(result.Value.Transaction, cancellationToken);
+                            TransactionProcessedHandler(result.Transaction, cancellationToken);
                             break;
                         }
 
@@ -143,7 +143,7 @@ namespace Atomex.Services
                             DateTime.UtcNow > tx.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
                             !Currencies.IsBitcoinBased(tx.Currency))
                         {
-                            tx.State = TransactionStatus.Failed;
+                            tx.Fail();
 
                             TransactionProcessedHandler(tx, cancellationToken);
                             break;

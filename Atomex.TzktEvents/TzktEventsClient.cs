@@ -7,7 +7,7 @@ using System.Security.Cryptography.X509Certificates;
 
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.DependencyInjection;
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 using Atomex.TzktEvents.Models;
 using Atomex.TzktEvents.Services;
@@ -46,7 +46,7 @@ namespace Atomex.TzktEvents
                     return;
                 }
 
-                _log.Warning("Trying to start new connection with baseUri = {BaseUri} while TzktEventsClient is already connected to {EventsUrl}",
+                _log.LogWarning("Trying to start new connection with baseUri = {BaseUri} while TzktEventsClient is already connected to {EventsUrl}",
                     _baseUri, EventsUrl);
                 return;
             }
@@ -91,11 +91,11 @@ namespace Atomex.TzktEvents
                 await InitAsync().ConfigureAwait(false);
 
                 Connected?.Invoke(this, EventArgs.Empty);
-                _log.Information("TzktEventsClient started with events url: {EventsUrl}", EventsUrl);
+                _log.LogInformation("TzktEventsClient started with events url: {EventsUrl}", EventsUrl);
             }
             catch (Exception e)
             {
-                _log.Error(e, "TzktEventsClient failed to start");
+                _log.LogError(e, "TzktEventsClient failed to start");
                 _isStarted = false;
             }
         }
@@ -104,7 +104,7 @@ namespace Atomex.TzktEvents
         {
             if (!_isStarted)
             {
-                _log.Warning("Connection of TzktEventsClient was not started");
+                _log.LogWarning("Connection of TzktEventsClient was not started");
                 return;
             }
 
@@ -118,11 +118,11 @@ namespace Atomex.TzktEvents
                 await _hub.DisposeAsync().ConfigureAwait(false);
 
                 Disconnected?.Invoke(this, EventArgs.Empty);
-                _log.Information("TzktEventsClient stopped");
+                _log.LogInformation("TzktEventsClient stopped");
             }
             catch (Exception e)
             {
-                _log.Error(e, "TzktEventsClient was stopped with error");
+                _log.LogError(e, "TzktEventsClient was stopped with error");
             }
             finally
             {
@@ -166,7 +166,7 @@ namespace Atomex.TzktEvents
         {
             if (!_isStarted)
             {
-                _log.Error("{MethodName} was called before established connection to Tzkt Events", methodName);
+                _log.LogError("{MethodName} was called before established connection to Tzkt Events", methodName);
                 return false;
             }
 
@@ -177,7 +177,7 @@ namespace Atomex.TzktEvents
         {
             if (exception != null)
             {
-                _log.Warning("Reconnecting to TzktEvents due to an error: {Exception}", exception);
+                _log.LogWarning("Reconnecting to TzktEvents due to an error: {Exception}", exception);
             }
 
             try
@@ -186,7 +186,7 @@ namespace Atomex.TzktEvents
             }
             catch (Exception ex)
             {
-                _log.Error(ex, ex.Message);
+                _log.LogError(ex, ex.Message);
             }
 
             return Task.CompletedTask;
@@ -194,7 +194,7 @@ namespace Atomex.TzktEvents
 
         private async Task ReconnectedHandler(string connectionId)
         {
-            _log.Debug("Reconnected to TzKT Events with connection id: {ConnectionId}", connectionId);
+            _log.LogDebug("Reconnected to TzKT Events with connection id: {ConnectionId}", connectionId);
             await InitAsync().ConfigureAwait(false);
 
             try
@@ -203,7 +203,7 @@ namespace Atomex.TzktEvents
             }
             catch (Exception ex)
             {
-                _log.Error(ex, ex.Message);
+                _log.LogError(ex, ex.Message);
             }
         }
 
@@ -211,7 +211,7 @@ namespace Atomex.TzktEvents
         {
             if (exception != null)
             {
-                _log.Warning("Connection closed due to an error: {Exception}", exception);
+                _log.LogWarning("Connection closed due to an error: {Exception}", exception);
             }
 
             await StopAsync().ConfigureAwait(false);
@@ -231,7 +231,7 @@ namespace Atomex.TzktEvents
             }
             catch (Exception e)
             {
-                _log.Error(e, "TzktEvents caught error on initialization");
+                _log.LogError(e, "TzktEvents caught error on initialization");
             }
         }
 
@@ -244,7 +244,7 @@ namespace Atomex.TzktEvents
             }
             catch (Exception e)
             {
-                _log.Error(e, "TzktEvents caught error while setting subscription");
+                _log.LogError(e, "TzktEvents caught error while setting subscription");
             }
         }
     }

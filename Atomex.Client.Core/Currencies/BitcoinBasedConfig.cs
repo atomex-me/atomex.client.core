@@ -181,13 +181,14 @@ namespace Atomex
                 .ScriptPubKey;
 
             return BitcoinTransaction.CreateTransaction(
-                currency: this,
+                currency: Name,
                 coins: coins,
                 destination: destination,
                 change: change,
                 amount: amount,
                 fee: fee,
                 lockTime: lockTime,
+                network: Network,
                 knownRedeems: knownRedeems);
         }
 
@@ -209,12 +210,13 @@ namespace Atomex
                 .ScriptPubKey;
 
             return BitcoinTransaction.CreateTransaction(
-                currency: this,
+                currency: Name,
                 coins: coins,
                 destination: destination,
                 change: change,
                 amount: amount,
                 fee: fee,
+                network: Network,
                 knownRedeems: knownRedeems);
         }
 
@@ -246,12 +248,13 @@ namespace Atomex
                 .ScriptPubKey;
 
             return BitcoinTransaction.CreateTransaction(
-                currency: this,
+                currency: Name,
                 coins: coins,
                 destination: swap.PaymentScript,
                 change: change,
                 amount: amount,
-                fee: fee);
+                fee: fee,
+                network: Network);
         }
 
         public virtual Task<decimal> GetFeeRateAsync(

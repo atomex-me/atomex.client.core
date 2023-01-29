@@ -58,7 +58,6 @@ namespace Atomex.LiteDb
         public LiteDbLocalStorage(
             string pathToDb,
             SecureString password,
-            ICurrencies currencies,
             Network network,
             Action<MigrationActionType> migrationComplete = null)
         {
@@ -68,11 +67,8 @@ namespace Atomex.LiteDb
             if (password == null)
                 throw new ArgumentNullException(nameof(password));
 
-            if (currencies == null)
-                throw new ArgumentNullException(nameof(currencies));
-
             _sessionPassword = SessionPasswordHelper.GetSessionPassword(password);
-            _bsonMapper = CreateBsonMapper(currencies);
+            _bsonMapper = CreateBsonMapper();
 
             var connectionString = $"FileName={_pathToDb};Password={_sessionPassword};Connection=direct;Upgrade=true";
 
@@ -94,14 +90,11 @@ namespace Atomex.LiteDb
             _sessionPassword = newSessionPassword;
         }
 
-        private BsonMapper CreateBsonMapper(ICurrencies currencies)
+        private BsonMapper CreateBsonMapper()
         {
             return new BsonMapper()
                 .UseSerializer(new BigIntegerToBsonSerializer())
-                .UseSerializer(new JObjectToBsonSerializer())
-                .UseSerializer(new BitcoinBasedTransactionToBsonSerializer(currencies))
-                .UseSerializer(new BitcoinBasedTxOutputToBsonSerializer())
-                .UseSerializer(new SwapToBsonSerializer(currencies));
+                .UseSerializer(new JObjectToBsonSerializer());
         }
 
         #region Addresses

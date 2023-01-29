@@ -10,7 +10,6 @@ using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.TezosTokens;
-using Atomex.Blockchain.Ethereum.Abstract;
 
 namespace Atomex.ViewModels
 {
@@ -52,9 +51,9 @@ namespace Atomex.ViewModels
                             var xtzConfig = account.Currencies.Get<TezosConfig>("XTZ");
                             var tezosTokenConfig = account.Currencies.Get<TezosTokenConfig>(address.Currency);
 
-                            var tzktApi = new TzktApi(xtzConfig);
+                            var tzktApi = new TzktApi(xtzConfig.GetTzktSettings());
 
-                            var balanceResult = await tzktApi
+                            var (balances, error) = await tzktApi
                                 .GetTokenBalanceAsync(
                                     addresses: new[] { address.Address },
                                     tokenContracts: new[] { tezosTokenConfig.TokenContractAddress },
@@ -62,10 +61,9 @@ namespace Atomex.ViewModels
                                     cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
 
-                            if (balanceResult == null ||
-                                balanceResult.HasError ||
-                                balanceResult.Value == null ||
-                                !balanceResult.Value.Any())
+                            if (error != null ||
+                                balances == null ||
+                                !balances.Any())
                             {
                                 errors.Add(new BalanceError
                                 {
@@ -77,7 +75,7 @@ namespace Atomex.ViewModels
                                 continue;
                             }
 
-                            actualBalance = balanceResult.Value
+                            actualBalance = balances
                                 .First()
                                 .GetTokenBalance();
                         }
@@ -87,16 +85,17 @@ namespace Atomex.ViewModels
                             var erc20 = account.Currencies
                                 .Get<Erc20Config>(address.Currency);
 
-                            var api = erc20.BlockchainApi as IEthereumApi;
+                            var api = erc20.GetEtherScanApi();
+                            //var api = erc20.BlockchainApi as IEthereumApi;
 
-                            var balanceResult = await api
-                                .TryGetErc20BalanceAsync(
+                            var (balance, error) = await api
+                                .GetErc20BalanceAsync(
                                     address: address.Address,
-                                    contractAddress: erc20.ERC20ContractAddress,
+                                    token: erc20.ERC20ContractAddress,
                                     cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
 
-                            if (balanceResult == null || balanceResult.HasError)
+                            if (error != null)
                             {
                                 errors.Add(new BalanceError
                                 {
@@ -108,7 +107,7 @@ namespace Atomex.ViewModels
                                 continue;
                             }
 
-                            actualBalance = erc20.TokenDigitsToTokens(balanceResult.Value);
+                            actualBalance = erc20.TokenDigitsToTokens(balance);
                         }
                         else
                         {
@@ -116,13 +115,13 @@ namespace Atomex.ViewModels
                                 .GetByName(address.Currency)
                                 .BlockchainApi;
 
-                            var balanceResult = await api
+                            var (balance, error) = await api
                                 .GetBalanceAsync(
                                     address: address.Address,
                                     cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
 
-                            if (balanceResult == null || balanceResult.HasError)
+                            if (error != null)
                             {
                                 errors.Add(new BalanceError
                                 {
@@ -134,7 +133,7 @@ namespace Atomex.ViewModels
                                 continue;
                             }
 
-                            actualBalance = balanceResult.Value;
+                            actualBalance = balance;
                         }
 
                         if (actualBalance < address.AvailableBalance())

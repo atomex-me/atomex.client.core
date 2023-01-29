@@ -1,8 +1,8 @@
-﻿using Atomex.Blockchain.SoChain;
+﻿using Microsoft.Extensions.Logging;
+
+using Atomex.Blockchain.SoChain;
 using Atomex.Services.BalanceUpdaters.Abstract;
 using Atomex.Wallet.Abstract;
-using Serilog;
-
 
 namespace Atomex.Services.BalanceUpdaters
 {
@@ -10,7 +10,10 @@ namespace Atomex.Services.BalanceUpdaters
     {
         private const string CurrencyName = "LTC";
 
-        public LitecoinBalanceUpdater(IAccount account, IWalletScanner walletScanner, ISoChainRealtimeApi api,
+        public LitecoinBalanceUpdater(
+            IAccount account,
+            IWalletScanner walletScanner,
+            ISoChainRealtimeApi api,
             ILogger log)
             : base(account, walletScanner, api, log, CurrencyName)
         {

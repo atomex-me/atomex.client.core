@@ -3,11 +3,12 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Atomex.TzktEvents.Models;
-using Microsoft.AspNetCore.SignalR.Client;
-using Newtonsoft.Json.Linq;
-using Serilog;
 
+using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json.Linq;
+
+using Atomex.TzktEvents.Models;
 
 namespace Atomex.TzktEvents.Services
 {
@@ -58,7 +59,7 @@ namespace Atomex.TzktEvents.Services
             var addressesList = addresses.ToList();
             if (addressesList.Count == 0)
             {
-                _log.Warning("NotifyOnAccountsAsync was called with empty list of addresses");
+                _log.LogWarning("NotifyOnAccountsAsync was called with empty list of addresses");
                 return;
             }
 
@@ -76,7 +77,7 @@ namespace Atomex.TzktEvents.Services
 
         private void Handler(JObject msg)
         {
-            _log.Debug("Got msg from TzktEvents on '{Channel}' channel: {Message}",
+            _log.LogDebug("Got msg from TzktEvents on '{Channel}' channel: {Message}",
                 SubscriptionMethod.SubscribeToAccounts.Channel, msg.ToString());
 
             var messageType = (MessageType?)msg["type"]?.Value<int>();
@@ -94,7 +95,7 @@ namespace Atomex.TzktEvents.Services
                     break;
 
                 default:
-                    _log.Warning("Got msg with unrecognizable type from TzktEvents on '{Channel}' channel: {Message}",
+                    _log.LogWarning("Got msg with unrecognizable type from TzktEvents on '{Channel}' channel: {Message}",
                         SubscriptionMethod.SubscribeToAccounts.Channel, msg.ToString());
                     break;
             }
@@ -122,7 +123,7 @@ namespace Atomex.TzktEvents.Services
                     }
                     catch (Exception e)
                     {
-                        _log.Error(e,"Error while calling subscriber handler on Data message");
+                        _log.LogError(e,"Error while calling subscriber handler on Data message");
                     }
                 }
             }
@@ -148,7 +149,7 @@ namespace Atomex.TzktEvents.Services
                     }
                     catch (Exception e)
                     {
-                        _log.Error(e, "Error while calling subscriber handler on Reorg message");
+                        _log.LogError(e, "Error while calling subscriber handler on Reorg message");
                     }
                 }
             }

@@ -700,7 +700,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             {
                 Id           = result["hash"].Value<string>(),
                 Currency     = EthereumHelper.Eth,
-                CreationTime = DateTimeOffset.UtcNow,
+                CreationTime = DateTimeOffset.UtcNow, // todo: fix to received time
                 BlockHeight  = result["blockNumber"] != null
                     ? (long)new HexBigInteger(result["blockNumber"].Value<string>()).Value
                     : 0,

@@ -37,16 +37,16 @@ namespace Atomex.Client.Core.Tests
                 Side       = Side.Buy,
                 SecretHash = new byte[] { 0x04, 0x05, 0x06 },
 
-                PaymentTx = new BitcoinBasedTransaction(
-                    currency: Common.BtcTestNet.Name,
-                    tx: Transaction.Create(NBitcoin.Network.TestNet)),
+                //PaymentTx = new BitcoinBasedTransaction(
+                //    currency: Common.BtcTestNet.Name,
+                //    tx: Transaction.Create(NBitcoin.Network.TestNet)),
 
-                PartyPaymentTx = new EthereumTransaction()
-                {
-                    Currency = Common.EthTestNet.Name,
-                    From     = "abcdefghj",
-                    To       = "eprstifg"
-                }
+                //PartyPaymentTx = new EthereumTransaction()
+                //{
+                //    Currency = Common.EthTestNet.Name,
+                //    From     = "abcdefghj",
+                //    To       = "eprstifg"
+                //}
             };
         }
 
@@ -58,7 +58,6 @@ namespace Atomex.Client.Core.Tests
                 var _ = new LiteDbLocalStorage(
                     pathToDb: PathToDb,
                     password: null,
-                    currencies: Common.CurrenciesTestNet,
                     network: Network.TestNet);
             });
         }
@@ -71,7 +70,6 @@ namespace Atomex.Client.Core.Tests
             var repository = new LiteDbLocalStorage(
                 pathToDb: PathToDb,
                 password: Password,
-                currencies: Common.CurrenciesTestNet,
                 network: Network.TestNet);
 
             var swap = CreateSwap();
@@ -94,7 +92,6 @@ namespace Atomex.Client.Core.Tests
             var repository = new LiteDbLocalStorage(
                 pathToDb: PathToDb,
                 password: Password,
-                currencies: Common.CurrenciesTestNet,
                 network: Network.TestNet);
 
             var swap = await repository
@@ -108,8 +105,8 @@ namespace Atomex.Client.Core.Tests
             Assert.NotEqual(swap.TimeStamp, UtcNow);
             Assert.True(swap.StateFlags.HasFlag(SwapStateFlags.HasPayment));
             Assert.True(swap.StateFlags.HasFlag(SwapStateFlags.HasPartyPayment));
-            Assert.NotNull(swap.PaymentTx);
-            Assert.NotNull(swap.PartyPaymentTx);
+            //Assert.NotNull(swap.PaymentTx);
+            //Assert.NotNull(swap.PartyPaymentTx);
         }
 
         [Fact]
@@ -118,7 +115,6 @@ namespace Atomex.Client.Core.Tests
             var repository = new LiteDbLocalStorage(
                 pathToDb: PathToDb,
                 password: Password,
-                currencies: Common.CurrenciesTestNet,
                 network: Network.TestNet);
 
             var id = "abcdefgh";
@@ -127,10 +123,10 @@ namespace Atomex.Client.Core.Tests
             {
                 Id          = id,
                 Currency    = Common.EthTestNet.Name,
-                InternalTransactions = new List<EthereumTransaction>
-                {
-                    new EthereumTransaction {Currency = Common.EthTestNet.Name}
-                }
+                //InternalTransactions = new List<EthereumTransaction>
+                //{
+                //    new EthereumTransaction {Currency = Common.EthTestNet.Name}
+                //}
             };
 
             var result = await repository

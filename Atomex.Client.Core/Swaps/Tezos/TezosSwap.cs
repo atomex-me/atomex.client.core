@@ -201,22 +201,20 @@ namespace Atomex.Swaps.Tezos
 
             if (isRedeemedError == null && secret != null)
             {
-                await RedeemConfirmedEventHandler(swap, null, cancellationToken)
+                await RedeemConfirmedEventHandler(swap, cancellationToken)
                     .ConfigureAwait(false);
 
                 return;
             }
 
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsRedeemBroadcast) &&
-                swap.RedeemTx != null &&
-                swap.RedeemTx.CreationTime != null &&
-                swap.RedeemTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
+                swap.LastRedeemTryTimeStamp + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
             {
                 // redeem already broadcast
                 _ = TrackTransactionConfirmationAsync<TezosOperation>(
                     swap: swap,
-                    dataRepository: _account.LocalStorage,
-                    txId: swap.RedeemTx.Id,
+                    localStorage: _account.LocalStorage,
+                    txId: swap.RedeemTxId,
                     confirmationHandler: RedeemConfirmedEventHandler,
                     cancellationToken: cancellationToken);
 
@@ -299,6 +297,8 @@ namespace Atomex.Swaps.Tezos
                 return;
             }
 
+            swap.RedeemTxId = result.OperationId;
+            swap.LastRedeemTryTimeStamp = DateTime.UtcNow;
             swap.StateFlags |= SwapStateFlags.IsRedeemSigned | SwapStateFlags.IsRedeemBroadcast;
 
             await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemSigned | SwapStateFlags.IsRedeemBroadcast, cancellationToken)
@@ -306,7 +306,7 @@ namespace Atomex.Swaps.Tezos
 
             _ = TrackTransactionConfirmationAsync<TezosOperation>(
                 swap: swap,
-                dataRepository: _account.LocalStorage,
+                localStorage: _account.LocalStorage,
                 txId: result.OperationId,
                 confirmationHandler: RedeemConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -382,14 +382,12 @@ namespace Atomex.Swaps.Tezos
             var xtzConfig = XtzConfig;
 
             if (swap.StateFlags.HasFlag(SwapStateFlags.IsRefundBroadcast) &&
-                swap.RefundTx != null &&
-                swap.RefundTx.CreationTime != null &&
-                swap.RefundTx.CreationTime.Value.ToUniversalTime() + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
+                swap.LastRefundTryTimeStamp + TimeSpan.FromMinutes(5) > DateTime.UtcNow)
             {
                 _ = TrackTransactionConfirmationAsync<TezosOperation>(
                     swap: swap,
-                    dataRepository: _account.LocalStorage,
-                    txId: swap.RefundTx.Id,
+                    localStorage: _account.LocalStorage,
+                    txId: swap.RefundTxId,
                     confirmationHandler: RefundConfirmedEventHandler,
                     cancellationToken: cancellationToken);
 
@@ -450,6 +448,8 @@ namespace Atomex.Swaps.Tezos
                 return;
             }
 
+            swap.RefundTxId = result.OperationId;
+            swap.LastRefundTryTimeStamp = DateTime.UtcNow;
             swap.StateFlags |= SwapStateFlags.IsRefundSigned | SwapStateFlags.IsRefundBroadcast;
 
             await UpdateSwapAsync(swap, SwapStateFlags.IsRefundSigned | SwapStateFlags.IsRefundBroadcast, cancellationToken)
@@ -457,7 +457,7 @@ namespace Atomex.Swaps.Tezos
 
             _ = TrackTransactionConfirmationAsync<TezosOperation>(
                 swap: swap,
-                dataRepository: _account.LocalStorage,
+                localStorage: _account.LocalStorage,
                 txId: result.OperationId,
                 confirmationHandler: RefundConfirmedEventHandler,
                 cancellationToken: cancellationToken);
@@ -542,7 +542,7 @@ namespace Atomex.Swaps.Tezos
                 {
                     if (isRefunded)
                     {
-                        await RefundConfirmedEventHandler(swap, swap.RefundTx, cancellationToken)
+                        await RefundConfirmedEventHandler(swap, cancellationToken)
                             .ConfigureAwait(false);
                     }
                     else

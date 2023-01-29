@@ -43,9 +43,9 @@ namespace Atomex.Blockchain.Bitcoin
                 {
                     Value = new FeeRate()
                     {
-                        FastestFee = feeRates.Value<long>("fastestFee"),
+                        FastestFee  = feeRates.Value<long>("fastestFee"),
                         HalfHourFee = feeRates.Value<long>("halfHourFee"),
-                        HourFee = feeRates.Value<long>("hourFee")
+                        HourFee     = feeRates.Value<long>("hourFee")
                     }
                 }
                 : new Result<FeeRate>

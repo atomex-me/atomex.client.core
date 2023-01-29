@@ -18,7 +18,16 @@
       "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "BTC/USD",
-      "FeeCurrencySymbol": ""
+      "FeeCurrencySymbol": "",
+      "SoChain": {
+        "BaseUrl": "https://sochain.com/",
+        "Network": "BTC"
+      },
+      "BlockCypher": {
+        "BaseUrl": "https://api.blockcypher.com/v1/",
+        "Coin": "btc",
+        "Network": "main"
+      }
     },
     "ETH": {
       "Name": "ETH",
@@ -122,7 +131,16 @@
       "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "LTC/USD",
-      "FeeCurrencySymbol": ""
+      "FeeCurrencySymbol": "",
+      "SoChain": {
+        "BaseUrl": "https://sochain.com/",
+        "Network": "LTC"
+      },
+      "BlockCypher": {
+        "BaseUrl": "https://api.blockcypher.com/v1/",
+        "Coin": "ltc",
+        "Network": "main"
+      }
     },
     "XTZ": {
       "Name": "XTZ",
@@ -295,7 +313,16 @@
       "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "BTC/USD",
-      "FeeCurrencySymbol": ""
+      "FeeCurrencySymbol": "",
+      "SoChain": {
+        "BaseUrl": "https://sochain.com/",
+        "Network": "BTCTEST"
+      },
+      "BlockCypher": {
+        "BaseUrl": "https://api.blockcypher.com/v1/",
+        "Coin": "btc",
+        "Network": "test3"
+      }
     },
     "ETH": {
       "Name": "ETH",
@@ -401,7 +428,11 @@
       "MaxRewardPercent": 0.15,
       "MaxRewardPercentInBase": 30,
       "FeeCurrencyToBaseSymbol": "LTC/USD",
-      "FeeCurrencySymbol": ""
+      "FeeCurrencySymbol": "",
+      "SoChain": {
+        "BaseUrl": "https://sochain.com/",
+        "Network": "LTCTEST"
+      }
     },
     "XTZ": {
       "Name": "XTZ",

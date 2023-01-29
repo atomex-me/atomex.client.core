@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Serilog;
+
 using Atomex.Common;
 using Atomex.Core;
 
@@ -19,31 +20,31 @@ namespace Atomex.Blockchain.Bitcoin.Helpers
         {
             try
             {
-                if (!(currency.BlockchainApi is BitcoinBlockchainApi api))
+                if (currency.BlockchainApi is not BitcoinBlockchainApi api)
                 {
                     Log.Error("Api is null for currency {@currency}", currency.Name);
                     return new Error(Errors.InternalError, $"Api is null for currency {currency.Name}");
                 }
 
-                var result = await api
+                var (spentPoint, error) = await api
                     .IsTransactionOutputSpent(hash, index, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (result.HasError)
+                if (error != null)
                 {
-                    if (result.Error.Code == (int)HttpStatusCode.NotFound)
-                        return new Result<BitcoinTxPoint>((BitcoinTxPoint)null);
+                    if (error.Value.Code == (int)HttpStatusCode.NotFound)
+                        return new Result<BitcoinTxPoint> { Value = null };
 
                     Log.Error(
-                        "Error while get spent point for {@currency} tx output {@hash}:{@index}. Code: {@code}. Description {@desc}.",
+                        "Error while get spent point for {@currency} tx output {@hash}:{@index}. Code: {@code}. Message {@desc}.",
                         currency.Name,
                         hash,
                         index,
-                        result.Error.Code,
-                        result.Error.Description);
+                        error.Value.Code,
+                        error.Value.Message);
                 }
 
-                return result;
+                return spentPoint;
             }
             catch (Exception e)
             {

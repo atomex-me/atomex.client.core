@@ -12,6 +12,7 @@ using Serilog;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Blockchain.Ethereum.Erc20.Messages;
 using Atomex.Common;
 using Atomex.Core;
@@ -19,6 +20,7 @@ using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 using Error = Atomex.Common.Error;
+using Atomex.Blockchain.Ethereum.Messages.Swaps.V1;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -520,6 +522,55 @@ namespace Atomex.Wallet.Ethereum
             return await LocalStorage
                 .GetUnconfirmedTransactionsAsync<EthereumTransaction>(Currency)
                 .ConfigureAwait(false);
+        }
+
+        public override async Task ResolveTransactionsTypesAsync(
+            IEnumerable<ITransaction> txs,
+            CancellationToken cancellationToken = default)
+        {
+            var resolved = new List<ITransaction>();
+
+            foreach (var tx in txs.Cast<Erc20Transaction>())
+            {
+                if (tx.IsTypeResolved)
+                    continue;
+
+                await ResolveTransactionTypeAsync(tx, cancellationToken)
+                    .ConfigureAwait(false);
+
+                resolved.Add(tx);
+            }
+
+            await LocalStorage
+                .UpsertTransactionsAsync(
+                    txs,
+                    notifyIfNewOrChanged: true,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        private async Task ResolveTransactionTypeAsync(
+            Erc20Transaction tx,
+            CancellationToken cancellationToken = default)
+        {
+            foreach (var t in tx.Transfers)
+            {
+                var fromAddress = await GetAddressAsync(t.From, cancellationToken)
+                    .ConfigureAwait(false);
+
+                var isFromSelf = fromAddress != null;
+
+                if (isFromSelf)
+                    t.Type |= TransactionType.Output;
+
+                var toAddress = await GetAddressAsync(t.To, cancellationToken)
+                   .ConfigureAwait(false);
+
+                var isToSelf = toAddress != null;
+
+                if (isToSelf)
+                    t.Type |= TransactionType.Input;
+            }
         }
 
         #endregion Transactions

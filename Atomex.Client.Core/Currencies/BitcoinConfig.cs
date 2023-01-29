@@ -8,8 +8,8 @@ using NBitcoin;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
+using Atomex.Blockchain.Bitcoin.SoChain;
 using Atomex.Blockchain.BlockCypher;
-using Atomex.Blockchain.SoChain;
 using Atomex.Common;
 using Atomex.Wallet.Bip;
 using FeeRate = Atomex.Blockchain.Bitcoin.FeeRate;
@@ -89,13 +89,22 @@ namespace Atomex
 
             return blockchainApi switch
             {
-                "sochain"             => new SoChainApi(this, configuration),
-                "blockcypher"         => new BlockCypherApi(this, configuration),
+                "sochain" => new SoChainApi(Name, new SoChainSettings {
+                    BaseUrl = configuration["SoChain:BaseUrl"],
+                    Network = configuration["SoChain:Network"],
+                    Decimals = Digits
+                }),
+                "blockcypher" => new BlockCypherApi(Name, new BlockCypherSettings {
+                    BaseUrl = configuration["BlockCypher:BaseUrl"],
+                    Network = configuration["BlockCypher:Network"],
+                    Coin = configuration["BlockCypher:Coin"],
+                    Decimals = Digits
+                }),
                 _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
             };
         }
 
-        private FeeRate _feeRate;
+        private readonly FeeRate _feeRate;
         private DateTime _feeRateTimeStampUtc;
 
         public override async Task<decimal> GetFeeRateAsync(
@@ -114,15 +123,14 @@ namespace Atomex
 
             try
             {
-                var feeRateResult = await BitcoinFeesEarn
+                var (feeRate, error) = await BitcoinFeesEarn
                     .GetFeeRateAsync(cancellationToken)
                     .ConfigureAwait(false);
 
-                _feeRate = feeRateResult?.Value;
                 _feeRateTimeStampUtc = DateTime.UtcNow;
 
-                return feeRateResult != null && !feeRateResult.HasError && feeRateResult.Value != null
-                    ? feeRateResult.Value.FastestFee
+                return error == null
+                    ? feeRate.FastestFee
                     : FeeRate;
             }
             catch
