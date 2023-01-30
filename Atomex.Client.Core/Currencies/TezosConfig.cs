@@ -181,8 +181,7 @@ namespace Atomex
             IpfsGatewayUri          = configuration[nameof(IpfsGatewayUri)];
         }
 
-        protected IBlockchainApi ResolveBlockchainApi(
-            IConfiguration configuration)
+        protected IBlockchainApi ResolveBlockchainApi(IConfiguration configuration)
         {
             var blockchainApi = configuration["BlockchainApi"]
                 .ToLowerInvariant();
@@ -283,9 +282,6 @@ namespace Atomex
 
         public static decimal MtzToTz(decimal mtz) =>
             mtz / XtzDigitsMultiplier;
-
-        public override decimal GetMaximumFee() =>
-            MaxFee.ToTez();
 
         public TezosFillOperationSettings GetFillOperationSettings() => new()
         {

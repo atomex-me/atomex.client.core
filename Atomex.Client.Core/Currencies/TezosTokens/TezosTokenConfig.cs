@@ -46,8 +46,5 @@ namespace Atomex.TezosTokens
                 ? rewardForRedeemInXtz / feeCurrencyPrice
                 : rewardForRedeemInXtz * feeCurrencyPrice, DigitsMultiplier);
         }
-
-        public override decimal GetDefaultFee() =>
-            TransferGasLimit;
     }
 }

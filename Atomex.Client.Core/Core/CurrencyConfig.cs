@@ -77,12 +77,6 @@ namespace Atomex.Core
             decimal feeCurrencyPrice = 0,
             CancellationToken cancellationToken = default);
 
-        public virtual decimal GetDefaultFee() =>
-            1m;
-
-        public virtual decimal GetMaximumFee() =>
-            decimal.MaxValue;
-
         public static decimal CalculateRewardForRedeem(
             decimal redeemFee,
             string redeemFeeCurrency,

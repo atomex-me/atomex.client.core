@@ -16,10 +16,6 @@ namespace Atomex.EthereumTokens
     {
         public long TransferGasLimit { get; private set; }
         public long ApproveGasLimit { get; private set; }
-
-        public decimal ApproveFeeAmount(decimal gasPrice) =>
-            ApproveGasLimit * gasPrice / GweiInEth;
-
         public string ERC20ContractAddress { get; private set; }
         public ulong ERC20ContractBlockNumber { get; private set; }
 
@@ -127,8 +123,5 @@ namespace Atomex.EthereumTokens
                 ? rewardForRedeemInEth / feeCurrencyPrice
                 : rewardForRedeemInEth * feeCurrencyPrice, DigitsMultiplier);
         }
-
-        public override decimal GetDefaultFee() =>
-            TransferGasLimit;
     }
 }

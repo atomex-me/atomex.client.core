@@ -232,9 +232,6 @@ namespace Atomex
                 feeCurrencyToBasePrice: feeCurrencyToBasePrice);
         }
 
-        public override decimal GetDefaultFee() =>
-            GasLimit;
-
         public async Task<decimal> GetGasPriceAsync(
             CancellationToken cancellationToken = default)
         {
