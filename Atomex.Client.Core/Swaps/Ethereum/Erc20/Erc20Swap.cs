@@ -260,7 +260,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInWei = erc20Config.RedeemGasLimit * EthereumConfig.GweiToWei(gasPrice);
+            var feeInWei = erc20Config.RedeemGasLimit * EthereumHelper.GweiToWei(gasPrice);
 
             if (walletAddress.Balance < feeInWei)
             {
@@ -295,7 +295,7 @@ namespace Atomex.Swaps.Ethereum
                     HashedSecret = swap.SecretHash,
                     Secret       = swap.Secret,
                     Nonce        = nonce,
-                    GasPrice     = EthereumConfig.GweiToWei(gasPrice),
+                    GasPrice     = EthereumHelper.GweiToWei(gasPrice),
                 };
 
                 message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.RedeemGasLimit))
@@ -384,7 +384,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInWei = erc20Config.RedeemGasLimit * EthereumConfig.GweiToWei(gasPrice);
+            var feeInWei = erc20Config.RedeemGasLimit * EthereumHelper.GweiToWei(gasPrice);
 
             if (walletAddress.Balance < feeInWei)
             {
@@ -415,7 +415,7 @@ namespace Atomex.Swaps.Ethereum
                 HashedSecret = swap.SecretHash,
                 Secret       = swap.Secret,
                 Nonce        = nonce,
-                GasPrice     = EthereumConfig.GweiToWei(gasPrice),
+                GasPrice     = EthereumHelper.GweiToWei(gasPrice),
             };
 
             message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.RedeemGasLimit))
@@ -510,7 +510,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInWei = erc20Config.RefundGasLimit * EthereumConfig.GweiToWei(gasPrice);
+            var feeInWei = erc20Config.RefundGasLimit * EthereumHelper.GweiToWei(gasPrice);
 
             if (walletAddress.Balance < feeInWei)
             {
@@ -547,7 +547,7 @@ namespace Atomex.Swaps.Ethereum
                 {
                     FromAddress  = walletAddress.Address,
                     HashedSecret = swap.SecretHash,
-                    GasPrice     = EthereumConfig.GweiToWei(gasPrice),
+                    GasPrice     = EthereumHelper.GweiToWei(gasPrice),
                     Nonce        = nonce,
                 };
 
@@ -792,8 +792,8 @@ namespace Atomex.Swaps.Ethereum
                 .Confirmed;
 
             var feeAmountInWei = rewardForRedeemInTokens == 0
-                ? erc20Config.InitiateGasLimit * EthereumConfig.GweiToWei(gasPrice)
-                : erc20Config.InitiateWithRewardGasLimit * EthereumConfig.GweiToWei(gasPrice);
+                ? erc20Config.InitiateGasLimit * EthereumHelper.GweiToWei(gasPrice)
+                : erc20Config.InitiateWithRewardGasLimit * EthereumHelper.GweiToWei(gasPrice);
 
             if (balanceInWei < feeAmountInWei)
             {
@@ -854,7 +854,7 @@ namespace Atomex.Swaps.Ethereum
                 RedeemFee       = erc20Config.TokensToTokenDigits(rewardForRedeemInTokens),
                 Active          = true,
                 FromAddress     = walletAddress.Address,
-                GasPrice        = EthereumConfig.GweiToWei(gasPrice),
+                GasPrice        = EthereumHelper.GweiToWei(gasPrice),
                 Nonce           = nonce
             };
 
@@ -967,7 +967,7 @@ namespace Atomex.Swaps.Ethereum
                 Spender     = erc20Config.SwapContractAddress,
                 Value       = value,
                 FromAddress = walletAddress,
-                GasPrice    = EthereumConfig.GweiToWei(gasPrice),
+                GasPrice    = EthereumHelper.GweiToWei(gasPrice),
                 Nonce       = nonce,
             };
 

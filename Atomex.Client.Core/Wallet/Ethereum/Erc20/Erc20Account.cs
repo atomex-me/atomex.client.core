@@ -86,7 +86,7 @@ namespace Atomex.Wallet.Ethereum
                     code: Errors.InsufficientGas,
                     message: "Insufficient gas");
 
-            var feeAmountInWei = gasLimit * EthereumConfig.GweiToWei(gasPrice);
+            var feeAmountInWei = gasLimit * EthereumHelper.GweiToWei(gasPrice);
 
             Log.Debug("Fee per transaction {@feePerTransaction}. Fee Amount {@feeAmount}",
                 gasLimit,
@@ -119,7 +119,7 @@ namespace Atomex.Wallet.Ethereum
                 Value       = addressFeeUsage.UsedAmount,
                 FromAddress = addressFeeUsage.WalletAddress.Address,
                 Gas         = gasLimit,
-                GasPrice    = new BigInteger(EthereumConfig.GweiToWei(gasPrice)),
+                GasPrice    = EthereumHelper.GweiToWei(gasPrice),
                 Nonce       = nonce
             };
 
@@ -232,7 +232,7 @@ namespace Atomex.Wallet.Ethereum
             var reserveFeeInWei = ReserveFeeInWei(estimatedGasPrice);
 
             var feeInWei = (gasLimit == null ? GasLimitByType(type) : gasLimit.Value) *
-                EthereumConfig.GweiToWei(gasPrice == null ? estimatedGasPrice : gasPrice.Value);
+                EthereumHelper.GweiToWei(gasPrice == null ? estimatedGasPrice : gasPrice.Value);
 
             if (feeInWei == 0)
                 return new MaxAmountEstimation {
@@ -339,7 +339,7 @@ namespace Atomex.Wallet.Ethereum
 
             var maxGasLimit = Math.Max(Math.Max(erc20.RefundGasLimit, erc20.RedeemGasLimit), Math.Max(eth.RefundGasLimit, eth.RedeemGasLimit));
 
-            return maxGasLimit * EthereumConfig.GweiToWei(gasPrice);
+            return maxGasLimit * EthereumHelper.GweiToWei(gasPrice);
         }
 
         #endregion Common
@@ -386,7 +386,7 @@ namespace Atomex.Wallet.Ethereum
             if (fromAddress == null)
                 return null; // invalid address
 
-            var feeInWei = gasLimit * EthereumConfig.GweiToWei(gasPrice);
+            var feeInWei = gasLimit * EthereumHelper.GweiToWei(gasPrice);
 
             var ethAddress = await LocalStorage
                 .GetWalletAddressAsync(eth.Name, fromAddress.Address)

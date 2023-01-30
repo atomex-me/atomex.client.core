@@ -49,11 +49,6 @@ namespace Atomex
         public decimal GasPriceInGwei { get; protected set; }
         public decimal MaxGasPriceInGwei { get; protected set; }
 
-        public decimal InitiateFeeAmount(decimal gasPrice) =>
-            InitiateGasLimit * gasPrice / GweiInEth;
-        public decimal EstimatedRedeemWithRewardFeeAmount(decimal gasPrice) =>
-            EstimatedRedeemWithRewardGasLimit * gasPrice / GweiInEth;
-
         public int ChainId { get; protected set; }
         public string BlockchainApiBaseUri { get; protected set; }
         public string SwapContractAddress { get; protected set; }
@@ -179,7 +174,7 @@ namespace Atomex
             var gasPrice = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return InitiateGasLimit * GweiToWei(gasPrice);
+            return InitiateGasLimit * EthereumHelper.GweiToWei(gasPrice);
         }
 
         public override async Task<BigInteger> GetRedeemFeeAsync(
@@ -189,7 +184,7 @@ namespace Atomex
             var gasPrice = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return RedeemGasLimit * GweiToWei(gasPrice);
+            return RedeemGasLimit * EthereumHelper.GweiToWei(gasPrice);
         }
 
         public override async Task<BigInteger> GetEstimatedRedeemFeeAsync(
@@ -201,8 +196,8 @@ namespace Atomex
                 .ConfigureAwait(false);
 
             return withRewardForRedeem
-                ? EstimatedRedeemWithRewardGasLimit * GweiToWei(gasPrice)
-                : EstimatedRedeemGasLimit * GweiToWei(gasPrice);
+                ? EstimatedRedeemWithRewardGasLimit * EthereumHelper.GweiToWei(gasPrice)
+                : EstimatedRedeemGasLimit * EthereumHelper.GweiToWei(gasPrice);
         }
 
         public override async Task<decimal> GetRewardForRedeemAsync(
@@ -220,7 +215,7 @@ namespace Atomex
             var gasPrice = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var redeemFeeInEth = EstimatedRedeemWithRewardFeeAmount(gasPrice);
+            var redeemFeeInEth = EstimatedRedeemWithRewardGasLimit * gasPrice / GweiInEth;
 
             return CalculateRewardForRedeem(
                 redeemFee: redeemFeeInEth,
@@ -265,8 +260,8 @@ namespace Atomex
         public static BigInteger EthToWei(decimal eth) =>
             new(eth * WeiInEth);
 
-        public static long GweiToWei(decimal gwei) =>
-            (long)(gwei * WeiInGwei);
+        //public static long GweiToWei(decimal gwei) =>
+        //    (long)(gwei * WeiInGwei);
         
         public static long WeiToGwei(decimal wei) =>
             (long)(wei / WeiInGwei);
