@@ -9,10 +9,8 @@ namespace Atomex.Common
         public Exception Exception { get; init; }
 
         public Error(int code, string message)
+            : this(code, message, null)
         {
-            Code = code;
-            Message = message;
-            Exception = null;
         }
 
         public Error(int code, string message, Exception exception)
@@ -20,6 +18,30 @@ namespace Atomex.Common
             Code = code;
             Message = message;
             Exception = exception;
+        }
+    }
+
+    public readonly struct DetailedError
+    {
+        public Error Error { get; init; }
+        public string Details { get; init; }
+        
+        public DetailedError(Error error, string details)
+        {
+            Error = error;
+            Details = details;
+        }
+
+        public DetailedError(int code, string message, string details)
+        {
+            Error = new Error(code, message);
+            Details = details;
+        }
+
+        public DetailedError(int code, string message, string details, Exception exception)
+        {
+            Error = new Error(code, message, exception);
+            Details = details;
         }
     }
 

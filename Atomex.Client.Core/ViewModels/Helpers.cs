@@ -31,7 +31,7 @@ namespace Atomex.ViewModels
             public decimal RewardForRedeem { get; set; }
             public decimal MakerNetworkFee { get; set; }
             public decimal ReservedForSwaps { get; set; }
-            public Error? Error { get; set; }
+            public DetailedError? Error { get; set; }
 
             public bool HasRewardForRedeem => RewardForRedeem != 0;
         }
@@ -595,7 +595,9 @@ namespace Atomex.ViewModels
                         RewardForRedeem  = rewardForRedeem,
                         MakerNetworkFee  = estimatedMakerNetworkFee,
                         ReservedForSwaps = reservedForSwapsAmount,
-                        Error            = maxAmountEstimation.Error
+                        Error            = new DetailedError(
+                            maxAmountEstimation.Error.Value,
+                            maxAmountEstimation.ErrorHint)
                     };
                 }
 
@@ -611,9 +613,9 @@ namespace Atomex.ViewModels
                         RewardForRedeem  = rewardForRedeem,
                         MakerNetworkFee  = estimatedMakerNetworkFee,
                         ReservedForSwaps = reservedForSwapsAmount,
-                        Error = new Error(
+                        Error = new DetailedError(
                             code: Errors.InsufficientFunds,
-                            description: Resources.InsufficientFundsToCoverMakerNetworkFee,
+                            message: Resources.InsufficientFundsToCoverMakerNetworkFee,
                             details: string.Format(Resources.InsufficientFundsToCoverMakerNetworkFeeDetails,
                                 estimatedMakerNetworkFee,                             // required
                                 fromCurrency.Name,                                    // currency code
@@ -631,9 +633,9 @@ namespace Atomex.ViewModels
                         RewardForRedeem  = rewardForRedeem,
                         MakerNetworkFee  = estimatedMakerNetworkFee,
                         ReservedForSwaps = reservedForSwapsAmount,
-                        Error = new Error(
+                        Error = new DetailedError(
                             code: Errors.InsufficientFunds,
-                            description: Resources.InsufficientFunds,
+                            message: Resources.InsufficientFunds,
                             details: string.Format(Resources.InsufficientFundsToSendAmountDetails,
                                 fromAmount,        // required
                                 fromCurrency.Name, // currency code
@@ -665,68 +667,64 @@ namespace Atomex.ViewModels
             ISymbolsProvider symbolsProvider,
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(() =>
+            if (fromCurrency == null)
+                return null;
+
+            if (toCurrency == null)
+                return null;
+
+            var symbol = symbolsProvider
+                .GetSymbols(account.Network)
+                .SymbolByCurrencies(fromCurrency, toCurrency);
+
+            if (symbol == null)
+                return null;
+
+            var side = symbol.OrderSideForBuyCurrency(toCurrency);
+            var orderBook = marketDataRepository.OrderBookBySymbol(symbol.Name);
+
+            if (orderBook == null)
+                return null;
+
+            var baseCurrency = account.Currencies.GetByName(symbol.Base);
+
+            var isSoldAmount = amountType == AmountType.Sold;
+
+            var (estimatedOrderPrice, estimatedPrice) = orderBook.EstimateOrderPrices(
+                side: side,
+                amount: amount,
+                amountDigitsMultiplier: isSoldAmount
+                    ? fromCurrency.DigitsMultiplier
+                    : toCurrency.DigitsMultiplier,
+                qtyDigitsMultiplier: baseCurrency.DigitsMultiplier,
+                amountType: amountType);
+
+            var (estimatedMaxFromAmount, estimatedMaxToAmount) = orderBook.EstimateMaxAmount(side, fromCurrency.DigitsMultiplier);
+
+            var isNoLiquidity = amount != 0 && estimatedOrderPrice == 0;
+
+            var oppositeAmount = isSoldAmount
+                ? symbol.IsBaseCurrency(toCurrency.Name)
+                    ? estimatedPrice != 0
+                        ? AmountHelper.RoundDown(amount / estimatedPrice, toCurrency.DigitsMultiplier)
+                        : 0m
+                    : AmountHelper.RoundDown(amount * estimatedPrice, toCurrency.DigitsMultiplier)
+                : symbol.IsBaseCurrency(toCurrency.Name)
+                    ? AmountHelper.RoundDown(amount * estimatedPrice, fromCurrency.DigitsMultiplier)
+                    : estimatedPrice != 0
+                        ? AmountHelper.RoundDown(amount / estimatedPrice, fromCurrency.DigitsMultiplier)
+                        : 0m;
+
+            return Task.FromResult(new SwapPriceEstimation
             {
-                if (fromCurrency == null)
-                    return null;
-
-                if (toCurrency == null)
-                    return null;
-
-                var symbol = symbolsProvider
-                    .GetSymbols(account.Network)
-                    .SymbolByCurrencies(fromCurrency, toCurrency);
-
-                if (symbol == null)
-                    return null;
-
-                var side = symbol.OrderSideForBuyCurrency(toCurrency);
-                var orderBook = marketDataRepository.OrderBookBySymbol(symbol.Name);
-
-                if (orderBook == null)
-                    return null;
-
-                var baseCurrency = account.Currencies.GetByName(symbol.Base);
-
-                var isSoldAmount = amountType == AmountType.Sold;
-
-                var (estimatedOrderPrice, estimatedPrice) = orderBook.EstimateOrderPrices(
-                    side: side,
-                    amount: amount,
-                    amountDigitsMultiplier: isSoldAmount
-                        ? fromCurrency.DigitsMultiplier
-                        : toCurrency.DigitsMultiplier,
-                    qtyDigitsMultiplier: baseCurrency.DigitsMultiplier,
-                    amountType: amountType);
-
-                var (estimatedMaxFromAmount, estimatedMaxToAmount) = orderBook.EstimateMaxAmount(side, fromCurrency.DigitsMultiplier);
-
-                var isNoLiquidity = amount != 0 && estimatedOrderPrice == 0;
-
-                var oppositeAmount = isSoldAmount
-                    ? symbol.IsBaseCurrency(toCurrency.Name)
-                        ? estimatedPrice != 0
-                            ? AmountHelper.RoundDown(amount / estimatedPrice, toCurrency.DigitsMultiplier)
-                            : 0m
-                        : AmountHelper.RoundDown(amount * estimatedPrice, toCurrency.DigitsMultiplier)
-                    : symbol.IsBaseCurrency(toCurrency.Name)
-                        ? AmountHelper.RoundDown(amount * estimatedPrice, fromCurrency.DigitsMultiplier)
-                        : estimatedPrice != 0
-                            ? AmountHelper.RoundDown(amount / estimatedPrice, fromCurrency.DigitsMultiplier)
-                            : 0m;
-
-                return new SwapPriceEstimation
-                {
-                    FromAmount    = isSoldAmount ? amount : oppositeAmount, 
-                    ToAmount      = isSoldAmount ? oppositeAmount : amount,
-                    OrderPrice    = estimatedOrderPrice,
-                    Price         = estimatedPrice,
-                    MaxFromAmount = estimatedMaxFromAmount,
-                    MaxToAmount   = estimatedMaxToAmount,
-                    IsNoLiquidity = isNoLiquidity
-                };
-
-            }, cancellationToken);
+                FromAmount    = isSoldAmount ? amount : oppositeAmount, 
+                ToAmount      = isSoldAmount ? oppositeAmount : amount,
+                OrderPrice    = estimatedOrderPrice,
+                Price         = estimatedPrice,
+                MaxFromAmount = estimatedMaxFromAmount,
+                MaxToAmount   = estimatedMaxToAmount,
+                IsNoLiquidity = isNoLiquidity
+            });
         }
 
         public static async Task<decimal> GetAmountReservedForSwapsAsync(

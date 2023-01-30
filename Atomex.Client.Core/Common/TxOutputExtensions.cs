@@ -13,7 +13,7 @@ namespace Atomex.Common
         {
             foreach (var selectedOutputs in outputs.SelectOutputs())
             {
-                var selectedAmountInSatoshi = selectedOutputs.Sum(o => o.Value);
+                var selectedAmountInSatoshi = selectedOutputs.SumBigIntegers(o => o.Value);
 
                 if (selectedAmountInSatoshi >= amountInSatoshi)
                     return selectedOutputs;

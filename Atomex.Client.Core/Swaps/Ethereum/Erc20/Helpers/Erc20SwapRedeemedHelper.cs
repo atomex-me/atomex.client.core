@@ -10,28 +10,26 @@ using Atomex.Blockchain.Ethereum.EtherScan;
 using Atomex.Blockchain.Ethereum.Erc20.Dto.Swaps.V1;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.EthereumTokens;
 
 namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 {
-
     public static class Erc20SwapRedeemedHelper
     {
         public static async Task<Result<byte[]>> IsRedeemedAsync(
             Swap swap,
-            CurrencyConfig currency,
+            Erc20Config erc20Config,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 Log.Debug("Ethereum ERC20: check redeem event");
 
-                var erc20 = (EthereumTokens.Erc20Config)currency;
-
-                var api = erc20.GetEtherScanApi();
+                var api = erc20Config.GetEtherScanApi();
 
                 var (events, error) = await api.GetContractEventsAsync(
-                        address: erc20.SwapContractAddress,
-                        fromBlock: erc20.SwapContractBlockNumber,
+                        address: erc20Config.SwapContractAddress,
+                        fromBlock: erc20Config.SwapContractBlockNumber,
                         toBlock: ulong.MaxValue,
                         topic0: EventSignatureExtractor.GetSignatureHash<Erc20RedeemedEventDTO>(),
                         topic1: "0x" + swap.SecretHash.ToHexString(),
@@ -63,7 +61,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
         public static async Task<Result<byte[]>> IsRedeemedAsync(
             Swap swap,
-            CurrencyConfig currency,
+            Erc20Config erc20Config,
             int attempts,
             int attemptIntervalInSec,
             CancellationToken cancellationToken = default)
@@ -76,7 +74,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                 var (secret, error) = await IsRedeemedAsync(
                         swap: swap,
-                        currency: currency,
+                        erc20Config: erc20Config,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -97,78 +95,74 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
             return new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for redeem check");
         }
 
-        public static Task StartSwapRedeemedControlAsync(
+        public static async Task StartSwapRedeemedControlAsync(
             Swap swap,
-            CurrencyConfig currency,
+            Erc20Config erc20Config,
             DateTime refundTimeUtc,
             TimeSpan interval,
             Func<Swap, byte[], CancellationToken, Task> redeemedHandler,
             Func<Swap, DateTime, CancellationToken, Task> canceledHandler,
             CancellationToken cancellationToken = default)
         {
-            Log.Debug("StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} started", currency.Name, swap.Id);
+            Log.Debug("StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} started", erc20Config.Name, swap.Id);
 
-            return Task.Run(async () =>
+            try
             {
-                try
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    while (!cancellationToken.IsCancellationRequested)
+                    var (secret, error) = await IsRedeemedAsync(
+                            swap: swap,
+                            erc20Config: erc20Config,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (error != null)
                     {
-                        var (secret, error) = await IsRedeemedAsync(
-                                swap: swap,
-                                currency: currency,
-                                cancellationToken: cancellationToken)
+                        Log.Error("{@currency} IsRedeemedAsync error for swap {@swap}. Code: {@code}. Message: {@desc}",
+                            erc20Config.Name,
+                            swap.Id,
+                            error.Value.Code,
+                            error.Value.Message);
+                    }
+                    else if (error == null && secret != null) // has secret
+                    {
+                        await redeemedHandler
+                            .Invoke(swap, secret, cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (error != null)
-                        {
-                            Log.Error("{@currency} IsRedeemedAsync error for swap {@swap}. Code: {@code}. Message: {@desc}",
-                                currency.Name,
-                                swap.Id,
-                                error.Value.Code,
-                                error.Value.Message);
-                        }
-                        else if (error == null && secret != null) // has secret
-                        {
-                            await redeemedHandler
-                                .Invoke(swap, secret, cancellationToken)
-                                .ConfigureAwait(false);
-
-                            break;
-                        }
-
-                        if (DateTime.UtcNow >= refundTimeUtc)
-                        {
-                            await canceledHandler
-                                .Invoke(swap, refundTimeUtc, cancellationToken)
-                                .ConfigureAwait(false);
-
-                            break;
-                        }
-
-                        await Task.Delay(interval, cancellationToken)
-                            .ConfigureAwait(false);
+                        break;
                     }
 
-                    Log.Debug("StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} {@message}",
-                        currency.Name,
-                        swap.Id,
-                        cancellationToken.IsCancellationRequested ? "canceled" : "completed");
-                }
-                catch (OperationCanceledException)
-                {
-                    Log.Debug("StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} canceled",
-                        currency.Name,
-                        swap.Id);
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} error",
-                        currency.Name,
-                        swap.Id);
+                    if (DateTime.UtcNow >= refundTimeUtc)
+                    {
+                        await canceledHandler
+                            .Invoke(swap, refundTimeUtc, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        break;
+                    }
+
+                    await Task.Delay(interval, cancellationToken)
+                        .ConfigureAwait(false);
                 }
 
-            }, cancellationToken);
+                Log.Debug("StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} {@message}",
+                    erc20Config.Name,
+                    swap.Id,
+                    cancellationToken.IsCancellationRequested ? "canceled" : "completed");
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} canceled",
+                    erc20Config.Name,
+                    swap.Id);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} error",
+                    erc20Config.Name,
+                    swap.Id);
+            }
         }
     }
 }

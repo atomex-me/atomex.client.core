@@ -55,11 +55,7 @@ namespace Atomex.Swaps.Ethereum
             if (!await CheckPayRelevanceAsync(swap, cancellationToken))
                 return;
 
-            var lockTimeInSeconds = swap.IsInitiator
-                ? DefaultInitiatorLockTimeInSeconds
-                : DefaultAcceptorLockTimeInSeconds;
-
-            var paymentTxRequest = await CreatePaymentTxAsync(swap, lockTimeInSeconds, cancellationToken)
+            var paymentTxRequest = await CreatePaymentTxAsync(swap, cancellationToken)
                 .ConfigureAwait(false);
 
             if (paymentTxRequest == null)
@@ -188,14 +184,14 @@ namespace Atomex.Swaps.Ethereum
                 ? DefaultAcceptorLockTimeInSeconds
                 : DefaultInitiatorLockTimeInSeconds;
 
-            _ = Erc20SwapInitiatedHelper.StartSwapInitiatedControlAsync(
+            _ = Task.Run(() => Erc20SwapInitiatedHelper.StartSwapInitiatedControlAsync(
                 swap: swap,
-                currency: Erc20Config,
+                erc20Config: Erc20Config,
                 lockTimeInSec: lockTimeInSeconds,
                 interval: ConfirmationCheckInterval,
                 initiatedHandler: initiatedHandler,
                 canceledHandler: SwapCanceledHandler,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken), cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -209,7 +205,7 @@ namespace Atomex.Swaps.Ethereum
             var (secret, error) = await Erc20SwapRedeemedHelper
                 .IsRedeemedAsync(
                     swap: swap,
-                    currency: erc20Config,
+                    erc20Config: erc20Config,
                     attempts: EthereumSwap.MaxRedeemCheckAttempts,
                     attemptIntervalInSec: EthereumSwap.RedeemCheckAttemptIntervalInSec,
                     cancellationToken: cancellationToken)
@@ -619,14 +615,14 @@ namespace Atomex.Swaps.Ethereum
                 : DefaultAcceptorLockTimeInSeconds;
 
             // start redeem control async
-            _ = Erc20SwapRedeemedHelper.StartSwapRedeemedControlAsync(
+            _ = Task.Run(() => Erc20SwapRedeemedHelper.StartSwapRedeemedControlAsync(
                 swap: swap,
-                currency: Erc20Config,
+                erc20Config: Erc20Config,
                 refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
                 interval: TimeSpan.FromSeconds(30),
                 redeemedHandler: RedeemCompletedEventHandler,
                 canceledHandler: RedeemCanceledEventHandler,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken), cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -638,14 +634,14 @@ namespace Atomex.Swaps.Ethereum
             Log.Debug("Wait redeem for swap {@swapId}", swap.Id);
 
             // start redeem control async
-            _ = Erc20SwapRedeemedHelper.StartSwapRedeemedControlAsync(
+            _ = Task.Run(() => Erc20SwapRedeemedHelper.StartSwapRedeemedControlAsync(
                 swap: swap,
-                currency: Erc20Config,
+                erc20Config: Erc20Config,
                 refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
                 interval: TimeSpan.FromSeconds(30),
                 redeemedHandler: RedeemBySomeoneCompletedEventHandler,
                 canceledHandler: RedeemBySomeoneCanceledEventHandler,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken), cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -654,13 +650,10 @@ namespace Atomex.Swaps.Ethereum
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            var currency = Currencies
-                .GetByName(swap.SoldCurrency);
-
             return await Erc20SwapInitiatedHelper
                 .TryToFindPaymentAsync(
                     swap: swap,
-                    currency: currency,
+                    erc20Config: Erc20Config,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -675,9 +668,10 @@ namespace Atomex.Swaps.Ethereum
 
             try
             {
-                var (isRefunded, error) = await Erc20SwapRefundedHelper.IsRefundedAsync(
+                var (isRefunded, error) = await Erc20SwapRefundedHelper
+                    .IsRefundedAsync(
                         swap: swap,
-                        currency: Erc20Config,
+                        erc20Config: Erc20Config,
                         attempts: EthereumSwap.MaxRefundCheckAttempts,
                         attemptIntervalInSec: EthereumSwap.RefundCheckAttemptIntervalInSec,
                         cancellationToken: cancellationToken)
@@ -752,7 +746,7 @@ namespace Atomex.Swaps.Ethereum
 
         #region Helpers
 
-        private decimal RequiredAmountInTokens(Swap swap, Erc20Config erc20)
+        public static decimal RequiredAmountInTokens(Swap swap, Erc20Config erc20)
         {
             var requiredAmountInERC20 = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
 
@@ -765,18 +759,21 @@ namespace Atomex.Swaps.Ethereum
 
         protected async Task<EthereumTransactionRequest> CreatePaymentTxAsync(
             Swap swap,
-            int lockTimeInSeconds,
             CancellationToken cancellationToken = default)
         {
             var erc20Config = Erc20Config;
 
             Log.Debug("Create payment transaction from address {@adderss} for swap {@swapId}", swap.FromAddress, swap.Id);
 
-            var requiredAmountInERC20 = RequiredAmountInTokens(swap, erc20Config);
+            var requiredAmountInTokens = RequiredAmountInTokens(swap, erc20Config);
+
+            var lockTimeInSeconds = swap.IsInitiator
+                ? DefaultInitiatorLockTimeInSeconds
+                : DefaultAcceptorLockTimeInSeconds;
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
 
-            var rewardForRedeemInERC20 = swap.PartyRewardForRedeem;
+            var rewardForRedeemInTokens = swap.PartyRewardForRedeem;
 
             var walletAddress = await Erc20Account
                 .GetAddressAsync(swap.FromAddress, cancellationToken)
@@ -793,7 +790,7 @@ namespace Atomex.Swaps.Ethereum
                 .ConfigureAwait(false))
                 .Confirmed;
 
-            var feeAmountInEth = rewardForRedeemInERC20 == 0
+            var feeAmountInEth = rewardForRedeemInTokens == 0
                 ? erc20Config.InitiateFeeAmount(gasPrice)
                 : erc20Config.InitiateWithRewardFeeAmount(gasPrice);
 
@@ -809,25 +806,25 @@ namespace Atomex.Swaps.Ethereum
                 return null;
             }
 
-            var balanceInErc20 = walletAddress.Balance;
+            var balanceInTokens = walletAddress.Balance;
 
-            Log.Debug("Available balance: {@balance}", balanceInErc20);
+            Log.Debug("Available balance: {@balance}", balanceInTokens);
 
-            if (balanceInErc20 < requiredAmountInERC20)
+            if (balanceInTokens < requiredAmountInTokens)
             {
                 Log.Error(
                     "Insufficient funds at {@address}. Balance: {@balance}, required: {@result}, missing: {@missing}.",
                     walletAddress.Address,
-                    balanceInErc20,
-                    requiredAmountInERC20,
-                    balanceInErc20 - requiredAmountInERC20);
+                    balanceInTokens,
+                    requiredAmountInTokens,
+                    balanceInTokens - requiredAmountInTokens);
 
                 return null;
             }
 
-            var amountInErc20 = AmountHelper.DustProofMin(
-                balanceInErc20,
-                requiredAmountInERC20,
+            var amountInTokens = AmountHelper.DustProofMin(
+                balanceInTokens,
+                requiredAmountInTokens,
                 erc20Config.DigitsMultiplier,
                 erc20Config.DustDigitsMultiplier);
 
@@ -853,15 +850,15 @@ namespace Atomex.Swaps.Ethereum
                 Participant     = swap.PartyAddress,
                 RefundTimestamp = refundTimeStampUtcInSec,
                 Countdown       = lockTimeInSeconds,
-                Value           = erc20Config.TokensToTokenDigits(amountInErc20),
-                RedeemFee       = erc20Config.TokensToTokenDigits(rewardForRedeemInERC20),
+                Value           = erc20Config.TokensToTokenDigits(amountInTokens),
+                RedeemFee       = erc20Config.TokensToTokenDigits(rewardForRedeemInTokens),
                 Active          = true,
                 FromAddress     = walletAddress.Address,
                 GasPrice        = EthereumConfig.GweiToWei(gasPrice),
                 Nonce           = nonce
             };
 
-            var initiateGasLimit = rewardForRedeemInERC20 == 0
+            var initiateGasLimit = rewardForRedeemInTokens == 0
                 ? erc20Config.InitiateGasLimit
                 : erc20Config.InitiateWithRewardGasLimit;
 

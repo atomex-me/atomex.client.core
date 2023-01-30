@@ -17,20 +17,18 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
     {
         public static async Task<Result<bool>> IsRefundedAsync(
             Swap swap,
-            CurrencyConfig currency,
+            Erc20Config erc20Config,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 Log.Debug("Ethereum: check refund event");
 
-                var erc20 = (Erc20Config)currency;
-
-                var api = erc20.GetEtherScanApi();
+                var api = erc20Config.GetEtherScanApi();
 
                 var (events, error) = await api.GetContractEventsAsync(
-                        address: erc20.SwapContractAddress,
-                        fromBlock: erc20.SwapContractBlockNumber,
+                        address: erc20Config.SwapContractAddress,
+                        fromBlock: erc20Config.SwapContractBlockNumber,
                         toBlock: ulong.MaxValue,
                         topic0: EventSignatureExtractor.GetSignatureHash<Erc20RefundedEventDTO>(),
                         topic1: "0x" + swap.SecretHash.ToHexString(),
@@ -57,7 +55,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
         public static async Task<Result<bool>> IsRefundedAsync(
             Swap swap,
-            CurrencyConfig currency,
+            Erc20Config erc20Config,
             int attempts,
             int attemptIntervalInSec,
             CancellationToken cancellationToken = default)
@@ -70,7 +68,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                 var (isRefunded, error) = await IsRefundedAsync(
                         swap: swap,
-                        currency: currency,
+                        erc20Config: erc20Config,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

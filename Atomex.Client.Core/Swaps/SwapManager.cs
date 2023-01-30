@@ -859,7 +859,6 @@ namespace Atomex.Swaps
 
                 if (tx != null)
                 {
-                    swap.PaymentTx = tx;
                     swap.PaymentTxId = tx.Id;
                     swap.StateFlags |= SwapStateFlags.IsPaymentBroadcast;
 
@@ -882,11 +881,11 @@ namespace Atomex.Swaps
                     DateTime.UtcNow > swap.TimeStamp.ToUniversalTime() + DefaultMaxPaymentTimeout)
                 {
                     var currency = _account.Currencies
-                        .GetByName(swap.PaymentTx.Currency);
+                        .GetByName(swap.SoldCurrency);
 
                     var (result, error) = await currency
                         .IsTransactionConfirmed(
-                            txId: swap.PaymentTx.Id,
+                            txId: swap.PaymentTxId,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 

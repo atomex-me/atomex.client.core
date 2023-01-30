@@ -461,14 +461,15 @@ namespace Atomex.Swaps.BitcoinBased
                 ? DefaultInitiatorLockTimeInSeconds
                 : DefaultAcceptorLockTimeInSeconds;
 
-            _ = BitcoinBasedSwapSpentHelper.StartSwapSpentControlAsync(
+            _ = Task.Run(() => BitcoinBasedSwapSpentHelper.StartSwapSpentControlAsync(
                 swap: swap,
-                currency: currency,
+                currency: Config,
+                localStorage: _account.LocalStorage,
                 refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
                 interval: OutputSpentCheckInterval,
                 completionHandler: PaymentSpentEventHandler,
                 refundTimeReachedHandler: RefundTimeReachedHandler,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken), cancellationToken);
 
             if (!swap.StateFlags.HasFlag(SwapStateFlags.IsPaymentConfirmed))
                 _ = TrackTransactionConfirmationAsync<BitcoinTransaction>(

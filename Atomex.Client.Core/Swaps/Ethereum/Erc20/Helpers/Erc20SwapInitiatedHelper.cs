@@ -25,12 +25,10 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
         public static async Task<Result<ITransaction>> TryToFindPaymentAsync(
             Swap swap,
-            CurrencyConfig currency,
+            Erc20Config erc20Config,
             CancellationToken cancellationToken = default)
         {
-            var erc20 = currency as Erc20Config;
-
-            var api = erc20.GetEtherScanApi();
+            var api = erc20Config.GetEtherScanApi();
 
             var (blockNo, blockError) = await api
                 .GetBlockNumberAsync(
@@ -44,23 +42,25 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
             var (txs, error) = await api
                 .GetTransactionsAsync(
-                    address: erc20.SwapContractAddress,
+                    address: erc20Config.SwapContractAddress,
                     fromBlock: blockNo,
                     toBlock: blockNo + BlocksAhead,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (error != null)
+            if (error != null) 
                 return error;
-
-            var savedTx = swap.PaymentTx as EthereumTransaction;
 
             foreach (var tx in txs.Cast<EthereumTransaction>())
             {
                 if (tx.Amount != 0 ||
-                   !tx.Data.Equals(savedTx.Data, StringComparison.OrdinalIgnoreCase) ||
-                   !tx.From.Equals(savedTx.From, StringComparison.OrdinalIgnoreCase) ||
-                   !tx.To.Equals(erc20.SwapContractAddress, StringComparison.OrdinalIgnoreCase))
+                   !tx.From.Equals(swap.FromAddress, StringComparison.OrdinalIgnoreCase) ||
+                   !tx.To.Equals(erc20Config.SwapContractAddress, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (!tx.Data.Contains(swap.SecretHash.ToHexString()) ||
+                    !tx.Data.Contains(swap.PartyAddress) ||
+                    !tx.Data.Contains(erc20Config.ERC20ContractAddress))
                     continue;
 
                 if (tx.Status == TransactionStatus.Failed)
@@ -74,15 +74,13 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
         public static async Task<Result<bool>> IsInitiatedAsync(
             Swap swap,
-            CurrencyConfig currency,
+            Erc20Config erc20,
             long lockTimeInSec,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 Log.Debug("Ethereum ERC20: check initiated event");
-
-                var erc20 = (Erc20Config)currency;
 
                 var side = swap.Symbol
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
@@ -169,7 +167,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                 }
 
                 var erc20TransferValues = await GetTransferValuesAsync(
-                        currency: currency,
+                        currency: erc20,
                         from: initiatedEvent.Initiator[2..],
                         to: erc20.SwapContractAddress[2..],
                         blockNumber: contractInitEvent.HexBlockNumber,
@@ -221,7 +219,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                 foreach (var @event in events.Select(e => e.ParseErc20AddedEvent()))
                 {
                     erc20TransferValues = await GetTransferValuesAsync(
-                            currency: currency,
+                            currency: erc20,
                             from: @event.Initiator[2..],
                             to: erc20.SwapContractAddress[2..],
                             blockNumber: contractInitEvent.HexBlockNumber,
@@ -308,82 +306,78 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
             }
         }
 
-        public static Task StartSwapInitiatedControlAsync(
+        public static async Task StartSwapInitiatedControlAsync(
             Swap swap,
-            CurrencyConfig currency,
+            Erc20Config erc20Config,
             long lockTimeInSec,
             TimeSpan interval,
             Func<Swap, CancellationToken, Task> initiatedHandler,
             Func<Swap, CancellationToken, Task> canceledHandler,
             CancellationToken cancellationToken = default)
         {
-            Log.Debug("StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} started", currency.Name, swap.Id);
+            Log.Debug("StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} started", erc20Config.Name, swap.Id);
 
-            return Task.Run(async () =>
+            try
             {
-                try
+                var refundTimeStamp = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSec));
+
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    var refundTimeStamp = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSec));
 
-                    while (!cancellationToken.IsCancellationRequested)
+                    if (swap.IsCanceled || DateTimeOffset.UtcNow >= refundTimeStamp)
                     {
-
-                        if (swap.IsCanceled || DateTimeOffset.UtcNow >= refundTimeStamp)
-                        {
-                            await canceledHandler
-                                .Invoke(swap, cancellationToken)
-                                .ConfigureAwait(false);
-
-                            break;
-                        }
-
-                        var (isInitiated, error) = await IsInitiatedAsync(
-                                swap: swap,
-                                currency: currency,
-                                lockTimeInSec: lockTimeInSec,
-                                cancellationToken: cancellationToken)
+                        await canceledHandler
+                            .Invoke(swap, cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (error != null)
-                        {
-                            Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Message: {@desc}",
-                                currency.Name,
-                                swap.Id,
-                                error.Value.Code,
-                                error.Value.Message);
-                        }
-                        else if (error == null && isInitiated)
-                        {
-                            await initiatedHandler
-                                .Invoke(swap, cancellationToken)
-                                .ConfigureAwait(false);
-
-                            break;
-                        }
-
-                        await Task.Delay(interval, cancellationToken)
-                            .ConfigureAwait(false);
+                        break;
                     }
 
-                    Log.Debug("StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} {@message}",
-                        currency.Name,
-                        swap.Id,
-                        cancellationToken.IsCancellationRequested ? "canceled" : "completed");
-                }
-                catch (OperationCanceledException)
-                {
-                    Log.Debug("StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} canceled",
-                        currency.Name,
-                        swap.Id);
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} error",
-                        currency.Name,
-                        swap.Id);
+                    var (isInitiated, error) = await IsInitiatedAsync(
+                            swap: swap,
+                            erc20: erc20Config,
+                            lockTimeInSec: lockTimeInSec,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (error != null)
+                    {
+                        Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Message: {@desc}",
+                            erc20Config.Name,
+                            swap.Id,
+                            error.Value.Code,
+                            error.Value.Message);
+                    }
+                    else if (error == null && isInitiated)
+                    {
+                        await initiatedHandler
+                            .Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        break;
+                    }
+
+                    await Task.Delay(interval, cancellationToken)
+                        .ConfigureAwait(false);
                 }
 
-            }, cancellationToken);
+                Log.Debug("StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} {@message}",
+                    erc20Config.Name,
+                    swap.Id,
+                    cancellationToken.IsCancellationRequested ? "canceled" : "completed");
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} canceled",
+                    erc20Config.Name,
+                    swap.Id);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} error",
+                    erc20Config.Name,
+                    swap.Id);
+            }
         }
     }
 }

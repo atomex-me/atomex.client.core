@@ -1,6 +1,6 @@
 using System;
 
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 using Atomex.Abstract;
 using Atomex.Client.Abstract;
@@ -38,16 +38,18 @@ namespace Atomex
         public ITransactionsTracker TransactionsTracker { get; private set; }
         public IMarketDataRepository MarketDataRepository { get; private set; }
         public ILocalStorage LocalStorage { get; private set; }
+        public ILogger Logger { get; private set; }
         public bool HasQuotesProvider => QuotesProvider != null;
         public AtomexAppOptions Options { get; }
 
         private IBalanceUpdater _balanceUpdater;
         private bool _storeCanceledOrders;
 
-        public AtomexApp(AtomexAppOptions options = null)
+        public AtomexApp(AtomexAppOptions options = null, ILogger logger = null)
         {
             Options = options ?? AtomexAppOptions.Default;
             Instance = this;
+            Logger = logger;
         }
 
         public IAtomexApp Start()
@@ -170,7 +172,7 @@ namespace Atomex
                 _balanceUpdater = new BalanceUpdater(
                     account: Account,
                     currenciesProvider: CurrenciesProvider,
-                    log: Log.Logger);
+                    log: Logger);
             }
 
             AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(
@@ -252,7 +254,7 @@ namespace Atomex
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "AtomexClient_OrderUpdated error");
+                Logger?.LogError(ex, "AtomexClient_OrderUpdated error");
             }
         }
 
@@ -285,7 +287,7 @@ namespace Atomex
                 .ConfigureAwait(false);
 
             if (error != null)
-                Log.Error(error.Value.Message);
+                Logger?.LogError(error.Value.Message);
         }
 
         private void AtomexClient_SnapshotUpdated(object sender, SnapshotEventArgs e)

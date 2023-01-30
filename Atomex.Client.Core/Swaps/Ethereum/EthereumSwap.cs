@@ -159,14 +159,14 @@ namespace Atomex.Swaps.Ethereum
 
             var refundTimeUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
 
-            _ = EthereumSwapInitiatedHelper.StartSwapInitiatedControlAsync(
+            _ = Task.Run(() => EthereumSwapInitiatedHelper.StartSwapInitiatedControlAsync(
                 swap: swap,
-                currency: EthConfig,
+                ethereumConfig: EthConfig,
                 refundTimeStamp: refundTimeUtcInSec,
                 interval: ConfirmationCheckInterval,
                 initiatedHandler: initiatedHandler,
                 canceledHandler: SwapCanceledHandler,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken), cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -598,14 +598,14 @@ namespace Atomex.Swaps.Ethereum
                 : DefaultAcceptorLockTimeInSeconds;
 
             // start redeem control async
-            _ = EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+            _ = Task.Run(() => EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
                 swap: swap,
                 currency: EthConfig,
                 refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
                 interval: TimeSpan.FromSeconds(30),
                 redeemedHandler: RedeemCompletedEventHandler,
                 canceledHandler: RedeemCanceledEventHandler,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken), cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -617,14 +617,14 @@ namespace Atomex.Swaps.Ethereum
             Log.Debug("Wait redeem for swap {@swapId}", swap.Id);
 
             // start redeem control async
-            _ = EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+            _ = Task.Run(() => EthereumSwapRedeemedHelper.StartSwapRedeemedControlAsync(
                 swap: swap,
                 currency: EthConfig,
                 refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
                 interval: TimeSpan.FromSeconds(30),
                 redeemedHandler: RedeemBySomeoneCompletedEventHandler,
                 canceledHandler: RedeemBySomeoneCanceledEventHandler,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken), cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -633,13 +633,10 @@ namespace Atomex.Swaps.Ethereum
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            var currency = Currencies
-                .GetByName(swap.SoldCurrency);
-
             return await EthereumSwapInitiatedHelper
                 .TryToFindPaymentAsync(
                     swap: swap,
-                    currency: currency,
+                    currencyConfig: EthConfig,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -816,10 +813,6 @@ namespace Atomex.Swaps.Ethereum
             txInput = message.CreateTransactionInput(ethConfig.SwapContractAddress);
 
             return new EthereumTransactionRequest(txInput, EthConfig.ChainId);
-            //return new EthereumTransaction(EthereumConfig.Eth, txInput)
-            //{
-            //    Type = TransactionType.Output | TransactionType.SwapPayment | TransactionType.ContractCall
-            //};
         }
 
         private async Task<string> BroadcastTxAsync(

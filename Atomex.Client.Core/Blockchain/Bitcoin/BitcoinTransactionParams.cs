@@ -89,7 +89,7 @@ namespace Atomex.Blockchain.Bitcoin
                 .ToList()
                 .SortList((i1, i2) => i1.Output.Value.CompareTo(i2.Output.Value));
 
-            var requiredAmountInSatoshi = destinations.Sum(d => d.AmountInSatoshi);
+            var requiredAmountInSatoshi = destinations.SumBigIntegers(d => d.AmountInSatoshi);
             var outputsSize             = destinations.Sum(d => d.Size);
             var changeOutputSize        = CalculateChangeOutputSize(changeAddress, currencyConfig.Network);
 
@@ -295,7 +295,7 @@ namespace Atomex.Blockchain.Bitcoin
                 .ToList()
                 .SortList((i1, i2) => i1.Output.Value.CompareTo(i2.Output.Value));
 
-            var requiredAmountInSatoshi = destinations.Sum(d => d.AmountInSatoshi);
+            var requiredAmountInSatoshi = destinations.SumBigIntegers(d => d.AmountInSatoshi);
             var outputsSize             = destinations.Sum(d => d.Size());
             var changeOutputSize        = CalculateChangeOutputSize(changeAddress, currencyConfig.Network);
 
