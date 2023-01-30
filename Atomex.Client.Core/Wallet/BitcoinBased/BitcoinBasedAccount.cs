@@ -394,6 +394,24 @@ namespace Atomex.Wallet.BitcoinBased
 
         #region Addresses
 
+        public override async Task<WalletAddress> GetFreeExternalAddressAsync(
+            CancellationToken cancellationToken = default)
+        {
+            var lastActiveAddress = await LocalStorage
+                .GetLastActiveWalletAddressAsync(
+                    currency: Currency,
+                    chain: Bip44.External,
+                    keyType: BitcoinBasedConfig.SegwitKey)
+                .ConfigureAwait(false);
+
+            return await DivideAddressAsync(
+                    account: Bip44.DefaultAccount,
+                    chain: Bip44.External,
+                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? Bip44.DefaultIndex,
+                    keyType: BitcoinBasedConfig.SegwitKey)
+                .ConfigureAwait(false);
+        }
+
         public virtual async Task<WalletAddress> GetFreeInternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
@@ -401,14 +419,14 @@ namespace Atomex.Wallet.BitcoinBased
                 .GetLastActiveWalletAddressAsync(
                     currency: Currency,
                     chain: Bip44.Internal,
-                    keyType: CurrencyConfig.StandardKey)
+                    keyType: BitcoinBasedConfig.SegwitKey)
                 .ConfigureAwait(false);
 
             return await DivideAddressAsync(
                     account: Bip44.DefaultAccount,
                     chain: Bip44.Internal,
                     index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    keyType: CurrencyConfig.StandardKey)
+                    keyType: BitcoinBasedConfig.SegwitKey)
                 .ConfigureAwait(false);
         }
 

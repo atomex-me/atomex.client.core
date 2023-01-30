@@ -156,7 +156,7 @@ namespace Atomex
         public override IKey CreateKey(SecureBytes seed) =>
             new EthereumKey(seed);
 
-        public override string AddressFromKey(byte[] publicKey) =>
+        public override string AddressFromKey(byte[] publicKey, int keyType) =>
             new EthECKey(publicKey, false)
                 .GetPublicAddress()
                 .ToLowerInvariant();

@@ -221,7 +221,7 @@ namespace Atomex
         public override IKey CreateKey(SecureBytes seed) =>
             new Ed25519Key(seed);
 
-        public override string AddressFromKey(byte[] publicKey) {
+        public override string AddressFromKey(byte[] publicKey, int keyType) {
             
             return Base58Check.Encode(
                 data: new HmacBlake2b(HmacBlake2b.DefaultKeySize, PkHashSize).Mac(key: null, publicKey),

@@ -88,7 +88,7 @@ namespace Atomex.Wallet
 
             var publicKey = securePublicKey.ToUnsecuredBytes();
 
-            var address = currency.AddressFromKey(publicKey);
+            var address = currency.AddressFromKey(publicKey, keyType);
 
             return new WalletAddress
             {

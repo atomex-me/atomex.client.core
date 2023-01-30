@@ -166,9 +166,13 @@ namespace Atomex.Wallet
             uint index,
             int keyType)
         {
+            var purpose = keyType == BitcoinBasedConfig.SegwitKey && Currencies.IsBitcoinBased(currency.Name)
+                ? Bip84.Purpose
+                : Bip44.Purpose;
+
             using var extKey = GetExtKey(
                 currency: currency,
-                purpose: Bip44.Purpose,
+                purpose: purpose,
                 account: account,
                 chain: chain,
                 index: index,
@@ -193,9 +197,13 @@ namespace Atomex.Wallet
             KeyIndex keyIndex,
             int keyType)
         {
+            var purpose = keyType == BitcoinBasedConfig.SegwitKey && Currencies.IsBitcoinBased(currency.Name)
+                ? Bip84.Purpose
+                : Bip44.Purpose;
+
             using var extKey = GetExtKey(
                 currency: currency,
-                purpose: Bip44.Purpose,
+                purpose: purpose,
                 keyIndex: keyIndex,
                 keyType: keyType);
 
@@ -208,9 +216,13 @@ namespace Atomex.Wallet
             KeyIndex keyIndex,
             int keyType)
         {
+            var purpose = keyType == BitcoinBasedConfig.SegwitKey && Currencies.IsBitcoinBased(currency.Name)
+                ? Bip84.Purpose
+                : Bip44.Purpose;
+
             using var extKey = GetExtKey(
                 currency: currency,
-                purpose: Bip44.Purpose,
+                purpose: purpose,
                 keyIndex: keyIndex,
                 keyType: keyType);
 
@@ -235,9 +247,13 @@ namespace Atomex.Wallet
             KeyIndex keyIndex,
             int keyType)
         {
+            var purpose = keyType == BitcoinBasedConfig.SegwitKey && Currencies.IsBitcoinBased(currency.Name)
+                ? Bip84.Purpose
+                : Bip44.Purpose;
+
             using var extKey = GetExtKey(
                 currency: currency,
-                purpose: Bip44.Purpose,
+                purpose: purpose,
                 keyIndex: keyIndex,
                 keyType: keyType);
 

@@ -23,6 +23,7 @@ namespace Atomex
         public const int DefaultRedeemTxSize = 300;
         public const int OneInputTwoOutputTxSize = 226; // size for legacy transaction with one P2PKH input and two P2PKH outputs
         public const int LegacyTxOutputSize = 34;
+        public const int SegwitKey = 1;
 
         public decimal FeeRate { get; set; }
         public decimal DustFeeRate { get; set; }
@@ -44,9 +45,13 @@ namespace Atomex
         public override IKey CreateKey(SecureBytes seed) => 
             new BitcoinKey(seed);
 
-        public override string AddressFromKey(byte[] publicKey) =>
+        public override string AddressFromKey(byte[] publicKey, int keyType) =>
             new PubKey(publicKey)
-                .GetAddress(ScriptPubKeyType.Legacy, Network)
+                .GetAddress(
+                    type: keyType == SegwitKey
+                        ? ScriptPubKeyType.Segwit
+                        : ScriptPubKeyType.Legacy,
+                    network: Network)
                 .ToString();
 
         public override bool IsValidAddress(string address)

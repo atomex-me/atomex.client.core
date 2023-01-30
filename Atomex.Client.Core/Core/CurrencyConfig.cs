@@ -52,7 +52,7 @@ namespace Atomex.Core
 
         public abstract IKey CreateKey(SecureBytes seed);
 
-        public abstract string AddressFromKey(byte[] publicKey);
+        public abstract string AddressFromKey(byte[] publicKey, int keyType);
 
         public abstract bool IsValidAddress(string address);
 

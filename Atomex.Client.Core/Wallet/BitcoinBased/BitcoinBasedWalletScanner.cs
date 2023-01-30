@@ -43,8 +43,10 @@ namespace Atomex.Wallet.BitcoinBased
             {
                 var scanParams = new[]
                 {
-                    (Chain : Bip44.Internal, LookAhead : InternalLookAhead),
-                    (Chain : Bip44.External, LookAhead : ExternalLookAhead),
+                    (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.Internal, LookAhead : InternalLookAhead),
+                    (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : ExternalLookAhead),
+                    (KeyType : BitcoinBasedConfig.SegwitKey, Chain : Bip44.Internal, LookAhead : InternalLookAhead),
+                    (KeyType : BitcoinBasedConfig.SegwitKey, Chain : Bip44.External, LookAhead : ExternalLookAhead)
                 };
 
                 var api = BitcoinBasedConfig.BlockchainApi as BitcoinBlockchainApi;
@@ -55,7 +57,7 @@ namespace Atomex.Wallet.BitcoinBased
 
                 WalletAddress defautWalletAddress = null;
 
-                foreach (var (chain, lookAhead) in scanParams)
+                foreach (var (keyType, chain, lookAhead) in scanParams)
                 {
                     var freeKeysCount = 0;
                     var account = 0u;
@@ -70,7 +72,7 @@ namespace Atomex.Wallet.BitcoinBased
                                 account: account,
                                 chain: chain,
                                 index: index,
-                                keyType: CurrencyConfig.StandardKey)
+                                keyType: keyType)
                             .ConfigureAwait(false);
 
                         if (walletAddress.KeyType == CurrencyConfig.StandardKey &&
