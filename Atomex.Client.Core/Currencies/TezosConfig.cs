@@ -6,7 +6,6 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json.Linq;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
@@ -234,20 +233,7 @@ namespace Atomex
             Address.CheckTz2Address(address) ||
             Address.CheckTz3Address(address) ||
             Address.CheckKtAddress(address);
-
-        public override bool IsAddressFromKey(string address, byte[] publicKey) =>
-             AddressFromKey(publicKey).ToLowerInvariant()
-                .Equals(address.ToLowerInvariant());
  
-        public override decimal GetFeeAmount(decimal fee, decimal feePrice) =>
-            fee;
-
-        public override decimal GetFeeFromFeeAmount(decimal feeAmount, decimal feePrice) =>
-            feeAmount;
-
-        public override decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee) =>
-            1m;
-
         public override Task<decimal> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default) =>
             Task.FromResult(InitiateFee.ToTez());
@@ -300,77 +286,6 @@ namespace Atomex
 
         public override decimal GetMaximumFee() =>
             MaxFee.ToTez();
-
-        private static bool CheckAddress(string address, byte[] prefix)
-        {
-            try
-            {
-                Base58Check.Decode(address, prefix);
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static bool CheckAddress(string address) =>
-            CheckAddress(address, TezosPrefix.Tz1) ||
-            CheckAddress(address, TezosPrefix.Tz2) ||
-            CheckAddress(address, TezosPrefix.Tz3) ||
-            CheckAddress(address, TezosPrefix.KT);
-
-        public static string ParseAddress(JToken michelineExpr)
-        {
-            if (michelineExpr["string"] != null)
-            {
-                var address = michelineExpr["string"].Value<string>();
-                if (!CheckAddress(address))
-                    throw new FormatException($"Invalid address: {address}");
-
-                return address;
-            }
-
-            if (michelineExpr["bytes"] != null)
-            {
-                var hex = michelineExpr["bytes"].Value<string>();
-                var raw = Hex.FromString(hex);
-
-                if (raw.Length != 22)
-                    throw new ArgumentException($"Invalid address size: {raw.Length}");
-
-                var data = hex[..4] switch
-                {
-                    "0000" => TezosPrefix.Tz1.ConcatArrays(raw.SubArray(2)),
-                    "0001" => TezosPrefix.Tz2.ConcatArrays(raw.SubArray(2)),
-                    "0002" => TezosPrefix.Tz3.ConcatArrays(raw.SubArray(2)),
-                    _ => raw[0] == 0x01 && raw[21] == 0x00 ? TezosPrefix.KT.ConcatArrays(raw.SubArray(1, 20)) : null
-                };
-                if (data == null)
-                    throw new ArgumentException($"Unknown address prefix: {hex}");
-
-                return Base58Check.Encode(data);
-            }
-
-            throw new ArgumentException($"Either string or bytes are accepted: {michelineExpr}");
-        }
-
-        public static long ParseTimestamp(JToken michelineExpr)
-        {
-            if (michelineExpr["int"] != null)
-            {
-                var timestamp = michelineExpr["int"].Value<long>();
-                if (timestamp < 0)
-                    throw new ArgumentException("Timestamp cannot be negative");
-
-                return timestamp;
-            }
-
-            if (michelineExpr["string"] != null)
-                return michelineExpr["string"].Value<DateTime>().ToUnixTimeSeconds();
-
-            throw new ArgumentException($"Either int or string are accepted: {michelineExpr}");
-        }
 
         public TezosFillOperationSettings GetFillOperationSettings() => new()
         {

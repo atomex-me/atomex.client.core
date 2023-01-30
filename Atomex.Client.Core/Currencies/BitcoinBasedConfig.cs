@@ -63,30 +63,6 @@ namespace Atomex
             return true;
         }
 
-        public override bool IsAddressFromKey(string address, byte[] publicKey)
-        {
-            try
-            {
-                return new PubKey(publicKey)
-                    .GetAddress(ScriptPubKeyType.Legacy, Network)
-                    .ToString()
-                    .Equals(address);
-            }
-            catch (Exception)
-            {
-                return false;
-            } 
-        }
-
-        public override decimal GetFeeAmount(decimal fee, decimal feePrice) =>
-            fee;
-
-        public override decimal GetFeeFromFeeAmount(decimal feeAmount, decimal feePrice) =>
-            feeAmount;
-
-        public override decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee) =>
-            1m;
-
         public override async Task<decimal> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default)
         {

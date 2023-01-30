@@ -51,19 +51,6 @@ namespace Atomex
 
         public decimal InitiateFeeAmount(decimal gasPrice) =>
             InitiateGasLimit * gasPrice / GweiInEth;
-
-        public decimal InitiateWithRewardFeeAmount(decimal gasPrice) =>
-            InitiateWithRewardGasLimit * gasPrice / GweiInEth;
-
-        public decimal AddFeeAmount(decimal gasPrice) =>
-            AddGasLimit * gasPrice / GweiInEth;
-
-        public decimal RedeemFeeAmount(decimal gasPrice) =>
-            RedeemGasLimit * gasPrice / GweiInEth;
-
-        public decimal EstimatedRedeemFeeAmount(decimal gasPrice) =>
-            EstimatedRedeemGasLimit * gasPrice / GweiInEth;
-
         public decimal EstimatedRedeemWithRewardFeeAmount(decimal gasPrice) =>
             EstimatedRedeemWithRewardGasLimit * gasPrice / GweiInEth;
 
@@ -178,22 +165,13 @@ namespace Atomex
             new AddressUtil()
                 .IsValidEthereumAddressHexFormat(address);
 
-        public override bool IsAddressFromKey(string address, byte[] publicKey) =>
-            AddressFromKey(publicKey).ToLowerInvariant()
-                .Equals(address.ToLowerInvariant());
+        public decimal GetFeeInEth(long gasLimit, decimal gasPrice) =>
+            gasLimit * gasPrice / GweiInEth;
 
-        public override decimal GetFeeAmount(decimal fee, decimal feePrice) =>
-            fee * feePrice / GweiInEth;
-
-        public override decimal GetFeeFromFeeAmount(decimal feeAmount, decimal feePrice) =>
-            feePrice != 0
-                ? Math.Floor(feeAmount / feePrice * GweiInEth)
-                : 0;
-
-        public override decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee) =>
-            fee != 0
-                ? Math.Floor(feeAmount / fee * GweiInEth)
-                : 0;
+        public decimal GetGasPriceInGwei(BigInteger valueInWei, long gasLimit)
+        {
+            return (decimal)(valueInWei / gasLimit / WeiInGwei);
+        }
 
         public override async Task<decimal> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default)

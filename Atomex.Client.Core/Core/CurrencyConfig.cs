@@ -56,14 +56,6 @@ namespace Atomex.Core
 
         public abstract bool IsValidAddress(string address);
 
-        public abstract bool IsAddressFromKey(string address, byte[] publicKey);
-
-        public abstract decimal GetFeeAmount(decimal fee, decimal feePrice);
-
-        public abstract decimal GetFeeFromFeeAmount(decimal feeAmount, decimal feePrice);
-
-        public abstract decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee);
-
         public abstract Task<decimal> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default);
 

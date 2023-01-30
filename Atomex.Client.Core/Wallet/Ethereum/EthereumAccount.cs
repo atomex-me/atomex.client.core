@@ -199,7 +199,7 @@ namespace Atomex.Wallet.Ethereum
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false));
 
-            return EthConfig.GetFeeAmount(GasLimitByType(type), gasPrice);
+            return EthConfig.GetFeeInEth(GasLimitByType(type), gasPrice);
         }
 
         public async Task<decimal?> EstimateSwapPaymentFeeAsync(
