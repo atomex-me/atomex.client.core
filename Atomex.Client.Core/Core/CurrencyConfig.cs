@@ -56,7 +56,7 @@ namespace Atomex.Core
 
         public abstract bool IsValidAddress(string address);
 
-        public abstract Task<decimal> GetPaymentFeeAsync(
+        public abstract Task<BigInteger> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default);
 
         public abstract Task<BigInteger> GetRedeemFeeAsync(
@@ -76,9 +76,6 @@ namespace Atomex.Core
             string feeCurrencySymbol = null,
             decimal feeCurrencyPrice = 0,
             CancellationToken cancellationToken = default);
-
-        public virtual Task<decimal> GetDefaultFeePriceAsync(
-            CancellationToken cancellationToken = default) => Task.FromResult(1m);
 
         public virtual decimal GetDefaultFee() =>
             1m;

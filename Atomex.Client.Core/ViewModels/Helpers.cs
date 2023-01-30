@@ -778,9 +778,11 @@ namespace Atomex.ViewModels
             ISymbolsProvider symbolsProvider,
             CancellationToken cancellationToken = default)
         {
-            var makerPaymentFee = await toCurrency
+            var makerPaymentFeeInTokens = await toCurrency
                 .GetPaymentFeeAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+            var makerPaymentFee = makerPaymentFeeInTokens.ToDecimal(toCurrency.Digits);
 
             // if toCurrency.Name is not equal toCurrency.FeeCurrencyName convert makerPaymentFee from toCurrency.FeeCurrencyName to toCurrency.Name
             if (toCurrency.Name != toCurrency.FeeCurrencyName)

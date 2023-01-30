@@ -68,13 +68,13 @@ namespace Atomex
             return true;
         }
 
-        public override async Task<decimal> GetPaymentFeeAsync(
+        public override async Task<BigInteger> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default)
         {
             var feeRate = await GetFeeRateAsync(cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            return feeRate * DefaultPaymentTxSize / DigitsMultiplier;
+            return new BigInteger(feeRate * DefaultPaymentTxSize);
         }
 
         public override async Task<BigInteger> GetRedeemFeeAsync(

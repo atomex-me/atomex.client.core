@@ -234,9 +234,9 @@ namespace Atomex
             Address.CheckTz3Address(address) ||
             Address.CheckKtAddress(address);
  
-        public override Task<decimal> GetPaymentFeeAsync(
+        public override Task<BigInteger> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default) =>
-            Task.FromResult(InitiateFee.ToTez());
+            Task.FromResult<BigInteger>(InitiateFee);
 
         public override Task<BigInteger> GetRedeemFeeAsync(
             WalletAddress toAddress = null,

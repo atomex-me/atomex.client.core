@@ -173,13 +173,13 @@ namespace Atomex
             return (decimal)(valueInWei / gasLimit / WeiInGwei);
         }
 
-        public override async Task<decimal> GetPaymentFeeAsync(
+        public override async Task<BigInteger> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default)
         {
             var gasPrice = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return InitiateFeeAmount(gasPrice);
+            return InitiateGasLimit * GweiToWei(gasPrice);
         }
 
         public override async Task<BigInteger> GetRedeemFeeAsync(
@@ -231,10 +231,6 @@ namespace Atomex
                 feeCurrencyToBaseSymbol: feeCurrencyToBaseSymbol,
                 feeCurrencyToBasePrice: feeCurrencyToBasePrice);
         }
-
-        public override Task<decimal> GetDefaultFeePriceAsync(
-            CancellationToken cancellationToken = default) =>
-            GetGasPriceAsync(cancellationToken);
 
         public override decimal GetDefaultFee() =>
             GasLimit;
