@@ -535,9 +535,11 @@ namespace Atomex.ViewModels
                     : null;
 
                 // estimate redeem fee
-                var estimatedRedeemFee = await toCurrency
+                var estimatedRedeemFeeInTokens = await toCurrency
                     .GetEstimatedRedeemFeeAsync(redeemFromWalletAddress, withRewardForRedeem: false)
                     .ConfigureAwait(false);
+
+                var estimatedRedeemFee = estimatedRedeemFeeInTokens.ToDecimal(toCurrency.Digits);
 
                 // estimate reward for redeem
                 var rewardForRedeem = await RewardForRedeemHelper.EstimateAsync(
@@ -600,14 +602,16 @@ namespace Atomex.ViewModels
                     };
                 }
 
-                var maxNetAmount = Math.Max(maxAmountEstimation.Amount - reservedForSwapsAmount - estimatedMakerNetworkFee, 0m);
+                var maxAmount = maxAmountEstimation.Amount.ToDecimal(fromCurrency.Digits);
+                var maxNetAmount = Math.Max(maxAmount - reservedForSwapsAmount - estimatedMakerNetworkFee, 0m);
+                var maxAmountEstimationFee = maxAmountEstimation.Fee.ToDecimal(fromCurrency.Digits);
 
                 if (maxNetAmount == 0m) // insufficient funds
                 {
                     return new SwapParams
                     {
                         Amount           = 0m,
-                        PaymentFee       = maxAmountEstimation.Fee,
+                        PaymentFee       = maxAmountEstimationFee,
                         RedeemFee        = estimatedRedeemFee,
                         RewardForRedeem  = rewardForRedeem,
                         MakerNetworkFee  = estimatedMakerNetworkFee,
@@ -616,9 +620,9 @@ namespace Atomex.ViewModels
                             code: Errors.InsufficientFunds,
                             message: Resources.InsufficientFundsToCoverMakerNetworkFee,
                             details: string.Format(Resources.InsufficientFundsToCoverMakerNetworkFeeDetails,
-                                estimatedMakerNetworkFee,                             // required
-                                fromCurrency.Name,                                    // currency code
-                                maxAmountEstimation.Amount - reservedForSwapsAmount)) // available
+                                estimatedMakerNetworkFee,            // required
+                                fromCurrency.Name,                   // currency code
+                                maxAmount - reservedForSwapsAmount)) // available
                     };
                 }
 
@@ -627,7 +631,7 @@ namespace Atomex.ViewModels
                     return new SwapParams
                     {
                         Amount           = Math.Max(maxNetAmount, 0m),
-                        PaymentFee       = maxAmountEstimation.Fee,
+                        PaymentFee       = maxAmountEstimationFee,
                         RedeemFee        = estimatedRedeemFee,
                         RewardForRedeem  = rewardForRedeem,
                         MakerNetworkFee  = estimatedMakerNetworkFee,
@@ -788,12 +792,14 @@ namespace Atomex.ViewModels
                     marketDataRepository: marketDataRepository,
                     symbolsProvider: symbolsProvider) ?? 0;
 
-            var makerRedeemFee = await fromCurrency
+            var makerRedeemFeeInTokens = await fromCurrency
                 .GetEstimatedRedeemFeeAsync(
                     toAddress: null,
                     withRewardForRedeem: false,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            var makerRedeemFee = makerRedeemFeeInTokens.ToDecimal(fromCurrency.Digits);
 
             // if fromCurrency.Name is not equal fromCurrency.FeeCurrencyName convert makerRedeemFee from fromCurrency.FeeCurrencyName to fromCurrency.Name
             if (fromCurrency.Name != fromCurrency.FeeCurrencyName)
