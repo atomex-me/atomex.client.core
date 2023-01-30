@@ -11,6 +11,9 @@ namespace Atomex.Blockchain.Ethereum
         public static decimal WeiToEth(BigInteger wei) =>
             (decimal)wei / WeiInEth;
 
+        public static decimal WeiToGwei(BigInteger wei) =>
+            (decimal)wei / WeiInGwei;
+
         public static BigInteger EthToWei(decimal eth) =>
             new(eth * WeiInEth);
 

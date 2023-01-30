@@ -748,7 +748,7 @@ namespace Atomex.Swaps.Ethereum
             Log.Debug("Create payment transaction from address {@address} for swap {@swapId}", swap.FromAddress, swap.Id);
 
             var requiredAmountInEth = RequiredAmountInTokens(swap, ethConfig);
-            var requiredAmountInWei = EthereumConfig.EthToWei(requiredAmountInEth);
+            var requiredAmountInWei = EthereumHelper.EthToWei(requiredAmountInEth);
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
 
@@ -808,7 +808,7 @@ namespace Atomex.Swaps.Ethereum
                 FromAddress     = walletAddress.Address,
                 GasPrice        = EthereumHelper.GweiToWei(gasPrice),
                 Nonce           = nonce,
-                RedeemFee       = EthereumConfig.EthToWei(rewardForRedeemInEth)
+                RedeemFee       = EthereumHelper.EthToWei(rewardForRedeemInEth)
             };
 
             var initiateGasLimit = rewardForRedeemInEth == 0
