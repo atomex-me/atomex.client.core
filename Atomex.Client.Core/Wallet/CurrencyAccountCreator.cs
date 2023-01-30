@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 
 using Atomex.Abstract;
+using Atomex.Blockchain.Ethereum;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
@@ -43,15 +44,15 @@ namespace Atomex.Wallet
                 }
                 else if (Currencies.IsEthereumToken(currency.Name))
                 {
-                    if (!accounts.TryGetValue(EthereumConfig.Eth, out var ethereumAccount))
+                    if (!accounts.TryGetValue(EthereumHelper.Eth, out var ethereumAccount))
                     {
                         ethereumAccount = CreateCurrencyAccount(
-                            currency: EthereumConfig.Eth,
+                            currency: EthereumHelper.Eth,
                             wallet: wallet,
                             dataRepository: dataRepository,
                             currencies: currencies);
 
-                        accounts.Add(EthereumConfig.Eth, ethereumAccount);
+                        accounts.Add(EthereumHelper.Eth, ethereumAccount);
                     }
 
                     accounts.Add(currency.Name, CreateCurrencyAccount(

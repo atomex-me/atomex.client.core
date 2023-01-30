@@ -280,9 +280,6 @@ namespace Atomex
                 feeCurrencyToBasePrice: feeCurrencyToBasePrice));
         }
 
-        public static decimal MtzToTz(decimal mtz) =>
-            mtz / XtzDigitsMultiplier;
-
         public TezosFillOperationSettings GetFillOperationSettings() => new()
         {
             ActivationStorageLimit   = (int)ActivationStorage,

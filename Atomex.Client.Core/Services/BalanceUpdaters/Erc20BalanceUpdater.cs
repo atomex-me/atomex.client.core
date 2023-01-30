@@ -41,9 +41,11 @@ namespace Atomex.Services.BalanceUpdaters
             {
                 var ethCurrency = _currenciesProvider
                     .GetCurrencies(_account.Network)
-                    .Get<EthereumConfig>(EthereumConfig.Eth);
-                // var baseUri = ethCurrency.InfuraWsApi;
-                var baseUri = ethCurrency.InfuraApi.Replace("https", "wss").Replace("v3", "ws/v3");
+                    .Get<EthereumConfig>(EthereumHelper.Eth);
+
+                var baseUri = ethCurrency.InfuraApi
+                    .Replace("https", "wss")
+                    .Replace("v3", "ws/v3");
 
                 foreach (var currency in _account.Currencies)
                 {
@@ -53,8 +55,12 @@ namespace Atomex.Services.BalanceUpdaters
                     }
                 }
 
-                await Task.WhenAll(_notifiers.Select(n => n.StartAsync())).ConfigureAwait(false);
-                _addresses = await GetAddressesAsync().ConfigureAwait(false);
+                await Task
+                    .WhenAll(_notifiers.Select(n => n.StartAsync()))
+                    .ConfigureAwait(false);
+
+                _addresses = await GetAddressesAsync()
+                    .ConfigureAwait(false);
 
                 await Task.WhenAll(
                     _notifiers.Select(n => n.SubscribeOnEventsAsync(_addresses, BalanceUpdatedHandler)))
@@ -70,7 +76,9 @@ namespace Atomex.Services.BalanceUpdaters
         {
             try
             {
-                await Task.WhenAll(_notifiers.Select(n => n.StopAsync())).ConfigureAwait(false);
+                await Task
+                    .WhenAll(_notifiers.Select(n => n.StopAsync()))
+                    .ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -80,7 +88,8 @@ namespace Atomex.Services.BalanceUpdaters
 
         private async Task<ISet<string>> GetAddressesAsync()
         {
-            var account = _account.GetCurrencyAccount(EthereumConfig.Eth);
+            var account = _account.GetCurrencyAccount(EthereumHelper.Eth);
+
             var addresses = await account
                 .GetAddressesAsync()
                 .ConfigureAwait(false);
@@ -102,15 +111,19 @@ namespace Atomex.Services.BalanceUpdaters
                     .ScanAddressAsync(currency, address)
                     .ConfigureAwait(false);
 
-                var newAddresses = await GetAddressesAsync().ConfigureAwait(false);
+                var newAddresses = await GetAddressesAsync()
+                    .ConfigureAwait(false);
+
                 newAddresses.ExceptWith(_addresses);
 
                 if (newAddresses.Any())
                 {
                     _log.LogInformation("ERC20BalanceUpdater adds new addresses {@Addresses}", newAddresses);
+
                     await Task.WhenAll(
                             _notifiers.Select(n => n.SubscribeOnEventsAsync(newAddresses, BalanceUpdatedHandler)))
                         .ConfigureAwait(false);
+
                     _addresses.UnionWith(newAddresses);
                 }
             }

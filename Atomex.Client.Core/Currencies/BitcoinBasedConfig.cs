@@ -105,9 +105,6 @@ namespace Atomex
         public long GetMinimumFee(int txSize) =>
             (long) (MinTxFeeRate * txSize);
 
-        public long GetMinimumRelayFee(int txSize) =>
-            (long) (MinRelayTxFeeRate * txSize);
-
         public virtual long GetDust() =>
             (long) (DustFeeRate * P2PkhTxSize);
 

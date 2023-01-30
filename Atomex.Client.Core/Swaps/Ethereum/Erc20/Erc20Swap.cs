@@ -1056,7 +1056,7 @@ namespace Atomex.Swaps.Ethereum
 
                 var tx = await EthereumAccount
                     .LocalStorage
-                    .GetTransactionByIdAsync<EthereumTransaction>(EthereumConfig.Eth, txId)
+                    .GetTransactionByIdAsync<EthereumTransaction>(EthereumHelper.Eth, txId)
                     .ConfigureAwait(false);
 
                 if (!tx.IsConfirmed)

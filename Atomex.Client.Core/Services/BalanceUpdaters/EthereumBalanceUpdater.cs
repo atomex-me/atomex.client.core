@@ -40,13 +40,18 @@ namespace Atomex.Services.BalanceUpdaters
             {
                 var currency = _currenciesProvider
                     .GetCurrencies(_account.Network)
-                    .Get<EthereumConfig>(EthereumConfig.Eth);
+                    .Get<EthereumConfig>(EthereumHelper.Eth);
+
                 var baseUri = currency.BlockchainApiBaseUri;
 
                 _notifier = new EthereumNotifier(baseUri, _log);
 
-                await _notifier.StartAsync().ConfigureAwait(false);
-                _addresses = await GetAddressesAsync().ConfigureAwait(false);
+                await _notifier
+                    .StartAsync()
+                    .ConfigureAwait(false);
+
+                _addresses = await GetAddressesAsync()
+                    .ConfigureAwait(false);
 
                 _notifier.SubscribeOnBalanceUpdate(_addresses, BalanceUpdatedHandler);
             }
@@ -70,7 +75,8 @@ namespace Atomex.Services.BalanceUpdaters
 
         private async Task<ISet<string>> GetAddressesAsync()
         {
-            var account = _account.GetCurrencyAccount(EthereumConfig.Eth);
+            var account = _account.GetCurrencyAccount(EthereumHelper.Eth);
+
             var addresses = await account
                 .GetAddressesAsync()
                 .ConfigureAwait(false);
@@ -89,10 +95,12 @@ namespace Atomex.Services.BalanceUpdaters
             try
             {
                 await _walletScanner
-                    .ScanAddressAsync(EthereumConfig.Eth, address)
+                    .ScanAddressAsync(EthereumHelper.Eth, address)
                     .ConfigureAwait(false);
 
-                var newAddresses = await GetAddressesAsync().ConfigureAwait(false);
+                var newAddresses = await GetAddressesAsync()
+                    .ConfigureAwait(false);
+
                 newAddresses.ExceptWith(_addresses);
 
                 if (newAddresses.Any())
