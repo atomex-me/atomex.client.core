@@ -332,9 +332,9 @@ namespace Atomex.Blockchain.BlockCypher
             if (!addr.ContainsKey("txs"))
             {
                 return new BitcoinAddressInfo(
-                    Balance: balanceInSatoshi.ToDecimal(_settings.Decimals),
-                    Received: receivedInSatoshi.ToDecimal(_settings.Decimals),
-                    Sent: sentInSatoshi.ToDecimal(_settings.Decimals),
+                    Balance: balanceInSatoshi,
+                    Received: receivedInSatoshi,
+                    Sent: sentInSatoshi,
                     UnconfirmedIncome: 0,
                     UnconfirmedOutcome: 0,
                     Outputs: Enumerable.Empty<BitcoinTxOutput>());
@@ -469,11 +469,11 @@ namespace Atomex.Blockchain.BlockCypher
             }
 
             return new BitcoinAddressInfo(
-                Balance: balanceInSatoshi.ToDecimal(_settings.Decimals),
-                Received: receivedInSatoshi.ToDecimal(_settings.Decimals),
-                Sent: sentInSatoshi.ToDecimal(_settings.Decimals),
-                UnconfirmedIncome: unconfirmedIncomeInSatoshi.ToDecimal(_settings.Decimals),
-                UnconfirmedOutcome: unconfirmedOutcomeInSatoshi.ToDecimal(_settings.Decimals),
+                Balance: balanceInSatoshi,
+                Received: receivedInSatoshi,
+                Sent: sentInSatoshi,
+                UnconfirmedIncome: unconfirmedIncomeInSatoshi,
+                UnconfirmedOutcome: unconfirmedOutcomeInSatoshi,
                 Outputs: outputs);
         }
 

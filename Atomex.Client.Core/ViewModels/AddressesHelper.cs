@@ -140,7 +140,6 @@ namespace Atomex.ViewModels
             if (!addresses.Any(w => w.Address == freeAddress.Address))
                 addresses.Add(freeAddress);
 
-
             return addresses
                 .GroupBy(w => w.Address)
                 .Select(g =>
@@ -154,7 +153,7 @@ namespace Atomex.ViewModels
                         WalletAddress    = address,
                         Address          = g.Key,
                         HasActivity      = address?.HasActivity ?? false,
-                        AvailableBalance = address?.AvailableBalance() ?? 0m,
+                        AvailableBalance = address?.AvailableBalance() ?? 0,
                         CurrencyFormat   = currency.Format,
                         CurrencyCode     = currency.DisplayedName,
                         IsFreeAddress    = isFreeAddress,

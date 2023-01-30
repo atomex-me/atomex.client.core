@@ -20,7 +20,6 @@ using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 using Error = Atomex.Common.Error;
-using Atomex.Blockchain.Ethereum.Messages.Swaps.V1;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -47,8 +46,8 @@ namespace Atomex.Wallet.Ethereum
         public async Task<Result<string>> SendAsync(
             string from,
             string to,
-            decimal amount,
-            decimal gasLimit = 0,
+            BigInteger amount,
+            long gasLimit = 0,
             decimal gasPrice = 0,
             bool useDefaultFee = false,
             CancellationToken cancellationToken = default)
@@ -72,8 +71,8 @@ namespace Atomex.Wallet.Ethereum
             var addressFeeUsage = await SelectUnspentAddressesAsync(
                     from: from,
                     amount: amount,
-                    fee: gasLimit,
-                    feePrice: gasPrice,
+                    gasLimit: gasLimit,
+                    gasPrice: gasPrice,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -87,11 +86,11 @@ namespace Atomex.Wallet.Ethereum
                     code: Errors.InsufficientGas,
                     message: "Insufficient gas");
 
-            var feeAmount = erc20Config.GetFeeAmount(gasLimit, gasPrice);
+            var feeAmountInWei = gasLimit * EthereumConfig.GweiToWei(gasPrice);
 
             Log.Debug("Fee per transaction {@feePerTransaction}. Fee Amount {@feeAmount}",
                 gasLimit,
-                feeAmount);
+                feeAmountInWei);
 
             Log.Debug("Send {@amount} of {@currency} from address {@address} with available balance {@balance}",
                 addressFeeUsage.UsedAmount,
@@ -117,9 +116,9 @@ namespace Atomex.Wallet.Ethereum
             var message = new Erc20TransferMessage
             {
                 To          = to.ToLowerInvariant(),
-                Value       = erc20Config.TokensToTokenDigits(addressFeeUsage.UsedAmount),
+                Value       = addressFeeUsage.UsedAmount,
                 FromAddress = addressFeeUsage.WalletAddress.Address,
-                Gas         = new BigInteger(gasLimit),
+                Gas         = gasLimit,
                 GasPrice    = new BigInteger(EthereumConfig.GweiToWei(gasPrice)),
                 Nonce       = nonce
             };
@@ -127,11 +126,6 @@ namespace Atomex.Wallet.Ethereum
             txInput = message.CreateTransactionInput(erc20Config.ERC20ContractAddress);
 
             var txRequest = new EthereumTransactionRequest(txInput, EthConfig.ChainId);
-
-            //var tx = new EthereumTransaction(EthereumConfig.Eth, txInput)
-            //{
-            //    Type = TransactionType.Output | TransactionType.TokenTransfer | TransactionType.ContractCall
-            //};
 
             var signResult = await _ethereumAccount
                 .SignAsync(txRequest, cancellationToken)
@@ -200,7 +194,7 @@ namespace Atomex.Wallet.Ethereum
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             string from,
             TransactionType type,
-            decimal? gasLimit,
+            long? gasLimit,
             decimal? gasPrice,
             bool reserve = false,
             CancellationToken cancellationToken = default)
@@ -235,22 +229,17 @@ namespace Atomex.Wallet.Ethereum
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false));
 
-            var reserveFeeInEth = ReserveFee(estimatedGasPrice);
+            var reserveFeeInWei = ReserveFeeInWei(estimatedGasPrice);
 
-            var feeInEth = eth.GetFeeAmount(
-                gasLimit == null
-                    ? GasLimitByType(type)
-                    : gasLimit.Value,
-                gasPrice == null
-                    ? estimatedGasPrice
-                    : gasPrice.Value);
+            var feeInWei = (gasLimit == null ? GasLimitByType(type) : gasLimit.Value) *
+                EthereumConfig.GweiToWei(gasPrice == null ? estimatedGasPrice : gasPrice.Value);
 
-            if (feeInEth == 0)
+            if (feeInWei == 0)
                 return new MaxAmountEstimation {
                     Error = new Error(Errors.InsufficientFee, Resources.TooLowFees)
                 };
 
-            var requiredFeeInEth = feeInEth + (reserve ? reserveFeeInEth : 0);
+            var requiredFeeInWei = feeInWei + (reserve ? reserveFeeInWei : 0);
 
             var ethAddress = await LocalStorage
                 .GetWalletAddressAsync(eth.Name, tokenAddress.Address)
@@ -259,38 +248,38 @@ namespace Atomex.Wallet.Ethereum
             if (ethAddress == null)
                 return new MaxAmountEstimation
                 {
-                    Fee      = requiredFeeInEth,
-                    Reserved = reserveFeeInEth,
+                    Fee      = requiredFeeInWei,
+                    Reserved = reserveFeeInWei,
                     Error = new Error(
                         code: Errors.InsufficientFunds,
                         message: Resources.InsufficientFundsToCoverFees),
                     ErrorHint = string.Format(
                         Resources.InsufficientFundsToCoverFeesDetails,
-                        requiredFeeInEth,            // required fee
+                        requiredFeeInWei,            // required fee
                         Erc20Config.FeeCurrencyName, // currency code
                         0m)                          // available
                 };
 
-            var restBalanceInEth = ethAddress.AvailableBalance() - requiredFeeInEth;
+            var restBalanceInWei = ethAddress.AvailableBalance() - requiredFeeInWei;
 
-            if (restBalanceInEth < 0)
+            if (restBalanceInWei < 0)
                 return new MaxAmountEstimation {
-                    Fee = requiredFeeInEth,
-                    Reserved = reserveFeeInEth,
+                    Fee = requiredFeeInWei,
+                    Reserved = reserveFeeInWei,
                     Error = new Error(
                         code: Errors.InsufficientFunds,
                         message: Resources.InsufficientFundsToCoverFees),
                     ErrorHint = string.Format(
                         Resources.InsufficientFundsToCoverFeesDetails,
-                        requiredFeeInEth,              // required fee
+                        requiredFeeInWei,              // required fee
                         Erc20Config.FeeCurrencyName,   // currency code
                         ethAddress.AvailableBalance()) // available
                 };
 
             if (tokenAddress.AvailableBalance() <= 0)
                 return new MaxAmountEstimation {
-                    Fee      = requiredFeeInEth,
-                    Reserved = reserveFeeInEth,
+                    Fee      = requiredFeeInWei,
+                    Reserved = reserveFeeInWei,
                     Error = new Error(
                         code: Errors.InsufficientFunds,
                         message: Resources.InsufficientFunds),
@@ -303,8 +292,8 @@ namespace Atomex.Wallet.Ethereum
             return new MaxAmountEstimation
             {
                 Amount   = tokenAddress.AvailableBalance(),
-                Fee      = requiredFeeInEth,
-                Reserved = reserveFeeInEth
+                Fee      = requiredFeeInWei,
+                Reserved = reserveFeeInWei
             };
         }
 
@@ -324,7 +313,7 @@ namespace Atomex.Wallet.Ethereum
                 cancellationToken: cancellationToken);
         }
 
-        private decimal GasLimitByType(TransactionType type)
+        private long GasLimitByType(TransactionType type)
         {
             var erc20 = Erc20Config;
 
@@ -343,14 +332,14 @@ namespace Atomex.Wallet.Ethereum
             return erc20.TransferGasLimit;
         }
 
-        private decimal ReserveFee(decimal gasPrice)
+        private BigInteger ReserveFeeInWei(decimal gasPrice)
         {
             var eth = EthConfig;
             var erc20 = Erc20Config;
 
-            return Math.Max(
-                eth.GetFeeAmount(Math.Max(erc20.RefundGasLimit, erc20.RedeemGasLimit), gasPrice),
-                eth.GetFeeAmount(Math.Max(eth.RefundGasLimit, eth.RedeemGasLimit), gasPrice));
+            var maxGasLimit = Math.Max(Math.Max(erc20.RefundGasLimit, erc20.RedeemGasLimit), Math.Max(eth.RefundGasLimit, eth.RedeemGasLimit));
+
+            return maxGasLimit * EthereumConfig.GweiToWei(gasPrice);
         }
 
         #endregion Common
@@ -384,12 +373,11 @@ namespace Atomex.Wallet.Ethereum
 
         private async Task<SelectedWalletAddress> SelectUnspentAddressesAsync(
             string from,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
+            BigInteger amount,
+            long gasLimit,
+            decimal gasPrice,
             CancellationToken cancellationToken = default)
         {
-            var erc20 = Erc20Config;
             var eth = EthConfig;
 
             var fromAddress = await GetAddressAsync(from, cancellationToken)
@@ -398,34 +386,34 @@ namespace Atomex.Wallet.Ethereum
             if (fromAddress == null)
                 return null; // invalid address
 
-            var feeInEth = erc20.GetFeeAmount(fee, feePrice);
+            var feeInWei = gasLimit * EthereumConfig.GweiToWei(gasPrice);
 
             var ethAddress = await LocalStorage
                 .GetWalletAddressAsync(eth.Name, fromAddress.Address)
                 .ConfigureAwait(false);
 
-            var availableBalanceInEth = ethAddress?.AvailableBalance() ?? 0m;
+            var availableBalanceInWei = ethAddress?.AvailableBalance() ?? 0;
 
-            if (availableBalanceInEth < feeInEth)
+            if (availableBalanceInWei < feeInWei)
             {
                 Log.Debug("Unsufficient ETH ammount for ERC20 token processing on address {@address} with available balance {@balance} and needed amount {@amount}",
                     ethAddress.Address,
-                    availableBalanceInEth,
-                    feeInEth);
+                    availableBalanceInWei,
+                    feeInWei);
 
                 return null; // insufficient funds
             }
 
-            var restBalanceInTokens = fromAddress.AvailableBalance() - amount;
+            var restBalanceInTokenDigits = fromAddress.AvailableBalance() - amount;
 
-            if (restBalanceInTokens < 0) // todo: log?
+            if (restBalanceInTokenDigits < 0) // todo: log?
                 return null;
 
             return new SelectedWalletAddress
             {
                 WalletAddress = fromAddress,
                 UsedAmount    = amount,
-                UsedFee       = feeInEth
+                UsedFee       = feeInWei
             };
         }
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 
 namespace Atomex.Common
 {
@@ -45,13 +46,16 @@ namespace Atomex.Common
             return integral + Math.Truncate(fraction * digitsMultiplier) / digitsMultiplier;
         }
 
-        public static decimal DustProofMin(
-            decimal amount,
-            decimal refAmount,
-            decimal digitsMultiplier,
-            decimal dustMultiplier)
+        public static BigInteger DustProofMin(
+            BigInteger amount,
+            BigInteger refAmount,
+            long dustMultiplier)
         {
-            return RoundDown(amount - refAmount, digitsMultiplier / dustMultiplier) == 0 ? amount : Math.Min(amount, refAmount);
+            var rest = amount - refAmount;
+
+            return rest < dustMultiplier
+                ? amount
+                : refAmount;
         }
 
         public static decimal RoundAmount(decimal value, decimal digitsMultiplier) =>

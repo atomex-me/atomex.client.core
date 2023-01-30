@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json;
 
 using Atomex.Abstract;
+using Atomex.Client.V1.Entities;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography.Abstract;
@@ -15,9 +16,7 @@ using Atomex.MarketData.Abstract;
 using Atomex.MarketData.Common;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Abstract;
-using Atomex.Client.V1.Entities;
 using Swap = Atomex.Core.Swap;
-using Error = Atomex.Common.Error;
 
 namespace Atomex.ViewModels
 {

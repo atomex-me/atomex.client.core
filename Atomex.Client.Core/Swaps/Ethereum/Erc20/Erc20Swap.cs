@@ -260,9 +260,9 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInEth = EthConfig.GetFeeAmount(erc20Config.RedeemGasLimit, gasPrice);
+            var feeInWei = erc20Config.RedeemGasLimit * EthereumConfig.GweiToWei(gasPrice);
 
-            if (walletAddress.Balance < feeInEth)
+            if (walletAddress.Balance < feeInWei)
             {
                 Log.Error("Insufficient funds for redeem");
                 return;
@@ -384,9 +384,9 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInEth = EthConfig.GetFeeAmount(erc20Config.RedeemGasLimit, gasPrice);
+            var feeInWei = erc20Config.RedeemGasLimit * EthereumConfig.GweiToWei(gasPrice);
 
-            if (walletAddress.Balance < feeInEth)
+            if (walletAddress.Balance < feeInWei)
             {
                 Log.Error("Insufficient funds for redeem for party");
                 return;
@@ -510,9 +510,9 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInEth = EthConfig.GetFeeAmount(erc20Config.RefundGasLimit, gasPrice);
+            var feeInWei = erc20Config.RefundGasLimit * EthereumConfig.GweiToWei(gasPrice);
 
-            if (walletAddress.Balance < feeInEth)
+            if (walletAddress.Balance < feeInWei)
             {
                 Log.Error("Insufficient funds for refund");
                 return;
@@ -748,13 +748,13 @@ namespace Atomex.Swaps.Ethereum
 
         public static decimal RequiredAmountInTokens(Swap swap, Erc20Config erc20)
         {
-            var requiredAmountInERC20 = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
+            var requiredAmountInTokens = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
 
             // maker network fee
-            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInERC20) // network fee size check
-                requiredAmountInERC20 += AmountHelper.RoundDown(swap.MakerNetworkFee, erc20.DigitsMultiplier);
+            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInTokens) // network fee size check
+                requiredAmountInTokens += AmountHelper.RoundDown(swap.MakerNetworkFee, erc20.DigitsMultiplier);
 
-            return requiredAmountInERC20;
+            return requiredAmountInTokens;
         }
 
         protected async Task<EthereumTransactionRequest> CreatePaymentTxAsync(
@@ -766,6 +766,7 @@ namespace Atomex.Swaps.Ethereum
             Log.Debug("Create payment transaction from address {@adderss} for swap {@swapId}", swap.FromAddress, swap.Id);
 
             var requiredAmountInTokens = RequiredAmountInTokens(swap, erc20Config);
+            var requiredAmountInTokenDigits = erc20Config.TokensToTokenDigits(requiredAmountInTokens);
 
             var lockTimeInSeconds = swap.IsInitiator
                 ? DefaultInitiatorLockTimeInSeconds
@@ -783,49 +784,48 @@ namespace Atomex.Swaps.Ethereum
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var balanceInEth = (await EthereumAccount
+            var balanceInWei = (await EthereumAccount
                 .GetAddressBalanceAsync(
                     address: walletAddress.Address,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false))
                 .Confirmed;
 
-            var feeAmountInEth = rewardForRedeemInTokens == 0
-                ? erc20Config.InitiateFeeAmount(gasPrice)
-                : erc20Config.InitiateWithRewardFeeAmount(gasPrice);
+            var feeAmountInWei = rewardForRedeemInTokens == 0
+                ? erc20Config.InitiateGasLimit * EthereumConfig.GweiToWei(gasPrice)
+                : erc20Config.InitiateWithRewardGasLimit * EthereumConfig.GweiToWei(gasPrice);
 
-            if (balanceInEth < feeAmountInEth)
+            if (balanceInWei < feeAmountInWei)
             {
                 Log.Error(
-                    "Insufficient funds at {@address} for fee. Balance: {@balance}, feeAmount: {@feeAmount}, result: {@result}.",
+                    "Insufficient funds at {@address} for fee. Balance: {@balance}, feeAmount: {@feeAmount}, result: {@result}",
                     walletAddress.Address,
-                    balanceInEth,
-                    feeAmountInEth,
-                    balanceInEth - feeAmountInEth);
+                    balanceInWei,
+                    feeAmountInWei,
+                    balanceInWei - feeAmountInWei);
 
                 return null;
             }
 
-            var balanceInTokens = walletAddress.Balance;
+            var balanceInTokenDigits = walletAddress.Balance;
 
-            Log.Debug("Available balance: {@balance}", balanceInTokens);
+            Log.Debug("Available balance: {@balance}", balanceInTokenDigits);
 
-            if (balanceInTokens < requiredAmountInTokens)
+            if (balanceInTokenDigits < requiredAmountInTokenDigits)
             {
                 Log.Error(
                     "Insufficient funds at {@address}. Balance: {@balance}, required: {@result}, missing: {@missing}.",
                     walletAddress.Address,
-                    balanceInTokens,
-                    requiredAmountInTokens,
-                    balanceInTokens - requiredAmountInTokens);
+                    balanceInTokenDigits,
+                    requiredAmountInTokenDigits,
+                    balanceInTokenDigits - requiredAmountInTokenDigits);
 
                 return null;
             }
 
-            var amountInTokens = AmountHelper.DustProofMin(
-                balanceInTokens,
-                requiredAmountInTokens,
-                erc20Config.DigitsMultiplier,
+            var amountInTokenDigits = AmountHelper.DustProofMin(
+                balanceInTokenDigits,
+                requiredAmountInTokenDigits,
                 erc20Config.DustDigitsMultiplier);
 
             var (nonce, error) = await GetEthereumApi()
@@ -850,7 +850,7 @@ namespace Atomex.Swaps.Ethereum
                 Participant     = swap.PartyAddress,
                 RefundTimestamp = refundTimeStampUtcInSec,
                 Countdown       = lockTimeInSeconds,
-                Value           = erc20Config.TokensToTokenDigits(amountInTokens),
+                Value           = amountInTokenDigits,
                 RedeemFee       = erc20Config.TokensToTokenDigits(rewardForRedeemInTokens),
                 Active          = true,
                 FromAddress     = walletAddress.Address,
@@ -934,18 +934,18 @@ namespace Atomex.Swaps.Ethereum
                 transactions.Add(tx);
             }
 
-            var requiredAmountInErc20 = RequiredAmountInTokens(swap, erc20);
+            var requiredAmountInTokens = RequiredAmountInTokens(swap, erc20);
+            var requiredAmountInTokenDigits = erc20.TokensToTokenDigits(requiredAmountInTokens);
 
-            var amountInErc20 = AmountHelper.DustProofMin(
+            var amountInTokenDigits = AmountHelper.DustProofMin(
                 walletAddress.Balance,
-                requiredAmountInErc20,
-                erc20.DigitsMultiplier,
+                requiredAmountInTokenDigits,
                 erc20.DustDigitsMultiplier);
 
             var approveTx = await CreateApproveTx(
                     walletAddress: walletAddress.Address,
                     nonce: nonce,
-                    value: erc20.TokensToTokenDigits(amountInErc20),
+                    value: amountInTokenDigits,
                     gasPrice: gasPrice)
                 .ConfigureAwait(false);
 

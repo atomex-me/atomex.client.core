@@ -80,7 +80,7 @@ namespace Atomex.Swaps.Tezos
 
             Log.Debug("Available balance: {@balance}", walletAddress.Balance);
 
-            var balanceInMtz = walletAddress.Balance.ToMicroTez();
+            var balanceInMtz = walletAddress.Balance;
 
             var isRevealed = await _account
                 .IsRevealedSourceAsync(walletAddress.Address, cancellationToken)
@@ -109,7 +109,7 @@ namespace Atomex.Swaps.Tezos
                     from: walletAddress.Address,
                     to: xtzConfig.SwapContractAddress,
                     amount: requiredAmountInMtz,
-                    fee: Fee.FromNetwork((long)feeAmountInMtz),
+                    fee: Fee.FromNetwork(feeAmountInMtz),
                     gasLimit: GasLimit.FromValue((int)xtzConfig.InitiateGasLimit),
                     storageLimit: StorageLimit.FromValue((int)xtzConfig.InitiateStorageLimit),
                     entrypoint: "initiate",
@@ -266,7 +266,7 @@ namespace Atomex.Swaps.Tezos
             var feeAmountInMtz = xtzConfig.RedeemFee + xtzConfig.RevealFee;
             var storageLimitInMtz = xtzConfig.RedeemStorageLimit * xtzConfig.StorageFeeMultiplier;
 
-            if (walletAddress.Balance.ToMicroTez() < feeAmountInMtz + storageLimitInMtz)
+            if (walletAddress.Balance < feeAmountInMtz + storageLimitInMtz)
             {
                 Log.Error("Insufficient funds for redeem");
                 return;
@@ -277,7 +277,7 @@ namespace Atomex.Swaps.Tezos
                     from: walletAddress.Address,
                     to: xtzConfig.SwapContractAddress,
                     amount: 0,
-                    fee: Fee.FromNetwork((long)(xtzConfig.RedeemFee + xtzConfig.RevealFee)),
+                    fee: Fee.FromNetwork(xtzConfig.RedeemFee + xtzConfig.RevealFee),
                     gasLimit: GasLimit.FromValue((int)xtzConfig.RedeemGasLimit),
                     storageLimit: StorageLimit.FromValue((int)xtzConfig.RedeemStorageLimit),
                     entrypoint: "redeem",
@@ -344,7 +344,7 @@ namespace Atomex.Swaps.Tezos
             var feeAmountInMtz = xtzConfig.RedeemFee + xtzConfig.RevealFee;
             var storageLimitInMtz = xtzConfig.RedeemStorageLimit * xtzConfig.StorageFeeMultiplier;
 
-            if (walletAddress.Balance.ToMicroTez() < feeAmountInMtz + storageLimitInMtz)
+            if (walletAddress.Balance < feeAmountInMtz + storageLimitInMtz)
             {
                 Log.Error("Insufficient funds for redeem for party");
             }
@@ -354,7 +354,7 @@ namespace Atomex.Swaps.Tezos
                     from: walletAddress.Address,
                     to: xtzConfig.SwapContractAddress,
                     amount: 0,
-                    fee: Fee.FromNetwork((long)(xtzConfig.RedeemFee + xtzConfig.RevealFee)),
+                    fee: Fee.FromNetwork(xtzConfig.RedeemFee + xtzConfig.RevealFee),
                     gasLimit: GasLimit.FromValue((int)xtzConfig.RedeemGasLimit),
                     storageLimit: StorageLimit.FromValue((int)xtzConfig.RedeemStorageLimit),
                     entrypoint: "redeem",
@@ -418,7 +418,7 @@ namespace Atomex.Swaps.Tezos
             var feeAmountInMtz = xtzConfig.RefundFee + xtzConfig.RevealFee;
             var storageLimitInMtz = xtzConfig.RefundStorageLimit * xtzConfig.StorageFeeMultiplier;
 
-            if (walletAddress.Balance.ToMicroTez() < feeAmountInMtz + storageLimitInMtz)
+            if (walletAddress.Balance < feeAmountInMtz + storageLimitInMtz)
             {
                 Log.Error("Insufficient funds for refund");
             }
@@ -428,7 +428,7 @@ namespace Atomex.Swaps.Tezos
                     from: walletAddress.Address,
                     to: xtzConfig.SwapContractAddress,
                     amount: 0,
-                    fee: Fee.FromNetwork((long)(xtzConfig.RefundFee + xtzConfig.RevealFee)),
+                    fee: Fee.FromNetwork(xtzConfig.RefundFee + xtzConfig.RevealFee),
                     gasLimit: GasLimit.FromValue((int)xtzConfig.RefundGasLimit),
                     storageLimit: StorageLimit.FromValue((int)xtzConfig.RefundStorageLimit),
                     entrypoint: "refund",
@@ -474,14 +474,14 @@ namespace Atomex.Swaps.Tezos
                 : DefaultAcceptorLockTimeInSeconds;
 
             // start redeem control async
-            _ = TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+            _ = Task.Run(() => TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
                 swap: swap,
                 currency: XtzConfig,
                 refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
                 interval: TimeSpan.FromSeconds(30),
                 redeemedHandler: RedeemCompletedEventHandler,
                 canceledHandler: RedeemCanceledEventHandler,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken), cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -493,14 +493,14 @@ namespace Atomex.Swaps.Tezos
             Log.Debug("Wait redeem for swap {@swapId}", swap.Id);
 
             // start redeem control async
-            _ = TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
+            _ = Task.Run(() => TezosSwapRedeemedHelper.StartSwapRedeemedControlAsync(
                 swap: swap,
                 currency: XtzConfig,
                 refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(DefaultAcceptorLockTimeInSeconds),
                 interval: TimeSpan.FromSeconds(30),
                 redeemedHandler: RedeemBySomeoneCompletedEventHandler,
                 canceledHandler: RedeemBySomeoneCanceledEventHandler,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken), cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -530,7 +530,8 @@ namespace Atomex.Swaps.Tezos
 
             try
             {
-                var (isRefunded, isRefundedError) = await TezosSwapRefundedHelper.IsRefundedAsync(
+                var (isRefunded, isRefundedError) = await TezosSwapRefundedHelper
+                    .IsRefundedAsync(
                         swap: swap,
                         currency: XtzConfig,
                         attempts: MaxRefundCheckAttempts,

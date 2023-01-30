@@ -1,4 +1,4 @@
-﻿using Atomex.Common;
+﻿using System.Numerics;
 
 namespace Atomex.Blockchain
 {
@@ -6,12 +6,11 @@ namespace Atomex.Blockchain
     {
         public string Address { get; set; }
         public string Balance { get; set; } = "0";
-        public decimal? ParsedBalance { get; set; }
+        public BigInteger? ParsedBalance { get; set; }
         public int TransfersCount { get; set; }
 
-        public decimal GetTokenBalance() => ParsedBalance ??=
-            Balance.TryParseWithRound(Decimals, out var result)
-                ? result
-                : 0;
+        public BigInteger GetTokenBalance() => ParsedBalance ??= BigInteger.TryParse(Balance, out var result)
+            ? result
+            : 0;
     }
 }

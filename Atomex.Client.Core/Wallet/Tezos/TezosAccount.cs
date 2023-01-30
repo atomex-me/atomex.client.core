@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -223,25 +224,25 @@ namespace Atomex.Wallet.Tezos
 
         #endregion Signing
 
-        public async Task<decimal> EstimateFeeAsync(
+        public async Task<long> EstimateFeeAsync(
             string from,
             string to,
             TransactionType type,
             CancellationToken cancellationToken = default)
         {
-            var txFeeInTez = await FeeByType(
+            var txFeeInMtz = await FeeInMtzByType(
                     type: type,
                     from: from,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var storageFeeInTez = await StorageFeeByTypeAsync(
+            var storageFeeInMtz = await StorageFeeInMtzByTypeAsync(
                     type: type,
                     to: to,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            return txFeeInTez + storageFeeInTez;
+            return txFeeInMtz + storageFeeInMtz;
         }
 
         public async Task<decimal?> EstimateSwapPaymentFeeAsync(
@@ -284,49 +285,48 @@ namespace Atomex.Wallet.Tezos
                     Error = new Error(Errors.AddressNotFound, Resources.AddressNotFoundInLocalDb)
                 };
 
-            var reserveFee = ReserveFee();
+            var reserveFeeInMtz = ReserveFeeInMtz();
 
-            var feeInTez = await FeeByType(
+            var feeInMtz = await FeeInMtzByType(
                     type: type,
                     from: fromAddress.Address,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var storageFeeInTez = await StorageFeeByTypeAsync(
+            var storageFeeInMtz = await StorageFeeInMtzByTypeAsync(
                     type: type,
                     to: to,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var requiredFeeInTez = feeInTez +
-                storageFeeInTez +
-                (reserve ? reserveFee : 0);
+            var requiredFeeInMtz = feeInMtz +
+                storageFeeInMtz +
+                (reserve ? reserveFeeInMtz : 0);
 
-            var requiredInTez = requiredFeeInTez +
-                Config.MicroTezReserve.ToTez();
+            var requiredInMtz = requiredFeeInMtz + Config.MicroTezReserve;
 
-            var restAmountInTez = fromAddress.AvailableBalance() - requiredInTez;
+            var restAmountInMtz = fromAddress.AvailableBalance() - requiredInMtz;
 
-            if (restAmountInTez < 0)
+            if (restAmountInMtz < 0)
                 return new MaxAmountEstimation {
-                    Amount   = restAmountInTez,
-                    Fee      = requiredFeeInTez,
-                    Reserved = reserveFee,
+                    Amount   = restAmountInMtz,
+                    Fee      = requiredFeeInMtz,
+                    Reserved = reserveFeeInMtz,
                     Error = new Error(
                         code: Errors.InsufficientFunds,
                         message: Resources.InsufficientFundsToCoverFees),
                     ErrorHint = string.Format(
                         Resources.InsufficientFundsToCoverFeesDetails,
-                        requiredInTez,
+                        requiredInMtz,
                         Currency,
                         fromAddress.AvailableBalance())
                 };
 
             return new MaxAmountEstimation
             {
-                Amount   = restAmountInTez,
-                Fee      = requiredFeeInTez,
-                Reserved = reserveFee
+                Amount   = restAmountInMtz,
+                Fee      = requiredFeeInMtz,
+                Reserved = reserveFeeInMtz
             };
         }
 
@@ -345,7 +345,7 @@ namespace Atomex.Wallet.Tezos
                 cancellationToken: cancellationToken);
         }
 
-        private async Task<decimal> FeeByType(
+        private async Task<long> FeeInMtzByType(
             TransactionType type,
             string from,
             CancellationToken cancellationToken = default)
@@ -355,34 +355,33 @@ namespace Atomex.Wallet.Tezos
             var isRevealed = await IsRevealedSourceAsync(from, cancellationToken)
                 .ConfigureAwait(false);
 
-            var revealFeeInTez = !isRevealed
-                ? xtz.RevealFee.ToTez()
+            var revealFeeInMtz = !isRevealed
+                ? xtz.RevealFee
                 : 0;
 
             if (type.HasFlag(TransactionType.SwapPayment))
-                return xtz.InitiateFee.ToTez() + revealFeeInTez;
+                return xtz.InitiateFee+ revealFeeInMtz;
 
             if (type.HasFlag(TransactionType.SwapRefund))
-                return xtz.RefundFee.ToTez() + revealFeeInTez;
+                return xtz.RefundFee + revealFeeInMtz;
 
             if (type.HasFlag(TransactionType.SwapRedeem))
-                return xtz.RedeemFee.ToTez() + revealFeeInTez;
+                return xtz.RedeemFee + revealFeeInMtz;
 
-            return xtz.Fee.ToTez() + revealFeeInTez;
+            return xtz.Fee + revealFeeInMtz;
         }
 
-        private decimal ReserveFee()
+        private long ReserveFeeInMtz()
         {
             var xtz = Config;
 
-            var redeemFee = xtz.RedeemFee + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0);
-            var refundFee = xtz.RefundFee + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0);
-            var reserveFee = Math.Max(redeemFee, refundFee) + xtz.RevealFee + xtz.MicroTezReserve;
+            var redeemFeeInMtz = xtz.RedeemFee + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0);
+            var refundFeeInMtz = xtz.RefundFee + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0);
 
-            return reserveFee.ToTez();
+            return Math.Max(redeemFeeInMtz, refundFeeInMtz) + xtz.RevealFee + xtz.MicroTezReserve;
         }
 
-        private async Task<decimal> StorageFeeByTypeAsync(
+        private async Task<long> StorageFeeInMtzByTypeAsync(
             TransactionType type,
             string to,
             CancellationToken cancellationToken = default)
@@ -393,24 +392,21 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (type.HasFlag(TransactionType.SwapPayment))
-                return (xtz.InitiateStorageLimit * xtz.StorageFeeMultiplier).ToTez();
+                return xtz.InitiateStorageLimit * xtz.StorageFeeMultiplier;
 
             if (type.HasFlag(TransactionType.SwapRefund))
-                return (isActive
+                return isActive
                     ? Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0) // without activation storage fee
-                    : xtz.RefundStorageLimit * xtz.StorageFeeMultiplier)
-                    .ToTez();
+                    : xtz.RefundStorageLimit * xtz.StorageFeeMultiplier;
 
             if (type.HasFlag(TransactionType.SwapRedeem))
-                return (isActive
+                return isActive
                     ? Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0) // without activation storage fee
-                    : xtz.RedeemStorageLimit * xtz.StorageFeeMultiplier)
-                    .ToTez();
+                    : xtz.RedeemStorageLimit * xtz.StorageFeeMultiplier;
 
-            return (isActive
+            return isActive
                 ? Math.Max((xtz.StorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0) // without activation storage fee
-                : xtz.StorageLimit * xtz.StorageFeeMultiplier)
-                .ToTez();
+                : xtz.StorageLimit * xtz.StorageFeeMultiplier;
         }
 
         public async Task<bool> IsRevealedSourceAsync(
@@ -497,8 +493,8 @@ namespace Atomex.Wallet.Tezos
         public async Task<SelectedWalletAddress> CalculateFundsUsageAsync(
             string from,
             string to,
-            decimal amount,
-            decimal fee,
+            BigInteger amount,
+            long fee,
             FeeUsagePolicy feeUsagePolicy,
             TransactionType transactionType,
             CancellationToken cancellationToken = default)
@@ -511,35 +507,35 @@ namespace Atomex.Wallet.Tezos
             if (fromAddress == null)
                 return null; // invalid address
 
-            var txFeeInTez = feeUsagePolicy == FeeUsagePolicy.EstimatedFee
-                ? await FeeByType(
+            var txFeeInMtz = feeUsagePolicy == FeeUsagePolicy.EstimatedFee
+                ? await FeeInMtzByType(
                         type: transactionType,
                         from: fromAddress.Address,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false)
                 : fee;
 
-            var storageFeeInTez = await StorageFeeByTypeAsync(
+            var storageFeeInMtz = await StorageFeeInMtzByTypeAsync(
                     type: transactionType,
                     to: to,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var restBalanceInTez = fromAddress.AvailableBalance() -
+            var restBalanceInMtz = fromAddress.AvailableBalance() -
                 amount -
-                txFeeInTez -
-                storageFeeInTez -
-                xtz.MicroTezReserve.ToTez();
+                txFeeInMtz -
+                storageFeeInMtz -
+                xtz.MicroTezReserve;
 
-            if (restBalanceInTez < 0)
+            if (restBalanceInMtz < 0)
                 return null; // insufficient funds
 
             return new SelectedWalletAddress
             {
                 WalletAddress  = fromAddress,
                 UsedAmount     = amount,
-                UsedFee        = txFeeInTez,
-                UsedStorageFee = storageFeeInTez
+                UsedFee        = txFeeInMtz,
+                UsedStorageFee = storageFeeInMtz
             };
         }
 

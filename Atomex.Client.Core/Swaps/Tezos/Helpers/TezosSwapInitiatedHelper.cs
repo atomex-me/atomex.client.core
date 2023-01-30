@@ -193,7 +193,7 @@ namespace Atomex.Swaps.Tezos.Helpers
             return false;
         }
 
-        public static Task StartSwapInitiatedControlAsync(
+        public static async Task StartSwapInitiatedControlAsync(
             Swap swap,
             CurrencyConfig currency,
             long refundTimeStamp,
@@ -204,68 +204,64 @@ namespace Atomex.Swaps.Tezos.Helpers
         {
             Log.Debug("StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} started", currency.Name, swap.Id);
 
-            return Task.Run(async () =>
+            try
             {
-                try
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    while (!cancellationToken.IsCancellationRequested)
+                    if (swap.IsCanceled || DateTimeOffset.UtcNow >= DateTimeOffset.FromUnixTimeSeconds(refundTimeStamp))
                     {
-                        if (swap.IsCanceled || DateTimeOffset.UtcNow >= DateTimeOffset.FromUnixTimeSeconds(refundTimeStamp))
-                        {
-                            await canceledHandler
-                                .Invoke(swap, cancellationToken)
-                                .ConfigureAwait(false);
-
-                            break;
-                        }
-
-                        var (isInitiated, error) = await IsInitiatedAsync(
-                                swap: swap,
-                                currency: currency,
-                                refundTimeStamp: refundTimeStamp,
-                                cancellationToken: cancellationToken)
+                        await canceledHandler
+                            .Invoke(swap, cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (error != null)
-                        {
-                            Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
-                                currency.Name,
-                                swap.Id,
-                                error.Value.Code,
-                                error.Value.Message);
-                        }
-                        else if (error == null && isInitiated)
-                        {
-                            await initiatedHandler
-                                .Invoke(swap, cancellationToken)
-                                .ConfigureAwait(false);
-
-                            break;
-                        }
-
-                        await Task.Delay(interval, cancellationToken)
-                            .ConfigureAwait(false);
+                        break;
                     }
 
-                    Log.Debug("StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} {@message}",
-                        currency.Name,
-                        swap.Id,
-                        cancellationToken.IsCancellationRequested ? "canceled" : "completed");
-                }
-                catch (OperationCanceledException)
-                {
-                    Log.Debug("StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} canceled",
-                        currency.Name,
-                        swap.Id);
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} error",
-                        currency.Name,
-                        swap.Id);
+                    var (isInitiated, error) = await IsInitiatedAsync(
+                            swap: swap,
+                            currency: currency,
+                            refundTimeStamp: refundTimeStamp,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (error != null)
+                    {
+                        Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
+                            currency.Name,
+                            swap.Id,
+                            error.Value.Code,
+                            error.Value.Message);
+                    }
+                    else if (error == null && isInitiated)
+                    {
+                        await initiatedHandler
+                            .Invoke(swap, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        break;
+                    }
+
+                    await Task.Delay(interval, cancellationToken)
+                        .ConfigureAwait(false);
                 }
 
-            }, cancellationToken);
+                Log.Debug("StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} {@message}",
+                    currency.Name,
+                    swap.Id,
+                    cancellationToken.IsCancellationRequested ? "canceled" : "completed");
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} canceled",
+                    currency.Name,
+                    swap.Id);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "StartSwapInitiatedControlAsync for {@Currency} swap with id {@swapId} error",
+                    currency.Name,
+                    swap.Id);
+            }
         }
     }
 }

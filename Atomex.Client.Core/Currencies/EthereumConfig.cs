@@ -12,13 +12,13 @@ using Serilog;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Abstract;
+using Atomex.Blockchain.Ethereum.EtherScan;
 using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Wallet.Bip;
 using Atomex.Wallets;
 using Atomex.Wallets.Ethereum;
-using Atomex.Blockchain.Ethereum.EtherScan;
 
 namespace Atomex
 {
@@ -38,14 +38,14 @@ namespace Atomex
         //public const int Rinkeby = 4;
         //public const int Goerli = 5;
 
-        public decimal GasLimit { get; protected set; }
-        public decimal InitiateGasLimit { get; protected set; }
-        public decimal InitiateWithRewardGasLimit { get; protected set; }
-        public decimal AddGasLimit { get; protected set; }
-        public decimal RefundGasLimit { get; protected set; }
-        public decimal RedeemGasLimit { get; protected set; }
-        public decimal EstimatedRedeemGasLimit { get; protected set; }
-        public decimal EstimatedRedeemWithRewardGasLimit { get; protected set; }
+        public long GasLimit { get; protected set; }
+        public long InitiateGasLimit { get; protected set; }
+        public long InitiateWithRewardGasLimit { get; protected set; }
+        public long AddGasLimit { get; protected set; }
+        public long RefundGasLimit { get; protected set; }
+        public long RedeemGasLimit { get; protected set; }
+        public long EstimatedRedeemGasLimit { get; protected set; }
+        public long EstimatedRedeemWithRewardGasLimit { get; protected set; }
         public decimal GasPriceInGwei { get; protected set; }
         public decimal MaxGasPriceInGwei { get; protected set; }
 
@@ -110,14 +110,14 @@ namespace Atomex
             FeeCurrencyToBaseSymbol    = configuration[nameof(FeeCurrencyToBaseSymbol)];
             FeeCurrencySymbol          = configuration[nameof(FeeCurrencySymbol)];
 
-            GasLimit                   = decimal.Parse(configuration[nameof(GasLimit)], CultureInfo.InvariantCulture);
-            InitiateGasLimit           = decimal.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
-            InitiateWithRewardGasLimit = decimal.Parse(configuration[nameof(InitiateWithRewardGasLimit)], CultureInfo.InvariantCulture);
-            AddGasLimit                = decimal.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
-            RefundGasLimit             = decimal.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
-            RedeemGasLimit             = decimal.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
-            EstimatedRedeemGasLimit    = decimal.Parse(configuration[nameof(EstimatedRedeemGasLimit)], CultureInfo.InvariantCulture);
-            EstimatedRedeemWithRewardGasLimit = decimal.Parse(configuration[nameof(EstimatedRedeemWithRewardGasLimit)], CultureInfo.InvariantCulture);
+            GasLimit                   = long.Parse(configuration[nameof(GasLimit)], CultureInfo.InvariantCulture);
+            InitiateGasLimit           = long.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
+            InitiateWithRewardGasLimit = long.Parse(configuration[nameof(InitiateWithRewardGasLimit)], CultureInfo.InvariantCulture);
+            AddGasLimit                = long.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
+            RefundGasLimit             = long.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
+            RedeemGasLimit             = long.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
+            EstimatedRedeemGasLimit    = long.Parse(configuration[nameof(EstimatedRedeemGasLimit)], CultureInfo.InvariantCulture);
+            EstimatedRedeemWithRewardGasLimit = long.Parse(configuration[nameof(EstimatedRedeemWithRewardGasLimit)], CultureInfo.InvariantCulture);
             GasPriceInGwei             = decimal.Parse(configuration[nameof(GasPriceInGwei)], CultureInfo.InvariantCulture);
 
             MaxGasPriceInGwei = configuration[nameof(MaxGasPriceInGwei)] != null
@@ -204,17 +204,17 @@ namespace Atomex
             return InitiateFeeAmount(gasPrice);
         }
 
-        public override async Task<decimal> GetRedeemFeeAsync(
+        public override async Task<BigInteger> GetRedeemFeeAsync(
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default)
         {
             var gasPrice = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return RedeemFeeAmount(gasPrice);
+            return RedeemGasLimit * GweiToWei(gasPrice);
         }
 
-        public override async Task<decimal> GetEstimatedRedeemFeeAsync(
+        public override async Task<BigInteger> GetEstimatedRedeemFeeAsync(
             WalletAddress toAddress = null,
             bool withRewardForRedeem = false,
             CancellationToken cancellationToken = default)
@@ -223,8 +223,8 @@ namespace Atomex
                 .ConfigureAwait(false);
 
             return withRewardForRedeem
-                ? EstimatedRedeemWithRewardFeeAmount(gasPrice)
-                : EstimatedRedeemFeeAmount(gasPrice);
+                ? EstimatedRedeemWithRewardGasLimit * GweiToWei(gasPrice)
+                : EstimatedRedeemGasLimit * GweiToWei(gasPrice);
         }
 
         public override async Task<decimal> GetRewardForRedeemAsync(

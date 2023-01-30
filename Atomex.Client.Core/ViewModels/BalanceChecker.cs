@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,8 +26,8 @@ namespace Atomex.ViewModels
     {
         public BalanceErrorType Type { get; set; }
         public string Address { get; set; }
-        public decimal LocalBalance { get; set; }
-        public decimal ActualBalance { get; set; }
+        public BigInteger LocalBalance { get; set; }
+        public BigInteger ActualBalance { get; set; }
     }
 
     public static class BalanceChecker
@@ -44,7 +45,7 @@ namespace Atomex.ViewModels
 
                     foreach (var address in addresses)
                     {
-                        var actualBalance = 0m;
+                        BigInteger actualBalance = 0;
 
                         if (Currencies.IsTezosToken(address.Currency))
                         {
@@ -87,7 +88,6 @@ namespace Atomex.ViewModels
                                 .Get<Erc20Config>(address.Currency);
 
                             var api = erc20.GetEtherScanApi();
-                            //var api = erc20.BlockchainApi as IEthereumApi;
 
                             var (balance, error) = await api
                                 .GetErc20BalanceAsync(
@@ -108,7 +108,7 @@ namespace Atomex.ViewModels
                                 continue;
                             }
 
-                            actualBalance = erc20.TokenDigitsToTokens(balance);
+                            actualBalance = balance;
                         }
                         else
                         {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -95,17 +96,17 @@ namespace Atomex
             return feeRate * DefaultPaymentTxSize / DigitsMultiplier;
         }
 
-        public override async Task<decimal> GetRedeemFeeAsync(
+        public override async Task<BigInteger> GetRedeemFeeAsync(
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default)
         {
             var feeRate = await GetFeeRateAsync(cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            return feeRate * DefaultRedeemTxSize / DigitsMultiplier;
+            return new BigInteger(feeRate * DefaultRedeemTxSize);
         }
 
-        public override Task<decimal> GetEstimatedRedeemFeeAsync(
+        public override Task<BigInteger> GetEstimatedRedeemFeeAsync(
             WalletAddress toAddress = null,
             bool withRewardForRedeem = false,
             CancellationToken cancellationToken = default) =>

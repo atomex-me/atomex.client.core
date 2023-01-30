@@ -59,6 +59,8 @@ namespace Atomex.Swaps.Tezos.Fa2
 
             var fa2 = Fa2Config;
             var requiredAmountInTokens = RequiredAmountInTokens(swap, fa2);
+            var requiredAmountInTokenDigits = requiredAmountInTokens.ToTokenDigits(fa2.DigitsMultiplier);
+
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
             var rewardForRedeemInTokenDigits = swap.IsInitiator
                 ? swap.PartyRewardForRedeem.ToTokenDigits(fa2.DigitsMultiplier)
@@ -68,22 +70,17 @@ namespace Atomex.Swaps.Tezos.Fa2
                 .GetAddressAsync(swap.FromAddress, cancellationToken)
                 .ConfigureAwait(false);
 
-            var amountInTokens = AmountHelper.DustProofMin(
+            var amountInTokenDigits = AmountHelper.DustProofMin(
                 walletAddress.Balance,
-                requiredAmountInTokens,
-                fa2.DigitsMultiplier,
+                requiredAmountInTokenDigits,
                 fa2.DustDigitsMultiplier);
 
-            var amountInTokenDigits = amountInTokens.ToTokenDigits(fa2.DigitsMultiplier);
-
-            var balanceInTz = (await TezosAccount
+            var balanceInMtz = (await TezosAccount
                 .GetAddressBalanceAsync(
                     address: walletAddress.Address,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false))
                 .Confirmed;
-
-            var balanceInMtz = balanceInTz.ToMicroTez();
 
             var isRevealed = await TezosAccount
                 .IsRevealedSourceAsync(walletAddress.Address, cancellationToken)
@@ -129,15 +126,15 @@ namespace Atomex.Swaps.Tezos.Fa2
 
             Log.Debug("Available balance: {@balance}", walletAddress.Balance);
 
-            if (walletAddress.Balance < requiredAmountInTokens)
+            if (walletAddress.Balance < requiredAmountInTokenDigits)
             {
                 Log.Error(
                     "Insufficient funds at {@address}. Balance: {@balance}, " +
                     "required: {@required}, missing: {@missing}.",
                     walletAddress.Address,
                     walletAddress.Balance,
-                    requiredAmountInTokens,
-                    walletAddress.Balance - requiredAmountInTokens);
+                    requiredAmountInTokenDigits,
+                    walletAddress.Balance - requiredAmountInTokenDigits);
 
                 return;
             }
@@ -154,7 +151,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                         Amount       = 0,
                         Source       = walletAddress.Address,
                         Destination  = fa2.TokenContractAddress,
-                        Fee          = (long)fa2.ApproveFee,
+                        Fee          = fa2.ApproveFee,
                         GasLimit     = (int)fa2.ApproveGasLimit,
                         StorageLimit = (int)fa2.ApproveStorageLimit,
                         Parameters   = new Parameters
@@ -167,7 +164,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                         }
                     },
                     From         = walletAddress.Address,
-                    Fee          = Fee.FromNetwork((long)fa2.ApproveFee),
+                    Fee          = Fee.FromNetwork(fa2.ApproveFee),
                     GasLimit     = GasLimit.FromValue((int)fa2.ApproveGasLimit),
                     StorageLimit = StorageLimit.FromValue((int)fa2.ApproveStorageLimit)
                 });
@@ -181,7 +178,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                     Amount       = 0,
                     Source       = walletAddress.Address,
                     Destination  = fa2.SwapContractAddress,
-                    Fee          = (long)feeAmountInMtz,
+                    Fee          = feeAmountInMtz,
                     GasLimit     = (int)fa2.InitiateGasLimit,
                     StorageLimit = (int)fa2.InitiateStorageLimit,
                     Parameters = new Parameters
@@ -197,7 +194,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                     }
                 },
                 From         = walletAddress.Address,
-                Fee          = Fee.FromNetwork((long)feeAmountInMtz),
+                Fee          = Fee.FromNetwork(feeAmountInMtz),
                 GasLimit     = GasLimit.FromValue((int)fa2.InitiateGasLimit),
                 StorageLimit = StorageLimit.FromValue((int)fa2.InitiateStorageLimit)
             });
@@ -262,7 +259,7 @@ namespace Atomex.Swaps.Tezos.Fa2
 
             var refundTimeUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeSeconds)).ToUnixTimeSeconds();
 
-            _ = Fa2SwapInitiatedHelper.StartSwapInitiatedControlAsync(
+            _ = Task.Run(() => Fa2SwapInitiatedHelper.StartSwapInitiatedControlAsync(
                 swap: swap,
                 currency: Fa2Config,
                 tezos: XtzConfig,
@@ -270,7 +267,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                 interval: ConfirmationCheckInterval,
                 initiatedHandler: initiatedHandler,
                 canceledHandler: SwapCanceledHandler,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken), cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -364,7 +361,7 @@ namespace Atomex.Swaps.Tezos.Fa2
             var feeAmountInMtz = fa2.RedeemFee + fa2.RevealFee;
             var storageLimitInMtz = fa2.RedeemStorageLimit * fa2.StorageFeeMultiplier;
 
-            if (walletAddress.Balance.ToMicroTez() < feeAmountInMtz + storageLimitInMtz)
+            if (walletAddress.Balance < feeAmountInMtz + storageLimitInMtz)
             {
                 Log.Error("Insufficient funds for redeem");
                 return;
@@ -375,7 +372,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                     from: walletAddress.Address,
                     to: fa2.SwapContractAddress,
                     amount: 0,
-                    fee: Fee.FromNetwork((long)(fa2.RedeemFee + fa2.RevealFee)),
+                    fee: Fee.FromNetwork(fa2.RedeemFee + fa2.RevealFee),
                     gasLimit: GasLimit.FromValue((int)fa2.RedeemGasLimit),
                     storageLimit: StorageLimit.FromValue((int)fa2.RedeemStorageLimit),
                     entrypoint: "redeem",
@@ -442,7 +439,7 @@ namespace Atomex.Swaps.Tezos.Fa2
             var feeAmountInMtz = fa2.RedeemFee + fa2.RevealFee;
             var storageLimitInMtz = fa2.RedeemStorageLimit * fa2.StorageFeeMultiplier;
 
-            if (walletAddress.Balance.ToMicroTez() < feeAmountInMtz + storageLimitInMtz)
+            if (walletAddress.Balance < feeAmountInMtz + storageLimitInMtz)
             {
                 Log.Error("Insufficient funds for redeem for party");
             }
@@ -452,7 +449,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                     from: walletAddress.Address,
                     to: fa2.SwapContractAddress,
                     amount: 0,
-                    fee: Fee.FromNetwork((long)(fa2.RedeemFee + fa2.RevealFee)),
+                    fee: Fee.FromNetwork(fa2.RedeemFee + fa2.RevealFee),
                     gasLimit: GasLimit.FromValue((int)fa2.RedeemGasLimit),
                     storageLimit: StorageLimit.FromValue((int)fa2.RedeemStorageLimit),
                     entrypoint: "redeem",
@@ -516,7 +513,7 @@ namespace Atomex.Swaps.Tezos.Fa2
             var feeAmountInMtz = fa2.RefundFee + fa2.RevealFee;
             var storageLimitInMtz = fa2.RefundStorageLimit * fa2.StorageFeeMultiplier;
 
-            if (walletAddress.Balance.ToMicroTez() < feeAmountInMtz + storageLimitInMtz)
+            if (walletAddress.Balance < feeAmountInMtz + storageLimitInMtz)
             {
                 Log.Error("Insufficient funds for refund");
             }
@@ -526,7 +523,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                     from: walletAddress.Address,
                     to: fa2.SwapContractAddress,
                     amount: 0,
-                    fee: Fee.FromNetwork((long)(fa2.RefundFee + fa2.RevealFee)),
+                    fee: Fee.FromNetwork(fa2.RefundFee + fa2.RevealFee),
                     gasLimit: GasLimit.FromValue((int)fa2.RefundGasLimit),
                     storageLimit: StorageLimit.FromValue((int)fa2.RefundStorageLimit),
                     entrypoint: "refund",
@@ -572,7 +569,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                 : DefaultAcceptorLockTimeInSeconds;
 
             // start redeem control async
-            _ = Fa2SwapRedeemedHelper.StartSwapRedeemedControlAsync(
+            _ = Task.Run(() => Fa2SwapRedeemedHelper.StartSwapRedeemedControlAsync(
                 swap: swap,
                 currency: Fa2Config,
                 tezos: XtzConfig,
@@ -580,7 +577,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                 interval: TimeSpan.FromSeconds(30),
                 redeemedHandler: RedeemCompletedEventHandler,
                 canceledHandler: RedeemCanceledEventHandler,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken), cancellationToken);
 
             return Task.CompletedTask;
         }
@@ -592,7 +589,7 @@ namespace Atomex.Swaps.Tezos.Fa2
             Log.Debug("Wait redeem for swap {@swapId}", swap.Id);
 
             // start redeem control async
-            _ = Fa2SwapRedeemedHelper.StartSwapRedeemedControlAsync(
+            _ = Task.Run(() => Fa2SwapRedeemedHelper.StartSwapRedeemedControlAsync(
                 swap: swap,
                 currency: Fa2Config,
                 tezos: XtzConfig,
@@ -600,7 +597,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                 interval: TimeSpan.FromSeconds(30),
                 redeemedHandler: RedeemBySomeoneCompletedEventHandler,
                 canceledHandler: RedeemBySomeoneCanceledEventHandler,
-                cancellationToken: cancellationToken);
+                cancellationToken: cancellationToken), cancellationToken);
 
             return Task.CompletedTask;
         }

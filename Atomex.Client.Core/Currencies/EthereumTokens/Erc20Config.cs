@@ -14,8 +14,8 @@ namespace Atomex.EthereumTokens
 {
     public class Erc20Config : EthereumConfig
     {
-        public decimal TransferGasLimit { get; private set; }
-        public decimal ApproveGasLimit { get; private set; }
+        public long TransferGasLimit { get; private set; }
+        public long ApproveGasLimit { get; private set; }
 
         public decimal ApproveFeeAmount(decimal gasPrice) =>
             ApproveGasLimit * gasPrice / GweiInEth;
@@ -61,15 +61,15 @@ namespace Atomex.EthereumTokens
             FeeCurrencyToBaseSymbol    = configuration[nameof(FeeCurrencyToBaseSymbol)];
             FeeCurrencySymbol          = configuration[nameof(FeeCurrencySymbol)];
 
-            TransferGasLimit           = decimal.Parse(configuration[nameof(TransferGasLimit)], CultureInfo.InvariantCulture);
-            ApproveGasLimit            = decimal.Parse(configuration[nameof(ApproveGasLimit)], CultureInfo.InvariantCulture);
-            InitiateGasLimit           = decimal.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
-            InitiateWithRewardGasLimit = decimal.Parse(configuration[nameof(InitiateWithRewardGasLimit)], CultureInfo.InvariantCulture);
-            AddGasLimit                = decimal.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
-            RefundGasLimit             = decimal.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
-            RedeemGasLimit             = decimal.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
-            EstimatedRedeemGasLimit    = decimal.Parse(configuration[nameof(EstimatedRedeemGasLimit)], CultureInfo.InvariantCulture);
-            EstimatedRedeemWithRewardGasLimit = decimal.Parse(configuration[nameof(EstimatedRedeemWithRewardGasLimit)], CultureInfo.InvariantCulture);
+            TransferGasLimit           = long.Parse(configuration[nameof(TransferGasLimit)], CultureInfo.InvariantCulture);
+            ApproveGasLimit            = long.Parse(configuration[nameof(ApproveGasLimit)], CultureInfo.InvariantCulture);
+            InitiateGasLimit           = long.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
+            InitiateWithRewardGasLimit = long.Parse(configuration[nameof(InitiateWithRewardGasLimit)], CultureInfo.InvariantCulture);
+            AddGasLimit                = long.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
+            RefundGasLimit             = long.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
+            RedeemGasLimit             = long.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
+            EstimatedRedeemGasLimit    = long.Parse(configuration[nameof(EstimatedRedeemGasLimit)], CultureInfo.InvariantCulture);
+            EstimatedRedeemWithRewardGasLimit = long.Parse(configuration[nameof(EstimatedRedeemWithRewardGasLimit)], CultureInfo.InvariantCulture);
             GasPriceInGwei             = decimal.Parse(configuration[nameof(GasPriceInGwei)], CultureInfo.InvariantCulture);
 
             MaxGasPriceInGwei = configuration[nameof(MaxGasPriceInGwei)] != null

@@ -11,7 +11,6 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos.Abstract;
 using Atomex.Blockchain.Tezos.Common;
 using Atomex.Blockchain.Tezos.Tzkt.Operations;
-using Newtonsoft.Json.Linq;
 
 namespace Atomex.Blockchain.Tezos.Tzkt
 {
@@ -528,68 +527,5 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     t => t.Id.GetHashCode()))
                 .ToList();
         }
-
-        //public override async Task<Result<string>> BroadcastAsync(
-        //    ITransaction transaction,
-        //    CancellationToken cancellationToken = default)
-        //{
-        //    var tx = (TezosOperation)transaction;
-
-        //    try
-        //    {
-        //        tx.Status = TransactionStatus.Pending;
-
-        //        var rpc = new Rpc(_rpcNodeUri);
-        //        var readyForInject = true;
-
-        //        if (tx.UsePreApply)
-        //        {
-        //            var opResults = await rpc
-        //                .PreApplyOperations(tx.Head, tx.Operations, tx.SignedMessage.EncodedSignature)
-        //                .ConfigureAwait(false);
-
-        //            if (!opResults.Any())
-        //                return new Error(Errors.EmptyPreApplyOperations, "Empty pre apply operations");
-
-        //            foreach (var opResult in opResults)
-        //                Log.Debug("OperationResult {@result}: {@opResult}", opResult.Succeeded, opResult.Data.ToString());
-
-        //            readyForInject = opResults.Any() && opResults.All(op => op.Succeeded);
-        //        }
-
-        //        string txId = null;
-
-        //        if (readyForInject)
-        //        {
-        //            var injectedOperation = await rpc
-        //                .InjectOperations(tx.SignedMessage.SignedBytes)
-        //                .ConfigureAwait(false);
-
-        //            if (injectedOperation != null)
-        //                Log.Debug($"Injection result: {injectedOperation}");
-
-        //            txId = injectedOperation.ToString();
-        //        }
-
-        //        if (txId == null)
-        //        {
-        //            tx.RollbackOfflineCounterIfNeed();
-
-        //            return new Error(Errors.NullTxId, "Null tx id");
-        //        }
-
-        //        tx.Id = txId;
-
-        //        return tx.Id;
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        Log.Error(e, $"Broadcast error: {e.Message}");
-
-        //        tx.RollbackOfflineCounterIfNeed();
-
-        //        return new Error(Errors.RequestError, e.Message);
-        //    }
-        //}
     }
 }

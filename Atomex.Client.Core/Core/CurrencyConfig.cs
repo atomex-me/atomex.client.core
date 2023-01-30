@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -66,11 +67,11 @@ namespace Atomex.Core
         public abstract Task<decimal> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default);
 
-        public abstract Task<decimal> GetRedeemFeeAsync(
+        public abstract Task<BigInteger> GetRedeemFeeAsync(
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default);
 
-        public abstract Task<decimal> GetEstimatedRedeemFeeAsync(
+        public abstract Task<BigInteger> GetEstimatedRedeemFeeAsync(
             WalletAddress toAddress = null,
             bool withRewardForRedeem = false,
             CancellationToken cancellationToken = default);

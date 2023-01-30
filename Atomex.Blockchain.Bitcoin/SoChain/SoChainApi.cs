@@ -439,12 +439,14 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
                     unconfirmedOutcomeInSatoshi += output.Value;
             }
 
+            var satoshiMultiplier = BigInteger.Pow(10, _settings.Decimals);
+
             return new BitcoinAddressInfo(
-                Balance: balance,
-                Received: received,
-                Sent: received - balance,
-                UnconfirmedIncome: unconfirmedIncomeInSatoshi.ToDecimal(_settings.Decimals),
-                UnconfirmedOutcome: unconfirmedOutcomeInSatoshi.ToDecimal(_settings.Decimals),
+                Balance: balance.Multiply(satoshiMultiplier),
+                Received: received.Multiply(satoshiMultiplier),
+                Sent: (received - balance).Multiply(satoshiMultiplier),
+                UnconfirmedIncome: unconfirmedIncomeInSatoshi,
+                UnconfirmedOutcome: unconfirmedOutcomeInSatoshi,
                 Outputs: outputs);
         }
 

@@ -299,7 +299,7 @@ namespace Atomex.Wallet.Tezos
                 return accountError;
             }
 
-            walletAddress.Balance = account.Balance.ToTez();
+            walletAddress.Balance = account.Balance;
             walletAddress.UnconfirmedIncome = 0;
             walletAddress.UnconfirmedOutcome = 0;
             walletAddress.HasActivity = account.NumberOfTransactions > 0 || account.TokenBalancesCount > 0;

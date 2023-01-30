@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -34,9 +35,9 @@ namespace Atomex.Wallet.Abstract
 
     public class MaxAmountEstimation
     {
-        public decimal Amount { get; set; }
-        public decimal Fee { get; set; }
-        public decimal Reserved { get; set; }
+        public BigInteger Amount { get; set; }
+        public BigInteger Fee { get; set; }
+        public BigInteger Reserved { get; set; }
         public Error? Error { get; set; }
         public string ErrorHint { get; set; }
     }

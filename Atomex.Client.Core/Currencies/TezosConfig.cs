@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -9,8 +10,9 @@ using Newtonsoft.Json.Linq;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
-using Atomex.Blockchain.Tezos.Tzkt;
+using Atomex.Blockchain.Tezos.Common;
 using Atomex.Blockchain.Tezos.Internal;
+using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Core;
@@ -18,7 +20,6 @@ using Atomex.Cryptography;
 using Atomex.Wallet.Bip;
 using Atomex.Wallets.Keys;
 using Atomex.Wallets;
-using Atomex.Blockchain.Tezos.Common;
 
 namespace Atomex
 {
@@ -34,46 +35,46 @@ namespace Atomex
         private const int PkHashSize = 20;
         protected const int PkHashSizeInBits = PkHashSize * 8;
 
-        public decimal MinimalFee { get; protected set; }
-        public decimal MinimalNanotezPerGasUnit { get; protected set; }
-        public decimal MinimalNanotezPerByte { get; protected set; }
+        public long MinimalFee { get; protected set; }
+        public long MinimalNanotezPerGasUnit { get; protected set; }
+        public long MinimalNanotezPerByte { get; protected set; }
 
-        public decimal HeadSizeInBytes { get; protected set; }
-        public decimal SigSizeInBytes { get; protected set; }
+        public long HeadSizeInBytes { get; protected set; }
+        public long SigSizeInBytes { get; protected set; }
 
-        public decimal MicroTezReserve { get; protected set; }
-        public decimal GasReserve { get; protected set; }
+        public long MicroTezReserve { get; protected set; }
+        public long GasReserve { get; protected set; }
 
-        public decimal Fee { get; protected set; }
-        public decimal MaxFee { get; protected set; }
-        public decimal GasLimit { get; protected set; }
-        public decimal StorageLimit { get; protected set; }
+        public long Fee { get; protected set; }
+        public long MaxFee { get; protected set; }
+        public long GasLimit { get; protected set; }
+        public long StorageLimit { get; protected set; }
 
-        public decimal RevealFee { get; protected set; }
-        public decimal RevealGasLimit { get; protected set; }
+        public long RevealFee { get; protected set; }
+        public long RevealGasLimit { get; protected set; }
 
-        public decimal InitiateFee { get; protected set; }
-        public decimal InitiateGasLimit { get; protected set; }
-        public decimal InitiateStorageLimit { get; protected set; }
-        public decimal InitiateSize { get; protected set; }
+        public long InitiateFee { get; protected set; }
+        public long InitiateGasLimit { get; protected set; }
+        public long InitiateStorageLimit { get; protected set; }
+        public long InitiateSize { get; protected set; }
 
-        public decimal AddFee { get; protected set; }
-        public decimal AddGasLimit { get; protected set; }
-        public decimal AddStorageLimit { get; protected set; }
-        public decimal AddSize { get; protected set; }
+        public long AddFee { get; protected set; }
+        public long AddGasLimit { get; protected set; }
+        public long AddStorageLimit { get; protected set; }
+        public long AddSize { get; protected set; }
 
-        public decimal RedeemFee { get; protected set; }
-        public decimal RedeemGasLimit { get; protected set; }
-        public decimal RedeemStorageLimit { get; protected set; }
-        public decimal RedeemSize { get; protected set; }
+        public long RedeemFee { get; protected set; }
+        public long RedeemGasLimit { get; protected set; }
+        public long RedeemStorageLimit { get; protected set; }
+        public long RedeemSize { get; protected set; }
 
-        public decimal RefundFee { get; protected set; }
-        public decimal RefundGasLimit { get; protected set; }
-        public decimal RefundStorageLimit { get; protected set; }
-        public decimal RefundSize { get; protected set; }
+        public long RefundFee { get; protected set; }
+        public long RefundGasLimit { get; protected set; }
+        public long RefundStorageLimit { get; protected set; }
+        public long RefundSize { get; protected set; }
 
-        public decimal ActivationStorage { get; protected set; }
-        public decimal StorageFeeMultiplier { get; protected set; }
+        public long ActivationStorage { get; protected set; }
+        public long StorageFeeMultiplier { get; protected set; }
 
         public string BaseUri { get; protected set; }
         public string RpcNodeUri { get; protected set; }
@@ -120,47 +121,47 @@ namespace Atomex
             FeeCurrencyToBaseSymbol = configuration[nameof(FeeCurrencyToBaseSymbol)];
             FeeCurrencySymbol       = configuration[nameof(FeeCurrencySymbol)];
 
-            MinimalFee               = decimal.Parse(configuration[nameof(MinimalFee)], CultureInfo.InvariantCulture);
-            MinimalNanotezPerGasUnit = decimal.Parse(configuration[nameof(MinimalNanotezPerGasUnit)], CultureInfo.InvariantCulture);
-            MinimalNanotezPerByte    = decimal.Parse(configuration[nameof(MinimalNanotezPerByte)], CultureInfo.InvariantCulture);
+            MinimalFee               = long.Parse(configuration[nameof(MinimalFee)], CultureInfo.InvariantCulture);
+            MinimalNanotezPerGasUnit = long.Parse(configuration[nameof(MinimalNanotezPerGasUnit)], CultureInfo.InvariantCulture);
+            MinimalNanotezPerByte    = long.Parse(configuration[nameof(MinimalNanotezPerByte)], CultureInfo.InvariantCulture);
 
-            HeadSizeInBytes         = decimal.Parse(configuration[nameof(HeadSizeInBytes)], CultureInfo.InvariantCulture);
-            SigSizeInBytes          = decimal.Parse(configuration[nameof(SigSizeInBytes)], CultureInfo.InvariantCulture);
+            HeadSizeInBytes         = long.Parse(configuration[nameof(HeadSizeInBytes)], CultureInfo.InvariantCulture);
+            SigSizeInBytes          = long.Parse(configuration[nameof(SigSizeInBytes)], CultureInfo.InvariantCulture);
 
-            MicroTezReserve         = decimal.Parse(configuration[nameof(MicroTezReserve)], CultureInfo.InvariantCulture);
-            GasReserve              = decimal.Parse(configuration[nameof(GasReserve)], CultureInfo.InvariantCulture);
+            MicroTezReserve         = long.Parse(configuration[nameof(MicroTezReserve)], CultureInfo.InvariantCulture);
+            GasReserve              = long.Parse(configuration[nameof(GasReserve)], CultureInfo.InvariantCulture);
 
-            Fee                     = decimal.Parse(configuration[nameof(Fee)], CultureInfo.InvariantCulture);
-            MaxFee                  = decimal.Parse(configuration[nameof(MaxFee)], CultureInfo.InvariantCulture);
+            Fee                     = long.Parse(configuration[nameof(Fee)], CultureInfo.InvariantCulture);
+            MaxFee                  = long.Parse(configuration[nameof(MaxFee)], CultureInfo.InvariantCulture);
 
-            GasLimit                = decimal.Parse(configuration[nameof(GasLimit)], CultureInfo.InvariantCulture);
-            StorageLimit            = decimal.Parse(configuration[nameof(StorageLimit)], CultureInfo.InvariantCulture);
+            GasLimit                = long.Parse(configuration[nameof(GasLimit)], CultureInfo.InvariantCulture);
+            StorageLimit            = long.Parse(configuration[nameof(StorageLimit)], CultureInfo.InvariantCulture);
 
-            RevealFee               = decimal.Parse(configuration[nameof(RevealFee)], CultureInfo.InvariantCulture);
-            RevealGasLimit          = decimal.Parse(configuration[nameof(RevealGasLimit)], CultureInfo.InvariantCulture);
+            RevealFee               = long.Parse(configuration[nameof(RevealFee)], CultureInfo.InvariantCulture);
+            RevealGasLimit          = long.Parse(configuration[nameof(RevealGasLimit)], CultureInfo.InvariantCulture);
 
-            InitiateGasLimit        = decimal.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
-            InitiateStorageLimit    = decimal.Parse(configuration[nameof(InitiateStorageLimit)], CultureInfo.InvariantCulture);
-            InitiateSize            = decimal.Parse(configuration[nameof(InitiateSize)], CultureInfo.InvariantCulture);
+            InitiateGasLimit        = long.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
+            InitiateStorageLimit    = long.Parse(configuration[nameof(InitiateStorageLimit)], CultureInfo.InvariantCulture);
+            InitiateSize            = long.Parse(configuration[nameof(InitiateSize)], CultureInfo.InvariantCulture);
             InitiateFee             = MinimalFee + (InitiateGasLimit + GasReserve) * MinimalNanotezPerGasUnit + InitiateSize * MinimalNanotezPerByte + 1;
 
-            AddGasLimit             = decimal.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
-            AddStorageLimit         = decimal.Parse(configuration[nameof(AddStorageLimit)], CultureInfo.InvariantCulture);
-            AddSize                 = decimal.Parse(configuration[nameof(AddSize)], CultureInfo.InvariantCulture);
+            AddGasLimit             = long.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
+            AddStorageLimit         = long.Parse(configuration[nameof(AddStorageLimit)], CultureInfo.InvariantCulture);
+            AddSize                 = long.Parse(configuration[nameof(AddSize)], CultureInfo.InvariantCulture);
             AddFee                  = MinimalFee + (AddGasLimit + GasReserve) * MinimalNanotezPerGasUnit + AddSize * MinimalNanotezPerByte + 1;
 
-            RedeemGasLimit          = decimal.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
-            RedeemStorageLimit      = decimal.Parse(configuration[nameof(RedeemStorageLimit)], CultureInfo.InvariantCulture);
-            RedeemSize              = decimal.Parse(configuration[nameof(RedeemSize)], CultureInfo.InvariantCulture);
+            RedeemGasLimit          = long.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
+            RedeemStorageLimit      = long.Parse(configuration[nameof(RedeemStorageLimit)], CultureInfo.InvariantCulture);
+            RedeemSize              = long.Parse(configuration[nameof(RedeemSize)], CultureInfo.InvariantCulture);
             RedeemFee               = MinimalFee + (RedeemGasLimit + GasReserve) * MinimalNanotezPerGasUnit + RedeemSize * MinimalNanotezPerByte + 1;
 
-            RefundGasLimit          = decimal.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
-            RefundStorageLimit      = decimal.Parse(configuration[nameof(RefundStorageLimit)], CultureInfo.InvariantCulture);
-            RefundSize              = decimal.Parse(configuration[nameof(RefundSize)], CultureInfo.InvariantCulture);
+            RefundGasLimit          = long.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
+            RefundStorageLimit      = long.Parse(configuration[nameof(RefundStorageLimit)], CultureInfo.InvariantCulture);
+            RefundSize              = long.Parse(configuration[nameof(RefundSize)], CultureInfo.InvariantCulture);
             RefundFee               = MinimalFee + (RefundGasLimit + GasReserve) * MinimalNanotezPerGasUnit + RefundStorageLimit * MinimalNanotezPerByte + 1;
 
-            ActivationStorage       = decimal.Parse(configuration[nameof(ActivationStorage)], CultureInfo.InvariantCulture);
-            StorageFeeMultiplier    = decimal.Parse(configuration[nameof(StorageFeeMultiplier)], CultureInfo.InvariantCulture);
+            ActivationStorage       = long.Parse(configuration[nameof(ActivationStorage)], CultureInfo.InvariantCulture);
+            StorageFeeMultiplier    = long.Parse(configuration[nameof(StorageFeeMultiplier)], CultureInfo.InvariantCulture);
 
             BaseUri                 = configuration["BlockchainApiBaseUri"];
             RpcNodeUri              = configuration["BlockchainRpcNodeUri"];
@@ -251,20 +252,20 @@ namespace Atomex
             CancellationToken cancellationToken = default) =>
             Task.FromResult(InitiateFee.ToTez());
 
-        public override Task<decimal> GetRedeemFeeAsync(
+        public override Task<BigInteger> GetRedeemFeeAsync(
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default)
         {
-            var result = (RedeemFee + RevealFee + MicroTezReserve + //todo: define another value for revealed
-                (toAddress != null && toAddress.AvailableBalance() > 0
-                    ? 0
-                    : ActivationStorage * StorageFeeMultiplier))
-                .ToTez();
+            var activationFee = toAddress == null || toAddress.AvailableBalance() == 0
+                ? ActivationStorage * StorageFeeMultiplier
+                : 0;
 
-            return Task.FromResult(result);
+            var result = RedeemFee + RevealFee + MicroTezReserve + activationFee; //todo: define another value for revealed;
+
+            return Task.FromResult<BigInteger>(result);
         }
 
-        public override Task<decimal> GetEstimatedRedeemFeeAsync(
+        public override Task<BigInteger> GetEstimatedRedeemFeeAsync(
             WalletAddress toAddress = null,
             bool withRewardForRedeem = false,
             CancellationToken cancellationToken = default) =>

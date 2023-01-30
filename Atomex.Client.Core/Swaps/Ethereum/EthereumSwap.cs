@@ -235,9 +235,9 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInEth = ethConfig.GetFeeAmount(ethConfig.RedeemGasLimit, gasPrice);
+            var feeInWei = ethConfig.RedeemGasLimit * EthereumConfig.GweiToWei(gasPrice);
 
-            if (walletAddress.Balance < feeInEth)
+            if (walletAddress.Balance < feeInWei)
             {
                 Log.Error("Insufficient funds for redeem");
                 return;
@@ -363,9 +363,9 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInEth = ethConfig.GetFeeAmount(ethConfig.RedeemGasLimit, gasPrice);
+            var feeInWei = ethConfig.RedeemGasLimit * EthereumConfig.GweiToWei(gasPrice);
 
-            if (walletAddress.Balance < feeInEth)
+            if (walletAddress.Balance < feeInWei)
             {
                 Log.Error("Insufficient funds for redeem for party");
                 return;
@@ -493,9 +493,9 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInEth = ethConfig.GetFeeAmount(ethConfig.RefundGasLimit, gasPrice);
+            var feeInWei = ethConfig.RefundGasLimit * EthereumConfig.GweiToWei(gasPrice);
 
-            if (walletAddress.Balance < feeInEth)
+            if (walletAddress.Balance < feeInWei)
             {
                 Log.Error("Insufficient funds for refund");
                 return;
@@ -727,6 +727,17 @@ namespace Atomex.Swaps.Ethereum
 
         #region Helpers
 
+        public static decimal RequiredAmountInTokens(Swap swap, EthereumConfig eth)
+        {
+            var requiredAmountInEth = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, eth.DigitsMultiplier);
+
+            // maker network fee
+            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInEth) // network fee size check
+                requiredAmountInEth += AmountHelper.RoundDown(swap.MakerNetworkFee, eth.DigitsMultiplier);
+
+            return requiredAmountInEth;
+        }
+
         protected virtual async Task<EthereumTransactionRequest> CreatePaymentTxAsync(
             Swap swap,
             int lockTimeInSeconds,
@@ -736,11 +747,8 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create payment transaction from address {@address} for swap {@swapId}", swap.FromAddress, swap.Id);
 
-            var requiredAmountInEth = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, ethConfig.DigitsMultiplier);
-
-            // maker network fee
-            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInEth) // network fee size check
-                requiredAmountInEth += AmountHelper.RoundDown(swap.MakerNetworkFee, ethConfig.DigitsMultiplier);
+            var requiredAmountInEth = RequiredAmountInTokens(swap, ethConfig);
+            var requiredAmountInWei = EthereumConfig.EthToWei(requiredAmountInEth);
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
 
@@ -754,24 +762,24 @@ namespace Atomex.Swaps.Ethereum
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var balanceInEth = walletAddress.Balance;
+            var balanceInWei = walletAddress.Balance;
 
-            Log.Debug("Available balance: {@balance}", balanceInEth);
+            Log.Debug("Available balance: {@balance}", balanceInWei);
 
-            var feeAmountInEth = rewardForRedeemInEth == 0
-                ? ethConfig.InitiateFeeAmount(gasPrice)
-                : ethConfig.InitiateWithRewardFeeAmount(gasPrice);
+            var feeAmountInWei = rewardForRedeemInEth == 0
+                ? ethConfig.InitiateGasLimit * EthereumConfig.GweiToWei(gasPrice)
+                : ethConfig.InitiateWithRewardGasLimit * EthereumConfig.GweiToWei(gasPrice);
 
-            if (balanceInEth < feeAmountInEth + requiredAmountInEth)
+            if (balanceInWei < feeAmountInWei + requiredAmountInWei)
             {
                 Log.Warning(
                     "Insufficient funds at {@address}. Balance: {@balance}, required: {@required}, " +
                     "feeAmount: {@feeAmount}, missing: {@result}.",
                     walletAddress.Address,
-                    balanceInEth,
-                    requiredAmountInEth,
-                    feeAmountInEth,
-                    balanceInEth - feeAmountInEth - requiredAmountInEth);
+                    balanceInWei,
+                    requiredAmountInWei,
+                    feeAmountInWei,
+                    balanceInWei - feeAmountInWei - requiredAmountInWei);
 
                 return null;
             }
@@ -796,7 +804,7 @@ namespace Atomex.Swaps.Ethereum
                 HashedSecret    = swap.SecretHash,
                 Participant     = swap.PartyAddress,
                 RefundTimestamp = refundTimeStampUtcInSec,
-                AmountToSend    = EthereumConfig.EthToWei(requiredAmountInEth),
+                AmountToSend    = requiredAmountInWei,
                 FromAddress     = walletAddress.Address,
                 GasPrice        = EthereumConfig.GweiToWei(gasPrice),
                 Nonce           = nonce,

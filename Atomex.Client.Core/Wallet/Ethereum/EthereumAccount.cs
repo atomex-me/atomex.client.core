@@ -56,8 +56,8 @@ namespace Atomex.Wallet.Ethereum
         public async Task<Result<string>> SendAsync(
             string from,
             string to,
-            decimal amount,
-            decimal gasLimit,
+            BigInteger amount,
+            long gasLimit,
             decimal gasPrice,
             bool useDefaultFee = false,
             CancellationToken cancellationToken = default)
@@ -81,8 +81,8 @@ namespace Atomex.Wallet.Ethereum
             var addressFeeUsage = await CalculateFundsUsageAsync(
                     from: from,
                     amount: amount,
-                    fee: gasLimit,
-                    feePrice: gasPrice,
+                    gasLimit: gasLimit,
+                    gasPrice: gasPrice,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -120,7 +120,7 @@ namespace Atomex.Wallet.Ethereum
             {
                 From     = addressFeeUsage.WalletAddress.Address,
                 To       = to.ToLowerInvariant(),
-                Amount   = EthereumConfig.EthToWei(addressFeeUsage.UsedAmount),
+                Amount   = addressFeeUsage.UsedAmount,
                 Nonce    = nonce,
                 GasPrice = new BigInteger(EthereumConfig.GweiToWei(gasPrice)),
                 GasLimit = new BigInteger(gasLimit),
@@ -216,7 +216,7 @@ namespace Atomex.Wallet.Ethereum
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             string from,
             TransactionType type,
-            decimal? gasLimit,
+            long? gasLimit,
             decimal? gasPrice,
             bool reserve = false,
             CancellationToken cancellationToken = default)
@@ -245,45 +245,40 @@ namespace Atomex.Wallet.Ethereum
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false));
 
-            var feeInEth = eth.GetFeeAmount(
-                gasLimit == null
-                    ? GasLimitByType(type)
-                    : gasLimit.Value,
-                gasPrice == null
-                    ? estimatedGasPrice
-                    : gasPrice.Value);
+            var feeInWei = gasLimit == null ? GasLimitByType(type) : gasLimit.Value *
+                EthereumConfig.GweiToWei(gasPrice == null ? estimatedGasPrice : gasPrice.Value);
 
-            if (feeInEth == 0)
+            if (feeInWei == 0)
                 return new MaxAmountEstimation {
                     Error = new Error(Errors.InsufficientFee, Resources.TooLowFees)
                 };
 
-            var reserveFeeInEth = ReserveFee(estimatedGasPrice);
+            var reserveFeeInWei = ReserveFeeInWei(estimatedGasPrice);
 
-            var requiredFeeInEth = feeInEth + (reserve ? reserveFeeInEth : 0);
+            var requiredFeeInWei = feeInWei + (reserve ? reserveFeeInWei : 0);
 
-            var restAmountInEth = fromAddress.AvailableBalance() - requiredFeeInEth;
+            var restAmountInWei = fromAddress.AvailableBalance() - requiredFeeInWei;
 
-            if (restAmountInEth < 0)
+            if (restAmountInWei < 0)
                 return new MaxAmountEstimation {
-                    Amount   = restAmountInEth,
-                    Fee      = requiredFeeInEth,
-                    Reserved = reserveFeeInEth,
+                    Amount   = restAmountInWei,
+                    Fee      = requiredFeeInWei,
+                    Reserved = reserveFeeInWei,
                     Error = new Error(
                         code: Errors.InsufficientFunds,
                         message: Resources.InsufficientFundsToCoverFees),
                     ErrorHint = string.Format(
                         Resources.InsufficientFundsToCoverFeesDetails,
-                        requiredFeeInEth,
+                        requiredFeeInWei,
                         Currency,
                         fromAddress.AvailableBalance())
                 };
 
             return new MaxAmountEstimation
             {
-                Amount   = restAmountInEth,
-                Fee      = feeInEth,
-                Reserved = reserveFeeInEth
+                Amount   = restAmountInWei,
+                Fee      = feeInWei,
+                Reserved = reserveFeeInWei
             };
         }
 
@@ -303,7 +298,7 @@ namespace Atomex.Wallet.Ethereum
                 cancellationToken: cancellationToken);
         }
 
-        private decimal GasLimitByType(TransactionType type)
+        private long GasLimitByType(TransactionType type)
         {
             var eth = EthConfig;
 
@@ -319,14 +314,14 @@ namespace Atomex.Wallet.Ethereum
             return eth.GasLimit;
         }
 
-        private decimal ReserveFee(decimal gasPrice)
+        private long ReserveFeeInWei(decimal gasPrice)
         {
             var ethConfig = EthConfig;
             var erc20Config = Erc20Config;
 
-            return Math.Max(
-                ethConfig.GetFeeAmount(Math.Max(erc20Config.RefundGasLimit, erc20Config.RedeemGasLimit), gasPrice),
-                ethConfig.GetFeeAmount(Math.Max(ethConfig.RefundGasLimit, ethConfig.RedeemGasLimit), gasPrice));
+            var maxGasLimit = Math.Max(Math.Max(erc20Config.RefundGasLimit, erc20Config.RedeemGasLimit), Math.Max(ethConfig.RefundGasLimit, ethConfig.RedeemGasLimit));
+
+            return maxGasLimit * EthereumConfig.GweiToWei(gasPrice);
         }
 
         #endregion Common
@@ -404,33 +399,31 @@ namespace Atomex.Wallet.Ethereum
 
         private async Task<SelectedWalletAddress> CalculateFundsUsageAsync(
             string from,
-            decimal amount,
-            decimal fee,
-            decimal feePrice,
+            BigInteger amount,
+            long gasLimit,
+            decimal gasPrice,
             CancellationToken cancellationToken = default)
         {
-            var eth = EthConfig;
-
             var fromAddress = await GetAddressAsync(from, cancellationToken)
                 .ConfigureAwait(false);
 
             if (fromAddress == null)
                 return null; // invalid address
 
-            var feeInEth = eth.GetFeeAmount(fee, feePrice);
+            var feeInWei = gasLimit * EthereumConfig.GweiToWei(gasPrice);
 
-            var restBalanceInEth = fromAddress.AvailableBalance() -
+            var restBalanceInWei = fromAddress.AvailableBalance() -
                amount -
-               feeInEth;
+               feeInWei;
 
-            if (restBalanceInEth < 0)
+            if (restBalanceInWei < 0)
                 return null; // insufficient funds
 
             return new SelectedWalletAddress
             {
                 WalletAddress = fromAddress,
                 UsedAmount    = amount,
-                UsedFee       = feeInEth
+                UsedFee       = feeInWei
             };
         }
 

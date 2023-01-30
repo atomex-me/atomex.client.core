@@ -9,11 +9,11 @@ using Atomex.Common;
 namespace Atomex.Blockchain.Bitcoin
 {
     public record BitcoinAddressInfo(
-        decimal Balance,
-        decimal Received,
-        decimal Sent,
-        decimal UnconfirmedIncome,
-        decimal UnconfirmedOutcome,
+        BigInteger Balance,
+        BigInteger Received,
+        BigInteger Sent,
+        BigInteger UnconfirmedIncome,
+        BigInteger UnconfirmedOutcome,
         IEnumerable<BitcoinTxOutput> Outputs);
 
     public abstract class BitcoinBlockchainApi : IBlockchainApi

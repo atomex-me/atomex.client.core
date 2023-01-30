@@ -7,15 +7,15 @@ namespace Atomex.TezosTokens
 {
     public class TezosTokenConfig : TezosConfig
     {
-        public decimal TransferFee { get; protected set; }
-        public decimal TransferGasLimit { get; protected set; }
-        public decimal TransferStorageLimit { get; protected set; }
-        public decimal TransferSize { get; protected set; }
+        public long TransferFee { get; protected set; }
+        public long TransferGasLimit { get; protected set; }
+        public long TransferStorageLimit { get; protected set; }
+        public long TransferSize { get; protected set; }
 
-        public decimal ApproveFee { get; protected set; }
-        public decimal ApproveGasLimit { get; protected set; }
-        public decimal ApproveStorageLimit { get; protected set; }
-        public decimal ApproveSize { get; protected set; }
+        public long ApproveFee { get; protected set; }
+        public long ApproveGasLimit { get; protected set; }
+        public long ApproveStorageLimit { get; protected set; }
+        public long ApproveSize { get; protected set; }
 
         public string TokenContractAddress { get; protected set; }
         public int TokenId { get; protected set; }

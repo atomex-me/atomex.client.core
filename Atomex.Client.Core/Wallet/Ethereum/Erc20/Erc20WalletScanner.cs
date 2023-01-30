@@ -326,7 +326,7 @@ namespace Atomex.Wallet.Ethereum
                 return new Error(Errors.InvalidResponse, "Error while get erc20 transactions");
             }
 
-            walletAddress.Balance = Erc20Config.TokenDigitsToTokens(balance);
+            walletAddress.Balance = balance;
             walletAddress.UnconfirmedIncome = 0;
             walletAddress.UnconfirmedOutcome = 0;
             walletAddress.HasActivity = txs.Transactions.Any();
