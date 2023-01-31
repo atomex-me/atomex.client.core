@@ -505,7 +505,17 @@ namespace Atomex.Wallet.BitcoinBased
             BitcoinTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            throw new NotImplementedException();
+            foreach (var i in tx.Inputs)
+            {
+
+            }
+
+            foreach (var i in tx.Outputs)
+            {
+
+            }
+
+            //throw new NotImplementedException();
             //tx.Type = TransactionType.Unknown;
 
             //var fromAddress = await GetAddressAsync(tx.From, cancellationToken)

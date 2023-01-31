@@ -35,7 +35,6 @@ namespace Atomex.ViewModels
             public bool HasRewardForRedeem => RewardForRedeem != 0;
         }
 
-
         public class UserMessage
         {
             public int Id { get; set; }
@@ -43,7 +42,6 @@ namespace Atomex.ViewModels
             public string Message { get; set; }
             public bool IsReaded { get; set; }
         }
-
 
         public enum SwapDetailingStatus
         {
@@ -76,7 +74,6 @@ namespace Atomex.ViewModels
             public decimal MaxToAmount { get; set; }
             public bool IsNoLiquidity { get; set; }
         }
-
 
         public static IEnumerable<SwapDetailingInfo> GetSwapDetailingInfo(Swap swap, ICurrencies currencies)
         {
@@ -507,7 +504,7 @@ namespace Atomex.ViewModels
             return result;
         }
 
-        public static Task<SwapParams> EstimateSwapParamsAsync(
+        public static async Task<SwapParams> EstimateSwapParamsAsync(
             IFromSource from,
             decimal fromAmount,
             string redeemFromAddress,
@@ -519,145 +516,141 @@ namespace Atomex.ViewModels
             IQuotesProvider quotesProvider,
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(async () =>
-            {
-                if (fromCurrency == null)
-                    return null;
+            if (fromCurrency == null)
+                return null;
 
-                if (toCurrency == null)
-                    return null;
+            if (toCurrency == null)
+                return null;
 
-                // get redeem address for ToCurrency base blockchain
-                var redeemFromWalletAddress = redeemFromAddress != null
-                    ? await account
-                        .GetAddressAsync(toCurrency.FeeCurrencyName, redeemFromAddress, cancellationToken)
-                        .ConfigureAwait(false)
-                    : null;
+            // get redeem address for ToCurrency base blockchain
+            var redeemFromWalletAddress = redeemFromAddress != null
+                ? await account
+                    .GetAddressAsync(toCurrency.FeeCurrencyName, redeemFromAddress, cancellationToken)
+                    .ConfigureAwait(false)
+                : null;
 
-                // estimate redeem fee
-                var estimatedRedeemFeeInTokens = await toCurrency
-                    .GetEstimatedRedeemFeeAsync(redeemFromWalletAddress, withRewardForRedeem: false)
-                    .ConfigureAwait(false);
+            // estimate redeem fee
+            var estimatedRedeemFeeInTokens = await toCurrency
+                .GetEstimatedRedeemFeeAsync(redeemFromWalletAddress, withRewardForRedeem: false)
+                .ConfigureAwait(false);
 
-                var estimatedRedeemFee = estimatedRedeemFeeInTokens.ToDecimal(toCurrency.Digits);
+            var estimatedRedeemFee = estimatedRedeemFeeInTokens.ToDecimal(toCurrency.Digits);
 
-                // estimate reward for redeem
-                var rewardForRedeem = await RewardForRedeemHelper.EstimateAsync(
+            // estimate reward for redeem
+            var rewardForRedeem = await RewardForRedeemHelper.EstimateAsync(
+                account: account,
+                quotesProvider: quotesProvider,
+                feeCurrencyQuotesProvider: symbol => marketDataRepository?.OrderBookBySymbol(symbol)?.TopOfBook(),
+                redeemableCurrency: toCurrency,
+                redeemFromAddress: redeemFromWalletAddress,
+                cancellationToken: cancellationToken);
+
+            // get amount reserved for active swaps
+            var reservedForSwapsAmount = await GetAmountReservedForSwapsAsync(
+                    from: from,
                     account: account,
-                    quotesProvider: quotesProvider,
-                    feeCurrencyQuotesProvider: symbol => marketDataRepository?.OrderBookBySymbol(symbol)?.TopOfBook(),
-                    redeemableCurrency: toCurrency,
-                    redeemFromAddress: redeemFromWalletAddress,
-                    cancellationToken: cancellationToken);
+                    currency: fromCurrency)
+                .ConfigureAwait(false);
 
-                // get amount reserved for active swaps
-                var reservedForSwapsAmount = await GetAmountReservedForSwapsAsync(
-                        from: from,
-                        account: account,
-                        currency: fromCurrency)
-                    .ConfigureAwait(false);
+            // estimate maker network fee
+            var estimatedMakerNetworkFee = await EstimateMakerNetworkFeeAsync(
+                    fromCurrency: fromCurrency,
+                    toCurrency: toCurrency,
+                    account: account,
+                    marketDataRepository: marketDataRepository,
+                    symbolsProvider: symbolsProvider,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
-                // estimate maker network fee
-                var estimatedMakerNetworkFee = await EstimateMakerNetworkFeeAsync(
-                        fromCurrency: fromCurrency,
-                        toCurrency: toCurrency,
-                        account: account,
-                        marketDataRepository: marketDataRepository,
-                        symbolsProvider: symbolsProvider,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
+            var fromCurrencyAccount = account
+                .GetCurrencyAccount(fromCurrency.Name) as IEstimatable;
 
-                var fromCurrencyAccount = account
-                    .GetCurrencyAccount(fromCurrency.Name) as IEstimatable;
+            // estimate payment fee
+            var estimatedPaymentFee = await fromCurrencyAccount
+                .EstimateSwapPaymentFeeAsync(
+                    from: from,
+                    amount: fromAmount,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
-                // estimate payment fee
-                var estimatedPaymentFee = await fromCurrencyAccount
-                    .EstimateSwapPaymentFeeAsync(
-                        from: from,
-                        amount: fromAmount,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
+            // estimate max amount and max fee
+            var maxAmountEstimation = await fromCurrencyAccount
+                .EstimateMaxSwapPaymentAmountAsync(
+                    from: from,
+                    reserve: true,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
-                // estimate max amount and max fee
-                var maxAmountEstimation = await fromCurrencyAccount
-                    .EstimateMaxSwapPaymentAmountAsync(
-                        from: from,
-                        reserve: true,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
- 
-                if (maxAmountEstimation.Error != null)
-                {
-                    return new SwapParams
-                    {
-                        Amount           = 0m,
-                        PaymentFee       = estimatedPaymentFee.Value,
-                        RedeemFee        = estimatedRedeemFee,
-                        RewardForRedeem  = rewardForRedeem,
-                        MakerNetworkFee  = estimatedMakerNetworkFee,
-                        ReservedForSwaps = reservedForSwapsAmount,
-                        Error            = new DetailedError(
-                            maxAmountEstimation.Error.Value,
-                            maxAmountEstimation.ErrorHint)
-                    };
-                }
-
-                var maxAmount = maxAmountEstimation.Amount.ToDecimal(fromCurrency.Digits);
-                var maxNetAmount = Math.Max(maxAmount - reservedForSwapsAmount - estimatedMakerNetworkFee, 0m);
-                var maxAmountEstimationFee = maxAmountEstimation.Fee.ToDecimal(fromCurrency.Digits);
-
-                if (maxNetAmount == 0m) // insufficient funds
-                {
-                    return new SwapParams
-                    {
-                        Amount           = 0m,
-                        PaymentFee       = maxAmountEstimationFee,
-                        RedeemFee        = estimatedRedeemFee,
-                        RewardForRedeem  = rewardForRedeem,
-                        MakerNetworkFee  = estimatedMakerNetworkFee,
-                        ReservedForSwaps = reservedForSwapsAmount,
-                        Error = new DetailedError(
-                            code: Errors.InsufficientFunds,
-                            message: Resources.InsufficientFundsToCoverMakerNetworkFee,
-                            details: string.Format(Resources.InsufficientFundsToCoverMakerNetworkFeeDetails,
-                                estimatedMakerNetworkFee,            // required
-                                fromCurrency.Name,                   // currency code
-                                maxAmount - reservedForSwapsAmount)) // available
-                    };
-                }
-
-                if (fromAmount > maxNetAmount) // amount greater than max net amount => use max amount params
-                {
-                    return new SwapParams
-                    {
-                        Amount           = Math.Max(maxNetAmount, 0m),
-                        PaymentFee       = maxAmountEstimationFee,
-                        RedeemFee        = estimatedRedeemFee,
-                        RewardForRedeem  = rewardForRedeem,
-                        MakerNetworkFee  = estimatedMakerNetworkFee,
-                        ReservedForSwaps = reservedForSwapsAmount,
-                        Error = new DetailedError(
-                            code: Errors.InsufficientFunds,
-                            message: Resources.InsufficientFunds,
-                            details: string.Format(Resources.InsufficientFundsToSendAmountDetails,
-                                fromAmount,        // required
-                                fromCurrency.Name, // currency code
-                                maxNetAmount))     // available
-                    };
-                }
-
+            if (maxAmountEstimation.Error != null)
+            {
                 return new SwapParams
                 {
-                    Amount           = fromAmount,
+                    Amount           = 0m,
                     PaymentFee       = estimatedPaymentFee.Value,
                     RedeemFee        = estimatedRedeemFee,
                     RewardForRedeem  = rewardForRedeem,
                     MakerNetworkFee  = estimatedMakerNetworkFee,
                     ReservedForSwaps = reservedForSwapsAmount,
-                    Error            = null
+                    Error            = new DetailedError(
+                        maxAmountEstimation.Error.Value,
+                        maxAmountEstimation.ErrorHint)
                 };
+            }
 
-            }, cancellationToken);
+            var maxAmount = maxAmountEstimation.Amount.ToDecimal(fromCurrency.Digits);
+            var maxNetAmount = Math.Max(maxAmount - reservedForSwapsAmount - estimatedMakerNetworkFee, 0m);
+            var maxAmountEstimationFee = maxAmountEstimation.Fee.ToDecimal(fromCurrency.Digits);
+
+            if (maxNetAmount == 0m) // insufficient funds
+            {
+                return new SwapParams
+                {
+                    Amount           = 0m,
+                    PaymentFee       = maxAmountEstimationFee,
+                    RedeemFee        = estimatedRedeemFee,
+                    RewardForRedeem  = rewardForRedeem,
+                    MakerNetworkFee  = estimatedMakerNetworkFee,
+                    ReservedForSwaps = reservedForSwapsAmount,
+                    Error = new DetailedError(
+                        code: Errors.InsufficientFunds,
+                        message: Resources.InsufficientFundsToCoverMakerNetworkFee,
+                        details: string.Format(Resources.InsufficientFundsToCoverMakerNetworkFeeDetails,
+                            estimatedMakerNetworkFee,            // required
+                            fromCurrency.Name,                   // currency code
+                            maxAmount - reservedForSwapsAmount)) // available
+                };
+            }
+
+            if (fromAmount > maxNetAmount) // amount greater than max net amount => use max amount params
+            {
+                return new SwapParams
+                {
+                    Amount           = Math.Max(maxNetAmount, 0m),
+                    PaymentFee       = maxAmountEstimationFee,
+                    RedeemFee        = estimatedRedeemFee,
+                    RewardForRedeem  = rewardForRedeem,
+                    MakerNetworkFee  = estimatedMakerNetworkFee,
+                    ReservedForSwaps = reservedForSwapsAmount,
+                    Error = new DetailedError(
+                        code: Errors.InsufficientFunds,
+                        message: Resources.InsufficientFunds,
+                        details: string.Format(Resources.InsufficientFundsToSendAmountDetails,
+                            fromAmount,        // required
+                            fromCurrency.Name, // currency code
+                            maxNetAmount))     // available
+                };
+            }
+
+            return new SwapParams
+            {
+                Amount           = fromAmount,
+                PaymentFee       = estimatedPaymentFee.Value,
+                RedeemFee        = estimatedRedeemFee,
+                RewardForRedeem  = rewardForRedeem,
+                MakerNetworkFee  = estimatedMakerNetworkFee,
+                ReservedForSwaps = reservedForSwapsAmount,
+                Error            = null
+            };
         }
 
         public static Task<SwapPriceEstimation> EstimateSwapPriceAsync(

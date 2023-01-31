@@ -13,16 +13,21 @@ namespace Atomex.Blockchain.Tezos
         public string Id { get; set; }
         public string Currency { get; set; }
         public TransactionStatus Status { get; set; }
-        public TransactionType Type { get; set; }
+        public TransactionType Type => OperationTypes != null
+            ? OperationTypes.Aggregate(TransactionType.Unknown, (s, t) => s |= t)
+            : TransactionType.Unknown;
         public DateTimeOffset? CreationTime { get; set; }
         public DateTimeOffset? BlockTime { get; set; }
         public long BlockHeight { get; set; }
         public long Confirmations { get; set; }
         public bool IsConfirmed => Confirmations > 0;
-        public bool IsTypeResolved => Type != TransactionType.Unknown;
+        public bool IsTypeResolved => OperationTypes
+            .ToList()
+            .TrueForAll(t => t != TransactionType.Unknown);
         public string? From => Operations.FirstOrDefault()?.Sender?.Address;
 
         public IEnumerable<Operation> Operations { get; }
+        public IEnumerable<TransactionType>? OperationTypes { get; set; }
         public MichelineFormat ParametersFormat { get; }
 
         public TezosOperation(
@@ -37,17 +42,17 @@ namespace Atomex.Blockchain.Tezos
                 throw new ArgumentException("At least one operation is required", nameof(operations));
 
             Operations = operations;
+            OperationTypes = null;
             ParametersFormat = operationParametersFormat;
 
             var firstOperation = Operations.First();
 
-            Id           = firstOperation.Hash;
-            Currency     = TezosHelper.Xtz;
-            Status       = firstOperation.Status.ParseOperationStatus();
-            CreationTime = firstOperation.BlockTime;
-            BlockTime    = firstOperation.BlockTime;
-            BlockHeight  = firstOperation.BlockLevel;
-
+            Id            = firstOperation.Hash;
+            Currency      = TezosHelper.Xtz;
+            Status        = firstOperation.Status.ParseOperationStatus();
+            CreationTime  = firstOperation.BlockTime;
+            BlockTime     = firstOperation.BlockTime;
+            BlockHeight   = firstOperation.BlockLevel;
             Confirmations = recentBlockLevel != 0
                 ? recentBlockLevel - firstOperation.BlockLevel
                 : Math.Max((long)(DateTimeOffset.UtcNow - firstOperation.BlockTime).TotalMinutes, 0); // approximate confirmations
@@ -57,6 +62,11 @@ namespace Atomex.Blockchain.Tezos
             TezosOperationRequest operationRequest,
             string operationId)
         {
+            Operations = operationRequest.OperationsContents
+                .Select(oc => oc.ToOperation(operationId));
+            OperationTypes = null;
+            ParametersFormat = MichelineFormat.RawMicheline;
+
             Id            = operationId;
             Currency      = TezosHelper.Xtz;
             Status        = TransactionStatus.Pending;
@@ -64,10 +74,6 @@ namespace Atomex.Blockchain.Tezos
             BlockTime     = null;
             BlockHeight   = 0;
             Confirmations = 0;
-
-            Operations = operationRequest.OperationsContents
-                .Select(oc => oc.ToOperation(operationId));
-            ParametersFormat = MichelineFormat.RawMicheline;
         }
 
         public bool IsManaged() => Operations

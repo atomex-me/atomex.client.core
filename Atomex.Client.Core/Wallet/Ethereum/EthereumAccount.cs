@@ -486,21 +486,21 @@ namespace Atomex.Wallet.Ethereum
             if (isToSelf)
                 tx.Type |= TransactionType.Input;
 
-            if (tx.Data != null)
-            {
-                tx.Type |= TransactionType.ContractCall;
+            if (tx.Data == null)
+                return;
 
-                if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<InitiateMessage>()))
-                    tx.Type |= TransactionType.SwapPayment;
-                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RedeemMessage>()))
-                    tx.Type |= TransactionType.SwapRedeem;
-                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RefundMessage>()))
-                    tx.Type |= TransactionType.SwapRefund;
-                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferMessage>()))
-                    tx.Type |= TransactionType.TokenTransfer;
-                else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveMessage>()))
-                    tx.Type |= TransactionType.TokenApprove;
-            }
+            tx.Type |= TransactionType.ContractCall;
+
+            if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<InitiateMessage>()))
+                tx.Type |= TransactionType.SwapPayment;
+            else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RedeemMessage>()))
+                tx.Type |= TransactionType.SwapRedeem;
+            else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RefundMessage>()))
+                tx.Type |= TransactionType.SwapRefund;
+            else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferMessage>()))
+                tx.Type |= TransactionType.TokenTransfer;
+            else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveMessage>()))
+                tx.Type |= TransactionType.TokenApprove;
         }
 
         #endregion Transactions

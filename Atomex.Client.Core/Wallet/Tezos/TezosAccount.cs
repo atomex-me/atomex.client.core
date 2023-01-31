@@ -17,6 +17,7 @@ using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Bip;
 using Atomex.Wallets.Tezos;
+using Atomex.Blockchain.Tezos.Tzkt.Operations;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -577,42 +578,57 @@ namespace Atomex.Wallet.Tezos
         }
 
         private async Task ResolveTransactionTypeAsync(
-            TezosOperation tx,
+            TezosOperation operation,
             CancellationToken cancellationToken = default)
         {
-            tx.Type = TransactionType.Unknown;
-
-            var fromAddress = await GetAddressAsync(tx.From, cancellationToken)
+            var fromAddress = await GetAddressAsync(operation.From, cancellationToken)
                 .ConfigureAwait(false);
+
+            var i = 0;
+            var operationTypes = new List<TransactionType>();
 
             var isFromSelf = fromAddress != null;
 
-            if (isFromSelf)
-                tx.Type |= TransactionType.Output;
+            foreach (var o in operation.Operations)
+            {
+                if (isFromSelf)
+                    operationTypes[i] |= TransactionType.Output;
 
-            //var toAddress = await GetAddressAsync(tx.To, cancellationToken)
-            //   .ConfigureAwait(false);
+                if (o is TransactionOperation tx)
+                {
+                    var toAddress = await GetAddressAsync(tx.Target.Address)
+                        .ConfigureAwait(false);
 
-            //var isToSelf = toAddress != null;
+                    var isToSelf = toAddress != null;
 
-            //if (isToSelf)
-            //    tx.Type |= TransactionType.Input;
+                    if (isToSelf)
+                        operationTypes[i] |= TransactionType.Input;
 
-            //if (tx.Data != null)
-            //{
-            //    tx.Type |= TransactionType.ContractCall;
+                    if (tx.Parameter == null)
+                        continue;
 
-            //    if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<InitiateMessage>()))
-            //        tx.Type |= TransactionType.SwapPayment;
-            //    else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RedeemMessage>()))
-            //        tx.Type |= TransactionType.SwapRedeem;
-            //    else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RefundMessage>()))
-            //        tx.Type |= TransactionType.SwapRefund;
-            //    else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferMessage>()))
-            //        tx.Type |= TransactionType.TokenTransfer;
-            //    else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveMessage>()))
-            //        tx.Type |= TransactionType.TokenApprove;
-            //}
+                    operationTypes[i] |= TransactionType.ContractCall;
+
+                    if (tx.Parameter.Entrypoint == "initiate")
+                        operationTypes[i] |= TransactionType.SwapPayment;
+                    else if (tx.Parameter.Entrypoint == "redeem")
+                        operationTypes[i] |= TransactionType.SwapRedeem;
+                    else if (tx.Parameter.Entrypoint == "refund")
+                        operationTypes[i] |= TransactionType.SwapRefund;
+                    else if (tx.Parameter.Entrypoint == "transfer")
+                        operationTypes[i] |= TransactionType.TokenTransfer;
+                    else if (tx.Parameter.Entrypoint == "approve" || tx.Parameter.Entrypoint == "update_operators")
+                        operationTypes[i] |= TransactionType.TokenApprove;
+                }
+                else
+                {
+                    // delegations, reveals and others
+                }
+
+                ++i;
+            }
+
+            operation.OperationTypes = operationTypes;
         }
 
         #endregion Transactions

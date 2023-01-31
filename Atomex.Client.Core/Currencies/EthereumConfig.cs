@@ -24,12 +24,10 @@ namespace Atomex
 {
     public class EthereumConfig : CurrencyConfig
     {
-        protected const long WeiInGwei = 1000000000;
-        protected const long GweiInEth = 1000000000;
         protected const string DefaultGasPriceFormat = "F9";
         protected const string DefaultGasPriceCode = "GWEI";
         protected const string DefaultFeeCode = "GAS";
-        protected const long EthDigitsMultiplier = GweiInEth; //1_000_000_000;
+        protected const long EthDigitsMultiplier = EthereumHelper.GweiInEth; //1_000_000_000;
 
         public const int Mainnet = 1;
         //public const int Ropsten = 3;
@@ -159,11 +157,11 @@ namespace Atomex
                 .IsValidEthereumAddressHexFormat(address);
 
         public decimal GetFeeInEth(long gasLimit, decimal gasPrice) =>
-            gasLimit * gasPrice / GweiInEth;
+            gasLimit * gasPrice / EthereumHelper.GweiInEth;
 
         public decimal GetGasPriceInGwei(BigInteger valueInWei, long gasLimit)
         {
-            return (decimal)(valueInWei / gasLimit / WeiInGwei);
+            return (decimal)(valueInWei / gasLimit / EthereumHelper.WeiInGwei);
         }
 
         public override async Task<BigInteger> GetPaymentFeeAsync(
@@ -213,7 +211,7 @@ namespace Atomex
             var gasPrice = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var redeemFeeInEth = EstimatedRedeemWithRewardGasLimit * gasPrice / GweiInEth;
+            var redeemFeeInEth = GetFeeInEth(EstimatedRedeemWithRewardGasLimit, gasPrice);
 
             return CalculateRewardForRedeem(
                 redeemFee: redeemFeeInEth,
