@@ -11,7 +11,6 @@ using Serilog;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
-using Atomex.Blockchain.Ethereum.Abstract;
 using Atomex.Blockchain.Ethereum.Messages.Swaps.V1;
 using Atomex.Common;
 using Atomex.Core;
@@ -32,7 +31,6 @@ namespace Atomex.Swaps.Ethereum
         public static TimeSpan InitiationCheckInterval = TimeSpan.FromSeconds(30);
         private EthereumConfig EthConfig => Currencies.Get<EthereumConfig>(Currency);
         protected readonly EthereumAccount _account;
-        private IEthereumApi GetEthereumApi() => (IEthereumApi)EthConfig.BlockchainApi;
 
         public EthereumSwap(
             EthereumAccount account,
@@ -73,7 +71,7 @@ namespace Atomex.Swaps.Ethereum
                         .ConfigureAwait(false);
 
                     var (nonce, error) = await EthereumNonceManager.Instance
-                        .GetNonceAsync(GetEthereumApi(), txRequest.From)
+                        .GetNonceAsync(EthConfig.GetEthereumApi(), txRequest.From)
                         .ConfigureAwait(false);
 
                     if (error != null)
@@ -252,7 +250,7 @@ namespace Atomex.Swaps.Ethereum
 
                 var (nonce, nonceError) = await EthereumNonceManager.Instance
                     .GetNonceAsync(
-                        api: GetEthereumApi(),
+                        api: EthConfig.GetEthereumApi(),
                         address: walletAddress.Address,
                         pending: true,
                         cancellationToken: cancellationToken)
@@ -375,7 +373,7 @@ namespace Atomex.Swaps.Ethereum
 
             var (nonce, error) = await EthereumNonceManager.Instance
                 .GetNonceAsync(
-                    api: GetEthereumApi(),
+                    api: EthConfig.GetEthereumApi(),
                     address: walletAddress.Address,
                     pending: true,
                     cancellationToken: cancellationToken)
@@ -508,7 +506,7 @@ namespace Atomex.Swaps.Ethereum
 
                 var (nonce, error) = await EthereumNonceManager.Instance
                     .GetNonceAsync(
-                        api: GetEthereumApi(),
+                        api: EthConfig.GetEthereumApi(),
                         address: walletAddress.Address,
                         pending: true,
                         cancellationToken: cancellationToken)
@@ -780,7 +778,8 @@ namespace Atomex.Swaps.Ethereum
                 return null;
             }
 
-            var (nonce, error) = await GetEthereumApi()
+            var (nonce, error) = await EthConfig
+                .GetEthereumApi()
                 .GetTransactionsCountAsync(
                     address: walletAddress.Address,
                     pending: false,

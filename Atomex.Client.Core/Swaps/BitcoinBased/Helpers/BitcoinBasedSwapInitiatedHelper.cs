@@ -49,7 +49,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                     .GetDestinationAddress(bitcoinBased.Network)
                     .ToString();
 
-                var api = bitcoinBased.BlockchainApi as BitcoinBlockchainApi;
+                var api = bitcoinBased.GetBitcoinBlockchainApi();
 
                 var (outputs, error) = await api
                     .GetOutputsAsync(redeemScriptAddress, cancellationToken)

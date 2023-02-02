@@ -114,7 +114,8 @@ namespace Atomex.Wallet.BitcoinBased
                     code: Errors.TransactionVerificationError,
                     message: $"Transaction verification error: {string.Join(", ", errors.Select(e => e.Message))}");
 
-            var (txId, error) = await ((BitcoinBlockchainApi)config.BlockchainApi)
+            var (txId, error) = await config
+                .GetBitcoinBlockchainApi()
                 .BroadcastAsync(tx, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 

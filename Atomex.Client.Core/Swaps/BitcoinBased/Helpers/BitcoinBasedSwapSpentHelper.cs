@@ -20,7 +20,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
     {
         public static async Task StartSwapSpentControlAsync(
             Swap swap,
-            BitcoinBasedConfig currency,
+            BitcoinBasedConfig currencyConfig,
             ILocalStorage localStorage,
             DateTime refundTimeUtc,
             TimeSpan interval,
@@ -28,15 +28,15 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
             Func<Swap, CancellationToken, Task> refundTimeReachedHandler = null,
             CancellationToken cancellationToken = default)
         {
-            Log.Debug("StartSwapSpentControlAsync for {@Currency} swap with id {@swapId} started", currency.Name, swap.Id);
+            Log.Debug("StartSwapSpentControlAsync for {@Currency} swap with id {@swapId} started", currencyConfig.Name, swap.Id);
 
             try
             {
                 var side = swap.Symbol
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency);
 
-                var requiredAmount = AmountHelper.QtyToSellAmount(side, swap.Qty, swap.Price, currency.DigitsMultiplier);
-                var requiredAmountInSatoshi = currency.CoinToSatoshi(requiredAmount);
+                var requiredAmount = AmountHelper.QtyToSellAmount(side, swap.Qty, swap.Price, currencyConfig.DigitsMultiplier);
+                var requiredAmountInSatoshi = currencyConfig.CoinToSatoshi(requiredAmount);
 
                 var lockTimeInSeconds = swap.IsInitiator
                     ? CurrencySwap.DefaultInitiatorLockTimeInSeconds
@@ -54,14 +54,14 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                             lockTimeStamp: refundTimeUtcInSec,
                             secretHash: swap.SecretHash,
                             secretSize: CurrencySwap.DefaultSecretSize,
-                            expectedNetwork: currency.Network);
+                            expectedNetwork: currencyConfig.Network);
 
                 var (paymentTx, findPaymentError) = await TransactionsHelper
                     .TryFindTransaction<BitcoinTransaction>(
                         txId: swap.PaymentTxId,
                         currency: swap.SoldCurrency,
                         localStorage: localStorage,
-                        blockchainApi: currency.BlockchainApi,
+                        blockchainApi: currencyConfig.GetBlockchainApi(),
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
@@ -86,9 +86,9 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
 
                 while (!cancellationToken.IsCancellationRequested)
                 {
-                    Log.Debug("Output spent control for {@currency} swap {@swapId}", currency.Name, swap.Id);
+                    Log.Debug("Output spent control for {@currency} swap {@swapId}", currencyConfig.Name, swap.Id);
 
-                    var (spentPoint, error) = await currency
+                    var (spentPoint, error) = await currencyConfig
                         .GetSpentPointAsync(
                             hash: swap.PaymentTxId,
                             index: swapOutput.Index,
@@ -118,20 +118,20 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                 }
 
                 Log.Debug("StartSwapSpentControlAsync for {@Currency} swap with id {@swapId} {@message}",
-                    currency.Name,
+                    currencyConfig.Name,
                     swap.Id,
                     cancellationToken.IsCancellationRequested ? "canceled" : "completed");
             }
             catch (OperationCanceledException)
             {
                 Log.Debug("StartSwapSpentControlAsync for {@Currency} swap with id {@swapId} canceled",
-                    currency.Name,
+                    currencyConfig.Name,
                     swap.Id);
             }
             catch (Exception e)
             {
                 Log.Error(e, "StartSwapSpentControlAsync for {@Currency} swap with id {@swapId} error",
-                    currency.Name,
+                    currencyConfig.Name,
                     swap.Id);
             }
         }

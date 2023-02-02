@@ -110,7 +110,7 @@ namespace Atomex.TezosTokens
             RpcNodeUri              = configuration["BlockchainRpcNodeUri"];
             BbApiUri                = configuration[nameof(BbApiUri)];
 
-            BlockchainApi           = ResolveBlockchainApi(configuration);
+            BlockchainApi = configuration["BlockchainApi"];
             TxExplorerUri           = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
             SwapContractAddress     = configuration["SwapContract"];

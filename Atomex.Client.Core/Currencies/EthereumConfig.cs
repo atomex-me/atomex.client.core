@@ -19,6 +19,7 @@ using Atomex.Core;
 using Atomex.Wallet.Bip;
 using Atomex.Wallets;
 using Atomex.Wallets.Ethereum;
+using Atomex.Blockchain.Ethereum.Erc20.Abstract;
 
 namespace Atomex
 {
@@ -51,6 +52,7 @@ namespace Atomex
         public ulong SwapContractBlockNumber { get; protected set; }
         public string InfuraApi { get; protected set; }
         public string InfuraWsApi { get; protected set; }
+        public EtherScanSettings EtherScanSettings { get; protected set; }
 
         public EthereumConfig()
         {
@@ -107,7 +109,12 @@ namespace Atomex
             SwapContractBlockNumber    = ulong.Parse(configuration[nameof(SwapContractBlockNumber)], CultureInfo.InvariantCulture);
 
             BlockchainApiBaseUri       = configuration[nameof(BlockchainApiBaseUri)];
-            BlockchainApi              = ResolveBlockchainApi(configuration);
+            BlockchainApi = configuration["BlockchainApi"];
+
+            EtherScanSettings = new EtherScanSettings
+            {
+                BaseUri = BlockchainApiBaseUri
+            };
 
             TxExplorerUri              = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri         = configuration[nameof(AddressExplorerUri)];
@@ -119,27 +126,11 @@ namespace Atomex
             Bip44Code                  = Bip44.Ethereum;
         }
 
-        protected IBlockchainApi ResolveBlockchainApi(IConfiguration configuration)
-        {
-            var blockchainApi = configuration["BlockchainApi"]
-                .ToLowerInvariant();
-
-            return blockchainApi switch
-            {
-                "etherscan" => GetEtherScanApi(),
-                _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
-            };
-        }
-
-        public EtherScanApi GetEtherScanApi()
-        {
-            var settings = new EtherScanSettings
-            {
-                ApiToken = "" // TODO: fix
-            };
-
-            return new EtherScanApi(settings);
-        }
+        public override IBlockchainApi GetBlockchainApi() => GetEtherScanApi();
+        public IEthereumApi GetEthereumApi() => GetEtherScanApi();
+        public IErc20Api GetErc20Api() => GetEtherScanApi();
+        public IGasPriceProvider GetGasPriceProvider() => GetEtherScanApi();
+        public EtherScanApi GetEtherScanApi() => new(EtherScanSettings);
 
         public override IExtKey CreateExtKey(SecureBytes seed, int keyType) =>
             new EthereumExtKey(seed);
@@ -229,7 +220,7 @@ namespace Atomex
             if (ChainId != Mainnet)
                 return GasPriceInGwei;
 
-            var gasPriceProvider = BlockchainApi as IGasPriceProvider;
+            var gasPriceProvider = GetGasPriceProvider();
 
             try
             {

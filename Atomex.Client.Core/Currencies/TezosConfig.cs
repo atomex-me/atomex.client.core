@@ -167,7 +167,7 @@ namespace Atomex
             BbUri                   = configuration[nameof(BbUri)];
             BbApiUri                = configuration[nameof(BbApiUri)];
 
-            BlockchainApi           = ResolveBlockchainApi(configuration);
+            BlockchainApi           = configuration["BlockchainApi"];//ResolveBlockchainApi(configuration);
             TxExplorerUri           = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
             SwapContractAddress     = configuration["SwapContract"];
@@ -181,17 +181,8 @@ namespace Atomex
             IpfsGatewayUri          = configuration[nameof(IpfsGatewayUri)];
         }
 
-        protected IBlockchainApi ResolveBlockchainApi(IConfiguration configuration)
-        {
-            var blockchainApi = configuration["BlockchainApi"]
-                .ToLowerInvariant();
-
-            return blockchainApi switch
-            {
-                "tzkt" => new TzktApi(GetTzktSettings()),
-                _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
-            };
-        }
+        public override IBlockchainApi GetBlockchainApi() => GetTzktApi();
+        public TzktApi GetTzktApi() => new (GetTzktSettings());
 
         public TzktSettings GetTzktSettings() => new()
         {

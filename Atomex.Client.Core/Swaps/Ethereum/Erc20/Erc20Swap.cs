@@ -13,10 +13,8 @@ using Serilog;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
-using Atomex.Blockchain.Ethereum.Abstract;
-using Atomex.Blockchain.Ethereum.Erc20.Abstract;
-using Atomex.Blockchain.Ethereum.Erc20.Messages.Swaps.V1;
 using Atomex.Blockchain.Ethereum.Erc20.Messages;
+using Atomex.Blockchain.Ethereum.Erc20.Messages.Swaps.V1;
 using Atomex.Blockchain.Ethereum.Messages.Swaps.V1;
 using Atomex.Common;
 using Atomex.Core;
@@ -44,9 +42,6 @@ namespace Atomex.Swaps.Ethereum
             Erc20Account = account ?? throw new ArgumentNullException(nameof(account));
             EthereumAccount = ethereumAccount ?? throw new ArgumentNullException(nameof(ethereumAccount));
         }
-
-        private IEthereumApi GetEthereumApi() => (IEthereumApi)EthConfig.BlockchainApi;
-        private IErc20Api GetErc20Api() => (IErc20Api)Erc20Config.BlockchainApi;
 
         public override async Task PayAsync(
             Swap swap,
@@ -87,7 +82,7 @@ namespace Atomex.Swaps.Ethereum
                         var isPaymentTx = type.HasFlag(TransactionType.SwapPayment);
 
                         var (nonce, error) = await EthereumNonceManager.Instance
-                            .GetNonceAsync(GetEthereumApi(), txRequest.From, pending: true, cancellationToken)
+                            .GetNonceAsync(EthConfig.GetEthereumApi(), txRequest.From, pending: true, cancellationToken)
                             .ConfigureAwait(false);
 
                         if (error != null)
@@ -275,7 +270,7 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
 
                 var (nonce, nonceError) = await EthereumNonceManager.Instance
-                    .GetNonceAsync(GetEthereumApi(), walletAddress.Address, pending: true, cancellationToken)
+                    .GetNonceAsync(EthConfig.GetEthereumApi(), walletAddress.Address, pending: true, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (nonceError != null)
@@ -394,7 +389,7 @@ namespace Atomex.Swaps.Ethereum
                 .ConfigureAwait(false);
 
             var (nonce, error) = await EthereumNonceManager.Instance
-                .GetNonceAsync(GetEthereumApi(), walletAddress.Address, pending: true, cancellationToken)
+                .GetNonceAsync(EthConfig.GetEthereumApi(), walletAddress.Address, pending: true, cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)
@@ -524,7 +519,7 @@ namespace Atomex.Swaps.Ethereum
 
                 var (nonce, error) = await EthereumNonceManager.Instance
                     .GetNonceAsync(
-                        api: GetEthereumApi(),
+                        api: EthConfig.GetEthereumApi(),
                         address: walletAddress.Address,
                         pending: true,
                         cancellationToken: cancellationToken)
@@ -823,7 +818,8 @@ namespace Atomex.Swaps.Ethereum
                 requiredAmountInTokenDigits,
                 erc20Config.DustDigitsMultiplier);
 
-            var (nonce, error) = await GetEthereumApi()
+            var (nonce, error) = await EthConfig
+                .GetEthereumApi()
                 .GetTransactionsCountAsync(
                     address: walletAddress.Address,
                     pending: false,
@@ -891,7 +887,8 @@ namespace Atomex.Swaps.Ethereum
                 FromAddress = walletAddress.Address
             };
 
-            var (allowance, allowanceError) = await GetErc20Api()
+            var (allowance, allowanceError) = await Erc20Config
+                .GetErc20Api()
                 .GetErc20AllowanceAsync(
                     tokenAddress: erc20.ERC20ContractAddress,
                     allowanceMessage: allowanceMessage,
@@ -904,7 +901,8 @@ namespace Atomex.Swaps.Ethereum
                 return new List<EthereumTransactionRequest>();
             }
 
-            var (nonce, nonceError) = await GetEthereumApi()
+            var (nonce, nonceError) = await EthConfig
+                .GetEthereumApi()
                 .GetTransactionsCountAsync(
                     address: walletAddress.Address,
                     pending: false,

@@ -7,7 +7,10 @@ using System.Threading.Tasks;
 
 using NBitcoin;
 
+using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
+using Atomex.Blockchain.Bitcoin.SoChain;
+using Atomex.Blockchain.BlockCypher;
 using Atomex.Core;
 using Atomex.Common.Memory;
 using Atomex.Wallets;
@@ -30,11 +33,16 @@ namespace Atomex
         public decimal MinTxFeeRate { get; set; }
         public decimal MinRelayTxFeeRate { get; set; }
         public NBitcoin.Network Network { get; protected set; }
+        public SoChainSettings SoChainSettings { get; protected set; }
+        public BlockCypherSettings BlockCypherSettings { get; protected set; }
 
         protected BitcoinBasedConfig()
         {
             TransactionType = typeof(BitcoinTransaction);
         }
+
+        public override IBlockchainApi GetBlockchainApi() => GetBitcoinBlockchainApi();
+        public abstract BitcoinBlockchainApi GetBitcoinBlockchainApi();
 
         public override IExtKey CreateExtKey(SecureBytes seed, int keyType) => 
             CreateExtKeyFromSeed(seed);

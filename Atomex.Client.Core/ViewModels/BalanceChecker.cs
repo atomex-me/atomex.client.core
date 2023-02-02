@@ -114,7 +114,7 @@ namespace Atomex.ViewModels
                         {
                             var api = account.Currencies
                                 .GetByName(address.Currency)
-                                .BlockchainApi;
+                                .GetBlockchainApi();
 
                             var (balance, error) = await api
                                 .GetBalanceAsync(

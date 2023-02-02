@@ -483,7 +483,8 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var transfers = _db.GetCollection(TezosTokensTransfers)
+                var transfers = _db
+                    .GetCollection(TezosTokensTransfers)
                     .Find(Query.EQ(TransferContract, contractAddress), skip: offset, limit: limit)
                     .Select(_bsonMapper.ToObject<TezosTokenTransfer>)
                     .ToList();
@@ -678,7 +679,8 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var transactions = _db.GetCollection(TransactionCollectionName)
+                var transactions = _db
+                    .GetCollection(TransactionCollectionName)
                     .Find(Query.EQ(CurrencyKey, currency))
                     .Select(d => (ITransaction)_bsonMapper.ToObject(transactionType, d))
                     .ToList();
@@ -700,7 +702,8 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var transactions = _db.GetCollection(TransactionCollectionName)
+                var transactions = _db
+                    .GetCollection(TransactionCollectionName)
                     .Find(Query.EQ(CurrencyKey, currency))
                     .Select(_bsonMapper.ToObject<T>)
                     .ToList();
@@ -1001,9 +1004,9 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var orders = _db.GetCollection(OrdersCollectionName);
-
-                var document = orders.FindById(clientOrderId);
+                var document = _db
+                    .GetCollection(OrdersCollectionName)
+                    .FindById(clientOrderId);
 
                 return document != null
                     ? _bsonMapper.ToObject<Order>(document)
@@ -1045,9 +1048,9 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var orders = _db.GetCollection(OrdersCollectionName);
-
-                var removed = orders.DeleteMany(Query.EQ("OrderId", id));
+                var removed = _db
+                    .GetCollection(OrdersCollectionName)
+                    .DeleteMany(Query.EQ("OrderId", id));
 
                 return Task.FromResult(removed > 0);
             }
@@ -1069,7 +1072,8 @@ namespace Atomex.LiteDb
         {
             try
             {
-                _db.GetCollection<Swap>(SwapsCollectionName)
+                var _ = _db
+                    .GetCollection<Swap>(SwapsCollectionName)
                     .Insert(swap);
 
                 return Task.FromResult(true);

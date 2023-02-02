@@ -40,14 +40,16 @@ namespace Atomex.Core
         public string FeeCurrencyToBaseSymbol { get; set; }
         public string FeeCurrencySymbol { get; set; }
 
-        public IBlockchainApi BlockchainApi { get; set; }
+        public string BlockchainApi { get; set; }
         public string TxExplorerUri { get; set; }
         public string AddressExplorerUri { get; set; }
         public Type TransactionType { get; protected set; }
+        public Type TransactionMetadataType { get; protected set; }
 
         public bool IsSwapAvailable { get; protected set; }
         public uint Bip44Code { get; protected set; }
 
+        public abstract IBlockchainApi GetBlockchainApi();
         public abstract IExtKey CreateExtKey(SecureBytes seed, int keyType);
 
         public abstract IKey CreateKey(SecureBytes seed);

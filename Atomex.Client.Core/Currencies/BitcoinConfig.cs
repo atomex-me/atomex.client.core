@@ -6,7 +6,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
 
-using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Bitcoin.SoChain;
 using Atomex.Blockchain.BlockCypher;
@@ -60,8 +59,22 @@ namespace Atomex
 
             HasFeePrice             = false;
 
-            Network                 = ResolveNetwork(configuration);
-            BlockchainApi           = ResolveBlockchainApi(configuration);
+            Network        = ResolveNetwork(configuration);
+            BlockchainApi   = configuration["BlockchainApi"];
+            SoChainSettings = new SoChainSettings
+            {
+                BaseUrl  = configuration["SoChain:BaseUrl"],
+                Network  = configuration["SoChain:Network"],
+                Decimals = Digits
+            };
+            BlockCypherSettings = new BlockCypherSettings
+            {
+                BaseUrl  = configuration["BlockCypher:BaseUrl"],
+                Network  = configuration["BlockCypher:Network"],
+                Coin     = configuration["BlockCypher:Coin"],
+                Decimals = Digits
+            };
+
             TxExplorerUri           = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
 
@@ -81,26 +94,13 @@ namespace Atomex
                 _ => throw new NotSupportedException($"Chain {chain} not supported")
             };
         }
-
-        private IBlockchainApi ResolveBlockchainApi(IConfiguration configuration)
+        public override BitcoinBlockchainApi GetBitcoinBlockchainApi()
         {
-            var blockchainApi = configuration["BlockchainApi"]
-                .ToLowerInvariant();
-
-            return blockchainApi switch
+            return BlockchainApi.ToLowerInvariant() switch
             {
-                "sochain" => new SoChainApi(Name, new SoChainSettings {
-                    BaseUrl = configuration["SoChain:BaseUrl"],
-                    Network = configuration["SoChain:Network"],
-                    Decimals = Digits
-                }),
-                "blockcypher" => new BlockCypherApi(Name, new BlockCypherSettings {
-                    BaseUrl = configuration["BlockCypher:BaseUrl"],
-                    Network = configuration["BlockCypher:Network"],
-                    Coin = configuration["BlockCypher:Coin"],
-                    Decimals = Digits
-                }),
-                _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
+                "sochain" => new SoChainApi(Name, SoChainSettings),
+                "blockcypher" => new BlockCypherApi(Name, BlockCypherSettings),
+                _ => throw new NotSupportedException($"BlockchainApi {BlockchainApi} not supported")
             };
         }
 

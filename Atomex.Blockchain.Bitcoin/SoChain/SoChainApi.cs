@@ -460,8 +460,6 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
                 ("LTC", "LTCTEST") => NBitcoin.Altcoins.Litecoin.Instance.Testnet,
                 ("DOGE", "DOGE") => NBitcoin.Altcoins.Dogecoin.Instance.Mainnet,
                 ("DOGE", "DOGETEST") => NBitcoin.Altcoins.Dogecoin.Instance.Testnet,
-                ("DASH", "DASH") => NBitcoin.Altcoins.Dash.Instance.Mainnet,
-                ("DASH", "DASHTEST") => NBitcoin.Altcoins.Dash.Instance.Testnet,
                 _ => throw new NotSupportedException($"Currency {currency} with network {network} not supporeted.")
             };
         }

@@ -35,7 +35,8 @@ namespace Atomex.Blockchain.Helpers
         {
             try
             {
-                var (tx, error) = await currency.BlockchainApi
+                var (tx, error) = await currency
+                    .GetBlockchainApi()
                     .GetTransactionAsync(txId, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

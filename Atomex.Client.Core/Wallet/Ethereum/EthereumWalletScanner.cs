@@ -43,7 +43,7 @@ namespace Atomex.Wallet.Ethereum
                     (Chain : Bip44.External, LookAhead : ExternalLookAhead),
                 };
 
-                var api = EthConfig.BlockchainApi;
+                var api = EthConfig.GetBlockchainApi();
                 var transactions = new List<EthereumTransaction>();
                 var walletAddresses = new List<WalletAddress>();
 
@@ -161,7 +161,7 @@ namespace Atomex.Wallet.Ethereum
 
                 // todo: if skipUsed == true => skip "disabled" wallets
 
-                var api = EthConfig.BlockchainApi;
+                var api = EthConfig.GetBlockchainApi();
                 var transactions = new List<EthereumTransaction>();
 
                 foreach (var walletAddress in walletAddresses)
@@ -274,7 +274,7 @@ namespace Atomex.Wallet.Ethereum
         {
             var updateTimeStamp = DateTime.UtcNow;
 
-            api ??= EthConfig.BlockchainApi;
+            api ??= EthConfig.GetBlockchainApi();
 
             var (balance, getBalanceError) = await api
                 .GetBalanceAsync(

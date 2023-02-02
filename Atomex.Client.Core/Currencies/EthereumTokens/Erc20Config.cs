@@ -80,7 +80,7 @@ namespace Atomex.EthereumTokens
             SwapContractBlockNumber    = ulong.Parse(configuration[nameof(SwapContractBlockNumber)], CultureInfo.InvariantCulture);
 
             BlockchainApiBaseUri       = configuration[nameof(BlockchainApiBaseUri)];
-            BlockchainApi              = ResolveBlockchainApi(configuration);
+            BlockchainApi = configuration["BlockchainApi"];
 
             TxExplorerUri              = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri         = configuration[nameof(AddressExplorerUri)];

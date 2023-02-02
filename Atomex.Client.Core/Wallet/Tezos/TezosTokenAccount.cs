@@ -42,9 +42,9 @@ namespace Atomex.Wallet.Tezos
             ILocalStorage localStorage,
             TezosAccount tezosAccount)
         {
-            TokenType      = tokenType ?? throw new ArgumentNullException(nameof(tokenType));
-            Currencies     = currencies ?? throw new ArgumentNullException(nameof(currencies));
-            Wallet         = wallet ?? throw new ArgumentNullException(nameof(wallet));
+            TokenType    = tokenType ?? throw new ArgumentNullException(nameof(tokenType));
+            Currencies   = currencies ?? throw new ArgumentNullException(nameof(currencies));
+            Wallet       = wallet ?? throw new ArgumentNullException(nameof(wallet));
             LocalStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
 
             _tokenContract = tokenContract ?? throw new ArgumentNullException(nameof(tokenContract));

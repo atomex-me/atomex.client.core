@@ -49,7 +49,7 @@ namespace Atomex.Wallet.BitcoinBased
                     (KeyType : BitcoinBasedConfig.SegwitKey, Chain : Bip44.External, LookAhead : ExternalLookAhead)
                 };
 
-                var api = BitcoinBasedConfig.BlockchainApi as BitcoinBlockchainApi;
+                var api = BitcoinBasedConfig.GetBitcoinBlockchainApi();
 
                 var outputs = new List<BitcoinTxOutput>();
                 var txs = new List<BitcoinTransaction>();
@@ -182,7 +182,7 @@ namespace Atomex.Wallet.BitcoinBased
 
                 // todo: if skipUsed == true => skip "disabled" wallets
 
-                var api = BitcoinBasedConfig.BlockchainApi as BitcoinBlockchainApi;
+                var api = BitcoinBasedConfig.GetBitcoinBlockchainApi();
                 var outputs = new List<BitcoinTxOutput>();
                 var txs = new List<BitcoinTransaction>();
 
@@ -320,7 +320,7 @@ namespace Atomex.Wallet.BitcoinBased
         {
             var updateTimeStamp = DateTime.UtcNow;
 
-            api ??= BitcoinBasedConfig.BlockchainApi as BitcoinBlockchainApi;
+            api ??= BitcoinBasedConfig.GetBitcoinBlockchainApi();
 
             var (addressInfo, addressInfoError) = await api
                 .GetAddressInfo(walletAddress.Address, cancellationToken)
@@ -400,7 +400,7 @@ namespace Atomex.Wallet.BitcoinBased
                     Log.Debug("[BitcoinBasedWalletScanner] Scan {@currency} transaction {@txId}", _account.Currency, txId);
 
                     var (tx, error) = await BitcoinBasedConfig
-                        .BlockchainApi
+                        .GetBlockchainApi()
                         .GetTransactionAsync(txId, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 

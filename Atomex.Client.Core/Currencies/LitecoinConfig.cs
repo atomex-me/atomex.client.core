@@ -4,7 +4,7 @@ using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
 
-using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Bitcoin.SoChain;
 using Atomex.Blockchain.BlockCypher;
 using Atomex.Common;
@@ -61,12 +61,26 @@ namespace Atomex
             HasFeePrice             = false;
 
             Network                 = ResolveNetwork(configuration);
-            BlockchainApi           = ResolveBlockchainApi(configuration);
-            TxExplorerUri           = configuration[nameof(TxExplorerUri)];
-            AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
+            BlockchainApi = configuration["BlockchainApi"];
+            SoChainSettings = new SoChainSettings
+            {
+                BaseUrl = configuration["SoChain:BaseUrl"],
+                Network = configuration["SoChain:Network"],
+                Decimals = Digits
+            };
+            BlockCypherSettings = new BlockCypherSettings
+            {
+                BaseUrl = configuration["BlockCypher:BaseUrl"],
+                Network = configuration["BlockCypher:Network"],
+                Coin = configuration["BlockCypher:Coin"],
+                Decimals = Digits
+            };
 
-            IsSwapAvailable         = true;
-            Bip44Code               = Bip44.Litecoin;
+            TxExplorerUri      = configuration[nameof(TxExplorerUri)];
+            AddressExplorerUri = configuration[nameof(AddressExplorerUri)];
+
+            IsSwapAvailable    = true;
+            Bip44Code          = Bip44.Litecoin;
         }
 
         public override long GetDust()
@@ -87,27 +101,13 @@ namespace Atomex
             };
         }
 
-        private IBlockchainApi ResolveBlockchainApi(IConfiguration configuration)
+        public override BitcoinBlockchainApi GetBitcoinBlockchainApi()
         {
-            var blockchainApi = configuration["BlockchainApi"]
-                .ToLowerInvariant();
-
-            return blockchainApi switch
+            return BlockchainApi.ToLowerInvariant() switch
             {
-                "sochain" => new SoChainApi(Name, new SoChainSettings
-                {
-                    BaseUrl = configuration["SoChain:BaseUrl"],
-                    Network = configuration["SoChain:Network"],
-                    Decimals = Digits
-                }),
-                "blockcypher" => new BlockCypherApi(Name, new BlockCypherSettings
-                {
-                    BaseUrl = configuration["BlockCypher:BaseUrl"],
-                    Network = configuration["BlockCypher:Network"],
-                    Coin = configuration["BlockCypher:Coin"],
-                    Decimals = Digits
-                }),
-                _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
+                "sochain" => new SoChainApi(Name, SoChainSettings),
+                "blockcypher" => new BlockCypherApi(Name, BlockCypherSettings),
+                _ => throw new NotSupportedException($"BlockchainApi {BlockchainApi} not supported")
             };
         }
     }

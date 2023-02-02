@@ -87,9 +87,7 @@ namespace Atomex.Swaps.BitcoinBased
                 Currency,
                 swap.Id);
 
-            var currency = Currencies.GetByName(swap.SoldCurrency);
-
-            var api = (BitcoinBlockchainApi)currency.BlockchainApi;
+            var api = Config.GetBitcoinBlockchainApi();
 
             // broadcast payment transaction
             var (txId, error) = await api
@@ -99,7 +97,7 @@ namespace Atomex.Swaps.BitcoinBased
             if (error != null)
             {
                 Log.Error("Error while broadcast {@currency} transaction. Code: {@code}. Message: {@message}",
-                    currency.Name,
+                    Currency,
                     error.Value.Code,
                     error.Value.Message);
 
@@ -113,7 +111,7 @@ namespace Atomex.Swaps.BitcoinBased
                 .ConfigureAwait(false);
 
             Log.Debug("{@currency} payment txId {@id} for swap {@swap}",
-                currency.Name,
+                Currency,
                 txId,
                 swap.Id);
 
@@ -208,7 +206,12 @@ namespace Atomex.Swaps.BitcoinBased
                 }
 
                 var (existsRedeemTx, existsRedeemTxError) = await TransactionsHelper
-                    .TryFindTransaction<BitcoinTransaction>(swap.RedeemTxId, Currency, _account.LocalStorage, Config.BlockchainApi, cancellationToken)
+                    .TryFindTransaction<BitcoinTransaction>(
+                        txId: swap.RedeemTxId,
+                        currency: Currency,
+                        localStorage: _account.LocalStorage,
+                        blockchainApi: Config.GetBlockchainApi(),
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (existsRedeemTxError == null && existsRedeemTx != null)
@@ -411,7 +414,12 @@ namespace Atomex.Swaps.BitcoinBased
                 .ToBytes();
 
             var (paymentTx, paymentTxFindError) = await TransactionsHelper
-                .TryFindTransaction<BitcoinTransaction>(swap.PaymentTxId, Currency, _account.LocalStorage, Config.BlockchainApi, cancellationToken)
+                .TryFindTransaction<BitcoinTransaction>(
+                    txId: swap.PaymentTxId,
+                    currency: Currency,
+                    localStorage: _account.LocalStorage,
+                    blockchainApi: Config.GetBlockchainApi(),
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (paymentTxFindError != null || paymentTx == null)
@@ -442,7 +450,7 @@ namespace Atomex.Swaps.BitcoinBased
                 .ConfigureAwait(false);
 
             _ = refundTx.ForceBroadcast(
-                blockchainApi: Config.BlockchainApi as BitcoinBlockchainApi,
+                blockchainApi: Config.GetBitcoinBlockchainApi(),
                 swap: swap,
                 interval: ForceRefundInterval,
                 completionHandler: RefundBroadcastEventHandler,
@@ -463,7 +471,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             _ = Task.Run(() => BitcoinBasedSwapSpentHelper.StartSwapSpentControlAsync(
                 swap: swap,
-                currency: Config,
+                currencyConfig: Config,
                 localStorage: _account.LocalStorage,
                 refundTimeUtc: swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds),
                 interval: OutputSpentCheckInterval,
@@ -530,9 +538,7 @@ namespace Atomex.Swaps.BitcoinBased
             BitcoinTransaction redeemTx,
             CancellationToken cancellationToken = default)
         {
-            var currency = Currencies.GetByName(swap.PurchasedCurrency);
-
-            var api = (BitcoinBlockchainApi)currency.BlockchainApi;
+            var api = Config.GetBitcoinBlockchainApi();
 
             var (txId, error) = await api
                 .BroadcastAsync(redeemTx, cancellationToken: cancellationToken)
@@ -863,7 +869,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             try
             {
-                var soldCurrency = Currencies.GetByName(swap.SoldCurrency);
+                //var soldCurrency = Currencies.GetByName(swap.SoldCurrency);
 
                 BitcoinTxInput spentTxInput = null;
                 var attempts = 0;
@@ -872,7 +878,8 @@ namespace Atomex.Swaps.BitcoinBased
                 {
                     attempts++;
 
-                    var (input, error) = await ((BitcoinBlockchainApi)soldCurrency.BlockchainApi)
+                    var (input, error) = await Config
+                        .GetBitcoinBlockchainApi()
                         .GetInputAsync(spentPoint.Hash, spentPoint.Index, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
@@ -911,9 +918,10 @@ namespace Atomex.Swaps.BitcoinBased
                 }
                 else if (spentTxInput.IsRefund())
                 {
-                    var (spentTx, error) = await soldCurrency.BlockchainApi
-                         .GetTransactionAsync(spentPoint.Hash)
-                         .ConfigureAwait(false);
+                    var (spentTx, error) = await Config
+                        .GetBlockchainApi()
+                        .GetTransactionAsync(spentPoint.Hash)
+                        .ConfigureAwait(false);
 
                     if (error == null && spentTx != null && spentTx.IsConfirmed)
                         await RefundConfirmedEventHandler(swap, cancellationToken)
