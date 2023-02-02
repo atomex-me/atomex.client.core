@@ -10,6 +10,7 @@ namespace Atomex.Common.Bson
                 ? JObject.Parse(bsonValue.AsString)
                 : null;
 
-        public override BsonValue Serialize(JObject o) => o?.ToString();
+        public override BsonValue Serialize(JObject o) =>
+            o?.ToString();
     }
 }

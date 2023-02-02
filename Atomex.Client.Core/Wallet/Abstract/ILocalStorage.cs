@@ -110,25 +110,53 @@ namespace Atomex.Wallet.Abstract
             bool notifyIfNewOrChanged = false,
             CancellationToken cancellationToken = default);
 
-        Task<T> GetTransactionByIdAsync<T>(string currency, string txId)
+        Task<T> GetTransactionByIdAsync<T>(
+            string currency,
+            string txId,
+            CancellationToken cancellationToken = default)
             where T : ITransaction;
 
         Task<ITransaction> GetTransactionByIdAsync(
             string currency,
             string txId,
-            Type transactionType);
+            Type transactionType,
+            CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
+        Task<IEnumerable<T>> GetTransactionsAsync<T>(
+            string currency,
+            CancellationToken cancellationToken = default)
             where T : ITransaction;
 
         Task<IEnumerable<ITransaction>> GetTransactionsAsync(
             string currency,
-            Type transactionType);
+            Type transactionType,
+            CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(string currency)
+        Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(
+            string currency,
+            CancellationToken cancellationToken = default)
             where T : ITransaction;
 
-        Task<bool> RemoveTransactionByIdAsync(string id);
+        Task<bool> RemoveTransactionByIdAsync(
+            string id,
+            CancellationToken cancellationToken = default);
+
+        Task<bool> UpsertTransactionsMetadataAsync(
+            IEnumerable<ITransactionMetadata> metadata,
+            bool notifyIfNewOrChanged = false,
+            CancellationToken cancellationToken = default);
+
+        Task<T> GetTransactionMetadataByIdAsync<T>(
+            string currency,
+            string txId,
+            CancellationToken cancellationToken = default)
+            where T : ITransactionMetadata;
+
+        Task<ITransactionMetadata> GetTransactionMetadataByIdAsync(
+            string currency,
+            string txId,
+            Type type,
+            CancellationToken cancellationToken = default);
 
         #endregion Transactions
 
@@ -137,21 +165,32 @@ namespace Atomex.Wallet.Abstract
         Task<bool> UpsertOutputsAsync(
             IEnumerable<BitcoinTxOutput> outputs,
             string currency,
-            NBitcoin.Network network);
-
-        Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(
-            string currency);
+            NBitcoin.Network network,
+            CancellationToken cancellationToken = default);
 
         Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(
             string currency,
-            string address);
+            CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(
-            string currency);
+        Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(
+            string currency,
+            string address,
+            CancellationToken cancellationToken = default);
 
         Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(
             string currency,
-            string address);
+            CancellationToken cancellationToken = default);
+
+        Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(
+            string currency,
+            string address,
+            CancellationToken cancellationToken = default);
+
+        Task<BitcoinTxOutput> GetOutputAsync(
+            string currency,
+            string txId,
+            uint index,
+            CancellationToken cancellationToken = default);
 
         #endregion Outputs
 
@@ -195,6 +234,10 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<Swap>> GetSwapsAsync(
             int offset = 0,
             int limit = int.MaxValue,
+            CancellationToken cancellationToken = default);
+
+        Task<Swap> GetSwapByPaymentTxIdAsync(
+            string txId,
             CancellationToken cancellationToken = default);
 
         #endregion Swaps

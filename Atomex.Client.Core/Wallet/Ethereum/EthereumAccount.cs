@@ -155,7 +155,7 @@ namespace Atomex.Wallet.Ethereum
 
             Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
-            var tx = new EthereumTransaction(txRequest, type: TransactionType.Output);
+            var tx = new EthereumTransaction(txRequest);
 
             await LocalStorage
                 .UpsertTransactionAsync(
@@ -439,36 +439,33 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
         }
 
-        public override async Task ResolveTransactionsTypesAsync(
+        public override async Task ResolveTransactionsMetadataAsync(
             IEnumerable<ITransaction> txs,
             CancellationToken cancellationToken = default)
         {
-            var resolved = new List<ITransaction>();
+            var resolvedMetadata = new List<ITransactionMetadata>();
 
             foreach (var tx in txs.Cast<EthereumTransaction>())
             {
-                if (tx.IsTypeResolved)
-                    continue;
-
-                await ResolveTransactionTypeAsync(tx, cancellationToken)
+                var metadata = await ResolveTransactionMetadataAsync(tx, cancellationToken)
                     .ConfigureAwait(false);
 
-                resolved.Add(tx);
+                resolvedMetadata.Add(metadata);
             }
 
             await LocalStorage
-                .UpsertTransactionsAsync(
-                    txs,
+                .UpsertTransactionsMetadataAsync(
+                    resolvedMetadata,
                     notifyIfNewOrChanged: true,
                     cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        private async Task ResolveTransactionTypeAsync(
+        public async Task<EthereumTransactionMetadata> ResolveTransactionMetadataAsync(
             EthereumTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            tx.Type = TransactionType.Unknown;
+            var result = new EthereumTransactionMetadata { Id = tx.Id };
 
             var fromAddress = await GetAddressAsync(tx.From, cancellationToken)
                 .ConfigureAwait(false);
@@ -476,7 +473,10 @@ namespace Atomex.Wallet.Ethereum
             var isFromSelf = fromAddress != null;
 
             if (isFromSelf)
-                tx.Type |= TransactionType.Output;
+            {
+                result.Type |= TransactionType.Output;
+                result.Amount -= tx.Amount + tx.GasUsed * tx.GasPrice;
+            }
 
             var toAddress = await GetAddressAsync(tx.To, cancellationToken)
                .ConfigureAwait(false);
@@ -484,23 +484,28 @@ namespace Atomex.Wallet.Ethereum
             var isToSelf = toAddress != null;
 
             if (isToSelf)
-                tx.Type |= TransactionType.Input;
+            {
+                result.Type |= TransactionType.Input;
+                result.Amount += tx.Amount;
+            }
 
             if (tx.Data == null)
-                return;
+                return result;
 
-            tx.Type |= TransactionType.ContractCall;
+            result.Type |= TransactionType.ContractCall;
 
             if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<InitiateMessage>()))
-                tx.Type |= TransactionType.SwapPayment;
+                result.Type |= TransactionType.SwapPayment;
             else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RedeemMessage>()))
-                tx.Type |= TransactionType.SwapRedeem;
+                result.Type |= TransactionType.SwapRedeem;
             else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RefundMessage>()))
-                tx.Type |= TransactionType.SwapRefund;
+                result.Type |= TransactionType.SwapRefund;
             else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferMessage>()))
-                tx.Type |= TransactionType.TokenTransfer;
+                result.Type |= TransactionType.TokenTransfer;
             else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveMessage>()))
-                tx.Type |= TransactionType.TokenApprove;
+                result.Type |= TransactionType.TokenApprove;
+
+            return result;
         }
 
         #endregion Transactions

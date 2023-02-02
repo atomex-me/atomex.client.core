@@ -48,7 +48,7 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<ITransaction>> GetUnconfirmedTransactionsAsync(
             CancellationToken cancellationToken = default);
 
-        Task ResolveTransactionsTypesAsync(
+        Task ResolveTransactionsMetadataAsync(
             IEnumerable<ITransaction> txs,
             CancellationToken cancellationToken = default);
 

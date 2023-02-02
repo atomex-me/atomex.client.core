@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Numerics;
 
 using Atomex.Blockchain.Abstract;
-using TransactionType = Atomex.Blockchain.Abstract.TransactionType;
 
 namespace Atomex.Blockchain.Ethereum
 {
@@ -27,13 +26,11 @@ namespace Atomex.Blockchain.Ethereum
         public string Id { get; set; }
         public string Currency { get; set; }
         public TransactionStatus Status { get; set; }
-        public TransactionType Type { get; set; }
         public DateTimeOffset? CreationTime { get; set; }
         public DateTimeOffset? BlockTime { get; set; }
         public long BlockHeight { get; set; }
         public long Confirmations { get; set; }
         public bool IsConfirmed => Confirmations > 0;
-        public bool IsTypeResolved => Type != TransactionType.Unknown;
 
         public string From { get; set; }
         public string To { get; set; }
@@ -52,11 +49,10 @@ namespace Atomex.Blockchain.Ethereum
             
         }
 
-        public EthereumTransaction(EthereumTransactionRequest txRequest, TransactionType type = TransactionType.Output)
+        public EthereumTransaction(EthereumTransactionRequest txRequest)
         {
             Currency     = EthereumHelper.Eth;
             Status       = TransactionStatus.Pending;
-            Type         = type;
             CreationTime = DateTimeOffset.UtcNow;
 
             From     = txRequest.From.ToLowerInvariant();

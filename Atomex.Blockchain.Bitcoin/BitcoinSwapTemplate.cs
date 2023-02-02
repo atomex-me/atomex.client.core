@@ -147,23 +147,30 @@ namespace Atomex.Blockchain.Bitcoin
         /// <returns>True if <paramref name="script"/> is a P2PKH atomic swap payment script, otherwise false</returns>
         public static bool IsP2PkhSwapPayment(Script script)
         {
-            var ops = script.ToOps().ToList();
+            try
+            {
+                var ops = script.ToOps().ToList();
 
-            if (ops.Count != 16)
+                if (ops.Count != 16)
+                    return false;
+
+                return ops[0].Code == OpcodeType.OP_IF &&
+                       ops[1].Code == OpcodeType.OP_2 &&
+                       ops[4].Code == OpcodeType.OP_2 &&
+                       ops[5].Code == OpcodeType.OP_CHECKMULTISIG &&
+                       ops[6].Code == OpcodeType.OP_ELSE &&
+                       IsSwapHash(ops[7].Code) && //ops[7].Code == OpcodeType.OP_SHA256
+                       ops[9].Code == OpcodeType.OP_EQUALVERIFY &&
+                       ops[10].Code == OpcodeType.OP_DUP &&
+                       ops[11].Code == OpcodeType.OP_HASH160 &&
+                       ops[13].Code == OpcodeType.OP_EQUALVERIFY &&
+                       ops[14].Code == OpcodeType.OP_CHECKSIG &&
+                       ops[15].Code == OpcodeType.OP_ENDIF;
+            }
+            catch
+            {
                 return false;
-
-            return ops[0].Code == OpcodeType.OP_IF &&
-                   ops[1].Code == OpcodeType.OP_2 &&
-                   ops[4].Code == OpcodeType.OP_2 &&
-                   ops[5].Code == OpcodeType.OP_CHECKMULTISIG &&
-                   ops[6].Code == OpcodeType.OP_ELSE &&
-                   IsSwapHash(ops[7].Code) && //ops[7].Code == OpcodeType.OP_SHA256
-                   ops[9].Code == OpcodeType.OP_EQUALVERIFY &&
-                   ops[10].Code == OpcodeType.OP_DUP &&
-                   ops[11].Code == OpcodeType.OP_HASH160 &&
-                   ops[13].Code == OpcodeType.OP_EQUALVERIFY &&
-                   ops[14].Code == OpcodeType.OP_CHECKSIG &&
-                   ops[15].Code == OpcodeType.OP_ENDIF;
+            }
         }
 
         /// <summary>
@@ -173,28 +180,35 @@ namespace Atomex.Blockchain.Bitcoin
         /// <returns>True if <paramref name="script"/> is HTCL atomic swap payment script, otherwise false</returns>
         public static bool IsHtlcP2PkhSwapPayment(Script script)
         {
-            var ops = script.ToOps().ToList();
+            try
+            {
+                var ops = script.ToOps().ToList();
 
-            if (ops.Count != 22)
+                if (ops.Count != 22)
+                    return false;
+
+                return ops[0].Code == OpcodeType.OP_IF &&
+                       ops[2].Code == OpcodeType.OP_CHECKLOCKTIMEVERIFY &&
+                       ops[3].Code == OpcodeType.OP_DROP &&
+                       ops[4].Code == OpcodeType.OP_DUP &&
+                       ops[5].Code == OpcodeType.OP_HASH160 &&
+                       ops[7].Code == OpcodeType.OP_EQUALVERIFY &&
+                       ops[8].Code == OpcodeType.OP_CHECKSIG &&
+                       ops[9].Code == OpcodeType.OP_ELSE &&
+                       ops[10].Code == OpcodeType.OP_SIZE &&
+                       ops[12].Code == OpcodeType.OP_EQUALVERIFY &&
+                       IsSwapHash(ops[13].Code) &&
+                       ops[15].Code == OpcodeType.OP_EQUALVERIFY &&
+                       ops[16].Code == OpcodeType.OP_DUP &&
+                       ops[17].Code == OpcodeType.OP_HASH160 &&
+                       ops[19].Code == OpcodeType.OP_EQUALVERIFY &&
+                       ops[20].Code == OpcodeType.OP_CHECKSIG &&
+                       ops[21].Code == OpcodeType.OP_ENDIF;
+            }
+            catch
+            {
                 return false;
-
-            return ops[0].Code == OpcodeType.OP_IF &&
-                   ops[2].Code == OpcodeType.OP_CHECKLOCKTIMEVERIFY &&
-                   ops[3].Code == OpcodeType.OP_DROP &&
-                   ops[4].Code == OpcodeType.OP_DUP &&
-                   ops[5].Code == OpcodeType.OP_HASH160 &&
-                   ops[7].Code == OpcodeType.OP_EQUALVERIFY &&
-                   ops[8].Code == OpcodeType.OP_CHECKSIG &&
-                   ops[9].Code == OpcodeType.OP_ELSE &&
-                   ops[10].Code == OpcodeType.OP_SIZE &&
-                   ops[12].Code == OpcodeType.OP_EQUALVERIFY &&
-                   IsSwapHash(ops[13].Code) &&
-                   ops[15].Code == OpcodeType.OP_EQUALVERIFY &&
-                   ops[16].Code == OpcodeType.OP_DUP &&
-                   ops[17].Code == OpcodeType.OP_HASH160 &&
-                   ops[19].Code == OpcodeType.OP_EQUALVERIFY &&
-                   ops[20].Code == OpcodeType.OP_CHECKSIG &&
-                   ops[21].Code == OpcodeType.OP_ENDIF;
+            }
         }
 
         public static bool IsSwapHash(OpcodeType opcodeType) =>

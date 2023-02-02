@@ -8,17 +8,16 @@ using System.Threading.Tasks;
 using LiteDB;
 using Serilog;
 
-using Atomex.Abstract;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Common;
 using Atomex.Common.Bson;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet;
-using Atomex.Blockchain.Tezos.Tzkt;
-using Atomex.Blockchain;
 
 namespace Atomex.LiteDb
 {
@@ -27,6 +26,7 @@ namespace Atomex.LiteDb
         public const string OrdersCollectionName = "Orders";
         public const string SwapsCollectionName = "Swaps";
         public const string TransactionCollectionName = "Transactions";
+        public const string TransactionTypesCollectionName = "TransactionTypes";
         public const string OutputsCollectionName = "Outputs";
         public const string AddressesCollectionName = "Addresses";
         public const string TezosTokensAddresses = "TezosTokensAddresses";
@@ -94,7 +94,8 @@ namespace Atomex.LiteDb
         {
             return new BsonMapper()
                 .UseSerializer(new BigIntegerToBsonSerializer())
-                .UseSerializer(new JObjectToBsonSerializer());
+                .UseSerializer(new JObjectToBsonSerializer())
+                .UseSerializer(new CoinToBsonSerializer());
         }
 
         #region Addresses
@@ -258,7 +259,7 @@ namespace Atomex.LiteDb
 
                 var unspentAddresses = addresses
                     .Find(query)
-                    .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
+                    .Select(_bsonMapper.ToObject<WalletAddress>)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<WalletAddress>>(unspentAddresses);
@@ -280,7 +281,7 @@ namespace Atomex.LiteDb
 
                 var unspentAddresses = addresses
                     .Find(Query.EQ(CurrencyKey, currency))
-                    .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
+                    .Select(_bsonMapper.ToObject<WalletAddress>)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<WalletAddress>>(unspentAddresses);
@@ -331,7 +332,7 @@ namespace Atomex.LiteDb
 
                 var addresses = tezosTokenAddresses
                     .FindAll()
-                    .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
+                    .Select(_bsonMapper.ToObject<WalletAddress>)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
@@ -356,7 +357,7 @@ namespace Atomex.LiteDb
                     .Find(Query.And(
                         Query.EQ(AddressKey, address),
                         Query.EQ(TokenContractKey, tokenContract)))
-                    .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
+                    .Select(_bsonMapper.ToObject<WalletAddress>)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
@@ -378,7 +379,7 @@ namespace Atomex.LiteDb
 
                 var addresses = tezosTokenAddresses
                     .Find(Query.EQ(TokenContractKey, tokenContract))
-                    .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
+                    .Select(_bsonMapper.ToObject<WalletAddress>)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
@@ -440,7 +441,7 @@ namespace Atomex.LiteDb
 
                 var unspentAddresses = addresses
                     .Find(query)
-                    .Select(d => _bsonMapper.ToObject<WalletAddress>(d))
+                    .Select(_bsonMapper.ToObject<WalletAddress>)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<WalletAddress>>(unspentAddresses);
@@ -484,7 +485,7 @@ namespace Atomex.LiteDb
             {
                 var transfers = _db.GetCollection(TezosTokensTransfers)
                     .Find(Query.EQ(TransferContract, contractAddress), skip: offset, limit: limit)
-                    .Select(d => _bsonMapper.ToObject<TezosTokenTransfer>(d))
+                    .Select(_bsonMapper.ToObject<TezosTokenTransfer>)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<TezosTokenTransfer>>(transfers);
@@ -636,16 +637,18 @@ namespace Atomex.LiteDb
 
         public async Task<T> GetTransactionByIdAsync<T>(
             string currency,
-            string txId) where T : ITransaction
+            string txId,
+            CancellationToken cancellationToken = default) where T : ITransaction
         {
-            return (T)await GetTransactionByIdAsync(currency, txId, typeof(T))
+            return (T)await GetTransactionByIdAsync(currency, txId, typeof(T), cancellationToken)
                 .ConfigureAwait(false);
         }
 
         public Task<ITransaction> GetTransactionByIdAsync(
             string currency,
             string txId,
-            Type transactionType)
+            Type transactionType,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -670,7 +673,8 @@ namespace Atomex.LiteDb
 
         public Task<IEnumerable<ITransaction>> GetTransactionsAsync(
             string currency,
-            Type transactionType)
+            Type transactionType,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -689,14 +693,16 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<ITransaction>());
         }
 
-        public Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
+        public Task<IEnumerable<T>> GetTransactionsAsync<T>(
+            string currency,
+            CancellationToken cancellationToken = default)
              where T : ITransaction
         {
             try
             {
                 var transactions = _db.GetCollection(TransactionCollectionName)
                     .Find(Query.EQ(CurrencyKey, currency))
-                    .Select(d => _bsonMapper.ToObject<T>(d))
+                    .Select(_bsonMapper.ToObject<T>)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<T>>(transactions);
@@ -710,7 +716,8 @@ namespace Atomex.LiteDb
         }
 
         public async Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(
-            string currency) where T : ITransaction
+            string currency,
+            CancellationToken cancellationToken = default) where T : ITransaction
         {
             var transactions = await GetTransactionsAsync<T>(currency)
                 .ConfigureAwait(false);
@@ -718,7 +725,9 @@ namespace Atomex.LiteDb
             return transactions.Where(t => !t.IsConfirmed);
         }
 
-        public Task<bool> RemoveTransactionByIdAsync(string id)
+        public Task<bool> RemoveTransactionByIdAsync(
+            string id,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -733,6 +742,67 @@ namespace Atomex.LiteDb
             return Task.FromResult(false);
         }
 
+        public Task<bool> UpsertTransactionsMetadataAsync(
+            IEnumerable<ITransactionMetadata> types,
+            bool notifyIfNewOrChanged = false,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var transactionTypes = _db.GetCollection(TransactionTypesCollectionName);
+                transactionTypes.EnsureIndex(CurrencyKey);
+
+                var upsertResult = transactionTypes.Upsert(types.Select(t => _bsonMapper.ToDocument(t)));
+
+                // todo: notify if add or changed
+
+                return Task.FromResult(true);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error adding transaction types");
+            }
+
+            return Task.FromResult(false);
+        }
+
+        public async Task<T> GetTransactionMetadataByIdAsync<T>(
+            string currency,
+            string txId,
+            CancellationToken cancellationToken = default)
+            where T : ITransactionMetadata
+        {
+            return (T)await GetTransactionMetadataByIdAsync(currency, txId, typeof(T), cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        public Task<ITransactionMetadata> GetTransactionMetadataByIdAsync(
+            string currency,
+            string txId,
+            Type type,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var document = _db
+                    .GetCollection(TransactionTypesCollectionName)
+                    .FindById($"{txId}:{currency}");
+
+                if (document != null)
+                {
+                    var txType = (ITransactionMetadata)_bsonMapper.ToObject(type, document);
+
+                    return Task.FromResult(txType);
+                }
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error getting transaction type by id");
+            }
+
+            return Task.FromResult<ITransactionMetadata>(default);
+        }
+
         #endregion Transactions
 
         #region Outputs
@@ -740,7 +810,8 @@ namespace Atomex.LiteDb
         public Task<bool> UpsertOutputsAsync(
             IEnumerable<BitcoinTxOutput> outputs,
             string currency,
-            NBitcoin.Network network)
+            NBitcoin.Network network,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -768,56 +839,35 @@ namespace Atomex.LiteDb
         }
 
         public async Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(
-            string currency)
+            string currency,
+            CancellationToken cancellationToken = default)
         {
             return (await GetOutputsAsync(currency)
                 .ConfigureAwait(false))
                 .Where(o => !o.IsSpent)
                 .ToList();
-
-            //return await GetOnlyConfirmedOutputsAsync(currency, outputs, transactionType)
-            //    .ConfigureAwait(false);
         }
 
         public async Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(
             string currency,
-            string address)
+            string address,
+            CancellationToken cancellationToken = default)
         {
-            return (await GetOutputsAsync(currency, address)
+            return (await GetOutputsAsync(currency, address, cancellationToken)
                 .ConfigureAwait(false))
                 .Where(o => !o.IsSpent)
                 .ToList();
-
-            //return await GetOnlyConfirmedOutputsAsync(currency, outputs, transactionType)
-            //    .ConfigureAwait(false);
         }
 
-        //private async Task<IEnumerable<BitcoinBasedTxOutput>> GetOnlyConfirmedOutputsAsync(
-        //    string currency,
-        //    IEnumerable<BitcoinBasedTxOutput> outputs,
-        //    Type transactionType)
-        //{
-        //    var confirmedOutputs = new List<BitcoinBasedTxOutput>();
-
-        //    foreach (var o in outputs)
-        //    {
-        //        var tx = await GetTransactionByIdAsync(currency, o.TxId, transactionType)
-        //            .ConfigureAwait(false);
-
-        //        if (tx?.IsConfirmed ?? false)
-        //            confirmedOutputs.Add(o);
-        //    }
-
-        //    return confirmedOutputs;
-        //}
-
-        public Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(string currency)
+        public Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(
+            string currency,
+            CancellationToken cancellationToken = default)
         {
             try
             {
                 var outputs = _db.GetCollection(OutputsCollectionName)
                     .Find(Query.EQ(CurrencyKey, currency))
-                    .Select(d => _bsonMapper.ToObject<BitcoinTxOutput>(d))
+                    .Select(_bsonMapper.ToObject<BitcoinTxOutput>)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<BitcoinTxOutput>>(outputs);
@@ -832,7 +882,8 @@ namespace Atomex.LiteDb
 
         public Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(
             string currency,
-            string address)
+            string address,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -841,7 +892,7 @@ namespace Atomex.LiteDb
                     .Find(Query.And(
                         left: Query.EQ(CurrencyKey, currency),
                         right: Query.EQ(AddressKey, address)))
-                    .Select(d => _bsonMapper.ToObject<BitcoinTxOutput>(d))
+                    .Select(_bsonMapper.ToObject<BitcoinTxOutput>)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<BitcoinTxOutput>>(outputs);
@@ -852,6 +903,36 @@ namespace Atomex.LiteDb
             }
 
             return Task.FromResult(Enumerable.Empty<BitcoinTxOutput>());
+        }
+
+        public Task<BitcoinTxOutput> GetOutputAsync(
+            string currency,
+            string txId,
+            uint index,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var outputDocument = _db
+                    .GetCollection(OutputsCollectionName)
+                    .Find(Query.And(
+                        Query.EQ(CurrencyKey, currency),
+                        Query.EQ("Coin.OutputHash", txId),
+                        Query.EQ("Coin.OutputIndex", (int)index)))
+                    .FirstOrDefault();
+
+                var output = outputDocument != null
+                    ? _bsonMapper.ToObject<BitcoinTxOutput>(outputDocument)
+                    : null;
+
+                return Task.FromResult(output);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error getting output");
+            }
+
+            return Task.FromResult<BitcoinTxOutput>(null);
         }
 
         #endregion Outputs
@@ -1061,6 +1142,26 @@ namespace Atomex.LiteDb
             }
 
             return Task.FromResult(Enumerable.Empty<Swap>());
+        }
+
+        public Task<Swap> GetSwapByPaymentTxIdAsync(
+            string txId,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var swap = _db
+                    .GetCollection<Swap>(SwapsCollectionName)
+                    .FindOne(Query.EQ("PaymentTxId", txId));
+
+                return Task.FromResult(swap);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Get swap by payment tx id error");
+            }
+
+            return Task.FromResult<Swap>(null);
         }
 
         #endregion Swaps

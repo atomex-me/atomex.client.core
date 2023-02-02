@@ -18,15 +18,13 @@ namespace Atomex.Blockchain.Bitcoin
         public string Id => _tx.GetHash().ToString();
         public string Currency { get; }
         public TransactionStatus Status { get; set; }
-        public TransactionType Type { get; set; }
         public DateTimeOffset? CreationTime { get; }
         public DateTimeOffset? BlockTime { get; }
         public long BlockHeight { get; }
         public long Confirmations { get; }
         public bool IsConfirmed => Confirmations > 0;
-        public bool IsTypeResolved => Type != TransactionType.Unknown;
         public DateTime LockTime => _tx.LockTime.Date.UtcDateTime;
-        public BigInteger ResolvedAmount { get; set; }
+        //public BigInteger ResolvedAmount { get; set; }
         public BigInteger ResolvedFee { get; }
         public BitcoinTxInput[] Inputs => _tx.Inputs
             .AsIndexedInputs()

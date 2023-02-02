@@ -613,8 +613,6 @@ namespace Atomex.Swaps.BitcoinBased
                     code: Errors.TransactionCreationError,
                     description: $"Payment tx creation error for swap {swap.Id}");
 
-            tx.Type = TransactionType.Output | TransactionType.SwapPayment;
-
             Log.Debug("Payment tx successfully created for swap {@swapId}", swap.Id);
 
             return tx;
@@ -652,8 +650,6 @@ namespace Atomex.Swaps.BitcoinBased
                 throw new InternalException(
                     code: Errors.TransactionCreationError,
                     description: $"Refund tx creation error for swap {swap.Id}");
-
-            tx.Type = TransactionType.Output | TransactionType.SwapRefund;
 
             Log.Debug("Refund tx successfully created for swap {@swapId}", swap.Id);
 
@@ -704,8 +700,6 @@ namespace Atomex.Swaps.BitcoinBased
                 throw new InternalException(
                     code: Errors.TransactionCreationError,
                     description: $"Redeem tx creation error for swap {swap.Id}");
-
-            tx.Type = TransactionType.Output | TransactionType.SwapRedeem;
 
             return tx;
         }

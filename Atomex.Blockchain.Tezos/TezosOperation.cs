@@ -13,17 +13,11 @@ namespace Atomex.Blockchain.Tezos
         public string Id { get; set; }
         public string Currency { get; set; }
         public TransactionStatus Status { get; set; }
-        public TransactionType Type => OperationTypes != null
-            ? OperationTypes.Aggregate(TransactionType.Unknown, (s, t) => s |= t)
-            : TransactionType.Unknown;
         public DateTimeOffset? CreationTime { get; set; }
         public DateTimeOffset? BlockTime { get; set; }
         public long BlockHeight { get; set; }
         public long Confirmations { get; set; }
         public bool IsConfirmed => Confirmations > 0;
-        public bool IsTypeResolved => OperationTypes
-            .ToList()
-            .TrueForAll(t => t != TransactionType.Unknown);
         public string? From => Operations.FirstOrDefault()?.Sender?.Address;
 
         public IEnumerable<Operation> Operations { get; }

@@ -552,47 +552,49 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
         }
 
-        public override async Task ResolveTransactionsTypesAsync(
+        public override async Task ResolveTransactionsMetadataAsync(
             IEnumerable<ITransaction> txs,
             CancellationToken cancellationToken = default)
         {
-            var resolved = new List<ITransaction>();
+            var resolvedMetadata = new List<ITransactionMetadata>();
 
             foreach (var tx in txs.Cast<TezosOperation>())
             {
-                if (tx.IsTypeResolved)
-                    continue;
-
-                await ResolveTransactionTypeAsync(tx, cancellationToken)
+                var metadata = await ResolveTransactionMetadataAsync(tx, cancellationToken)
                     .ConfigureAwait(false);
 
-                resolved.Add(tx);
+                resolvedMetadata.Add(metadata);
             }
 
             await LocalStorage
-                .UpsertTransactionsAsync(
-                    txs,
+                .UpsertTransactionsMetadataAsync(
+                    resolvedMetadata,
                     notifyIfNewOrChanged: true,
                     cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        private async Task ResolveTransactionTypeAsync(
+        public async Task<TezosOperationMetadata> ResolveTransactionMetadataAsync(
             TezosOperation operation,
             CancellationToken cancellationToken = default)
         {
+            var result = new TezosOperationMetadata
+            {
+                Id = operation.Id,
+                OperationsTypes = new List<TransactionType>()
+            };
+
             var fromAddress = await GetAddressAsync(operation.From, cancellationToken)
                 .ConfigureAwait(false);
-
-            var i = 0;
-            var operationTypes = new List<TransactionType>();
 
             var isFromSelf = fromAddress != null;
 
             foreach (var o in operation.Operations)
             {
+                var operationType = TransactionType.Unknown;
+
                 if (isFromSelf)
-                    operationTypes[i] |= TransactionType.Output;
+                    operationType |= TransactionType.Output;
 
                 if (o is TransactionOperation tx)
                 {
@@ -602,33 +604,39 @@ namespace Atomex.Wallet.Tezos
                     var isToSelf = toAddress != null;
 
                     if (isToSelf)
-                        operationTypes[i] |= TransactionType.Input;
+                    {
+                        operationType |= TransactionType.Input;
+                        result.Amount += tx.Amount;
+                    }
 
-                    if (tx.Parameter == null)
-                        continue;
+                    if (isFromSelf)
+                        result.Amount -= tx.Amount + tx.BakerFee + tx.AllocationFee + tx.StorageFee;
 
-                    operationTypes[i] |= TransactionType.ContractCall;
+                    if (tx.Parameter != null)
+                    {
+                        operationType |= TransactionType.ContractCall;
 
-                    if (tx.Parameter.Entrypoint == "initiate")
-                        operationTypes[i] |= TransactionType.SwapPayment;
-                    else if (tx.Parameter.Entrypoint == "redeem")
-                        operationTypes[i] |= TransactionType.SwapRedeem;
-                    else if (tx.Parameter.Entrypoint == "refund")
-                        operationTypes[i] |= TransactionType.SwapRefund;
-                    else if (tx.Parameter.Entrypoint == "transfer")
-                        operationTypes[i] |= TransactionType.TokenTransfer;
-                    else if (tx.Parameter.Entrypoint == "approve" || tx.Parameter.Entrypoint == "update_operators")
-                        operationTypes[i] |= TransactionType.TokenApprove;
+                        if (tx.Parameter.Entrypoint == "initiate")
+                            operationType |= TransactionType.SwapPayment;
+                        else if (tx.Parameter.Entrypoint == "redeem")
+                            operationType |= TransactionType.SwapRedeem;
+                        else if (tx.Parameter.Entrypoint == "refund")
+                            operationType |= TransactionType.SwapRefund;
+                        else if (tx.Parameter.Entrypoint == "transfer")
+                            operationType |= TransactionType.TokenTransfer;
+                        else if (tx.Parameter.Entrypoint == "approve" || tx.Parameter.Entrypoint == "update_operators")
+                            operationType |= TransactionType.TokenApprove;
+                    }
                 }
                 else
                 {
                     // delegations, reveals and others
                 }
 
-                ++i;
+                result.OperationsTypes.Add(operationType);
             }
 
-            operation.OperationTypes = operationTypes;
+            return result;
         }
 
         #endregion Transactions

@@ -9,10 +9,10 @@ using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet;
-using Atomex.Blockchain.Tezos.Tzkt;
 
 namespace Atomex.LiteDb
 {
@@ -300,41 +300,100 @@ namespace Atomex.LiteDb
 
         public Task<T> GetTransactionByIdAsync<T>(
             string currency,
-            string txId) where T : ITransaction
+            string txId,
+            CancellationToken cancellationToken = default) where T : ITransaction
         {
-            return _liteDbLocalStorage.GetTransactionByIdAsync<T>(currency, txId);
+            return _liteDbLocalStorage.GetTransactionByIdAsync<T>(
+                currency,
+                txId,
+                cancellationToken);
         }
 
         public Task<ITransaction> GetTransactionByIdAsync(
             string currency,
             string txId,
-            Type transactionType)
+            Type transactionType,
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetTransactionByIdAsync(currency, txId, transactionType);
+            return _liteDbLocalStorage.GetTransactionByIdAsync(
+                currency,
+                txId,
+                transactionType,
+                cancellationToken);
         }
 
-        public Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
+        public Task<IEnumerable<T>> GetTransactionsAsync<T>(
+            string currency,
+            CancellationToken cancellationToken = default)
              where T : ITransaction
         {
-            return _liteDbLocalStorage.GetTransactionsAsync<T>(currency);
+            return _liteDbLocalStorage.GetTransactionsAsync<T>(
+                currency,
+                cancellationToken);
         }
 
         public Task<IEnumerable<ITransaction>> GetTransactionsAsync(
             string currency,
-            Type transactionType)
+            Type transactionType,
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetTransactionsAsync(currency, transactionType);
+            return _liteDbLocalStorage.GetTransactionsAsync(
+                currency,
+                transactionType,
+                cancellationToken);
         }
 
         public Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(
-            string currency) where T : ITransaction
+            string currency,
+            CancellationToken cancellationToken = default) where T : ITransaction
         {
-            return _liteDbLocalStorage.GetUnconfirmedTransactionsAsync<T>(currency);
+            return _liteDbLocalStorage.GetUnconfirmedTransactionsAsync<T>(
+                currency,
+                cancellationToken);
         }
 
-        public Task<bool> RemoveTransactionByIdAsync(string id)
+        public Task<bool> RemoveTransactionByIdAsync(
+            string id,
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.RemoveTransactionByIdAsync(id);
+            return _liteDbLocalStorage.RemoveTransactionByIdAsync(
+                id,
+                cancellationToken);
+        }
+
+        public Task<bool> UpsertTransactionsMetadataAsync(
+            IEnumerable<ITransactionMetadata> metadata,
+            bool notifyIfNewOrChanged = false,
+            CancellationToken cancellationToken = default)
+        {
+            return _liteDbLocalStorage.UpsertTransactionsMetadataAsync(
+                metadata,
+                notifyIfNewOrChanged,
+                cancellationToken);
+        }
+
+        public Task<T> GetTransactionMetadataByIdAsync<T>(
+            string currency,
+            string txId,
+            CancellationToken cancellationToken = default) where T : ITransactionMetadata
+        {
+            return _liteDbLocalStorage.GetTransactionMetadataByIdAsync<T>(
+                currency,
+                txId,
+                cancellationToken);
+        }
+
+        public Task<ITransactionMetadata> GetTransactionMetadataByIdAsync(
+            string currency,
+            string txId,
+            Type type, 
+            CancellationToken cancellationToken = default)
+        {
+            return _liteDbLocalStorage.GetTransactionMetadataByIdAsync(
+                currency,
+                txId,
+                type,
+                cancellationToken);
         }
 
         #endregion Transactions
@@ -344,33 +403,66 @@ namespace Atomex.LiteDb
         public Task<bool> UpsertOutputsAsync(
             IEnumerable<BitcoinTxOutput> outputs,
             string currency,
-            NBitcoin.Network network)
+            NBitcoin.Network network,
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.UpsertOutputsAsync(outputs, currency, network);
-        }
-
-        public Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(string currency)
-        {
-            return _liteDbLocalStorage.GetAvailableOutputsAsync(currency);
+            return _liteDbLocalStorage.UpsertOutputsAsync(
+                outputs,
+                currency,
+                network,
+                cancellationToken);
         }
 
         public Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(
             string currency,
-            string address)
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetAvailableOutputsAsync(currency, address);
+            return _liteDbLocalStorage.GetAvailableOutputsAsync(
+                currency,
+                cancellationToken);
         }
 
-        public Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(string currency)
+        public Task<IEnumerable<BitcoinTxOutput>> GetAvailableOutputsAsync(
+            string currency,
+            string address,
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetOutputsAsync(currency);
+            return _liteDbLocalStorage.GetAvailableOutputsAsync(
+                currency,
+                address,
+                cancellationToken);
         }
 
         public Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(
             string currency,
-            string address)
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetOutputsAsync(currency, address);
+            return _liteDbLocalStorage.GetOutputsAsync(
+                currency,
+                cancellationToken);
+        }
+
+        public Task<IEnumerable<BitcoinTxOutput>> GetOutputsAsync(
+            string currency,
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            return _liteDbLocalStorage.GetOutputsAsync(
+                currency, 
+                address,
+                cancellationToken);
+        }
+
+        public Task<BitcoinTxOutput> GetOutputAsync(
+            string currency,
+            string txId, uint index,
+            CancellationToken cancellationToken = default)
+        {
+            return _liteDbLocalStorage.GetOutputAsync(
+                currency,
+                txId,
+                index,
+                cancellationToken);
         }
 
         #endregion Outputs
@@ -451,6 +543,13 @@ namespace Atomex.LiteDb
             CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.GetSwapsAsync();
+        }
+
+        public Task<Swap> GetSwapByPaymentTxIdAsync(
+            string txId,
+            CancellationToken cancellationToken = default)
+        {
+            return _liteDbLocalStorage.GetSwapByPaymentTxIdAsync(txId, cancellationToken);
         }
 
         #endregion Swaps

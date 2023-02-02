@@ -113,7 +113,6 @@ namespace Atomex.Swaps.Ethereum
 
                         if (isPaymentTx)
                         {
-                            //swap.PaymentTx = tx;
                             swap.StateFlags |= SwapStateFlags.IsPaymentSigned;
 
                             await UpdateSwapAsync(swap, SwapStateFlags.IsPaymentSigned, cancellationToken)
@@ -123,7 +122,6 @@ namespace Atomex.Swaps.Ethereum
                         var txId = await BroadcastTxAsync(
                                 swap: swap,
                                 txRequest: txRequest,
-                                type: type,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
@@ -323,7 +321,6 @@ namespace Atomex.Swaps.Ethereum
                 txId = await BroadcastTxAsync(
                         swap,
                         txRequest,
-                        type: TransactionType.Output | TransactionType.SwapRedeem | TransactionType.ContractCall,
                         cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -438,7 +435,6 @@ namespace Atomex.Swaps.Ethereum
             var _ = await BroadcastTxAsync(
                     swap: swap,
                     txRequest: txRequest,
-                    type: TransactionType.Output | TransactionType.SwapRedeem | TransactionType.ContractCall,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
@@ -576,7 +572,6 @@ namespace Atomex.Swaps.Ethereum
                 txId = await BroadcastTxAsync(
                         swap,
                         txRequest,
-                        type: TransactionType.Output | TransactionType.SwapRefund | TransactionType.ContractCall,
                         cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -982,7 +977,6 @@ namespace Atomex.Swaps.Ethereum
         private async Task<string> BroadcastTxAsync(
             Swap swap,
             EthereumTransactionRequest txRequest,
-            TransactionType type,
             CancellationToken cancellationToken = default)
         {
             var api = EthConfig.GetEtherScanApi();
@@ -999,7 +993,7 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("TxId {@id} for swap {@swapId}", txId, swap.Id);
 
-            var tx = new EthereumTransaction(txRequest, type);
+            var tx = new EthereumTransaction(txRequest);
 
             await EthereumAccount
                 .LocalStorage

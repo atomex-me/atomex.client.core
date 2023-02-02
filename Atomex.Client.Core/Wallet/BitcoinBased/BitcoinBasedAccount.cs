@@ -476,79 +476,99 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public override async Task ResolveTransactionsTypesAsync(
+        public override async Task ResolveTransactionsMetadataAsync(
             IEnumerable<ITransaction> txs,
             CancellationToken cancellationToken = default)
         {
-            var resolved = new List<ITransaction>();
+            var resolvedMetadata = new List<ITransactionMetadata>();
 
             foreach (var tx in txs.Cast<BitcoinTransaction>())
             {
-                if (tx.IsTypeResolved)
-                    continue;
-
-                await ResolveTransactionTypeAsync(tx, cancellationToken)
+                var metadata = await ResolveTransactionMetadataAsync(tx, cancellationToken)
                     .ConfigureAwait(false);
 
-                resolved.Add(tx);
+                resolvedMetadata.Add(metadata);
             }
 
             await LocalStorage
-                .UpsertTransactionsAsync(
-                    txs,
+                .UpsertTransactionsMetadataAsync(
+                    resolvedMetadata,
                     notifyIfNewOrChanged: true,
                     cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        private async Task ResolveTransactionTypeAsync(
+        public async Task<BitcoinTransactionMetadata> ResolveTransactionMetadataAsync(
             BitcoinTransaction tx,
             CancellationToken cancellationToken = default)
         {
+            var result = new BitcoinTransactionMetadata
+            {
+                Id = tx.Id
+            };
+
+            BigInteger outputAmount = 0;
+            BigInteger inputAmount = 0;
+
             foreach (var i in tx.Inputs)
             {
+                var localInput = await LocalStorage
+                    .GetOutputAsync(
+                        currency: Currency,
+                        txId: i.PreviousOutput.Hash,
+                        index: i.PreviousOutput.Index,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
 
+                if (localInput != null)
+                {
+                    // sent value
+                    outputAmount += localInput.Value;
+                }
+                else if (i.IsRefund())
+                {
+                    result.Type |= TransactionType.SwapRefund;
+                }
+                else if (i.IsRedeem())
+                {
+                    result.Type |= TransactionType.SwapRedeem;
+                }
             }
 
-            foreach (var i in tx.Outputs)
+            foreach (var o in tx.Outputs)
             {
+                var address = o.DestinationAddress(Config.Network);
 
+                if (address == null)
+                    continue;
+
+                if (o.IsP2Sh)
+                {
+                    // pay to script (is it swap payment?)
+                    var swap = await LocalStorage
+                        .GetSwapByPaymentTxIdAsync(tx.Id, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (swap != null)
+                        result.Type |= TransactionType.SwapPayment;
+                }
+                else
+                {
+                    var localAddress = await GetAddressAsync(address, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (localAddress != null)
+                        inputAmount += o.Value;
+                }
             }
 
-            //throw new NotImplementedException();
-            //tx.Type = TransactionType.Unknown;
+            if (outputAmount > 0)
+                result.Type |= TransactionType.Output;
 
-            //var fromAddress = await GetAddressAsync(tx.From, cancellationToken)
-            //    .ConfigureAwait(false);
+            if (inputAmount > 0)
+                result.Type |= TransactionType.Input;
 
-            //var isFromSelf = fromAddress != null;
-
-            //if (isFromSelf)
-            //    tx.Type |= TransactionType.Output;
-
-            //var toAddress = await GetAddressAsync(tx.To, cancellationToken)
-            //   .ConfigureAwait(false);
-
-            //var isToSelf = toAddress != null;
-
-            //if (isToSelf)
-            //    tx.Type |= TransactionType.Input;
-
-            //if (tx.Data != null)
-            //{
-            //    tx.Type |= TransactionType.ContractCall;
-
-            //    if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<InitiateMessage>()))
-            //        tx.Type |= TransactionType.SwapPayment;
-            //    else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RedeemMessage>()))
-            //        tx.Type |= TransactionType.SwapRedeem;
-            //    else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RefundMessage>()))
-            //        tx.Type |= TransactionType.SwapRefund;
-            //    else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferMessage>()))
-            //        tx.Type |= TransactionType.TokenTransfer;
-            //    else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveMessage>()))
-            //        tx.Type |= TransactionType.TokenApprove;
-            //}
+            return result;
         }
 
         #endregion Transactions

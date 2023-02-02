@@ -322,7 +322,6 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                         From  = transfer["from"].Value<string>(),
                         To    = transfer["to"].Value<string>(),
                         Value = BigInteger.Parse(transfer["value"].Value<string>()),
-                        Type  = TransactionType.Unknown
                     };
 
                     var hash = transfer["hash"].Value<string>();

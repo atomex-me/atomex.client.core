@@ -155,9 +155,7 @@ namespace Atomex.Wallet.Ethereum
 
             Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
-            var tx = new EthereumTransaction(
-                txRequest,
-                type: TransactionType.Output | TransactionType.TokenTransfer | TransactionType.ContractCall);
+            var tx = new EthereumTransaction(txRequest);
 
             await LocalStorage
                 .UpsertTransactionAsync(
@@ -512,44 +510,52 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
         }
 
-        public override async Task ResolveTransactionsTypesAsync(
+        public override async Task ResolveTransactionsMetadataAsync(
             IEnumerable<ITransaction> txs,
             CancellationToken cancellationToken = default)
         {
-            var resolved = new List<ITransaction>();
+            var resolvedMetadata = new List<ITransactionMetadata>();
 
             foreach (var tx in txs.Cast<Erc20Transaction>())
             {
-                if (tx.IsTypeResolved)
-                    continue;
-
-                await ResolveTransactionTypeAsync(tx, cancellationToken)
+                var metadata = await ResolveTransactionMetadataAsync(tx, cancellationToken)
                     .ConfigureAwait(false);
 
-                resolved.Add(tx);
+                resolvedMetadata.Add(metadata);
             }
 
             await LocalStorage
-                .UpsertTransactionsAsync(
-                    txs,
+                .UpsertTransactionsMetadataAsync(
+                    resolvedMetadata,
                     notifyIfNewOrChanged: true,
                     cancellationToken)
                 .ConfigureAwait(false);
         }
 
-        private async Task ResolveTransactionTypeAsync(
+        public async Task<Erc20TransactionMetadata> ResolveTransactionMetadataAsync(
             Erc20Transaction tx,
             CancellationToken cancellationToken = default)
         {
+            var result = new Erc20TransactionMetadata()
+            {
+                Id = tx.Id,
+                TransfersTypes = new List<TransactionType>()
+            };
+
             foreach (var t in tx.Transfers)
             {
+                var transferType = TransactionType.Unknown;
+
                 var fromAddress = await GetAddressAsync(t.From, cancellationToken)
                     .ConfigureAwait(false);
 
                 var isFromSelf = fromAddress != null;
 
                 if (isFromSelf)
-                    t.Type |= TransactionType.Output;
+                {
+                    transferType |= TransactionType.Output;
+                    result.Amount -= t.Value;
+                }
 
                 var toAddress = await GetAddressAsync(t.To, cancellationToken)
                    .ConfigureAwait(false);
@@ -557,8 +563,15 @@ namespace Atomex.Wallet.Ethereum
                 var isToSelf = toAddress != null;
 
                 if (isToSelf)
-                    t.Type |= TransactionType.Input;
+                {
+                    transferType |= TransactionType.Input;
+                    result.Amount += t.Value;
+                }
+
+                result.TransfersTypes.Add(transferType);
             }
+
+            return result;
         }
 
         #endregion Transactions
