@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Tezos;
@@ -29,17 +29,11 @@ namespace Atomex.LiteDb
 
         public LiteDbCachedLocalStorage(
             string pathToDb,
-            SecureString password,
-            ICurrencies currencies,
-            Network network,
-            Action<MigrationActionType> migrationComplete = null)
+            SecureString password)
         {
             _liteDbLocalStorage = new LiteDbLocalStorage(
                 pathToDb,
-                password,
-                network,
-                migrationComplete
-                );
+                password);
 
             //_swapById = new Lazy<IDictionary<long, Swap>>(
             //    valueFactory: () => new ConcurrentDictionary<long, Swap>(),
@@ -161,7 +155,7 @@ namespace Atomex.LiteDb
         public Task<WalletAddress> GetTokenAddressAsync(
             string currency,
             string tokenContract,
-            decimal tokenId,
+            BigInteger tokenId,
             string address)
         {
             return _liteDbLocalStorage.GetTokenAddressAsync(currency, tokenContract, tokenId, address);
@@ -187,7 +181,7 @@ namespace Atomex.LiteDb
 
         public async Task<int> UpsertTokenAddressesAsync(IEnumerable<WalletAddress> walletAddresses)
         {
-            var changedTokens = new HashSet<(string, decimal)>();
+            var changedTokens = new HashSet<(string, BigInteger)>();
             var changedAddresses = new HashSet<string>();
 
             foreach (var walletAddress in walletAddresses)

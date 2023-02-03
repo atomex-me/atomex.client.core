@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+﻿using System.Numerics;
 
 namespace Atomex.Wallet
 {
@@ -10,6 +10,6 @@ namespace Atomex.Wallet
 
     public class TokenBalanceChangedEventArgs : BalanceChangedEventArgs
     {
-        public (string, decimal)[] Tokens { get; init; }
+        public (string, BigInteger)[] Tokens { get; init; }
     }
 }

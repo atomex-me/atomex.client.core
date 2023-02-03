@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,7 +27,7 @@ namespace Atomex.LiteDb
         public const string OrdersCollectionName = "Orders";
         public const string SwapsCollectionName = "Swaps";
         public const string TransactionCollectionName = "Transactions";
-        public const string TransactionTypesCollectionName = "TransactionTypes";
+        public const string TransactionMetadataCollectionName = "TransactionsMetadata";
         public const string OutputsCollectionName = "Outputs";
         public const string AddressesCollectionName = "Addresses";
         public const string TezosTokensAddresses = "TezosTokensAddresses";
@@ -57,9 +58,7 @@ namespace Atomex.LiteDb
 
         public LiteDbLocalStorage(
             string pathToDb,
-            SecureString password,
-            Network network,
-            Action<MigrationActionType> migrationComplete = null)
+            SecureString password)
         {
             _pathToDb = pathToDb ??
                 throw new ArgumentNullException(nameof(pathToDb));
@@ -73,12 +72,15 @@ namespace Atomex.LiteDb
             var connectionString = $"FileName={_pathToDb};Password={_sessionPassword};Connection=direct;Upgrade=true";
 
             _db = new LiteDatabase(connectionString, _bsonMapper);
+        }
 
-            //LiteDbMigrationManager.Migrate(
-            //    pathToDb: _pathToDb,
-            //    sessionPassword: _sessionPassword,
-            //    network: network,
-            //    migrationComplete);
+        public static void CreateDataBase(string pathToDb, string sessionPassword, int version)
+        {
+            var connectionString = $"FileName={pathToDb};Password={sessionPassword};Connection=direct";
+
+            using var db = new LiteDatabase(connectionString);
+
+            db.UserVersion = version;
         }
 
         public void ChangePassword(SecureString newPassword)
@@ -214,9 +216,8 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var addresses = _db.GetCollection(AddressesCollectionName);
-
-                var document = addresses
+                var document = _db
+                    .GetCollection(AddressesCollectionName)
                     .Find(Query.And(
                         Query.EQ(CurrencyKey, currency),
                         Query.EQ(KeyTypeKey, keyType),
@@ -255,9 +256,8 @@ namespace Atomex.LiteDb
 
             try
             {
-                var addresses = _db.GetCollection(AddressesCollectionName);
-
-                var unspentAddresses = addresses
+                var unspentAddresses = _db
+                    .GetCollection(AddressesCollectionName)
                     .Find(query)
                     .Select(_bsonMapper.ToObject<WalletAddress>)
                     .ToList();
@@ -277,9 +277,8 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var addresses = _db.GetCollection(AddressesCollectionName);
-
-                var unspentAddresses = addresses
+                var unspentAddresses = _db
+                    .GetCollection(AddressesCollectionName)
                     .Find(Query.EQ(CurrencyKey, currency))
                     .Select(_bsonMapper.ToObject<WalletAddress>)
                     .ToList();
@@ -301,14 +300,14 @@ namespace Atomex.LiteDb
         public Task<WalletAddress> GetTokenAddressAsync(
             string currency,
             string tokenContract,
-            decimal tokenId,
+            BigInteger tokenId,
             string address)
         {
             try
             {
-                var addresses = _db.GetCollection(TezosTokensAddresses);
-
-                var document = addresses.FindById($"{address}:{currency}:{tokenContract}:{tokenId}");
+                var document = _db
+                    .GetCollection(TezosTokensAddresses)
+                    .FindById(WalletAddress.GetId(address, currency, tokenContract, tokenId));
 
                 var walletAddress = document != null
                     ? _bsonMapper.ToObject<WalletAddress>(document)
@@ -328,9 +327,8 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var tezosTokenAddresses = _db.GetCollection(TezosTokensAddresses);
-
-                var addresses = tezosTokenAddresses
+                var addresses = _db
+                    .GetCollection(TezosTokensAddresses)
                     .FindAll()
                     .Select(_bsonMapper.ToObject<WalletAddress>)
                     .ToList();
@@ -351,9 +349,8 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var tezosTokenAddresses = _db.GetCollection(TezosTokensAddresses);
-
-                var addresses = tezosTokenAddresses
+                var addresses = _db
+                    .GetCollection(TezosTokensAddresses)
                     .Find(Query.And(
                         Query.EQ(AddressKey, address),
                         Query.EQ(TokenContractKey, tokenContract)))
@@ -375,9 +372,8 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var tezosTokenAddresses = _db.GetCollection(TezosTokensAddresses);
-
-                var addresses = tezosTokenAddresses
+                var addresses = _db
+                    .GetCollection(TezosTokensAddresses)
                     .Find(Query.EQ(TokenContractKey, tokenContract))
                     .Select(_bsonMapper.ToObject<WalletAddress>)
                     .ToList();
@@ -437,9 +433,8 @@ namespace Atomex.LiteDb
 
             try
             {
-                var addresses = _db.GetCollection(TezosTokensAddresses);
-
-                var unspentAddresses = addresses
+                var unspentAddresses = _db
+                    .GetCollection(TezosTokensAddresses)
                     .Find(query)
                     .Select(_bsonMapper.ToObject<WalletAddress>)
                     .ToList();
@@ -459,12 +454,12 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var transfers = _db.GetCollection(TezosTokensTransfers);
-
                 var documents = tokenTransfers
                     .Select(t => _bsonMapper.ToDocument(t));
 
-                var upserted = transfers.Upsert(documents);
+                var upserted = _db
+                    .GetCollection(TezosTokensTransfers)
+                    .Upsert(documents);
 
                 return Task.FromResult(upserted);
             }
@@ -504,12 +499,12 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var contracts = _db.GetCollection(TezosTokensContracts);
-
                 var documents = tokenContracts
                     .Select(t => _bsonMapper.ToDocument(t));
 
-                var upserted = contracts.Upsert(documents);
+                var upserted = _db
+                    .GetCollection(TezosTokensContracts)
+                    .Upsert(documents);
 
                 return Task.FromResult(upserted);
             }
@@ -525,9 +520,8 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var contractsCollection = _db.GetCollection(TezosTokensContracts);
-
-                var contracts = contractsCollection
+                var contracts = _db
+                    .GetCollection(TezosTokensContracts)
                     .FindAll()
                     .Select(d => new TokenContract
                     {
@@ -752,7 +746,7 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var transactionTypes = _db.GetCollection(TransactionTypesCollectionName);
+                var transactionTypes = _db.GetCollection(TransactionMetadataCollectionName);
                 transactionTypes.EnsureIndex(CurrencyKey);
 
                 var upsertResult = transactionTypes.Upsert(types.Select(t => _bsonMapper.ToDocument(t)));
@@ -788,7 +782,7 @@ namespace Atomex.LiteDb
             try
             {
                 var document = _db
-                    .GetCollection(TransactionTypesCollectionName)
+                    .GetCollection(TransactionMetadataCollectionName)
                     .FindById($"{txId}:{currency}");
 
                 if (document != null)

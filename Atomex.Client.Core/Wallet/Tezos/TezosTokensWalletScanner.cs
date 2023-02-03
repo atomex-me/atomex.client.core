@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -532,7 +533,7 @@ namespace Atomex.Wallet.Tezos
             }
         }
 
-        private static string UniqueTokenId(string address, string contract, decimal tokenId) =>
+        private static string UniqueTokenId(string address, string contract, BigInteger tokenId) =>
             $"{address}:{contract}:{tokenId}";
 
         private async Task ExtractAndSaveTokenContractsAsync(

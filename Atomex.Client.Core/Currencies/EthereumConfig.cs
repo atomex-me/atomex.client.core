@@ -13,13 +13,13 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Abstract;
 using Atomex.Blockchain.Ethereum.EtherScan;
+using Atomex.Blockchain.Ethereum.Erc20.Abstract;
 using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Wallet.Bip;
 using Atomex.Wallets;
 using Atomex.Wallets.Ethereum;
-using Atomex.Blockchain.Ethereum.Erc20.Abstract;
 
 namespace Atomex
 {

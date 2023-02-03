@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
@@ -63,7 +64,7 @@ namespace Atomex.Wallet.Abstract
         Task<WalletAddress> GetTokenAddressAsync(
             string currency,
             string tokenContract,
-            decimal tokenId,
+            BigInteger tokenId,
             string address);
 
         Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(

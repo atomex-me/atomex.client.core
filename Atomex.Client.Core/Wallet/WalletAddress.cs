@@ -8,10 +8,7 @@ namespace Atomex.Core
 {
     public class WalletAddress
     {
-        public string Id => Currency != "FA12" && Currency != "FA2"
-            ? GetId(Address, Currency)
-            : $"{Address}:{Currency}:{TokenBalance.Contract}:{TokenBalance.TokenId}";
-
+        public string Id => GetId(Address, Currency, TokenBalance?.Contract, TokenBalance?.TokenId);
         public string Currency { get; set; }
         public string Address { get; set; }
         public BigInteger Balance { get; set; }
@@ -27,6 +24,9 @@ namespace Atomex.Core
             ? Balance + UnconfirmedIncome
             : Balance;
 
-        public static string GetId(string address, string currency) => $"{address}:{currency}";
+        public static string GetId(string address, string currency, string tokenContract = null, BigInteger? tokenId = null) => 
+            tokenContract == null && tokenId == null
+                ? $"{address}:{currency}"
+                : $"{address}:{currency}:{tokenContract}:{tokenId.Value}";
     }
 }

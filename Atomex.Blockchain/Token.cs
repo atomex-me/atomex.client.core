@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Numerics;
 
 namespace Atomex.Blockchain
 {
@@ -7,7 +8,7 @@ namespace Atomex.Blockchain
         public string Contract { get; set; }
         public string ContractAlias { get; set; }
         public string Standard { get; set; }
-        public decimal TokenId { get; set; } = 0; // FA1.2 default
+        public BigInteger TokenId { get; set; } = 0; // FA1.2 default
         public string Symbol { get; set; }
         public string Name { get; set; }
         public int Decimals { get; set; } = 0; // NFT default

@@ -1,4 +1,7 @@
+using System.Numerics;
+
 using Newtonsoft.Json;
+
 using Atomex.Blockchain.Tezos.Common;
 
 namespace Atomex.Blockchain.Tezos.Tzkt
@@ -44,7 +47,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                 Contract      = Contract.Address,
                 ContractAlias = Contract.Alias,
                 Standard      = Standard,
-                TokenId       = decimal.Parse(TokenId),
+                TokenId       = BigInteger.Parse(TokenId),
             };
 
             if (Metadata != null)
