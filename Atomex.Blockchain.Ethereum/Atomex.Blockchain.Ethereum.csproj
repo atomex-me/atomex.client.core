@@ -8,8 +8,8 @@
 
   <ItemGroup>
     <PackageReference Include="Common.Logging.Core" Version="3.4.1" />
-    <PackageReference Include="Nethereum.JsonRpc.WebSocketClient" Version="4.3.0" />
-    <PackageReference Include="Nethereum.RPC.Reactive" Version="4.5.0" />
+    <PackageReference Include="Nethereum.JsonRpc.WebSocketClient" Version="4.12.0" />
+    <PackageReference Include="Nethereum.RPC.Reactive" Version="4.12.0" />
     <PackageReference Include="Nethereum.Web3" Version="4.12.0" />
   </ItemGroup>
 

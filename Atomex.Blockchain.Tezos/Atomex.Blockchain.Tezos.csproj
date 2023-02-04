@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Netezos" Version="2.7.2" />
+    <PackageReference Include="Netezos" Version="2.7.5" />
   </ItemGroup>
 
   <ItemGroup>
