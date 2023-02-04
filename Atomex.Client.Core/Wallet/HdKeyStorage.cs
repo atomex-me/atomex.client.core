@@ -15,7 +15,6 @@ using Atomex.Cryptography.Abstract;
 using Atomex.Cryptography.DotNet;
 using Atomex.Wallets;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
 using Network = Atomex.Core.Network;
 
 namespace Atomex.Wallet
@@ -115,67 +114,22 @@ namespace Atomex.Wallet
 
         private IExtKey GetExtKey(
             CurrencyConfig currency,
-            int purpose,
-            uint account,
-            uint chain,
-            uint index,
+            string keyPath,
             int keyType)
         {
             using var masterKey = currency.CreateExtKey(Seed, keyType);
 
-            if (keyType == CurrencyConfig.StandardKey && Currencies.IsTezosBased(currency.Name))
-            {
-                return masterKey.Derive($"m/{purpose}'/{currency.Bip44Code}'/{account}'/{chain}'");
-            }
-
-            return masterKey.Derive($"m/{purpose}'/{currency.Bip44Code}'/{account}'/{chain}/{index}");
-        }
-
-        private IExtKey GetExtKey(
-            CurrencyConfig currency,
-            int purpose,
-            KeyIndex keyIndex,
-            int keyType)
-        {
-            return GetExtKey(
-                currency: currency,
-                purpose: purpose,
-                account: keyIndex.Account,
-                chain: keyIndex.Chain,
-                index: keyIndex.Index,
-                keyType: keyType);
+            return masterKey.Derive(keyPath);
         }
 
         public SecureBytes GetPublicKey(
             CurrencyConfig currency,
-            KeyIndex keyIndex,
+            string keyPath,
             int keyType)
         {
-            return GetPublicKey(
-                currency: currency,
-                account: keyIndex.Account,
-                chain: keyIndex.Chain,
-                index: keyIndex.Index,
-                keyType: keyType);
-        }
-
-        public SecureBytes GetPublicKey(
-            CurrencyConfig currency,
-            uint account,
-            uint chain,
-            uint index,
-            int keyType)
-        {
-            var purpose = keyType == BitcoinBasedConfig.SegwitKey && Currencies.IsBitcoinBased(currency.Name)
-                ? Bip84.Purpose
-                : Bip44.Purpose;
-
             using var extKey = GetExtKey(
                 currency: currency,
-                purpose: purpose,
-                account: account,
-                chain: chain,
-                index: index,
+                keyPath: keyPath,
                 keyType: keyType);
 
             return extKey.GetPublicKey();
@@ -194,17 +148,12 @@ namespace Atomex.Wallet
 
         public SecureBytes GetPrivateKey(
             CurrencyConfig currency,
-            KeyIndex keyIndex,
+            string keyPath,
             int keyType)
         {
-            var purpose = keyType == BitcoinBasedConfig.SegwitKey && Currencies.IsBitcoinBased(currency.Name)
-                ? Bip84.Purpose
-                : Bip44.Purpose;
-
             using var extKey = GetExtKey(
                 currency: currency,
-                purpose: purpose,
-                keyIndex: keyIndex,
+                keyPath: keyPath,
                 keyType: keyType);
 
             return extKey.GetPrivateKey();
@@ -213,17 +162,12 @@ namespace Atomex.Wallet
         public byte[] SignHash(
             CurrencyConfig currency,
             byte[] hash,
-            KeyIndex keyIndex,
+            string keyPath,
             int keyType)
         {
-            var purpose = keyType == BitcoinBasedConfig.SegwitKey && Currencies.IsBitcoinBased(currency.Name)
-                ? Bip84.Purpose
-                : Bip44.Purpose;
-
             using var extKey = GetExtKey(
                 currency: currency,
-                purpose: purpose,
-                keyIndex: keyIndex,
+                keyPath: keyPath,
                 keyType: keyType);
 
             return extKey.Sign(hash);
@@ -244,17 +188,12 @@ namespace Atomex.Wallet
             CurrencyConfig currency,
             byte[] hash,
             byte[] signature,
-            KeyIndex keyIndex,
+            string keyPath,
             int keyType)
         {
-            var purpose = keyType == BitcoinBasedConfig.SegwitKey && Currencies.IsBitcoinBased(currency.Name)
-                ? Bip84.Purpose
-                : Bip44.Purpose;
-
             using var extKey = GetExtKey(
                 currency: currency,
-                purpose: purpose,
-                keyIndex: keyIndex,
+                keyPath: keyPath,
                 keyType: keyType);
 
             return extKey.Verify(hash, signature);

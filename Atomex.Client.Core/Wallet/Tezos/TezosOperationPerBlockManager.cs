@@ -145,7 +145,7 @@ namespace Atomex.Wallets.Tezos
                     var tezosConfig = _account.Config;
 
                     using var securePublicKey = _account.Wallet
-                        .GetPublicKey(tezosConfig, walletAddress.KeyIndex, walletAddress.KeyType);
+                        .GetPublicKey(tezosConfig, walletAddress.KeyPath, walletAddress.KeyType);
 
                     var publicKey = securePublicKey.ToUnsecuredBytes();
 

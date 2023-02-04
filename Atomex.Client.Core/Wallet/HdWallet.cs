@@ -58,29 +58,12 @@ namespace Atomex.Wallet
 
         public WalletAddress GetAddress(
             CurrencyConfig currency,
-            KeyIndex keyIndex,
-            int keyType)
-        {
-            return GetAddress(
-                currency: currency,
-                account: keyIndex.Account,
-                chain: keyIndex.Chain,
-                index: keyIndex.Index,
-                keyType: keyType);
-        }
-
-        public WalletAddress GetAddress(
-            CurrencyConfig currency,
-            uint account,
-            uint chain,
-            uint index,
+            string keyPath,
             int keyType)
         {
             using var securePublicKey = KeyStorage.GetPublicKey(
                 currency: currency,
-                account: account,
-                chain: chain,
-                index: index,
+                keyPath: keyPath,
                 keyType: keyType);
 
             if (securePublicKey == null)
@@ -92,74 +75,24 @@ namespace Atomex.Wallet
 
             return new WalletAddress
             {
-                Currency  = currency.Name,
-                Address   = address,
-                KeyIndex  = new KeyIndex { Account = account, Chain = chain, Index = index },
-                KeyType   = keyType
+                Currency = currency.Name,
+                Address = address,
+                KeyPath = keyPath,
+                KeyIndex = keyPath.GetIndex(
+                    keyPathPattern: currency.GetKeyPathPattern(keyType),
+                    indexPattern: KeyPathExtensions.IndexPattern),
+                KeyType = keyType
             };
         }
 
         public SecureBytes GetPublicKey(
             CurrencyConfig currency,
-            KeyIndex keyIndex,
+            string keyPath,
             int keyType) =>
-            KeyStorage.GetPublicKey(currency, keyIndex, keyType);
+            KeyStorage.GetPublicKey(currency, keyPath, keyType);
 
         public SecureBytes GetServicePublicKey(uint index) =>
             KeyStorage.GetServicePublicKey(index);
-
-        public Task<byte[]> SignAsync(
-            byte[] data,
-            WalletAddress address,
-            CurrencyConfig currency,
-            CancellationToken cancellationToken = default)
-        {
-            if (data == null)
-                throw new ArgumentNullException(nameof(data));
-
-            if (address == null)
-                throw new ArgumentNullException(nameof(address));
-
-            Log.Verbose("Sign request for data {@data} with key for address {@address}", 
-                data.ToHexString(),
-                address.Address);
-
-            if (IsLocked)
-            {
-                Log.Warning("Wallet locked");
-                return Task.FromResult<byte[]>(null);
-            }
-
-            if (address.KeyIndex == null)
-            {
-                Log.Error($"Can't find private key for address {address.Address}");
-                return Task.FromResult<byte[]>(null);
-            }
-
-            var signature = KeyStorage.SignHash(
-                currency: currency,
-                hash: data,
-                keyIndex: address.KeyIndex,
-                keyType: address.KeyType);
-
-            Log.Verbose("Data signature in base64: {@signature}",
-                Convert.ToBase64String(signature));
-
-            if (!KeyStorage.VerifyHash(
-                currency: currency,
-                hash: data,
-                signature: signature,
-                keyIndex: address.KeyIndex,
-                keyType: address.KeyType))
-            {
-                Log.Error("Signature verify error");
-                return Task.FromResult<byte[]>(null);
-            }
-
-            Log.Verbose("Data successfully signed");
-
-            return Task.FromResult(signature);      
-        }
 
         public Task<byte[]> SignHashAsync(
             byte[] hash,
@@ -181,16 +114,10 @@ namespace Atomex.Wallet
                 return Task.FromResult<byte[]>(null);
             }
 
-            if (address.KeyIndex == null)
-            {
-                Log.Error($"Can't find private key for address {address.Address}");
-                return Task.FromResult<byte[]>(null);
-            }
-
             var signature = KeyStorage.SignHash(
                 currency: currencyConfig,
                 hash: hash,
-                keyIndex: address.KeyIndex,
+                keyPath: address.KeyPath,
                 keyType: address.KeyType);
 
             Log.Verbose("Hash signature in base64: {@signature}", Convert.ToBase64String(signature));
@@ -199,7 +126,7 @@ namespace Atomex.Wallet
                 currency: currencyConfig,
                 hash: hash,
                 signature: signature,
-                keyIndex: address.KeyIndex,
+                keyPath: address.KeyPath,
                 keyType: address.KeyType))
             {
                 Log.Error("Signature verify error");

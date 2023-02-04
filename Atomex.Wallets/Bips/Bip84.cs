@@ -1,4 +1,4 @@
-﻿namespace Atomex.Wallet.Bip
+﻿namespace Atomex.Wallets.Bips
 {
     public class Bip84
     {

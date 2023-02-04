@@ -5,8 +5,9 @@ using System.Threading.Tasks;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
+using Atomex.Common;
 using Atomex.Core;
-using Atomex.Wallet.Bip;
+using Atomex.Wallets.Bips;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -36,7 +37,7 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await LocalStorage
-                .GetWalletAddressAsync(Currency, address)
+                .GetWalletAddressAsync(Currency, address, cancellationToken)
                 .ConfigureAwait(false);
 
             return walletAddress != null
@@ -76,30 +77,15 @@ namespace Atomex.Wallet.Abstract
 
         #region Addresses
 
-        public Task<WalletAddress> DivideAddressAsync(
-            KeyIndex keyIndex,
-            int keyType)
-        {
-            return DivideAddressAsync(
-                account: keyIndex.Account,
-                chain: keyIndex.Chain,
-                index: keyIndex.Index,
-                keyType: keyType);
-        }
-
         public virtual Task<WalletAddress> DivideAddressAsync(
-            uint account,
-            uint chain,
-            uint index,
+            string keyPath,
             int keyType)
         {
             var currency = Currencies.GetByName(Currency);
 
             var walletAddress = Wallet.GetAddress(
                 currency: currency,
-                account: account,
-                chain: chain,
-                index: index,
+                keyPath: keyPath,
                 keyType: keyType);
 
             return Task.FromResult(walletAddress);
@@ -109,54 +95,70 @@ namespace Atomex.Wallet.Abstract
             string address,
             CancellationToken cancellationToken = default)
         {
-            return LocalStorage.GetWalletAddressAsync(Currency, address);
+            return LocalStorage.GetWalletAddressAsync(
+                currency: Currency,
+                address: address,
+                cancellationToken: cancellationToken);
         }
 
         public virtual Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            return LocalStorage.GetUnspentAddressesAsync(Currency);
+            return LocalStorage.GetUnspentAddressesAsync(
+                currency: Currency,
+                includeUnconfirmed: true,
+                cancellationToken: cancellationToken);
         }
 
-        public virtual async Task<WalletAddress> GetFreeExternalAddressAsync(
+        public virtual Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
-            // for tezos and tezos tokens with standard keys different account are used
-            if (Atomex.Currencies.IsTezosBased(Currency))
-            {
-                var lastActiveAccountAddress = await LocalStorage
-                    .GetLastActiveWalletAddressByAccountAsync(
-                        currency: Currency,
-                        keyType: CurrencyConfig.StandardKey)
-                    .ConfigureAwait(false);
+            return GetFreeAddressAsync(
+                keyType: CurrencyConfig.StandardKey,
+                chain: Bip44.External,
+                cancellationToken: cancellationToken);
+        }
 
-                return await DivideAddressAsync(
-                        account: lastActiveAccountAddress?.KeyIndex.Account + 1 ?? Bip44.DefaultAccount,
-                        chain: Bip44.External,
-                        index: Bip44.DefaultIndex,
-                        keyType: CurrencyConfig.StandardKey)
-                    .ConfigureAwait(false);
-            }
+        protected async Task<WalletAddress> GetFreeAddressAsync(
+            int keyType,
+            uint chain,
+            CancellationToken cancellationToken = default)
+        {
+            var currency = Currencies.GetByName(Currency);
+
+            var keyPathPattern = currency
+                .GetKeyPathPattern(keyType)
+                .Replace(KeyPathExtensions.ChainPattern, chain.ToString());
 
             var lastActiveAddress = await LocalStorage
                 .GetLastActiveWalletAddressAsync(
                     currency: Currency,
-                    chain: Bip44.External,
-                    keyType: CurrencyConfig.StandardKey)
+                    keyPathPattern: keyPathPattern,
+                    keyType: keyType,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
+            var keyPath = lastActiveAddress != null
+                ? lastActiveAddress.KeyPath.SetIndex(
+                    keyPathPattern: keyPathPattern,
+                    indexPattern: KeyPathExtensions.IndexPattern,
+                    indexValue: $"{lastActiveAddress.KeyIndex + 1}")
+                : keyPathPattern
+                    .Replace(KeyPathExtensions.AccountPattern, KeyPathExtensions.DefaultAccount)
+                    .Replace(KeyPathExtensions.IndexPattern, KeyPathExtensions.DefaultIndex);
+
             return await DivideAddressAsync(
-                    account: Bip44.DefaultAccount,
-                    chain: Bip44.External,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? Bip44.DefaultIndex,
-                    keyType: CurrencyConfig.StandardKey)
+                    keyPath: keyPath,
+                    keyType: keyType)
                 .ConfigureAwait(false);
         }
 
         public Task<IEnumerable<WalletAddress>> GetAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            return LocalStorage.GetAddressesAsync(Currency);
+            return LocalStorage.GetAddressesAsync(
+                currency:Currency,
+                cancellationToken: cancellationToken);
         }
 
         #endregion Addresses

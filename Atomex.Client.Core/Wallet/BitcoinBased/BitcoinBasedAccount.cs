@@ -14,7 +14,7 @@ using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
+using Atomex.Wallets.Bips;
 
 namespace Atomex.Wallet.BitcoinBased
 {
@@ -159,7 +159,7 @@ namespace Atomex.Wallet.BitcoinBased
                     if (walletAddress == null)
                         return false; // todo error?
 
-                    using var publicKey = Wallet.GetPublicKey(Config, walletAddress.KeyIndex, walletAddress.KeyType);
+                    using var publicKey = Wallet.GetPublicKey(Config, walletAddress.KeyPath, walletAddress.KeyType);
 
                     var signatureHash = tx.GetSignatureHash(spentOutput, redeemScript: null, SigHash.All);
 
@@ -395,40 +395,22 @@ namespace Atomex.Wallet.BitcoinBased
 
         #region Addresses
 
-        public override async Task<WalletAddress> GetFreeExternalAddressAsync(
+        public override Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
-            var lastActiveAddress = await LocalStorage
-                .GetLastActiveWalletAddressAsync(
-                    currency: Currency,
-                    chain: Bip44.External,
-                    keyType: BitcoinBasedConfig.SegwitKey)
-                .ConfigureAwait(false);
-
-            return await DivideAddressAsync(
-                    account: Bip44.DefaultAccount,
-                    chain: Bip44.External,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? Bip44.DefaultIndex,
-                    keyType: BitcoinBasedConfig.SegwitKey)
-                .ConfigureAwait(false);
+            return GetFreeAddressAsync(
+                keyType: BitcoinBasedConfig.SegwitKey,
+                chain: Bip44.External,
+                cancellationToken: cancellationToken);
         }
 
-        public virtual async Task<WalletAddress> GetFreeInternalAddressAsync(
+        public virtual Task<WalletAddress> GetFreeInternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
-            var lastActiveAddress = await LocalStorage
-                .GetLastActiveWalletAddressAsync(
-                    currency: Currency,
-                    chain: Bip44.Internal,
-                    keyType: BitcoinBasedConfig.SegwitKey)
-                .ConfigureAwait(false);
-
-            return await DivideAddressAsync(
-                    account: Bip44.DefaultAccount,
-                    chain: Bip44.Internal,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    keyType: BitcoinBasedConfig.SegwitKey)
-                .ConfigureAwait(false);
+            return GetFreeAddressAsync(
+                keyType: BitcoinBasedConfig.SegwitKey,
+                chain: Bip44.Internal,
+                cancellationToken: cancellationToken);
         }
 
         public async Task<WalletAddress> GetRefundAddressAsync(

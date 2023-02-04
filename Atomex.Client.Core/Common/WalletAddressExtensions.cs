@@ -36,7 +36,7 @@ namespace Atomex.Common
                         .GetByName(address.Currency);
 
                     var signature = await account.Wallet
-                        .SignAsync(hashToSign, address, currencyConfig)
+                        .SignHashAsync(hashToSign, address, currencyConfig)
                         .ConfigureAwait(false);
 
                     if (signature == null)
@@ -48,8 +48,8 @@ namespace Atomex.Common
 
                     using var securePublicKey = account.Wallet.GetPublicKey(
                         currency: currencyConfig,
-                        address.KeyIndex,
-                        address.KeyType);
+                        keyPath: address.KeyPath,
+                        keyType: address.KeyType);
 
                     result.Add(new DtoWalletAddress
                     {

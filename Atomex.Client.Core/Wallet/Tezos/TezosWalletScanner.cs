@@ -12,7 +12,7 @@ using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
+using Atomex.Wallets.Bips;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -23,7 +23,7 @@ namespace Atomex.Wallet.Tezos
 
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private readonly TezosAccount _account;
-        private TezosConfig XtzConfig => _account.Config;
+        private TezosConfig Config => _account.Config;
 
         public TezosWalletScanner(TezosAccount account)
         {
@@ -43,7 +43,7 @@ namespace Atomex.Wallet.Tezos
                     (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : InternalLookAhead)
                 };
 
-                var tzktApi = new TzktApi(XtzConfig.GetTzktSettings());
+                var tzktApi = new TzktApi(Config.GetTzktSettings());
                 var updateTimeStamp = DateTime.UtcNow;
 
                 var operations = new List<TezosOperation>();
@@ -54,25 +54,26 @@ namespace Atomex.Wallet.Tezos
                 foreach (var (keyType, chain, lookAhead) in scanParams)
                 {
                     var freeKeysCount = 0;
-                    var account = 0u;
                     var index = 0u;
 
                     while (true)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 
+                        var keyPath = Config.GetKeyPathPattern(keyType)
+                            .Replace(KeyPathExtensions.AccountPattern, KeyPathExtensions.DefaultAccount)
+                            .Replace(KeyPathExtensions.ChainPattern, chain.ToString())
+                            .Replace(KeyPathExtensions.IndexPattern, index.ToString());
+
                         var walletAddress = await _account
                             .DivideAddressAsync(
-                                account: account,
-                                chain: chain,
-                                index: index,
+                                keyPath: keyPath,
                                 keyType: keyType)
                             .ConfigureAwait(false);
 
-                        if (walletAddress.KeyType == CurrencyConfig.StandardKey &&
-                            walletAddress.KeyIndex.Chain == Bip44.External &&
-                            walletAddress.KeyIndex.Account == 0 &&
-                            walletAddress.KeyIndex.Index == 0)
+                        if (keyType == CurrencyConfig.StandardKey &&
+                            chain == Bip44.External &&
+                            index == 0)
                         {
                             defautWalletAddress = walletAddress;
                         }
@@ -109,14 +110,7 @@ namespace Atomex.Wallet.Tezos
                             walletAddresses.Add(walletAddress);
                         }
 
-                        if (keyType == TezosConfig.Bip32Ed25519Key)
-                        {
-                            index++;
-                        }
-                        else
-                        {
-                            account++;
-                        }
+                        index++;
                     }
                 }
 
@@ -170,7 +164,7 @@ namespace Atomex.Wallet.Tezos
 
                 // todo: if skipUsed == true => skip "disabled" wallets
 
-                var tzktApi = new TzktApi(XtzConfig.GetTzktSettings());
+                var tzktApi = new TzktApi(Config.GetTzktSettings());
                 var operations = new List<TezosOperation>();
 
                 foreach (var walletAddress in walletAddresses)
@@ -283,7 +277,7 @@ namespace Atomex.Wallet.Tezos
         {
             var updateTimeStamp = DateTime.UtcNow;
 
-            tzktApi ??= new TzktApi(XtzConfig.GetTzktSettings());
+            tzktApi ??= new TzktApi(Config.GetTzktSettings());
 
             var (account, accountError) = await tzktApi
                 .GetAccountAsync(walletAddress.Address, cancellationToken)

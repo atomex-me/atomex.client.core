@@ -90,7 +90,7 @@ namespace Atomex.Swaps.Tezos.Fa12
 
             using var securePublicKey = Fa12Account.Wallet.GetPublicKey(
                 currency: Fa12Config,
-                keyIndex: walletAddress.KeyIndex,
+                keyPath: walletAddress.KeyPath,
                 keyType: walletAddress.KeyType);
 
             var (allowance, allowanceError) = await rpc

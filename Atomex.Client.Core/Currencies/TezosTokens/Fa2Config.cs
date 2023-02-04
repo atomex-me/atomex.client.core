@@ -6,7 +6,7 @@ using Microsoft.Extensions.Configuration;
 
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
-using Atomex.Wallet.Bip;
+using Atomex.Wallets.Bips;
 
 namespace Atomex.TezosTokens
 {
@@ -23,26 +23,26 @@ namespace Atomex.TezosTokens
 
         public override void Update(IConfiguration configuration)
         {
-            Name                    = configuration[nameof(Name)];
-            DisplayedName           = configuration[nameof(DisplayedName)];
-            Description             = configuration[nameof(Description)];
+            Name = configuration[nameof(Name)];
+            DisplayedName = configuration[nameof(DisplayedName)];
+            Description = configuration[nameof(Description)];
 
             if (!string.IsNullOrEmpty(configuration[nameof(DigitsMultiplier)]))
                 DigitsMultiplier = decimal.Parse(configuration[nameof(DigitsMultiplier)]);
 
-            DustDigitsMultiplier    = long.Parse(configuration[nameof(DustDigitsMultiplier)]);
+            DustDigitsMultiplier = long.Parse(configuration[nameof(DustDigitsMultiplier)]);
 
             Digits = DigitsMultiplier != 0
                 ? (int)Math.Round(BigInteger.Log10(new BigInteger(DigitsMultiplier)))
                 : 0;
 
-            Format                  = DecimalExtensions.GetFormatWithPrecision(Digits);
-            IsToken                 = bool.Parse(configuration[nameof(IsToken)]);
+            Format = DecimalExtensions.GetFormatWithPrecision(Digits);
+            IsToken = bool.Parse(configuration[nameof(IsToken)]);
 
-            FeeCode                 = "XTZ";
-            FeeFormat               = DecimalExtensions.GetFormatWithPrecision(Digits);
-            HasFeePrice             = false;
-            FeeCurrencyName         = "XTZ";
+            FeeCode = "XTZ";
+            FeeFormat = DecimalExtensions.GetFormatWithPrecision(Digits);
+            HasFeePrice = false;
+            FeeCurrencyName = "XTZ";
 
             MaxRewardPercent = configuration[nameof(MaxRewardPercent)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercent)], CultureInfo.InvariantCulture)
@@ -51,7 +51,7 @@ namespace Atomex.TezosTokens
                 ? decimal.Parse(configuration[nameof(MaxRewardPercentInBase)], CultureInfo.InvariantCulture)
                 : 0m;
             FeeCurrencyToBaseSymbol = configuration[nameof(FeeCurrencyToBaseSymbol)];
-            FeeCurrencySymbol       = configuration[nameof(FeeCurrencySymbol)];
+            FeeCurrencySymbol = configuration[nameof(FeeCurrencySymbol)];
 
             MinimalFee               = long.Parse(configuration[nameof(MinimalFee)], CultureInfo.InvariantCulture);
             MinimalNanotezPerGasUnit = long.Parse(configuration[nameof(MinimalNanotezPerGasUnit)], CultureInfo.InvariantCulture);
@@ -87,33 +87,33 @@ namespace Atomex.TezosTokens
             RedeemSize              = long.Parse(configuration[nameof(RedeemSize)], CultureInfo.InvariantCulture);
             RedeemFee               = MinimalFee + (RedeemGasLimit + GasReserve) * MinimalNanotezPerGasUnit + RedeemSize * MinimalNanotezPerByte + 1;
 
-            RefundGasLimit          = long.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
-            RefundStorageLimit      = long.Parse(configuration[nameof(RefundStorageLimit)], CultureInfo.InvariantCulture);
-            RefundSize              = long.Parse(configuration[nameof(RefundSize)], CultureInfo.InvariantCulture);
-            RefundFee               = MinimalFee + (RefundGasLimit + GasReserve) * MinimalNanotezPerGasUnit + RefundStorageLimit * MinimalNanotezPerByte + 1;
+            RefundGasLimit     = long.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
+            RefundStorageLimit = long.Parse(configuration[nameof(RefundStorageLimit)], CultureInfo.InvariantCulture);
+            RefundSize         = long.Parse(configuration[nameof(RefundSize)], CultureInfo.InvariantCulture);
+            RefundFee          = MinimalFee + (RefundGasLimit + GasReserve) * MinimalNanotezPerGasUnit + RefundStorageLimit * MinimalNanotezPerByte + 1;
 
-            ActivationStorage       = long.Parse(configuration[nameof(ActivationStorage)], CultureInfo.InvariantCulture);
-            StorageFeeMultiplier    = long.Parse(configuration[nameof(StorageFeeMultiplier)], CultureInfo.InvariantCulture);
+            ActivationStorage    = long.Parse(configuration[nameof(ActivationStorage)], CultureInfo.InvariantCulture);
+            StorageFeeMultiplier = long.Parse(configuration[nameof(StorageFeeMultiplier)], CultureInfo.InvariantCulture);
 
-            BaseUri                 = configuration["BlockchainApiBaseUri"];
-            RpcNodeUri              = configuration["BlockchainRpcNodeUri"];
-            BbApiUri                = configuration[nameof(BbApiUri)];
+            BaseUri    = configuration["BlockchainApiBaseUri"];
+            RpcNodeUri = configuration["BlockchainRpcNodeUri"];
+            BbApiUri   = configuration[nameof(BbApiUri)];
 
-            BlockchainApi = configuration["BlockchainApi"];
-            TxExplorerUri           = configuration[nameof(TxExplorerUri)];
-            AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
-            SwapContractAddress     = configuration["SwapContract"];
-            TokenContractAddress    = configuration["TokenContract"];
+            BlockchainApi        = configuration["BlockchainApi"];
+            TxExplorerUri        = configuration[nameof(TxExplorerUri)];
+            AddressExplorerUri   = configuration[nameof(AddressExplorerUri)];
+            SwapContractAddress  = configuration["SwapContract"];
+            TokenContractAddress = configuration["TokenContract"];
 
             TokenId = int.TryParse(configuration["TokenId"], out var tokenId)
                 ? tokenId
                 : 0;
 
-            ViewContractAddress     = configuration["ViewContract"];
-            TransactionType         = typeof(TezosOperation);
+            ViewContractAddress = configuration["ViewContract"];
+            TransactionType = typeof(TezosOperation);
 
-            IsSwapAvailable         = true;
-            Bip44Code               = Bip44.Tezos; 
+            IsSwapAvailable = true;
+            Bip44Code = Bip44.Tezos; 
         }
     }
 }

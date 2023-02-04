@@ -10,7 +10,7 @@ using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
+using Atomex.Wallets.Bips;
 
 namespace Atomex.Wallet.BitcoinBased
 {
@@ -26,7 +26,7 @@ namespace Atomex.Wallet.BitcoinBased
         private const int DefaultExternalLookAhead = 3;
 
         private readonly BitcoinBasedAccount _account;
-        private BitcoinBasedConfig BitcoinBasedConfig => _account.Currencies.Get<BitcoinBasedConfig>(_account.Currency);
+        private BitcoinBasedConfig Config => _account.Currencies.Get<BitcoinBasedConfig>(_account.Currency);
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
 
@@ -49,7 +49,7 @@ namespace Atomex.Wallet.BitcoinBased
                     (KeyType : BitcoinBasedConfig.SegwitKey, Chain : Bip44.External, LookAhead : ExternalLookAhead)
                 };
 
-                var api = BitcoinBasedConfig.GetBitcoinBlockchainApi();
+                var api = Config.GetBitcoinBlockchainApi();
 
                 var outputs = new List<BitcoinTxOutput>();
                 var txs = new List<BitcoinTransaction>();
@@ -60,25 +60,26 @@ namespace Atomex.Wallet.BitcoinBased
                 foreach (var (keyType, chain, lookAhead) in scanParams)
                 {
                     var freeKeysCount = 0;
-                    var account = 0u;
                     var index = 0u;
 
                     while (true)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 
+                        var keyPath = Config.GetKeyPathPattern(keyType)
+                            .Replace(KeyPathExtensions.AccountPattern, KeyPathExtensions.DefaultAccount)
+                            .Replace(KeyPathExtensions.ChainPattern, chain.ToString())
+                            .Replace(KeyPathExtensions.IndexPattern, index.ToString());
+
                         var walletAddress = await _account
                             .DivideAddressAsync(
-                                account: account,
-                                chain: chain,
-                                index: index,
+                                keyPath: keyPath,
                                 keyType: keyType)
                             .ConfigureAwait(false);
 
-                        if (walletAddress.KeyType == CurrencyConfig.StandardKey &&
-                            walletAddress.KeyIndex.Chain == Bip44.External &&
-                            walletAddress.KeyIndex.Account == 0 &&
-                            walletAddress.KeyIndex.Index == 0)
+                        if (keyType == CurrencyConfig.StandardKey &&
+                            chain == Bip44.External &&
+                            index == 0)
                         {
                             defautWalletAddress = walletAddress;
                         }
@@ -127,7 +128,7 @@ namespace Atomex.Wallet.BitcoinBased
                         .UpsertOutputsAsync(
                             outputs: outputs,
                             currency: _account.Currency,
-                            network: BitcoinBasedConfig.Network)
+                            network: Config.Network)
                         .ConfigureAwait(false);
                 }
 
@@ -182,7 +183,7 @@ namespace Atomex.Wallet.BitcoinBased
 
                 // todo: if skipUsed == true => skip "disabled" wallets
 
-                var api = BitcoinBasedConfig.GetBitcoinBlockchainApi();
+                var api = Config.GetBitcoinBlockchainApi();
                 var outputs = new List<BitcoinTxOutput>();
                 var txs = new List<BitcoinTransaction>();
 
@@ -211,7 +212,7 @@ namespace Atomex.Wallet.BitcoinBased
                         .UpsertOutputsAsync(
                             outputs: outputs,
                             currency: _account.Currency,
-                            network: BitcoinBasedConfig.Network)
+                            network: Config.Network)
                         .ConfigureAwait(false);
                 }
 
@@ -282,7 +283,7 @@ namespace Atomex.Wallet.BitcoinBased
                         .UpsertOutputsAsync(
                             outputs: updateResult.Outputs,
                             currency: _account.Currency,
-                            network: BitcoinBasedConfig.Network)
+                            network: Config.Network)
                         .ConfigureAwait(false);
                 }
 
@@ -320,7 +321,7 @@ namespace Atomex.Wallet.BitcoinBased
         {
             var updateTimeStamp = DateTime.UtcNow;
 
-            api ??= BitcoinBasedConfig.GetBitcoinBlockchainApi();
+            api ??= Config.GetBitcoinBlockchainApi();
 
             var (addressInfo, addressInfoError) = await api
                 .GetAddressInfo(walletAddress.Address, cancellationToken)
@@ -399,7 +400,7 @@ namespace Atomex.Wallet.BitcoinBased
 
                     Log.Debug("[BitcoinBasedWalletScanner] Scan {@currency} transaction {@txId}", _account.Currency, txId);
 
-                    var (tx, error) = await BitcoinBasedConfig
+                    var (tx, error) = await Config
                         .GetBlockchainApi()
                         .GetTransactionAsync(txId, cancellationToken: cancellationToken)
                         .ConfigureAwait(false);

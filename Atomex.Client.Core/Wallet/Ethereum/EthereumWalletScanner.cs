@@ -12,7 +12,7 @@ using Atomex.Blockchain.Ethereum.Abstract;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
+using Atomex.Wallets.Bips;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -24,7 +24,7 @@ namespace Atomex.Wallet.Ethereum
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
         private readonly EthereumAccount _account;
-        private EthereumConfig EthConfig => _account.EthConfig;
+        private EthereumConfig Config => _account.EthConfig;
 
         public EthereumWalletScanner(EthereumAccount account)
         {
@@ -43,34 +43,37 @@ namespace Atomex.Wallet.Ethereum
                     (Chain : Bip44.External, LookAhead : ExternalLookAhead),
                 };
 
-                var api = EthConfig.GetBlockchainApi();
+                var api = Config.GetBlockchainApi();
                 var transactions = new List<EthereumTransaction>();
                 var walletAddresses = new List<WalletAddress>();
 
                 WalletAddress defautWalletAddress = null;
 
+                var keyType = CurrencyConfig.StandardKey;
+
                 foreach (var (chain, lookAhead) in scanParams)
                 {
                     var freeKeysCount = 0;
-                    var account = 0u;
                     var index = 0u;
 
                     while (true)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
 
+                        var keyPath = Config.GetKeyPathPattern(keyType)
+                            .Replace(KeyPathExtensions.AccountPattern, KeyPathExtensions.DefaultAccount)
+                            .Replace(KeyPathExtensions.ChainPattern, chain.ToString())
+                            .Replace(KeyPathExtensions.IndexPattern, index.ToString());
+
                         var walletAddress = await _account
                             .DivideAddressAsync(
-                                account: account,
-                                chain: chain,
-                                index: index,
-                                keyType: CurrencyConfig.StandardKey)
+                                keyPath: keyPath,
+                                keyType: keyType)
                             .ConfigureAwait(false);
 
-                        if (walletAddress.KeyType == CurrencyConfig.StandardKey &&
-                            walletAddress.KeyIndex.Chain == Bip44.External &&
-                            walletAddress.KeyIndex.Account == 0 &&
-                            walletAddress.KeyIndex.Index == 0)
+                        if (keyType == CurrencyConfig.StandardKey &&
+                            chain == Bip44.External &&
+                            index == 0)
                         {
                             defautWalletAddress = walletAddress;
                         }
@@ -161,7 +164,7 @@ namespace Atomex.Wallet.Ethereum
 
                 // todo: if skipUsed == true => skip "disabled" wallets
 
-                var api = EthConfig.GetBlockchainApi();
+                var api = Config.GetBlockchainApi();
                 var transactions = new List<EthereumTransaction>();
 
                 foreach (var walletAddress in walletAddresses)
@@ -274,7 +277,7 @@ namespace Atomex.Wallet.Ethereum
         {
             var updateTimeStamp = DateTime.UtcNow;
 
-            api ??= EthConfig.GetBlockchainApi();
+            api ??= Config.GetBlockchainApi();
 
             var (balance, getBalanceError) = await api
                 .GetBalanceAsync(

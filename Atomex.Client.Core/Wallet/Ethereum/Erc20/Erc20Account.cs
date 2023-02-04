@@ -18,7 +18,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
+using Atomex.Wallets.Bips;
 using Error = Atomex.Common.Error;
 
 namespace Atomex.Wallet.Ethereum
@@ -436,23 +436,36 @@ namespace Atomex.Wallet.Ethereum
                 var ethereumAddress = unspentEthereumAddresses.MaxBy(a => a.AvailableBalance());
 
                 return await DivideAddressAsync(
-                    keyIndex: ethereumAddress.KeyIndex,
+                    keyPath: ethereumAddress.KeyPath,
                     keyType: ethereumAddress.KeyType);
             }
 
-            // last active address
+            var keyType = CurrencyConfig.StandardKey;
+
+            // last active ETH address
+            var keyPathPattern = EthConfig
+                .GetKeyPathPattern(keyType)
+                .Replace(KeyPathExtensions.ChainPattern, Bip44.External.ToString());
+
             var lastActiveAddress = await LocalStorage
                 .GetLastActiveWalletAddressAsync(
-                    currency: "ETH",
-                    chain: Bip44.External,
-                    keyType: CurrencyConfig.StandardKey)
+                    currency: EthConfig.Name,
+                    keyPathPattern: keyPathPattern,
+                    keyType: keyType)
                 .ConfigureAwait(false);
 
+            var keyPath = lastActiveAddress != null
+                ? lastActiveAddress.KeyPath.SetIndex(
+                    keyPathPattern: keyPathPattern,
+                    indexPattern: KeyPathExtensions.IndexPattern,
+                    indexValue: $"{lastActiveAddress.KeyIndex + 1}")
+                : keyPathPattern
+                    .Replace(KeyPathExtensions.AccountPattern, KeyPathExtensions.DefaultAccount)
+                    .Replace(KeyPathExtensions.IndexPattern, KeyPathExtensions.DefaultIndex);
+
             return await DivideAddressAsync(
-                    account: Bip44.DefaultAccount,
-                    chain: Bip44.External,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? 0,
-                    keyType: CurrencyConfig.StandardKey)
+                    keyPath: keyPath,
+                    keyType: keyType)
                 .ConfigureAwait(false);
         }
 
@@ -477,17 +490,23 @@ namespace Atomex.Wallet.Ethereum
                 var ethereumAddress = unspentEthereumAddresses.MaxBy(a => a.AvailableBalance());
 
                 return await DivideAddressAsync(
-                    keyIndex: ethereumAddress.KeyIndex,
+                    keyPath: ethereumAddress.KeyPath,
                     keyType: ethereumAddress.KeyType);
             }
+            
+            var keyType = CurrencyConfig.StandardKey;
 
             foreach (var chain in new[] { Bip44.Internal, Bip44.External })
             {
+                var keyPathPattern = Erc20Config
+                    .GetKeyPathPattern(keyType)
+                    .Replace(KeyPathExtensions.ChainPattern, chain.ToString());
+
                 var lastActiveAddress = await LocalStorage
                     .GetLastActiveWalletAddressAsync(
                         currency: Currency,
-                        chain: chain,
-                        keyType: CurrencyConfig.StandardKey)
+                        keyPathPattern: keyPathPattern,
+                        keyType: keyType)
                     .ConfigureAwait(false);
 
                 if (lastActiveAddress != null)

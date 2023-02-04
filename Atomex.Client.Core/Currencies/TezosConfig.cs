@@ -16,9 +16,9 @@ using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Core;
 using Atomex.Cryptography;
-using Atomex.Wallet.Bip;
-using Atomex.Wallets.Keys;
 using Atomex.Wallets;
+using Atomex.Wallets.Bips;
+using Atomex.Wallets.Keys;
 
 namespace Atomex
 {
@@ -98,87 +98,87 @@ namespace Atomex
 
         public virtual void Update(IConfiguration configuration)
         {
-            Name                    = configuration[nameof(Name)];
-            DisplayedName           = configuration[nameof(DisplayedName)];
-            Description             = configuration[nameof(Description)];
-            DigitsMultiplier        = XtzDigitsMultiplier;
-            Digits                  = (int)Math.Round(Math.Log10(XtzDigitsMultiplier));
-            Format                  = DecimalExtensions.GetFormatWithPrecision(Digits);
-            IsToken                 = bool.Parse(configuration[nameof(IsToken)]);
+            Name = configuration[nameof(Name)];
+            DisplayedName = configuration[nameof(DisplayedName)];
+            Description = configuration[nameof(Description)];
+            DigitsMultiplier = XtzDigitsMultiplier;
+            Digits = (int)Math.Round(Math.Log10(XtzDigitsMultiplier));
+            Format = DecimalExtensions.GetFormatWithPrecision(Digits);
+            IsToken = bool.Parse(configuration[nameof(IsToken)]);
 
-            FeeCode                 = Name;
-            FeeFormat               = DecimalExtensions.GetFormatWithPrecision(Digits);
-            HasFeePrice             = false;
-            FeeCurrencyName         = Name;
+            FeeCode = Name;
+            FeeFormat = DecimalExtensions.GetFormatWithPrecision(Digits);
+            HasFeePrice = false;
+            FeeCurrencyName = Name;
 
-            MaxRewardPercent        = configuration[nameof(MaxRewardPercent)] != null
+            MaxRewardPercent = configuration[nameof(MaxRewardPercent)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercent)], CultureInfo.InvariantCulture)
                 : 0m;
-            MaxRewardPercentInBase  = configuration[nameof(MaxRewardPercentInBase)] != null
+            MaxRewardPercentInBase = configuration[nameof(MaxRewardPercentInBase)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercentInBase)], CultureInfo.InvariantCulture)
                 : 0m;
             FeeCurrencyToBaseSymbol = configuration[nameof(FeeCurrencyToBaseSymbol)];
-            FeeCurrencySymbol       = configuration[nameof(FeeCurrencySymbol)];
+            FeeCurrencySymbol = configuration[nameof(FeeCurrencySymbol)];
 
-            MinimalFee               = long.Parse(configuration[nameof(MinimalFee)], CultureInfo.InvariantCulture);
+            MinimalFee = long.Parse(configuration[nameof(MinimalFee)], CultureInfo.InvariantCulture);
             MinimalNanotezPerGasUnit = long.Parse(configuration[nameof(MinimalNanotezPerGasUnit)], CultureInfo.InvariantCulture);
-            MinimalNanotezPerByte    = long.Parse(configuration[nameof(MinimalNanotezPerByte)], CultureInfo.InvariantCulture);
+            MinimalNanotezPerByte = long.Parse(configuration[nameof(MinimalNanotezPerByte)], CultureInfo.InvariantCulture);
 
-            HeadSizeInBytes         = long.Parse(configuration[nameof(HeadSizeInBytes)], CultureInfo.InvariantCulture);
-            SigSizeInBytes          = long.Parse(configuration[nameof(SigSizeInBytes)], CultureInfo.InvariantCulture);
+            HeadSizeInBytes = long.Parse(configuration[nameof(HeadSizeInBytes)], CultureInfo.InvariantCulture);
+            SigSizeInBytes = long.Parse(configuration[nameof(SigSizeInBytes)], CultureInfo.InvariantCulture);
 
-            MicroTezReserve         = long.Parse(configuration[nameof(MicroTezReserve)], CultureInfo.InvariantCulture);
-            GasReserve              = long.Parse(configuration[nameof(GasReserve)], CultureInfo.InvariantCulture);
+            MicroTezReserve = long.Parse(configuration[nameof(MicroTezReserve)], CultureInfo.InvariantCulture);
+            GasReserve = long.Parse(configuration[nameof(GasReserve)], CultureInfo.InvariantCulture);
 
-            Fee                     = long.Parse(configuration[nameof(Fee)], CultureInfo.InvariantCulture);
-            MaxFee                  = long.Parse(configuration[nameof(MaxFee)], CultureInfo.InvariantCulture);
+            Fee = long.Parse(configuration[nameof(Fee)], CultureInfo.InvariantCulture);
+            MaxFee = long.Parse(configuration[nameof(MaxFee)], CultureInfo.InvariantCulture);
 
-            GasLimit                = long.Parse(configuration[nameof(GasLimit)], CultureInfo.InvariantCulture);
-            StorageLimit            = long.Parse(configuration[nameof(StorageLimit)], CultureInfo.InvariantCulture);
+            GasLimit = long.Parse(configuration[nameof(GasLimit)], CultureInfo.InvariantCulture);
+            StorageLimit = long.Parse(configuration[nameof(StorageLimit)], CultureInfo.InvariantCulture);
 
-            RevealFee               = long.Parse(configuration[nameof(RevealFee)], CultureInfo.InvariantCulture);
-            RevealGasLimit          = long.Parse(configuration[nameof(RevealGasLimit)], CultureInfo.InvariantCulture);
+            RevealFee = long.Parse(configuration[nameof(RevealFee)], CultureInfo.InvariantCulture);
+            RevealGasLimit = long.Parse(configuration[nameof(RevealGasLimit)], CultureInfo.InvariantCulture);
 
-            InitiateGasLimit        = long.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
-            InitiateStorageLimit    = long.Parse(configuration[nameof(InitiateStorageLimit)], CultureInfo.InvariantCulture);
-            InitiateSize            = long.Parse(configuration[nameof(InitiateSize)], CultureInfo.InvariantCulture);
-            InitiateFee             = MinimalFee + (InitiateGasLimit + GasReserve) * MinimalNanotezPerGasUnit + InitiateSize * MinimalNanotezPerByte + 1;
+            InitiateGasLimit = long.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
+            InitiateStorageLimit = long.Parse(configuration[nameof(InitiateStorageLimit)], CultureInfo.InvariantCulture);
+            InitiateSize = long.Parse(configuration[nameof(InitiateSize)], CultureInfo.InvariantCulture);
+            InitiateFee = MinimalFee + (InitiateGasLimit + GasReserve) * MinimalNanotezPerGasUnit + InitiateSize * MinimalNanotezPerByte + 1;
 
-            AddGasLimit             = long.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
-            AddStorageLimit         = long.Parse(configuration[nameof(AddStorageLimit)], CultureInfo.InvariantCulture);
-            AddSize                 = long.Parse(configuration[nameof(AddSize)], CultureInfo.InvariantCulture);
-            AddFee                  = MinimalFee + (AddGasLimit + GasReserve) * MinimalNanotezPerGasUnit + AddSize * MinimalNanotezPerByte + 1;
+            AddGasLimit = long.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
+            AddStorageLimit = long.Parse(configuration[nameof(AddStorageLimit)], CultureInfo.InvariantCulture);
+            AddSize = long.Parse(configuration[nameof(AddSize)], CultureInfo.InvariantCulture);
+            AddFee = MinimalFee + (AddGasLimit + GasReserve) * MinimalNanotezPerGasUnit + AddSize * MinimalNanotezPerByte + 1;
 
-            RedeemGasLimit          = long.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
-            RedeemStorageLimit      = long.Parse(configuration[nameof(RedeemStorageLimit)], CultureInfo.InvariantCulture);
-            RedeemSize              = long.Parse(configuration[nameof(RedeemSize)], CultureInfo.InvariantCulture);
-            RedeemFee               = MinimalFee + (RedeemGasLimit + GasReserve) * MinimalNanotezPerGasUnit + RedeemSize * MinimalNanotezPerByte + 1;
+            RedeemGasLimit = long.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
+            RedeemStorageLimit = long.Parse(configuration[nameof(RedeemStorageLimit)], CultureInfo.InvariantCulture);
+            RedeemSize = long.Parse(configuration[nameof(RedeemSize)], CultureInfo.InvariantCulture);
+            RedeemFee = MinimalFee + (RedeemGasLimit + GasReserve) * MinimalNanotezPerGasUnit + RedeemSize * MinimalNanotezPerByte + 1;
 
-            RefundGasLimit          = long.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
-            RefundStorageLimit      = long.Parse(configuration[nameof(RefundStorageLimit)], CultureInfo.InvariantCulture);
-            RefundSize              = long.Parse(configuration[nameof(RefundSize)], CultureInfo.InvariantCulture);
-            RefundFee               = MinimalFee + (RefundGasLimit + GasReserve) * MinimalNanotezPerGasUnit + RefundStorageLimit * MinimalNanotezPerByte + 1;
+            RefundGasLimit = long.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
+            RefundStorageLimit = long.Parse(configuration[nameof(RefundStorageLimit)], CultureInfo.InvariantCulture);
+            RefundSize = long.Parse(configuration[nameof(RefundSize)], CultureInfo.InvariantCulture);
+            RefundFee = MinimalFee + (RefundGasLimit + GasReserve) * MinimalNanotezPerGasUnit + RefundStorageLimit * MinimalNanotezPerByte + 1;
 
-            ActivationStorage       = long.Parse(configuration[nameof(ActivationStorage)], CultureInfo.InvariantCulture);
-            StorageFeeMultiplier    = long.Parse(configuration[nameof(StorageFeeMultiplier)], CultureInfo.InvariantCulture);
+            ActivationStorage = long.Parse(configuration[nameof(ActivationStorage)], CultureInfo.InvariantCulture);
+            StorageFeeMultiplier = long.Parse(configuration[nameof(StorageFeeMultiplier)], CultureInfo.InvariantCulture);
 
-            BaseUri                 = configuration["BlockchainApiBaseUri"];
-            RpcNodeUri              = configuration["BlockchainRpcNodeUri"];
-            BbUri                   = configuration[nameof(BbUri)];
-            BbApiUri                = configuration[nameof(BbApiUri)];
+            BaseUri = configuration["BlockchainApiBaseUri"];
+            RpcNodeUri = configuration["BlockchainRpcNodeUri"];
+            BbUri = configuration[nameof(BbUri)];
+            BbApiUri = configuration[nameof(BbApiUri)];
 
-            BlockchainApi           = configuration["BlockchainApi"];//ResolveBlockchainApi(configuration);
-            TxExplorerUri           = configuration[nameof(TxExplorerUri)];
-            AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
-            SwapContractAddress     = configuration["SwapContract"];
-            TransactionType         = typeof(TezosOperation);
+            BlockchainApi = configuration["BlockchainApi"];//ResolveBlockchainApi(configuration);
+            TxExplorerUri = configuration[nameof(TxExplorerUri)];
+            AddressExplorerUri = configuration[nameof(AddressExplorerUri)];
+            SwapContractAddress = configuration["SwapContract"];
+            TransactionType = typeof(TezosOperation);
 
-            IsSwapAvailable         = true;
-            Bip44Code               = Bip44.Tezos;
+            IsSwapAvailable = true;
+            Bip44Code = Bip44.Tezos;
 
-            ThumbsApiUri            = configuration[nameof(ThumbsApiUri)];
-            CatavaApiUri            = configuration[nameof(CatavaApiUri)];
-            IpfsGatewayUri          = configuration[nameof(IpfsGatewayUri)];
+            ThumbsApiUri = configuration[nameof(ThumbsApiUri)];
+            CatavaApiUri = configuration[nameof(CatavaApiUri)];
+            IpfsGatewayUri = configuration[nameof(IpfsGatewayUri)];
         }
 
         public override IBlockchainApi GetBlockchainApi() => GetTzktApi();
@@ -223,7 +223,16 @@ namespace Atomex
             Address.CheckTz2Address(address) ||
             Address.CheckTz3Address(address) ||
             Address.CheckKtAddress(address);
- 
+
+        public override string GetKeyPathPattern(int keyType)
+        {
+            return keyType switch
+            {
+                Bip32Ed25519Key => $"m/{Bip44.Purpose}'/{Bip44Code}'/{{a}}'/{{c}}/{{i}}",
+                StandardKey or _ => $"m/{Bip44.Purpose}'/{Bip44Code}'/{{i}}'/{{c}}'",
+            };
+        }
+
         public override Task<BigInteger> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default) =>
             Task.FromResult<BigInteger>(InitiateFee);

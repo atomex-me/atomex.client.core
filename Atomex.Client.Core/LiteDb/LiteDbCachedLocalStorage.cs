@@ -117,35 +117,42 @@ namespace Atomex.LiteDb
             string address,
             CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetWalletAddressAsync(currency, address);
+            return _liteDbLocalStorage.GetWalletAddressAsync(
+                currency,
+                address);
         }
 
         public Task<WalletAddress> GetLastActiveWalletAddressAsync(
             string currency,
-            uint chain,
+            string keyPath,
             int keyType,
             CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetLastActiveWalletAddressAsync(currency, chain, keyType);
-        }
-
-        public Task<WalletAddress> GetLastActiveWalletAddressByAccountAsync(
-            string currency,
-            int keyType)
-        {
-            return _liteDbLocalStorage.GetLastActiveWalletAddressByAccountAsync(currency, keyType);
+            return _liteDbLocalStorage.GetLastActiveWalletAddressAsync(
+                currency,
+                keyPath,
+                keyType,
+                cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string currency,
-            bool includeUnconfirmed = true)
+            bool includeUnconfirmed = true,
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetUnspentAddressesAsync(currency, includeUnconfirmed);
+            return _liteDbLocalStorage.GetUnspentAddressesAsync(
+                currency,
+                includeUnconfirmed,
+                cancellationToken);
         }
 
-        public Task<IEnumerable<WalletAddress>> GetAddressesAsync(string currency)
+        public Task<IEnumerable<WalletAddress>> GetAddressesAsync(
+            string currency,
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetAddressesAsync(currency);
+            return _liteDbLocalStorage.GetAddressesAsync(
+                currency,
+                cancellationToken);
         }
 
         #endregion Addresses
@@ -156,30 +163,47 @@ namespace Atomex.LiteDb
             string currency,
             string tokenContract,
             BigInteger tokenId,
-            string address)
+            string address,
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetTokenAddressAsync(currency, tokenContract, tokenId, address);
+            return _liteDbLocalStorage.GetTokenAddressAsync(
+                currency,
+                tokenContract,
+                tokenId,
+                address,
+                cancellationToken);
         }
 
-        public Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync()
+        public Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetTokenAddressesAsync();
+            return _liteDbLocalStorage.GetTokenAddressesAsync(
+                cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
             string address,
-            string tokenContract)
+            string tokenContract,
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetTokenAddressesAsync(address, tokenContract);
+            return _liteDbLocalStorage.GetTokenAddressesAsync(
+                address,
+                tokenContract,
+                cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetTokenAddressesByContractAsync(
-            string tokenContract)
+            string tokenContract,
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetTokenAddressesByContractAsync(tokenContract);
+            return _liteDbLocalStorage.GetTokenAddressesByContractAsync(
+                tokenContract,
+                cancellationToken);
         }
 
-        public async Task<int> UpsertTokenAddressesAsync(IEnumerable<WalletAddress> walletAddresses)
+        public async Task<int> UpsertTokenAddressesAsync(
+            IEnumerable<WalletAddress> walletAddresses,
+            CancellationToken cancellationToken = default)
         {
             var changedTokens = new HashSet<(string, BigInteger)>();
             var changedAddresses = new HashSet<string>();
@@ -221,19 +245,22 @@ namespace Atomex.LiteDb
         public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             string currency,
             string tokenContract,
-            decimal tokenId)
+            decimal tokenId,
+            CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.GetUnspentTokenAddressesAsync(
                 currency,
                 tokenContract,
-                tokenId);
+                tokenId,
+                cancellationToken);
         }
 
         public async Task<int> UpsertTokenTransfersAsync(
-            IEnumerable<TezosTokenTransfer> tokenTransfers)
+            IEnumerable<TezosTokenTransfer> tokenTransfers,
+            CancellationToken cancellationToken = default)
         {
             var upsertResult = await _liteDbLocalStorage
-                .UpsertTokenTransfersAsync(tokenTransfers)
+                .UpsertTokenTransfersAsync(tokenTransfers, cancellationToken)
                 .ConfigureAwait(false);
 
             TransactionsChanged?.Invoke(this, new TransactionsChangedEventArgs(tokenTransfers));
@@ -244,20 +271,29 @@ namespace Atomex.LiteDb
         public Task<IEnumerable<TezosTokenTransfer>> GetTokenTransfersAsync(
             string contractAddress,
             int offset = 0,
-            int limit = int.MaxValue)
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetTokenTransfersAsync(contractAddress, offset, limit);
+            return _liteDbLocalStorage.GetTokenTransfersAsync(
+                contractAddress,
+                offset,
+                limit,
+                cancellationToken);
         }
 
         public Task<int> UpsertTokenContractsAsync(
-            IEnumerable<TokenContract> tokenContracts)
+            IEnumerable<TokenContract> tokenContracts,
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.UpsertTokenContractsAsync(tokenContracts);
+            return _liteDbLocalStorage.UpsertTokenContractsAsync(
+                tokenContracts,
+                cancellationToken);
         }
 
-        public Task<IEnumerable<TokenContract>> GetTokenContractsAsync()
+        public Task<IEnumerable<TokenContract>> GetTokenContractsAsync(
+            CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetTokenContractsAsync();
+            return _liteDbLocalStorage.GetTokenContractsAsync(cancellationToken);
         }
 
         #endregion TezosTokens
@@ -473,28 +509,31 @@ namespace Atomex.LiteDb
         public Task<bool> RemoveAllOrdersAsync(
             CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.RemoveAllOrdersAsync();
+            return _liteDbLocalStorage.RemoveAllOrdersAsync(
+                cancellationToken);
         }
 
         public Order GetOrderById(
             string clientOrderId,
             CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetOrderById(clientOrderId);
+            return _liteDbLocalStorage.GetOrderById(
+                clientOrderId,
+                cancellationToken);
         }
 
         public Order GetOrderById(
             long id,
             CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetOrderById(id);
+            return _liteDbLocalStorage.GetOrderById(id, cancellationToken);
         }
 
         public Task<bool> RemoveOrderByIdAsync(
             long id,
             CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.RemoveOrderByIdAsync(id);
+            return _liteDbLocalStorage.RemoveOrderByIdAsync(id, cancellationToken);
         }
 
         #endregion Orders
@@ -507,7 +546,7 @@ namespace Atomex.LiteDb
         {
             //_swapById.Value.TryAdd(swap.Id, swap);
 
-            return _liteDbLocalStorage.AddSwapAsync(swap);
+            return _liteDbLocalStorage.AddSwapAsync(swap, cancellationToken);
         }
 
         public Task<bool> UpdateSwapAsync(
@@ -516,7 +555,7 @@ namespace Atomex.LiteDb
         {
             //_swapById.Value[swap.Id] = swap;
 
-            return _liteDbLocalStorage.UpdateSwapAsync(swap);
+            return _liteDbLocalStorage.UpdateSwapAsync(swap, cancellationToken);
         }
 
         public async Task<Swap> GetSwapByIdAsync(
@@ -527,7 +566,7 @@ namespace Atomex.LiteDb
             //    return swap;
 
             return await _liteDbLocalStorage
-                .GetSwapByIdAsync(id)
+                .GetSwapByIdAsync(id, cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -536,14 +575,19 @@ namespace Atomex.LiteDb
             int limit = int.MaxValue,
             CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetSwapsAsync();
+            return _liteDbLocalStorage.GetSwapsAsync(
+                offset,
+                limit,
+                cancellationToken);
         }
 
         public Task<Swap> GetSwapByPaymentTxIdAsync(
             string txId,
             CancellationToken cancellationToken = default)
         {
-            return _liteDbLocalStorage.GetSwapByPaymentTxIdAsync(txId, cancellationToken);
+            return _liteDbLocalStorage.GetSwapByPaymentTxIdAsync(
+                txId,
+                cancellationToken);
         }
 
         #endregion Swaps

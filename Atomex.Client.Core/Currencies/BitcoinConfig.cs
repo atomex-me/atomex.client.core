@@ -10,7 +10,7 @@ using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Bitcoin.SoChain;
 using Atomex.Blockchain.BlockCypher;
 using Atomex.Common;
-using Atomex.Wallet.Bip;
+using Atomex.Wallets.Bips;
 using FeeRate = Atomex.Blockchain.Bitcoin.FeeRate;
 
 namespace Atomex
@@ -78,8 +78,8 @@ namespace Atomex
             TxExplorerUri      = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri = configuration[nameof(AddressExplorerUri)];
 
-            IsSwapAvailable    = true;
-            Bip44Code          = Bip44.Bitcoin;
+            IsSwapAvailable = true;
+            Bip44Code       = Bip44.Bitcoin;
         }
 
         private static Network ResolveNetwork(IConfiguration configuration)

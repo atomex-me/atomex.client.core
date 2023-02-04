@@ -8,7 +8,7 @@ using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Bitcoin.SoChain;
 using Atomex.Blockchain.BlockCypher;
 using Atomex.Common;
-using Atomex.Wallet.Bip;
+using Atomex.Wallets.Bips;
 
 namespace Atomex
 {
@@ -49,18 +49,18 @@ namespace Atomex
             FeeFormat         = DecimalExtensions.GetFormatWithPrecision(Digits);
             FeeCurrencyName   = Name;
 
-            MaxRewardPercent        = configuration[nameof(MaxRewardPercent)] != null
+            MaxRewardPercent = configuration[nameof(MaxRewardPercent)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercent)], CultureInfo.InvariantCulture)
                 : 0m;
-            MaxRewardPercentInBase  = configuration[nameof(MaxRewardPercentInBase)] != null
+            MaxRewardPercentInBase = configuration[nameof(MaxRewardPercentInBase)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercentInBase)], CultureInfo.InvariantCulture)
                 : 0m;
             FeeCurrencyToBaseSymbol = configuration[nameof(FeeCurrencyToBaseSymbol)];
-            FeeCurrencySymbol       = configuration[nameof(FeeCurrencySymbol)];
+            FeeCurrencySymbol = configuration[nameof(FeeCurrencySymbol)];
 
-            HasFeePrice             = false;
+            HasFeePrice = false;
 
-            Network                 = ResolveNetwork(configuration);
+            Network = ResolveNetwork(configuration);
             BlockchainApi = configuration["BlockchainApi"];
             SoChainSettings = new SoChainSettings
             {
@@ -76,17 +76,14 @@ namespace Atomex
                 Decimals = Digits
             };
 
-            TxExplorerUri      = configuration[nameof(TxExplorerUri)];
+            TxExplorerUri = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri = configuration[nameof(AddressExplorerUri)];
 
-            IsSwapAvailable    = true;
-            Bip44Code          = Bip44.Litecoin;
+            IsSwapAvailable = true;
+            Bip44Code = Bip44.Litecoin;
         }
 
-        public override long GetDust()
-        {
-            return DustThreshold;
-        }
+        public override long GetDust() => DustThreshold;
 
         private static Network ResolveNetwork(IConfiguration configuration)
         {

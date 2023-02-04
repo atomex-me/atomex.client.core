@@ -92,7 +92,8 @@ namespace Atomex.Services.BalanceUpdaters
                 .GetFreeExternalAddressAsync()
                 .ConfigureAwait(false);
 
-            return addresses.Concat(new[] { freeAddress })
+            return addresses
+                .Concat(new[] { freeAddress })
                 .Select(wa => wa.Address)
                 .ToHashSet();
         }

@@ -16,7 +16,7 @@ using Atomex.Blockchain.Tezos.Tzkt.Operations;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
+using Atomex.Wallets.Bips;
 using Atomex.Wallets.Tezos;
 
 namespace Atomex.Wallet.Tezos
@@ -464,13 +464,19 @@ namespace Atomex.Wallet.Tezos
             if (unspentAddresses.Any())
                 return unspentAddresses.MaxBy(w => w.AvailableBalance());
 
+            var keyType = CurrencyConfig.StandardKey;
+
             foreach (var chain in new[] {Bip44.Internal, Bip44.External})
             {
+                var keyPathPattern = Config
+                    .GetKeyPathPattern(keyType)
+                    .Replace(KeyPathExtensions.ChainPattern, chain.ToString());
+
                 var lastActiveAddress = await LocalStorage
                     .GetLastActiveWalletAddressAsync(
                         currency: Currency,
-                        chain: chain,
-                        keyType: CurrencyConfig.StandardKey)
+                        keyPathPattern: keyPathPattern,
+                        keyType: keyType)
                     .ConfigureAwait(false);
 
                 if (lastActiveAddress != null)
@@ -548,7 +554,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             return await LocalStorage
-                .GetUnconfirmedTransactionsAsync<TezosOperation>(Currency)
+                .GetUnconfirmedTransactionsAsync<TezosOperation>(Currency, cancellationToken)
                 .ConfigureAwait(false);
         }
 

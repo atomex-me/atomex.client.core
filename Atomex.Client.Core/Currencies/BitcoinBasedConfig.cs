@@ -15,6 +15,7 @@ using Atomex.Core;
 using Atomex.Common.Memory;
 using Atomex.Wallets;
 using Atomex.Wallets.Bitcoin;
+using Atomex.Wallets.Bips;
 using BitcoinExtKey = Atomex.Wallets.Bitcoin.BitcoinExtKey;
 
 namespace Atomex
@@ -46,13 +47,10 @@ namespace Atomex
 
         public override IExtKey CreateExtKey(SecureBytes seed, int keyType) => 
             CreateExtKeyFromSeed(seed);
-
         public static IExtKey CreateExtKeyFromSeed(SecureBytes seed) => 
             new BitcoinExtKey(seed);
-
         public override IKey CreateKey(SecureBytes seed) => 
             new BitcoinKey(seed);
-
         public override string AddressFromKey(byte[] publicKey, int keyType) =>
             new PubKey(publicKey)
                 .GetAddress(
@@ -75,6 +73,13 @@ namespace Atomex
 
             return true;
         }
+
+        public override string GetKeyPathPattern(int keyType) =>
+            keyType switch
+            {
+                SegwitKey => $"m/{Bip84.Purpose}'/{Bip44Code}'/{{a}}'/{{c}}/{{i}}",
+                StandardKey or _ => base.GetKeyPathPattern(keyType),
+            };
 
         public override async Task<BigInteger> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default)

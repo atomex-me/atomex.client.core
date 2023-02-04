@@ -16,7 +16,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
+using Atomex.Wallets.Bips;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -363,13 +363,19 @@ namespace Atomex.Wallet.Ethereum
             if (unspentAddresses.Any())
                 return unspentAddresses.MaxBy(w => w.AvailableBalance());
 
+            var keyType = CurrencyConfig.StandardKey;
+
             foreach (var chain in new[] { Bip44.Internal, Bip44.External })
             {
+                var keyPathPattern = EthConfig
+                    .GetKeyPathPattern(keyType)
+                    .Replace(KeyPathExtensions.ChainPattern, chain.ToString());
+
                 var lastActiveAddress = await LocalStorage
                     .GetLastActiveWalletAddressAsync(
                         currency: Currency,
-                        chain: chain,
-                        keyType: CurrencyConfig.StandardKey)
+                        keyPathPattern: keyPathPattern,
+                        keyType: keyType)
                     .ConfigureAwait(false);
 
                 if (lastActiveAddress != null)

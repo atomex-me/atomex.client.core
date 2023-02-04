@@ -106,7 +106,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             using var refundAddressPublicKey = Account.Wallet.GetPublicKey(
                 currency: Account.Config,
-                keyIndex: refundAddress.KeyIndex,
+                keyPath: refundAddress.KeyPath,
                 keyType: refundAddress.KeyType);
 
             var refundScriptSig = BitcoinSwapTemplate.GenerateHtlcSwapRefundForP2Sh(
@@ -169,7 +169,7 @@ namespace Atomex.Swaps.BitcoinBased
 
             using var redeemAddressPublicKey = Account.Wallet.GetPublicKey(
                 currency: Account.Config,
-                keyIndex: redeemAddress.KeyIndex,
+                keyPath: redeemAddress.KeyPath,
                 keyType: redeemAddress.KeyType);
 
             var redeemScriptSig = BitcoinSwapTemplate.GenerateP2PkhSwapRedeemForP2Sh(

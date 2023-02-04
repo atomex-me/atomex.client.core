@@ -71,6 +71,7 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
         private async Task<ISet<string>> GetAddressesAsync()
         {
             var account = _account.GetCurrencyAccount(_currencyName);
+
             var addresses = await account
                 .GetAddressesAsync()
                 .ConfigureAwait(false);
@@ -79,7 +80,8 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
                 .GetFreeExternalAddressAsync()
                 .ConfigureAwait(false);
 
-            return addresses.Concat(new[] { freeAddress })
+            return addresses
+                .Concat(new[] { freeAddress })
                 .Select(wa => wa.Address)
                 .ToHashSet();
         }

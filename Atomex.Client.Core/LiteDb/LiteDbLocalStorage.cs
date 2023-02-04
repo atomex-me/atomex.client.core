@@ -40,13 +40,13 @@ namespace Atomex.LiteDb
         private const string BalanceKey = nameof(WalletAddress.Balance);
         private const string UnconfirmedIncomeKey = nameof(WalletAddress.UnconfirmedIncome);
         private const string UnconfirmedOutcomeKey = nameof(WalletAddress.UnconfirmedOutcome);
-        private const string ChainKey = nameof(KeyIndex) + "." + nameof(KeyIndex.Chain);
-        private const string IndexKey = nameof(KeyIndex) + "." + nameof(KeyIndex.Index);
         private const string HasActivityKey = nameof(WalletAddress.HasActivity);
         private const string TokenContractKey = nameof(TokenBalance) + "." + nameof(TokenBalance.Contract);
         private const string TokenIdKey = nameof(TokenBalance) + "." + nameof(TokenBalance.TokenId);
         private const string TransferContract = nameof(TezosTokenTransfer.Contract);
         private const string KeyTypeKey = nameof(WalletAddress.KeyType);
+        private const string KeyPathKey = "KeyPath";
+        private const string KeyIndexKey = "KeyIndex";
 
         public event EventHandler<BalanceChangedEventArgs> BalanceChanged;
         public event EventHandler<TransactionsChangedEventArgs> TransactionsChanged;
@@ -159,10 +159,11 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var addresses = _db.GetCollection(AddressesCollectionName);
-
                 var addressId = WalletAddress.GetId(address, currency);
-                var document = addresses.FindById(addressId);
+
+                var document = _db
+                    .GetCollection(AddressesCollectionName)
+                    .FindById(addressId);
 
                 var walletAddress = document != null
                     ? _bsonMapper.ToObject<WalletAddress>(document)
@@ -180,49 +181,19 @@ namespace Atomex.LiteDb
 
         public Task<WalletAddress> GetLastActiveWalletAddressAsync(
             string currency,
-            uint chain,
+            string keyPathPattern,
             int keyType,
             CancellationToken cancellationToken = default)
         {
             try
             {
-                var addresses = _db.GetCollection(AddressesCollectionName);
-
-                var document = addresses
-                    .Find(Query.And(
-                        Query.EQ(CurrencyKey, currency),
-                        Query.EQ(KeyTypeKey, keyType),
-                        Query.EQ(ChainKey, (int)chain),
-                        Query.EQ(HasActivityKey, true)))
-                    .MaxByOrDefault(d => d["KeyIndex"]["Index"].AsInt32);
-
-                var walletAddress = document != null
-                    ? _bsonMapper.ToObject<WalletAddress>(document)
-                    : null;
-
-                return Task.FromResult(walletAddress);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error getting last active wallet address");
-            }
-
-            return Task.FromResult<WalletAddress>(null);
-        }
-
-        public Task<WalletAddress> GetLastActiveWalletAddressByAccountAsync(
-            string currency,
-            int keyType)
-        {
-            try
-            {
-                var document = _db
-                    .GetCollection(AddressesCollectionName)
+                var document = _db.GetCollection(AddressesCollectionName)
                     .Find(Query.And(
                         Query.EQ(CurrencyKey, currency),
                         Query.EQ(KeyTypeKey, keyType),
                         Query.EQ(HasActivityKey, true)))
-                    .MaxByOrDefault(d => d["KeyIndex"]["Account"].AsInt32);
+                    .Where(d => d[KeyPathKey].AsString.IsMatch(keyPathPattern))
+                    .MaxByOrDefault(d => d[KeyIndexKey].AsInt32);
 
                 var walletAddress = document != null
                     ? _bsonMapper.ToObject<WalletAddress>(document)
@@ -240,7 +211,8 @@ namespace Atomex.LiteDb
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string currency,
-            bool includeUnconfirmed = true)
+            bool includeUnconfirmed = true,
+            CancellationToken cancellationToken = default)
         {
             var query = includeUnconfirmed
                 ? Query.And(
@@ -273,7 +245,8 @@ namespace Atomex.LiteDb
         }
 
         public Task<IEnumerable<WalletAddress>> GetAddressesAsync(
-            string currency)
+            string currency,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -301,7 +274,8 @@ namespace Atomex.LiteDb
             string currency,
             string tokenContract,
             BigInteger tokenId,
-            string address)
+            string address,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -323,7 +297,8 @@ namespace Atomex.LiteDb
             return Task.FromResult<WalletAddress>(null);
         }
 
-        public Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync()
+        public Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -345,7 +320,8 @@ namespace Atomex.LiteDb
 
         public Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
             string address,
-            string tokenContract)
+            string tokenContract,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -368,7 +344,8 @@ namespace Atomex.LiteDb
         }
 
         public Task<IEnumerable<WalletAddress>> GetTokenAddressesByContractAsync(
-            string tokenContract)
+            string tokenContract,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -389,7 +366,8 @@ namespace Atomex.LiteDb
         }
 
         public Task<int> UpsertTokenAddressesAsync(
-            IEnumerable<WalletAddress> walletAddresses)
+            IEnumerable<WalletAddress> walletAddresses,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -415,7 +393,8 @@ namespace Atomex.LiteDb
         public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             string currency,
             string tokenContract,
-            decimal tokenId)
+            decimal tokenId,
+            CancellationToken cancellationToken = default)
         {
             var queries = new List<BsonExpression>
             {
@@ -450,7 +429,8 @@ namespace Atomex.LiteDb
         }
 
         public Task<int> UpsertTokenTransfersAsync(
-            IEnumerable<TezosTokenTransfer> tokenTransfers)
+            IEnumerable<TezosTokenTransfer> tokenTransfers,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -474,7 +454,8 @@ namespace Atomex.LiteDb
         public Task<IEnumerable<TezosTokenTransfer>> GetTokenTransfersAsync(
             string contractAddress,
             int offset = 0,
-            int limit = int.MaxValue)
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -495,7 +476,8 @@ namespace Atomex.LiteDb
         }
 
         public Task<int> UpsertTokenContractsAsync(
-            IEnumerable<TokenContract> tokenContracts)
+            IEnumerable<TokenContract> tokenContracts,
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -516,7 +498,8 @@ namespace Atomex.LiteDb
             return Task.FromResult(0);
         }
 
-        public Task<IEnumerable<TokenContract>> GetTokenContractsAsync()
+        public Task<IEnumerable<TokenContract>> GetTokenContractsAsync(
+            CancellationToken cancellationToken = default)
         {
             try
             {
@@ -530,7 +513,7 @@ namespace Atomex.LiteDb
                         Type = d.ContainsKey("Type")
                             ? d["Type"].AsString
                             : GetContractType(d),
-                    }) // _bsonMapper.ToObject<TokenContract>(d))
+                    })
                     .ToList();
 
                 return Task.FromResult<IEnumerable<TokenContract>>(contracts);
@@ -952,10 +935,11 @@ namespace Atomex.LiteDb
 
                 var document = _bsonMapper.ToDocument(order);
 
-                var orders = _db.GetCollection(OrdersCollectionName);
-                orders.Upsert(document);
+                var result = _db
+                    .GetCollection(OrdersCollectionName)
+                    .Upsert(document);
 
-                return Task.FromResult(true);
+                return Task.FromResult(result);
             }
             catch (Exception e)
             {
@@ -1020,9 +1004,9 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var orders = _db.GetCollection(OrdersCollectionName);
-
-                var documents = orders.Find(Query.EQ("OrderId", id));
+                var documents = _db
+                    .GetCollection(OrdersCollectionName)
+                    .Find(Query.EQ("OrderId", id));
 
                 return documents != null && documents.Any()
                     ? _bsonMapper.ToObject<Order>(documents.First())

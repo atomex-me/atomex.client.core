@@ -7,6 +7,7 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Wallets;
+using Atomex.Wallets.Bips;
 
 namespace Atomex.Core
 {
@@ -27,36 +28,32 @@ namespace Atomex.Core
         public int Digits { get; set; }
         public string Format { get; set; }
         public bool IsToken { get; set; }
-
         public string FeeCode { get; set; }
         public string FeeFormat { get; set; }
         public bool HasFeePrice { get; set; }
         public string FeePriceCode { get; set; }
         public string FeePriceFormat { get; set; }
         public string FeeCurrencyName { get; set; }
-
         public decimal MaxRewardPercent { get; set; }
         public decimal MaxRewardPercentInBase { get; set; }
         public string FeeCurrencyToBaseSymbol { get; set; }
         public string FeeCurrencySymbol { get; set; }
-
         public string BlockchainApi { get; set; }
         public string TxExplorerUri { get; set; }
         public string AddressExplorerUri { get; set; }
         public Type TransactionType { get; protected set; }
         public Type TransactionMetadataType { get; protected set; }
-
         public bool IsSwapAvailable { get; protected set; }
         public uint Bip44Code { get; protected set; }
 
         public abstract IBlockchainApi GetBlockchainApi();
         public abstract IExtKey CreateExtKey(SecureBytes seed, int keyType);
-
         public abstract IKey CreateKey(SecureBytes seed);
-
         public abstract string AddressFromKey(byte[] publicKey, int keyType);
-
         public abstract bool IsValidAddress(string address);
+
+        public virtual string GetKeyPathPattern(int keyType) =>
+            $"m/{Bip44.Purpose}'/{Bip44Code}'/{{a}}'/{{c}}/{{i}}";
 
         public abstract Task<BigInteger> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default);

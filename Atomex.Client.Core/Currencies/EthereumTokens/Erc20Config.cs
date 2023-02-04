@@ -8,7 +8,7 @@ using Microsoft.Extensions.Configuration;
 
 using Atomex.Blockchain.Ethereum;
 using Atomex.Common;
-using Atomex.Wallet.Bip;
+using Atomex.Wallets.Bips;
 
 namespace Atomex.EthereumTokens
 {

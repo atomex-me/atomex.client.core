@@ -2,10 +2,16 @@
 using System.Numerics;
 
 using Atomex.Blockchain;
-using Atomex.Wallet.Abstract;
 
 namespace Atomex.Core
 {
+    public enum WalletAddressUsageType
+    {
+        InUse,
+        NoLongerUsed,
+        SingleUse
+    }
+
     public class WalletAddress
     {
         public string Id => GetId(Address, Currency, TokenBalance?.Contract, TokenBalance?.TokenId);
@@ -14,11 +20,13 @@ namespace Atomex.Core
         public BigInteger Balance { get; set; }
         public BigInteger UnconfirmedIncome { get; set; }
         public BigInteger UnconfirmedOutcome { get; set; }
-        public KeyIndex KeyIndex { get; set; }
-        public bool HasActivity { get; set; }
+        public string KeyPath { get; set; }
+        public uint KeyIndex { get; set; }
         public int KeyType { get; set; }
+        public bool HasActivity { get; set; }
         public TokenBalance TokenBalance { get; set; }
         public DateTime LastSuccessfullUpdate { get; set; }
+        public WalletAddressUsageType UsageType { get; set; }
 
         public BigInteger AvailableBalance() => Currencies.IsBitcoinBased(Currency)
             ? Balance + UnconfirmedIncome

@@ -486,27 +486,12 @@ namespace Atomex.Wallet.Tezos
         #region Addresses
 
         public Task<WalletAddress> DivideAddressAsync(
-            KeyIndex keyIndex,
-            int keyType)
-        {
-            return DivideAddressAsync(
-                account: keyIndex.Account,
-                chain: keyIndex.Chain,
-                index: keyIndex.Index,
-                keyType: keyType);
-        }
-
-        public Task<WalletAddress> DivideAddressAsync(
-            uint account,
-            uint chain,
-            uint index,
+            string keyPath,
             int keyType)
         {
             var walletAddress = Wallet.GetAddress(
                 currency: TokenConfig,
-                account: account,
-                chain: chain,
-                index: index,
+                keyPath: keyPath,
                 keyType: keyType);
 
             if (walletAddress == null)
@@ -548,14 +533,14 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             return LocalStorage
-                .GetTokenAddressesByContractAsync(_tokenContract);
+                .GetTokenAddressesByContractAsync(_tokenContract, cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             CancellationToken cancellationToken = default)
         {
             return LocalStorage
-                .GetUnspentTokenAddressesAsync(TokenType, _tokenContract, _tokenId);
+                .GetUnspentTokenAddressesAsync(TokenType, _tokenContract, _tokenId, cancellationToken);
         }
 
         public async Task<WalletAddress> GetFreeExternalAddressAsync(
@@ -563,7 +548,7 @@ namespace Atomex.Wallet.Tezos
         {
             // 1. try to find address with tokens
             var unspentAddresses = await LocalStorage
-                .GetUnspentTokenAddressesAsync(TokenType, _tokenContract, _tokenId)
+                .GetUnspentTokenAddressesAsync(TokenType, _tokenContract, _tokenId, cancellationToken)
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
@@ -571,7 +556,7 @@ namespace Atomex.Wallet.Tezos
 
             // 2. try to find xtz address with max balance
             var unspentTezosAddresses = await LocalStorage
-                .GetUnspentAddressesAsync(TezosConfig.Xtz)
+                .GetUnspentAddressesAsync(TezosConfig.Xtz, includeUnconfirmed: true, cancellationToken)
                 .ConfigureAwait(false);
 
             if (unspentTezosAddresses.Any())
@@ -590,7 +575,7 @@ namespace Atomex.Wallet.Tezos
                     return tokenAddress;
 
                 return await DivideAddressAsync(
-                        keyIndex: xtzAddress.KeyIndex,
+                        keyPath: xtzAddress.KeyPath,
                         keyType: xtzAddress.KeyType)
                     .ConfigureAwait(false);
             }
@@ -605,14 +590,15 @@ namespace Atomex.Wallet.Tezos
                     currency: TokenType,
                     tokenContract: _tokenContract,
                     tokenId: _tokenId,
-                    address: xtzRedeemAddress.Address)
+                    address: xtzRedeemAddress.Address,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (tokenRedeemAddress != null)
                 return tokenRedeemAddress;
 
             return await DivideAddressAsync(
-                    keyIndex: xtzRedeemAddress.KeyIndex,
+                    keyPath: xtzRedeemAddress.KeyPath,
                     keyType: xtzRedeemAddress.KeyType)
                 .ConfigureAwait(false);
         }

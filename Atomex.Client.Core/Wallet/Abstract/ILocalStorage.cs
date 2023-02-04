@@ -43,19 +43,18 @@ namespace Atomex.Wallet.Abstract
 
         Task<WalletAddress> GetLastActiveWalletAddressAsync(
             string currency,
-            uint chain,
+            string keyPathPattern,
             int keyType,
             CancellationToken cancellationToken = default);
 
-        Task<WalletAddress> GetLastActiveWalletAddressByAccountAsync(
-            string currency,
-            int keyType);
-
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string currency,
-            bool includeUnconfirmed = true);
+            bool includeUnconfirmed = true,
+            CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<WalletAddress>> GetAddressesAsync(string currency);
+        Task<IEnumerable<WalletAddress>> GetAddressesAsync(
+            string currency,
+            CancellationToken cancellationToken = default);
 
         #endregion Addresses
 
@@ -65,37 +64,47 @@ namespace Atomex.Wallet.Abstract
             string currency,
             string tokenContract,
             BigInteger tokenId,
-            string address);
+            string address,
+            CancellationToken cancellationToken = default);
 
         Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             string currency,
             string tokenContract,
-            decimal tokenId);
+            decimal tokenId,
+            CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync();
+        Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
+            CancellationToken cancellationToken = default);
 
         Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
             string address,
-            string tokenContract);
+            string tokenContract,
+            CancellationToken cancellationToken = default);
 
         Task<IEnumerable<WalletAddress>> GetTokenAddressesByContractAsync(
-            string tokenContract);
+            string tokenContract,
+            CancellationToken cancellationToken = default);
 
         Task<int> UpsertTokenAddressesAsync(
-            IEnumerable<WalletAddress> walletAddresses);
+            IEnumerable<WalletAddress> walletAddresses,
+            CancellationToken cancellationToken = default);
 
         Task<int> UpsertTokenTransfersAsync(
-            IEnumerable<TezosTokenTransfer> tokenTransfers);
+            IEnumerable<TezosTokenTransfer> tokenTransfers,
+            CancellationToken cancellationToken = default);
 
         Task<IEnumerable<TezosTokenTransfer>> GetTokenTransfersAsync(
             string contractAddress,
             int offset = 0,
-            int limit = 20);
+            int limit = 20,
+            CancellationToken cancellationToken = default);
 
         Task<int> UpsertTokenContractsAsync(
-            IEnumerable<TokenContract> tokenContracts);
+            IEnumerable<TokenContract> tokenContracts,
+            CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<TokenContract>> GetTokenContractsAsync();
+        Task<IEnumerable<TokenContract>> GetTokenContractsAsync(
+            CancellationToken cancellationToken = default);
 
         #endregion TezosTokens
 
