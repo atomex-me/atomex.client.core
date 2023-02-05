@@ -23,12 +23,10 @@ namespace Atomex.Blockchain.Ethereum.Erc20
         public long BlockHeight { get; set; }
         public long Confirmations { get; set; }
         public bool IsConfirmed => Confirmations > 0;
-
         public BigInteger Nonce { get; set; }
         public BigInteger GasPrice { get; set; }
         public BigInteger GasLimit { get; set; }
         public BigInteger GasUsed { get; set; }
-
         public List<Erc20Transfer> Transfers { get; set; }
     }
 }

@@ -2,14 +2,13 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Nethereum.Contracts;
 using Nethereum.Hex.HexConvertors.Extensions;
 using Nethereum.Hex.HexTypes;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum.Abstract;
@@ -74,7 +73,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             string address,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = "api?module=account" +
+            var requestUri = "api?" +
+                "module=account" +
                 "&action=balance" +
                 $"&address={address}" +
                 $"&apikey={Settings.ApiToken}";
@@ -95,14 +95,12 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (!response.IsSuccessStatusCode)
                 return new Error((int)response.StatusCode, "Error status code received");
 
-            var json = JsonConvert.DeserializeObject<JObject>(content);
+            var responseObj = JsonSerializer.Deserialize<Response<string>>(content);
 
-            var result = json["result"];
-
-            if (result == null)
+            if (responseObj == null || responseObj.Message != "OK" || responseObj.Result == null)
                 return new Error(Errors.GetBalanceError, "Invalid response");
 
-            return BigInteger.Parse(result.Value<string>());
+            return BigInteger.Parse(responseObj.Result);
         }
 
         public async Task<Result<ITransaction>> GetTransactionAsync(
@@ -128,7 +126,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             EthereumTransactionRequest txRequest,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = "api?module=proxy" +
+            var requestUri = "api?" +
+                "module=proxy" +
                 "&action=eth_sendRawTransaction" +
                 $"&hex=0x{txRequest.GetRlpEncoded()}" +
                 $"&apikey={Settings.ApiToken}";
@@ -158,27 +157,21 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 if (!response.IsSuccessStatusCode)
                     return new Error((int)response.StatusCode, "Error status code received");
 
-                var json = JsonConvert.DeserializeObject<JObject>(content);
+                var rpcResponse = JsonSerializer.Deserialize<RpcResponse<string>>(content);
 
-                var errorMessage = json
-                    .SelectToken("error.message")
-                    ?.Value<string>();
+                if (rpcResponse == null)
+                    return new Error(Errors.BroadcastError, "Rpc response is null");
 
-                if (errorMessage != null)
-                    return new Error(Errors.BroadcastError, errorMessage);
-
-                var result = json["result"];
-
-                if (result != null)
+                if (rpcResponse.Result != null)
                 {
-                    transactionId = result?.Value<string>(); // save tx id
+                    transactionId = rpcResponse.Result; // save tx id
 
                     await Task.Delay(broadcastDelayIntervalMs, cancellationToken)
                         .ConfigureAwait(false);
                 }
-                else if (result == null && transactionId != null)
+                else if (rpcResponse.Result == null && transactionId != null)
                 {
-                    return transactionId!; // received an error, but there is already a transaction id
+                    return transactionId; // received an error, but there is already a transaction id
                 }
                 else // result == null, error
                 {
@@ -201,7 +194,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             string token,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = "api?module=account" +
+            var requestUri = "api?" +
+                "module=account" +
                 "&action=tokenbalance" +
                 $"&contractaddress={Settings.GetTokenContract(token)}" +
                 $"&address={address}" +
@@ -224,14 +218,15 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (!response.IsSuccessStatusCode)
                 return new Error((int)response.StatusCode, "Error status code received");
 
-            var json = JsonConvert.DeserializeObject<JObject>(content);
+            var responseObj = JsonSerializer.Deserialize<Response<string>>(content);
 
-            var result = json["result"];
+            if (responseObj == null || responseObj.Message != "OK")
+                return new Error((int)response.StatusCode, "Error response");
 
-            if (result == null)
+            if (responseObj.Result == null)
                 return new Error(Errors.GetErc20BalanceError, "Invalid response");
 
-            return BigInteger.Parse(result.Value<string>());
+            return BigInteger.Parse(responseObj.Result);
         }
 
         public async Task<Result<IEnumerable<Erc20Transaction>>> GetErc20TransactionsAsync(
@@ -280,7 +275,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
             for (var page = 1; ; page++)
             {
-                var requestUri = "api?module=account" +
+                var requestUri = "api?" +
+                    "module=account" +
                     "&action=tokentx" +
                     $"&contractaddress={Settings.GetTokenContract(tokenContractAddress)}" +
                     $"&address={address}" +
@@ -307,31 +303,32 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 if (!response.IsSuccessStatusCode)
                     return new Error((int)response.StatusCode, "Error status code received");
 
-                var result = JsonConvert.DeserializeObject<JObject>(content)
-                    ?["result"];
+                var transfersResponse = JsonSerializer.Deserialize<Response<List<Erc20TransferDto>>>(content);
 
-                if (result == null)
-                    return new Error(Errors.GetErc20TransactionsError, "Null data received");
+                if (transfersResponse == null || transfersResponse.Message != "OK" || transfersResponse.Result == null)
+                    return new Error(Errors.GetErc20TransactionsError, "Invalid response");
 
-                var received = result.Count();
+                var transfers = transfersResponse.Result;
 
-                foreach (var transfer in result)
+                var received = transfers.Count();
+
+                foreach (var transfer in transfers)
                 {
                     var erc20transfer = new Erc20Transfer
                     {
-                        From  = transfer["from"].Value<string>(),
-                        To    = transfer["to"].Value<string>(),
-                        Value = BigInteger.Parse(transfer["value"].Value<string>()),
+                        From = transfer.From,
+                        To = transfer.To,
+                        Value = BigInteger.Parse(transfer.Value),
                     };
 
-                    var hash = transfer["hash"].Value<string>();
+                    var hash = transfer.Hash;
 
                     if (!txsIndex.TryGetValue(hash, out var erc20tx))
                     {
                         var timeStamp = DateTimeOffset
-                            .FromUnixTimeSeconds(result["timeStamp"].Value<long>());
+                            .FromUnixTimeSeconds(long.Parse(transfer.TimeStamp));
 
-                        var confirmations = result["confirmations"].Value<long>();
+                        var confirmations = long.Parse(transfer.Confirmations);
 
                         erc20tx = new Erc20Transaction
                         {
@@ -343,11 +340,11 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                             Confirmations = confirmations,
                             CreationTime  = timeStamp,
                             BlockTime     = timeStamp,
-                            BlockHeight   = result["blockNumber"].Value<long>(),
-                            Nonce         = result["nonce"].Value<long>(),
-                            GasPrice      = result["gasPrice"].Value<long>(),
-                            GasLimit      = result["gas"].Value<long>(),
-                            GasUsed       = result["gasUsed"].Value<long>(),
+                            BlockHeight   = long.Parse(transfer.BlockNumber),
+                            Nonce         = long.Parse(transfer.Nonce),
+                            GasPrice      = long.Parse(transfer.GasPrice),
+                            GasLimit      = long.Parse(transfer.Gas),
+                            GasUsed       = long.Parse(transfer.GasUsed),
                             Transfers     = new List<Erc20Transfer>()
                         };
 
@@ -380,7 +377,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                     .GetCallData()
                     .ToHex(prefix: true);
 
-                var requestUri = $"api?module=proxy" +
+                var requestUri = $"api?" +
+                    $"module=proxy" +
                     $"&action=eth_call" +
                     $"&to={tokenAddress}" +
                     $"&data={callData}" +
@@ -403,12 +401,13 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 if (!response.IsSuccessStatusCode)
                     return new Error((int)response.StatusCode, "Error status code received");
 
-                var result = JsonConvert.DeserializeObject<JObject>(content);
+                var allowanceResponse = JsonSerializer.Deserialize<RpcResponse<string>>(content);
 
-                var allowanceHex = result?["result"]?.Value<string>();
+                if (allowanceResponse == null)
+                    return new Error(Errors.GetFa12AllowanceError, "Invalid response");
 
-                return !string.IsNullOrEmpty(allowanceHex)
-                    ? new HexBigInteger(allowanceHex).Value
+                return !string.IsNullOrEmpty(allowanceResponse.Result)
+                    ? new HexBigInteger(allowanceResponse.Result).Value
                     : 0;
             }
             catch (Exception e)
@@ -479,7 +478,6 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 if (txs!.Index.TryGetValue(internalTx.Hash, out var existsTx))
                 {
                     existsTx.InternalTransactions ??= new List<EthereumInternalTransaction>();
-
                     existsTx.InternalTransactions.Add(internalTx);
                 }
                 else
@@ -513,7 +511,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
         {
             var tag = pending ? "pending" : "latest";
 
-            var requestUri = "api?module=proxy" +
+            var requestUri = "api?" +
+                "module=proxy" +
                 "&action=eth_getTransactionCount" +
                 $"&address={address}" +
                 $"&tag={tag}" +
@@ -535,25 +534,24 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (!response.IsSuccessStatusCode)
                 return new Error((int)response.StatusCode, "Error status code received");
 
-            var json = JsonConvert.DeserializeObject<JObject>(content);
+            var transactionCountResponse = JsonSerializer.Deserialize<RpcResponse<string>>(content);
 
-            var result = json["result"];
+            if (transactionCountResponse == null)
+                return new Error(Errors.GetTransactionsCountError, "Invalid response");
 
-            var count = result != null
-                ? new HexBigInteger(result.ToString()).Value
+            return transactionCountResponse.Result != null
+                ? new HexBigInteger(transactionCountResponse.Result).Value
                 : 0;
-
-            return count;
         }
 
         #endregion
 
-        public async Task<Result<int?>> GetReceiptStatusAsync(
+        public async Task<Result<RpcTransactionReceipt>> GetTransactionReceiptAsync(
             string txId,
-            Action<JToken>? handler = null,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = "api?module=proxy" +
+            var requestUri = "api?" +
+                "module=proxy" +
                 "&action=eth_getTransactionReceipt" +
                 $"&txhash={txId}" +
                 $"&apikey={Settings.ApiToken}";
@@ -574,26 +572,12 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (!response.IsSuccessStatusCode)
                 return new Error((int)response.StatusCode, "Error status code received");
 
-            var txReceipt = JsonConvert.DeserializeObject<JObject>(content);
+            var txReceiptResponse = JsonSerializer.Deserialize<RpcResponse<RpcTransactionReceipt>>(content);
 
-            if (txReceipt?["status"]?.Value<string>() == "0")
-            {
-                return new Error(
-                    Errors.GetReceiptStatusError,
-                    $"Request error code: {txReceipt?["message"]?.Value<string>()}. " +
-                    $"Message: {txReceipt?["result"]?.Value<string>()}");
-            }
+            if (txReceiptResponse == null)
+                return new Error(Errors.GetTransactionReceiptError, "Invalid response");
 
-            var result = txReceipt?["result"];
-
-            if (result == null)
-                return new Error(Errors.GetReceiptStatusError, "Null data received");
-
-            handler?.Invoke(result);
-
-            return result?["status"] != null
-                ? (int?)new HexBigInteger(result?["status"]?.Value<string>()).Value
-                : null;
+            return txReceiptResponse.Result;
         }
 
         public async Task<Result<EthereumTransaction>> GetTransactionAsync(
@@ -610,23 +594,27 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (tx == null)
                 return new Error(Errors.GetTransactionError, "Tx is null");
 
-            var (status, statusError) = await GetReceiptStatusAsync(
+            var (txReceipt, txReceiptError) = await GetTransactionReceiptAsync(
                     txId: txId,
-                    handler: result =>
-                    {
-                        tx.GasUsed = new HexBigInteger(result?["status"]?.Value<string>()).Value;
-                    },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            if (statusError != null)
-                return statusError;
+            if (txReceiptError != null)
+                return txReceiptError;
+
+            var status = txReceipt?.Status != null
+                ? (int?)int.Parse(txReceipt.Status)
+                : null;
 
             tx.Status = status == null
                 ? TransactionStatus.Pending
                 : status == 0
                     ? TransactionStatus.Failed
                     : TransactionStatus.Confirmed;
+
+            tx.GasUsed = txReceipt?.GasUsed != null
+                ? new HexBigInteger(txReceipt.Status).Value
+                : 0;
 
             if (tx.BlockHeight != 0)
             {
@@ -668,7 +656,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             string txId,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = "api?module=proxy" +
+            var requestUri = "api?" +
+                "module=proxy" +
                 "&action=eth_getTransactionByHash" +
                 $"&txhash={txId}" +
                 $"&apikey={Settings.ApiToken}";
@@ -689,33 +678,31 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (!response.IsSuccessStatusCode)
                 return new Error((int)response.StatusCode, "Error status code received");
 
-            var result = JsonConvert.DeserializeObject<JObject>(content)
-                ?["result"];
+            var txResponse = JsonSerializer.Deserialize<RpcResponse<RpcTransaction>>(content);
 
-            if (result == null)
-                return new Error(Errors.GetTransactionError, "Null data received");
+            if (txResponse == null || txResponse.Result == null)
+                return new Error(Errors.GetTransactionError, "Invalid response");
 
             var tx = new EthereumTransaction
             {
-                Id           = result["hash"].Value<string>(),
-                Currency     = EthereumHelper.Eth,
+                Id = txResponse.Result.Hash,
+                Currency = EthereumHelper.Eth,
                 CreationTime = DateTimeOffset.UtcNow, // todo: fix to received time
-                BlockHeight  = result["blockNumber"] != null
-                    ? (long)new HexBigInteger(result["blockNumber"].Value<string>()).Value
+                BlockHeight = txResponse.Result.BlockNumber != null
+                    ? (long)new HexBigInteger(txResponse.Result.BlockNumber).Value
                     : 0,
-
-                From   = result["from"].Value<string>(),
-                To     = result["to"].Value<string>(),
+                From = txResponse.Result.From,
+                To = txResponse.Result.To,
                 // ChainId
-                Amount   = new HexBigInteger(result["value"].Value<string>()),
-                Nonce    = result["nonce"] != null
-                    ? new HexBigInteger(result["nonce"].Value<string>()).Value
+                Amount = new HexBigInteger(txResponse.Result.Value),
+                Nonce = txResponse.Result.Nonce != null
+                    ? new HexBigInteger(txResponse.Result.Nonce).Value
                     : 0,
-                GasPrice = result["gasPrice"] != null
-                    ? new HexBigInteger(result["gasPrice"].Value<string>()).Value
+                GasPrice = txResponse.Result.GasPrice != null
+                    ? new HexBigInteger(txResponse.Result.GasPrice).Value
                     : 0,
-                GasLimit = new HexBigInteger(result["gas"].Value<string>()).Value,
-                Data     = result["input"]?.Value<string>()
+                GasLimit = new HexBigInteger(txResponse.Result.Gas).Value,
+                Data = txResponse.Result.Input
                 // IsError
                 // ErrorDescription
                 // InternalTransactions
@@ -727,7 +714,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
         public async Task<Result<long>> GetRecentBlockHeightAsync(
             CancellationToken cancellationToken = default)
         {
-            var requestUri = $"api?module=proxy" +
+            var requestUri = $"api?" +
+                $"module=proxy" +
                 $"&action=eth_blockNumber" +
                 $"&apikey={Settings.ApiToken}";
 
@@ -747,22 +735,20 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (!response.IsSuccessStatusCode)
                 return new Error((int)response.StatusCode, "Error status code received");
 
-            var blockNumber = JsonConvert.DeserializeObject<JObject>(content)
-                ?["result"];
+            var blockNumberResponse = JsonSerializer.Deserialize<Response<string>>(content);
 
-            if (blockNumber == null)
-                return new Error(Errors.GetRecentBlockHeightError, "Block number is null");
+            if (blockNumberResponse == null || blockNumberResponse.Message != "OK" || blockNumberResponse.Result == null)
+                return new Error(Errors.GetRecentBlockHeightError, "Invalid response");
 
-            var blockHeight = (long)new HexBigInteger(blockNumber.Value<string>()).Value;
-
-            return blockHeight;
+            return (long)new HexBigInteger(blockNumberResponse.Result).Value;
         }
 
-        public async Task<Result<long>> GetBlockTimeAsync(
+        public async Task<Result<RpcBlock>> GetBlockByNumberAsync(
             long blockHeight,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = "api?module=proxy" +
+            var requestUri = "api?" +
+                "module=proxy" +
                 "&action=eth_getBlockByNumber" +
                 "&boolean=false" +
                 $"&tag=0x{blockHeight:X}" +
@@ -784,16 +770,30 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (!response.IsSuccessStatusCode)
                 return new Error((int)response.StatusCode, "Error status code received");
 
-            var timeStampJson = JsonConvert.DeserializeObject<JObject>(content)
-                ?["result"]
-                ?["timestamp"];
+            var blockResponse = JsonSerializer.Deserialize<RpcResponse<RpcBlock>>(content);
 
-            if (timeStampJson == null)
-                return new Error(Errors.GetRecentBlockHeightError, "Block timestamp is null");
+            if (blockResponse == null || blockResponse.Result == null)
+                return new Error(Errors.GetBlockError, "Block is null");
 
-            var timeStamp = (long)new HexBigInteger(timeStampJson.Value<string>()).Value;
+            return blockResponse.Result;
+        }
 
-            return timeStamp;
+        public async Task<Result<long>> GetBlockTimeAsync(
+            long blockHeight,
+            CancellationToken cancellationToken = default)
+        {
+            var (block, error) = await GetBlockByNumberAsync(
+                    blockHeight,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            if (error != null)
+                return error;
+
+            if (block == null)
+                return new Error(Errors.GetBlockError, "Block is null");
+
+            return (long)new HexBigInteger(block.TimeStamp).Value;
         }
 
         public async Task<Result<ulong>> GetBlockNumberAsync(
@@ -801,7 +801,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             ClosestBlock blockClosest = ClosestBlock.After,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = "api?module=block" +
+            var requestUri = "api?" +
+                "module=block" +
                 "&action=getblocknobytime" +
                 $"&timestamp={timeStamp.ToUnixTimeSeconds()}" +
                 $"&closest={blockClosest.ToString().ToLower()}" +
@@ -823,13 +824,12 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (!response.IsSuccessStatusCode)
                 return new Error((int)response.StatusCode, "Error status code received");
 
-            var blockNumberJson = JsonConvert.DeserializeObject<JObject>(content)
-                ?["result"];
+            var blockNumberResponse = JsonSerializer.Deserialize<Response<string>>(content);
 
-            if (blockNumberJson == null)
-                return new Error(Errors.GetBlockNumberError, "Block number is null");
+            if (blockNumberResponse == null || blockNumberResponse.Message != "OK" || blockNumberResponse.Result == null)
+                return new Error(Errors.GetBlockNumberError, "Invalid response");
 
-            return blockNumberJson.Value<ulong>();
+            return ulong.Parse(blockNumberResponse.Result);
         }
 
         public async Task<Result<TransactionsResult<EthereumTransaction>>> GetNormalTransactionsAsync(
@@ -846,7 +846,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
             for (var page = 1; ; page++)
             {
-                var requestUri = "api?module=account" +
+                var requestUri = "api?" +
+                    "module=account" +
                     "&action=txlist" +
                     $"&address={address}" +
                     $"&startblock={fromBlock}" +
@@ -872,27 +873,24 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 if (!response.IsSuccessStatusCode)
                     return new Error((int)response.StatusCode, "Error status code received");
 
-                var result = JsonConvert.DeserializeObject<JObject>(content)
-                    ?["result"];
+                var txsResponse = JsonSerializer.Deserialize<Response<List<TransactionDto>>>(content);
 
-                if (result == null)
-                    return new Error(Errors.GetTransactionsError, "Null data received");
+                if (txsResponse == null || txsResponse.Message != "OK" || txsResponse.Result == null)
+                    return new Error(Errors.GetTransactionsError, "Invalid response");
 
-                var received = result.Count();
+                var received = txsResponse.Result.Count();
 
-                foreach (var t in result)
+                foreach (var t in txsResponse.Result)
                 {
                     var timeStamp = DateTimeOffset
-                        .FromUnixTimeSeconds(t["timeStamp"].Value<long>());
+                        .FromUnixTimeSeconds(long.Parse(t.TimeStamp));
 
-                    var confirmations = t["confirmations"].Value<long>();
+                    var confirmations = long.Parse(t.Confirmations);
 
-                    var isError = bool.Parse(t["isError"].Value<string>());
+                    var isError = bool.Parse(t.IsError);
 
-                    var txReceiptStatusValue = t["txreceipt_status"].Value<string>();
-
-                    var txReceiptStatus = txReceiptStatusValue != ""
-                        ? bool.Parse(txReceiptStatusValue)
+                    var txReceiptStatus = t.TxReceiptStatus != ""
+                        ? bool.Parse(t.TxReceiptStatus)
                         : !isError;
 
                     var status = isError
@@ -903,30 +901,30 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
                     var tx = new EthereumTransaction
                     {
-                        Id            = t["hash"].Value<string>(),
-                        Currency      = EthereumHelper.Eth,
-                        CreationTime  = timeStamp,
-                        BlockTime     = timeStamp,
-                        BlockHeight   = t["blockNumber"] != null
-                            ? t["blockNumber"].Value<long>()
+                        Id = t.Hash,
+                        Currency = EthereumHelper.Eth,
+                        CreationTime = timeStamp,
+                        BlockTime = timeStamp,
+                        BlockHeight = t.BlockNumber != null
+                            ? long.Parse(t.BlockNumber)
                             : 0,
                         Confirmations = confirmations,
-                        Status        = status,
+                        Status = status,
 
                         // ChainId
-                        From     = t["from"].Value<string>(),
-                        To       = t["to"].Value<string>(),
-                        Amount   = BigInteger.Parse(t["value"].Value<string>()),
-                        Nonce    = t["nonce"] != null
-                            ? BigInteger.Parse(t["nonce"].Value<string>())
+                        From = t.From,
+                        To = t.To,
+                        Amount = BigInteger.Parse(t.Value),
+                        Nonce = t.Nonce != null
+                            ? BigInteger.Parse(t.Nonce)
                             : 0,
-                        GasPrice = t["gasPrice"] != null
-                            ? BigInteger.Parse(t["gasPrice"].Value<string>())
+                        GasPrice = t.GasPrice != null
+                            ? BigInteger.Parse(t.GasPrice)
                             : 0,
-                        GasLimit = BigInteger.Parse(t["gas"].Value<string>()),
-                        GasUsed  = BigInteger.Parse(t["gasUsed"].Value<string>()),
-                        Data     = t["input"]?.Value<string>(),
-                        IsError  = isError,
+                        GasLimit = BigInteger.Parse(t.Gas),
+                        GasUsed = BigInteger.Parse(t.GasUsed),
+                        Data = t.Input,
+                        IsError = isError,
 
                         // ErrorDescription,
                         // InternalTransactions
@@ -960,7 +958,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
             for (var page = 1; ; page++)
             {
-                var requestUri = "api?module=account" +
+                var requestUri = "api?" +
+                    "module=account" +
                     "&action=txlistinternal" +
                     $"&address={address}" +
                     $"&startblock={fromBlock}" +
@@ -986,15 +985,14 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 if (!response.IsSuccessStatusCode)
                     return new Error((int)response.StatusCode, "Error status code received");
 
-                var result = JsonConvert.DeserializeObject<JObject>(content)
-                    ?["result"];
+                var txsResponse = JsonSerializer.Deserialize<Response<List<InternalTransactionDto>>>(content);
 
-                if (result == null)
-                    return new Error(Errors.GetTransactionsError, "Null data received");
+                if (txsResponse == null || txsResponse.Message != "OK" || txsResponse.Result == null)
+                    return new Error(Errors.GetTransactionsError, "Invalid response");
 
-                var received = result.Count();
+                var received = txsResponse.Result.Count();
 
-                txs.AddRange(ParseInternalTransactions(result));
+                txs.AddRange(ParseInternalTransactions(txsResponse.Result));
 
                 if (received < offset)
                     break;
@@ -1007,7 +1005,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             string txId,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = "api?module=account" +
+            var requestUri = "api?" +
+                "module=account" +
                 "&action=txlistinternal" +
                 $"&txhash={txId}" +
                 $"&apikey={Settings.ApiToken}";
@@ -1028,16 +1027,16 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (!response.IsSuccessStatusCode)
                 return new Error((int)response.StatusCode, "Error status code received");
 
-            var result = JsonConvert.DeserializeObject<JObject>(content)?["result"];
+            var txsResponse = JsonSerializer.Deserialize<Response<List<InternalTransactionDto>>>(content);
 
-            if (result == null)
-                return new Error(Errors.GetInternalTransactionsError, "Null data received");
+            if (txsResponse == null || txsResponse.Message != "OK" || txsResponse.Result == null)
+                return new Error(Errors.GetInternalTransactionsError, "Invalid response");
 
-            return ParseInternalTransactions(result);
+            return ParseInternalTransactions(txsResponse.Result);
         }
 
         public static List<EthereumInternalTransaction> ParseInternalTransactions(
-            JToken txsArray,
+            List<InternalTransactionDto> txsArray,
             string? txId = null)
         {
             var internalTxs = new List<EthereumInternalTransaction>();
@@ -1045,22 +1044,22 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             foreach (var internalTx in txsArray)
             {
                 var timeStamp = DateTimeOffset
-                    .FromUnixTimeSeconds(internalTx["timeStamp"].Value<long>())
+                    .FromUnixTimeSeconds(long.Parse(internalTx.TimeStamp))
                     .UtcDateTime;
 
                 var tx = new EthereumInternalTransaction
                 {
-                    BlockHeight      = internalTx["blockNumber"].Value<long>(),
+                    BlockHeight      = long.Parse(internalTx.BlockNumber),
                     BlockTime        = timeStamp,
-                    Hash             = txId ?? internalTx["hash"].Value<string>(),
-                    From             = internalTx["from"].Value<string>(),
-                    To               = internalTx["to"].Value<string>(),
-                    Value            = BigInteger.Parse(internalTx["value"].Value<string>()),
-                    GasLimit         = BigInteger.Parse(internalTx["gas"].Value<string>()),
-                    Data             = internalTx["input"].Value<string>(),
-                    Type             = internalTx["type"].Value<string>(),
-                    IsError          = bool.Parse(internalTx["isError"].Value<string>()),
-                    ErrorDescription = internalTx["errCode"].Value<string>()
+                    Hash             = txId ?? internalTx.Hash,
+                    From             = internalTx.From,
+                    To               = internalTx.To,
+                    Value            = BigInteger.Parse(internalTx.Value),
+                    GasLimit         = BigInteger.Parse(internalTx.Gas),
+                    Data             = internalTx.Input,
+                    Type             = internalTx.Type,
+                    IsError          = bool.Parse(internalTx.IsError),
+                    ErrorDescription = internalTx.ErrCode
                 };
 
                 internalTxs.Add(tx);
@@ -1117,7 +1116,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
         public async Task<Result<GasPrice>> GetOracleGasPriceAsync(
             CancellationToken cancellationToken = default)
         {
-            var requestUri = "api?module=gastracker" +
+            var requestUri = "api?" +
+                "module=gastracker" +
                 "&action=gasoracle" +
                 $"&apikey={Settings.ApiToken}";
 
@@ -1137,15 +1137,12 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (!response.IsSuccessStatusCode)
                 return new Error((int)response.StatusCode, "Error status code received");
 
-            var json = JsonConvert.DeserializeObject<JObject>(content);
+            var gasPriceResponse = JsonSerializer.Deserialize<Response<GasPrice>>(content);
 
-            var result = json["result"];
-            var hasResult = result != null;
-
-            if (!hasResult)
+            if (gasPriceResponse == null || gasPriceResponse.Message != "OK" || gasPriceResponse.Result == null)
                 return new Error(Errors.GetGasPriceError, "Invalid response");
 
-            return result!.ToObject<GasPrice>();
+            return gasPriceResponse.Result;
         }
 
         public async Task<Result<long>> EstimateGasAsync(
@@ -1157,7 +1154,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             string? data = null,
             CancellationToken cancellationToken = default)
         {
-            var requestUri = "api?module=proxy" +
+            var requestUri = "api?" +
+                "module=proxy" +
                 "&action=eth_estimateGas" +
                 $"&to={to}" +
                 (from != null ? $"&from={from}" : "") +
@@ -1183,12 +1181,13 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (!response.IsSuccessStatusCode)
                 return new Error((int)response.StatusCode, "Error status code received");
 
-            var json = JsonConvert.DeserializeObject<JObject>(content);
+            var estimateGasResponse = JsonSerializer.Deserialize<RpcResponse<string>>(content);
 
-            var result = json["result"];
+            if (estimateGasResponse == null)
+                return new Error(Errors.EstimateGasError, "Invalid response");
 
-            return result != null
-                ? (long)new HexBigInteger(result.ToString()).Value
+            return estimateGasResponse.Result != null
+                ? (long)new HexBigInteger(estimateGasResponse.Result).Value
                 : 0;
         }
 
@@ -1228,13 +1227,15 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (!response.IsSuccessStatusCode)
                 return new Error((int)response.StatusCode, "Error status code received");
 
-            var events = JsonConvert
-                .DeserializeObject<Response<List<ContractEvent>>>(content)
-                .Result;
+            var contractEventsResponse = JsonSerializer
+                .Deserialize<Response<List<ContractEvent>>>(content);
+
+            if (contractEventsResponse == null)
+                return new Error(Errors.GetContractEventsError, "Error while get contracts");
 
             return new Result<IEnumerable<ContractEvent>>
             {
-                Value = events ?? Enumerable.Empty<ContractEvent>()
+                Value = contractEventsResponse.Result ?? Enumerable.Empty<ContractEvent>()
             };
         }
 

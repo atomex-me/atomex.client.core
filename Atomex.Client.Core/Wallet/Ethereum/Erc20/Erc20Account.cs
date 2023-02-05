@@ -246,7 +246,7 @@ namespace Atomex.Wallet.Ethereum
             if (ethAddress == null)
                 return new MaxAmountEstimation
                 {
-                    Fee      = requiredFeeInWei,
+                    Fee = requiredFeeInWei,
                     Reserved = reserveFeeInWei,
                     Error = new Error(
                         code: Errors.InsufficientFunds,
@@ -276,7 +276,7 @@ namespace Atomex.Wallet.Ethereum
 
             if (tokenAddress.AvailableBalance() <= 0)
                 return new MaxAmountEstimation {
-                    Fee      = requiredFeeInWei,
+                    Fee = requiredFeeInWei,
                     Reserved = reserveFeeInWei,
                     Error = new Error(
                         code: Errors.InsufficientFunds,
@@ -289,8 +289,8 @@ namespace Atomex.Wallet.Ethereum
 
             return new MaxAmountEstimation
             {
-                Amount   = tokenAddress.AvailableBalance(),
-                Fee      = requiredFeeInWei,
+                Amount = tokenAddress.AvailableBalance(),
+                Fee = requiredFeeInWei,
                 Reserved = reserveFeeInWei
             };
         }
@@ -410,8 +410,8 @@ namespace Atomex.Wallet.Ethereum
             return new SelectedWalletAddress
             {
                 WalletAddress = fromAddress,
-                UsedAmount    = amount,
-                UsedFee       = feeInWei
+                UsedAmount = amount,
+                UsedFee = feeInWei
             };
         }
 

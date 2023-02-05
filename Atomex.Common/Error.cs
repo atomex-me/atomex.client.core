@@ -86,6 +86,11 @@ namespace Atomex.Common
         public const int GetTransactionsError = 1112;
         public const int GetBlockNumberError = 1113;
         public const int GetHeaderError = 1114;
+        public const int GetContractEventsError = 1115;
+        public const int GetTransactionsCountError = 1116;
+        public const int EstimateGasError = 1117;
+        public const int GetBlockError = 1118;
+        public const int GetTransactionReceiptError = 1119;
 
         public const int TransactionCreationError = 2000;
         public const int TransactionSigningError = 2001;
