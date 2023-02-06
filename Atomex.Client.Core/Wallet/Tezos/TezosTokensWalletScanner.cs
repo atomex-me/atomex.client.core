@@ -24,7 +24,6 @@ namespace Atomex.Wallet.Tezos
         }
 
         public async Task ScanAsync(
-            bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
             // all tezos addresses
@@ -187,7 +186,8 @@ namespace Atomex.Wallet.Tezos
             var xtzAddress = xtzLocalAddresses.First(w => w.Address == address);
 
             // tezos tokens addresses
-            var tokenLocalAddresses = (await _tezosAccount.LocalStorage
+            var tokenLocalAddresses = (await _tezosAccount
+                .LocalStorage
                 .GetTokenAddressesAsync()
                 .ConfigureAwait(false))
                 .Where(w => w.Address == address);

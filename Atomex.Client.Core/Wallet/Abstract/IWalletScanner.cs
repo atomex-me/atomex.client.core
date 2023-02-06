@@ -7,11 +7,9 @@ namespace Atomex.Wallet.Abstract
     {
         Task ScanAsync(
             string currency,
-            bool skipUsed = false,
             CancellationToken cancellationToken = default);
 
         Task ScanAsync(
-            bool skipUsed = false,
             CancellationToken cancellationToken = default);
 
         Task ScanAddressAsync(

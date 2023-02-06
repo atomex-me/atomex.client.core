@@ -21,7 +21,6 @@ namespace Atomex.Wallet
         }
 
         public Task ScanAsync(
-            bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -29,7 +28,7 @@ namespace Atomex.Wallet
                 try
                 {
                     var scanTasks = Account.Currencies
-                        .Select(c => ScanAsync(c.Name, skipUsed, cancellationToken))
+                        .Select(c => ScanAsync(c.Name, cancellationToken))
                         .ToArray();
 
                     await Task.WhenAll(scanTasks)
@@ -45,7 +44,6 @@ namespace Atomex.Wallet
 
         public Task ScanAsync(
             string currency,
-            bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
             return Task.Run(async () =>
@@ -53,7 +51,7 @@ namespace Atomex.Wallet
                 try
                 {
                     await GetCurrencyScanner(currency)
-                        .ScanAsync(skipUsed, cancellationToken)
+                        .ScanAsync(cancellationToken)
                         .ConfigureAwait(false);
                 }
                 catch (Exception e)
@@ -85,7 +83,7 @@ namespace Atomex.Wallet
         {
             return currency switch
             {
-                "BTC" => (ICurrencyWalletScanner)new BitcoinBasedWalletScanner(
+                "BTC" => new BitcoinBasedWalletScanner(
                     Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
 
                 "LTC" => new BitcoinBasedWalletScanner(

@@ -31,7 +31,6 @@ namespace Atomex.Wallet.Tezos
         }
 
         public async Task ScanAsync(
-            bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
             try
@@ -162,13 +161,14 @@ namespace Atomex.Wallet.Tezos
                     .GetAddressesAsync(cancellationToken)
                     .ConfigureAwait(false);
 
-                // todo: if skipUsed == true => skip "disabled" wallets
-
                 var tzktApi = new TzktApi(Config.GetTzktSettings());
                 var operations = new List<TezosOperation>();
 
                 foreach (var walletAddress in walletAddresses)
                 {
+                    if (skipUsed && walletAddress.IsDisabled)
+                        continue;
+
                     var (ops, error) = await UpdateAddressAsync(
                             walletAddress,
                             tzktApi: tzktApi,

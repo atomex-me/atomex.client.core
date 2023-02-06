@@ -32,9 +32,14 @@ namespace Atomex.Core
             ? Balance + UnconfirmedIncome
             : Balance;
 
+        public bool IsDisabled => 
+            UsageType == WalletAddressUsageType.NoLongerUsed ||
+            (UsageType == WalletAddressUsageType.SingleUse && HasActivity && Balance == 0 && UnconfirmedIncome == 0 && UnconfirmedOutcome == 0);
+
         public static string GetId(string address, string currency, string tokenContract = null, BigInteger? tokenId = null) => 
             tokenContract == null && tokenId == null
                 ? $"{address}:{currency}"
                 : $"{address}:{currency}:{tokenContract}:{tokenId.Value}";
+
     }
 }

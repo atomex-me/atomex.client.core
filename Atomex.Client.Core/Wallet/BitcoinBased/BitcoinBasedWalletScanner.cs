@@ -36,7 +36,6 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         public async Task ScanAsync(
-            bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
             try
@@ -181,14 +180,15 @@ namespace Atomex.Wallet.BitcoinBased
                     .GetAddressesAsync(cancellationToken)
                     .ConfigureAwait(false);
 
-                // todo: if skipUsed == true => skip "disabled" wallets
-
                 var api = Config.GetBitcoinBlockchainApi();
                 var outputs = new List<BitcoinTxOutput>();
                 var txs = new List<BitcoinTransaction>();
 
                 foreach (var walletAddress in walletAddresses)
                 {
+                    if (skipUsed && walletAddress.IsDisabled)
+                        continue;
+
                     var (updateResult, error) = await UpdateAddressAsync(
                             walletAddress,
                             api: api,

@@ -43,7 +43,6 @@ namespace Atomex.Wallet.Ethereum
         }
 
         public async Task ScanAsync(
-            bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
             try
@@ -67,8 +66,6 @@ namespace Atomex.Wallet.Ethereum
                     UnconfirmedOutcome    = 0,
                     TokenBalance          = null
                 });
-
-                // todo: if skipUsed == true => skip "disabled" wallets
 
                 var api = GetErc20Api(); 
                 var txs = new List<Erc20Transaction>();
@@ -147,6 +144,9 @@ namespace Atomex.Wallet.Ethereum
 
                 foreach (var walletAddress in walletAddresses)
                 {
+                    if (skipUsed && walletAddress.IsDisabled)
+                        continue;
+
                     var (addressTxs, error) = await UpdateAddressAsync(
                             walletAddress,
                             api: api,

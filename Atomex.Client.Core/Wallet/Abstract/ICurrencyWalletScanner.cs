@@ -6,7 +6,6 @@ namespace Atomex.Wallet.Abstract
     public interface ICurrencyWalletScanner
     {
         Task ScanAsync(
-            bool skipUsed = false,
             CancellationToken cancellationToken = default);
 
         Task ScanAsync(
