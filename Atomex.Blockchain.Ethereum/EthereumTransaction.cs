@@ -36,8 +36,10 @@ namespace Atomex.Blockchain.Ethereum
         public string To { get; set; }
         public BigInteger Amount { get; set; }
         public BigInteger Nonce { get; set; }
-        public BigInteger GasPrice { get; set; }
         public BigInteger GasLimit { get; set; }
+        public BigInteger GasPrice { get; set; }
+        public BigInteger MaxFeePerGas { get; set; }
+        public BigInteger MaxPriorityFeePerGas { get; set; }
         public BigInteger GasUsed { get; set; }
         public string Data { get; set; }
         public bool IsError { get; set; }
@@ -45,23 +47,23 @@ namespace Atomex.Blockchain.Ethereum
         public List<EthereumInternalTransaction>? InternalTransactions { get; set; }
 
         public EthereumTransaction()
-        {
-            
+        {          
         }
 
         public EthereumTransaction(EthereumTransactionRequest txRequest)
         {
-            Currency     = EthereumHelper.Eth;
-            Status       = TransactionStatus.Pending;
-            CreationTime = DateTimeOffset.UtcNow;
-
-            From     = txRequest.From.ToLowerInvariant();
-            To       = txRequest.To.ToLowerInvariant();
-            Data     = txRequest.Data;
-            Amount   = txRequest.Amount;
-            Nonce    = txRequest.Nonce;
-            GasPrice = txRequest.GasPrice;
-            GasLimit = txRequest.GasLimit;
+            Currency             = EthereumHelper.Eth;
+            Status               = TransactionStatus.Pending;
+            CreationTime         = DateTimeOffset.UtcNow;
+            From                 = txRequest.From.ToLowerInvariant();
+            To                   = txRequest.To.ToLowerInvariant();
+            Data                 = txRequest.Data;
+            Amount               = txRequest.Amount;
+            Nonce                = txRequest.Nonce;
+            MaxFeePerGas         = txRequest.MaxFeePerGas;
+            MaxPriorityFeePerGas = txRequest.MaxPriorityFeePerGas;
+            GasLimit             = txRequest.GasLimit;
+            //GasPrice = txRequest.GasPrice;
         }
     }
 }

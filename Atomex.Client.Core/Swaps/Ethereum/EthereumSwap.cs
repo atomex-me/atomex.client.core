@@ -218,9 +218,15 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create redeem for swap {@swapId}", swap.Id);
 
-            var gasPrice = await ethConfig
+            var (gasPrice, gasPriceError) = await ethConfig
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+            if (gasPriceError != null)
+            {
+                Log.Error("Get gas price error: {@code}. Message: {@message}", gasPriceError.Value.Code, gasPriceError.Value.Message);
+                return;
+            }
 
             var walletAddress = await _account
                 .GetAddressAsync(swap.RedeemFromAddress, cancellationToken)
@@ -232,7 +238,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInWei = ethConfig.RedeemGasLimit * EthereumHelper.GweiToWei(gasPrice);
+            var feeInWei = ethConfig.RedeemGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas);
 
             if (walletAddress.Balance < feeInWei)
             {
@@ -267,11 +273,13 @@ namespace Atomex.Swaps.Ethereum
 
                 var message = new RedeemMessage
                 {
-                    FromAddress  = walletAddress.Address,
-                    HashedSecret = swap.SecretHash,
-                    Secret       = swap.Secret,
-                    Nonce        = nonce,
-                    GasPrice     = EthereumHelper.GweiToWei(gasPrice),
+                    FromAddress          = walletAddress.Address,
+                    HashedSecret         = swap.SecretHash,
+                    Secret               = swap.Secret,
+                    Nonce                = nonce,
+                    MaxFeePerGas         = EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas),
+                    MaxPriorityFeePerGas = EthereumHelper.GweiToWei(gasPrice.MaxPriorityFeePerGas),
+                    TransactionType      = EthereumHelper.Eip1559TransactionType
                 };
 
                 message.Gas = await EstimateGasAsync(message, new BigInteger(ethConfig.RedeemGasLimit))
@@ -345,9 +353,15 @@ namespace Atomex.Swaps.Ethereum
 
             var ethConfig = EthConfig;
 
-            var gasPrice = await ethConfig
+            var (gasPrice, gasPriceError) = await ethConfig
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+            if (gasPriceError != null)
+            {
+                Log.Error("Get gas price error: {@code}. Message: {@message}", gasPriceError.Value.Code, gasPriceError.Value.Message);
+                return;
+            }
 
             var walletAddress = await _account
                 .GetAddressAsync(swap.FromAddress, cancellationToken)
@@ -359,7 +373,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInWei = ethConfig.RedeemGasLimit * EthereumHelper.GweiToWei(gasPrice);
+            var feeInWei = ethConfig.RedeemGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas);
 
             if (walletAddress.Balance < feeInWei)
             {
@@ -390,11 +404,13 @@ namespace Atomex.Swaps.Ethereum
 
             var message = new RedeemMessage
             {
-                FromAddress  = walletAddress.Address,
-                HashedSecret = swap.SecretHash,
-                Secret       = swap.Secret,
-                Nonce        = nonce,
-                GasPrice     = EthereumHelper.GweiToWei(gasPrice),
+                FromAddress          = walletAddress.Address,
+                HashedSecret         = swap.SecretHash,
+                Secret               = swap.Secret,
+                Nonce                = nonce,
+                MaxFeePerGas         = EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas),
+                MaxPriorityFeePerGas = EthereumHelper.GweiToWei(gasPrice.MaxPriorityFeePerGas),
+                TransactionType      = EthereumHelper.Eip1559TransactionType
             };
 
             message.Gas = await EstimateGasAsync(message, new BigInteger(ethConfig.RedeemGasLimit))
@@ -474,9 +490,15 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create refund for swap {@swap}", swap.Id);
 
-            var gasPrice = await ethConfig
+            var (gasPrice, gasPriceError) = await ethConfig
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+            if (gasPriceError != null)
+            {
+                Log.Error("Get gas price error: {@code}. Message: {@message}", gasPriceError.Value.Code, gasPriceError.Value.Message);
+                return;
+            }
 
             var walletAddress = await _account
                 .GetAddressAsync(swap.FromAddress, cancellationToken)
@@ -488,7 +510,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInWei = ethConfig.RefundGasLimit * EthereumHelper.GweiToWei(gasPrice);
+            var feeInWei = ethConfig.RefundGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas);
 
             if (walletAddress.Balance < feeInWei)
             {
@@ -523,10 +545,12 @@ namespace Atomex.Swaps.Ethereum
 
                 var message = new RefundMessage
                 {
-                    FromAddress  = walletAddress.Address,
-                    HashedSecret = swap.SecretHash,
-                    GasPrice     = EthereumHelper.GweiToWei(gasPrice),
-                    Nonce        = nonce,
+                    FromAddress          = walletAddress.Address,
+                    HashedSecret         = swap.SecretHash,
+                    MaxFeePerGas         = EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas),
+                    MaxPriorityFeePerGas = EthereumHelper.GweiToWei(gasPrice.MaxPriorityFeePerGas),
+                    Nonce                = nonce,
+                    TransactionType      = EthereumHelper.Eip1559TransactionType
                 };
 
                 message.Gas = await EstimateGasAsync(message, new BigInteger(ethConfig.RefundGasLimit))
@@ -752,17 +776,23 @@ namespace Atomex.Swaps.Ethereum
                 .GetAddressAsync(swap.FromAddress, cancellationToken)
                 .ConfigureAwait(false);
 
-            var gasPrice = await ethConfig
+            var (gasPrice, gasPriceError) = await ethConfig
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+            if (gasPriceError != null)
+            {
+                Log.Error("Get gas price error: {@code}. Message: {@message}", gasPriceError.Value.Code, gasPriceError.Value.Message);
+                return null;
+            }
 
             var balanceInWei = walletAddress.Balance;
 
             Log.Debug("Available balance: {@balance}", balanceInWei);
 
             var feeAmountInWei = rewardForRedeemInEth == 0
-                ? ethConfig.InitiateGasLimit * EthereumHelper.GweiToWei(gasPrice)
-                : ethConfig.InitiateWithRewardGasLimit * EthereumHelper.GweiToWei(gasPrice);
+                ? ethConfig.InitiateGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas)
+                : ethConfig.InitiateWithRewardGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas);
 
             if (balanceInWei < feeAmountInWei + requiredAmountInWei)
             {
@@ -796,14 +826,16 @@ namespace Atomex.Swaps.Ethereum
 
             var message = new InitiateMessage
             {
-                HashedSecret    = swap.SecretHash,
-                Participant     = swap.PartyAddress,
-                RefundTimestamp = refundTimeStampUtcInSec,
-                AmountToSend    = requiredAmountInWei,
-                FromAddress     = walletAddress.Address,
-                GasPrice        = EthereumHelper.GweiToWei(gasPrice),
-                Nonce           = nonce,
-                RedeemFee       = EthereumHelper.EthToWei(rewardForRedeemInEth)
+                HashedSecret         = swap.SecretHash,
+                Participant          = swap.PartyAddress,
+                RefundTimestamp      = refundTimeStampUtcInSec,
+                AmountToSend         = requiredAmountInWei,
+                FromAddress          = walletAddress.Address,
+                MaxFeePerGas         = EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas),
+                MaxPriorityFeePerGas = EthereumHelper.GweiToWei(gasPrice.MaxPriorityFeePerGas),
+                Nonce                = nonce,
+                RedeemFee            = EthereumHelper.EthToWei(rewardForRedeemInEth),
+                TransactionType      = EthereumHelper.Eip1559TransactionType
             };
 
             var initiateGasLimit = rewardForRedeemInEth == 0

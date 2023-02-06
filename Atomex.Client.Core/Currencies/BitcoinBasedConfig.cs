@@ -12,6 +12,7 @@ using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Bitcoin.SoChain;
 using Atomex.Blockchain.BlockCypher;
 using Atomex.Core;
+using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Wallets;
 using Atomex.Wallets.Bitcoin;
@@ -81,7 +82,7 @@ namespace Atomex
                 StandardKey or _ => base.GetKeyPathPattern(keyType),
             };
 
-        public override async Task<BigInteger> GetPaymentFeeAsync(
+        public override async Task<Result<BigInteger>> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default)
         {
             var feeRate = await GetFeeRateAsync(cancellationToken: cancellationToken)
@@ -90,7 +91,7 @@ namespace Atomex
             return new BigInteger(feeRate * DefaultPaymentTxSize);
         }
 
-        public override async Task<BigInteger> GetRedeemFeeAsync(
+        public override async Task<Result<BigInteger>> GetRedeemFeeAsync(
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default)
         {
@@ -100,20 +101,20 @@ namespace Atomex
             return new BigInteger(feeRate * DefaultRedeemTxSize);
         }
 
-        public override Task<BigInteger> GetEstimatedRedeemFeeAsync(
+        public override Task<Result<BigInteger>> GetEstimatedRedeemFeeAsync(
             WalletAddress toAddress = null,
             bool withRewardForRedeem = false,
             CancellationToken cancellationToken = default) =>
             GetRedeemFeeAsync(toAddress, cancellationToken);
 
-        public override Task<decimal> GetRewardForRedeemAsync(
+        public override Task<Result<decimal>> GetRewardForRedeemAsync(
             decimal maxRewardPercent,
             decimal maxRewardPercentInBase,
             string feeCurrencyToBaseSymbol,
             decimal feeCurrencyToBasePrice,
             string feeCurrencySymbol = null,
             decimal feeCurrencyPrice = 0,
-            CancellationToken cancellationToken = default) => Task.FromResult(0m);
+            CancellationToken cancellationToken = default) => Task.FromResult(new Result<decimal> { Value = 0m });
 
         public long GetMinimumFee(int txSize) =>
             (long) (MinTxFeeRate * txSize);

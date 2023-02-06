@@ -12,26 +12,6 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
         private const int AddressLengthInHex = 40;
         private const int TopicSizeInHex = 64;
 
-        public static bool IsInitiatedEvent(this ContractEvent contractEvent)
-        {
-            return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<InitiatedEventDTO>();
-        }
-
-        public static bool IsAddedEvent(this ContractEvent contractEvent)
-        {
-            return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<AddedEventDTO>();
-        }
-
-        public static bool IsRedeemedEvent(this ContractEvent contractEvent)
-        {
-            return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<RedeemedEventDTO>();
-        }
-
-        public static bool IsRefundedEvent(this ContractEvent contractEvent)
-        {
-            return contractEvent.EventSignatureHash() == EventSignatureExtractor.GetSignatureHash<RefundedEventDTO>();
-        }
-
         public static InitiatedEventDTO ParseInitiatedEvent(this ContractEvent contractEvent)
         {
             var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<InitiatedEventDTO>();
@@ -92,21 +72,6 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             {
                 HashedSecret = Hex.FromString(contractEvent.Topics[1], true),
                 Secret       = Hex.FromString(contractEvent.HexData, true)
-            };
-        }
-
-        public static RefundedEventDTO ParseRefundedEvent(this ContractEvent contractEvent)
-        {
-            var eventSignatureHash = EventSignatureExtractor.GetSignatureHash<RefundedEventDTO>();
-
-            if (contractEvent.Topics == null ||
-                contractEvent.Topics.Count != 2 ||
-                contractEvent.EventSignatureHash() != eventSignatureHash)
-                throw new Exception("Invalid contract event");
-
-            return new RefundedEventDTO
-            {
-                HashedSecret = Hex.FromString(contractEvent.Topics[1], true),
             };
         }
     }

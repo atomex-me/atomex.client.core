@@ -98,7 +98,7 @@ namespace Atomex.EthereumTokens
         public decimal TokenDigitsToTokens(BigInteger tokenDigits) =>
             (decimal)tokenDigits / DigitsMultiplier;
 
-        public override async Task<decimal> GetRewardForRedeemAsync(
+        public override async Task<Result<decimal>> GetRewardForRedeemAsync(
             decimal maxRewardPercent,
             decimal maxRewardPercentInBase,
             string feeCurrencyToBaseSymbol,
@@ -107,14 +107,19 @@ namespace Atomex.EthereumTokens
             decimal feeCurrencyPrice = 0,
             CancellationToken cancellationToken = default)
         {
-            var rewardForRedeemInEth = await base.GetRewardForRedeemAsync(
-                maxRewardPercent: maxRewardPercent,
-                maxRewardPercentInBase: maxRewardPercentInBase,
-                feeCurrencyToBaseSymbol: feeCurrencyToBaseSymbol,
-                feeCurrencyToBasePrice: feeCurrencyToBasePrice,
-                feeCurrencySymbol: feeCurrencySymbol,
-                feeCurrencyPrice: feeCurrencyPrice,
-                cancellationToken: cancellationToken);
+            var (rewardForRedeemInEth, error) = await base
+                .GetRewardForRedeemAsync(
+                    maxRewardPercent: maxRewardPercent,
+                    maxRewardPercentInBase: maxRewardPercentInBase,
+                    feeCurrencyToBaseSymbol: feeCurrencyToBaseSymbol,
+                    feeCurrencyToBasePrice: feeCurrencyToBasePrice,
+                    feeCurrencySymbol: feeCurrencySymbol,
+                    feeCurrencyPrice: feeCurrencyPrice,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (error != null)
+                return error;
 
             if (feeCurrencySymbol == null || feeCurrencyPrice == 0)
                 return 0m;

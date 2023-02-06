@@ -685,24 +685,20 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
             var tx = new EthereumTransaction
             {
-                Id = txResponse.Result.Hash,
-                Currency = EthereumHelper.Eth,
-                CreationTime = DateTimeOffset.UtcNow, // todo: fix to received time
-                BlockHeight = txResponse.Result.BlockNumber != null
-                    ? (long)new HexBigInteger(txResponse.Result.BlockNumber).Value
-                    : 0,
-                From = txResponse.Result.From,
-                To = txResponse.Result.To,
+                Id                   = txResponse.Result.Hash,
+                Currency             = EthereumHelper.Eth,
+                CreationTime         = DateTimeOffset.UtcNow, // todo: fix to received time
+                BlockHeight          = txResponse.Result.BlockNumber != null ? (long)new HexBigInteger(txResponse.Result.BlockNumber).Value : 0,
+                From                 = txResponse.Result.From,
+                To                   = txResponse.Result.To,
+                Amount               = new HexBigInteger(txResponse.Result.Value),
+                Nonce                = txResponse.Result.Nonce != null ? new HexBigInteger(txResponse.Result.Nonce).Value : 0,
+                GasPrice             = txResponse.Result.GasPrice != null ? new HexBigInteger(txResponse.Result.GasPrice).Value : 0,
+                MaxFeePerGas         = txResponse.Result.MaxFeePerGas != null ? new HexBigInteger(txResponse.Result.MaxFeePerGas).Value : 0,
+                MaxPriorityFeePerGas = txResponse.Result.MaxPriorityFeePerGas != null ? new HexBigInteger(txResponse.Result.MaxPriorityFeePerGas).Value : 0,
+                GasLimit             = new HexBigInteger(txResponse.Result.Gas).Value,
+                Data                 = txResponse.Result.Input
                 // ChainId
-                Amount = new HexBigInteger(txResponse.Result.Value),
-                Nonce = txResponse.Result.Nonce != null
-                    ? new HexBigInteger(txResponse.Result.Nonce).Value
-                    : 0,
-                GasPrice = txResponse.Result.GasPrice != null
-                    ? new HexBigInteger(txResponse.Result.GasPrice).Value
-                    : 0,
-                GasLimit = new HexBigInteger(txResponse.Result.Gas).Value,
-                Data = txResponse.Result.Input
                 // IsError
                 // ErrorDescription
                 // InternalTransactions
@@ -901,31 +897,25 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
                     var tx = new EthereumTransaction
                     {
-                        Id = t.Hash,
-                        Currency = EthereumHelper.Eth,
-                        CreationTime = timeStamp,
-                        BlockTime = timeStamp,
-                        BlockHeight = t.BlockNumber != null
-                            ? long.Parse(t.BlockNumber)
-                            : 0,
+                        Id            = t.Hash,
+                        Currency      = EthereumHelper.Eth,
+                        CreationTime  = timeStamp,
+                        BlockTime     = timeStamp,
+                        BlockHeight   = t.BlockNumber != null ? long.Parse(t.BlockNumber) : 0,
                         Confirmations = confirmations,
-                        Status = status,
-
+                        Status        = status,
+                        From          = t.From,
+                        To            = t.To,
+                        Amount        = BigInteger.Parse(t.Value),
+                        Nonce         = t.Nonce != null ? BigInteger.Parse(t.Nonce) : 0,
+                        GasPrice      = t.GasPrice != null ? BigInteger.Parse(t.GasPrice) : 0,
+                        GasLimit      = BigInteger.Parse(t.Gas),
+                        GasUsed       = BigInteger.Parse(t.GasUsed),
+                        Data          = t.Input,
+                        IsError       = isError,
+                        // MaxFeePerGas
+                        // MaxPriorityFeePerGas
                         // ChainId
-                        From = t.From,
-                        To = t.To,
-                        Amount = BigInteger.Parse(t.Value),
-                        Nonce = t.Nonce != null
-                            ? BigInteger.Parse(t.Nonce)
-                            : 0,
-                        GasPrice = t.GasPrice != null
-                            ? BigInteger.Parse(t.GasPrice)
-                            : 0,
-                        GasLimit = BigInteger.Parse(t.Gas),
-                        GasUsed = BigInteger.Parse(t.GasUsed),
-                        Data = t.Input,
-                        IsError = isError,
-
                         // ErrorDescription,
                         // InternalTransactions
                     };
@@ -1098,22 +1088,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 _ => blockNumber.ToString()
             };
 
-        public async Task<Result<long>> GetFastGasPriceAsync(
-            CancellationToken cancellationToken = default)
-        {
-            var (gasPrice, error) = await GetOracleGasPriceAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            if (error != null)
-                return error;
-
-            if (gasPrice == null)
-                return new Error(Errors.GetGasPriceError, "Oracle gas price is null");
-
-            return gasPrice.Fast;
-        }
-
-        public async Task<Result<GasPrice>> GetOracleGasPriceAsync(
+        public async Task<Result<GasPriceDto>> GetOracleGasPriceAsync(
             CancellationToken cancellationToken = default)
         {
             var requestUri = "api?" +
@@ -1137,7 +1112,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (!response.IsSuccessStatusCode)
                 return new Error((int)response.StatusCode, "Error status code received");
 
-            var gasPriceResponse = JsonSerializer.Deserialize<Response<GasPrice>>(content);
+            var gasPriceResponse = JsonSerializer.Deserialize<Response<GasPriceDto>>(content);
 
             if (gasPriceResponse == null || gasPriceResponse.Message != "OK" || gasPriceResponse.Result == null)
                 return new Error(Errors.GetGasPriceError, "Invalid response");

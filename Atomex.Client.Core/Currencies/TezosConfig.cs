@@ -233,11 +233,11 @@ namespace Atomex
             };
         }
 
-        public override Task<BigInteger> GetPaymentFeeAsync(
+        public override Task<Result<BigInteger>> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default) =>
-            Task.FromResult<BigInteger>(InitiateFee);
+            Task.FromResult(new Result<BigInteger> { Value = InitiateFee });
 
-        public override Task<BigInteger> GetRedeemFeeAsync(
+        public override Task<Result<BigInteger>> GetRedeemFeeAsync(
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default)
         {
@@ -247,16 +247,16 @@ namespace Atomex
 
             var result = RedeemFee + RevealFee + MicroTezReserve + activationFee; //todo: define another value for revealed;
 
-            return Task.FromResult<BigInteger>(result);
+            return Task.FromResult(new Result<BigInteger> { Value = result });
         }
 
-        public override Task<BigInteger> GetEstimatedRedeemFeeAsync(
+        public override Task<Result<BigInteger>> GetEstimatedRedeemFeeAsync(
             WalletAddress toAddress = null,
             bool withRewardForRedeem = false,
             CancellationToken cancellationToken = default) =>
             GetRedeemFeeAsync(toAddress, cancellationToken);
 
-        public override Task<decimal> GetRewardForRedeemAsync(
+        public override Task<Result<decimal>> GetRewardForRedeemAsync(
             decimal maxRewardPercent,
             decimal maxRewardPercentInBase,
             string feeCurrencyToBaseSymbol,
@@ -266,18 +266,20 @@ namespace Atomex
             CancellationToken cancellationToken = default)
         {
             if (maxRewardPercent == 0 || maxRewardPercentInBase == 0)
-                return Task.FromResult(0m);
+                return Task.FromResult(new Result<decimal> { Value = 0m });
 
             var redeemFeeInXtz = (RedeemFee + RevealFee + MicroTezReserve).ToTez();
 
-            return Task.FromResult(CalculateRewardForRedeem(
+            var rewardForRedeem = CalculateRewardForRedeem(
                 redeemFee: redeemFeeInXtz,
                 redeemFeeCurrency: Xtz,
                 redeemFeeDigitsMultiplier: XtzDigitsMultiplier,
                 maxRewardPercent: maxRewardPercent,
                 maxRewardPercentValue: maxRewardPercentInBase,
                 feeCurrencyToBaseSymbol: feeCurrencyToBaseSymbol,
-                feeCurrencyToBasePrice: feeCurrencyToBasePrice));
+                feeCurrencyToBasePrice: feeCurrencyToBasePrice);
+
+            return Task.FromResult(new Result<decimal> { Value = rewardForRedeem });
         }
 
         public TezosFillOperationSettings GetFillOperationSettings() => new()

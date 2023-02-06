@@ -58,7 +58,8 @@ namespace Atomex.Wallet.Ethereum
             string to,
             BigInteger amount,
             long gasLimit,
-            decimal gasPrice,
+            decimal maxFeePerGas,
+            decimal maxPriorityFeePerGas,
             bool useDefaultFee = false,
             CancellationToken cancellationToken = default)
         {
@@ -73,16 +74,22 @@ namespace Atomex.Wallet.Ethereum
             {
                 gasLimit = GasLimitByType(TransactionType.Output);
 
-                gasPrice = Math.Floor(await ethConfig
+                var (gasPrice, gasPriceError) = await ethConfig
                     .GetGasPriceAsync(cancellationToken)
-                    .ConfigureAwait(false));
+                    .ConfigureAwait(false);
+
+                if (gasPriceError != null)
+                    return gasPriceError;
+
+                maxFeePerGas = gasPrice.MaxFeePerGas;
+                maxPriorityFeePerGas = gasPrice.MaxPriorityFeePerGas;
             }
 
             var addressFeeUsage = await CalculateFundsUsageAsync(
                     from: from,
                     amount: amount,
                     gasLimit: gasLimit,
-                    gasPrice: gasPrice,
+                    gasPrice: maxFeePerGas,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -118,14 +125,15 @@ namespace Atomex.Wallet.Ethereum
             
             var txRequest = new EthereumTransactionRequest
             {
-                From     = addressFeeUsage.WalletAddress.Address,
-                To       = to.ToLowerInvariant(),
-                Amount   = addressFeeUsage.UsedAmount,
-                Nonce    = nonce,
-                GasPrice = EthereumHelper.GweiToWei(gasPrice),
-                GasLimit = new BigInteger(gasLimit),
-                ChainId  = ethConfig.ChainId,
-                Data     = null
+                From                 = addressFeeUsage.WalletAddress.Address,
+                To                   = to.ToLowerInvariant(),
+                Amount               = addressFeeUsage.UsedAmount,
+                Nonce                = nonce,
+                MaxFeePerGas         = EthereumHelper.GweiToWei(maxFeePerGas),
+                MaxPriorityFeePerGas = EthereumHelper.GweiToWei(maxPriorityFeePerGas),
+                GasLimit             = new BigInteger(gasLimit),
+                ChainId              = ethConfig.ChainId,
+                Data                 = null,
             };
 
             var signResult = await SignAsync(txRequest, cancellationToken)
@@ -191,18 +199,21 @@ namespace Atomex.Wallet.Ethereum
             }
         }
 
-        public async Task<decimal> EstimateFeeAsync(
+        public async Task<Result<decimal>> EstimateFeeAsync(
             TransactionType type,
             CancellationToken cancellationToken = default)
         {
-            var gasPrice = Math.Floor(await EthConfig
+            var (gasPrice, error) = await EthConfig
                 .GetGasPriceAsync(cancellationToken)
-                .ConfigureAwait(false));
+                .ConfigureAwait(false);
 
-            return EthConfig.GetFeeInEth(GasLimitByType(type), gasPrice);
+            if (error != null)
+                return error;
+
+            return EthConfig.GetFeeInEth(GasLimitByType(type), gasPrice.MaxFeePerGas);
         }
 
-        public async Task<decimal?> EstimateSwapPaymentFeeAsync(
+        public async Task<Result<decimal>> EstimateSwapPaymentFeeAsync(
             IFromSource from,
             decimal amount,
             CancellationToken cancellationToken = default)
@@ -217,7 +228,7 @@ namespace Atomex.Wallet.Ethereum
             string from,
             TransactionType type,
             long? gasLimit,
-            decimal? gasPrice,
+            decimal? maxFeePerGas,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -241,19 +252,25 @@ namespace Atomex.Wallet.Ethereum
                     Error = new Error(Errors.AddressNotFound, Resources.AddressNotFoundInLocalDb)
                 };
 
-            var estimatedGasPrice = Math.Floor(await eth
+            var (estimatedGasPrice, estimateError) = await eth
                 .GetGasPriceAsync(cancellationToken)
-                .ConfigureAwait(false));
+                .ConfigureAwait(false);
 
-            var feeInWei = gasLimit == null ? GasLimitByType(type) : gasLimit.Value *
-                EthereumHelper.GweiToWei(gasPrice == null ? estimatedGasPrice : gasPrice.Value);
+            if (estimateError != null)
+                return new MaxAmountEstimation  {
+                    Error = estimateError
+                };
+
+            var feeInWei = gasLimit == null
+                ? GasLimitByType(type)
+                : gasLimit.Value * EthereumHelper.GweiToWei(maxFeePerGas == null ? estimatedGasPrice.MaxFeePerGas : maxFeePerGas.Value);
 
             if (feeInWei == 0)
                 return new MaxAmountEstimation {
                     Error = new Error(Errors.InsufficientFee, Resources.TooLowFees)
                 };
 
-            var reserveFeeInWei = ReserveFeeInWei(estimatedGasPrice);
+            var reserveFeeInWei = ReserveFeeInWei(estimatedGasPrice.MaxFeePerGas);
 
             var requiredFeeInWei = feeInWei + (reserve ? reserveFeeInWei : 0);
 
@@ -261,8 +278,8 @@ namespace Atomex.Wallet.Ethereum
 
             if (restAmountInWei < 0)
                 return new MaxAmountEstimation {
-                    Amount   = restAmountInWei,
-                    Fee      = requiredFeeInWei,
+                    Amount = restAmountInWei,
+                    Fee = requiredFeeInWei,
                     Reserved = reserveFeeInWei,
                     Error = new Error(
                         code: Errors.InsufficientFunds,
@@ -276,8 +293,8 @@ namespace Atomex.Wallet.Ethereum
 
             return new MaxAmountEstimation
             {
-                Amount   = restAmountInWei,
-                Fee      = feeInWei,
+                Amount = restAmountInWei,
+                Fee = feeInWei,
                 Reserved = reserveFeeInWei
             };
         }
@@ -293,7 +310,7 @@ namespace Atomex.Wallet.Ethereum
                 from: fromAddress,
                 type: TransactionType.SwapPayment,
                 gasLimit: null,
-                gasPrice: null,
+                maxFeePerGas: null,
                 reserve: reserve,
                 cancellationToken: cancellationToken);
         }

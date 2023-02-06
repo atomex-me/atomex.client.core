@@ -302,14 +302,31 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
         }
     }
 
+    public class GasPriceDto
+    {
+        [JsonPropertyName("LastBlock")]
+        public string LastBlock { get; set; }
+        [JsonPropertyName("SafeGasPrice")]
+        public string SafeGasPrice { get; set; }
+        [JsonPropertyName("ProposeGasPrice")]
+        public string ProposeGasPrice { get; set; }
+        [JsonPropertyName("FastGasPrice")]
+        public string FastGasPrice { get; set; }
+        [JsonPropertyName("suggestBaseFee")]
+        public string SuggestBaseFee { get; set; }
+        [JsonPropertyName("gasUsedRatio")]
+        public string GasUsedRatio { get; set; }
+    }
+
     public class GasPrice
     {
-        [JsonPropertyName("SafeGasPrice")]
-        public long Safe { get; set; }
-        [JsonPropertyName("ProposeGasPrice")]
-        public long Propose { get; set; }
-        [JsonPropertyName("FastGasPrice")]
-        public long Fast { get; set; }
+        public long LastBlock { get; set; }
+        public long LowGasPrice { get; set; }
+        public long AverageGasPrice { get; set; }
+        public long HighGasPrice { get; set; }
+        public decimal SuggestBaseFee { get; set; }
+        public decimal MaxFeePerGas { get; set; }
+        public decimal MaxPriorityFeePerGas { get; set; }
     }
 
     public enum ClosestBlock

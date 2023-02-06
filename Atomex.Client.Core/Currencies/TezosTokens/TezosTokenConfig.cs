@@ -21,7 +21,7 @@ namespace Atomex.TezosTokens
         public int TokenId { get; protected set; }
         public string ViewContractAddress { get; protected set; }
 
-        public override async Task<decimal> GetRewardForRedeemAsync(
+        public override async Task<Result<decimal>> GetRewardForRedeemAsync(
             decimal maxRewardPercent,
             decimal maxRewardPercentInBase,
             string feeCurrencyToBaseSymbol,
@@ -30,14 +30,19 @@ namespace Atomex.TezosTokens
             decimal feeCurrencyPrice = 0,
             CancellationToken cancellationToken = default)
         {
-            var rewardForRedeemInXtz = await base.GetRewardForRedeemAsync(
-                maxRewardPercent: maxRewardPercent,
-                maxRewardPercentInBase: maxRewardPercentInBase,
-                feeCurrencyToBaseSymbol: feeCurrencyToBaseSymbol,
-                feeCurrencyToBasePrice: feeCurrencyToBasePrice,
-                feeCurrencySymbol: feeCurrencySymbol,
-                feeCurrencyPrice: feeCurrencyPrice,
-                cancellationToken: cancellationToken);
+            var (rewardForRedeemInXtz, error) = await base
+                .GetRewardForRedeemAsync(
+                    maxRewardPercent: maxRewardPercent,
+                    maxRewardPercentInBase: maxRewardPercentInBase,
+                    feeCurrencyToBaseSymbol: feeCurrencyToBaseSymbol,
+                    feeCurrencyToBasePrice: feeCurrencyToBasePrice,
+                    feeCurrencySymbol: feeCurrencySymbol,
+                    feeCurrencyPrice: feeCurrencyPrice,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (error != null)
+                return error;
 
             if (feeCurrencySymbol == null || feeCurrencyPrice == 0)
                 return 0m;

@@ -48,7 +48,8 @@ namespace Atomex.Wallet.Ethereum
             string to,
             BigInteger amount,
             long gasLimit = 0,
-            decimal gasPrice = 0,
+            decimal maxFeePerGas = 0,
+            decimal maxPriorityFeePerGas = 0,
             bool useDefaultFee = false,
             CancellationToken cancellationToken = default)
         {
@@ -63,16 +64,22 @@ namespace Atomex.Wallet.Ethereum
             {
                 gasLimit = GasLimitByType(TransactionType.Output);
 
-                gasPrice = await erc20Config
+                var (gasPrice, gasPriceError) = await erc20Config
                     .GetGasPriceAsync(cancellationToken)
                     .ConfigureAwait(false);
+
+                if (gasPriceError != null)
+                    return gasPriceError;
+
+                maxFeePerGas = gasPrice.MaxFeePerGas;
+                maxPriorityFeePerGas = gasPrice.MaxPriorityFeePerGas;
             }
 
-            var addressFeeUsage = await SelectUnspentAddressesAsync(
+            var addressFeeUsage = await CalculateFundsUsageAsync(
                     from: from,
                     amount: amount,
                     gasLimit: gasLimit,
-                    gasPrice: gasPrice,
+                    gasPrice: maxFeePerGas,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -86,7 +93,7 @@ namespace Atomex.Wallet.Ethereum
                     code: Errors.InsufficientGas,
                     message: "Insufficient gas");
 
-            var feeAmountInWei = gasLimit * EthereumHelper.GweiToWei(gasPrice);
+            var feeAmountInWei = gasLimit * EthereumHelper.GweiToWei(maxFeePerGas);
 
             Log.Debug("Fee per transaction {@feePerTransaction}. Fee Amount {@feeAmount}",
                 gasLimit,
@@ -115,12 +122,14 @@ namespace Atomex.Wallet.Ethereum
 
             var message = new Erc20TransferMessage
             {
-                To          = to.ToLowerInvariant(),
-                Value       = addressFeeUsage.UsedAmount,
-                FromAddress = addressFeeUsage.WalletAddress.Address,
-                Gas         = gasLimit,
-                GasPrice    = EthereumHelper.GweiToWei(gasPrice),
-                Nonce       = nonce
+                To                   = to.ToLowerInvariant(),
+                Value                = addressFeeUsage.UsedAmount,
+                FromAddress          = addressFeeUsage.WalletAddress.Address,
+                Gas                  = gasLimit,
+                MaxFeePerGas         = EthereumHelper.GweiToWei(maxFeePerGas),
+                MaxPriorityFeePerGas = EthereumHelper.GweiToWei(maxPriorityFeePerGas),
+                Nonce                = nonce,
+                TransactionType      = EthereumHelper.Eip1559TransactionType
             };
 
             txInput = message.CreateTransactionInput(erc20Config.ERC20ContractAddress);
@@ -167,18 +176,21 @@ namespace Atomex.Wallet.Ethereum
             return txId;
         }
 
-        public async Task<decimal> EstimateFeeAsync(
+        public async Task<Result<decimal>> EstimateFeeAsync(
             TransactionType type,
             CancellationToken cancellationToken = default)
         {
-            var gasPrice = await EthConfig
+            var (gasPrice, error) = await EthConfig
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return EthConfig.GetFeeInEth(GasLimitByType(type), gasPrice);
+            if (error != null)
+                return error;
+
+            return EthConfig.GetFeeInEth(GasLimitByType(type), gasPrice.MaxFeePerGas);
         }
 
-        public async Task<decimal?> EstimateSwapPaymentFeeAsync(
+        public async Task<Result<decimal>> EstimateSwapPaymentFeeAsync(
             IFromSource from,
             decimal amount,
             CancellationToken cancellationToken = default)
@@ -193,7 +205,7 @@ namespace Atomex.Wallet.Ethereum
             string from,
             TransactionType type,
             long? gasLimit,
-            decimal? gasPrice,
+            decimal? maxFeePerGas,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -223,14 +235,20 @@ namespace Atomex.Wallet.Ethereum
 
             var eth = EthConfig;
 
-            var estimatedGasPrice = Math.Floor(await eth
+            var (estimatedGasPrice, estimateError) = await eth
                 .GetGasPriceAsync(cancellationToken)
-                .ConfigureAwait(false));
+                .ConfigureAwait(false);
 
-            var reserveFeeInWei = ReserveFeeInWei(estimatedGasPrice);
+            if (estimateError != null)
+                return new MaxAmountEstimation
+                {
+                    Error = estimateError
+                };
+
+            var reserveFeeInWei = ReserveFeeInWei(estimatedGasPrice.MaxFeePerGas);
 
             var feeInWei = (gasLimit == null ? GasLimitByType(type) : gasLimit.Value) *
-                EthereumHelper.GweiToWei(gasPrice == null ? estimatedGasPrice : gasPrice.Value);
+                EthereumHelper.GweiToWei(maxFeePerGas == null ? estimatedGasPrice.MaxFeePerGas : maxFeePerGas.Value);
 
             if (feeInWei == 0)
                 return new MaxAmountEstimation {
@@ -306,7 +324,7 @@ namespace Atomex.Wallet.Ethereum
                 from: fromAddress,
                 type: TransactionType.SwapPayment,
                 gasLimit: null,
-                gasPrice: null,
+                maxFeePerGas: null,
                 reserve: reserve,
                 cancellationToken: cancellationToken);
         }
@@ -369,7 +387,7 @@ namespace Atomex.Wallet.Ethereum
 
         #region Addresses
 
-        private async Task<SelectedWalletAddress> SelectUnspentAddressesAsync(
+        private async Task<SelectedWalletAddress> CalculateFundsUsageAsync(
             string from,
             BigInteger amount,
             long gasLimit,

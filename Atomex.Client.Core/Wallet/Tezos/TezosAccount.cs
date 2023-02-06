@@ -246,7 +246,7 @@ namespace Atomex.Wallet.Tezos
             return txFeeInMtz + storageFeeInMtz;
         }
 
-        public async Task<decimal?> EstimateSwapPaymentFeeAsync(
+        public async Task<Result<decimal>> EstimateSwapPaymentFeeAsync(
             IFromSource from,
             decimal amount,
             CancellationToken cancellationToken = default)

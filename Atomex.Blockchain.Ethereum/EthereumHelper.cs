@@ -8,6 +8,7 @@ namespace Atomex.Blockchain.Ethereum
         public const long WeiInGwei = 1000000000;
         public const long GweiInEth = 1000000000;
         public const string Eth = "ETH";
+        public const byte Eip1559TransactionType = 0x02;
 
         public static decimal WeiToEth(BigInteger wei) =>
             (decimal)wei / WeiInEth;

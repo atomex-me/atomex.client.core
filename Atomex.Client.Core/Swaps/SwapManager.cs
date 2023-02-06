@@ -584,7 +584,7 @@ namespace Atomex.Swaps
 
             var purchasedCurrency = _account.Currencies.GetByName(swap.PurchasedCurrency);
 
-            swap.RewardForRedeem = await RewardForRedeemHelper
+            var (rewardForRedeem, rewardForRedeemError) = await RewardForRedeemHelper
                 .EstimateAsync(
                     account: _account,
                     quotesProvider: _quotesProvider,
@@ -595,6 +595,13 @@ namespace Atomex.Swaps
                     redeemFromAddress: redeemFromWalletAddress,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            if (rewardForRedeemError != null)
+            {
+                // todo: control reward for redeem calculation error
+            }
+
+            swap.RewardForRedeem = rewardForRedeem;
 
             // select refund address for bitcoin based currency
             if (soldCurrency is BitcoinBasedConfig && swap.RefundAddress == null)
@@ -633,7 +640,7 @@ namespace Atomex.Swaps
 
             var purchasedCurrency = _account.Currencies.GetByName(swap.PurchasedCurrency);
 
-            swap.RewardForRedeem = await RewardForRedeemHelper
+            var (rewardForRedeem, rewardForRedeemError) = await RewardForRedeemHelper
                 .EstimateAsync(
                     account: _account,
                     quotesProvider: _quotesProvider,
@@ -644,6 +651,13 @@ namespace Atomex.Swaps
                     redeemFromAddress: redeemFromWalletAddress,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            if (rewardForRedeemError != null)
+            {
+                // todo: control reward for redeem calculation error
+            }
+
+            swap.RewardForRedeem = rewardForRedeem;
 
             var soldCurrency = _account.Currencies.GetByName(swap.SoldCurrency);
 

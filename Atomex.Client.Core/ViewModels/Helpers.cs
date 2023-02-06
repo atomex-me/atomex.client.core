@@ -17,6 +17,7 @@ using Atomex.MarketData.Common;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Abstract;
 using Swap = Atomex.Core.Swap;
+using Org.BouncyCastle.Asn1.Cms;
 
 namespace Atomex.ViewModels
 {
@@ -530,20 +531,38 @@ namespace Atomex.ViewModels
                 : null;
 
             // estimate redeem fee
-            var estimatedRedeemFeeInTokens = await toCurrency
+            var (estimatedRedeemFeeInTokens, estimateRedeemFeeError) = await toCurrency
                 .GetEstimatedRedeemFeeAsync(redeemFromWalletAddress, withRewardForRedeem: false)
                 .ConfigureAwait(false);
+
+            if (estimateRedeemFeeError != null)
+            {
+                return new SwapParams
+                {
+                    Error = new DetailedError(estimateRedeemFeeError.Value, string.Empty)
+                };
+            }
 
             var estimatedRedeemFee = estimatedRedeemFeeInTokens.ToDecimal(toCurrency.Digits);
 
             // estimate reward for redeem
-            var rewardForRedeem = await RewardForRedeemHelper.EstimateAsync(
-                account: account,
-                quotesProvider: quotesProvider,
-                feeCurrencyQuotesProvider: symbol => marketDataRepository?.OrderBookBySymbol(symbol)?.TopOfBook(),
-                redeemableCurrency: toCurrency,
-                redeemFromAddress: redeemFromWalletAddress,
-                cancellationToken: cancellationToken);
+            var (rewardForRedeem, rewardForRedeemError) = await RewardForRedeemHelper
+                .EstimateAsync(
+                    account: account,
+                    quotesProvider: quotesProvider,
+                    feeCurrencyQuotesProvider: symbol => marketDataRepository?.OrderBookBySymbol(symbol)?.TopOfBook(),
+                    redeemableCurrency: toCurrency,
+                    redeemFromAddress: redeemFromWalletAddress,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (rewardForRedeemError != null)
+            {
+                return new SwapParams
+                {
+                    Error = new DetailedError(rewardForRedeemError.Value, string.Empty)
+                };
+            }
 
             // get amount reserved for active swaps
             var reservedForSwapsAmount = await GetAmountReservedForSwapsAsync(
@@ -553,7 +572,7 @@ namespace Atomex.ViewModels
                 .ConfigureAwait(false);
 
             // estimate maker network fee
-            var estimatedMakerNetworkFee = await EstimateMakerNetworkFeeAsync(
+            var (estimatedMakerNetworkFee, estimateMakerFeeError) = await EstimateMakerNetworkFeeAsync(
                     fromCurrency: fromCurrency,
                     toCurrency: toCurrency,
                     account: account,
@@ -562,16 +581,32 @@ namespace Atomex.ViewModels
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
+            if (estimateMakerFeeError != null)
+            {
+                return new SwapParams
+                {
+                    Error = new DetailedError(estimateMakerFeeError.Value, string.Empty)
+                };
+            }
+
             var fromCurrencyAccount = account
                 .GetCurrencyAccount(fromCurrency.Name) as IEstimatable;
 
             // estimate payment fee
-            var estimatedPaymentFee = await fromCurrencyAccount
+            var (estimatedPaymentFee, estimatePaymentFeeError) = await fromCurrencyAccount
                 .EstimateSwapPaymentFeeAsync(
                     from: from,
                     amount: fromAmount,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            if (estimatePaymentFeeError != null)
+            {
+                return new SwapParams
+                {
+                    Error = new DetailedError(estimatePaymentFeeError.Value, string.Empty)
+                };
+            }
 
             // estimate max amount and max fee
             var maxAmountEstimation = await fromCurrencyAccount
@@ -586,7 +621,7 @@ namespace Atomex.ViewModels
                 return new SwapParams
                 {
                     Amount           = 0m,
-                    PaymentFee       = estimatedPaymentFee.Value,
+                    PaymentFee       = estimatedPaymentFee,
                     RedeemFee        = estimatedRedeemFee,
                     RewardForRedeem  = rewardForRedeem,
                     MakerNetworkFee  = estimatedMakerNetworkFee,
@@ -644,7 +679,7 @@ namespace Atomex.ViewModels
             return new SwapParams
             {
                 Amount           = fromAmount,
-                PaymentFee       = estimatedPaymentFee.Value,
+                PaymentFee       = estimatedPaymentFee,
                 RedeemFee        = estimatedRedeemFee,
                 RewardForRedeem  = rewardForRedeem,
                 MakerNetworkFee  = estimatedMakerNetworkFee,
@@ -763,7 +798,7 @@ namespace Atomex.ViewModels
             return AmountHelper.RoundDown(reservedAmount, currency.DigitsMultiplier);
         }
 
-        public static async Task<decimal> EstimateMakerNetworkFeeAsync(
+        public static async Task<Result<decimal>> EstimateMakerNetworkFeeAsync(
             CurrencyConfig fromCurrency,
             CurrencyConfig toCurrency,
             IAccount account,
@@ -771,9 +806,12 @@ namespace Atomex.ViewModels
             ISymbolsProvider symbolsProvider,
             CancellationToken cancellationToken = default)
         {
-            var makerPaymentFeeInTokens = await toCurrency
+            var (makerPaymentFeeInTokens, getPaymentFeeError) = await toCurrency
                 .GetPaymentFeeAsync(cancellationToken)
                 .ConfigureAwait(false);
+
+            if (getPaymentFeeError != null)
+                return getPaymentFeeError;
 
             var makerPaymentFee = makerPaymentFeeInTokens.ToDecimal(toCurrency.Digits);
 
@@ -787,12 +825,15 @@ namespace Atomex.ViewModels
                     marketDataRepository: marketDataRepository,
                     symbolsProvider: symbolsProvider) ?? 0;
 
-            var makerRedeemFeeInTokens = await fromCurrency
+            var (makerRedeemFeeInTokens, estimateRedeemFeeError) = await fromCurrency
                 .GetEstimatedRedeemFeeAsync(
                     toAddress: null,
                     withRewardForRedeem: false,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            if (estimateRedeemFeeError != null)
+                return estimateRedeemFeeError;
 
             var makerRedeemFee = makerRedeemFeeInTokens.ToDecimal(fromCurrency.Digits);
 

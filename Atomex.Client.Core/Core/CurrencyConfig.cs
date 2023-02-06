@@ -55,19 +55,19 @@ namespace Atomex.Core
         public virtual string GetKeyPathPattern(int keyType) =>
             $"m/{Bip44.Purpose}'/{Bip44Code}'/{{a}}'/{{c}}/{{i}}";
 
-        public abstract Task<BigInteger> GetPaymentFeeAsync(
+        public abstract Task<Result<BigInteger>> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default);
 
-        public abstract Task<BigInteger> GetRedeemFeeAsync(
+        public abstract Task<Result<BigInteger>> GetRedeemFeeAsync(
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default);
 
-        public abstract Task<BigInteger> GetEstimatedRedeemFeeAsync(
+        public abstract Task<Result<BigInteger>> GetEstimatedRedeemFeeAsync(
             WalletAddress toAddress = null,
             bool withRewardForRedeem = false,
             CancellationToken cancellationToken = default);
 
-        public abstract Task<decimal> GetRewardForRedeemAsync(
+        public abstract Task<Result<decimal>> GetRewardForRedeemAsync(
             decimal maxRewardPercent,
             decimal maxRewardPercentInBase,
             string feeCurrencyToBaseSymbol,

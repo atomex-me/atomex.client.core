@@ -1,22 +1,33 @@
-﻿using System.Numerics;
+﻿using System.Collections.Generic;
+using System.Numerics;
+using System.Linq;
 
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Signer;
+using Nethereum.Util;
 
 using Atomex.Common;
 
 namespace Atomex.Blockchain.Ethereum
 {
+    public class EthereumAccessList
+    {
+        public string Address { get; set; }
+        public List<string> StorageKeys { get; set; }
+    }
+
     public class EthereumTransactionRequest
     {
         public string From { get; set; }
         public string To { get; set; }
         public BigInteger Amount { get; set; }
         public BigInteger Nonce { get; set; }
-        public BigInteger GasPrice { get; set; }
+        public BigInteger MaxFeePerGas { get; set; }
+        public BigInteger MaxPriorityFeePerGas { get; set; }
         public BigInteger GasLimit { get; set; }
         public string Data { get; set; }
         public BigInteger ChainId { get; set; }
+        public List<EthereumAccessList> AccessList { get; set; }
         public byte[] Signature { get; set; }
 
         public EthereumTransactionRequest()
@@ -25,37 +36,58 @@ namespace Atomex.Blockchain.Ethereum
 
         public EthereumTransactionRequest(TransactionInput txInput, BigInteger chainId)
         {
-            From     = txInput.From.ToLowerInvariant();
-            To       = txInput.To.ToLowerInvariant();
-            Amount   = txInput.Value;
-            Nonce    = txInput.Nonce;
-            GasPrice = txInput.GasPrice;
-            GasLimit = txInput.Gas;
-            Data     = txInput.Data;
-            ChainId  = chainId;
+            From                 = txInput.From.ToLowerInvariant();
+            To                   = txInput.To.ToLowerInvariant();
+            Amount               = txInput.Value;
+            Nonce                = txInput.Nonce;
+            MaxFeePerGas         = txInput.MaxFeePerGas;
+            MaxPriorityFeePerGas = txInput.MaxPriorityFeePerGas;
+            GasLimit             = txInput.Gas;
+            Data                 = txInput.Data;
+            ChainId              = chainId;
+            AccessList = txInput.AccessList
+                .Select(a => new EthereumAccessList
+                {
+                    Address = a.Address,
+                    StorageKeys = a.StorageKeys
+                })
+                .ToList();
         }
 
-        public byte[] GetRawHash() =>
-            new LegacyTransactionChainId(
-                to: To,
-                amount: Amount,
+        private Transaction1559 GetTransaction()
+        {
+            return new Transaction1559(
+                chainId: ChainId,
                 nonce: Nonce,
-                gasPrice: GasPrice,
+                maxPriorityFeePerGas: MaxPriorityFeePerGas,
+                maxFeePerGas: MaxFeePerGas,
                 gasLimit: GasLimit,
+                receiverAddress: To,
+                amount: Amount,
                 data: Data,
-                chainId: ChainId)
-            .RawHash;
+                accessList: AccessList
+                    .Select(a => new AccessListItem
+                    {
+                        Address = a.Address,
+                        StorageKeys = a.StorageKeys
+                            .Select(k => Hex.FromString(k))
+                            .ToList()
+                    })
+                    .ToList());
+        }
+
+        public byte[] GetRawHash()
+        {
+            var rlp = GetTransaction()
+                .GetRLPEncodedRaw();
+
+            return new Sha3Keccack()
+                .CalculateHash(rlp);
+        }
 
         public string GetRlpEncoded()
         {
-            var tx = new LegacyTransactionChainId(
-                to: To,
-                amount: Amount,
-                nonce: Nonce,
-                gasPrice: GasPrice,
-                gasLimit: GasLimit,
-                data: Data,
-                chainId: ChainId);
+            var tx = GetTransaction();
 
             tx.SetSignature(new EthECDSASignature(Signature));
 

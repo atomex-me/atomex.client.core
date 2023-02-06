@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Nethereum.Signer;
 using Nethereum.Util;
-using Serilog;
 
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
@@ -29,6 +28,8 @@ namespace Atomex
         protected const string DefaultGasPriceCode = "GWEI";
         protected const string DefaultFeeCode = "GAS";
         protected const long EthDigitsMultiplier = EthereumHelper.GweiInEth; //1_000_000_000;
+        protected const decimal MaxFeePerGasCoeff = 1.2m;
+        protected const long MinPriorityFeePerGas = 1;
 
         public const int Mainnet = 1;
         //public const int Ropsten = 3;
@@ -153,39 +154,48 @@ namespace Atomex
         public decimal GetGasPriceInGwei(BigInteger valueInWei, long gasLimit) =>
             (decimal)(valueInWei / gasLimit / EthereumHelper.WeiInGwei);
 
-        public override async Task<BigInteger> GetPaymentFeeAsync(
+        public override async Task<Result<BigInteger>> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default)
         {
-            var gasPrice = await GetGasPriceAsync(cancellationToken)
+            var (gasPrice, error) = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return InitiateGasLimit * EthereumHelper.GweiToWei(gasPrice);
+            if (error != null)
+                return error;
+
+            return InitiateGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas);
         }
 
-        public override async Task<BigInteger> GetRedeemFeeAsync(
+        public override async Task<Result<BigInteger>> GetRedeemFeeAsync(
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default)
         {
-            var gasPrice = await GetGasPriceAsync(cancellationToken)
+            var (gasPrice, error) = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return RedeemGasLimit * EthereumHelper.GweiToWei(gasPrice);
+            if (error != null)
+                return error;
+
+            return RedeemGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas);
         }
 
-        public override async Task<BigInteger> GetEstimatedRedeemFeeAsync(
+        public override async Task<Result<BigInteger>> GetEstimatedRedeemFeeAsync(
             WalletAddress toAddress = null,
             bool withRewardForRedeem = false,
             CancellationToken cancellationToken = default)
         {
-            var gasPrice = await GetGasPriceAsync(cancellationToken)
+            var (gasPrice, error) = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
+            if (error != null) 
+                return error;
+
             return withRewardForRedeem
-                ? EstimatedRedeemWithRewardGasLimit * EthereumHelper.GweiToWei(gasPrice)
-                : EstimatedRedeemGasLimit * EthereumHelper.GweiToWei(gasPrice);
+                ? EstimatedRedeemWithRewardGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas)
+                : EstimatedRedeemGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas);
         }
 
-        public override async Task<decimal> GetRewardForRedeemAsync(
+        public override async Task<Result<decimal>> GetRewardForRedeemAsync(
             decimal maxRewardPercent,
             decimal maxRewardPercentInBase,
             string feeCurrencyToBaseSymbol,
@@ -197,10 +207,13 @@ namespace Atomex
             if (maxRewardPercent == 0 || maxRewardPercentInBase == 0)
                 return 0m;
 
-            var gasPrice = await GetGasPriceAsync(cancellationToken)
+            var (gasPrice, error) = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var redeemFeeInEth = GetFeeInEth(EstimatedRedeemWithRewardGasLimit, gasPrice);
+            if (error != null)
+                return error;
+
+            var redeemFeeInEth = GetFeeInEth(EstimatedRedeemWithRewardGasLimit, gasPrice.MaxFeePerGas);
 
             return CalculateRewardForRedeem(
                 redeemFee: redeemFeeInEth,
@@ -212,34 +225,31 @@ namespace Atomex
                 feeCurrencyToBasePrice: feeCurrencyToBasePrice);
         }
 
-        public async Task<decimal> GetGasPriceAsync(
+        public async Task<Result<GasPrice>> GetGasPriceAsync(
             CancellationToken cancellationToken = default)
         {
-            if (ChainId != Mainnet)
-                return GasPriceInGwei;
-
             var gasPriceProvider = GetGasPriceProvider();
 
-            try
+            var (gasPrice, error) = await gasPriceProvider
+                .GetOracleGasPriceAsync(cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (error != null)
+                return error;
+
+            var highGasPrice = long.Parse(gasPrice.FastGasPrice);
+            var suggestBaseFee = decimal.Parse(gasPrice.SuggestBaseFee, CultureInfo.InvariantCulture);
+
+            return new GasPrice
             {
-                var (gasPrice, error) = await gasPriceProvider
-                    .GetFastGasPriceAsync(cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (error != null)
-                {
-                    Log.Error($"Invalid gas price! Message: {error.Value.Message}");
-                    return GasPriceInGwei;
-                }
-
-                return Math.Min(gasPrice * 1.2m, MaxGasPriceInGwei);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Get gas price error");
-
-                return GasPriceInGwei;
-            }
+                LastBlock            = long.Parse(gasPrice.LastBlock),
+                LowGasPrice          = long.Parse(gasPrice.SafeGasPrice),
+                AverageGasPrice      = long.Parse(gasPrice.ProposeGasPrice),
+                HighGasPrice         = highGasPrice,
+                SuggestBaseFee       = suggestBaseFee,
+                MaxFeePerGas         = highGasPrice * MaxFeePerGasCoeff,
+                MaxPriorityFeePerGas = Math.Max(highGasPrice - Math.Floor(suggestBaseFee), MinPriorityFeePerGas),
+            };
         }
     }
 }

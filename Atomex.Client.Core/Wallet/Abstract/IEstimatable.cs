@@ -49,7 +49,7 @@ namespace Atomex.Wallet.Abstract
             bool reserve = false,
             CancellationToken cancellationToken = default);
 
-        Task<decimal?> EstimateSwapPaymentFeeAsync(
+        Task<Result<decimal>> EstimateSwapPaymentFeeAsync(
             IFromSource from,
             decimal amount,
             CancellationToken cancellationToken = default);
