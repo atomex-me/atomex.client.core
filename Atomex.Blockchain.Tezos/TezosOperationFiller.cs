@@ -164,11 +164,11 @@ namespace Atomex.Blockchain.Tezos
                     if (request.GasLimit == null || request.GasLimit.UseNetwork)
                     {
                         var gas = settings.ReserveGasLimit
-                            + operationResult?["consumed_gas"]?.Value<int>() ?? 0;
+                            + (operationResult?["consumed_milligas"]?.Value<int>() ?? 0) / 1000;
 
                         gas += metaData
                             ?["internal_operation_results"]
-                            ?.Sum(res => res["result"]?["consumed_gas"]?.Value<int>() ?? 0) ?? 0;
+                            ?.Sum(res => (res["result"]?["consumed_gas"]?.Value<int>() ?? 0) / 1000) ?? 0;
 
                         operation.GasLimit = gas;
                     }
@@ -188,7 +188,8 @@ namespace Atomex.Blockchain.Tezos
 
                         storageDiff += settings.ActivationStorageLimit * metaData
                             ?["internal_operation_results"]
-                            ?.Where(res => res["result"]?["allocated_destination_contract"]?.ToString() == "True")
+                            ?.Where(res => res["result"]?["allocated_destination_contract"]?.ToString() == "True" ||
+                                           res["kind"]?.ToString() == "origination")
                             .Count() ?? 0;
 
                         storageDiff += metaData
