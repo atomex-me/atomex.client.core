@@ -1,6 +1,7 @@
 ﻿using LiteDB;
 
 using Atomex.LiteDb.Migrations;
+using Atomex.Core;
 
 namespace Atomex.LiteDb
 {
@@ -12,7 +13,8 @@ namespace Atomex.LiteDb
 
         public static LiteDbMigrationResult Migrate(
             string pathToDb,
-            string sessionPassword)
+            string sessionPassword,
+            Network network)
         {
             LiteDbMigrationResult result = null;
 
@@ -20,7 +22,7 @@ namespace Atomex.LiteDb
 
             if (dbVersion == Version0) // migrate to version1
             {
-                result = LiteDbMigration_0_to_1.Migrate(pathToDb, sessionPassword);
+                result = LiteDbMigration_0_to_1.Migrate(pathToDb, sessionPassword, network);
 
                 //dbVersion = Version1;
             }

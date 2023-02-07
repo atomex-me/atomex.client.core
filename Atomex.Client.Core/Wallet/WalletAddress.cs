@@ -14,9 +14,8 @@ namespace Atomex.Core
 
     public class WalletAddress
     {
-        public string Id => GetId(Address, Currency, TokenBalance?.Contract, TokenBalance?.TokenId);
-        public string Currency { get; set; }
         public string Address { get; set; }
+        public string Currency { get; set; }
         public BigInteger Balance { get; set; }
         public BigInteger UnconfirmedIncome { get; set; }
         public BigInteger UnconfirmedOutcome { get; set; }

@@ -9,6 +9,7 @@ using Serilog;
 using NBitcoin;
 
 using Atomex.Abstract;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
@@ -482,13 +483,14 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
         }
 
-        public async Task<BitcoinTransactionMetadata> ResolveTransactionMetadataAsync(
+        public async Task<TransactionMetadata> ResolveTransactionMetadataAsync(
             BitcoinTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            var result = new BitcoinTransactionMetadata
+            var result = new TransactionMetadata
             {
-                Id = tx.Id
+                Id = tx.Id,
+                Currency = tx.Currency
             };
 
             BigInteger outputAmount = 0;

@@ -787,7 +787,7 @@ namespace Atomex.ViewModels
 
                     foreach (var fromOutput in fromOutputs.Outputs)
                     {
-                        var isUsed = swap.FromOutputs.Any(o => o.TxId == fromOutput.TxId && o.Index == fromOutput.Index);
+                        var isUsed = swap.FromOutputs.Any(o => o.Hash == fromOutput.TxId && o.Index == fromOutput.Index);
 
                         if (isUsed)
                             reservedAmount += bitcoinBasedConfig.SatoshiToCoin(fromOutput.Value);

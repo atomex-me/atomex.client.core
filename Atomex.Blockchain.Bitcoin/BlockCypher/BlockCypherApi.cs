@@ -59,7 +59,7 @@ namespace Atomex.Blockchain.BlockCypher
             BitcoinTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            var txHex = tx.ToBytes().ToHexString();
+            var txHex = tx.ToHex();
 
             var requestUri = $"/{_settings.Coin}/{_settings.Network}/txs/push" + (_settings.ApiToken != null ? $"?token={_settings.ApiToken}" : "");
 

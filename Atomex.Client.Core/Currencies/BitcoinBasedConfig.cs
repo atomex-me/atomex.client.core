@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 using NBitcoin;
 
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Bitcoin.SoChain;
@@ -41,6 +42,7 @@ namespace Atomex
         protected BitcoinBasedConfig()
         {
             TransactionType = typeof(BitcoinTransaction);
+            TransactionMetadataType = typeof(TransactionMetadata);
         }
 
         public override IBlockchainApi GetBlockchainApi() => GetBitcoinBlockchainApi();

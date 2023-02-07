@@ -24,7 +24,6 @@ namespace Atomex.Blockchain.Bitcoin
         public long Confirmations { get; }
         public bool IsConfirmed => Confirmations > 0;
         public DateTime LockTime => _tx.LockTime.Date.UtcDateTime;
-        //public BigInteger ResolvedAmount { get; set; }
         public BigInteger ResolvedFee { get; }
         public BitcoinTxInput[] Inputs => _tx.Inputs
             .AsIndexedInputs()

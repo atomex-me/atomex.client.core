@@ -576,6 +576,7 @@ namespace Atomex.Wallet.Ethereum
             var result = new Erc20TransactionMetadata()
             {
                 Id = tx.Id,
+                Currency = tx.Currency,
                 TransfersTypes = new List<TransactionType>()
             };
 

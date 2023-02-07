@@ -40,7 +40,6 @@ namespace Atomex.Core
     public class Swap
     {
         public long Id { get; set; }
-        public string UserId { get; set; }
         public SwapStatus Status { get; set; }
         public SwapStateFlags StateFlags { get; set; }
         public DateTime TimeStamp { get; set; }
@@ -61,7 +60,7 @@ namespace Atomex.Core
         public decimal MakerNetworkFee { get; set; }
 
         public string FromAddress { get; set; }
-        public List<BitcoinTxOutput> FromOutputs { get; set; }
+        public List<BitcoinTxPoint> FromOutputs { get; set; }
         public string RedeemFromAddress { get; set; }
 
         public string SoldCurrency => Symbol.SoldCurrency(Side);
@@ -114,7 +113,7 @@ namespace Atomex.Core
             }
         }
 
-        public string _redeemTxId;
+        private string _redeemTxId;
         public string RedeemTxId
         {
             get => _redeemTxId;
@@ -125,7 +124,7 @@ namespace Atomex.Core
             }
         }
 
-        public string _refundTxId;
+        private string _refundTxId;
         public string RefundTxId
         {
             get => _refundTxId;
@@ -136,7 +135,7 @@ namespace Atomex.Core
             }
         }
 
-        public string _partyPaymentTxId;
+        private string _partyPaymentTxId;
         public string PartyPaymentTxId
         {
             get => _partyPaymentTxId;

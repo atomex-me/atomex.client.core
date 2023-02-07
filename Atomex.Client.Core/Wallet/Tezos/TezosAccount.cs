@@ -587,6 +587,7 @@ namespace Atomex.Wallet.Tezos
             var result = new TezosOperationMetadata
             {
                 Id = operation.Id,
+                Currency = operation.Currency,
                 OperationsTypes = new List<TransactionType>()
             };
 

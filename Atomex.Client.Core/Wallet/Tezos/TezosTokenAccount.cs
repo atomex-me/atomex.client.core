@@ -647,13 +647,14 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
         }
 
-        private async Task<TezosTokenTransferMetadata> ResolveTransactionMetadataAsync(
+        private async Task<TransactionMetadata> ResolveTransactionMetadataAsync(
             TezosTokenTransfer tx,
             CancellationToken cancellationToken = default)
         {
-            var result = new TezosTokenTransferMetadata
+            var result = new TransactionMetadata
             {
                 Id = tx.Id,
+                Currency = tx.Currency
             };
 
             var fromAddress = await GetAddressAsync(tx.From, cancellationToken)

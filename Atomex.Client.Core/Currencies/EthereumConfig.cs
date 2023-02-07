@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Nethereum.Signer;
 using Nethereum.Util;
 
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Abstract;
@@ -122,6 +123,7 @@ namespace Atomex
             InfuraApi = configuration[nameof(InfuraApi)];
             InfuraWsApi = configuration[nameof(InfuraWsApi)];
             TransactionType = typeof(EthereumTransaction);
+            TransactionMetadataType = typeof(TransactionMetadata);
 
             IsSwapAvailable = true;
             Bip44Code = Bip44.Ethereum;

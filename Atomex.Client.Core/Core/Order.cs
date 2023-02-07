@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 
 using Newtonsoft.Json;
-using LiteDB;
 
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
@@ -12,9 +11,7 @@ namespace Atomex.Core
 {
     public class Order
     {
-        [BsonField("OrderId")]
         public long Id { get; set; }
-        [BsonId]
         public string ClientOrderId { get; set; }
         public string Symbol { get; set; }
         public DateTime TimeStamp { get; set; }
@@ -31,11 +28,10 @@ namespace Atomex.Core
         public decimal MakerNetworkFee { get; set; }
 
         public string FromAddress { get; set; }
-        public List<BitcoinTxOutput> FromOutputs { get; set; }
+        public List<BitcoinTxPoint> FromOutputs { get; set; }
         public string ToAddress { get; set; }
         public string RedeemFromAddress { get; set; }
 
         public override string ToString() => JsonConvert.SerializeObject(this);
-        public Order Clone() => (Order)MemberwiseClone();
     }
 }

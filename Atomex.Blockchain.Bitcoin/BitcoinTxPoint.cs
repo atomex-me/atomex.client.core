@@ -2,7 +2,7 @@
 {
     public record BitcoinTxPoint
     {
-        public uint Index { get; init; }
-        public string Hash { get; init; }
+        public uint Index { get; set; }
+        public string Hash { get; set; }
     }
 }

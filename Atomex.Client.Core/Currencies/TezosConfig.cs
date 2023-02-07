@@ -172,6 +172,7 @@ namespace Atomex
             AddressExplorerUri = configuration[nameof(AddressExplorerUri)];
             SwapContractAddress = configuration["SwapContract"];
             TransactionType = typeof(TezosOperation);
+            TransactionMetadataType = typeof(TezosOperationMetadata);
 
             IsSwapAvailable = true;
             Bip44Code = Bip44.Tezos;

@@ -29,25 +29,25 @@ namespace Atomex
 
         public void Update(IConfiguration configuration)
         {
-            Name              = configuration[nameof(Name)];
-            DisplayedName     = configuration[nameof(DisplayedName)];
-            Description       = configuration[nameof(Description)];
-            IsToken           = bool.Parse(configuration[nameof(IsToken)]);
+            Name = configuration[nameof(Name)];
+            DisplayedName = configuration[nameof(DisplayedName)];
+            Description = configuration[nameof(Description)];
+            IsToken = bool.Parse(configuration[nameof(IsToken)]);
 
-            DigitsMultiplier  = LtcDigitsMultiplier;
-            Digits            = (int)Math.Round(Math.Log10(LtcDigitsMultiplier));
-            Format            = DecimalExtensions.GetFormatWithPrecision(Digits);
+            DigitsMultiplier = LtcDigitsMultiplier;
+            Digits = (int)Math.Round(Math.Log10(LtcDigitsMultiplier));
+            Format = DecimalExtensions.GetFormatWithPrecision(Digits);
 
-            FeeRate           = decimal.Parse(configuration[nameof(FeeRate)]);
-            DustFeeRate       = decimal.Parse(configuration[nameof(DustFeeRate)]);
-            DustThreshold     = long.Parse(configuration[nameof(DustThreshold)]);
+            FeeRate = decimal.Parse(configuration[nameof(FeeRate)]);
+            DustFeeRate = decimal.Parse(configuration[nameof(DustFeeRate)]);
+            DustThreshold = long.Parse(configuration[nameof(DustThreshold)]);
 
-            MinTxFeeRate      = decimal.Parse(configuration[nameof(MinTxFeeRate)]);
+            MinTxFeeRate = decimal.Parse(configuration[nameof(MinTxFeeRate)]);
             MinRelayTxFeeRate = decimal.Parse(configuration[nameof(MinRelayTxFeeRate)]);
 
-            FeeCode           = Name;
-            FeeFormat         = DecimalExtensions.GetFormatWithPrecision(Digits);
-            FeeCurrencyName   = Name;
+            FeeCode = Name;
+            FeeFormat = DecimalExtensions.GetFormatWithPrecision(Digits);
+            FeeCurrencyName = Name;
 
             MaxRewardPercent = configuration[nameof(MaxRewardPercent)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercent)], CultureInfo.InvariantCulture)

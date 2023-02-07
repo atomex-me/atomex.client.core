@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Abstract;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Erc20.Messages;
@@ -484,11 +485,15 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
         }
 
-        public async Task<EthereumTransactionMetadata> ResolveTransactionMetadataAsync(
+        public async Task<TransactionMetadata> ResolveTransactionMetadataAsync(
             EthereumTransaction tx,
             CancellationToken cancellationToken = default)
         {
-            var result = new EthereumTransactionMetadata { Id = tx.Id };
+            var result = new TransactionMetadata
+            {
+                Id = tx.Id,
+                Currency = tx.Currency,
+            };
 
             var fromAddress = await GetAddressAsync(tx.From, cancellationToken)
                 .ConfigureAwait(false);

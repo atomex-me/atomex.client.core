@@ -586,25 +586,28 @@ namespace Atomex.Swaps.BitcoinBased
                 .ConfigureAwait(false);
 
             var outputsAlreadySpent = swap.FromOutputs
-                .Any(o => availableOutputs.FirstOrDefault(ao => ao.TxId == o.TxId && ao.Index == o.Index) == null);
+                .Any(o => availableOutputs.FirstOrDefault(ao => ao.TxId == o.Hash && ao.Index == o.Index) == null);
 
             if (outputsAlreadySpent)
             {
                 Log.Debug($"Some outputs already spent for {Currency} swap payment");
 
                 swap.FromOutputs
-                    .Where(o => availableOutputs.FirstOrDefault(ao => ao.TxId == o.TxId && ao.Index == o.Index) != null)
+                    .Where(o => availableOutputs.FirstOrDefault(ao => ao.TxId == o.Hash && ao.Index == o.Index) != null)
                     .ToList();
             }
 
-            var fromOutputsInSatoshi = swap.FromOutputs.Sum(o => o.Value);
+            var fromOutputs = swap.FromOutputs
+                .Select(o => availableOutputs.First(ao => ao.TxId == o.Hash && ao.Index == o.Index));
+
+            var fromOutputsInSatoshi = fromOutputs.Sum(o => o.Value);
 
             if (fromOutputsInSatoshi < amountInSatoshi && _allowSpendingAllOutputs)
-                swap.FromOutputs = availableOutputs.Cast<BitcoinTxOutput>().ToList();
+                fromOutputs = availableOutputs;
 
             var tx = await _transactionFactory
                 .CreateSwapPaymentTxAsync(
-                    fromOutputs: swap.FromOutputs,  
+                    fromOutputs: fromOutputs,
                     amount: amountInSatoshi,
                     refundAddress: refundAddress,
                     toAddress: swap.PartyAddress,

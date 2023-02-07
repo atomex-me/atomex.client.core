@@ -1,6 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 
 using Atomex.Common;
 
@@ -19,48 +17,29 @@ namespace Atomex.LiteDb
         TezosTokensContracts
     }
 
-    public class LiteDbMigrationAction
+    public struct LiteDbMigrationRemoveAction
     {
         public Collections Collection { get; set; }
         public string Currency { get; set; }
     }
 
-    public class LiteDbMigrationActionEqualityComparer : IEqualityComparer<LiteDbMigrationAction>
+    public class LiteDbMigrationActionEqualityComparer : IEqualityComparer<LiteDbMigrationRemoveAction>
     {
-        public bool Equals(LiteDbMigrationAction x, LiteDbMigrationAction y) => 
-            x != null &&
-            y != null &&
+        public bool Equals(LiteDbMigrationRemoveAction x, LiteDbMigrationRemoveAction y) => 
             x.Collection == y.Collection &&
             x.Currency == y.Currency;
 
-        public int GetHashCode(LiteDbMigrationAction obj) =>
+        public int GetHashCode(LiteDbMigrationRemoveAction obj) =>
             obj.Collection.GetHashCode() ^ obj.Currency.GetHashCode();
     }
 
-    public class LiteDbMigrationResult : IEnumerable<LiteDbMigrationAction>
+    public class LiteDbMigrationResult : List<LiteDbMigrationRemoveAction>
     {
-        public List<LiteDbMigrationAction> Removed { get; }
         public Error? Error { get; }
 
-        public LiteDbMigrationResult()
+        public void Add(Collections collections, string currency)
         {
-            Removed = new List<LiteDbMigrationAction>();
+            Add(new LiteDbMigrationRemoveAction { Collection = collections, Currency = currency });
         }
-
-        public void Add(LiteDbMigrationAction action)
-        {
-            Removed.Add(action);
-        }
-
-        public LiteDbMigrationResult Aggregate(LiteDbMigrationResult result)
-        {
-            Removed.AddRange(result.Removed);
-            Removed.Distinct(new LiteDbMigrationActionEqualityComparer());
-
-            return this;
-        }
-
-        public IEnumerator<LiteDbMigrationAction> GetEnumerator() => Removed.GetEnumerator();
-        IEnumerator IEnumerable.GetEnumerator() => Removed.GetEnumerator();
     }
 }

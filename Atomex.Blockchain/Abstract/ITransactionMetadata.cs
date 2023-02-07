@@ -20,6 +20,7 @@ namespace Atomex.Blockchain.Abstract
     public interface ITransactionMetadata
     {
         public string Id { get; }
+        public string Currency { get; }
         public TransactionType Type { get; }
         public BigInteger Amount { get; }
     }
