@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
 using Atomex.Blockchain.Bitcoin;
 
@@ -9,7 +10,7 @@ namespace Atomex.Common
     {
         public static IEnumerable<BitcoinTxOutput> SelectOutputsForAmount(
             this IEnumerable<BitcoinTxOutput> outputs,
-            long amountInSatoshi)
+            BigInteger amountInSatoshi)
         {
             foreach (var selectedOutputs in outputs.SelectOutputs())
             {

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,7 +19,7 @@ namespace Atomex.Swaps.BitcoinBased
 
         public async Task<BitcoinTransaction> CreateSwapPaymentTxAsync(
             IEnumerable<BitcoinTxOutput> fromOutputs,
-            long amount,
+            BigInteger amount,
             string refundAddress,
             string toAddress,
             DateTimeOffset lockTime,
@@ -44,7 +45,7 @@ namespace Atomex.Swaps.BitcoinBased
                 secretSize: secretSize,
                 expectedNetwork: currencyConfig.Network);
 
-            var feeInSatoshi = 0L;
+            var feeInSatoshi = BigInteger.Zero;
 
             var inputsToSign = fromOutputs
                 .Select(o => new BitcoinInputToSign { Output = o });
@@ -81,7 +82,7 @@ namespace Atomex.Swaps.BitcoinBased
                         changeAddress: refundAddress,
                         network: currencyConfig.Network));
 
-                var estimatedFeeRate = maxFeeInSatoshi / txSizeWithChange;
+                var estimatedFeeRate = (long)maxFeeInSatoshi / txSizeWithChange;
 
                 if (estimatedFeeRate > feeRate)
                     Log.Error($"EstimatedFeeRate changed: {estimatedFeeRate}, old fee rate: {feeRate}");
@@ -107,8 +108,8 @@ namespace Atomex.Swaps.BitcoinBased
                     lockTime: lockTime,
                     secretHash: secretHash,
                     secretSize: secretSize,
-                    amount: amount,
-                    fee: feeInSatoshi,
+                    amount: (long)amount,
+                    fee: (long)feeInSatoshi,
                     redeemScript: out _);
 
             return tx;
@@ -116,7 +117,7 @@ namespace Atomex.Swaps.BitcoinBased
 
         public async Task<BitcoinTransaction> CreateSwapRefundTxAsync(
             BitcoinTransaction paymentTx,
-            long amount,
+            BigInteger amount,
             string refundAddress,
             byte[] redeemScript,
             DateTimeOffset lockTime,
@@ -164,7 +165,7 @@ namespace Atomex.Swaps.BitcoinBased
                 unspentOutputs: new BitcoinTxOutput[] { swapOutput },
                 destinationAddress: refundAddress,
                 changeAddress: refundAddress,
-                amount: amount - feeInSatoshi,
+                amount: (long)(amount - feeInSatoshi),
                 fee: feeInSatoshi,
                 lockTime: lockTime,
                 knownRedeems: new Script(redeemScript));
@@ -172,7 +173,7 @@ namespace Atomex.Swaps.BitcoinBased
 
         public async Task<BitcoinTransaction> CreateSwapRedeemTxAsync(
             BitcoinTransaction paymentTx,
-            long amount,
+            BigInteger amount,
             string redeemAddress,
             byte[] redeemScript,
             BitcoinBasedConfig currencyConfig,
@@ -220,7 +221,7 @@ namespace Atomex.Swaps.BitcoinBased
                 unspentOutputs: new BitcoinTxOutput[] { swapOutput },
                 destinationAddress: redeemAddress,
                 changeAddress: redeemAddress,
-                amount: amount - feeInSatoshi,
+                amount: (long)(amount - feeInSatoshi),
                 fee: feeInSatoshi,
                 lockTime: DateTimeOffset.MinValue,
                 knownRedeems: new Script(redeemScript));

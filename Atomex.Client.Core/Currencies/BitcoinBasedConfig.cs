@@ -124,11 +124,11 @@ namespace Atomex
         public virtual long GetDust() =>
             (long) (DustFeeRate * P2PkhTxSize);
 
-        public long CoinToSatoshi(decimal coins) =>
-            (long) (coins * DigitsMultiplier);
+        public BigInteger CoinToSatoshi(decimal coins) =>
+            coins.ToBigInteger(Decimals);
 
-        public decimal SatoshiToCoin(long satoshi) =>
-            satoshi / DigitsMultiplier;
+        public decimal SatoshiToCoin(BigInteger satoshi) =>
+            satoshi.ToDecimal(Decimals);
 
         public string TestAddress()
         {

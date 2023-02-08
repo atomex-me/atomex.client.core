@@ -747,11 +747,11 @@ namespace Atomex.Swaps.Ethereum
 
         public static decimal RequiredAmountInTokens(Swap swap, EthereumConfig eth)
         {
-            var requiredAmountInEth = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, eth.DigitsMultiplier);
+            var requiredAmountInEth = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, eth.Precision);
 
             // maker network fee
             if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInEth) // network fee size check
-                requiredAmountInEth += AmountHelper.RoundDown(swap.MakerNetworkFee, eth.DigitsMultiplier);
+                requiredAmountInEth += AmountHelper.RoundDown(swap.MakerNetworkFee, eth.Precision);
 
             return requiredAmountInEth;
         }

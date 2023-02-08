@@ -31,11 +31,11 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
                 : CurrencySwap.DefaultAcceptorLockTimeInSeconds;
 
             var rewardForRedeemInTokenDigits = swap.IsInitiator
-                ? swap.PartyRewardForRedeem.ToTokenDigits(fa12.DigitsMultiplier)
+                ? swap.PartyRewardForRedeem.ToTokenDigits(fa12.Precision)
                 : 0;
 
             var requiredAmountInTokens = Fa12Swap.RequiredAmountInTokens(swap, fa12);
-            var requiredAmountInTokensDigits = requiredAmountInTokens.ToTokenDigits(fa12.DigitsMultiplier);
+            var requiredAmountInTokensDigits = requiredAmountInTokens.ToTokenDigits(fa12.Precision);
 
             var api = new TzktApi(fa12.GetTzktSettings());
 
@@ -83,11 +83,11 @@ namespace Atomex.Swaps.Tezos.Fa12.Helpers
                     .Opposite();
 
                 var requiredAmountInTokenDigits = AmountHelper
-                    .QtyToSellAmount(side, swap.Qty, swap.Price, fa12.DigitsMultiplier)
-                    .ToTokenDigits(fa12.DigitsMultiplier);
+                    .QtyToSellAmount(side, swap.Qty, swap.Price, fa12.Precision)
+                    .ToTokenDigits(fa12.Precision);
 
                 var requiredRewardForRedeemInTokenDigits = swap.IsAcceptor
-                    ? swap.RewardForRedeem.ToTokenDigits(fa12.DigitsMultiplier)
+                    ? swap.RewardForRedeem.ToTokenDigits(fa12.Precision)
                     : 0;
 
                 var secretHash = swap.SecretHash.ToHexString();

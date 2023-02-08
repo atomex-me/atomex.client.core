@@ -94,10 +94,10 @@ namespace Atomex.EthereumTokens
         }
 
         public BigInteger TokensToTokenDigits(decimal tokens) =>
-            new(tokens * DigitsMultiplier);
+            tokens.ToBigInteger(Decimals);
 
         public decimal TokenDigitsToTokens(BigInteger tokenDigits) =>
-            (decimal)tokenDigits / DigitsMultiplier;
+            tokenDigits.ToDecimal(Decimals);
 
         public override async Task<Result<decimal>> GetRewardForRedeemAsync(
             decimal maxRewardPercent,
@@ -127,7 +127,7 @@ namespace Atomex.EthereumTokens
 
             return AmountHelper.RoundDown(feeCurrencySymbol.IsBaseCurrency(Name)
                 ? rewardForRedeemInEth / feeCurrencyPrice
-                : rewardForRedeemInEth * feeCurrencyPrice, DigitsMultiplier);
+                : rewardForRedeemInEth * feeCurrencyPrice, Precision);
         }
     }
 }

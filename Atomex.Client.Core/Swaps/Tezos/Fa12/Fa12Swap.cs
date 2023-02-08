@@ -59,11 +59,11 @@ namespace Atomex.Swaps.Tezos.Fa12
             var fa12 = Fa12Config;
 
             var requiredAmountInTokens = RequiredAmountInTokens(swap, fa12);
-            var requiredAmountInTokenDigits = requiredAmountInTokens.ToTokenDigits(fa12.DigitsMultiplier);
+            var requiredAmountInTokenDigits = requiredAmountInTokens.ToTokenDigits(fa12.Precision);
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
             var rewardForRedeemInTokenDigits = swap.IsInitiator
-                ? swap.PartyRewardForRedeem.ToTokenDigits(fa12.DigitsMultiplier)
+                ? swap.PartyRewardForRedeem.ToTokenDigits(fa12.Precision)
                 : 0;
 
             var walletAddress = await Fa12Account
@@ -783,11 +783,11 @@ namespace Atomex.Swaps.Tezos.Fa12
 
         public static decimal RequiredAmountInTokens(Swap swap, Fa12Config fa12)
         {
-            var requiredAmountInTokens = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, fa12.DigitsMultiplier);
+            var requiredAmountInTokens = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, fa12.Precision);
 
             // maker network fee
             if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInTokens) // network fee size check
-                requiredAmountInTokens += AmountHelper.RoundDown(swap.MakerNetworkFee, fa12.DigitsMultiplier);
+                requiredAmountInTokens += AmountHelper.RoundDown(swap.MakerNetworkFee, fa12.Precision);
 
             return requiredAmountInTokens;
         }

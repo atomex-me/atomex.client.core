@@ -79,7 +79,7 @@ namespace Atomex.Swaps.Ethereum.Helpers
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
                     .Opposite();
 
-                var requiredAmountInEth = AmountHelper.QtyToSellAmount(sideOpposite, swap.Qty, swap.Price, ethereumConfig.DigitsMultiplier);
+                var requiredAmountInEth = AmountHelper.QtyToSellAmount(sideOpposite, swap.Qty, swap.Price, ethereumConfig.Precision);
                 var requiredAmountInWei = EthereumHelper.EthToWei(requiredAmountInEth);
                 var requiredRewardForRedeemInWei = EthereumHelper.EthToWei(swap.RewardForRedeem);
 

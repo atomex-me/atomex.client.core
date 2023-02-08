@@ -87,9 +87,8 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                     .Opposite();
 
                 var refundTimeStamp = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSec)).ToUnixTimeSeconds();
-                var requiredAmountInERC20 = AmountHelper.QtyToSellAmount(side, swap.Qty, swap.Price, erc20.DigitsMultiplier);
-                var requiredAmountInDecimals = erc20.TokensToTokenDigits(requiredAmountInERC20);
-                var receivedAmountInDecimals = new BigInteger(0);
+                var requiredAmount = AmountHelper.QtyToSellAmount(side, swap.Qty, swap.Price, erc20.Precision);
+                var requiredAmountInDecimals = erc20.TokensToTokenDigits(requiredAmount);
                 var requiredRewardForRedeemInDecimals = swap.IsAcceptor
                     ? erc20.TokensToTokenDigits(swap.RewardForRedeem)
                     : 0;
@@ -188,7 +187,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                         message: $"Invalid transfer value in erc20 initiated event. Expected value is {initiatedEvent.Value}, actual is {actualTransferValue}");
                 }
 
-                receivedAmountInDecimals = initiatedEvent.Value;
+                var receivedAmountInDecimals = initiatedEvent.Value;
 
                 if (receivedAmountInDecimals >= requiredAmountInDecimals - requiredRewardForRedeemInDecimals)
                     return true;

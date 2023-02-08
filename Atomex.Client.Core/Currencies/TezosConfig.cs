@@ -274,7 +274,7 @@ namespace Atomex
             var rewardForRedeem = CalculateRewardForRedeem(
                 redeemFee: redeemFeeInXtz,
                 redeemFeeCurrency: Xtz,
-                redeemFeeDigitsMultiplier: XtzDigitsMultiplier,
+                redeemFeePrecision: Precision,
                 maxRewardPercent: maxRewardPercent,
                 maxRewardPercentValue: maxRewardPercentInBase,
                 feeCurrencyToBaseSymbol: feeCurrencyToBaseSymbol,

@@ -222,7 +222,7 @@ namespace Atomex
             return CalculateRewardForRedeem(
                 redeemFee: redeemFeeInEth,
                 redeemFeeCurrency: "ETH",
-                redeemFeeDigitsMultiplier: EthDigitsMultiplier,
+                redeemFeePrecision: Precision,
                 maxRewardPercent: maxRewardPercent,
                 maxRewardPercentValue: maxRewardPercentInBase,
                 feeCurrencyToBaseSymbol: feeCurrencyToBaseSymbol,

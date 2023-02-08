@@ -724,26 +724,26 @@ namespace Atomex.ViewModels
             var (estimatedOrderPrice, estimatedPrice) = orderBook.EstimateOrderPrices(
                 side: side,
                 amount: amount,
-                amountDigitsMultiplier: isSoldAmount
-                    ? fromCurrency.DigitsMultiplier
-                    : toCurrency.DigitsMultiplier,
-                qtyDigitsMultiplier: baseCurrency.DigitsMultiplier,
+                amountPrecision: isSoldAmount
+                    ? fromCurrency.Precision
+                    : toCurrency.Precision,
+                qtyPrecision: baseCurrency.Precision,
                 amountType: amountType);
 
-            var (estimatedMaxFromAmount, estimatedMaxToAmount) = orderBook.EstimateMaxAmount(side, fromCurrency.DigitsMultiplier);
+            var (estimatedMaxFromAmount, estimatedMaxToAmount) = orderBook.EstimateMaxAmount(side, fromCurrency.Precision);
 
             var isNoLiquidity = amount != 0 && estimatedOrderPrice == 0;
 
             var oppositeAmount = isSoldAmount
                 ? symbol.IsBaseCurrency(toCurrency.Name)
                     ? estimatedPrice != 0
-                        ? AmountHelper.RoundDown(amount / estimatedPrice, toCurrency.DigitsMultiplier)
+                        ? AmountHelper.RoundDown(amount / estimatedPrice, toCurrency.Precision)
                         : 0m
-                    : AmountHelper.RoundDown(amount * estimatedPrice, toCurrency.DigitsMultiplier)
+                    : AmountHelper.RoundDown(amount * estimatedPrice, toCurrency.Precision)
                 : symbol.IsBaseCurrency(toCurrency.Name)
-                    ? AmountHelper.RoundDown(amount * estimatedPrice, fromCurrency.DigitsMultiplier)
+                    ? AmountHelper.RoundDown(amount * estimatedPrice, fromCurrency.Precision)
                     : estimatedPrice != 0
-                        ? AmountHelper.RoundDown(amount / estimatedPrice, fromCurrency.DigitsMultiplier)
+                        ? AmountHelper.RoundDown(amount / estimatedPrice, fromCurrency.Precision)
                         : 0m;
 
             return Task.FromResult(new SwapPriceEstimation
@@ -795,7 +795,7 @@ namespace Atomex.ViewModels
                 }
             }
 
-            return AmountHelper.RoundDown(reservedAmount, currency.DigitsMultiplier);
+            return AmountHelper.RoundDown(reservedAmount, currency.Precision);
         }
 
         public static async Task<Result<decimal>> EstimateMakerNetworkFeeAsync(
@@ -889,8 +889,8 @@ namespace Atomex.ViewModels
                 return null;
 
             return symbol.IsBaseCurrency(from)
-                ? AmountHelper.RoundDown(amount * middlePrice, toCurrency.DigitsMultiplier)
-                : AmountHelper.RoundDown(amount / middlePrice, toCurrency.DigitsMultiplier);
+                ? AmountHelper.RoundDown(amount * middlePrice, toCurrency.Precision)
+                : AmountHelper.RoundDown(amount / middlePrice, toCurrency.Precision);
         }
 
         public static decimal? TryConvertAmount(

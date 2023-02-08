@@ -30,7 +30,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
 
                 var bitcoinBased = (BitcoinBasedConfig)currency;
 
-                var requiredAmount = AmountHelper.QtyToSellAmount(side, swap.Qty, swap.Price, bitcoinBased.DigitsMultiplier);
+                var requiredAmount = AmountHelper.QtyToSellAmount(side, swap.Qty, swap.Price, bitcoinBased.Precision);
                 var requiredAmountInSatoshi = bitcoinBased.CoinToSatoshi(requiredAmount);
 
                 var redeemScript = refundAddress == null && redeemScriptBase64 != null

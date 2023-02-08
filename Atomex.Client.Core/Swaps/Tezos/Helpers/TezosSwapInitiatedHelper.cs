@@ -75,7 +75,7 @@ namespace Atomex.Swaps.Tezos.Helpers
                     .Opposite();
 
                 var requiredAmountInMtz = AmountHelper
-                    .QtyToSellAmount(side, swap.Qty, swap.Price, tezos.DigitsMultiplier)
+                    .QtyToSellAmount(side, swap.Qty, swap.Price, tezos.Precision)
                     .ToMicroTez();
 
                 var requiredRewardForRedeemInMtz = swap.RewardForRedeem.ToMicroTez();

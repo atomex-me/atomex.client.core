@@ -49,7 +49,7 @@ namespace Atomex.TezosTokens
 
             return AmountHelper.RoundDown(feeCurrencySymbol.IsBaseCurrency(Name)
                 ? rewardForRedeemInXtz / feeCurrencyPrice
-                : rewardForRedeemInXtz * feeCurrencyPrice, DigitsMultiplier);
+                : rewardForRedeemInXtz * feeCurrencyPrice, Precision);
         }
     }
 }

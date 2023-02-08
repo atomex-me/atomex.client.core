@@ -125,8 +125,8 @@ namespace Atomex.MarketData
         public (decimal, decimal) EstimateOrderPrices(
             Side side,
             decimal amount,
-            decimal amountDigitsMultiplier,
-            decimal qtyDigitsMultiplier,
+            int amountPrecision,
+            int qtyPrecision,
             AmountType amountType)
         {
             try
@@ -153,13 +153,13 @@ namespace Atomex.MarketData
                     var price = entryPair.Key;
 
                     var availableAmount = amountType == AmountType.Sold
-                        ? AmountHelper.QtyToSellAmount(side, qty, price, amountDigitsMultiplier)
-                        : AmountHelper.QtyToBuyAmount(side, qty, price, amountDigitsMultiplier);
+                        ? AmountHelper.QtyToSellAmount(side, qty, price, amountPrecision)
+                        : AmountHelper.QtyToBuyAmount(side, qty, price, amountPrecision);
 
                     var usedAmount = Math.Min(requiredAmount, availableAmount);
                     var usedQty = amountType == AmountType.Sold
-                        ? AmountHelper.AmountToSellQty(side, usedAmount, price, qtyDigitsMultiplier)
-                        : AmountHelper.AmountToBuyQty(side, usedAmount, price, qtyDigitsMultiplier);
+                        ? AmountHelper.AmountToSellQty(side, usedAmount, price, qtyPrecision)
+                        : AmountHelper.AmountToBuyQty(side, usedAmount, price, qtyPrecision);
 
                     totalUsedQuoteAmount += usedQty * price;
                     totalUsedQty += usedQty;
@@ -254,7 +254,7 @@ namespace Atomex.MarketData
 
         public (decimal soldAmount, decimal purchasedAmount) EstimateMaxAmount(
             Side side,
-            decimal digitsMultiplier)
+            int precision)
         {
             try
             {
@@ -269,8 +269,8 @@ namespace Atomex.MarketData
 
                 foreach (var entryPair in book)
                 {
-                    soldAmount += AmountHelper.QtyToSellAmount(side, entryPair.Value.Qty(), entryPair.Key, digitsMultiplier);
-                    purchasedAmount += AmountHelper.QtyToBuyAmount(side, entryPair.Value.Qty(), entryPair.Key, digitsMultiplier);
+                    soldAmount += AmountHelper.QtyToSellAmount(side, entryPair.Value.Qty(), entryPair.Key, precision);
+                    purchasedAmount += AmountHelper.QtyToBuyAmount(side, entryPair.Value.Qty(), entryPair.Key, precision);
                 }
 
                 return (soldAmount, purchasedAmount);

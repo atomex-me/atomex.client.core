@@ -35,7 +35,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                 var side = swap.Symbol
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency);
 
-                var requiredAmount = AmountHelper.QtyToSellAmount(side, swap.Qty, swap.Price, currencyConfig.DigitsMultiplier);
+                var requiredAmount = AmountHelper.QtyToSellAmount(side, swap.Qty, swap.Price, currencyConfig.Precision);
                 var requiredAmountInSatoshi = currencyConfig.CoinToSatoshi(requiredAmount);
 
                 var lockTimeInSeconds = swap.IsInitiator

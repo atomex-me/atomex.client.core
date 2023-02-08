@@ -91,12 +91,12 @@ namespace Atomex.Wallet.BitcoinBased
                 }
             }
 
-            var tx = config.CreatePaymentTx(
+            var tx = config.CreateP2PkhTx(
                 unspentOutputs: from,
                 destinationAddress: to,
                 changeAddress: changeAddress.Address,
-                amount: amountInSatoshi,
-                fee: feeInSatoshi,
+                amount: (long)amountInSatoshi,
+                fee: (long)feeInSatoshi,
                 lockTime: DateTimeOffset.MinValue);
 
             var signResult = await SignAsync(
@@ -306,14 +306,14 @@ namespace Atomex.Wallet.BitcoinBased
                         Currency) // currency code
                 };
 
-            var availableInSatoshi = outputs.Sum(o => o.Value);
+            var availableInSatoshi = outputs.SumBigIntegers(o => o.Value);
 
             if (fee != null)
             {
                 var feeInSatoshi = Config.CoinToSatoshi(fee.Value);
 
                 return new MaxAmountEstimation {
-                    Amount = Math.Max(availableInSatoshi - feeInSatoshi, 0),
+                    Amount = BigInteger.Max(availableInSatoshi - feeInSatoshi, 0),
                     Fee    = feeInSatoshi
                 };
             }

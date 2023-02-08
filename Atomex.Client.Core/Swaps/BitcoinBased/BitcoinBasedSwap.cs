@@ -569,7 +569,7 @@ namespace Atomex.Swaps.BitcoinBased
                     swap.Side,
                     swap.Qty,
                     swap.Price,
-                    currency.DigitsMultiplier));
+                    currency.Precision));
 
             // maker network fee
             if (swap.MakerNetworkFee > 0)
@@ -643,7 +643,7 @@ namespace Atomex.Swaps.BitcoinBased
                     swap.Side,
                     swap.Qty,
                     swap.Price,
-                    currency.DigitsMultiplier));
+                    currency.Precision));
 
             var tx = await _transactionFactory
                 .CreateSwapRefundTxAsync(
@@ -682,7 +682,7 @@ namespace Atomex.Swaps.BitcoinBased
                     swap.Side.Opposite(),
                     swap.Qty,
                     swap.Price,
-                    currency.DigitsMultiplier));
+                    currency.Precision));
 
             var sequenceNumber = 0u;
 

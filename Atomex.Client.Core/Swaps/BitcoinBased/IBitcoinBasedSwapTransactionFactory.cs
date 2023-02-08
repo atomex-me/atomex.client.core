@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,7 +12,7 @@ namespace Atomex.Swaps.BitcoinBased
     {
         Task<BitcoinTransaction> CreateSwapPaymentTxAsync(
             IEnumerable<BitcoinTxOutput> fromOutputs,
-            long amount,
+            BigInteger amount,
             string refundAddress,
             string toAddress,
             DateTimeOffset lockTime,
@@ -22,7 +23,7 @@ namespace Atomex.Swaps.BitcoinBased
 
         Task<BitcoinTransaction> CreateSwapRefundTxAsync(
             BitcoinTransaction paymentTx,
-            long amount,
+            BigInteger amount,
             string refundAddress,
             byte[] redeemScript,
             DateTimeOffset lockTime,
@@ -30,7 +31,7 @@ namespace Atomex.Swaps.BitcoinBased
 
         Task<BitcoinTransaction> CreateSwapRedeemTxAsync(
             BitcoinTransaction paymentTx,
-            long amount,
+            BigInteger amount,
             string redeemAddress,
             byte[] redeemScript,
             BitcoinBasedConfig currency,

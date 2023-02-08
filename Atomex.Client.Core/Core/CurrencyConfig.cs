@@ -18,14 +18,16 @@ namespace Atomex.Core
         public const int MaxNameLength = 32;
         public const string CoinsDefaultFileName = "coins.default.json";
         public const int StandardKey = 0;
+        public const int MaxPrecision = 9;
 
         public int Id { get; set; }
         public string Name { get; set; }
         public string DisplayedName { get; set; }
         public string Description { get; set; }
-        public decimal DigitsMultiplier { get; protected set; }
+        //public BigInteger Precision => BigInteger.Pow(10, Decimals);
         public long DustDigitsMultiplier { get; protected set; }
         public int Decimals { get; set; }
+        public int Precision => Decimals <= MaxPrecision ? Decimals : MaxPrecision;
         public string Format { get; set; }
         public bool IsToken { get; set; }
         public string FeeCode { get; set; }
@@ -79,21 +81,21 @@ namespace Atomex.Core
         public static decimal CalculateRewardForRedeem(
             decimal redeemFee,
             string redeemFeeCurrency,
-            decimal redeemFeeDigitsMultiplier,
+            int redeemFeePrecision,
             decimal maxRewardPercent,
             decimal maxRewardPercentValue,
             string feeCurrencyToBaseSymbol,
             decimal feeCurrencyToBasePrice,
-            decimal baseDigitsMultiplier = 2)
+            int baseCurrencyPrecision = 2)
         {
             var redeemFeeInBase = AmountHelper.RoundDown(feeCurrencyToBaseSymbol.IsBaseCurrency(redeemFeeCurrency)
                 ? redeemFee * feeCurrencyToBasePrice
-                : redeemFee / feeCurrencyToBasePrice, baseDigitsMultiplier);
+                : redeemFee / feeCurrencyToBasePrice, baseCurrencyPrecision);
 
             var k = maxRewardPercentValue / (decimal)Math.Log((double)((1 - maxRewardPercent) / MaxRewardForRedeemDeviation));
             var p = (1 - maxRewardPercent) / (decimal)Math.Exp((double)(redeemFeeInBase / k)) + maxRewardPercent;
 
-            return AmountHelper.RoundDown(redeemFee * (1 + p), redeemFeeDigitsMultiplier);
+            return AmountHelper.RoundDown(redeemFee * (1 + p), redeemFeePrecision);
         }
     }
 }

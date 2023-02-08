@@ -55,7 +55,7 @@ namespace Atomex.Swaps.Tezos
                 swap.Id);
 
             var requiredAmountInMtz = AmountHelper
-                .QtyToSellAmount(swap.Side, swap.Qty, swap.Price, xtzConfig.DigitsMultiplier)
+                .QtyToSellAmount(swap.Side, swap.Qty, swap.Price, xtzConfig.Precision)
                 .ToMicroTez();
 
             // maker network fee
