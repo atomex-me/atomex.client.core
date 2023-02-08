@@ -25,7 +25,7 @@ namespace Atomex.Core
         public string Description { get; set; }
         public decimal DigitsMultiplier { get; protected set; }
         public long DustDigitsMultiplier { get; protected set; }
-        public int Digits { get; set; }
+        public int Decimals { get; set; }
         public string Format { get; set; }
         public bool IsToken { get; set; }
         public string FeeCode { get; set; }

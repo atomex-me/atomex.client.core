@@ -31,6 +31,8 @@ namespace Atomex
         protected const long EthDigitsMultiplier = EthereumHelper.GweiInEth; //1_000_000_000;
         protected const decimal MaxFeePerGasCoeff = 1.2m;
         protected const long MinPriorityFeePerGas = 1;
+        protected const int EthDecimals = 18;
+        protected const int DisplayedDecimals = 9;
 
         public const int Mainnet = 1;
         //public const int Ropsten = 3;
@@ -70,13 +72,13 @@ namespace Atomex
             Name = configuration[nameof(Name)];
             DisplayedName = configuration[nameof(DisplayedName)];
             Description = configuration[nameof(Description)];
-            DigitsMultiplier = EthDigitsMultiplier;
-            Digits = (int)Math.Round(Math.Log10(EthDigitsMultiplier));
-            Format = DecimalExtensions.GetFormatWithPrecision(Digits);
+
+            Decimals = int.Parse(configuration[nameof(Decimals)]);
+            Format = DecimalExtensions.GetFormatWithPrecision(DisplayedDecimals);
             IsToken = bool.Parse(configuration[nameof(IsToken)]);
 
             FeeCode = Name;
-            FeeFormat = DecimalExtensions.GetFormatWithPrecision(Digits);
+            FeeFormat = DecimalExtensions.GetFormatWithPrecision(DisplayedDecimals);
             FeeCurrencyName = Name;
 
             HasFeePrice  = true;

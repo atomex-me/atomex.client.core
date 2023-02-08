@@ -14,8 +14,6 @@ namespace Atomex
 {
     public class LitecoinConfig : BitcoinBasedConfig
     {
-        private const long LtcDigitsMultiplier = 100_000_000;
-
         public long DustThreshold { get; set; }
 
         public LitecoinConfig()
@@ -34,9 +32,8 @@ namespace Atomex
             Description = configuration[nameof(Description)];
             IsToken = bool.Parse(configuration[nameof(IsToken)]);
 
-            DigitsMultiplier = LtcDigitsMultiplier;
-            Digits = (int)Math.Round(Math.Log10(LtcDigitsMultiplier));
-            Format = DecimalExtensions.GetFormatWithPrecision(Digits);
+            Decimals = int.Parse(configuration[nameof(Decimals)]);
+            Format = DecimalExtensions.GetFormatWithPrecision(Decimals);
 
             FeeRate = decimal.Parse(configuration[nameof(FeeRate)]);
             DustFeeRate = decimal.Parse(configuration[nameof(DustFeeRate)]);
@@ -46,7 +43,7 @@ namespace Atomex
             MinRelayTxFeeRate = decimal.Parse(configuration[nameof(MinRelayTxFeeRate)]);
 
             FeeCode = Name;
-            FeeFormat = DecimalExtensions.GetFormatWithPrecision(Digits);
+            FeeFormat = DecimalExtensions.GetFormatWithPrecision(Decimals);
             FeeCurrencyName = Name;
 
             MaxRewardPercent = configuration[nameof(MaxRewardPercent)] != null
@@ -66,14 +63,14 @@ namespace Atomex
             {
                 BaseUrl = configuration["SoChain:BaseUrl"],
                 Network = configuration["SoChain:Network"],
-                Decimals = Digits
+                Decimals = Decimals
             };
             BlockCypherSettings = new BlockCypherSettings
             {
                 BaseUrl = configuration["BlockCypher:BaseUrl"],
                 Network = configuration["BlockCypher:Network"],
                 Coin = configuration["BlockCypher:Coin"],
-                Decimals = Digits
+                Decimals = Decimals
             };
 
             TxExplorerUri = configuration[nameof(TxExplorerUri)];

@@ -33,10 +33,10 @@ namespace Atomex.EthereumTokens
             Name = configuration[nameof(Name)];
             DisplayedName = configuration[nameof(DisplayedName)];
             Description = configuration[nameof(Description)];
-            DigitsMultiplier = decimal.Parse(configuration[nameof(DigitsMultiplier)]);
+
             DustDigitsMultiplier = long.Parse(configuration[nameof(DustDigitsMultiplier)]);
-            Digits = (int)Math.Round(BigInteger.Log10(new BigInteger(DigitsMultiplier)));
-            Format = DecimalExtensions.GetFormatWithPrecision(Digits < 9 ? Digits : 9);
+            Decimals = int.Parse(configuration[nameof(Decimals)]);
+            Format = DecimalExtensions.GetFormatWithPrecision(Decimals < 9 ? Decimals : 9);
             IsToken = bool.Parse(configuration[nameof(IsToken)]);
 
             var feeDigits = (int)Math.Round(BigInteger.Log10(new BigInteger(decimal.Parse(configuration["BaseCurrencyDigitsMultiplier"]))));

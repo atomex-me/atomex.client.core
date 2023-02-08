@@ -515,7 +515,7 @@ namespace Atomex.Wallet.Tezos
                     "FA2" => "fa2",
                     _ => throw new NotSupportedException($"Not supported TokenType: {TokenType ?? "<null>"}")
                 },
-                Decimals = tokenConfig?.Digits ?? 0
+                Decimals = tokenConfig?.Decimals ?? 0
             };
 
             return Task.FromResult(walletAddress);

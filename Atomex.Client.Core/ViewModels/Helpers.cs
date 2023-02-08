@@ -543,7 +543,7 @@ namespace Atomex.ViewModels
                 };
             }
 
-            var estimatedRedeemFee = estimatedRedeemFeeInTokens.ToDecimal(toCurrency.Digits);
+            var estimatedRedeemFee = estimatedRedeemFeeInTokens.ToDecimal(toCurrency.Decimals);
 
             // estimate reward for redeem
             var (rewardForRedeem, rewardForRedeemError) = await RewardForRedeemHelper
@@ -632,9 +632,9 @@ namespace Atomex.ViewModels
                 };
             }
 
-            var maxAmount = maxAmountEstimation.Amount.ToDecimal(fromCurrency.Digits);
+            var maxAmount = maxAmountEstimation.Amount.ToDecimal(fromCurrency.Decimals);
             var maxNetAmount = Math.Max(maxAmount - reservedForSwapsAmount - estimatedMakerNetworkFee, 0m);
-            var maxAmountEstimationFee = maxAmountEstimation.Fee.ToDecimal(fromCurrency.Digits);
+            var maxAmountEstimationFee = maxAmountEstimation.Fee.ToDecimal(fromCurrency.Decimals);
 
             if (maxNetAmount == 0m) // insufficient funds
             {
@@ -813,7 +813,7 @@ namespace Atomex.ViewModels
             if (getPaymentFeeError != null)
                 return getPaymentFeeError;
 
-            var makerPaymentFee = makerPaymentFeeInTokens.ToDecimal(toCurrency.Digits);
+            var makerPaymentFee = makerPaymentFeeInTokens.ToDecimal(toCurrency.Decimals);
 
             // if toCurrency.Name is not equal toCurrency.FeeCurrencyName convert makerPaymentFee from toCurrency.FeeCurrencyName to toCurrency.Name
             if (toCurrency.Name != toCurrency.FeeCurrencyName)
@@ -835,7 +835,7 @@ namespace Atomex.ViewModels
             if (estimateRedeemFeeError != null)
                 return estimateRedeemFeeError;
 
-            var makerRedeemFee = makerRedeemFeeInTokens.ToDecimal(fromCurrency.Digits);
+            var makerRedeemFee = makerRedeemFeeInTokens.ToDecimal(fromCurrency.Decimals);
 
             // if fromCurrency.Name is not equal fromCurrency.FeeCurrencyName convert makerRedeemFee from fromCurrency.FeeCurrencyName to fromCurrency.Name
             if (fromCurrency.Name != fromCurrency.FeeCurrencyName)

@@ -17,8 +17,6 @@ namespace Atomex
 {
     public class BitcoinConfig : BitcoinBasedConfig
     {
-        private const long BtcDigitsMultiplier = 100_000_000;
-
         public BitcoinConfig()
         {
         }
@@ -30,23 +28,21 @@ namespace Atomex
 
         public void Update(IConfiguration configuration)
         {
-            Name              = configuration[nameof(Name)];
-            DisplayedName     = configuration[nameof(DisplayedName)];
-            Description       = configuration[nameof(Description)];
-            IsToken           = bool.Parse(configuration[nameof(IsToken)]);
- 
-            DigitsMultiplier  = BtcDigitsMultiplier;
-            Digits            = (int)Math.Round(Math.Log10(BtcDigitsMultiplier));
-            Format            = DecimalExtensions.GetFormatWithPrecision(Digits);
+            Name = configuration[nameof(Name)];
+            DisplayedName = configuration[nameof(DisplayedName)];
+            Description = configuration[nameof(Description)];
+            IsToken = bool.Parse(configuration[nameof(IsToken)]);
 
-            FeeRate           = decimal.Parse(configuration[nameof(FeeRate)]);
-            DustFeeRate       = decimal.Parse(configuration[nameof(DustFeeRate)]);
-            MinTxFeeRate      = decimal.Parse(configuration[nameof(MinTxFeeRate)]);
+            Decimals = int.Parse(configuration[nameof(Decimals)]);
+            Format = DecimalExtensions.GetFormatWithPrecision(Decimals);
+            FeeRate = decimal.Parse(configuration[nameof(FeeRate)]);
+            DustFeeRate = decimal.Parse(configuration[nameof(DustFeeRate)]);
+            MinTxFeeRate = decimal.Parse(configuration[nameof(MinTxFeeRate)]);
             MinRelayTxFeeRate = decimal.Parse(configuration[nameof(MinRelayTxFeeRate)]);
 
-            FeeCode           = Name;
-            FeeFormat         = DecimalExtensions.GetFormatWithPrecision(Digits);
-            FeeCurrencyName   = Name;
+            FeeCode = Name;
+            FeeFormat = DecimalExtensions.GetFormatWithPrecision(Decimals);
+            FeeCurrencyName = Name;
 
             MaxRewardPercent = configuration[nameof(MaxRewardPercent)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercent)], CultureInfo.InvariantCulture)
@@ -55,31 +51,31 @@ namespace Atomex
                 ? decimal.Parse(configuration[nameof(MaxRewardPercentInBase)], CultureInfo.InvariantCulture)
                 : 0m;
             FeeCurrencyToBaseSymbol = configuration[nameof(FeeCurrencyToBaseSymbol)];
-            FeeCurrencySymbol       = configuration[nameof(FeeCurrencySymbol)];
+            FeeCurrencySymbol = configuration[nameof(FeeCurrencySymbol)];
 
             HasFeePrice = false;
 
-            Network        = ResolveNetwork(configuration);
-            BlockchainApi   = configuration["BlockchainApi"];
+            Network = ResolveNetwork(configuration);
+            BlockchainApi = configuration["BlockchainApi"];
             SoChainSettings = new SoChainSettings
             {
-                BaseUrl  = configuration["SoChain:BaseUrl"],
-                Network  = configuration["SoChain:Network"],
-                Decimals = Digits
+                BaseUrl = configuration["SoChain:BaseUrl"],
+                Network = configuration["SoChain:Network"],
+                Decimals = Decimals
             };
             BlockCypherSettings = new BlockCypherSettings
             {
-                BaseUrl  = configuration["BlockCypher:BaseUrl"],
-                Network  = configuration["BlockCypher:Network"],
-                Coin     = configuration["BlockCypher:Coin"],
-                Decimals = Digits
+                BaseUrl = configuration["BlockCypher:BaseUrl"],
+                Network = configuration["BlockCypher:Network"],
+                Coin = configuration["BlockCypher:Coin"],
+                Decimals = Decimals
             };
 
-            TxExplorerUri      = configuration[nameof(TxExplorerUri)];
+            TxExplorerUri = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri = configuration[nameof(AddressExplorerUri)];
 
             IsSwapAvailable = true;
-            Bip44Code       = Bip44.Bitcoin;
+            Bip44Code = Bip44.Bitcoin;
         }
 
         private static Network ResolveNetwork(IConfiguration configuration)

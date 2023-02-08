@@ -28,20 +28,14 @@ namespace Atomex.TezosTokens
             DisplayedName = configuration[nameof(DisplayedName)];
             Description = configuration[nameof(Description)];
 
-            if (!string.IsNullOrEmpty(configuration[nameof(DigitsMultiplier)]))
-                DigitsMultiplier = decimal.Parse(configuration[nameof(DigitsMultiplier)]);
-
             DustDigitsMultiplier = long.Parse(configuration[nameof(DustDigitsMultiplier)]);
+            Decimals = int.Parse(configuration[nameof(Decimals)]);
 
-            Digits = DigitsMultiplier != 0
-                ? (int)Math.Round(BigInteger.Log10(new BigInteger(DigitsMultiplier)))
-                : 0;
-
-            Format = DecimalExtensions.GetFormatWithPrecision(Digits);
+            Format = DecimalExtensions.GetFormatWithPrecision(Decimals);
             IsToken = bool.Parse(configuration[nameof(IsToken)]);
 
             FeeCode = "XTZ";
-            FeeFormat = DecimalExtensions.GetFormatWithPrecision(Digits);
+            FeeFormat = DecimalExtensions.GetFormatWithPrecision(Decimals);
             HasFeePrice = false;
             FeeCurrencyName = "XTZ";
 

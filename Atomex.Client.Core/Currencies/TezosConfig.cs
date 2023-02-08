@@ -101,13 +101,13 @@ namespace Atomex
             Name = configuration[nameof(Name)];
             DisplayedName = configuration[nameof(DisplayedName)];
             Description = configuration[nameof(Description)];
-            DigitsMultiplier = XtzDigitsMultiplier;
-            Digits = (int)Math.Round(Math.Log10(XtzDigitsMultiplier));
-            Format = DecimalExtensions.GetFormatWithPrecision(Digits);
+
+            Decimals = int.Parse(configuration[nameof(Decimals)]);
+            Format = DecimalExtensions.GetFormatWithPrecision(Decimals);
             IsToken = bool.Parse(configuration[nameof(IsToken)]);
 
             FeeCode = Name;
-            FeeFormat = DecimalExtensions.GetFormatWithPrecision(Digits);
+            FeeFormat = DecimalExtensions.GetFormatWithPrecision(Decimals);
             HasFeePrice = false;
             FeeCurrencyName = Name;
 
