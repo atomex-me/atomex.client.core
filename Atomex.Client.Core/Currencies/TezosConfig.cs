@@ -167,7 +167,7 @@ namespace Atomex
             BbUri = configuration[nameof(BbUri)];
             BbApiUri = configuration[nameof(BbApiUri)];
 
-            BlockchainApi = configuration["BlockchainApi"];//ResolveBlockchainApi(configuration);
+            BlockchainApi = configuration["BlockchainApi"];
             TxExplorerUri = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri = configuration[nameof(AddressExplorerUri)];
             SwapContractAddress = configuration["SwapContract"];
@@ -242,7 +242,7 @@ namespace Atomex
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default)
         {
-            var activationFee = toAddress == null || toAddress.AvailableBalance() == 0
+            var activationFee = toAddress == null || toAddress.Balance == 0
                 ? ActivationStorage * StorageFeeMultiplier
                 : 0;
 

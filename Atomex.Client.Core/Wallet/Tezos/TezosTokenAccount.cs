@@ -87,7 +87,7 @@ namespace Atomex.Wallet.Tezos
             Log.Debug("Send {@amount} tokens from address {@address} with available balance {@balance}",
                 addressAmountInTokenDigits,
                 addressFeeUsage.WalletAddress.Address,
-                addressFeeUsage.WalletAddress.AvailableBalance());
+                addressFeeUsage.WalletAddress.Balance);
 
             var storageLimit = Math.Max(tokenConfig.TransferStorageLimit - tokenConfig.ActivationStorage, 0); // without activation storage fee
 
@@ -160,7 +160,7 @@ namespace Atomex.Wallet.Tezos
             var requiredFeeInMtz = txFeeInMtz + storageFeeInMtz + XtzConfig.MicroTezReserve;
 
             var availableBalanceInMtz = xtzAddress != null
-                ? xtzAddress.AvailableBalance()
+                ? xtzAddress.Balance
                 : 0;
 
             return (
@@ -236,8 +236,8 @@ namespace Atomex.Wallet.Tezos
                         0m)                          // available
                 };
 
-            var restBalanceInMtz = xtzAddress.AvailableBalance() - requiredFeeInMtz;
-
+            var restBalanceInMtz = xtzAddress.Balance - requiredFeeInMtz;
+                
             if (restBalanceInMtz < 0)
                 return new MaxAmountEstimation
                 {
@@ -250,10 +250,10 @@ namespace Atomex.Wallet.Tezos
                         Resources.InsufficientFundsToCoverFeesDetails,
                         requiredFeeInMtz,              // required fee
                         TokenConfig.FeeCurrencyName,   // currency code
-                        xtzAddress.AvailableBalance()) // available
+                        xtzAddress.Balance) // available
                 };
 
-            if (fromAddress.AvailableBalance() <= 0)
+            if (fromAddress.Balance <= 0)
                 return new MaxAmountEstimation
                 {
                     Fee = requiredFeeInMtz,
@@ -263,13 +263,13 @@ namespace Atomex.Wallet.Tezos
                         message: Resources.InsufficientFunds),
                     ErrorHint = string.Format(
                         Resources.InsufficientFundsDetails,
-                        fromAddress.AvailableBalance(), // available tokens
+                        fromAddress.Balance, // available tokens
                         TokenConfig.Name)               // currency code
                 };
 
             return new MaxAmountEstimation
             {
-                Amount   = fromAddress.AvailableBalance(),
+                Amount   = fromAddress.Balance,
                 Fee      = requiredFeeInMtz,
                 Reserved = reserveFeeInMtz
             };
@@ -380,7 +380,7 @@ namespace Atomex.Wallet.Tezos
                 .GetWalletAddressAsync(xtz.Name, fromAddress.Address)
                 .ConfigureAwait(false);
 
-            var availableBalanceInMtz = xtzAddress?.AvailableBalance() ?? 0;
+            var availableBalanceInMtz = xtzAddress?.Balance ?? 0;
 
             var txFeeInMtz = feeUsagePolicy == FeeUsagePolicy.EstimatedFee
                 ? await FeeInMtzByType(
@@ -407,7 +407,7 @@ namespace Atomex.Wallet.Tezos
                 return null;
             }
 
-            var restBalanceInTokenDigits = fromAddress.AvailableBalance() - amount;
+            var restBalanceInTokenDigits = fromAddress.Balance - amount;
 
             if (restBalanceInTokenDigits < 0) // todo: log?
                 return null;
@@ -552,7 +552,7 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
-                return unspentAddresses.MaxBy(w => w.AvailableBalance());
+                return unspentAddresses.MaxBy(w => w.Balance);
 
             // 2. try to find xtz address with max balance
             var unspentTezosAddresses = await LocalStorage
@@ -561,7 +561,7 @@ namespace Atomex.Wallet.Tezos
 
             if (unspentTezosAddresses.Any())
             {
-                var xtzAddress = unspentTezosAddresses.MaxBy(a => a.AvailableBalance());
+                var xtzAddress = unspentTezosAddresses.MaxBy(a => a.Balance);
 
                 var tokenAddress = await LocalStorage
                     .GetTokenAddressAsync(

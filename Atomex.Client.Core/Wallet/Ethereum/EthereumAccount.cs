@@ -108,7 +108,7 @@ namespace Atomex.Wallet.Ethereum
                 addressFeeUsage.UsedAmount,
                 addressFeeUsage.UsedFee,
                 addressFeeUsage.WalletAddress.Address,
-                addressFeeUsage.WalletAddress.AvailableBalance());
+                addressFeeUsage.WalletAddress.Balance);
 
             // lock address to prevent nonce races
             using var addressLock = await AddressLocker
@@ -130,8 +130,8 @@ namespace Atomex.Wallet.Ethereum
                 To                   = to.ToLowerInvariant(),
                 Amount               = addressFeeUsage.UsedAmount,
                 Nonce                = nonce,
-                MaxFeePerGas         = EthereumHelper.GweiToWei(maxFeePerGas),
-                MaxPriorityFeePerGas = EthereumHelper.GweiToWei(maxPriorityFeePerGas),
+                MaxFeePerGas         = maxFeePerGas.GweiToWei(),
+                MaxPriorityFeePerGas = maxPriorityFeePerGas.GweiToWei(),
                 GasLimit             = new BigInteger(gasLimit),
                 ChainId              = ethConfig.ChainId,
                 Data                 = null,
@@ -264,7 +264,7 @@ namespace Atomex.Wallet.Ethereum
 
             var feeInWei = gasLimit == null
                 ? GasLimitByType(type)
-                : gasLimit.Value * EthereumHelper.GweiToWei(maxFeePerGas == null ? estimatedGasPrice.MaxFeePerGas : maxFeePerGas.Value);
+                : gasLimit.Value * (maxFeePerGas == null ? estimatedGasPrice.MaxFeePerGas.GweiToWei() : maxFeePerGas.Value.GweiToWei());
 
             if (feeInWei == 0)
                 return new MaxAmountEstimation {
@@ -275,7 +275,7 @@ namespace Atomex.Wallet.Ethereum
 
             var requiredFeeInWei = feeInWei + (reserve ? reserveFeeInWei : 0);
 
-            var restAmountInWei = fromAddress.AvailableBalance() - requiredFeeInWei;
+            var restAmountInWei = fromAddress.Balance - requiredFeeInWei;
 
             if (restAmountInWei < 0)
                 return new MaxAmountEstimation {
@@ -289,7 +289,7 @@ namespace Atomex.Wallet.Ethereum
                         Resources.InsufficientFundsToCoverFeesDetails,
                         requiredFeeInWei,
                         Currency,
-                        fromAddress.AvailableBalance())
+                        fromAddress.Balance)
                 };
 
             return new MaxAmountEstimation
@@ -339,7 +339,7 @@ namespace Atomex.Wallet.Ethereum
 
             var maxGasLimit = Math.Max(Math.Max(erc20Config.RefundGasLimit, erc20Config.RedeemGasLimit), Math.Max(ethConfig.RefundGasLimit, ethConfig.RedeemGasLimit));
 
-            return maxGasLimit * EthereumHelper.GweiToWei(gasPrice);
+            return maxGasLimit * gasPrice.GweiToWei();
         }
 
         #endregion Common
@@ -379,7 +379,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
-                return unspentAddresses.MaxBy(w => w.AvailableBalance());
+                return unspentAddresses.MaxBy(w => w.Balance);
 
             var keyType = CurrencyConfig.StandardKey;
 
@@ -434,9 +434,9 @@ namespace Atomex.Wallet.Ethereum
             if (fromAddress == null)
                 return null; // invalid address
 
-            var feeInWei = gasLimit * EthereumHelper.GweiToWei(gasPrice);
+            var feeInWei = gasLimit * gasPrice.GweiToWei();
 
-            var restBalanceInWei = fromAddress.AvailableBalance() -
+            var restBalanceInWei = fromAddress.Balance -
                amount -
                feeInWei;
 

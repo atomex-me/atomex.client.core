@@ -1,4 +1,7 @@
-﻿using System.Numerics;
+﻿using System;
+using System.Numerics;
+
+using Atomex.Common;
 
 namespace Atomex.Blockchain
 {
@@ -12,5 +15,8 @@ namespace Atomex.Blockchain
         public BigInteger GetTokenBalance() => ParsedBalance ??= BigInteger.TryParse(Balance, out var result)
             ? result
             : 0;
+
+        public decimal ToDecimalBalance() => GetTokenBalance()
+            .ToDecimal(Decimals);
     }
 }

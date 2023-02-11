@@ -25,7 +25,8 @@ namespace Atomex.Common
     {
         public Error Error { get; init; }
         public string Details { get; init; }
-        
+        public int Code => Error.Code;
+        public string Message => Error.Message;
         public DetailedError(Error error, string details)
         {
             Error = error;

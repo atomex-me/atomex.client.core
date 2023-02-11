@@ -90,14 +90,8 @@ namespace Atomex.EthereumTokens
             TransactionMetadataType = typeof(Erc20TransactionMetadata);
 
             IsSwapAvailable = true;
-            Bip44Code = Bip44.Ethereum;  //TODO ?
+            Bip44Code = Bip44.Ethereum; //TODO ?
         }
-
-        public BigInteger TokensToTokenDigits(decimal tokens) =>
-            tokens.ToBigInteger(Decimals);
-
-        public decimal TokenDigitsToTokens(BigInteger tokenDigits) =>
-            tokenDigits.ToDecimal(Decimals);
 
         public override async Task<Result<decimal>> GetRewardForRedeemAsync(
             decimal maxRewardPercent,

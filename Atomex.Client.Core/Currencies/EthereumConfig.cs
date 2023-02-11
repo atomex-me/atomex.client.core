@@ -167,7 +167,7 @@ namespace Atomex
             if (error != null)
                 return error;
 
-            return InitiateGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas);
+            return InitiateGasLimit * gasPrice.MaxFeePerGas.GweiToWei();
         }
 
         public override async Task<Result<BigInteger>> GetRedeemFeeAsync(
@@ -180,7 +180,7 @@ namespace Atomex
             if (error != null)
                 return error;
 
-            return RedeemGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas);
+            return RedeemGasLimit * gasPrice.MaxFeePerGas.GweiToWei();
         }
 
         public override async Task<Result<BigInteger>> GetEstimatedRedeemFeeAsync(
@@ -195,8 +195,8 @@ namespace Atomex
                 return error;
 
             return withRewardForRedeem
-                ? EstimatedRedeemWithRewardGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas)
-                : EstimatedRedeemGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas);
+                ? EstimatedRedeemWithRewardGasLimit * gasPrice.MaxFeePerGas.GweiToWei()
+                : EstimatedRedeemGasLimit * gasPrice.MaxFeePerGas.GweiToWei();
         }
 
         public override async Task<Result<decimal>> GetRewardForRedeemAsync(

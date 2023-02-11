@@ -11,17 +11,17 @@ namespace Atomex.Common
         /// Convert BigInteger value decimal with a given accuracy
         /// </summary>
         /// <param name="value">BigInteger value</param>
-        /// <param name="decimals">Number of zeroes after the decimal point. Can't be greater than 28</param>
+        /// <param name="decimals">Number of zeroes after the decimal point. If number is greater than max decimal size (28), then max decimal size used</param>
         /// <returns>Decimal value</returns>
         /// <exception cref="ArgumentOutOfRangeException"></exception>
         /// <exception cref="DivideByZeroException"></exception>
         /// <exception cref="OverflowException"></exception>
         public static decimal ToDecimal(this BigInteger value, int decimals)
         {
-            if (decimals > MaxDecimalPrecision)
-                throw new ArgumentOutOfRangeException(nameof(decimals), "The number of zeros after the decimal point cannot be more than 28 for type 'Decimal'");
+            //if (decimals > MaxDecimalPrecision)
+            //    throw new ArgumentOutOfRangeException(nameof(decimals), "The number of zeros after the decimal point cannot be more than 28 for type 'Decimal'");
 
-            return ToDecimal(value, decimals, decimals);
+            return ToDecimal(value, decimals, Math.Min(decimals, MaxDecimalPrecision));
         }
 
         /// <summary>

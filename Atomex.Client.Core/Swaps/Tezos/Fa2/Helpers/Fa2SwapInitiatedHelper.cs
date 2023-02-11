@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Blockchain.Tezos.Tzkt.Swaps.V1;
 using Atomex.Common;
@@ -29,12 +29,12 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
                 ? CurrencySwap.DefaultInitiatorLockTimeInSeconds
                 : CurrencySwap.DefaultAcceptorLockTimeInSeconds;
 
-            var rewardForRedeemInTokenDigits = swap.IsInitiator
-                ? swap.PartyRewardForRedeem.ToTokenDigits(fa2.Precision)
+            var rewardForRedeemInTokens = swap.IsInitiator
+                ? swap.PartyRewardForRedeem.ToTokens(fa2.Decimals)
                 : 0;
 
-            var requiredAmountInTokens = Fa2Swap.RequiredAmountInTokens(swap, fa2);
-            var requiredAmountInTokensDigits = requiredAmountInTokens.ToTokenDigits(fa2.Precision);
+            var requiredAmount = Fa2Swap.GetRequiredAmount(swap, fa2);
+            var requiredAmountInTokens = requiredAmount.ToTokens(fa2.Decimals);
 
             var api = new TzktApi(fa2.GetTzktSettings());
 
@@ -47,8 +47,8 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
                     lockTime: (ulong)lockTimeInSeconds,
                     tokenContract: fa2.TokenContractAddress,
                     tokenId: fa2.TokenId,
-                    totalAmount: requiredAmountInTokensDigits,
-                    payoffAmount: rewardForRedeemInTokenDigits,
+                    totalAmount: requiredAmountInTokens,
+                    payoffAmount: rewardForRedeemInTokens,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -82,12 +82,12 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
                     .Opposite();
 
-                var requiredAmountInTokenDigits = AmountHelper
+                var requiredAmountInTokens = AmountHelper
                     .QtyToSellAmount(side, swap.Qty, swap.Price, fa2.Precision)
-                    .ToTokenDigits(fa2.Precision);
+                    .ToTokens(fa2.Decimals);
 
-                var requiredRewardForRedeemInTokenDigits = swap.IsAcceptor
-                    ? swap.RewardForRedeem.ToTokenDigits(fa2.Precision)
+                var requiredRewardForRedeemInTokens = swap.IsAcceptor
+                    ? swap.RewardForRedeem.ToTokens(fa2.Decimals)
                     : 0;
 
                 var secretHash = swap.SecretHash.ToHexString();
@@ -106,8 +106,8 @@ namespace Atomex.Swaps.Tezos.Fa2.Helpers
                         lockTime: (ulong)lockTime,
                         tokenContract: fa2.TokenContractAddress,
                         tokenId: fa2.TokenId,
-                        totalAmount: requiredAmountInTokenDigits,
-                        payoffAmount: requiredRewardForRedeemInTokenDigits,
+                        totalAmount: requiredAmountInTokens,
+                        payoffAmount: requiredRewardForRedeemInTokens,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

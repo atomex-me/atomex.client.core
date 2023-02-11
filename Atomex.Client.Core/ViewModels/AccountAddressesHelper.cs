@@ -11,10 +11,8 @@ using Atomex.Wallet.Tezos;
 
 namespace Atomex.ViewModels
 {
-    public static class AddressesHelper
+    public static class AccountAddressesHelper
     {
-        public const int MaxTokenCurrencyFormatDecimals = 9;
-
         public static async Task<IEnumerable<WalletAddressViewModel>> GetReceivingAddressesAsync(
             IAccount account,
             CurrencyConfig currency,
@@ -96,14 +94,14 @@ namespace Atomex.ViewModels
                             tokenAddress = w;
                         }
 
-                        var tezosBalance = tezosAddress?.AvailableBalance() ?? 0;
+                        var tezosBalance = tezosAddress?.Balance ?? 0;
 
                         var tokenBalance = tokenAddress?.Balance ?? 0;
                         var showTokenBalance = tokenBalance != 0;
                         var tokenCode = tokenAddress?.TokenBalance?.Symbol ?? tezosTokenConfig?.DisplayedName
                             ?? string.Empty;
                         var tokenFormat =
-                            $"F{Math.Min(tokenAddress?.TokenBalance?.Decimals ?? MaxTokenCurrencyFormatDecimals, MaxTokenCurrencyFormatDecimals)}";
+                            $"F{Math.Min(tokenAddress?.TokenBalance?.Decimals ?? CurrencyConfig.MaxPrecision, CurrencyConfig.MaxPrecision)}";
                         var intTokenId = (int)(tokenAddress?.TokenBalance?.TokenId ?? 0);
                         var isFreeAddress = w.Address == freeTezosAddress.Address && tokenBalance == 0;
 

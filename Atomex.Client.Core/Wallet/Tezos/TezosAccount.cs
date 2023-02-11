@@ -306,7 +306,7 @@ namespace Atomex.Wallet.Tezos
 
             var requiredInMtz = requiredFeeInMtz + Config.MicroTezReserve;
 
-            var restAmountInMtz = fromAddress.AvailableBalance() - requiredInMtz;
+            var restAmountInMtz = fromAddress.Balance - requiredInMtz;
 
             if (restAmountInMtz < 0)
                 return new MaxAmountEstimation {
@@ -320,7 +320,7 @@ namespace Atomex.Wallet.Tezos
                         Resources.InsufficientFundsToCoverFeesDetails,
                         requiredInMtz,
                         Currency,
-                        fromAddress.AvailableBalance())
+                        fromAddress.Balance)
                 };
 
             return new MaxAmountEstimation
@@ -361,7 +361,7 @@ namespace Atomex.Wallet.Tezos
                 : 0;
 
             if (type.HasFlag(TransactionType.SwapPayment))
-                return xtz.InitiateFee+ revealFeeInMtz;
+                return xtz.InitiateFee + revealFeeInMtz;
 
             if (type.HasFlag(TransactionType.SwapRefund))
                 return xtz.RefundFee + revealFeeInMtz;
@@ -462,7 +462,7 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
-                return unspentAddresses.MaxBy(w => w.AvailableBalance());
+                return unspentAddresses.MaxBy(w => w.Balance);
 
             var keyType = CurrencyConfig.StandardKey;
 
@@ -493,7 +493,7 @@ namespace Atomex.Wallet.Tezos
             return (await LocalStorage
                 .GetTokenAddressesAsync()
                 .ConfigureAwait(false))
-                .Where(w => w.AvailableBalance() > 0)
+                .Where(w => w.Balance > 0)
                 .ToList();
         }
 
@@ -528,7 +528,7 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var restBalanceInMtz = fromAddress.AvailableBalance() -
+            var restBalanceInMtz = fromAddress.Balance -
                 amount -
                 txFeeInMtz -
                 storageFeeInMtz -

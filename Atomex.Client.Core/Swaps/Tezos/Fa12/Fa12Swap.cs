@@ -9,6 +9,7 @@ using Netezos.Forging.Models;
 using Serilog;
 
 using Atomex.Abstract;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
@@ -58,21 +59,21 @@ namespace Atomex.Swaps.Tezos.Fa12
 
             var fa12 = Fa12Config;
 
-            var requiredAmountInTokens = RequiredAmountInTokens(swap, fa12);
-            var requiredAmountInTokenDigits = requiredAmountInTokens.ToTokenDigits(fa12.Precision);
+            var requiredAmount = GetRequiredAmount(swap, fa12);
+            var requiredAmountInTokens = requiredAmount.ToTokens(fa12.Decimals);
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
-            var rewardForRedeemInTokenDigits = swap.IsInitiator
-                ? swap.PartyRewardForRedeem.ToTokenDigits(fa12.Precision)
+            var rewardForRedeemInTokens = swap.IsInitiator
+                ? swap.PartyRewardForRedeem.ToTokens(fa12.Decimals)
                 : 0;
 
             var walletAddress = await Fa12Account
                 .GetAddressAsync(swap.FromAddress, cancellationToken)
                 .ConfigureAwait(false);
 
-            var amountInTokenDigits = AmountHelper.DustProofMin(
+            var amountInTokens = AmountHelper.DustProofMin(
                 walletAddress.Balance,
-                requiredAmountInTokenDigits,
+                requiredAmountInTokens,
                 fa12.DustDigitsMultiplier);
 
             var balanceInMtz = (await TezosAccount
@@ -111,7 +112,7 @@ namespace Atomex.Swaps.Tezos.Fa12
                 return;
             }
 
-            var needAllowance = allowance < amountInTokenDigits;
+            var needAllowance = allowance < amountInTokens;
             var needAllowanceReset = allowance != 0 && needAllowance;
 
             var feeAmountInMtz = (needAllowanceReset ? fa12.ApproveFee : 0) +
@@ -140,15 +141,15 @@ namespace Atomex.Swaps.Tezos.Fa12
 
             Log.Debug("Available balance: {@balance}", walletAddress.Balance);
 
-            if (walletAddress.Balance < requiredAmountInTokenDigits)
+            if (walletAddress.Balance < requiredAmountInTokens)
             {
                 Log.Error(
                     "Insufficient funds at {@address}. Balance: {@balance}, " +
                     "required: {@required}, missing: {@missing}.",
                     walletAddress.Address,
                     walletAddress.Balance,
-                    requiredAmountInTokenDigits,
-                    walletAddress.Balance - requiredAmountInTokenDigits);
+                    requiredAmountInTokens,
+                    walletAddress.Balance - requiredAmountInTokens);
 
                 return;
             }
@@ -240,9 +241,9 @@ namespace Atomex.Swaps.Tezos.Fa12
                         Value = Micheline.FromJson(GetInitiateParameters(
                             swap: swap,
                             tokenContractAddress: fa12.TokenContractAddress,
-                            tokenAmountInDigits: amountInTokenDigits,
+                            tokenAmountInDigits: amountInTokens,
                             refundTimeStamp: refundTimeStampUtcInSec,
-                            redeemFeeAmount: rewardForRedeemInTokenDigits))
+                            redeemFeeAmount: rewardForRedeemInTokens))
                     }
                 },
                 From         = walletAddress.Address,
@@ -781,15 +782,15 @@ namespace Atomex.Swaps.Tezos.Fa12
             return false;
         }
 
-        public static decimal RequiredAmountInTokens(Swap swap, Fa12Config fa12)
+        public static decimal GetRequiredAmount(Swap swap, Fa12Config fa12)
         {
-            var requiredAmountInTokens = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, fa12.Precision);
+            var requiredAmount = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, fa12.Precision);
 
             // maker network fee
-            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInTokens) // network fee size check
-                requiredAmountInTokens += AmountHelper.RoundDown(swap.MakerNetworkFee, fa12.Precision);
+            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmount) // network fee size check
+                requiredAmount += AmountHelper.RoundDown(swap.MakerNetworkFee, fa12.Precision);
 
-            return requiredAmountInTokens;
+            return requiredAmount;
         }
 
         private string GetApproveParameters(

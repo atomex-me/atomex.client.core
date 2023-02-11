@@ -9,6 +9,7 @@ using Netezos.Forging.Models;
 using Serilog;
 
 using Atomex.Abstract;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Tzkt;
@@ -58,12 +59,12 @@ namespace Atomex.Swaps.Tezos.Fa2
                 swap.Id);
 
             var fa2 = Fa2Config;
-            var requiredAmountInTokens = RequiredAmountInTokens(swap, fa2);
-            var requiredAmountInTokenDigits = requiredAmountInTokens.ToTokenDigits(fa2.Precision);
+            var requiredAmountInTokens = GetRequiredAmount(swap, fa2);
+            var requiredAmountInTokenDigits = requiredAmountInTokens.ToTokens(fa2.Decimals);
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
             var rewardForRedeemInTokenDigits = swap.IsInitiator
-                ? swap.PartyRewardForRedeem.ToTokenDigits(fa2.Precision)
+                ? swap.PartyRewardForRedeem.ToTokens(fa2.Decimals)
                 : 0;
 
             var walletAddress = await Fa2Account
@@ -730,15 +731,15 @@ namespace Atomex.Swaps.Tezos.Fa2
             return false;
         }
 
-        public static decimal RequiredAmountInTokens(Swap swap, Fa2Config fa2)
+        public static decimal GetRequiredAmount(Swap swap, Fa2Config fa2)
         {
-            var requiredAmountInTokens = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, fa2.Precision);
+            var requiredAmount = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, fa2.Precision);
 
             // maker network fee
-            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInTokens) // network fee size check
-                requiredAmountInTokens += AmountHelper.RoundDown(swap.MakerNetworkFee, fa2.Precision);
+            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmount) // network fee size check
+                requiredAmount += AmountHelper.RoundDown(swap.MakerNetworkFee, fa2.Precision);
 
-            return requiredAmountInTokens;
+            return requiredAmount;
         }
 
         private string GetApproveParameters(

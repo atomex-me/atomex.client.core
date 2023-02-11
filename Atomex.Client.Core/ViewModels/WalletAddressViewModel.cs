@@ -4,7 +4,12 @@ using Atomex.Core;
 
 namespace Atomex.ViewModels
 {
-    public class WalletAddressViewModel
+    public interface IWalletAddressViewModel
+    {
+        WalletAddress WalletAddress { get; set; }
+    }
+
+    public class WalletAddressViewModel : IWalletAddressViewModel
     {
         public WalletAddress WalletAddress { get; set; }
         public string Address { get; set; }

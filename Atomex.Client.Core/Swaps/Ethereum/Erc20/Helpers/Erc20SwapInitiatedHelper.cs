@@ -16,6 +16,7 @@ using Atomex.Blockchain.Ethereum.EtherScan;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.EthereumTokens;
+using Atomex.Blockchain;
 
 namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 {
@@ -88,9 +89,9 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                 var refundTimeStamp = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSec)).ToUnixTimeSeconds();
                 var requiredAmount = AmountHelper.QtyToSellAmount(side, swap.Qty, swap.Price, erc20.Precision);
-                var requiredAmountInDecimals = erc20.TokensToTokenDigits(requiredAmount);
-                var requiredRewardForRedeemInDecimals = swap.IsAcceptor
-                    ? erc20.TokensToTokenDigits(swap.RewardForRedeem)
+                var requiredAmountInTokens = requiredAmount.ToTokens(erc20.Decimals);
+                var requiredRewardForRedeemInTokens = swap.IsAcceptor
+                    ? swap.RewardForRedeem.ToTokens(erc20.Decimals)
                     : 0;
 
                 var api = erc20.GetEtherScanApi();
@@ -141,16 +142,16 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                         message: $"Invalid countdown in initiated event. Expected value is {lockTimeInSec}, actual is {(long)initiatedEvent.Countdown}");
                 }
 
-                if (initiatedEvent.RedeemFee != requiredRewardForRedeemInDecimals)
+                if (initiatedEvent.RedeemFee != requiredRewardForRedeemInTokens)
                 {
                     Log.Debug(
                         "Invalid redeem fee in initiated event. Expected value is {@expected}, actual is {@actual}",
-                        requiredRewardForRedeemInDecimals,
+                        requiredRewardForRedeemInTokens,
                         (long)initiatedEvent.RedeemFee);
 
                     return new Error(
                         code: Errors.InvalidRewardForRedeem,
-                        message: $"Invalid redeem fee in initiated event. Expected value is {requiredRewardForRedeemInDecimals}, actual is {(long)initiatedEvent.RedeemFee}");
+                        message: $"Invalid redeem fee in initiated event. Expected value is {requiredRewardForRedeemInTokens}, actual is {(long)initiatedEvent.RedeemFee}");
                 }
 
                 if (!initiatedEvent.Active)
@@ -189,12 +190,12 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                 var receivedAmountInDecimals = initiatedEvent.Value;
 
-                if (receivedAmountInDecimals >= requiredAmountInDecimals - requiredRewardForRedeemInDecimals)
+                if (receivedAmountInDecimals >= requiredAmountInTokens - requiredRewardForRedeemInTokens)
                     return true;
 
                 Log.Debug(
                     "Ethereum ERC20 value is not enough. Expected value is {@expected}. Actual value is {@actual}",
-                    (decimal)(requiredAmountInDecimals - requiredRewardForRedeemInDecimals),
+                    (decimal)(requiredAmountInTokens - requiredRewardForRedeemInTokens),
                     (decimal)initiatedEvent.Value);
 
                 var (addEvents, addError) = await api
@@ -241,12 +242,12 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                     receivedAmountInDecimals = @event.Value;
 
-                    if (receivedAmountInDecimals >= requiredAmountInDecimals - requiredRewardForRedeemInDecimals)
+                    if (receivedAmountInDecimals >= requiredAmountInTokens - requiredRewardForRedeemInTokens)
                         return true;
 
                     Log.Debug(
                         "Ethereum ERC20 value is not enough. Expected value is {@expected}. Actual value is {@actual}",
-                        requiredAmountInDecimals - requiredRewardForRedeemInDecimals,
+                        requiredAmountInTokens - requiredRewardForRedeemInTokens,
                         (long)@event.Value);
                 }
 

@@ -80,8 +80,8 @@ namespace Atomex.Swaps.Ethereum.Helpers
                     .Opposite();
 
                 var requiredAmountInEth = AmountHelper.QtyToSellAmount(sideOpposite, swap.Qty, swap.Price, ethereumConfig.Precision);
-                var requiredAmountInWei = EthereumHelper.EthToWei(requiredAmountInEth);
-                var requiredRewardForRedeemInWei = EthereumHelper.EthToWei(swap.RewardForRedeem);
+                var requiredAmountInWei = requiredAmountInEth.EthToWei();
+                var requiredRewardForRedeemInWei = swap.RewardForRedeem.EthToWei();
 
                 var api = ethereumConfig.GetEtherScanApi();
 

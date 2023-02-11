@@ -23,6 +23,7 @@ using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Ethereum.Erc20.Helpers;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Ethereum;
+using Atomex.Blockchain;
 
 namespace Atomex.Swaps.Ethereum
 {
@@ -259,7 +260,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInWei = erc20Config.RedeemGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas);
+            var feeInWei = erc20Config.RedeemGasLimit * gasPrice.MaxFeePerGas.GweiToWei();
 
             if (walletAddress.Balance < feeInWei)
             {
@@ -294,8 +295,8 @@ namespace Atomex.Swaps.Ethereum
                     HashedSecret         = swap.SecretHash,
                     Secret               = swap.Secret,
                     Nonce                = nonce,
-                    MaxFeePerGas         = EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas),
-                    MaxPriorityFeePerGas = EthereumHelper.GweiToWei(gasPrice.MaxPriorityFeePerGas),
+                    MaxFeePerGas         = gasPrice.MaxFeePerGas.GweiToWei(),
+                    MaxPriorityFeePerGas = gasPrice.MaxPriorityFeePerGas.GweiToWei(),
                     TransactionType      = EthereumHelper.Eip1559TransactionType
                 };
 
@@ -390,7 +391,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInWei = erc20Config.RedeemGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas);
+            var feeInWei = erc20Config.RedeemGasLimit * gasPrice.MaxFeePerGas.GweiToWei();
 
             if (walletAddress.Balance < feeInWei)
             {
@@ -421,8 +422,8 @@ namespace Atomex.Swaps.Ethereum
                 HashedSecret         = swap.SecretHash,
                 Secret               = swap.Secret,
                 Nonce                = nonce,
-                MaxFeePerGas         = EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas),
-                MaxPriorityFeePerGas = EthereumHelper.GweiToWei(gasPrice.MaxPriorityFeePerGas),
+                MaxFeePerGas         = gasPrice.MaxFeePerGas.GweiToWei(),
+                MaxPriorityFeePerGas = gasPrice.MaxPriorityFeePerGas.GweiToWei(),
                 TransactionType      = EthereumHelper.Eip1559TransactionType
             };
 
@@ -523,7 +524,7 @@ namespace Atomex.Swaps.Ethereum
                 return;
             }
 
-            var feeInWei = erc20Config.RefundGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas);
+            var feeInWei = erc20Config.RefundGasLimit * gasPrice.MaxFeePerGas.GweiToWei();
 
             if (walletAddress.Balance < feeInWei)
             {
@@ -560,8 +561,8 @@ namespace Atomex.Swaps.Ethereum
                 {
                     FromAddress          = walletAddress.Address,
                     HashedSecret         = swap.SecretHash,
-                    MaxFeePerGas         = EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas),
-                    MaxPriorityFeePerGas = EthereumHelper.GweiToWei(gasPrice.MaxPriorityFeePerGas),
+                    MaxFeePerGas         = gasPrice.MaxFeePerGas.GweiToWei(),
+                    MaxPriorityFeePerGas = gasPrice.MaxPriorityFeePerGas.GweiToWei(),
                     Nonce                = nonce,
                     TransactionType      = EthereumHelper.Eip1559TransactionType
                 };
@@ -760,15 +761,15 @@ namespace Atomex.Swaps.Ethereum
 
         #region Helpers
 
-        public static decimal RequiredAmountInTokens(Swap swap, Erc20Config erc20)
+        public static decimal GetRequiredAmount(Swap swap, Erc20Config erc20)
         {
-            var requiredAmountInTokens = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, erc20.Precision);
+            var requiredAmount = AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, erc20.Precision);
 
             // maker network fee
-            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmountInTokens) // network fee size check
-                requiredAmountInTokens += AmountHelper.RoundDown(swap.MakerNetworkFee, erc20.Precision);
+            if (swap.MakerNetworkFee > 0 && swap.MakerNetworkFee < requiredAmount) // network fee size check
+                requiredAmount += AmountHelper.RoundDown(swap.MakerNetworkFee, erc20.Precision);
 
-            return requiredAmountInTokens;
+            return requiredAmount;
         }
 
         protected async Task<EthereumTransactionRequest> CreatePaymentTxAsync(
@@ -779,8 +780,8 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("Create payment transaction from address {@adderss} for swap {@swapId}", swap.FromAddress, swap.Id);
 
-            var requiredAmountInTokens = RequiredAmountInTokens(swap, erc20Config);
-            var requiredAmountInTokenDigits = erc20Config.TokensToTokenDigits(requiredAmountInTokens);
+            var requiredAmount = GetRequiredAmount(swap, erc20Config);
+            var requiredAmountInTokens = requiredAmount.ToTokens(erc20Config.Decimals);
 
             var lockTimeInSeconds = swap.IsInitiator
                 ? DefaultInitiatorLockTimeInSeconds
@@ -788,7 +789,7 @@ namespace Atomex.Swaps.Ethereum
 
             var refundTimeStampUtcInSec = new DateTimeOffset(swap.TimeStamp.ToUniversalTime().AddSeconds(lockTimeInSeconds)).ToUnixTimeSeconds();
 
-            var rewardForRedeemInTokens = swap.PartyRewardForRedeem;
+            var rewardForRedeem = swap.PartyRewardForRedeem;
 
             var walletAddress = await Erc20Account
                 .GetAddressAsync(swap.FromAddress, cancellationToken)
@@ -811,9 +812,9 @@ namespace Atomex.Swaps.Ethereum
                 .ConfigureAwait(false))
                 .Confirmed;
 
-            var feeAmountInWei = rewardForRedeemInTokens == 0
-                ? erc20Config.InitiateGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas)
-                : erc20Config.InitiateWithRewardGasLimit * EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas);
+            var feeAmountInWei = rewardForRedeem == 0
+                ? erc20Config.InitiateGasLimit * gasPrice.MaxFeePerGas.GweiToWei()
+                : erc20Config.InitiateWithRewardGasLimit * gasPrice.MaxFeePerGas.GweiToWei();
 
             if (balanceInWei < feeAmountInWei)
             {
@@ -827,25 +828,25 @@ namespace Atomex.Swaps.Ethereum
                 return null;
             }
 
-            var balanceInTokenDigits = walletAddress.Balance;
+            var balanceInTokens = walletAddress.Balance;
 
-            Log.Debug("Available balance: {@balance}", balanceInTokenDigits);
+            Log.Debug("Available balance: {@balance}", balanceInTokens);
 
-            if (balanceInTokenDigits < requiredAmountInTokenDigits)
+            if (balanceInTokens < requiredAmountInTokens)
             {
                 Log.Error(
-                    "Insufficient funds at {@address}. Balance: {@balance}, required: {@result}, missing: {@missing}.",
+                    "Insufficient funds at {@address}. Balance: {@balance}, required: {@result}, missing: {@missing}",
                     walletAddress.Address,
-                    balanceInTokenDigits,
-                    requiredAmountInTokenDigits,
-                    balanceInTokenDigits - requiredAmountInTokenDigits);
+                    balanceInTokens,
+                    requiredAmountInTokens,
+                    balanceInTokens - requiredAmountInTokens);
 
                 return null;
             }
 
-            var amountInTokenDigits = AmountHelper.DustProofMin(
-                balanceInTokenDigits,
-                requiredAmountInTokenDigits,
+            var amountInTokens = AmountHelper.DustProofMin(
+                balanceInTokens,
+                requiredAmountInTokens,
                 erc20Config.DustDigitsMultiplier);
 
             var (nonce, error) = await EthConfig
@@ -871,17 +872,17 @@ namespace Atomex.Swaps.Ethereum
                 Participant          = swap.PartyAddress,
                 RefundTimestamp      = refundTimeStampUtcInSec,
                 Countdown            = lockTimeInSeconds,
-                Value                = amountInTokenDigits,
-                RedeemFee            = erc20Config.TokensToTokenDigits(rewardForRedeemInTokens),
+                Value                = amountInTokens,
+                RedeemFee            = rewardForRedeem.ToTokens(erc20Config.Decimals),
                 Active               = true,
                 FromAddress          = walletAddress.Address,
-                MaxFeePerGas         = EthereumHelper.GweiToWei(gasPrice.MaxFeePerGas),
-                MaxPriorityFeePerGas = EthereumHelper.GweiToWei(gasPrice.MaxPriorityFeePerGas),
+                MaxFeePerGas         = gasPrice.MaxFeePerGas.GweiToWei(),
+                MaxPriorityFeePerGas = gasPrice.MaxPriorityFeePerGas.GweiToWei(),
                 Nonce                = nonce,
                 TransactionType      = EthereumHelper.Eip1559TransactionType
             };
 
-            var initiateGasLimit = rewardForRedeemInTokens == 0
+            var initiateGasLimit = rewardForRedeem == 0
                 ? erc20Config.InitiateGasLimit
                 : erc20Config.InitiateWithRewardGasLimit;
 
@@ -966,18 +967,18 @@ namespace Atomex.Swaps.Ethereum
                 transactions.Add(tx);
             }
 
-            var requiredAmountInTokens = RequiredAmountInTokens(swap, erc20);
-            var requiredAmountInTokenDigits = erc20.TokensToTokenDigits(requiredAmountInTokens);
+            var requiredAmount = GetRequiredAmount(swap, erc20);
+            var requiredAmountInTokens = requiredAmount.ToTokens(erc20.Decimals);
 
-            var amountInTokenDigits = AmountHelper.DustProofMin(
+            var amountInTokens = AmountHelper.DustProofMin(
                 walletAddress.Balance,
-                requiredAmountInTokenDigits,
+                requiredAmountInTokens,
                 erc20.DustDigitsMultiplier);
 
             var approveTx = await CreateApproveTx(
                     walletAddress: walletAddress.Address,
                     nonce: nonce,
-                    value: amountInTokenDigits,
+                    value: amountInTokens,
                     maxFeePerGas: gasPrice.MaxFeePerGas,
                     maxPriorityFeePerGas: gasPrice.MaxPriorityFeePerGas)
                 .ConfigureAwait(false);
@@ -1001,8 +1002,8 @@ namespace Atomex.Swaps.Ethereum
                 Spender              = erc20Config.SwapContractAddress,
                 Value                = value,
                 FromAddress          = walletAddress,
-                MaxFeePerGas         = EthereumHelper.GweiToWei(maxFeePerGas),
-                MaxPriorityFeePerGas = EthereumHelper.GweiToWei(maxPriorityFeePerGas),
+                MaxFeePerGas         = maxFeePerGas.GweiToWei(),
+                MaxPriorityFeePerGas = maxPriorityFeePerGas.GweiToWei(),
                 Nonce                = nonce,
                 TransactionType      = EthereumHelper.Eip1559TransactionType
             };
