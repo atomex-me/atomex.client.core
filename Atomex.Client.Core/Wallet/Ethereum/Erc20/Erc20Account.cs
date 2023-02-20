@@ -10,6 +10,7 @@ using Nethereum.Contracts;
 using Serilog;
 
 using Atomex.Abstract;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Erc20;
@@ -569,20 +570,31 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
         }
 
-        public async Task<Erc20TransactionMetadata> ResolveTransactionMetadataAsync(
+        public override async Task<ITransactionMetadata> ResolveTransactionMetadataAsync(
+            ITransaction tx,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResolveTransactionMetadataAsync(
+                    (Erc20Transaction)tx,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        public async Task<TransactionMetadata> ResolveTransactionMetadataAsync(
             Erc20Transaction tx,
             CancellationToken cancellationToken = default)
         {
-            var result = new Erc20TransactionMetadata()
+            var result = new TransactionMetadata()
             {
                 Id = tx.Id,
                 Currency = tx.Currency,
-                TransfersTypes = new List<TransactionType>()
+                Internals = new List<InternalTransactionMetadata>()
             };
 
             foreach (var t in tx.Transfers)
             {
                 var transferType = TransactionType.Unknown;
+                var transferAmount = BigInteger.Zero;
 
                 var fromAddress = await GetAddressAsync(t.From, cancellationToken)
                     .ConfigureAwait(false);
@@ -592,7 +604,7 @@ namespace Atomex.Wallet.Ethereum
                 if (isFromSelf)
                 {
                     transferType |= TransactionType.Output;
-                    result.Amount -= t.Value;
+                    transferAmount -= t.Value;
                 }
 
                 var toAddress = await GetAddressAsync(t.To, cancellationToken)
@@ -603,10 +615,17 @@ namespace Atomex.Wallet.Ethereum
                 if (isToSelf)
                 {
                     transferType |= TransactionType.Input;
-                    result.Amount += t.Value;
+                    transferAmount += t.Value;
                 }
 
-                result.TransfersTypes.Add(transferType);
+                result.Internals.Add(new InternalTransactionMetadata
+                {
+                    Type = transferType,
+                    Amount = transferAmount
+                });
+
+                result.Type |= transferType;
+                result.Amount += transferAmount;
             }
 
             return result;

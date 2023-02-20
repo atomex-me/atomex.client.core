@@ -224,6 +224,21 @@ namespace Atomex.Wallet
             return _localStorage.GetTransactionsAsync(currency, Currencies.GetByName(currency).TransactionType);
         }
 
+        public Task<IEnumerable<(ITransaction Tx, ITransactionMetadata Metadata)>> GetTransactionsWithMetadataAsync(
+            string currency,
+            int offset = 0,
+            int limit = int.MaxValue)
+        {
+            var config = Currencies.GetByName(currency);
+
+            return _localStorage.GetTransactionsWithMetadataAsync(
+                currency: currency,
+                transactionType: config.TransactionType,
+                metadataType: config.TransactionMetadataType,
+                offset: offset,
+                limit: limit);
+        }
+
         public async Task<IEnumerable<ITransaction>> GetUnconfirmedTransactionsAsync()
         {
             var result = new List<ITransaction>();

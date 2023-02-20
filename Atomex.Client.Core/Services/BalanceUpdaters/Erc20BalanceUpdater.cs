@@ -34,7 +34,7 @@ namespace Atomex.Services.BalanceUpdaters
         {
             if (_currenciesProvider == null)
             {
-                throw new InvalidOperationException("Start ERC20BalanceUpdater was called before CurrenciesProvider initialization");
+                throw new InvalidOperationException("Start Erc20BalanceUpdater was called before CurrenciesProvider initialization");
             }
 
             try
@@ -68,7 +68,7 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on starting ERC20BalanceUpdater");
+                _log.LogError(e, "Error on starting Erc20BalanceUpdater");
             }
         }
 
@@ -82,7 +82,7 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on stopping ERC20BalanceUpdater");
+                _log.LogError(e, "Error on stopping Erc20BalanceUpdater");
             }
         }
 
@@ -109,7 +109,7 @@ namespace Atomex.Services.BalanceUpdaters
             try
             {
                 await _walletScanner
-                    .ScanAddressAsync(currency, address)
+                    .UpdateBalanceAsync(currency, address)
                     .ConfigureAwait(false);
 
                 var newAddresses = await GetAddressesAsync()
@@ -119,7 +119,7 @@ namespace Atomex.Services.BalanceUpdaters
 
                 if (newAddresses.Any())
                 {
-                    _log.LogInformation("ERC20BalanceUpdater adds new addresses {@Addresses}", newAddresses);
+                    _log.LogInformation("Erc20BalanceUpdater adds new addresses {@Addresses}", newAddresses);
 
                     await Task.WhenAll(
                             _notifiers.Select(n => n.SubscribeOnEventsAsync(newAddresses, BalanceUpdatedHandler)))
@@ -130,7 +130,7 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on handling ERC20 balance update");
+                _log.LogError(e, "Error on handling Erc20 balance update");
             }
         }
     }

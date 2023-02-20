@@ -18,6 +18,7 @@ using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallets.Bips;
+using Atomex.Blockchain.Tezos;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -128,7 +129,7 @@ namespace Atomex.Wallet.Ethereum
             {
                 From                 = addressFeeUsage.WalletAddress.Address,
                 To                   = to.ToLowerInvariant(),
-                Amount               = addressFeeUsage.UsedAmount,
+                Value               = addressFeeUsage.UsedAmount,
                 Nonce                = nonce,
                 MaxFeePerGas         = maxFeePerGas.GweiToWei(),
                 MaxPriorityFeePerGas = maxPriorityFeePerGas.GweiToWei(),
@@ -493,7 +494,46 @@ namespace Atomex.Wallet.Ethereum
             {
                 Id = tx.Id,
                 Currency = tx.Currency,
+                Internals = new List<InternalTransactionMetadata>()
             };
+
+            var metadata = await ResolveTransactionMetadataAsync(tx, tx.GasPrice, cancellationToken)
+                .ConfigureAwait(false);
+
+            result.Type = metadata.Type;
+            result.Amount = metadata.Amount;
+            result.Fee = metadata.Fee;
+
+            if (tx.InternalTransactions.Any())
+            {
+                foreach (var internalTx in tx.InternalTransactions)
+                {
+                    var internalMetadata = await ResolveTransactionMetadataAsync(internalTx, tx.GasPrice, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    result.Internals.Add(internalMetadata);
+                }
+            }
+
+            return result;
+        }
+
+        public override async Task<ITransactionMetadata> ResolveTransactionMetadataAsync(
+            ITransaction tx,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResolveTransactionMetadataAsync(
+                    (EthereumTransaction)tx,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        private async Task<InternalTransactionMetadata> ResolveTransactionMetadataAsync(
+            IEthereumTransaction tx,
+            BigInteger gasPrice,
+            CancellationToken cancellationToken = default)
+        {
+            var result = new InternalTransactionMetadata();
 
             var fromAddress = await GetAddressAsync(tx.From, cancellationToken)
                 .ConfigureAwait(false);
@@ -503,7 +543,8 @@ namespace Atomex.Wallet.Ethereum
             if (isFromSelf)
             {
                 result.Type |= TransactionType.Output;
-                result.Amount -= tx.Amount + tx.GasUsed * tx.GasPrice;
+                result.Amount -= tx.Value;
+                result.Fee -= tx.GasUsed * gasPrice;
             }
 
             var toAddress = await GetAddressAsync(tx.To, cancellationToken)
@@ -514,24 +555,24 @@ namespace Atomex.Wallet.Ethereum
             if (isToSelf)
             {
                 result.Type |= TransactionType.Input;
-                result.Amount += tx.Amount;
+                result.Amount += tx.Value;
             }
 
-            if (tx.Data == null)
-                return result;
+            if (tx.Data != null)
+            {
+                result.Type |= TransactionType.ContractCall;
 
-            result.Type |= TransactionType.ContractCall;
-
-            if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<InitiateMessage>()))
-                result.Type |= TransactionType.SwapPayment;
-            else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RedeemMessage>()))
-                result.Type |= TransactionType.SwapRedeem;
-            else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RefundMessage>()))
-                result.Type |= TransactionType.SwapRefund;
-            else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferMessage>()))
-                result.Type |= TransactionType.TokenTransfer;
-            else if (tx.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveMessage>()))
-                result.Type |= TransactionType.TokenApprove;
+                if (tx.Data.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<InitiateMessage>()))
+                    result.Type |= TransactionType.SwapPayment;
+                else if (tx.Data.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RedeemMessage>()))
+                    result.Type |= TransactionType.SwapRedeem;
+                else if (tx.Data.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<RefundMessage>()))
+                    result.Type |= TransactionType.SwapRefund;
+                else if (tx.Data.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20TransferMessage>()))
+                    result.Type |= TransactionType.TokenTransfer;
+                else if (tx.Data.IsMethodCall(FunctionSignatureExtractor.GetSignatureHash<Erc20ApproveMessage>()))
+                    result.Type |= TransactionType.TokenApprove;
+            }
 
             return result;
         }

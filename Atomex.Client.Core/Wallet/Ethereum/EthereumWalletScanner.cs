@@ -314,7 +314,6 @@ namespace Atomex.Wallet.Ethereum
             walletAddress.UnconfirmedIncome = 0;
             walletAddress.UnconfirmedOutcome = 0;
             walletAddress.HasActivity = txs.Any();
-
             walletAddress.LastSuccessfullUpdate = updateTimeStamp;
 
             return new Result<IEnumerable<EthereumTransaction>> { Value = txs };

@@ -13,19 +13,21 @@ namespace Atomex.Blockchain.Tezos
         public string Branch { get; set; }
         public byte[]? Signature { get; set; }
         public string? From => (OperationsContents.FirstOrDefault(o => o is ManagerOperationContent) as ManagerOperationContent)?.Source;
-
         public IEnumerable<OperationContent> OperationsContents { get; }
+        public bool IsAutoFilled { get; set; }
 
         public TezosOperationRequest(
             OperationContent operationContent,
-            string branch)
-            : this(new OperationContent[] { operationContent }, branch)
+            string branch,
+            bool isAutoFilled)
+            : this(new OperationContent[] { operationContent }, branch, isAutoFilled)
         {
         }
 
         public TezosOperationRequest(
             IEnumerable<OperationContent> operationsContents,
-            string branch)
+            string branch,
+            bool isAutoFilled)
         {
             if (operationsContents == null)
                 throw new ArgumentNullException(nameof(operationsContents));
@@ -35,6 +37,7 @@ namespace Atomex.Blockchain.Tezos
 
             OperationsContents = operationsContents;
             Branch = branch ?? throw new ArgumentNullException(nameof(branch));
+            IsAutoFilled = isAutoFilled;
         }
 
         public async Task<byte[]> ForgeAsync(
@@ -69,5 +72,24 @@ namespace Atomex.Blockchain.Tezos
 
         public bool IsManaged() => OperationsContents
             ?.Any(o => o is ManagerOperationContent) ?? false;
+
+        public long TotalFee()
+        {
+            var fee = 0L;
+
+            foreach (var op in OperationsContents)
+            {
+                fee += op switch
+                {
+                    TransactionContent t => t.Fee,
+                    RevealContent r => r.Fee,
+                    DelegationContent d => d.Fee,
+                    OriginationContent o => o.Fee,
+                    _ => 0
+                };
+            }
+
+            return fee;
+        }
     }
 }

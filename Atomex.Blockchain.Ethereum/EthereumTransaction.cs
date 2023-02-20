@@ -6,7 +6,18 @@ using Atomex.Blockchain.Abstract;
 
 namespace Atomex.Blockchain.Ethereum
 {
-    public class EthereumInternalTransaction
+    public interface IEthereumTransaction
+    {
+        public long BlockHeight { get; set; }
+        public string From { get; set; }
+        public string To { get; set; }
+        public BigInteger Value { get; set; }
+        public BigInteger GasLimit { get; set; }
+        public BigInteger GasUsed { get; set; }
+        public string Data { get; set; }
+    }
+
+    public class EthereumInternalTransaction : IEthereumTransaction
     {
         public long BlockHeight { get; set; }
         public DateTimeOffset? BlockTime { get; set; }
@@ -15,13 +26,14 @@ namespace Atomex.Blockchain.Ethereum
         public string To { get; set; }
         public BigInteger Value { get; set; }
         public BigInteger GasLimit { get; set; }
+        public BigInteger GasUsed { get; set; }
         public string Data { get; set; }
         public string Type { get; set; }
         public bool IsError { get; set; }
         public string ErrorDescription { get; set; }
     }
 
-    public class EthereumTransaction : ITransaction
+    public class EthereumTransaction : ITransaction, IEthereumTransaction
     {
         public string Id { get; set; }
         public string Currency { get; set; }
@@ -34,7 +46,7 @@ namespace Atomex.Blockchain.Ethereum
 
         public string From { get; set; }
         public string To { get; set; }
-        public BigInteger Amount { get; set; }
+        public BigInteger Value { get; set; }
         public BigInteger Nonce { get; set; }
         public BigInteger GasLimit { get; set; }
         public BigInteger GasPrice { get; set; }
@@ -58,7 +70,7 @@ namespace Atomex.Blockchain.Ethereum
             From                 = txRequest.From.ToLowerInvariant();
             To                   = txRequest.To.ToLowerInvariant();
             Data                 = txRequest.Data;
-            Amount               = txRequest.Amount;
+            Value                = txRequest.Value;
             Nonce                = txRequest.Nonce;
             MaxFeePerGas         = txRequest.MaxFeePerGas;
             MaxPriorityFeePerGas = txRequest.MaxPriorityFeePerGas;

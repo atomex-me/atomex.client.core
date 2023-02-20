@@ -6,6 +6,7 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Tezos;
@@ -281,6 +282,19 @@ namespace Atomex.LiteDb
                 cancellationToken);
         }
 
+        public Task<IEnumerable<(TezosTokenTransfer Transfer, TransactionMetadata Metadata)>> GetTokenTransfersWithMetadataAsync(
+            string contractAddress,
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default)
+        {
+            return _liteDbLocalStorage.GetTokenTransfersWithMetadataAsync(
+                contractAddress,
+                offset,
+                limit,
+                cancellationToken);
+        }
+
         public Task<int> UpsertTokenContractsAsync(
             IEnumerable<TokenContract> tokenContracts,
             CancellationToken cancellationToken = default)
@@ -352,24 +366,92 @@ namespace Atomex.LiteDb
                 cancellationToken);
         }
 
+        public Task<(T, M)> GetTransactionWithMetadataByIdAsync<T, M>(
+            string currency,
+            string txId,
+            CancellationToken cancellationToken = default)
+            where T : ITransaction
+            where M : ITransactionMetadata
+        {
+            return _liteDbLocalStorage.GetTransactionWithMetadataByIdAsync<T, M>(
+                currency,
+                txId,
+                cancellationToken);
+        }
+
+        public Task<(ITransaction, ITransactionMetadata)> GetTransactionWithMetadataByIdAsync(
+            string currency,
+            string txId,
+            Type transactionType,
+            Type metadataType,
+            CancellationToken cancellationToken = default)
+        {
+            return _liteDbLocalStorage.GetTransactionWithMetadataByIdAsync(
+                currency,
+                txId,
+                transactionType,
+                metadataType,
+                cancellationToken);
+        }
+
         public Task<IEnumerable<T>> GetTransactionsAsync<T>(
             string currency,
+            int offset = 0,
+            int limit = int.MaxValue,
             CancellationToken cancellationToken = default)
-             where T : ITransaction
+            where T : ITransaction
         {
             return _liteDbLocalStorage.GetTransactionsAsync<T>(
                 currency,
+                offset,
+                limit,
                 cancellationToken);
         }
 
         public Task<IEnumerable<ITransaction>> GetTransactionsAsync(
             string currency,
             Type transactionType,
+            int offset = 0,
+            int limit = int.MaxValue,
             CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.GetTransactionsAsync(
                 currency,
                 transactionType,
+                offset,
+                limit,
+                cancellationToken);
+        }
+
+        public Task<IEnumerable<(T, M)>> GetTransactionsWithMetadataAsync<T, M>(
+            string currency,
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default)
+            where T : ITransaction
+            where M : ITransactionMetadata
+        {
+            return _liteDbLocalStorage.GetTransactionsWithMetadataAsync<T, M>(
+                currency,
+                offset,
+                limit,
+                cancellationToken);
+        }
+
+        public Task<IEnumerable<(ITransaction, ITransactionMetadata)>> GetTransactionsWithMetadataAsync(
+            string currency,
+            Type transactionType,
+            Type metadataType,
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default)
+        {
+            return _liteDbLocalStorage.GetTransactionsWithMetadataAsync(
+                currency,
+                transactionType,
+                metadataType,
+                offset,
+                limit,
                 cancellationToken);
         }
 

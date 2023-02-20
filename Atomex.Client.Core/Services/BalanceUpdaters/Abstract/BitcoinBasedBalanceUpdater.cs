@@ -43,8 +43,12 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
         {
             try
             {
-                await _api.StartAsync().ConfigureAwait(false);
-                _addresses = await GetAddressesAsync().ConfigureAwait(false);
+                await _api
+                    .StartAsync()
+                    .ConfigureAwait(false);
+
+                _addresses = await GetAddressesAsync()
+                    .ConfigureAwait(false);
 
                 await _api
                     .SubscribeOnBalanceUpdateAsync(_network, _addresses, BalanceUpdatedHandler)
@@ -60,7 +64,9 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
         {
             try
             {
-                await _api.StopAsync().ConfigureAwait(false);
+                await _api
+                    .StopAsync()
+                    .ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -91,15 +97,18 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
             try
             {
                 await _walletScanner
-                    .ScanAddressAsync(_currencyName, address)
+                    .UpdateBalanceAsync(_currencyName, address)
                     .ConfigureAwait(false);
 
-                var newAddresses = await GetAddressesAsync().ConfigureAwait(false);
+                var newAddresses = await GetAddressesAsync()
+                    .ConfigureAwait(false);
+
                 newAddresses.ExceptWith(_addresses);
 
                 if (newAddresses.Any())
                 {
                     _log.LogInformation("{@CurrencyName} BalanceUpdater adds new addresses {@Addresses}", _currencyName, newAddresses);
+
                     await _api
                         .SubscribeOnBalanceUpdateAsync(_network, newAddresses, BalanceUpdatedHandler)
                         .ConfigureAwait(false);

@@ -6,6 +6,7 @@ using System.Threading;
 
 using Microsoft.Extensions.Configuration;
 
+using Atomex.Blockchain;
 using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Common;
 using Atomex.Wallets.Bips;
@@ -87,7 +88,7 @@ namespace Atomex.EthereumTokens
             InfuraApi = configuration[nameof(InfuraApi)];
             InfuraWsApi = configuration[nameof(InfuraWsApi)];
             TransactionType = typeof(Erc20Transaction);
-            TransactionMetadataType = typeof(Erc20TransactionMetadata);
+            TransactionMetadataType = typeof(TransactionMetadata);
 
             IsSwapAvailable = true;
             Bip44Code = Bip44.Ethereum; //TODO ?

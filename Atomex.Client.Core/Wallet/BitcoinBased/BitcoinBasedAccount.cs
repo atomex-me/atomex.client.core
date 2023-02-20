@@ -483,6 +483,16 @@ namespace Atomex.Wallet.BitcoinBased
                 .ConfigureAwait(false);
         }
 
+        public override async Task<ITransactionMetadata> ResolveTransactionMetadataAsync(
+            ITransaction tx,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResolveTransactionMetadataAsync(
+                    (BitcoinTransaction)tx,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         public async Task<TransactionMetadata> ResolveTransactionMetadataAsync(
             BitcoinTransaction tx,
             CancellationToken cancellationToken = default)
@@ -493,6 +503,7 @@ namespace Atomex.Wallet.BitcoinBased
                 Currency = tx.Currency
             };
 
+            var isSwapTx = false;
             BigInteger outputAmount = 0;
             BigInteger inputAmount = 0;
 
@@ -509,15 +520,17 @@ namespace Atomex.Wallet.BitcoinBased
                 if (localInput != null)
                 {
                     // sent value
-                    outputAmount += localInput.Value;
+                    outputAmount -= localInput.Value;
                 }
                 else if (i.IsRefund())
                 {
                     result.Type |= TransactionType.SwapRefund;
+                    isSwapTx = true;
                 }
                 else if (i.IsRedeem())
                 {
                     result.Type |= TransactionType.SwapRedeem;
+                    isSwapTx = true;
                 }
             }
 
@@ -536,7 +549,10 @@ namespace Atomex.Wallet.BitcoinBased
                         .ConfigureAwait(false);
 
                     if (swap != null)
+                    {
                         result.Type |= TransactionType.SwapPayment;
+                        isSwapTx = true;
+                    }
                 }
                 else
                 {
@@ -553,6 +569,9 @@ namespace Atomex.Wallet.BitcoinBased
 
             if (inputAmount > 0)
                 result.Type |= TransactionType.Input;
+
+            if (outputAmount > 0 || isSwapTx)
+                result.Fee -= tx.ResolvedFee;
 
             return result;
         }

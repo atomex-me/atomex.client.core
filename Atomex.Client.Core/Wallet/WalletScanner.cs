@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using Serilog;
 
 using Atomex.Wallet.Abstract;
@@ -20,46 +21,40 @@ namespace Atomex.Wallet
             Account = account ?? throw new ArgumentNullException(nameof(account));
         }
 
-        public Task ScanAsync(
+        public async Task ScanAsync(
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(async () =>
+            try
             {
-                try
-                {
-                    var scanTasks = Account.Currencies
-                        .Select(c => ScanAsync(c.Name, cancellationToken))
-                        .ToArray();
+                var scanTasks = Account
+                    .Currencies
+                    .Select(c => ScanAsync(c.Name, cancellationToken))
+                    .ToArray();
 
-                    await Task.WhenAll(scanTasks)
-                        .ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "Error while scanning HdWallet for all currencies");
-                }
-
-            }, cancellationToken);
+                await Task
+                    .WhenAll(scanTasks)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error while scanning HdWallet for all currencies");
+            }
         }
 
-        public Task ScanAsync(
+        public async Task ScanAsync(
             string currency,
             CancellationToken cancellationToken = default)
         {
-            return Task.Run(async () =>
+            try
             {
-                try
-                {
-                    await GetCurrencyScanner(currency)
-                        .ScanAsync(cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "Error while scanning HdWallet for {Currency} currency", currency);
-                }
-
-            }, cancellationToken);
+                await GetCurrencyScanner(currency)
+                    .ScanAsync(cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error while scanning HdWallet for {Currency} currency", currency);
+            }
         }
 
         public async Task ScanAddressAsync(
@@ -76,6 +71,61 @@ namespace Atomex.Wallet
             catch (Exception e)
             {
                 Log.Error(e, "Address scan error for currency {@currency} and address {@address}", currency, address);
+            }
+        }
+
+        public async Task UpdateBalanceAsync(
+            bool skipUsed = false,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var scanTasks = Account
+                    .Currencies
+                    .Select(c => UpdateBalanceAsync(c.Name, skipUsed, cancellationToken))
+                    .ToArray();
+
+                await Task
+                    .WhenAll(scanTasks)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error while update balance for all currencies");
+            }
+        }
+
+        public async Task UpdateBalanceAsync(
+            string currency,
+            bool skipUsed = false,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await GetCurrencyScanner(currency)
+                    .UpdateBalanceAsync(skipUsed, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error while update balance for {Currency} currency", currency);
+            }
+        }
+
+        public async Task UpdateBalanceAsync(
+            string currency,
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                await GetCurrencyScanner(currency)
+                    .UpdateBalanceAsync(address, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Address balance update error for currency {@currency} and address {@address}", currency, address);
             }
         }
 

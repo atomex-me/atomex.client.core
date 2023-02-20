@@ -11,6 +11,7 @@ using Nethereum.Web3;
 using Serilog;
 
 using Atomex.Abstract;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Erc20.Messages;
@@ -23,7 +24,6 @@ using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Ethereum.Erc20.Helpers;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Ethereum;
-using Atomex.Blockchain;
 
 namespace Atomex.Swaps.Ethereum
 {

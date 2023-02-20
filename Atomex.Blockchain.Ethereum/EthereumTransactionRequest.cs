@@ -20,7 +20,7 @@ namespace Atomex.Blockchain.Ethereum
     {
         public string From { get; set; }
         public string To { get; set; }
-        public BigInteger Amount { get; set; }
+        public BigInteger Value { get; set; }
         public BigInteger Nonce { get; set; }
         public BigInteger MaxFeePerGas { get; set; }
         public BigInteger MaxPriorityFeePerGas { get; set; }
@@ -38,7 +38,7 @@ namespace Atomex.Blockchain.Ethereum
         {
             From                 = txInput.From.ToLowerInvariant();
             To                   = txInput.To.ToLowerInvariant();
-            Amount               = txInput.Value;
+            Value                = txInput.Value;
             Nonce                = txInput.Nonce;
             MaxFeePerGas         = txInput.MaxFeePerGas;
             MaxPriorityFeePerGas = txInput.MaxPriorityFeePerGas;
@@ -63,7 +63,7 @@ namespace Atomex.Blockchain.Ethereum
                 maxFeePerGas: MaxFeePerGas,
                 gasLimit: GasLimit,
                 receiverAddress: To,
-                amount: Amount,
+                amount: Value,
                 data: Data,
                 accessList: AccessList
                     .Select(a => new AccessListItem

@@ -342,14 +342,6 @@ namespace Atomex.LiteDb.Migrations
                 .Id(t => GetUniqueTxId(t.Id, t.Currency))
                 .Field(t => t.Id, TxIdKey);
 
-            mapper.Entity<Erc20TransactionMetadata>()
-                .Id(t => GetUniqueTxId(t.Id, t.Currency))
-                .Field(t => t.Id, TxIdKey);
-
-            mapper.Entity<TezosOperationMetadata>()
-                .Id(t => GetUniqueTxId(t.Id, t.Currency))
-                .Field(t => t.Id, TxIdKey);
-
             mapper.Entity<Order>()
                 .Id(o => o.ClientOrderId)
                 .Field(o => o.Id, OrderIdKey);

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -68,6 +69,30 @@ namespace Atomex.Blockchain.Tezos
         public string Url { get; set; }
         public string UserAgent { get; set; } = "Atomex";
         public ChainId ChainId { get; set; } = ChainId.Main;
+    }
+
+    public class TezosRpcDelegates
+    {
+        [JsonPropertyName("full_balance")]
+        public string FullBalance { get; set; }
+        [JsonPropertyName("current_frozen_deposits")]
+        public string CurrentFrozenDeposits { get; set; }
+        [JsonPropertyName("frozen_deposits")]
+        public string FrozenDeposits { get; set; }
+        [JsonPropertyName("staking_balance")]
+        public string StakingBalance { get; set; }
+        [JsonPropertyName("delegated_contracts")]
+        public List<string> DelegatedContracts { get; set; }
+        [JsonPropertyName("delegated_balance")]
+        public string DelegatedBalance { get; set; }
+        [JsonPropertyName("deactivated")]
+        public bool Deactivated { get; set; }
+        [JsonPropertyName("grace_period")]
+        public long GracePeriod { get; set; }
+        [JsonPropertyName("voting_power")]
+        public string VotingPower { get; set; }
+        [JsonPropertyName("active_consensus_key")]
+        public string ActiveConsensusKey { get; set; }
     }
 
     public class TezosRpc
@@ -174,19 +199,23 @@ namespace Atomex.Blockchain.Tezos
             CancellationToken cancellationToken = default)
         {
             var response = await QueryAsync(
-                query: $"chains/{_chainId}/blocks/head{(offset != 0 ? $"~{offset}" : "")}/header",
-                cancellationToken: cancellationToken);
+                    query: $"chains/{_chainId}/blocks/head{(offset != 0 ? $"~{offset}" : "")}/header",
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
             return JsonSerializer.Deserialize<TezosRpcHeader>(response)!;
         }
 
-        public Task<string> GetDelegateAsync(
+        public async Task<TezosRpcDelegates> GetDelegateAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            return QueryAsync(
-                query: $"chains/{_chainId}/blocks/head/context/delegates/{address}",
-                cancellationToken: cancellationToken);
+            var response = await QueryAsync(
+                    query: $"chains/{_chainId}/blocks/head/context/delegates/{address}",
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            return JsonSerializer.Deserialize<TezosRpcDelegates>(response)!;
         }
 
         private async Task<string> QueryAsync(

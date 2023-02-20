@@ -65,7 +65,9 @@ namespace Atomex.Services.BalanceUpdaters
         {
             try
             {
-                await _notifier.StopAsync().ConfigureAwait(false);
+                await _notifier
+                    .StopAsync()
+                    .ConfigureAwait(false);
             }
             catch (Exception e)
             {
@@ -96,7 +98,7 @@ namespace Atomex.Services.BalanceUpdaters
             try
             {
                 await _walletScanner
-                    .ScanAddressAsync(EthereumHelper.Eth, address)
+                    .UpdateBalanceAsync(EthereumHelper.Eth, address)
                     .ConfigureAwait(false);
 
                 var newAddresses = await GetAddressesAsync()

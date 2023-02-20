@@ -37,6 +37,11 @@ namespace Atomex.Common
         public static IEnumerable<T> WhereNotNull<T>(this IEnumerable<T> source) =>
             source.Where(i => i != null);
 
+        public static BigInteger Sum(this IEnumerable<BigInteger> source)
+        {
+            return source.Aggregate(BigInteger.Zero, (s, v) => s += v);
+        }
+
         public static BigInteger SumBigIntegers<TSource>(this IEnumerable<TSource> source, Func<TSource, BigInteger> selector)
         {
             BigInteger result = 0;

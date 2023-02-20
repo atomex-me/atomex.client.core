@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 
@@ -27,13 +28,13 @@ namespace Atomex.Blockchain.Tezos
         public BigInteger GetAmount() => BigInteger.TryParse(Amount, out var amount)
             ? amount
             : 0;
-        
-        //public string GetAlias() => Type.HasFlag(TransactionType.Input)
-        //    ? !string.IsNullOrEmpty(FromAlias)
-        //        ? FromAlias
-        //        : From.TruncateAddress()
-        //    : !string.IsNullOrEmpty(ToAlias)
-        //        ? ToAlias
-        //        : To.TruncateAddress();
+
+        public string GetAlias(TransactionType type) => type.HasFlag(TransactionType.Input)
+            ? !string.IsNullOrEmpty(FromAlias)
+                ? FromAlias
+                : From.TruncateAddress()
+            : !string.IsNullOrEmpty(ToAlias)
+                ? ToAlias
+                : To.TruncateAddress();
     }
 }

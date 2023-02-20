@@ -95,9 +95,11 @@ namespace Atomex.Blockchain.Tezos
                 opr.GasLimit != null && opr.GasLimit.UseNetwork ||
                 opr.StorageLimit != null && opr.StorageLimit.UseNetwork);
 
+            var isAutoFilled = false;
+
             if (needAutoFill)
             {
-                var autoFillError = await rpc
+                var (isSuccess, error) = await rpc
                     .AutoFillAsync(
                         requests: operationsRequests,
                         blockHash: header.Hash,
@@ -105,12 +107,13 @@ namespace Atomex.Blockchain.Tezos
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                // todo: handle auto fill error
+                isAutoFilled = error == null && isSuccess;
             }
 
             return new TezosOperationRequest(
                 operationsContents: operations,
-                branch: header.Hash);
+                branch: header.Hash,
+                isAutoFilled: isAutoFilled);
         }
 
         public static async Task<Result<bool>> AutoFillAsync(

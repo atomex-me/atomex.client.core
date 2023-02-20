@@ -54,7 +54,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
             foreach (var tx in txs.Cast<EthereumTransaction>())
             {
-                if (tx.Amount != 0 ||
+                if (tx.Value != 0 ||
                    !tx.From.Equals(swap.FromAddress, StringComparison.OrdinalIgnoreCase) ||
                    !tx.To.Equals(erc20Config.SwapContractAddress, StringComparison.OrdinalIgnoreCase))
                     continue;
@@ -188,9 +188,9 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                         message: $"Invalid transfer value in erc20 initiated event. Expected value is {initiatedEvent.Value}, actual is {actualTransferValue}");
                 }
 
-                var receivedAmountInDecimals = initiatedEvent.Value;
+                var receivedAmountInTokens = initiatedEvent.Value;
 
-                if (receivedAmountInDecimals >= requiredAmountInTokens - requiredRewardForRedeemInTokens)
+                if (receivedAmountInTokens >= requiredAmountInTokens - requiredRewardForRedeemInTokens)
                     return true;
 
                 Log.Debug(
@@ -226,23 +226,23 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (!erc20TransferValues.Contains(@event.Value - receivedAmountInDecimals))
+                    if (!erc20TransferValues.Contains(@event.Value - receivedAmountInTokens))
                     {
                         var actualTransferValue = string.Join(", ", erc20TransferValues.Select(v => v.ToString()));
 
                         Log.Debug(
                             "Invalid transfer value in added event. Expected value is {@expected}, actual is {@actual}",
-                            (@event.Value - receivedAmountInDecimals).ToString(),
+                            (@event.Value - receivedAmountInTokens).ToString(),
                             actualTransferValue);
 
                         return new Error(
                             code: Errors.InvalidSwapPaymentTx,
-                            message: $"Invalid transfer value in initiated event. Expected value is {@event.Value - receivedAmountInDecimals}, actual is {actualTransferValue}");
+                            message: $"Invalid transfer value in initiated event. Expected value is {@event.Value - receivedAmountInTokens}, actual is {actualTransferValue}");
                     }
 
-                    receivedAmountInDecimals = @event.Value;
+                    receivedAmountInTokens = @event.Value;
 
-                    if (receivedAmountInDecimals >= requiredAmountInTokens - requiredRewardForRedeemInTokens)
+                    if (receivedAmountInTokens >= requiredAmountInTokens - requiredRewardForRedeemInTokens)
                         return true;
 
                     Log.Debug(

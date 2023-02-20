@@ -47,6 +47,7 @@ namespace Atomex.Services.BalanceUpdaters
                 var currency = _currenciesProvider
                     .GetCurrencies(_account.Network)
                     .Get<TezosConfig>(TezosConfig.Xtz);
+
                 var baseUri = currency.BaseUri;
 
                 await _tzkt
@@ -103,7 +104,7 @@ namespace Atomex.Services.BalanceUpdaters
             try
             {
                 await _walletScanner
-                    .ScanAddressAsync(TezosConfig.Xtz, address)
+                    .UpdateBalanceAsync(TezosConfig.Xtz, address)
                     .ConfigureAwait(false);
 
                 var newAddresses = await GetAddressesAsync()

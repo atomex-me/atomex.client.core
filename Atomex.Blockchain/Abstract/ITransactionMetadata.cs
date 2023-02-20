@@ -23,5 +23,6 @@ namespace Atomex.Blockchain.Abstract
         public string Currency { get; }
         public TransactionType Type { get; }
         public BigInteger Amount { get; }
+        public BigInteger Fee { get; }
     }
 }

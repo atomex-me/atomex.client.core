@@ -5,6 +5,7 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Tezos;
@@ -96,7 +97,13 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<TezosTokenTransfer>> GetTokenTransfersAsync(
             string contractAddress,
             int offset = 0,
-            int limit = 20,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default);
+
+        Task<IEnumerable<(TezosTokenTransfer Transfer, TransactionMetadata Metadata)>> GetTokenTransfersWithMetadataAsync(
+            string contractAddress,
+            int offset = 0,
+            int limit = int.MaxValue,
             CancellationToken cancellationToken = default);
 
         Task<int> UpsertTokenContractsAsync(
@@ -132,15 +139,49 @@ namespace Atomex.Wallet.Abstract
             Type transactionType,
             CancellationToken cancellationToken = default);
 
+        Task<(T,M)> GetTransactionWithMetadataByIdAsync<T,M>(
+            string currency,
+            string txId,
+            CancellationToken cancellationToken = default)
+            where T : ITransaction
+            where M : ITransactionMetadata;
+
+        Task<(ITransaction, ITransactionMetadata)> GetTransactionWithMetadataByIdAsync(
+            string currency,
+            string txId,
+            Type transactionType,
+            Type metadataType,
+            CancellationToken cancellationToken = default);
+
         Task<IEnumerable<T>> GetTransactionsAsync<T>(
             string currency,
+            int offset = 0,
+            int limit = int.MaxValue,
             CancellationToken cancellationToken = default)
             where T : ITransaction;
 
         Task<IEnumerable<ITransaction>> GetTransactionsAsync(
             string currency,
             Type transactionType,
+            int offset = 0,
+            int limit = int.MaxValue,
             CancellationToken cancellationToken = default);
+
+        Task<IEnumerable<(ITransaction, ITransactionMetadata)>> GetTransactionsWithMetadataAsync(
+            string currency,
+            Type transactionType,
+            Type metadataType,
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default);
+
+        Task<IEnumerable<(T, M)>> GetTransactionsWithMetadataAsync<T, M>(
+            string currency,
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default)
+            where T : ITransaction
+            where M : ITransactionMetadata;
 
         Task<IEnumerable<T>> GetUnconfirmedTransactionsAsync<T>(
             string currency,

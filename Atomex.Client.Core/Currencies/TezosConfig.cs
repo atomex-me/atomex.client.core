@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Globalization;
 using System.Numerics;
 using System.Threading;
@@ -7,6 +6,7 @@ using System.Threading.Tasks;
 
 using Microsoft.Extensions.Configuration;
 
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Common;
@@ -172,7 +172,7 @@ namespace Atomex
             AddressExplorerUri = configuration[nameof(AddressExplorerUri)];
             SwapContractAddress = configuration["SwapContract"];
             TransactionType = typeof(TezosOperation);
-            TransactionMetadataType = typeof(TezosOperationMetadata);
+            TransactionMetadataType = typeof(TransactionMetadata);
 
             IsSwapAvailable = true;
             Bip44Code = Bip44.Tezos;

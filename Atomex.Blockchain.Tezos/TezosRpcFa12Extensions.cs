@@ -33,27 +33,27 @@ namespace Atomex.Blockchain.Tezos
                     .FillOperationAsync(
                         operationsRequests: new TezosOperationParameters[]
                         {
-                        new TezosOperationParameters
-                        {
-                            Content = new TransactionContent
+                            new TezosOperationParameters
                             {
-                                Source       = callingAddress,
-                                Destination  = tokenContractAddress,
-                                Fee          = 0,
-                                Amount       = 0,
-                                GasLimit     = GetAllowanceGasLimit,
-                                StorageLimit = 0,
-                                Parameters = new Parameters
+                                Content = new TransactionContent
                                 {
-                                    Entrypoint = "getAllowance",
-                                    Value = Micheline.FromJson($"{{\"prim\":\"Pair\",\"args\":[{{\"prim\":\"Pair\",\"args\":[{{\"string\":\"{holderAddress}\"}},{{\"string\":\"{spenderAddress}\"}}]}},{{\"string\":\"{tokenViewContractAddress}%viewNat\"}}]}}")
-                                }
-                            },
-                            From         = callingAddress,
-                            Fee          = Fee.FromValue(0),
-                            GasLimit     = GasLimit.FromValue(GetAllowanceGasLimit),
-                            StorageLimit = StorageLimit.FromValue(0)
-                        }
+                                    Source       = callingAddress,
+                                    Destination  = tokenContractAddress,
+                                    Fee          = 0,
+                                    Amount       = 0,
+                                    GasLimit     = GetAllowanceGasLimit,
+                                    StorageLimit = 0,
+                                    Parameters = new Parameters
+                                    {
+                                        Entrypoint = "getAllowance",
+                                        Value = Micheline.FromJson($"{{\"prim\":\"Pair\",\"args\":[{{\"prim\":\"Pair\",\"args\":[{{\"string\":\"{holderAddress}\"}},{{\"string\":\"{spenderAddress}\"}}]}},{{\"string\":\"{tokenViewContractAddress}%viewNat\"}}]}}")
+                                    }
+                                },
+                                From         = callingAddress,
+                                Fee          = Fee.FromValue(0),
+                                GasLimit     = GasLimit.FromValue(GetAllowanceGasLimit),
+                                StorageLimit = StorageLimit.FromValue(0)
+                            }
                         },
                         publicKey: publicKey,
                         settings: settings,
@@ -115,27 +115,27 @@ namespace Atomex.Blockchain.Tezos
                     .FillOperationAsync(
                         operationsRequests: new TezosOperationParameters[]
                         {
-                        new TezosOperationParameters
-                        {
-                            Content = new TransactionContent
+                            new TezosOperationParameters
                             {
-                                Source       = callingAddress,
-                                Destination  = tokenContractAddress,
-                                Fee          = 0,
-                                Amount       = 0,
-                                GasLimit     = GetAllowanceGasLimit,
-                                StorageLimit = 0,
-                                Parameters = new Parameters
+                                Content = new TransactionContent
                                 {
-                                    Entrypoint = "getTotalSupply",
-                                    Value = Micheline.FromJson($"{{\"prim\":\"Pair\",\"args\":[{{\"prim\":\"Unit\"}},{{\"string\":\"{tokenViewContractAddress}%viewNat\"}}]}}")
-                                }
-                            },
-                            From         = callingAddress,
-                            Fee          = Fee.FromValue(0),
-                            GasLimit     = GasLimit.FromValue(GetAllowanceGasLimit),
-                            StorageLimit = StorageLimit.FromValue(0)
-                        }
+                                    Source       = callingAddress,
+                                    Destination  = tokenContractAddress,
+                                    Fee          = 0,
+                                    Amount       = 0,
+                                    GasLimit     = GetAllowanceGasLimit,
+                                    StorageLimit = 0,
+                                    Parameters = new Parameters
+                                    {
+                                        Entrypoint = "getTotalSupply",
+                                        Value = Micheline.FromJson($"{{\"prim\":\"Pair\",\"args\":[{{\"prim\":\"Unit\"}},{{\"string\":\"{tokenViewContractAddress}%viewNat\"}}]}}")
+                                    }
+                                },
+                                From         = callingAddress,
+                                Fee          = Fee.FromValue(0),
+                                GasLimit     = GasLimit.FromValue(GetAllowanceGasLimit),
+                                StorageLimit = StorageLimit.FromValue(0)
+                            }
                         },
                         publicKey: publicKey,
                         settings: settings,

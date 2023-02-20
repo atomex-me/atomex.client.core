@@ -39,7 +39,7 @@ namespace Atomex.Wallet.Tezos
                     .ConfigureAwait(false);
             }
 
-            await UpdateBalanceAsync(cancellationToken)
+            await UpdateBalanceAsync(skipUsed: false, cancellationToken)
                 .ConfigureAwait(false);
         }
 
@@ -56,6 +56,7 @@ namespace Atomex.Wallet.Tezos
         /// <param name="cancellationToken"></param>
         /// <returns></returns>
         public async Task UpdateBalanceAsync(
+            bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
             // all tezos addresses

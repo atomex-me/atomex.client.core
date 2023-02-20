@@ -10,6 +10,7 @@ using Netezos.Encoding;
 using Serilog;
 
 using Atomex.Abstract;
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Tzkt.Operations;
@@ -310,8 +311,8 @@ namespace Atomex.Wallet.Tezos
 
             if (restAmountInMtz < 0)
                 return new MaxAmountEstimation {
-                    Amount   = restAmountInMtz,
-                    Fee      = requiredFeeInMtz,
+                    Amount = restAmountInMtz,
+                    Fee = requiredFeeInMtz,
                     Reserved = reserveFeeInMtz,
                     Error = new Error(
                         code: Errors.InsufficientFunds,
@@ -580,15 +581,25 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
         }
 
-        public async Task<TezosOperationMetadata> ResolveTransactionMetadataAsync(
+        public override async Task<ITransactionMetadata> ResolveTransactionMetadataAsync(
+            ITransaction tx,
+            CancellationToken cancellationToken = default)
+        {
+            return await ResolveTransactionMetadataAsync(
+                    (TezosOperation)tx,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        public async Task<TransactionMetadata> ResolveTransactionMetadataAsync(
             TezosOperation operation,
             CancellationToken cancellationToken = default)
         {
-            var result = new TezosOperationMetadata
+            var result = new TransactionMetadata
             {
                 Id = operation.Id,
                 Currency = operation.Currency,
-                OperationsTypes = new List<TransactionType>()
+                Internals = new List<InternalTransactionMetadata>(),
             };
 
             var fromAddress = await GetAddressAsync(operation.From, cancellationToken)
@@ -599,6 +610,8 @@ namespace Atomex.Wallet.Tezos
             foreach (var o in operation.Operations)
             {
                 var operationType = TransactionType.Unknown;
+                var operationAmount = BigInteger.Zero;
+                var operationFee = BigInteger.Zero;
 
                 if (isFromSelf)
                     operationType |= TransactionType.Output;
@@ -613,11 +626,14 @@ namespace Atomex.Wallet.Tezos
                     if (isToSelf)
                     {
                         operationType |= TransactionType.Input;
-                        result.Amount += tx.Amount;
+                        operationAmount += tx.Amount;
                     }
 
                     if (isFromSelf)
-                        result.Amount -= tx.Amount + tx.BakerFee + tx.AllocationFee + tx.StorageFee;
+                    {
+                        operationAmount -= tx.Amount;
+                        operationFee -= tx.BakerFee + tx.AllocationFee + tx.StorageFee;
+                    }
 
                     if (tx.Parameter != null)
                     {
@@ -640,7 +656,16 @@ namespace Atomex.Wallet.Tezos
                     // delegations, reveals and others
                 }
 
-                result.OperationsTypes.Add(operationType);
+                result.Internals.Add(new InternalTransactionMetadata
+                {
+                    Type = operationType,
+                    Amount = operationAmount,
+                    Fee = operationFee
+                });
+
+                result.Type |= operationType;
+                result.Amount += operationAmount;
+                result.Fee += operationFee;
             }
 
             return result;
