@@ -48,7 +48,6 @@ namespace Atomex.Core
         public Side Side { get; set; }
         public decimal Price { get; set; }
         public decimal Qty { get; set; }
-        public bool IsInitiative { get; set; }
         public string ToAddress { get; set; }
         public decimal RewardForRedeem { get; set; }
         public string RedeemScript { get; set; }
@@ -74,8 +73,8 @@ namespace Atomex.Core
         public bool IsCanceled => StateFlags.HasFlag(SwapStateFlags.IsCanceled);
         public bool IsUnsettled => StateFlags.HasFlag(SwapStateFlags.IsUnsettled);
         public bool IsActive => !IsComplete && !IsRefunded && !IsCanceled && !IsUnsettled;
-        public bool IsInitiator => IsInitiative;
-        public bool IsAcceptor => !IsInitiative;
+        public bool IsInitiator { get; set; }
+        public bool IsAcceptor => !IsInitiator;
         public bool HasPartyPayment => 
             StateFlags.HasFlag(SwapStateFlags.HasPartyPayment) &&
             StateFlags.HasFlag(SwapStateFlags.IsPartyPaymentConfirmed);

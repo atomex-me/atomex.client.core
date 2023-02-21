@@ -13,7 +13,7 @@ namespace Atomex.Common
         public const string IndexPattern = "{i}";
         public const string ExternalChain = "0";
         public const string InternalChain = "1";
-        public const string DefaultAccount = "0'";
+        public const string DefaultAccount = "0";
         public const string DefaultIndex = "0";
 
         public static bool IsMatch(this string keyPath, string keyPathPattern)

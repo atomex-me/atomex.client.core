@@ -15,26 +15,31 @@ namespace Atomex.TzktEvents.Services
     public class AccountService : IAccountService
     {
         private readonly HubConnection _hub;
-        private readonly ILogger _log;
+        private readonly ILogger? _log;
 
         private readonly ConcurrentDictionary<string, ServiceSubscription> _accounts = new();
         private readonly Func<string, ServiceSubscription> _willNotBeCalled = _ => null;
 
-        public AccountService(HubConnection hub, ILogger log)
+        public AccountService(HubConnection hub, ILogger? log = null)
         {
             _hub = hub ?? throw new ArgumentNullException(nameof(hub));
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log;
         }
 
         public async Task InitAsync()
         {
             if (_accounts.Skip(0).Count() != 0)
             {
-                var addresses = _accounts.Select(a => a.Key).ToArray();
-                await _hub.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
-                {
-                    addresses
-                }).ConfigureAwait(false);
+                var addresses = _accounts
+                    .Select(a => a.Key)
+                    .ToArray();
+
+                await _hub
+                    .InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
+                    {
+                        addresses
+                    })
+                    .ConfigureAwait(false);
             }
         }
 
@@ -46,41 +51,49 @@ namespace Atomex.TzktEvents.Services
         public async Task NotifyOnAccountAsync(string address, Action<string> handler)
         {
             var subscription = new ServiceSubscription(handler);
+
             _accounts.AddOrUpdate(address, subscription, (_, _) => subscription);
 
-            await _hub.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
-            {
-                addresses = new[] { address }
-            }).ConfigureAwait(false);
+            await _hub
+                .InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
+                {
+                    addresses = new[] { address }
+                })
+                .ConfigureAwait(false);
         }
 
         public async Task NotifyOnAccountsAsync(IEnumerable<string> addresses, Action<string> handler)
         {
             var addressesList = addresses.ToList();
+
             if (addressesList.Count == 0)
             {
-                _log.LogWarning("NotifyOnAccountsAsync was called with empty list of addresses");
+                _log?.LogWarning("NotifyOnAccountsAsync was called with empty list of addresses");
                 return;
             }
 
             var account = new ServiceSubscription(handler);
+
             foreach (var address in addressesList)
             {
                 _accounts.AddOrUpdate(address, account, (_, _) => account);
             }
 
-            await _hub.InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
-            {
-                addresses = addressesList
-            }).ConfigureAwait(false);
+            await _hub
+                .InvokeAsync(SubscriptionMethod.SubscribeToAccounts.Method, new
+                {
+                    addresses = addressesList
+                })
+                .ConfigureAwait(false);
         }
 
         private void Handler(JObject msg)
         {
-            _log.LogDebug("Got msg from TzktEvents on '{Channel}' channel: {Message}",
+            _log?.LogDebug("Got msg from TzktEvents on '{Channel}' channel: {Message}",
                 SubscriptionMethod.SubscribeToAccounts.Channel, msg.ToString());
 
             var messageType = (MessageType?)msg["type"]?.Value<int>();
+
             switch (messageType)
             {
                 case MessageType.State:
@@ -95,7 +108,7 @@ namespace Atomex.TzktEvents.Services
                     break;
 
                 default:
-                    _log.LogWarning("Got msg with unrecognizable type from TzktEvents on '{Channel}' channel: {Message}",
+                    _log?.LogWarning("Got msg with unrecognizable type from TzktEvents on '{Channel}' channel: {Message}",
                         SubscriptionMethod.SubscribeToAccounts.Channel, msg.ToString());
                     break;
             }
@@ -106,7 +119,9 @@ namespace Atomex.TzktEvents.Services
             foreach (var accountEvent in data)
             {
                 var address = accountEvent["address"]?.ToString();
-                if (address == null || !_accounts.TryGetValue(address, out var account)) continue;
+
+                if (address == null || !_accounts.TryGetValue(address, out var account))
+                    continue;
 
                 var lastActivity = accountEvent["lastActivity"]?.Value<int>() ?? 0;
 
@@ -123,7 +138,7 @@ namespace Atomex.TzktEvents.Services
                     }
                     catch (Exception e)
                     {
-                        _log.LogError(e,"Error while calling subscriber handler on Data message");
+                        _log?.LogError(e,"Error while calling subscriber handler on Data message");
                     }
                 }
             }
@@ -132,7 +147,9 @@ namespace Atomex.TzktEvents.Services
         private void ReorgHandler(JObject msg)
         {
             var state = msg["state"]?.Value<int>();
-            if (state == null) return;
+
+            if (state == null)
+                return;
 
             foreach (var (address, subscription) in _accounts)
             {
@@ -149,7 +166,7 @@ namespace Atomex.TzktEvents.Services
                     }
                     catch (Exception e)
                     {
-                        _log.LogError(e, "Error while calling subscriber handler on Reorg message");
+                        _log?.LogError(e, "Error while calling subscriber handler on Reorg message");
                     }
                 }
             }

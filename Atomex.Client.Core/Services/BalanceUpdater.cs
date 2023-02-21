@@ -20,7 +20,7 @@ namespace Atomex.Services
     {
         private readonly IAccount _account;
         private readonly ICurrenciesProvider _currenciesProvider;
-        private readonly ILogger _log;
+        private readonly ILogger? _log;
         private readonly IWalletScanner _walletScanner;
 
         private CancellationTokenSource _cts;
@@ -29,11 +29,11 @@ namespace Atomex.Services
         private readonly IList<IChainBalanceUpdater> _balanceUpdaters = new List<IChainBalanceUpdater>();
         private const string SoChainRealtimeApiHost = "pusher.chain.so";
 
-        public BalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, ILogger log)
+        public BalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, ILogger? log = null)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _currenciesProvider = currenciesProvider;
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log;
             _walletScanner = new WalletScanner(_account);
 
             InitChainBalanceUpdaters();
@@ -59,15 +59,15 @@ namespace Atomex.Services
                     await Task.WhenAll(startTasks)
                         .ConfigureAwait(false);
 
-                    _log.LogInformation("BalanceUpdater successfully started");
+                    _log?.LogInformation("BalanceUpdater successfully started");
                 }
                 catch (OperationCanceledException)
                 {
-                    _log.LogDebug("BalanceUpdater canceled");
+                    _log?.LogDebug("BalanceUpdater canceled");
                 }
                 catch (Exception e)
                 {
-                    _log.LogError(e, "Unconfirmed BalanceUpdater error");
+                    _log?.LogError(e, "Unconfirmed BalanceUpdater error");
                 }
 
             }, _cts.Token);
@@ -92,13 +92,13 @@ namespace Atomex.Services
                 }
                 catch (Exception e)
                 {
-                    _log.LogError(e, "Error while stopping BalanceUpdater");
+                    _log?.LogError(e, "Error while stopping BalanceUpdater");
                 }
             });
 
             _cts.Cancel();
             _isRunning = false;
-            _log.LogInformation("BalanceUpdater stopped");
+            _log?.LogInformation("BalanceUpdater stopped");
         }
 
         private void InitChainBalanceUpdaters()
@@ -118,7 +118,7 @@ namespace Atomex.Services
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error while initializing chain balance updaters");
+                _log?.LogError(e, "Error while initializing chain balance updaters");
             }
         }
     }

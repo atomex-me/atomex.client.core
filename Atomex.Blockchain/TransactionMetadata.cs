@@ -14,6 +14,7 @@ namespace Atomex.Blockchain
 
     public class TransactionMetadata : ITransactionMetadata
     {
+        public string UniqueId => $"{Id}:{Currency}";
         public string Id { get; set; }
         public string Currency { get; set; }
         public TransactionType Type { get; set; }

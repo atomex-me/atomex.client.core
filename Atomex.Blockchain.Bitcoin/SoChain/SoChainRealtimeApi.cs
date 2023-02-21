@@ -26,21 +26,21 @@ namespace Atomex.Blockchain.SoChain
         private Pusher? _pusher;
         private const string ApiKey = "e9f5cc20074501ca7395";
 
-        private readonly ILogger _log;
+        private readonly ILogger? _log;
         private readonly ConcurrentDictionary<FullAddress, Subscription> _subscriptions = new();
         private readonly ConcurrentDictionary<string, Action<PusherEvent>> _balanceUpdatedHandlers = new();
 
-        public SoChainRealtimeApi(string hostUrl, ILogger log)
+        public SoChainRealtimeApi(string hostUrl, ILogger? log = null)
         {
             HostUrl = hostUrl ?? throw new ArgumentNullException(nameof(hostUrl));
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log;
         }
 
         public async Task StartAsync()
         {
             if (_isStarted)
             {
-                _log.LogWarning("Trying to start SoChainRealtimeApi while it was already started");
+                _log?.LogWarning("Trying to start SoChainRealtimeApi while it was already started");
                 return;
             }
 
@@ -57,13 +57,15 @@ namespace Atomex.Blockchain.SoChain
                 _pusher.Error += ErrorHandler;
                 _pusher.Connected += ConnectedHandler;
 
-                await _pusher.ConnectAsync().ConfigureAwait(false);
+                await _pusher
+                    .ConnectAsync()
+                    .ConfigureAwait(false);
 
-                _log.LogInformation("SoChainRealtimeApi successfully started");
+                _log?.LogInformation("SoChainRealtimeApi successfully started");
             }
             catch (Exception e)
             {
-                _log.LogError(e, "SoChainRealtimeApi failed to start");
+                _log?.LogError(e, "SoChainRealtimeApi failed to start");
                 _isStarted = false;
             }
         }
@@ -72,7 +74,7 @@ namespace Atomex.Blockchain.SoChain
         {
             if (!_isStarted)
             {
-                _log.LogWarning("SoChainRealtimeApi was not started");
+                _log?.LogWarning("SoChainRealtimeApi was not started");
                 return;
             }
 
@@ -82,14 +84,17 @@ namespace Atomex.Blockchain.SoChain
                 _pusher.Error -= ErrorHandler;
                 _pusher.Connected -= ConnectedHandler;
 
-                await _pusher.DisconnectAsync().ConfigureAwait(false);
+                await _pusher
+                    .DisconnectAsync()
+                    .ConfigureAwait(false);
+
                 _subscriptions.Clear();
 
-                _log.LogInformation("SoChainRealtimeApi successfully stopped");
+                _log?.LogInformation("SoChainRealtimeApi successfully stopped");
             }
             catch (Exception e)
             {
-                _log.LogError(e, "SoChainRealtimeApi was stopped with error");
+                _log?.LogError(e, "SoChainRealtimeApi was stopped with error");
             }
             finally
             {
@@ -105,6 +110,7 @@ namespace Atomex.Blockchain.SoChain
         public Task SubscribeOnBalanceUpdateAsync(string network, IEnumerable<string> addresses, Action<string> handler)
         {
             var subscribeTasks = addresses.Select(address => OnBalanceUpdateAsync(network, address, handler));
+
             return Task.WhenAll(subscribeTasks);
         }
 
@@ -116,6 +122,7 @@ namespace Atomex.Blockchain.SoChain
             try
             {
                 var fullAddress = new FullAddress(network, address);
+
                 if (_subscriptions.TryGetValue(fullAddress, out var subscription))
                 {
                     if (handler == null)
@@ -125,7 +132,7 @@ namespace Atomex.Blockchain.SoChain
 
                         if (!removed)
                         {
-                            _log.LogWarning("SoChainRealtimeApi couldn't remove subscription for {@Address} at {@Network}", address, network);
+                            _log?.LogWarning("SoChainRealtimeApi couldn't remove subscription for {@Address} at {@Network}", address, network);
                         }
                     }
                     else
@@ -135,20 +142,20 @@ namespace Atomex.Blockchain.SoChain
 
                         if (!updated)
                         {
-                            _log.LogWarning("SoChainRealtimeApi couldn't remove subscription for handler on {@Address} at {@Network}", address, network);
+                            _log?.LogWarning("SoChainRealtimeApi couldn't remove subscription for handler on {@Address} at {@Network}", address, network);
                         }
                     }
                 }
                 else
                 {
-                    _log.LogWarning(
+                    _log?.LogWarning(
                         "SoChainRealtimeApi Unsubscribe was called with unregistered {@Address} on {@Network} network",
                         address, network);
                 }
             }
             catch (Exception e)
             {
-                _log.LogError(e, "SoChainRealtimeApi error while unsubscribing {@Address} on {@Network} network",
+                _log?.LogError(e, "SoChainRealtimeApi error while unsubscribing {@Address} on {@Network} network",
                     address, network);
             }
         }
@@ -169,6 +176,7 @@ namespace Atomex.Blockchain.SoChain
             try
             {
                 var fullAddress = new FullAddress(network, address);
+
                 if (_subscriptions.TryGetValue(fullAddress, out var subscription))
                 {
                     var updated = _subscriptions.TryUpdate(fullAddress,
@@ -176,7 +184,7 @@ namespace Atomex.Blockchain.SoChain
 
                     if (!updated)
                     {
-                        _log.LogWarning(
+                        _log?.LogWarning(
                             "SoChainRealtimeApi couldn't update subscription with new handler for {@Address} on {@Network} network",
                             address, network);
                     }
@@ -194,14 +202,14 @@ namespace Atomex.Blockchain.SoChain
 
                 if (!added)
                 {
-                    _log.LogWarning(
+                    _log?.LogWarning(
                         "SoChainRealtimeApi couldn't add new subscription for {@Address} on {@Network} network",
                         address, network);
                 }
             }
             catch (Exception e)
             {
-                _log.LogError(e,
+                _log?.LogError(e,
                     "SoChainRealtimeApi error while subscribing on balance update for {Address} on {@Network}",
                     address, network);
             }
@@ -226,7 +234,7 @@ namespace Atomex.Blockchain.SoChain
             }
             catch (Exception e)
             {
-                _log.LogError(e, "SoChainRealtimeApi error while subscribing on channels");
+                _log?.LogError(e, "SoChainRealtimeApi error while subscribing on channels");
             }
         }
 
@@ -239,11 +247,11 @@ namespace Atomex.Blockchain.SoChain
 
             balanceUpdatedHandler = (@event) =>
             {
-                _log.LogDebug("[BalanceUpdated] SoChainRealtimeApi got {@Event}", @event);
+                _log?.LogDebug("[BalanceUpdated] SoChainRealtimeApi got {@Event}", @event);
 
                 if (@event.EventName != "balance_update")
                 {
-                    _log.LogWarning("SoChainRealtimeApi OnBalanceUpdated got event with unsupported name {@EventName}",
+                    _log?.LogWarning("SoChainRealtimeApi OnBalanceUpdated got event with unsupported name {@EventName}",
                         @event.EventName);
                     return;
                 }
@@ -254,6 +262,7 @@ namespace Atomex.Blockchain.SoChain
                     var address = data["value"]?["address"]?.ToString();
                     
                     var fullAddress = new FullAddress(network, address);
+
                     if (_subscriptions.TryGetValue(fullAddress, out var subscription))
                     {
                         foreach (var handler in subscription.Handlers)
@@ -264,7 +273,7 @@ namespace Atomex.Blockchain.SoChain
                 }
                 catch (Exception e)
                 {
-                    _log.LogError(e, "SoChainRealtimeApi error on handling balance update event");
+                    _log?.LogError(e, "SoChainRealtimeApi error on handling balance update event");
                 }
             };
 
@@ -275,16 +284,16 @@ namespace Atomex.Blockchain.SoChain
         {
             if (error is ChannelDecryptionException exception)
             {
-                _log.LogError("SoChain Realtime API channel decryption error: {@ErrorMsg}", exception);
+                _log?.LogError("SoChain Realtime API channel decryption error: {@ErrorMsg}", exception);
                 return;
             }
 
-            _log.LogError("SoChain Realtime API error: {@Error}", error);
+            _log?.LogError("SoChain Realtime API error: {@Error}", error);
         }
 
         private void ConnectionStateChangedHandler(object sender, ConnectionState state)
         {
-            _log.LogDebug("SoChainRealtimeApi connection state changed to {State}", state);
+            _log?.LogDebug("SoChainRealtimeApi connection state changed to {State}", state);
 
             switch (state)
             {

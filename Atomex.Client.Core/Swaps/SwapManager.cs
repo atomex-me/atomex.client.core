@@ -491,7 +491,7 @@ namespace Atomex.Swaps
                 Side              = receivedSwap.Side,
                 Price             = receivedSwap.Price,
                 Qty               = receivedSwap.Qty,
-                IsInitiative      = receivedSwap.IsInitiative,
+                IsInitiator       = receivedSwap.IsInitiator,
                 MakerNetworkFee   = order.MakerNetworkFee,
 
                 FromAddress       = order.FromAddress,

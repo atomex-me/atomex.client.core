@@ -18,7 +18,7 @@ namespace Atomex.Services.BalanceUpdaters
         private readonly IAccount _account;
         private readonly TezosAccount _tezosAccount;
         private readonly ICurrenciesProvider _currenciesProvider;
-        private readonly ILogger _log;
+        private readonly ILogger? _log;
         private readonly ITzktEventsClient _tzkt;
         private readonly TezosTokensWalletScanner _walletScanner;
 
@@ -29,14 +29,14 @@ namespace Atomex.Services.BalanceUpdaters
             ICurrenciesProvider currenciesProvider,
             TezosTokensWalletScanner walletScanner,
             ITzktEventsClient tzkt,
-            ILogger log)
+            ILogger? log = null)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _tezosAccount = account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz);
             _currenciesProvider = currenciesProvider;
             _walletScanner = walletScanner ?? throw new ArgumentNullException(nameof(walletScanner));
             _tzkt = tzkt ?? throw new ArgumentNullException(nameof(tzkt));
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log;
         }
 
         public async Task StartAsync()
@@ -67,7 +67,7 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on starting TezosTokenBalanceUpdater");
+                _log?.LogError(e, "Error on starting TezosTokenBalanceUpdater");
             }
         }
 
@@ -81,7 +81,7 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on stopping TezosTokenBalanceUpdater");
+                _log?.LogError(e, "Error on stopping TezosTokenBalanceUpdater");
             }
         }
 
@@ -151,7 +151,7 @@ namespace Atomex.Services.BalanceUpdaters
 
                 if (newAddresses.Any())
                 {
-                    _log.LogInformation("TezosTokenBalanceUpdater adds new addresses {@Addresses}", newAddresses);
+                    _log?.LogInformation("TezosTokenBalanceUpdater adds new addresses {@Addresses}", newAddresses);
 
                     await _tzkt
                         .NotifyOnTokenBalancesAsync(newAddresses, BalanceUpdatedHandler)
@@ -162,7 +162,7 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on handling Tezos balance update");
+                _log?.LogError(e, "Error on handling Tezos balance update");
             }
         }
     }

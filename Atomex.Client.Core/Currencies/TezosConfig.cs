@@ -35,8 +35,8 @@ namespace Atomex
         protected const int PkHashSizeInBits = PkHashSize * 8;
 
         public long MinimalFee { get; protected set; }
-        public long MinimalNanotezPerGasUnit { get; protected set; }
-        public long MinimalNanotezPerByte { get; protected set; }
+        public decimal MinimalNanotezPerGasUnit { get; protected set; }
+        public decimal MinimalNanotezPerByte { get; protected set; }
 
         public long HeadSizeInBytes { get; protected set; }
         public long SigSizeInBytes { get; protected set; }
@@ -121,8 +121,8 @@ namespace Atomex
             FeeCurrencySymbol = configuration[nameof(FeeCurrencySymbol)];
 
             MinimalFee = long.Parse(configuration[nameof(MinimalFee)], CultureInfo.InvariantCulture);
-            MinimalNanotezPerGasUnit = long.Parse(configuration[nameof(MinimalNanotezPerGasUnit)], CultureInfo.InvariantCulture);
-            MinimalNanotezPerByte = long.Parse(configuration[nameof(MinimalNanotezPerByte)], CultureInfo.InvariantCulture);
+            MinimalNanotezPerGasUnit = decimal.Parse(configuration[nameof(MinimalNanotezPerGasUnit)], CultureInfo.InvariantCulture);
+            MinimalNanotezPerByte = decimal.Parse(configuration[nameof(MinimalNanotezPerByte)], CultureInfo.InvariantCulture);
 
             HeadSizeInBytes = long.Parse(configuration[nameof(HeadSizeInBytes)], CultureInfo.InvariantCulture);
             SigSizeInBytes = long.Parse(configuration[nameof(SigSizeInBytes)], CultureInfo.InvariantCulture);
@@ -142,22 +142,22 @@ namespace Atomex
             InitiateGasLimit = long.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
             InitiateStorageLimit = long.Parse(configuration[nameof(InitiateStorageLimit)], CultureInfo.InvariantCulture);
             InitiateSize = long.Parse(configuration[nameof(InitiateSize)], CultureInfo.InvariantCulture);
-            InitiateFee = MinimalFee + (InitiateGasLimit + GasReserve) * MinimalNanotezPerGasUnit + InitiateSize * MinimalNanotezPerByte + 1;
+            InitiateFee = (long)(MinimalFee + (InitiateGasLimit + GasReserve) * MinimalNanotezPerGasUnit + InitiateSize * MinimalNanotezPerByte + 1);
 
             AddGasLimit = long.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
             AddStorageLimit = long.Parse(configuration[nameof(AddStorageLimit)], CultureInfo.InvariantCulture);
             AddSize = long.Parse(configuration[nameof(AddSize)], CultureInfo.InvariantCulture);
-            AddFee = MinimalFee + (AddGasLimit + GasReserve) * MinimalNanotezPerGasUnit + AddSize * MinimalNanotezPerByte + 1;
+            AddFee = (long)(MinimalFee + (AddGasLimit + GasReserve) * MinimalNanotezPerGasUnit + AddSize * MinimalNanotezPerByte + 1);
 
             RedeemGasLimit = long.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
             RedeemStorageLimit = long.Parse(configuration[nameof(RedeemStorageLimit)], CultureInfo.InvariantCulture);
             RedeemSize = long.Parse(configuration[nameof(RedeemSize)], CultureInfo.InvariantCulture);
-            RedeemFee = MinimalFee + (RedeemGasLimit + GasReserve) * MinimalNanotezPerGasUnit + RedeemSize * MinimalNanotezPerByte + 1;
+            RedeemFee = (long)(MinimalFee + (RedeemGasLimit + GasReserve) * MinimalNanotezPerGasUnit + RedeemSize * MinimalNanotezPerByte + 1);
 
             RefundGasLimit = long.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
             RefundStorageLimit = long.Parse(configuration[nameof(RefundStorageLimit)], CultureInfo.InvariantCulture);
             RefundSize = long.Parse(configuration[nameof(RefundSize)], CultureInfo.InvariantCulture);
-            RefundFee = MinimalFee + (RefundGasLimit + GasReserve) * MinimalNanotezPerGasUnit + RefundStorageLimit * MinimalNanotezPerByte + 1;
+            RefundFee = (long)(MinimalFee + (RefundGasLimit + GasReserve) * MinimalNanotezPerGasUnit + RefundStorageLimit * MinimalNanotezPerByte + 1);
 
             ActivationStorage = long.Parse(configuration[nameof(ActivationStorage)], CultureInfo.InvariantCulture);
             StorageFeeMultiplier = long.Parse(configuration[nameof(StorageFeeMultiplier)], CultureInfo.InvariantCulture);

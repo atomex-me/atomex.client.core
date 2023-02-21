@@ -15,18 +15,22 @@ namespace Atomex.Services.BalanceUpdaters
     {
         private readonly IAccount _account;
         private readonly ICurrenciesProvider _currenciesProvider;
-        private readonly ILogger _log;
+        private readonly ILogger? _log;
         private IEthereumNotifier _notifier;
         private readonly IWalletScanner _walletScanner;
 
         private ISet<string> _addresses;
 
-        public EthereumBalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, IWalletScanner walletScanner, ILogger log)
+        public EthereumBalanceUpdater(
+            IAccount account,
+            ICurrenciesProvider currenciesProvider,
+            IWalletScanner walletScanner,
+            ILogger? log = null)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _currenciesProvider = currenciesProvider;
             _walletScanner = walletScanner ?? throw new ArgumentNullException(nameof(walletScanner));
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log;
         }
 
         public async Task StartAsync()
@@ -57,7 +61,7 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on starting EthereumBalanceUpdater");
+                _log?.LogError(e, "Error on starting EthereumBalanceUpdater");
             }
         }
 
@@ -71,7 +75,7 @@ namespace Atomex.Services.BalanceUpdaters
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on stopping EthereumBalanceUpdater");
+                _log?.LogError(e, "Error on stopping EthereumBalanceUpdater");
             }
         }
 
@@ -108,14 +112,14 @@ namespace Atomex.Services.BalanceUpdaters
 
                 if (newAddresses.Any())
                 {
-                    _log.LogInformation("EthereumBalanceUpdater adds new addresses {@Addresses}", newAddresses);
+                    _log?.LogInformation("EthereumBalanceUpdater adds new addresses {@Addresses}", newAddresses);
                     _notifier.SubscribeOnBalanceUpdate(newAddresses, BalanceUpdatedHandler);
                     _addresses.UnionWith(newAddresses);
                 }
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on handling Ethereum balance update");
+                _log?.LogError(e, "Error on handling Ethereum balance update");
             }
         }
     }

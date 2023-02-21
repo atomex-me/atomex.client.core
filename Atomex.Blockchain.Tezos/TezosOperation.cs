@@ -10,6 +10,7 @@ namespace Atomex.Blockchain.Tezos
 {
     public class TezosOperation : ITransaction
     {
+        public string UniqueId => $"{Id}:{Currency}";
         public string Id { get; set; }
         public string Currency { get; set; }
         public TransactionStatus Status { get; set; }
@@ -22,6 +23,10 @@ namespace Atomex.Blockchain.Tezos
 
         public IEnumerable<Operation> Operations { get; }
         public MichelineFormat ParametersFormat { get; }
+
+        public TezosOperation()
+        {
+        }
 
         public TezosOperation(
             IEnumerable<Operation> operations,

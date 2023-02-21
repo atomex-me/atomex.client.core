@@ -21,6 +21,7 @@ namespace Atomex.Blockchain.Bitcoin
 
     public class BitcoinTxOutput
     {
+        public string UniqueId => $"{TxId}:{Index}:{Currency}";
         public Coin Coin { get; set; }
         public string Currency { get; set; }
         public uint Index => Coin.Outpoint.N;

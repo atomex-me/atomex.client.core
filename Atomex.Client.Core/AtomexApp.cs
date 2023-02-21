@@ -271,7 +271,7 @@ namespace Atomex
                     Side                 = e.Swap.Side,
                     Price                = e.Swap.Price,
                     Qty                  = e.Swap.Qty,
-                    IsInitiative         = e.Swap.IsInitiative,
+                    IsInitiator          = e.Swap.IsInitiative,
                     ToAddress            = e.Swap.ToAddress,
                     RewardForRedeem      = e.Swap.RewardForRedeem,
                     PaymentTxId          = e.Swap.PaymentTxId,

@@ -30,11 +30,13 @@ namespace Atomex.LiteDb
 
         public LiteDbCachedLocalStorage(
             string pathToDb,
-            SecureString password)
+            SecureString password,
+            Network network)
         {
             _liteDbLocalStorage = new LiteDbLocalStorage(
                 pathToDb,
-                password);
+                password,
+                network);
 
             //_swapById = new Lazy<IDictionary<long, Swap>>(
             //    valueFactory: () => new ConcurrentDictionary<long, Swap>(),

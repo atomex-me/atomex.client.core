@@ -14,7 +14,7 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
     public abstract class BitcoinBasedBalanceUpdater : IChainBalanceUpdater
     {
         private readonly IAccount _account;
-        private readonly ILogger _log;
+        private readonly ILogger? _log;
         private readonly ISoChainRealtimeApi _api;
         private readonly IWalletScanner _walletScanner;
 
@@ -26,13 +26,13 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
             IAccount account,
             IWalletScanner walletScanner,
             ISoChainRealtimeApi api,
-            ILogger log,
-            string currencyName)
+            string currencyName,
+            ILogger? log = null)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _walletScanner = walletScanner ?? throw new ArgumentNullException(nameof(walletScanner));
             _api = api ?? throw new ArgumentNullException(nameof(api));
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log;
             _currencyName = currencyName;
 
             var currency = _currencyName.ToLower();
@@ -56,7 +56,7 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on starting {@CurrencyName} BalanceUpdater", _currencyName);
+                _log?.LogError(e, "Error on starting {@CurrencyName} BalanceUpdater", _currencyName);
             }
         }
 
@@ -70,7 +70,7 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on stopping {@CurrencyName} BalanceUpdater", _currencyName);
+                _log?.LogError(e, "Error on stopping {@CurrencyName} BalanceUpdater", _currencyName);
             }
         }
 
@@ -107,7 +107,7 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
 
                 if (newAddresses.Any())
                 {
-                    _log.LogInformation("{@CurrencyName} BalanceUpdater adds new addresses {@Addresses}", _currencyName, newAddresses);
+                    _log?.LogInformation("{@CurrencyName} BalanceUpdater adds new addresses {@Addresses}", _currencyName, newAddresses);
 
                     await _api
                         .SubscribeOnBalanceUpdateAsync(_network, newAddresses, BalanceUpdatedHandler)
@@ -118,7 +118,7 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on handling {@CurrencyName} balance update", _currencyName);
+                _log?.LogError(e, "Error on handling {@CurrencyName} balance update", _currencyName);
             }
         }
     }

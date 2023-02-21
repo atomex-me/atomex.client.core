@@ -17,7 +17,6 @@ using Atomex.MarketData.Common;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Abstract;
 using Swap = Atomex.Core.Swap;
-using Org.BouncyCastle.Asn1.Cms;
 
 namespace Atomex.ViewModels
 {
@@ -699,23 +698,23 @@ namespace Atomex.ViewModels
             CancellationToken cancellationToken = default)
         {
             if (fromCurrency == null)
-                return null;
+                return Task.FromResult<SwapPriceEstimation>(null);
 
             if (toCurrency == null)
-                return null;
+                return Task.FromResult<SwapPriceEstimation>(null);
 
             var symbol = symbolsProvider
                 .GetSymbols(account.Network)
                 .SymbolByCurrencies(fromCurrency, toCurrency);
 
             if (symbol == null)
-                return null;
+                return Task.FromResult<SwapPriceEstimation>(null);
 
             var side = symbol.OrderSideForBuyCurrency(toCurrency);
             var orderBook = marketDataRepository.OrderBookBySymbol(symbol.Name);
 
             if (orderBook == null)
-                return null;
+                return Task.FromResult<SwapPriceEstimation>(null);
 
             var baseCurrency = account.Currencies.GetByName(symbol.Base);
 

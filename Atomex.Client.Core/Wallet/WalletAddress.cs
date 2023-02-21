@@ -14,6 +14,7 @@ namespace Atomex.Core
 
     public class WalletAddress
     {
+        public string UniqueId => GetUniqueId(Address, Currency, TokenBalance?.Contract, TokenBalance?.TokenId);      
         public string Address { get; set; }
         public string Currency { get; set; }
         public BigInteger Balance { get; set; }
@@ -35,10 +36,9 @@ namespace Atomex.Core
             UsageType == WalletAddressUsageType.NoLongerUsed ||
             (UsageType == WalletAddressUsageType.SingleUse && HasActivity && Balance == 0 && UnconfirmedIncome == 0 && UnconfirmedOutcome == 0);
 
-        public static string GetId(string address, string currency, string tokenContract = null, BigInteger? tokenId = null) => 
+        public static string GetUniqueId(string address, string currency, string tokenContract = null, BigInteger? tokenId = null) => 
             tokenContract == null && tokenId == null
                 ? $"{address}:{currency}"
                 : $"{address}:{currency}:{tokenContract}:{tokenId.Value}";
-
     }
 }

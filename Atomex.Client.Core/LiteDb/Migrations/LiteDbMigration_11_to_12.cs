@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Numerics;
 
 using LiteDB;
 using NBitcoin;
@@ -23,7 +22,7 @@ using SwapStatus = Atomex.Client.V1.Entities.SwapStatus;
 
 namespace Atomex.LiteDb.Migrations
 {
-    public class LiteDbMigration_0_to_1
+    public class LiteDbMigration_11_to_12
     {
         private const string Temp = "temp";
         private const string Backup = "backup";
@@ -31,12 +30,15 @@ namespace Atomex.LiteDb.Migrations
         private const string HexKey = "Hex";
         private const string OrderIdKey = "OrderId";
 
-        public static LiteDbMigrationResult Migrate(string pathToDb, string sessionPassword, Network network)
+        public static LiteDbMigrationResult Migrate(
+            string pathToDb,
+            string sessionPassword,
+            Network network)
         {
             var oldConnectionString = $"FileName={pathToDb};Password={sessionPassword};Connection=direct;Upgrade=true";
             var newConnectionString = $"FileName={pathToDb}.{Temp};Password={sessionPassword};Connection=direct";
 
-            var mapper = CreateBsonMapper();
+            var mapper = CreateBsonMapper(network);
 
             using (var oldDb = new LiteDatabase(oldConnectionString))
             using (var newDb = new LiteDatabase(newConnectionString, mapper))
@@ -154,14 +156,7 @@ namespace Atomex.LiteDb.Migrations
                         ? oldTx["Fees"].AsInt64
                         : 0;
 
-                    var txNetwork = (currency, network) switch
-                    {
-                        ("BTC", Network.MainNet) => NBitcoin.Network.Main,
-                        ("BTC", Network.TestNet) => NBitcoin.Network.TestNet,
-                        ("LTC", Network.MainNet) => NBitcoin.Altcoins.Litecoin.Instance.Mainnet,
-                        ("LTC", Network.TestNet) => NBitcoin.Altcoins.Litecoin.Instance.Testnet,
-                        _ => throw new Exception($"Invalid currency {currency} or network {network}")
-                    };
+                    var txNetwork = BitcoinNetworkResolver.ResolveNetwork(currency, network);
 
                     var tx = new BitcoinTransaction(
                         currency: currency,
@@ -173,6 +168,13 @@ namespace Atomex.LiteDb.Migrations
                         fee: fee);
 
                     var txDocument = mapper.ToDocument(tx);
+
+                    txDocument["UserMetadata"] = new BsonDocument
+                    {
+                        ["$id"] = txDocument["_id"],
+                        ["$ref"] = "TransactionsMetadata",
+                        ["$missing"] = true
+                    };
 
                     _ = newDb
                         .GetCollection("Transactions")
@@ -231,20 +233,48 @@ namespace Atomex.LiteDb.Migrations
                             .ToList()
                         : null;
 
+                    var paymentTxId = oldSwap["PaymentTxId"].AsString;
+
+                    if (paymentTxId == null && oldSwap.ContainsKey("PaymentTx") && !oldSwap["PaymentTx"].IsNull)
+                    {
+                        paymentTxId = oldSwap["PaymentTx"]["TxId"].AsString;
+                        paymentTxId ??= oldSwap["PaymentTx"]["_id"].AsString;
+                    }
+
                     var redeemTxId = oldSwap.ContainsKey("RedeemTxId") && !oldSwap["RedeemTxId"].IsNull
                         ? oldSwap["RedeemTxId"]["TxId"].AsString
                         : null;
 
+                    if (redeemTxId == null && oldSwap.ContainsKey("RedeemTx") && !oldSwap["RedeemTx"].IsNull)
+                    {
+                        redeemTxId = oldSwap["RedeemTx"]["TxId"].AsString;
+                        redeemTxId ??= oldSwap["RedeemTx"]["_id"].AsString;
+                    }
+
                     var refundTxId = oldSwap.ContainsKey("RefundTxId") && !oldSwap["RefundTxId"].IsNull
                         ? oldSwap["RefundTxId"]["TxId"].AsString
                         : null;
+
+                    if (refundTxId == null && oldSwap.ContainsKey("RefundTx") && !oldSwap["RefundTx"].IsNull)
+                    {
+                        refundTxId = oldSwap["RefundTx"]["TxId"].AsString;
+                        refundTxId ??= oldSwap["RefundTx"]["_id"].AsString;
+                    }
+
+                    var oldStatus = string.Join(',', oldSwap["Status"].AsString
+                        .Split(',')
+                        .Intersect(new string[] {
+                            "Empty",
+                            "Initiated",
+                            "Accepted",
+                        }));
 
                     var swap = new Swap
                     {
                         FromAddress            = oldSwap["FromAddress"].AsString,
                         FromOutputs            = fromOutputs,
                         Id                     = oldSwap["_id"].AsInt64,
-                        IsInitiative           = oldSwap["IsInitiative"].AsBoolean,
+                        IsInitiator            = oldSwap["IsInitiative"].AsBoolean,
                         LastRedeemTryTimeStamp = DateTime.MinValue,
                         LastRefundTryTimeStamp = DateTime.MinValue,
                         MakerNetworkFee        = oldSwap["MakerNetworkFee"].AsDecimal,
@@ -254,7 +284,7 @@ namespace Atomex.LiteDb.Migrations
                         PartyRedeemScript      = oldSwap["PartyRedeemScript"].AsString,
                         PartyRefundAddress     = oldSwap["PartyRefundAddress"].AsString,
                         PartyRewardForRedeem   = oldSwap["PartyRewardForRedeem"].AsDecimal,
-                        PaymentTxId            = oldSwap["PaymentTxId"].AsString,
+                        PaymentTxId            = paymentTxId,
                         Price                  = oldSwap["Price"].AsDecimal,
                         Qty                    = oldSwap["Qty"].AsDecimal,
                         RedeemFromAddress      = oldSwap["RedeemFromAddress"].AsString,
@@ -267,7 +297,7 @@ namespace Atomex.LiteDb.Migrations
                         SecretHash             = oldSwap["SecretHash"].AsBinary,
                         Side                   = Enum.Parse<Side>(oldSwap["Side"].AsString, ignoreCase: true),
                         StateFlags             = Enum.Parse<SwapStateFlags>(oldSwap["StateFlags"].AsString, ignoreCase: true),
-                        Status                 = Enum.Parse<SwapStatus>(oldSwap["Status"].AsString, ignoreCase: true),
+                        Status                 = Enum.Parse<SwapStatus>(oldStatus, ignoreCase: true),
                         Symbol                 = oldSwap["Symbol"].AsString,
                         TimeStamp              = oldSwap["TimeStamp"].AsDateTime,
                         ToAddress              = oldSwap["ToAddress"].AsString
@@ -280,7 +310,7 @@ namespace Atomex.LiteDb.Migrations
                         .Upsert(swapDocument);
                 }
 
-                newDb.UserVersion = LiteDbMigrationManager.Version1;
+                newDb.UserVersion = LiteDbMigrationManager.Version12;
             };
 
             File.Move(pathToDb, $"{pathToDb}.{Backup}");
@@ -299,62 +329,71 @@ namespace Atomex.LiteDb.Migrations
             };
         }
 
-        public static BsonMapper CreateBsonMapper()
+        public static BsonMapper CreateBsonMapper(Network network)
         {
             var mapper = new BsonMapper()
                 .UseSerializer(new BigIntegerToBsonSerializer())
                 .UseSerializer(new JObjectToBsonSerializer())
-                .UseSerializer(new CoinToBsonSerializer());
+                .UseSerializer(new CoinToBsonSerializer())
+                .UseSerializer(new BitcoinTransactionSerializer(network));
 
             mapper.Entity<WalletAddress>()
-                .Id(w => w.TokenBalance != null
-                    ? GetUniqueWalletId(w.Address, w.Currency, w.TokenBalance.Contract, w.TokenBalance.TokenId)
-                    : GetUniqueWalletId(w.Address, w.Currency, null, null));
+                .Id(w => w.UniqueId)
+                .Ignore(w => w.IsDisabled);
 
-            mapper.Entity<BitcoinTransaction>()
-                .Id(t => GetUniqueTxId(t.Id, t.Currency))
-                .Field(t => t.Id, TxIdKey)
-                .Field(t => t.ToHex(), HexKey);
-                //.Ignore(t => t.Inputs)
-                //.Ignore(t => t.Outputs);
+            mapper.Entity<BitcoinTxOutput>()
+                .Id(o => o.UniqueId)
+                .Ignore(o => o.Index)
+                .Ignore(o => o.Value)
+                .Ignore(o => o.IsValid)
+                .Ignore(o => o.TxId)
+                .Ignore(o => o.Type)
+                .Ignore(o => o.IsSpent)
+                .Ignore(o => o.IsP2Sh)
+                .Ignore(o => o.IsSegWit);
 
             mapper.Entity<EthereumTransaction>()
-                .Id(t => GetUniqueTxId(t.Id, t.Currency))
-                .Field(t => t.Id, TxIdKey);
+                .Id(t => t.UniqueId)
+                .Field(t => t.Id, TxIdKey)
+                .Ignore(t => t.IsConfirmed);
 
             mapper.Entity<TezosOperation>()
-                .Id(t => GetUniqueTxId(t.Id, t.Currency))
-                .Field(t => t.Id, TxIdKey);
+                .Id(t => t.UniqueId)
+                .Field(t => t.Id, TxIdKey)
+                .Ignore(t => t.From)
+                .Ignore(t => t.IsConfirmed);
 
             mapper.Entity<TezosTokenTransfer>()
-                .Id(t => GetUniqueTxId(t.Id, t.Currency))
+                .Id(t => t.UniqueId)
                 .Field(t => t.Id, TxIdKey);
 
             mapper.Entity<Erc20Transaction>()
-                .Id(t => GetUniqueTxId(t.Id, t.Currency))
-                .Field(t => t.Id, TxIdKey);
-
-            mapper.Entity<Erc20Transaction>()
-                .Id(t => GetUniqueTxId(t.Id, t.Currency))
-                .Field(t => t.Id, TxIdKey);
+                .Id(t => t.UniqueId)
+                .Field(t => t.Id, TxIdKey)
+                .Ignore(t => t.IsConfirmed);
 
             mapper.Entity<TransactionMetadata>()
-                .Id(t => GetUniqueTxId(t.Id, t.Currency))
+                .Id(t => t.UniqueId)
                 .Field(t => t.Id, TxIdKey);
 
             mapper.Entity<Order>()
                 .Id(o => o.ClientOrderId)
                 .Field(o => o.Id, OrderIdKey);
 
+            mapper.Entity<Swap>()
+                .Id(s => s.Id)
+                .Ignore(s => s.SoldCurrency)
+                .Ignore(s => s.PurchasedCurrency)
+                .Ignore(s => s.IsComplete)
+                .Ignore(s => s.IsRefunded)
+                .Ignore(s => s.IsCanceled)
+                .Ignore(s => s.IsUnsettled)
+                .Ignore(s => s.IsActive)
+                .Ignore(s => s.IsAcceptor)
+                .Ignore(s => s.HasPartyPayment);
+
             return mapper;
         }
-
-        public static string GetUniqueTxId(string txId, string currency) => $"{txId}:{currency}";
-
-        public static string GetUniqueWalletId(string address, string currency, string tokenContract = null, BigInteger? tokenId = null) =>
-            tokenContract == null && tokenId == null
-                ? $"{address}:{currency}"
-                : $"{address}:{currency}:{tokenContract}:{tokenId.Value}";
 
         private static BitcoinTxOutput ToOutput(BsonDocument document, LiteDatabase db)
         {
@@ -371,14 +410,14 @@ namespace Atomex.LiteDb.Migrations
                 .GetCollection("Transactions")
                 .FindById($"{txId}:{currency}");
 
-            var isConfirmed = tx.ContainsKey("BlockInfo") && !tx["BlockInfo"].IsNull;
+            var isConfirmed = tx != null && tx.ContainsKey("BlockInfo") && !tx["BlockInfo"].IsNull;
 
             var spentTx = spentHash != null
                 ? db.GetCollection("Transactions")
                     .FindById($"{spentHash}:{currency}")
                 : null;
 
-            var isSpentConfirmed = spentTx.ContainsKey("BlockInfo") && !spentTx["BlockInfo"].IsNull;
+            var isSpentConfirmed = spentTx != null && spentTx.ContainsKey("BlockInfo") && !spentTx["BlockInfo"].IsNull;
 
             return new BitcoinTxOutput
             {

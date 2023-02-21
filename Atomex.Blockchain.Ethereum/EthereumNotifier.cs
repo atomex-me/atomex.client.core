@@ -19,7 +19,7 @@ namespace Atomex.Blockchain.Ethereum
     public class EthereumNotifier : IEthereumNotifier
     {
         public string BaseUrl { get; }
-        private readonly ILogger _log;
+        private readonly ILogger? _log;
         private readonly ConcurrentDictionary<string, Subscription> _subscriptions = new();
 
         private bool _isRunning;
@@ -33,10 +33,10 @@ namespace Atomex.Blockchain.Ethereum
         private long _lastBlockNumber = 7096734; // Value that is bigger than 0 and definitely less then current block number of any Ether network. 
         private const string ApiKey = "YUIREI3IDPD48WD6ZB9M1SYNAGPYEKAZ8H"; // Free ApiKey to increase rate limits
 
-        public EthereumNotifier(string baseUrl, ILogger log)
+        public EthereumNotifier(string baseUrl, ILogger? log = null)
         {
             BaseUrl = baseUrl;
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log;
         }
 
         public async Task StartAsync()
@@ -57,11 +57,11 @@ namespace Atomex.Blockchain.Ethereum
             }
             catch (OperationCanceledException)
             {
-                _log.LogDebug("EthereumNotifier.StartAsync canceled");
+                _log?.LogDebug("EthereumNotifier.StartAsync canceled");
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on starting EthereumNotifier");
+                _log?.LogError(e, "Error on starting EthereumNotifier");
             }
         }
 
@@ -79,7 +79,7 @@ namespace Atomex.Blockchain.Ethereum
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on stopping EthereumNotifier");
+                _log?.LogError(e, "Error on stopping EthereumNotifier");
             }
             finally
             {
@@ -124,11 +124,11 @@ namespace Atomex.Blockchain.Ethereum
                 }
                 catch (OperationCanceledException)
                 {
-                    _log.LogDebug("EthereumNotifier.RunBalanceChecker canceled");
+                    _log?.LogDebug("EthereumNotifier.RunBalanceChecker canceled");
                 }
                 catch (Exception e)
                 {
-                    _log.LogError(e, "EthereumNotifier.RunBalanceChecker caught error");
+                    _log?.LogError(e, "EthereumNotifier.RunBalanceChecker caught error");
                 }
             }, _cts.Token);
         }
@@ -162,7 +162,7 @@ namespace Atomex.Blockchain.Ethereum
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _log.LogError(
+                    _log?.LogError(
                         "Error while getting txlist for ether address {@Address} with code {@code}",
                         address,
                         response.StatusCode);
@@ -176,10 +176,10 @@ namespace Atomex.Blockchain.Ethereum
                     && json["status"]!.ToString() != "1"
                     && json["message"]?.ToString()?.Contains("NOTOK") == true)
                 {
-                    _log.LogWarning("Status is NOTOK from Etherscan, response: {@Response}",
+                    _log?.LogWarning("Status is NOTOK from Etherscan, response: {@Response}",
                         json.ToString());
 
-                    _log.LogError("Error while getting txlist for ether address {@Address}", address);
+                    _log?.LogError("Error while getting txlist for ether address {@Address}", address);
 
                     await Task.Delay(_transactionsDelay.Multiply(4));
 
@@ -201,7 +201,7 @@ namespace Atomex.Blockchain.Ethereum
 
                 if (!updateResult)
                 {
-                    _log.LogWarning(
+                    _log?.LogWarning(
                         "Could not update start block of subscription for address {Address}",
                         address);
                 }
@@ -215,7 +215,7 @@ namespace Atomex.Blockchain.Ethereum
                 }
                 catch (Exception e)
                 {
-                    _log.LogError(e, "Caught error on ether balance updated handler call");
+                    _log?.LogError(e, "Caught error on ether balance updated handler call");
                 }
             }
         }
@@ -239,7 +239,7 @@ namespace Atomex.Blockchain.Ethereum
 
             if (!response.IsSuccessStatusCode)
             {
-                _log.LogError(
+                _log?.LogError(
                     "Error while getting last block number with code {@code}",
                     response.StatusCode);
 

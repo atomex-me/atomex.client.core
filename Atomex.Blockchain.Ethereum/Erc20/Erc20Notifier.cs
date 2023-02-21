@@ -22,7 +22,7 @@ namespace Atomex.Blockchain.Ethereum
         public string Currency { get; }
         public string ContractAddress { get; }
 
-        private readonly ILogger _log;
+        private readonly ILogger? _log;
         private readonly ConcurrentDictionary<string, Action<string, string>> _subscriptions = new();
         
         private bool _isRunning;
@@ -33,19 +33,17 @@ namespace Atomex.Blockchain.Ethereum
         private EthLogsObservableSubscription _subscriptionFrom;
         private EthLogsObservableSubscription _subscriptionTo;
 
-        public Erc20Notifier(string baseUrl, string currency, string contractAddress, ILogger log)
+        public Erc20Notifier(string baseUrl, string currency, string contractAddress, ILogger? log = null)
         {
             BaseUrl = baseUrl ?? throw new ArgumentNullException(nameof(baseUrl));
             Currency = currency ?? throw new ArgumentNullException(nameof(currency));
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log;
         }
 
         public async Task StartAsync()
         {
             if (_isRunning)
-            {
                 return;
-            }
 
             try
             {
@@ -55,15 +53,15 @@ namespace Atomex.Blockchain.Ethereum
                 
                 await _client.StartAsync();
 
-                _log.LogDebug("ERC20Notifier({Currency}) successfully started", Currency);
+                _log?.LogDebug("ERC20Notifier({Currency}) successfully started", Currency);
             }
             catch (OperationCanceledException)
             {
-                _log.LogDebug("ERC20Notifier({Currency}).StartAsync canceled", Currency);
+                _log?.LogDebug("ERC20Notifier({Currency}).StartAsync canceled", Currency);
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on starting ERC20Notifier({Currency})", Currency);
+                _log?.LogError(e, "Error on starting ERC20Notifier({Currency})", Currency);
             }
         }
 
@@ -71,7 +69,7 @@ namespace Atomex.Blockchain.Ethereum
         {
             try
             {
-                _log.LogInformation("ERC20Notifier({Currency}): Got log event for address {Address}", Currency, log.Address);
+                _log?.LogInformation("ERC20Notifier({Currency}): Got log event for address {Address}", Currency, log.Address);
 
                 var decoded = Event<TransferEventDTO>.DecodeEvent(log);
 
@@ -83,7 +81,7 @@ namespace Atomex.Blockchain.Ethereum
             }
             catch (Exception e)
             {
-                _log.LogError(e, "ERC20Notifier: Log Address: " + log.Address + " is not a standard transfer log");
+                _log?.LogError(e, "ERC20Notifier: Log Address: " + log.Address + " is not a standard transfer log");
             }
         }
 
@@ -97,7 +95,7 @@ namespace Atomex.Blockchain.Ethereum
             }
             catch (Exception e)
             {
-                _log.LogError(e, "ERC20Notifier: error on invoking event handler for address {Address}", address);
+                _log?.LogError(e, "ERC20Notifier: error on invoking event handler for address {Address}", address);
             }
         }
 
@@ -120,9 +118,8 @@ namespace Atomex.Blockchain.Ethereum
             _subscriptionTo.GetSubscriptionDataResponsesAsObservable().Subscribe(LogEventHandler);
 
             if (!_subscriptions.Skip(0).Any())
-            {
                 return;
-            }
+
             var addresses = _subscriptions.Select(s => s.Key).ToArray();
             // create a log filter specific to Transfers
             // this filter will match any Transfer (matching the signature) 
@@ -141,9 +138,7 @@ namespace Atomex.Blockchain.Ethereum
         public async Task StopAsync()
         {
             if (!_isRunning)
-            {
                 return;
-            }
 
             try
             {
@@ -156,11 +151,11 @@ namespace Atomex.Blockchain.Ethereum
                 _client.Dispose();
                 _subscriptions.Clear();
 
-                _log.LogDebug("ERC20Notifier({Currency}) successfully stopped", Currency);
+                _log?.LogDebug("ERC20Notifier({Currency}) successfully stopped", Currency);
             }
             catch (Exception e)
             {
-                _log.LogError(e, "Error on stopping ERC20Notifier({Currency})", Currency);
+                _log?.LogError(e, "Error on stopping ERC20Notifier({Currency})", Currency);
             }
             finally
             {

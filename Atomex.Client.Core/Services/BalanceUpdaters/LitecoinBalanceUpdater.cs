@@ -15,7 +15,7 @@ namespace Atomex.Services.BalanceUpdaters
             IWalletScanner walletScanner,
             ISoChainRealtimeApi api,
             ILogger log)
-            : base(account, walletScanner, api, log, CurrencyName)
+            : base(account, walletScanner, api, CurrencyName, log)
         {
         }
     }
