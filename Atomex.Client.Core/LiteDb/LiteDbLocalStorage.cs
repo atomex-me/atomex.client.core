@@ -805,46 +805,6 @@ namespace Atomex.LiteDb
             return Task.FromResult(Enumerable.Empty<ITransaction>());
         }
 
-        public Task<IEnumerable<(ITransaction, ITransactionMetadata)>> GetTransactionsWithMetadataAsync(
-            string currency,
-            Type transactionType,
-            Type metadataType,
-            int offset = 0,
-            int limit = int.MaxValue,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var transactions = _db
-                    .GetCollection(TransactionCollectionName)
-                    .Query()
-                    .Include(UserMetadata)
-                    .Where("Currency = @0", currency)
-                    .OrderByDescending("CreationTime")
-                    .Offset(offset)
-                    .Limit(limit)
-                    .ToList()
-                    .Select(d =>
-                    {
-                        var tx = (ITransaction)_bsonMapper.ToObject(transactionType, d);
-                        var metadata = !d[UserMetadata].AsDocument.ContainsKey("$missing")
-                            ? (ITransactionMetadata)_bsonMapper.ToObject(metadataType, d[UserMetadata].AsDocument)
-                            : null;
-
-                        return (tx, metadata);
-                    })
-                    .ToList();
-
-                return Task.FromResult<IEnumerable<(ITransaction, ITransactionMetadata)>> (transactions);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, $"Error getting transactions with metadata for {currency}");
-            }
-
-            return Task.FromResult(Enumerable.Empty<(ITransaction, ITransactionMetadata)>());
-        }
-
         public Task<IEnumerable<T>> GetTransactionsAsync<T>(
             string currency,
             int offset = 0,
@@ -873,6 +833,51 @@ namespace Atomex.LiteDb
             }
 
             return Task.FromResult(Enumerable.Empty<T>());
+        }
+
+        public Task<IEnumerable<(ITransaction, ITransactionMetadata)>> GetTransactionsWithMetadataAsync(
+            string currency,
+            Type transactionType,
+            Type metadataType,
+            int offset = 0,
+            int limit = int.MaxValue,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var transactions = _db
+                    .GetCollection(TransactionCollectionName)
+                    .Query()
+                    .Include(UserMetadata)
+                    .Where("Currency = @0", currency)
+                    .OrderByDescending("CreationTime")
+                    .Offset(offset)
+                    .Limit(limit)
+                    .ToList()
+                    .Select(d =>
+                    {
+                        var tx = (ITransaction)_bsonMapper.ToObject(transactionType, d);
+                        var metadata = !d[UserMetadata].AsDocument.ContainsKey("$missing")
+                            ? (ITransactionMetadata)_bsonMapper.ToObject(metadataType, d[UserMetadata].AsDocument)
+                            : null;
+
+                        if (metadata != null)
+                        {
+                            int a = 1;
+                        }
+
+                        return (tx, metadata);
+                    })
+                    .ToList();
+
+                return Task.FromResult<IEnumerable<(ITransaction, ITransactionMetadata)>>(transactions);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, $"Error getting transactions with metadata for {currency}");
+            }
+
+            return Task.FromResult(Enumerable.Empty<(ITransaction, ITransactionMetadata)>());
         }
 
         public Task<IEnumerable<(T,M)>> GetTransactionsWithMetadataAsync<T,M>(

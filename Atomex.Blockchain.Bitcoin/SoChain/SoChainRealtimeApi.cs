@@ -193,7 +193,11 @@ namespace Atomex.Blockchain.SoChain
                 }
 
                 var chanelName = $"address_{network}_{address}";
-                var channel = await _pusher.SubscribeAsync(chanelName);
+
+                var channel = await _pusher
+                    .SubscribeAsync(chanelName)
+                    .ConfigureAwait(false);
+
                 var balanceUpdatedHandler = CreateOrGetBalanceUpdatedHandler(network);
                 channel.Bind("balance_update", balanceUpdatedHandler);
 
@@ -222,7 +226,11 @@ namespace Atomex.Blockchain.SoChain
                 foreach (var fullAddress in _subscriptions.Select(sub => sub.Key))
                 {
                     var chanelName = $"address_{fullAddress.Network}_{fullAddress.Address}";
-                    var channel = await _pusher.SubscribeAsync(chanelName).ConfigureAwait(false);
+
+                    var channel = await _pusher
+                        .SubscribeAsync(chanelName)
+                        .ConfigureAwait(false);
+
                     var balanceUpdatedHandler = CreateOrGetBalanceUpdatedHandler(fullAddress.Network);
                     channel.Bind("balance_update", balanceUpdatedHandler);
                 

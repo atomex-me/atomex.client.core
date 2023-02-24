@@ -81,7 +81,6 @@ namespace Atomex.Client.Core.Tests
             using var reader = db.Execute(
                 "SELECT $ FROM Transactions INCLUDE $.metadata WHERE $.currency LIKE @0 ORDER BY $.time DESC", "BTC");
 
-
             while (reader.Read())
             {
                 console.WriteLine(reader.Current.ToString());

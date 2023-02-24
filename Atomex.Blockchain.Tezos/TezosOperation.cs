@@ -21,8 +21,8 @@ namespace Atomex.Blockchain.Tezos
         public bool IsConfirmed => Confirmations > 0;
         public string? From => Operations.FirstOrDefault()?.Sender?.Address;
 
-        public IEnumerable<Operation> Operations { get; }
-        public MichelineFormat ParametersFormat { get; }
+        public List<Operation> Operations { get; set; }
+        public MichelineFormat ParametersFormat { get; set; }
 
         public TezosOperation()
         {
@@ -39,7 +39,7 @@ namespace Atomex.Blockchain.Tezos
             if (!operations.Any())
                 throw new ArgumentException("At least one operation is required", nameof(operations));
 
-            Operations = operations;
+            Operations = operations.ToList();
             ParametersFormat = operationParametersFormat;
 
             var firstOperation = Operations.First();
@@ -60,7 +60,8 @@ namespace Atomex.Blockchain.Tezos
             string operationId)
         {
             Operations = operationRequest.OperationsContents
-                .Select(oc => oc.ToOperation(operationId));
+                .Select(oc => oc.ToOperation(operationId))
+                .ToList();
             ParametersFormat = MichelineFormat.RawMicheline;
 
             Id            = operationId;

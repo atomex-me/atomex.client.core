@@ -232,7 +232,7 @@ namespace Atomex.LiteDb
 
             var upsertResult = await _liteDbLocalStorage
                 .UpsertTokenAddressesAsync(walletAddresses)
-                .ConfigureAwait(false); ;
+                .ConfigureAwait(false);
 
             if (changedTokens.Any())
                 BalanceChanged?.Invoke(this, new TokenBalanceChangedEventArgs

@@ -287,41 +287,38 @@ namespace Atomex.Wallet.Ethereum
                 return error; // todo: may be return?
             }
 
-            var (lastBlockNumber, lastBlockNumberError) = await api
-                .GetRecentBlockHeightAsync()
-                .ConfigureAwait(false);
+            var fromBlock = 0UL;
 
-            if (lastBlockNumberError != null)
+            if (walletAddress.LastSuccessfullUpdate != DateTime.MinValue)
             {
-                Log.Error(
-                    "[Erc20WalletScanner] Error while getting last block number with code {@code} and message {@message}",
-                    lastBlockNumberError.Value.Code,
-                    lastBlockNumberError.Value.Message);
+                var (blockNumber, blockNumberError) = await api
+                    .GetBlockNumberAsync(walletAddress.LastSuccessfullUpdate, ClosestBlock.Before, cancellationToken)
+                    .ConfigureAwait(false);
 
-                return lastBlockNumberError;
-            }
+                if (blockNumberError != null)
+                {
+                    Log.Error(
+                        "[Erc20WalletScanner] Error while getting block number with code {@code} and message {@message}",
+                        blockNumberError.Value.Code,
+                        blockNumberError.Value.Message);
 
-            if (lastBlockNumber <= 0)
-            {
-                Log.Error(
-                    "[Erc20WalletScanner] Error in block number {@lastBlockNumber}",
-                    lastBlockNumber);
+                    return blockNumberError;
+                }
 
-                return new Error(Errors.InvalidResponse, "Invalid last block number");
+                fromBlock = blockNumber;
             }
 
             var (txs, txsError) = await api
                 .GetErc20TransactionsAsync(
                     address: walletAddress.Address,
                     tokenContractAddress: Erc20Config.ERC20ContractAddress,
+                    fromBlock: fromBlock,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (txsError != null)
             {
-                Log.Error(
-                    "[Erc20WalletScanner] Error while get erc20 transactions",
-                    lastBlockNumber);
+                Log.Error("[Erc20WalletScanner] Error while get erc20 transactions");
 
                 return new Error(Errors.InvalidResponse, "Error while get erc20 transactions");
             }

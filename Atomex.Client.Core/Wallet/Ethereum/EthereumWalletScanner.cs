@@ -6,9 +6,8 @@ using System.Threading.Tasks;
 
 using Serilog;
 
-using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
-using Atomex.Blockchain.Ethereum.Abstract;
+using Atomex.Blockchain.Ethereum.EtherScan;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
@@ -42,7 +41,7 @@ namespace Atomex.Wallet.Ethereum
                     (Chain : Bip44.External, LookAhead : ExternalLookAhead),
                 };
 
-                var api = Config.GetBlockchainApi();
+                var api = Config.GetEtherScanApi();
                 var transactions = new List<EthereumTransaction>();
                 var walletAddresses = new List<WalletAddress>();
 
@@ -161,7 +160,7 @@ namespace Atomex.Wallet.Ethereum
                     .GetAddressesAsync(cancellationToken)
                     .ConfigureAwait(false);
 
-                var api = Config.GetBlockchainApi();
+                var api = Config.GetEtherScanApi();
                 var transactions = new List<EthereumTransaction>();
 
                 foreach (var walletAddress in walletAddresses)
@@ -272,12 +271,12 @@ namespace Atomex.Wallet.Ethereum
 
         private async Task<Result<IEnumerable<EthereumTransaction>>> UpdateAddressAsync(
             WalletAddress walletAddress,
-            IBlockchainApi api = null,
+            EtherScanApi api = null,
             CancellationToken cancellationToken = default)
         {
             var updateTimeStamp = DateTime.UtcNow;
 
-            api ??= Config.GetBlockchainApi();
+            api ??= Config.GetEtherScanApi();
 
             var (balance, getBalanceError) = await api
                 .GetBalanceAsync(
@@ -295,8 +294,32 @@ namespace Atomex.Wallet.Ethereum
                 return getBalanceError;
             }
 
-            var (txs, getTxsError) = await ((IEthereumApi)api)
-                .GetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
+            var fromBlock = 0UL;
+
+            if (walletAddress.LastSuccessfullUpdate != DateTime.MinValue)
+            {
+                var (blockNumber, blockNumberError) = await api
+                    .GetBlockNumberAsync(walletAddress.LastSuccessfullUpdate, ClosestBlock.Before, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (blockNumberError != null)
+                {
+                    Log.Error(
+                        "[EthereumWalletScanner] Error while getting block number with code {@code} and message {@message}",
+                        blockNumberError.Value.Code,
+                        blockNumberError.Value.Message);
+
+                    return blockNumberError;
+                }
+
+                fromBlock = blockNumber;
+            }
+
+            var (txs, getTxsError) = await api
+                .GetTransactionsAsync(
+                    address: walletAddress.Address,
+                    fromBlock: fromBlock,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (getTxsError != null)

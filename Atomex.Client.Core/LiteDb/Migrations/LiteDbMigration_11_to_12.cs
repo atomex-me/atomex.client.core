@@ -27,7 +27,6 @@ namespace Atomex.LiteDb.Migrations
         private const string Temp = "temp";
         private const string Backup = "backup";
         private const string TxIdKey = "TxId";
-        private const string HexKey = "Hex";
         private const string OrderIdKey = "OrderId";
 
         public static LiteDbMigrationResult Migrate(
@@ -43,6 +42,13 @@ namespace Atomex.LiteDb.Migrations
             using (var oldDb = new LiteDatabase(oldConnectionString))
             using (var newDb = new LiteDatabase(newConnectionString, mapper))
             {
+                // create transactions metadata collection
+                const string InitialId = "0";
+
+                var metadata = newDb.GetCollection<TransactionMetadata>("TransactionsMetadata");
+                metadata.Insert(new TransactionMetadata { Id = InitialId });
+                metadata.Delete(InitialId);
+
                 // wallet addresses
                 foreach (var oldAddress in oldDb.GetCollection("Addresses").FindAll())
                 {
@@ -173,7 +179,6 @@ namespace Atomex.LiteDb.Migrations
                     {
                         ["$id"] = txDocument["_id"],
                         ["$ref"] = "TransactionsMetadata",
-                        ["$missing"] = true
                     };
 
                     _ = newDb
