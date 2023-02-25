@@ -11,6 +11,7 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Tzkt;
+using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet;
@@ -275,12 +276,14 @@ namespace Atomex.LiteDb
             string contractAddress,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.GetTokenTransfersAsync(
                 contractAddress,
                 offset,
                 limit,
+                sort,
                 cancellationToken);
         }
 
@@ -288,12 +291,14 @@ namespace Atomex.LiteDb
             string contractAddress,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.GetTokenTransfersWithMetadataAsync(
                 contractAddress,
                 offset,
                 limit,
+                sort,
                 cancellationToken);
         }
 
@@ -400,6 +405,7 @@ namespace Atomex.LiteDb
             string currency,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
             where T : ITransaction
         {
@@ -407,6 +413,7 @@ namespace Atomex.LiteDb
                 currency,
                 offset,
                 limit,
+                sort,
                 cancellationToken);
         }
 
@@ -415,6 +422,7 @@ namespace Atomex.LiteDb
             Type transactionType,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.GetTransactionsAsync(
@@ -422,6 +430,7 @@ namespace Atomex.LiteDb
                 transactionType,
                 offset,
                 limit,
+                sort,
                 cancellationToken);
         }
 
@@ -429,6 +438,7 @@ namespace Atomex.LiteDb
             string currency,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
             where T : ITransaction
             where M : ITransactionMetadata
@@ -437,6 +447,7 @@ namespace Atomex.LiteDb
                 currency,
                 offset,
                 limit,
+                sort,
                 cancellationToken);
         }
 
@@ -446,6 +457,7 @@ namespace Atomex.LiteDb
             Type metadataType,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.GetTransactionsWithMetadataAsync(
@@ -454,6 +466,7 @@ namespace Atomex.LiteDb
                 metadataType,
                 offset,
                 limit,
+                sort,
                 cancellationToken);
         }
 
@@ -507,6 +520,15 @@ namespace Atomex.LiteDb
                 currency,
                 txId,
                 type,
+                cancellationToken);
+        }
+
+        public Task<int> RemoveTransactionsMetadataAsync(
+            string currency,
+            CancellationToken cancellationToken = default)
+        {
+            return _liteDbLocalStorage.RemoveTransactionsMetadataAsync(
+                currency,
                 cancellationToken);
         }
 

@@ -175,9 +175,16 @@ namespace Atomex
                     log: Logger);
             }
 
-            AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(
-                oldClient: previousAtomexClient,
-                newClient: AtomexClient));
+            try
+            {
+                AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(
+                    oldClient: previousAtomexClient,
+                    newClient: AtomexClient));
+            }
+            catch (Exception e)
+            {
+                Logger?.LogError(e, "AtomexClientChanged event handler error");
+            }
 
             if (AtomexClient != null && restart)
                 StartAtomexClient();

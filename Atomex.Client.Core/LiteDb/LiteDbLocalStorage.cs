@@ -19,6 +19,7 @@ using Atomex.Core;
 using Atomex.LiteDb.Migrations;
 using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
+using Network = Atomex.Core.Network;
 
 namespace Atomex.LiteDb
 {
@@ -468,6 +469,7 @@ namespace Atomex.LiteDb
             string contractAddress,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
         {
             try
@@ -476,7 +478,7 @@ namespace Atomex.LiteDb
                     .GetCollection(TezosTokensTransfers)
                     .Query()
                     .Where($"Contract = @0", contractAddress)
-                    .OrderByDescending("CreationTime")
+                    .OrderBy("CreationTime", sort == SortDirection.Desc ? -1 : 1)
                     .Offset(offset)
                     .Limit(limit)
                     .ToList()
@@ -497,6 +499,7 @@ namespace Atomex.LiteDb
             string contractAddress,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
         {
             try
@@ -506,7 +509,7 @@ namespace Atomex.LiteDb
                     .Query()
                     .Include(UserMetadata)
                     .Where($"Contract = @0", contractAddress)
-                    .OrderByDescending("CreationTime")
+                    .OrderBy("CreationTime", sort == SortDirection.Desc ? -1 : 1)
                     .Offset(offset)
                     .Limit(limit)
                     .ToList()
@@ -780,6 +783,7 @@ namespace Atomex.LiteDb
             Type transactionType,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
         {
             try
@@ -788,7 +792,7 @@ namespace Atomex.LiteDb
                     .GetCollection(TransactionCollectionName)
                     .Query()
                     .Where($"Currency = @0", currency)
-                    .OrderByDescending("CreationTime")
+                    .OrderBy("CreationTime", sort == SortDirection.Desc ? -1 : 1)
                     .Offset(offset)
                     .Limit(limit)
                     .ToList()
@@ -809,6 +813,7 @@ namespace Atomex.LiteDb
             string currency,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
             where T : ITransaction
         {
@@ -818,7 +823,7 @@ namespace Atomex.LiteDb
                     .GetCollection(TransactionCollectionName)
                     .Query()
                     .Where($"Currency = @0", currency)
-                    .OrderByDescending("CreationTime")
+                    .OrderBy("CreationTime", sort == SortDirection.Desc ? -1 : 1)
                     .Offset(offset)
                     .Limit(limit)
                     .ToList()
@@ -841,6 +846,7 @@ namespace Atomex.LiteDb
             Type metadataType,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
         {
             try
@@ -850,7 +856,7 @@ namespace Atomex.LiteDb
                     .Query()
                     .Include(UserMetadata)
                     .Where("Currency = @0", currency)
-                    .OrderByDescending("CreationTime")
+                    .OrderBy("CreationTime", sort == SortDirection.Desc ? -1 : 1)
                     .Offset(offset)
                     .Limit(limit)
                     .ToList()
@@ -860,11 +866,6 @@ namespace Atomex.LiteDb
                         var metadata = !d[UserMetadata].AsDocument.ContainsKey("$missing")
                             ? (ITransactionMetadata)_bsonMapper.ToObject(metadataType, d[UserMetadata].AsDocument)
                             : null;
-
-                        if (metadata != null)
-                        {
-                            int a = 1;
-                        }
 
                         return (tx, metadata);
                     })
@@ -884,6 +885,7 @@ namespace Atomex.LiteDb
             string currency,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
             where T : ITransaction
             where M : ITransactionMetadata
@@ -895,7 +897,7 @@ namespace Atomex.LiteDb
                     .Query()
                     .Include(UserMetadata)
                     .Where($"Currency = @0", currency)
-                    .OrderByDescending("CreationTime")
+                    .OrderBy("CreationTime", sort == SortDirection.Desc ? -1 : 1)
                     .Offset(offset)
                     .Limit(limit)
                     .ToList()
@@ -1022,10 +1024,30 @@ namespace Atomex.LiteDb
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error getting transaction type by id");
+                Log.Error(e, "Error getting transaction metadata by id");
             }
 
             return Task.FromResult<ITransactionMetadata>(default);
+        }
+
+        public Task<int> RemoveTransactionsMetadataAsync(
+            string currency,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var deleted = _db
+                    .GetCollection(TransactionMetadataCollectionName)
+                    .DeleteMany("Currency = @0", currency);
+
+                    return Task.FromResult(deleted);
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "Error removing transactions metadata for currency {@currency}", currency);
+            }
+
+            return Task.FromResult(0);
         }
 
         #endregion Transactions

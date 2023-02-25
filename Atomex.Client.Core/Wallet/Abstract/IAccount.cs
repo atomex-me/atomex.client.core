@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
+using Atomex.Common;
 using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract
@@ -148,9 +149,13 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<(ITransaction Tx, ITransactionMetadata Metadata)>> GetTransactionsWithMetadataAsync(
             string currency,
             int offset = 0,
-            int limit = int.MaxValue);
+            int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
+            CancellationToken cancellationToken = default);
         Task<IEnumerable<ITransaction>> GetUnconfirmedTransactionsAsync();
-        Task<bool> RemoveTransactionAsync(string id);
+        Task<ITransactionMetadata> ResolveTransactionMetadataAsync(
+            ITransaction tx,
+            CancellationToken cancellationToken = default);
 
         #endregion Transactions
 

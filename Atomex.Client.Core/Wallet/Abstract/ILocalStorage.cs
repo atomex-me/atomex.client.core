@@ -10,6 +10,7 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Tzkt;
+using Atomex.Common;
 using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract
@@ -98,12 +99,14 @@ namespace Atomex.Wallet.Abstract
             string contractAddress,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default);
 
         Task<IEnumerable<(TezosTokenTransfer Transfer, TransactionMetadata Metadata)>> GetTokenTransfersWithMetadataAsync(
             string contractAddress,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default);
 
         Task<int> UpsertTokenContractsAsync(
@@ -157,6 +160,7 @@ namespace Atomex.Wallet.Abstract
             string currency,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
             where T : ITransaction;
 
@@ -165,6 +169,7 @@ namespace Atomex.Wallet.Abstract
             Type transactionType,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default);
 
         Task<IEnumerable<(ITransaction, ITransactionMetadata)>> GetTransactionsWithMetadataAsync(
@@ -173,12 +178,14 @@ namespace Atomex.Wallet.Abstract
             Type metadataType,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default);
 
         Task<IEnumerable<(T, M)>> GetTransactionsWithMetadataAsync<T, M>(
             string currency,
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
             where T : ITransaction
             where M : ITransactionMetadata;
@@ -207,6 +214,10 @@ namespace Atomex.Wallet.Abstract
             string currency,
             string txId,
             Type type,
+            CancellationToken cancellationToken = default);
+
+        Task<int> RemoveTransactionsMetadataAsync(
+            string currency,
             CancellationToken cancellationToken = default);
 
         #endregion Transactions

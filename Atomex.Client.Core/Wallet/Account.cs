@@ -227,7 +227,9 @@ namespace Atomex.Wallet
         public Task<IEnumerable<(ITransaction Tx, ITransactionMetadata Metadata)>> GetTransactionsWithMetadataAsync(
             string currency,
             int offset = 0,
-            int limit = int.MaxValue)
+            int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
+            CancellationToken cancellationToken = default)
         {
             var config = Currencies.GetByName(currency);
 
@@ -236,7 +238,9 @@ namespace Atomex.Wallet
                 transactionType: config.TransactionType,
                 metadataType: config.TransactionMetadataType,
                 offset: offset,
-                limit: limit);
+                limit: limit,
+                sort: sort,
+                cancellationToken: cancellationToken);
         }
 
         public async Task<IEnumerable<ITransaction>> GetUnconfirmedTransactionsAsync()
@@ -255,8 +259,13 @@ namespace Atomex.Wallet
             return result;
         }
 
-        public Task<bool> RemoveTransactionAsync(string id) =>
-            _localStorage.RemoveTransactionByIdAsync(id);
+        public Task<ITransactionMetadata> ResolveTransactionMetadataAsync(
+            ITransaction tx,
+            CancellationToken cancellationToken = default)
+        {
+            return GetCurrencyAccount(tx.Currency)
+                .ResolveTransactionMetadataAsync(tx, cancellationToken);
+        }
 
         #endregion Transactions
 
