@@ -520,7 +520,7 @@ namespace Atomex.Wallet.BitcoinBased
                 if (localInput != null)
                 {
                     // sent value
-                    outputAmount -= localInput.Value;
+                    outputAmount += localInput.Value;
                 }
                 else if (i.IsRefund())
                 {
@@ -565,13 +565,19 @@ namespace Atomex.Wallet.BitcoinBased
             }
 
             if (outputAmount > 0)
+            {
                 result.Type |= TransactionType.Output;
+                result.Amount -= outputAmount;
+            }
 
             if (inputAmount > 0)
+            {
                 result.Type |= TransactionType.Input;
+                result.Amount += inputAmount;
+            }
 
             if (outputAmount > 0 || isSwapTx)
-                result.Fee -= tx.ResolvedFee;
+                result.Fee += tx.ResolvedFee;
 
             return result;
         }

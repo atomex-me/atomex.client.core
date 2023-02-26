@@ -34,7 +34,7 @@ namespace Atomex.Blockchain.Bitcoin
                 PreviousOutput = new BitcoinTxPoint
                 {
                     Index = i.PrevOut.N,
-                    Hash = i.PrevOut.Hash.ToBytes().ToHexString()
+                    Hash = i.PrevOut.Hash.ToString()
                 },
                 ScriptSig = i.ScriptSig.ToHex(),
             })

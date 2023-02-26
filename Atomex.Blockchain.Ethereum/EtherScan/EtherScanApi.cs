@@ -31,7 +31,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
     public class EtherScanSettings
     {
         public string BaseUri { get; set; } = EtherScanApi.Uri;
-        public string? ApiToken { get; set; }
+        public string? ApiToken { get; set; } = "2R1AIHZZE5NVSHRQUGAHU8EYNYYZ5B2Y37";
         public int RequestLimitDelayMs { get; set; } = 500;
         public List<EtherScanContractSettings>? Contracts { get; set; }
 
@@ -603,7 +603,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 return txReceiptError;
 
             var status = txReceipt?.Status != null
-                ? (int?)int.Parse(txReceipt.Status)
+                ? (int?)new HexBigInteger(txReceipt.Status).Value
                 : null;
 
             tx.Status = status == null
@@ -613,7 +613,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                     : TransactionStatus.Confirmed;
 
             tx.GasUsed = txReceipt?.GasUsed != null
-                ? new HexBigInteger(txReceipt.Status).Value
+                ? new HexBigInteger(txReceipt.GasUsed).Value
                 : 0;
 
             if (tx.BlockHeight != 0)
@@ -731,9 +731,9 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             if (!response.IsSuccessStatusCode)
                 return new Error((int)response.StatusCode, "Error status code received");
 
-            var blockNumberResponse = JsonSerializer.Deserialize<Response<string>>(content);
+            var blockNumberResponse = JsonSerializer.Deserialize<RpcResponse<string>>(content);
 
-            if (blockNumberResponse == null || blockNumberResponse.Message != "OK" || blockNumberResponse.Result == null)
+            if (blockNumberResponse == null || blockNumberResponse.Result == null)
                 return new Error(Errors.GetRecentBlockHeightError, "Invalid response");
 
             return (long)new HexBigInteger(blockNumberResponse.Result).Value;
@@ -871,7 +871,9 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
                 var txsResponse = JsonSerializer.Deserialize<Response<List<TransactionDto>>>(content);
 
-                if (txsResponse == null || txsResponse.Message != "OK" || txsResponse.Result == null)
+                if (txsResponse == null ||
+                    (txsResponse.Message != "OK" && txsResponse.Message != "No transactions found") ||
+                    txsResponse.Result == null)
                     return new Error(Errors.GetTransactionsError, "Invalid response");
 
                 var received = txsResponse.Result.Count();
@@ -883,10 +885,10 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
                     var confirmations = long.Parse(t.Confirmations);
 
-                    var isError = bool.Parse(t.IsError);
+                    var isError = t.IsError != "0";
 
                     var txReceiptStatus = t.TxReceiptStatus != ""
-                        ? bool.Parse(t.TxReceiptStatus)
+                        ? t.TxReceiptStatus != "0"
                         : !isError;
 
                     var status = isError
@@ -977,7 +979,9 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
                 var txsResponse = JsonSerializer.Deserialize<Response<List<InternalTransactionDto>>>(content);
 
-                if (txsResponse == null || txsResponse.Message != "OK" || txsResponse.Result == null)
+                if (txsResponse == null ||
+                    (txsResponse.Message != "OK" && txsResponse.Message != "No transactions found") ||
+                    txsResponse.Result == null)
                     return new Error(Errors.GetTransactionsError, "Invalid response");
 
                 var received = txsResponse.Result.Count();
@@ -1048,7 +1052,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                     GasLimit         = BigInteger.Parse(internalTx.Gas),
                     Data             = internalTx.Input,
                     Type             = internalTx.Type,
-                    IsError          = bool.Parse(internalTx.IsError),
+                    IsError          = internalTx.IsError != "0",
                     ErrorDescription = internalTx.ErrCode
                 };
 

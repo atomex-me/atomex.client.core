@@ -122,7 +122,11 @@ namespace Atomex.LiteDb.Migrations
                 {
                     var output = ToOutput(oldOutput, oldDb);
 
+                    var txNetwork = BitcoinNetworkResolver.ResolveNetwork(output.Currency, network);
+
                     var outputDocument = mapper.ToDocument(output);
+
+                    outputDocument["Address"] = output.DestinationAddress(txNetwork);
 
                     _ = newDb
                         .GetCollection("Outputs")

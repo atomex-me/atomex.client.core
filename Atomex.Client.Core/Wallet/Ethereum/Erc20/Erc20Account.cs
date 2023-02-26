@@ -454,9 +454,16 @@ namespace Atomex.Wallet.Ethereum
             {
                 var ethereumAddress = unspentEthereumAddresses.MaxBy(a => a.Balance);
 
-                return await DivideAddressAsync(
-                    keyPath: ethereumAddress.KeyPath,
-                    keyType: ethereumAddress.KeyType);
+                var result = await DivideAddressAsync(
+                        keyPath: ethereumAddress.KeyPath,
+                        keyType: ethereumAddress.KeyType)
+                    .ConfigureAwait(false);
+
+                _ = await LocalStorage
+                    .UpsertAddressAsync(result, cancellationToken)
+                    .ConfigureAwait(false);
+
+                return result;
             }
 
             var keyType = CurrencyConfig.StandardKey;
@@ -482,58 +489,16 @@ namespace Atomex.Wallet.Ethereum
                     .Replace(KeyPathExtensions.AccountPattern, KeyPathExtensions.DefaultAccount)
                     .Replace(KeyPathExtensions.IndexPattern, KeyPathExtensions.DefaultIndex);
 
-            return await DivideAddressAsync(
+            var freeAddress = await DivideAddressAsync(
                     keyPath: keyPath,
                     keyType: keyType)
                 .ConfigureAwait(false);
-        }
 
-        public async Task<WalletAddress> GetRedeemAddressAsync(
-            CancellationToken cancellationToken = default)
-        {
-            // addresses with tokens
-            var unspentAddresses = await LocalStorage
-                .GetUnspentAddressesAsync(Currency)
+            _ = await LocalStorage
+                .UpsertAddressAsync(freeAddress, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (unspentAddresses.Any())
-                return unspentAddresses.MaxBy(w => w.Balance);
-
-            // addresses with eth
-            var unspentEthereumAddresses = await LocalStorage
-                .GetUnspentAddressesAsync("ETH")
-                .ConfigureAwait(false);
-
-            if (unspentEthereumAddresses.Any())
-            {
-                var ethereumAddress = unspentEthereumAddresses.MaxBy(a => a.Balance);
-
-                return await DivideAddressAsync(
-                    keyPath: ethereumAddress.KeyPath,
-                    keyType: ethereumAddress.KeyType);
-            }
-            
-            var keyType = CurrencyConfig.StandardKey;
-
-            foreach (var chain in new[] { Bip44.Internal, Bip44.External })
-            {
-                var keyPathPattern = Erc20Config
-                    .GetKeyPathPattern(keyType)
-                    .Replace(KeyPathExtensions.ChainPattern, chain.ToString());
-
-                var lastActiveAddress = await LocalStorage
-                    .GetLastActiveWalletAddressAsync(
-                        currency: Currency,
-                        keyPathPattern: keyPathPattern,
-                        keyType: keyType)
-                    .ConfigureAwait(false);
-
-                if (lastActiveAddress != null)
-                    return lastActiveAddress;
-            }
-
-            return await GetFreeExternalAddressAsync(cancellationToken)
-                .ConfigureAwait(false);
+            return freeAddress;
         }
 
         #endregion Addresses

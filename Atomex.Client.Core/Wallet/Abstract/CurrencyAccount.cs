@@ -147,10 +147,16 @@ namespace Atomex.Wallet.Abstract
                     .Replace(KeyPathExtensions.AccountPattern, KeyPathExtensions.DefaultAccount)
                     .Replace(KeyPathExtensions.IndexPattern, KeyPathExtensions.DefaultIndex);
 
-            return await DivideAddressAsync(
+            var freeAddress = await DivideAddressAsync(
                     keyPath: keyPath,
                     keyType: keyType)
                 .ConfigureAwait(false);
+
+            _ = await LocalStorage
+                .UpsertAddressAsync(freeAddress, cancellationToken)
+                .ConfigureAwait(false);
+
+            return freeAddress;
         }
 
         public Task<IEnumerable<WalletAddress>> GetAddressesAsync(

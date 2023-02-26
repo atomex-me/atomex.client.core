@@ -632,7 +632,7 @@ namespace Atomex.Wallet.Tezos
                     if (isFromSelf)
                     {
                         operationAmount -= tx.Amount;
-                        operationFee -= tx.BakerFee + tx.AllocationFee + tx.StorageFee;
+                        operationFee += tx.BakerFee + tx.AllocationFee + tx.StorageFee;
                     }
 
                     if (tx.Parameter != null)

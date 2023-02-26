@@ -18,7 +18,6 @@ using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallets.Bips;
-using Atomex.Blockchain.Tezos;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -504,7 +503,7 @@ namespace Atomex.Wallet.Ethereum
             result.Amount = metadata.Amount;
             result.Fee = metadata.Fee;
 
-            if (tx.InternalTransactions.Any())
+            if (tx.InternalTransactions != null && tx.InternalTransactions.Any())
             {
                 foreach (var internalTx in tx.InternalTransactions)
                 {
@@ -544,7 +543,7 @@ namespace Atomex.Wallet.Ethereum
             {
                 result.Type |= TransactionType.Output;
                 result.Amount -= tx.Value;
-                result.Fee -= tx.GasUsed * gasPrice;
+                result.Fee += tx.GasUsed * gasPrice;
             }
 
             var toAddress = await GetAddressAsync(tx.To, cancellationToken)
