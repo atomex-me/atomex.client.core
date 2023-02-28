@@ -390,7 +390,7 @@ namespace Atomex.Wallet.Tezos
                             // save token local address to changed addresses list
                             changedAddresses.Add(tokenLocalAddress);
                         }
-
+                        
                         // remove token balance from map to track new tokens, than are not in the local database 
                         tokenBalanceMap.Remove(uniqueTokenId);
                     }
@@ -404,6 +404,23 @@ namespace Atomex.Wallet.Tezos
                             // save token local address to changed addresses list
                             changedAddresses.Add(tokenLocalAddress);
                         }
+                    }
+                    
+                    // metadata may change over time
+                    if (tokenLocalAddress.TokenBalance.ArtifactUri  != tb.ArtifactUri ||
+                        tokenLocalAddress.TokenBalance.DisplayUri   != tb.DisplayUri ||
+                        tokenLocalAddress.TokenBalance.ThumbnailUri != tb.ThumbnailUri ||
+                        tokenLocalAddress.TokenBalance.Name         != tb.Name ||
+                        tokenLocalAddress.TokenBalance.Description  != tb.Description)
+                    {
+                        tokenLocalAddress.TokenBalance.ArtifactUri  = tb.ArtifactUri;
+                        tokenLocalAddress.TokenBalance.DisplayUri   = tb.DisplayUri;
+                        tokenLocalAddress.TokenBalance.ThumbnailUri = tb.ThumbnailUri;
+                        tokenLocalAddress.TokenBalance.Name         = tb.Name;
+                        tokenLocalAddress.TokenBalance.Description  = tb.Description;
+                            
+                        // save token local address to changed addresses list
+                        changedAddresses.Add(tokenLocalAddress);
                     }
                 }
 
