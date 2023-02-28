@@ -49,6 +49,11 @@ namespace Atomex.LiteDb
             _liteDbLocalStorage.ChangePassword(newPassword);
         }
 
+        public void Close()
+        {
+            _liteDbLocalStorage.Close();
+        }
+
         #region Addresses
 
         public async Task<bool> UpsertAddressAsync(

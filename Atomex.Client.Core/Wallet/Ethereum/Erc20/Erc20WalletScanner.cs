@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 
 using Serilog;
 
+using Atomex.Blockchain;
 using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Blockchain.Ethereum.EtherScan;
 using Atomex.Common;
@@ -56,7 +57,7 @@ namespace Atomex.Wallet.Ethereum
                 var walletAddresses = ethAddresses.Select(w => new WalletAddress
                 {
                     Address               = w.Address,
-                    Currency              = _account.Currency,
+                    Currency              = "ERC20", //_account.Currency,
                     HasActivity           = false,
                     KeyIndex              = w.KeyIndex,
                     KeyType               = w.KeyType,
@@ -64,7 +65,18 @@ namespace Atomex.Wallet.Ethereum
                     Balance               = 0,
                     UnconfirmedIncome     = 0,
                     UnconfirmedOutcome    = 0,
-                    TokenBalance          = null
+                    TokenBalance          = new TokenBalance
+                    {
+                        Address       = w.Address,
+                        Standard      = "ERC20",
+                        Contract      = Erc20Config.Erc20ContractAddress,
+                        ContractAlias = Erc20Config.Name,
+                        Decimals      = Erc20Config.Decimals,
+                        Name          = Erc20Config.Name,
+                        Description   = Erc20Config.Description,
+                        Symbol        = Erc20Config.Name,
+                        Balance       = "0"
+                    }
                 });
 
                 var api = GetErc20Api(); 
@@ -203,6 +215,7 @@ namespace Atomex.Wallet.Ethereum
 
                 var walletAddress = await _account
                     .LocalStorage
+                    //.GetTokenAddressAsync("ERC20", Erc20Config.)
                     .GetWalletAddressAsync(_account.Currency, address)
                     .ConfigureAwait(false);
 
@@ -273,7 +286,7 @@ namespace Atomex.Wallet.Ethereum
             var (balance, error) = await api
                 .GetErc20BalanceAsync(
                     address: walletAddress.Address,
-                    token: Erc20Config.ERC20ContractAddress,
+                    tokenContractAddress: Erc20Config.Erc20ContractAddress,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -311,7 +324,7 @@ namespace Atomex.Wallet.Ethereum
             var (txs, txsError) = await api
                 .GetErc20TransactionsAsync(
                     address: walletAddress.Address,
-                    tokenContractAddress: Erc20Config.ERC20ContractAddress,
+                    tokenContractAddress: Erc20Config.Erc20ContractAddress,
                     fromBlock: fromBlock,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

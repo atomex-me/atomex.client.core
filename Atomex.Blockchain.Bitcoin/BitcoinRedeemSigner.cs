@@ -18,7 +18,7 @@ namespace Atomex.Blockchain.Bitcoin
             byte[] publicKey,
             Script knownRedeemScript)
         {
-            return BitcoinSwapTemplate.GenerateP2PkhSwapRedeemForP2Sh(
+            return BitcoinSwapTemplate.CreateP2PkhSwapRedeemForP2Sh(
                 sig: signature,
                 pubKey: publicKey,
                 secret: _secret,

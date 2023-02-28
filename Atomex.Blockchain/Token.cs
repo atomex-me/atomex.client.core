@@ -28,6 +28,8 @@ namespace Atomex.Blockchain
         {
             "fa1.2" => "FA12",
             "fa2" => "FA2",
+            "erc20" => "ERC20",
+            "erc721" => "ERC721",
             _ => Standard
         };
     }

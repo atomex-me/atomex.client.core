@@ -136,6 +136,7 @@ namespace Atomex
 
                 // lock account's wallet
                 Account?.Lock();
+                LocalStorage?.Close();
 
                 previousAtomexClient.OrderUpdated    -= AtomexClient_OrderUpdated;
                 previousAtomexClient.SwapUpdated     -= AtomexClient_SwapReceived;

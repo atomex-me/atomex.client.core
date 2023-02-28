@@ -133,7 +133,7 @@ namespace Atomex.Wallet.Ethereum
                 TransactionType      = EthereumHelper.Eip1559TransactionType
             };
 
-            txInput = message.CreateTransactionInput(erc20Config.ERC20ContractAddress);
+            txInput = message.CreateTransactionInput(erc20Config.Erc20ContractAddress);
 
             var txRequest = new EthereumTransactionRequest(txInput, EthConfig.ChainId);
 

@@ -5,10 +5,10 @@ using Atomex.Blockchain;
 
 namespace Atomex.Core
 {
-    public enum WalletAddressUsageType
+    public enum WalletAddressType
     {
-        InUse,
-        NoLongerUsed,
+        Active,
+        Inactive,
         SingleUse
     }
 
@@ -26,15 +26,15 @@ namespace Atomex.Core
         public bool HasActivity { get; set; }
         public TokenBalance TokenBalance { get; set; }
         public DateTime LastSuccessfullUpdate { get; set; }
-        public WalletAddressUsageType UsageType { get; set; }
+        public WalletAddressType Type { get; set; }
 
         public BigInteger AvailableBalance() => Currencies.IsBitcoinBased(Currency)
             ? Balance + UnconfirmedIncome
             : Balance;
 
         public bool IsDisabled => 
-            UsageType == WalletAddressUsageType.NoLongerUsed ||
-            (UsageType == WalletAddressUsageType.SingleUse && HasActivity && Balance == 0 && UnconfirmedIncome == 0 && UnconfirmedOutcome == 0);
+            Type == WalletAddressType.Inactive ||
+            (Type == WalletAddressType.SingleUse && HasActivity && Balance == 0 && UnconfirmedIncome == 0 && UnconfirmedOutcome == 0);
 
         public static string GetUniqueId(string address, string currency, string tokenContract = null, BigInteger? tokenId = null) => 
             tokenContract == null && tokenId == null

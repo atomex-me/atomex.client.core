@@ -58,9 +58,9 @@ namespace Atomex.LiteDb.Migrations
                     var keyIndex   = (uint)oldAddress["KeyIndex"]["Index"].AsInt32;
                     var keyType    = oldAddress["KeyType"].AsInt32;
 
-                    var usageType = currency == "BTC" || currency == "LTC"
-                        ? WalletAddressUsageType.SingleUse
-                        : WalletAddressUsageType.InUse;
+                    var type = currency == "BTC" || currency == "LTC"
+                        ? WalletAddressType.SingleUse
+                        : WalletAddressType.Active;
 
                     var decimals = currency switch
                     {
@@ -106,7 +106,7 @@ namespace Atomex.LiteDb.Migrations
                         KeyPath               = keyPath,
                         KeyType               = keyType,
                         LastSuccessfullUpdate = DateTime.MinValue,
-                        UsageType             = usageType,
+                        Type                  = type,
                         TokenBalance          = null
                     };
 
@@ -171,7 +171,7 @@ namespace Atomex.LiteDb.Migrations
                     var tx = new BitcoinTransaction(
                         currency: currency,
                         tx: Transaction.Parse(oldTx["Tx"].AsString, txNetwork),
-                        creationTime: creationTime,
+                        creationTime: creationTime ?? blockTime,
                         blockTime: blockTime,
                         blockHeight: blockHeight,
                         confirmations: confirmations,

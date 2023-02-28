@@ -37,7 +37,7 @@ namespace Atomex.Swaps.BitcoinBased
                 .GetFeeRateAsync(cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var lockScript = BitcoinSwapTemplate.GenerateHtlcP2PkhSwapPayment(
+            var lockScript = BitcoinSwapTemplate.CreateHtlcP2PkhSwapPayment(
                 aliceRefundAddress: refundAddress,
                 bobAddress: toAddress,
                 lockTimeStamp: lockTime.ToUnixTimeSeconds(),

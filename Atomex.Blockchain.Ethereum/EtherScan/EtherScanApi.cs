@@ -191,13 +191,13 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
         public async Task<Result<BigInteger>> GetErc20BalanceAsync(
             string address,
-            string token,
+            string tokenContractAddress,
             CancellationToken cancellationToken = default)
         {
             var requestUri = "api?" +
                 "module=account" +
                 "&action=tokenbalance" +
-                $"&contractaddress={Settings.GetTokenContract(token)}" +
+                $"&contractaddress={tokenContractAddress}" +
                 $"&address={address}" +
                 $"&tag=latest" +
                 $"&apikey={Settings.ApiToken}";
@@ -278,7 +278,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 var requestUri = "api?" +
                     "module=account" +
                     "&action=tokentx" +
-                    $"&contractaddress={Settings.GetTokenContract(tokenContractAddress)}" +
+                    $"&contractaddress={tokenContractAddress}" +
                     $"&address={address}" +
                     $"&startblock={fromBlock}" +
                     $"&endblock={toBlockStr}" +
@@ -333,7 +333,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                         erc20tx = new Erc20Transaction
                         {
                             Id            = hash,
-                            Currency      = tokenContractAddress,
+                            Currency      = "ERC20",
+                            Contract      = tokenContractAddress,
                             Status        = confirmations > 0
                                 ? TransactionStatus.Confirmed
                                 : TransactionStatus.Pending,
@@ -627,6 +628,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 tx.BlockTime = DateTimeOffset
                     .FromUnixTimeSeconds(blockTime);
 
+                tx.CreationTime = tx.BlockTime;
+
                 var (recentBlockHeight, recentBlockHeightError) = await GetRecentBlockHeightAsync(cancellationToken)
                     .ConfigureAwait(false);
 
@@ -691,7 +694,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 BlockHeight          = txResponse.Result.BlockNumber != null ? (long)new HexBigInteger(txResponse.Result.BlockNumber).Value : 0,
                 From                 = txResponse.Result.From,
                 To                   = txResponse.Result.To,
-                Value               = new HexBigInteger(txResponse.Result.Value),
+                Value                = new HexBigInteger(txResponse.Result.Value),
                 Nonce                = txResponse.Result.Nonce != null ? new HexBigInteger(txResponse.Result.Nonce).Value : 0,
                 GasPrice             = txResponse.Result.GasPrice != null ? new HexBigInteger(txResponse.Result.GasPrice).Value : 0,
                 MaxFeePerGas         = txResponse.Result.MaxFeePerGas != null ? new HexBigInteger(txResponse.Result.MaxFeePerGas).Value : 0,

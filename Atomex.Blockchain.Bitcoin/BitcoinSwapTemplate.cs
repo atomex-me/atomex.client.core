@@ -9,7 +9,7 @@ namespace Atomex.Blockchain.Bitcoin
     public static class BitcoinSwapTemplate
     {
         /// <summary>
-        /// Generate atomic swap payment script to P2PKH <paramref name="bobAddress"/> with HTLC refund and secret size check
+        /// Create atomic swap payment script to P2PKH <paramref name="bobAddress"/> with HTLC refund and secret size check
         /// </summary>
         /// <param name="aliceRefundAddress">Alice refund address</param>
         /// <param name="bobAddress">Bob target address</param>
@@ -18,13 +18,13 @@ namespace Atomex.Blockchain.Bitcoin
         /// <param name="secretSize">Secret size in bytes</param>
         /// <param name="expectedNetwork">Expected network necessary to get the correct hash addresses</param>
         /// <returns>Atomic swap payment script</returns>
-        public static Script GenerateHtlcP2PkhSwapPayment(
+        public static Script CreateHtlcP2PkhSwapPayment(
             string aliceRefundAddress,
             string bobAddress,
             long lockTimeStamp,
             byte[] secretHash,
             int secretSize,
-            Network expectedNetwork = null)
+            Network? expectedNetwork = null)
         {
             // OP_IF
             //    <lockTimeStamp> OP_CHECKLOCKTIMEVERIFY OP_DROP OP_DUP OP_HASH160 <aliceRefundAddress> OP_EQUALVERIFY CHECKSIG
@@ -77,13 +77,13 @@ namespace Atomex.Blockchain.Bitcoin
         }
 
         /// <summary>
-        /// Generate atomic swap refund script for swap scheme with HTLC and P2SH payment script
+        /// Create atomic swap refund script for swap scheme with HTLC and P2SH payment script
         /// </summary>
         /// <param name="aliceRefundSig">Alice signature</param>
         /// <param name="aliceRefundPubKey">Alice refund public key</param>
         /// <param name="redeemScript">Redeem script</param>
         /// <returns>Atomic swap refund script</returns>
-        public static Script GenerateHtlcSwapRefundForP2Sh(
+        public static Script CreateHtlcSwapRefundForP2Sh(
             byte[] aliceRefundSig,
             byte[] aliceRefundPubKey,
             byte[] redeemScript)
@@ -106,14 +106,14 @@ namespace Atomex.Blockchain.Bitcoin
         }
 
         /// <summary>
-        /// Generate atomic swap P2PKH redeem script with secret size control for P2Sh swap payment
+        /// Create atomic swap P2PKH redeem script with secret size control for P2Sh swap payment
         /// </summary>
         /// <param name="sig">Bob signature</param>
         /// <param name="pubKey">Bob public key</param>
         /// <param name="secret">Secret</param>
         /// <param name="redeemScript">Redeem script from swap payment tx</param>
         /// <returns>Atomic swap redeem script</returns>
-        public static Script GenerateP2PkhSwapRedeemForP2Sh(
+        public static Script CreateP2PkhSwapRedeemForP2Sh(
             byte[] sig,
             byte[] pubKey,
             byte[] secret,
@@ -149,7 +149,9 @@ namespace Atomex.Blockchain.Bitcoin
         {
             try
             {
-                var ops = script.ToOps().ToList();
+                var ops = script
+                    .ToOps()
+                    .ToList();
 
                 if (ops.Count != 16)
                     return false;
@@ -182,7 +184,9 @@ namespace Atomex.Blockchain.Bitcoin
         {
             try
             {
-                var ops = script.ToOps().ToList();
+                var ops = script
+                    .ToOps()
+                    .ToList();
 
                 if (ops.Count != 22)
                     return false;
@@ -223,7 +227,9 @@ namespace Atomex.Blockchain.Bitcoin
         /// <returns>True if <paramref name="script"/> is a P2PKH atomic swap redeem script, else false</returns>
         public static bool IsP2PkhSwapRedeem(Script script)
         {
-            var ops = script.ToOps().ToList();
+            var ops = script
+                .ToOps()
+                .ToList();
 
             if (ops.Count < 4)
                 return false;
@@ -238,7 +244,9 @@ namespace Atomex.Blockchain.Bitcoin
         /// <returns></returns>
         public static bool IsP2PkhScriptSwapRedeem(Script script)
         {
-            var ops = script.ToOps().ToList();
+            var ops = script
+                .ToOps()
+                .ToList();
 
             if (ops.Count < 5)
                 return false;
@@ -253,12 +261,14 @@ namespace Atomex.Blockchain.Bitcoin
         /// <returns>True if <paramref name="script"/> is a P2PKH atomic swap refund script, else false</returns>
         public static bool IsP2PkhSwapRefund(Script script)
         {
-            var ops = script.ToOps().ToList();
+            var ops = script
+                .ToOps()
+                .ToList();
 
             if (ops.Count < 3)
                 return false;
 
-            return ops.Last().Code != OpcodeType.OP_FALSE;
+            return ops.Last().Code == OpcodeType.OP_TRUE;
         }
 
         /// <summary>
@@ -268,12 +278,14 @@ namespace Atomex.Blockchain.Bitcoin
         /// <returns>True if <paramref name="script"/> is P2Sh atomic swap refund script, else false</returns>
         public static bool IsP2PkhScriptSwapRefund(Script script)
         {
-            var ops = script.ToOps().ToList();
+            var ops = script
+                .ToOps()
+                .ToList();
 
             if (ops.Count < 4)
                 return false;
 
-            return ops[^2].Code != OpcodeType.OP_FALSE;
+            return ops[^2].Code == OpcodeType.OP_TRUE;
         }
 
         public static IEnumerable<byte[]> ExtractAllPushData(Script script) => script

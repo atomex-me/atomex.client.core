@@ -67,14 +67,16 @@ namespace Atomex
         {
             try
             {
-                BitcoinAddress.Create(address, Network);
+                var addr = BitcoinAddress.Create(address, Network);
+
+                return addr != null;
             }
-            catch (FormatException)
+            catch
             {
-                return false;
+                // format error
             }
 
-            return true;
+            return false;
         }
 
         public override string GetKeyPathPattern(int keyType) =>
@@ -229,7 +231,7 @@ namespace Atomex
             var coins = unspentOutputs
                 .Select(o => o.Coin);
 
-            var swap = BitcoinSwapTemplate.GenerateHtlcP2PkhSwapPayment(
+            var swap = BitcoinSwapTemplate.CreateHtlcP2PkhSwapPayment(
                 aliceRefundAddress: aliceRefundAddress,
                 bobAddress: bobAddress,
                 lockTimeStamp: lockTime.ToUnixTimeSeconds(),

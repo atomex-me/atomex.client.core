@@ -577,7 +577,10 @@ namespace Atomex.Wallet.BitcoinBased
             }
 
             if (outputAmount > 0 || isSwapTx)
+            {
                 result.Fee += tx.ResolvedFee;
+                result.Amount += tx.ResolvedFee; // net amount without fees
+            }
 
             return result;
         }

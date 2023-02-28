@@ -91,8 +91,8 @@
       "InitiateGasLimit": 300000,
       "InitiateWithRewardGasLimit": 310000,
       "RefundGasLimit": 130000,
-      "ERC20Contract": "0xdac17f958d2ee523a2206206994597c13d831ec7",
-      "ERC20ContractBlockNumber": 4634748,
+      "Erc20Contract": "0xdac17f958d2ee523a2206206994597c13d831ec7",
+      "Erc20ContractBlockNumber": 4634748,
       "FeeCurrencySymbol": "ETH/USDT"
     },
     "TBTC": {
@@ -101,8 +101,8 @@
       "DisplayedName": "tBTC",
       "Description": "tBTC",
       "Decimals": 18,
-      "ERC20Contract": "0x8dAEBADE922dF735c38C80C7eBD708Af50815fAa",
-      "ERC20ContractBlockNumber": 10880949,
+      "Erc20Contract": "0x8dAEBADE922dF735c38C80C7eBD708Af50815fAa",
+      "Erc20ContractBlockNumber": 10880949,
       "FeeCurrencySymbol": "ETH/TBTC"
     },
     "WBTC": {
@@ -111,8 +111,8 @@
       "DisplayedName": "wBTC",
       "Description": "wBTC",
       "Decimals": 8,
-      "ERC20Contract": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
-      "ERC20ContractBlockNumber": 6766284,
+      "Erc20Contract": "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+      "Erc20ContractBlockNumber": 6766284,
       "FeeCurrencySymbol": "ETH/WBTC"
     },
     "LTC": {
@@ -389,8 +389,8 @@
       "InitiateGasLimit": 300000,
       "InitiateWithRewardGasLimit": 310000,
       "RefundGasLimit": 130000,
-      "ERC20Contract": "0x2b33e8490a4e87e4ab313ab6785d06fc54cf2e98",
-      "ERC20ContractBlockNumber": 6981687,
+      "Erc20Contract": "0x2b33e8490a4e87e4ab313ab6785d06fc54cf2e98",
+      "Erc20ContractBlockNumber": 6981687,
       "FeeCurrencySymbol": "ETH/USDT",
       "SwapContract": "0x9c4f93877f06c6a758e1b9f2ab64cb64e8c14917",
       "SwapContractBlockNumber": 6982881
@@ -401,8 +401,8 @@
       "DisplayedName": "tBTC",
       "Description": "tBTC",
       "Decimals": 18,
-      "ERC20Contract": "0x4fb4b4812b103b759a491fec6a8feafb6784ed8d",
-      "ERC20ContractBlockNumber": 6982735,
+      "Erc20Contract": "0x4fb4b4812b103b759a491fec6a8feafb6784ed8d",
+      "Erc20ContractBlockNumber": 6982735,
       "FeeCurrencySymbol": "ETH/TBTC",
       "SwapContract": "0xbe5d1a5dd1a32297952ac52e0c32b0cf5e40a53e",
       "SwapContractBlockNumber": 6982899
@@ -413,8 +413,8 @@
       "DisplayedName": "wBTC",
       "Description": "wBTC",
       "Decimals": 8,
-      "ERC20Contract": "0x906cd19c4a8d745eedfa3fcbfe7766e6f8579e9f",
-      "ERC20ContractBlockNumber": 6981733,
+      "Erc20Contract": "0x906cd19c4a8d745eedfa3fcbfe7766e6f8579e9f",
+      "Erc20ContractBlockNumber": 6981733,
       "FeeCurrencySymbol": "ETH/WBTC",
       "SwapContract": "0x0430b74ed0756ed47e440504b221fba3ef91a2b2",
       "SwapContractBlockNumber": 6982894

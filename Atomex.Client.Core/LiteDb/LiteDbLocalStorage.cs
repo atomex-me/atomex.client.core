@@ -62,7 +62,7 @@ namespace Atomex.LiteDb
         private readonly string _pathToDb;
         private string _sessionPassword;
         private readonly BsonMapper _bsonMapper;
-        private readonly LiteDatabase _db;
+        private LiteDatabase _db;
 
         public LiteDbLocalStorage(
             string pathToDb,
@@ -99,6 +99,12 @@ namespace Atomex.LiteDb
             _db.Rebuild(new LiteDB.Engine.RebuildOptions { Password = newSessionPassword });
 
             _sessionPassword = newSessionPassword;
+        }
+
+        public void Close()
+        {
+            _db?.Dispose();
+            _db = null;
         }
 
         #region Addresses

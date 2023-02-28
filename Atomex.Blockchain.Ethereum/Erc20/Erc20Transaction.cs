@@ -18,6 +18,7 @@ namespace Atomex.Blockchain.Ethereum.Erc20
         public string UniqueId => $"{Id}:{Currency}";
         public string Id { get; set; }
         public string Currency { get; set; }
+        public string Contract { get; set; }
         public TransactionStatus Status { get; set; }
         public DateTimeOffset? CreationTime { get; set; }
         public DateTimeOffset? BlockTime { get; set; }

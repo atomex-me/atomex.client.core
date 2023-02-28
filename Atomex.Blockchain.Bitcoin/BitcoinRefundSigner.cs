@@ -11,7 +11,7 @@ namespace Atomex.Blockchain.Bitcoin
             byte[] publicKey,
             Script knownRedeemScript)
         {
-            return BitcoinSwapTemplate.GenerateHtlcSwapRefundForP2Sh(
+            return BitcoinSwapTemplate.CreateHtlcSwapRefundForP2Sh(
                 aliceRefundSig: signature,
                 aliceRefundPubKey: publicKey,
                 redeemScript: knownRedeemScript.ToBytes());

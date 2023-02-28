@@ -48,7 +48,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                 var redeemScript = swap.RefundAddress == null && swap.RedeemScript != null
                     ? new Script(Convert.FromBase64String(swap.RedeemScript))
                     : BitcoinSwapTemplate
-                        .GenerateHtlcP2PkhSwapPayment(
+                        .CreateHtlcP2PkhSwapPayment(
                             aliceRefundAddress: swap.RefundAddress,
                             bobAddress: swap.PartyAddress,
                             lockTimeStamp: refundTimeUtcInSec,

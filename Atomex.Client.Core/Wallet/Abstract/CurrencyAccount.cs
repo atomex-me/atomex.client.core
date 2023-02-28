@@ -163,7 +163,7 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default)
         {
             return LocalStorage.GetAddressesAsync(
-                currency:Currency,
+                currency: Currency,
                 cancellationToken: cancellationToken);
         }
 

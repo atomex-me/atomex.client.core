@@ -27,6 +27,7 @@ namespace Atomex.Wallet.Abstract
         public event EventHandler<TransactionsChangedEventArgs> TransactionsChanged;
 
         void ChangePassword(SecureString newPassword);
+        void Close();
 
         #region Addresses
 

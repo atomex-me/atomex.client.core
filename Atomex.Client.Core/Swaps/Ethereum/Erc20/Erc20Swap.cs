@@ -868,7 +868,7 @@ namespace Atomex.Swaps.Ethereum
             var initMessage = new Erc20InitiateMessage
             {
                 HashedSecret         = swap.SecretHash,
-                ERC20Contract        = erc20Config.ERC20ContractAddress,
+                ERC20Contract        = erc20Config.Erc20ContractAddress,
                 Participant          = swap.PartyAddress,
                 RefundTimestamp      = refundTimeStampUtcInSec,
                 Countdown            = lockTimeInSeconds,
@@ -929,7 +929,7 @@ namespace Atomex.Swaps.Ethereum
             var (allowance, allowanceError) = await Erc20Config
                 .GetErc20Api()
                 .GetErc20AllowanceAsync(
-                    tokenAddress: erc20.ERC20ContractAddress,
+                    tokenAddress: erc20.Erc20ContractAddress,
                     allowanceMessage: allowanceMessage,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -1011,7 +1011,7 @@ namespace Atomex.Swaps.Ethereum
             message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.ApproveGasLimit))
                 .ConfigureAwait(false);
 
-            var txInput = message.CreateTransactionInput(erc20Config.ERC20ContractAddress);
+            var txInput = message.CreateTransactionInput(erc20Config.Erc20ContractAddress);
 
             return new EthereumTransactionRequest(txInput, chainId: EthConfig.ChainId);
         }
