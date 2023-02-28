@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Blockchain;
+using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Blockchain.Ethereum.EtherScan;
 using Atomex.Common;
@@ -57,7 +58,7 @@ namespace Atomex.Wallet.Ethereum
                 var walletAddresses = ethAddresses.Select(w => new WalletAddress
                 {
                     Address               = w.Address,
-                    Currency              = "ERC20", //_account.Currency,
+                    Currency              = EthereumHelper.Erc20, //_account.Currency,
                     HasActivity           = false,
                     KeyIndex              = w.KeyIndex,
                     KeyType               = w.KeyType,
@@ -68,8 +69,8 @@ namespace Atomex.Wallet.Ethereum
                     TokenBalance          = new TokenBalance
                     {
                         Address       = w.Address,
-                        Standard      = "ERC20",
-                        Contract      = Erc20Config.Erc20ContractAddress,
+                        Standard      = EthereumHelper.Erc20,
+                        Contract      = Erc20Config.TokenContractAddress,
                         ContractAlias = Erc20Config.Name,
                         Decimals      = Erc20Config.Decimals,
                         Name          = Erc20Config.Name,
@@ -105,6 +106,7 @@ namespace Atomex.Wallet.Ethereum
 
                     var _ = await _account
                         .LocalStorage
+                        //.UpsertTokenTransfersAsync(
                         .UpsertTransactionsAsync(
                             txs: uniqueTxs,
                             notifyIfNewOrChanged: true,
@@ -116,7 +118,7 @@ namespace Atomex.Wallet.Ethereum
                 {
                     var _ = await _account
                         .LocalStorage
-                        .UpsertAddressesAsync(walletAddresses)
+                        .UpsertTokenAddressesAsync(walletAddresses, cancellationToken)
                         .ConfigureAwait(false);
                 }
             }
@@ -146,7 +148,9 @@ namespace Atomex.Wallet.Ethereum
                 var updateTimeStamp = DateTime.UtcNow;
 
                 var walletAddresses = await _account
-                    .GetAddressesAsync(cancellationToken)
+                    .LocalStorage
+                    .GetTokenAddressesByContractAsync(Erc20Config.TokenContractAddress, cancellationToken)
+                    //.GetAddressesAsync(cancellationToken)
                     .ConfigureAwait(false);
 
                 // todo: if skipUsed == true => skip "disabled" wallets
@@ -191,7 +195,8 @@ namespace Atomex.Wallet.Ethereum
                 {
                     var _ = await _account
                         .LocalStorage
-                        .UpsertAddressesAsync(walletAddresses)
+                        .UpsertTokenAddressesAsync(walletAddresses, cancellationToken)
+                        //.UpsertAddressesAsync(walletAddresses)
                         .ConfigureAwait(false);
                 }
             }
@@ -215,8 +220,12 @@ namespace Atomex.Wallet.Ethereum
 
                 var walletAddress = await _account
                     .LocalStorage
-                    //.GetTokenAddressAsync("ERC20", Erc20Config.)
-                    .GetWalletAddressAsync(_account.Currency, address)
+                    .GetTokenAddressAsync(
+                        currency: EthereumHelper.Erc20,
+                        tokenContract: Erc20Config.TokenContractAddress,
+                        tokenId: 0,
+                        address: address,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (walletAddress == null)
@@ -261,7 +270,8 @@ namespace Atomex.Wallet.Ethereum
 
                 var _ = await _account
                     .LocalStorage
-                    .UpsertAddressAsync(walletAddress)
+                    .UpsertTokenAddressesAsync(new WalletAddress[] { walletAddress }, cancellationToken)
+                    //.UpsertAddressAsync(walletAddress)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -286,7 +296,7 @@ namespace Atomex.Wallet.Ethereum
             var (balance, error) = await api
                 .GetErc20BalanceAsync(
                     address: walletAddress.Address,
-                    tokenContractAddress: Erc20Config.Erc20ContractAddress,
+                    tokenContractAddress: Erc20Config.TokenContractAddress,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -324,7 +334,7 @@ namespace Atomex.Wallet.Ethereum
             var (txs, txsError) = await api
                 .GetErc20TransactionsAsync(
                     address: walletAddress.Address,
-                    tokenContractAddress: Erc20Config.Erc20ContractAddress,
+                    tokenContractAddress: Erc20Config.TokenContractAddress,
                     fromBlock: fromBlock,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -340,6 +350,7 @@ namespace Atomex.Wallet.Ethereum
             walletAddress.UnconfirmedIncome = 0;
             walletAddress.UnconfirmedOutcome = 0;
             walletAddress.HasActivity = txs.Transactions.Any();
+            walletAddress.TokenBalance.Balance = balance.ToString();
             walletAddress.LastSuccessfullUpdate = updateTimeStamp;
 
             return new Result<IEnumerable<Erc20Transaction>> { Value = txs.Transactions };

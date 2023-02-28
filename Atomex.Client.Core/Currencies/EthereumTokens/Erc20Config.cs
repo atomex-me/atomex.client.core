@@ -17,8 +17,8 @@ namespace Atomex.EthereumTokens
     {
         public long TransferGasLimit { get; private set; }
         public long ApproveGasLimit { get; private set; }
-        public string Erc20ContractAddress { get; private set; }
-        public ulong Erc20ContractBlockNumber { get; private set; }
+        public string TokenContractAddress { get; private set; }
+        public ulong TokenContractBlockNumber { get; private set; }
 
         public Erc20Config()
         {
@@ -74,8 +74,8 @@ namespace Atomex.EthereumTokens
                 : 650m;
 
             ChainId = int.Parse(configuration[nameof(ChainId)], CultureInfo.InvariantCulture);
-            Erc20ContractAddress = configuration["Erc20Contract"];
-            Erc20ContractBlockNumber = ulong.Parse(configuration[nameof(Erc20ContractBlockNumber)], CultureInfo.InvariantCulture);
+            TokenContractAddress = configuration["TokenContract"];
+            TokenContractBlockNumber = ulong.Parse(configuration[nameof(TokenContractBlockNumber)], CultureInfo.InvariantCulture);
 
             SwapContractAddress = configuration["SwapContract"];
             SwapContractBlockNumber = ulong.Parse(configuration[nameof(SwapContractBlockNumber)], CultureInfo.InvariantCulture);

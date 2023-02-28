@@ -24,9 +24,13 @@ using Error = Atomex.Common.Error;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class Erc20Account : CurrencyAccount, IEstimatable
+    public class Erc20Account : ICurrencyAccount, IEstimatable
     {
         protected readonly EthereumAccount _ethereumAccount;
+        public string Currency { get; }
+        public ICurrencies Currencies { get; }
+        public IHdWallet Wallet { get; }
+        public ILocalStorage LocalStorage { get; }
 
         public Erc20Account(
             string currency,
@@ -34,8 +38,12 @@ namespace Atomex.Wallet.Ethereum
             IHdWallet wallet,
             ILocalStorage localStorage,
             EthereumAccount ethereumAccount)
-                : base(currency, currencies, wallet, localStorage)
         {
+            Currency     = currency ?? throw new ArgumentNullException(nameof(currency));
+            Currencies   = currencies ?? throw new ArgumentNullException(nameof(currencies));
+            Wallet       = wallet ?? throw new ArgumentNullException(nameof(wallet));
+            LocalStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
+
             _ethereumAccount = ethereumAccount ?? throw new ArgumentNullException(nameof(ethereumAccount));
         }
 
@@ -133,7 +141,7 @@ namespace Atomex.Wallet.Ethereum
                 TransactionType      = EthereumHelper.Eip1559TransactionType
             };
 
-            txInput = message.CreateTransactionInput(erc20Config.Erc20ContractAddress);
+            txInput = message.CreateTransactionInput(erc20Config.TokenContractAddress);
 
             var txRequest = new EthereumTransactionRequest(txInput, EthConfig.ChainId);
 
@@ -288,9 +296,9 @@ namespace Atomex.Wallet.Ethereum
                         message: Resources.InsufficientFundsToCoverFees),
                     ErrorHint = string.Format(
                         Resources.InsufficientFundsToCoverFeesDetails,
-                        requiredFeeInWei,              // required fee
-                        Erc20Config.FeeCurrencyName,   // currency code
-                        ethAddress.Balance) // available
+                        requiredFeeInWei,            // required fee
+                        Erc20Config.FeeCurrencyName, // currency code
+                        ethAddress.Balance)          // available
                 };
 
             if (tokenAddress.Balance <= 0)
@@ -303,7 +311,7 @@ namespace Atomex.Wallet.Ethereum
                     ErrorHint = string.Format(
                         Resources.InsufficientFundsDetails,
                         tokenAddress.Balance, // available tokens
-                        Erc20Config.Name)                // currency code
+                        Erc20Config.Name)     // currency code
                 };
 
             return new MaxAmountEstimation
@@ -363,7 +371,45 @@ namespace Atomex.Wallet.Ethereum
 
         #region Balances
 
-        public override async Task UpdateBalanceAsync(
+        public async Task<Balance> GetAddressBalanceAsync(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            var walletAddress = await LocalStorage
+                .GetTokenAddressAsync(
+                    currency: EthereumHelper.Erc20,
+                    tokenContract: Erc20Config.TokenContractAddress,
+                    tokenId: 0,
+                    address: address,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            return walletAddress != null
+                ? new Balance(
+                    walletAddress.Balance,
+                    walletAddress.UnconfirmedIncome,
+                    walletAddress.UnconfirmedOutcome)
+                : new Balance();
+        }
+
+        public virtual async Task<Balance> GetBalanceAsync()
+        {
+            BigInteger balance = 0;
+
+            var addresses = await LocalStorage
+                .GetUnspentTokenAddressesAsync(
+                    currency: EthereumHelper.Erc20,
+                    tokenContract: Erc20Config.TokenContractAddress,
+                    tokenId: 0)
+                .ConfigureAwait(false);
+
+            foreach (var address in addresses)
+                balance += address.Balance;
+
+            return new Balance(balance, unconfirmedIncome: 0, unconfirmedOutcome: 0);
+        }
+
+        public async Task UpdateBalanceAsync(
             CancellationToken cancellationToken = default)
         {
             var scanner = new Erc20WalletScanner(this, _ethereumAccount);
@@ -373,7 +419,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
         }
 
-        public override async Task UpdateBalanceAsync(
+        public async Task UpdateBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
@@ -387,6 +433,67 @@ namespace Atomex.Wallet.Ethereum
         #endregion Balances
 
         #region Addresses
+
+        public virtual Task<WalletAddress> DivideAddressAsync(
+            string keyPath,
+            int keyType)
+        {
+            var currency = Currencies.GetByName(Currency);
+
+            var walletAddress = Wallet.GetAddress(
+                currency: currency,
+                keyPath: keyPath,
+                keyType: keyType);
+
+            if (walletAddress == null)
+                return null;
+
+            walletAddress.Currency = EthereumHelper.Erc20;
+
+            walletAddress.TokenBalance = new TokenBalance
+            {
+                Address     = walletAddress.Address,
+                Contract    = Erc20Config.TokenContractAddress,
+                TokenId     = 0,
+                Symbol      = Erc20Config.Name,
+                Standard    = EthereumHelper.Erc20,
+                Decimals    = Erc20Config.Decimals,
+                Description = Erc20Config.Description,
+                Balance     = "0"
+            };
+
+            return Task.FromResult(walletAddress);
+        }
+
+        public Task<WalletAddress> GetAddressAsync(
+            string address,
+            CancellationToken cancellationToken = default)
+        {
+            return LocalStorage
+                .GetTokenAddressAsync(
+                    currency: EthereumHelper.Erc20,
+                    tokenContract: Erc20Config.TokenContractAddress,
+                    tokenId: 0,
+                    address: address);
+        }
+
+        public Task<IEnumerable<WalletAddress>> GetAddressesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return LocalStorage
+                .GetTokenAddressesByContractAsync(Erc20Config.TokenContractAddress, cancellationToken);
+        }
+
+        public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            return LocalStorage
+                .GetUnspentTokenAddressesAsync(
+                    currency: EthereumHelper.Erc20,
+                    tokenContract: Erc20Config.TokenContractAddress,
+                    tokenId: 0,
+                    cancellationToken: cancellationToken);
+        }
 
         private async Task<SelectedWalletAddress> CalculateFundsUsageAsync(
             string from,
@@ -434,12 +541,16 @@ namespace Atomex.Wallet.Ethereum
             };
         }
 
-        public override async Task<WalletAddress> GetFreeExternalAddressAsync(
+        public async Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
             // addresses with tokens
             var unspentAddresses = await LocalStorage
-                .GetUnspentAddressesAsync(Currency)
+                .GetUnspentTokenAddressesAsync(
+                    currency: EthereumHelper.Erc20,
+                    tokenContract: Erc20Config.TokenContractAddress,
+                    tokenId: 0,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
@@ -460,7 +571,7 @@ namespace Atomex.Wallet.Ethereum
                     .ConfigureAwait(false);
 
                 _ = await LocalStorage
-                    .UpsertAddressAsync(result, cancellationToken)
+                    .UpsertTokenAddressesAsync(new WalletAddress[] { result }, cancellationToken)
                     .ConfigureAwait(false);
 
                 return result;
@@ -495,7 +606,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             _ = await LocalStorage
-                .UpsertAddressAsync(freeAddress, cancellationToken)
+                .UpsertTokenAddressesAsync(new WalletAddress[] { freeAddress }, cancellationToken)
                 .ConfigureAwait(false);
 
             return freeAddress;
@@ -505,15 +616,13 @@ namespace Atomex.Wallet.Ethereum
 
         #region Transactions
 
-        public override async Task<IEnumerable<ITransaction>> GetUnconfirmedTransactionsAsync(
+        public Task<IEnumerable<ITransaction>> GetUnconfirmedTransactionsAsync(
             CancellationToken cancellationToken = default)
         {
-            return await LocalStorage
-                .GetUnconfirmedTransactionsAsync<EthereumTransaction>(Currency)
-                .ConfigureAwait(false);
+            return Task.FromResult(Enumerable.Empty<ITransaction>()); // all transfers are always confirmed
         }
 
-        public override async Task ResolveTransactionsMetadataAsync(
+        public async Task ResolveTransactionsMetadataAsync(
             IEnumerable<ITransaction> txs,
             CancellationToken cancellationToken = default)
         {
@@ -535,7 +644,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
         }
 
-        public override async Task<ITransactionMetadata> ResolveTransactionMetadataAsync(
+        public async Task<ITransactionMetadata> ResolveTransactionMetadataAsync(
             ITransaction tx,
             CancellationToken cancellationToken = default)
         {

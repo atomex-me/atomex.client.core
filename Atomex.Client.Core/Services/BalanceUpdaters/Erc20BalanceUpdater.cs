@@ -55,7 +55,7 @@ namespace Atomex.Services.BalanceUpdaters
                 {
                     if (currency is Erc20Config erc20Currency)
                     {
-                        _notifiers.Add(new Erc20Notifier(baseUri, erc20Currency.Name, erc20Currency.Erc20ContractAddress, _log));
+                        _notifiers.Add(new Erc20Notifier(baseUri, erc20Currency.Name, erc20Currency.TokenContractAddress, _log));
                     }
                 }
 

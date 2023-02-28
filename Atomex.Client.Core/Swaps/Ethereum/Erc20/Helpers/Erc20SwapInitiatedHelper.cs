@@ -61,7 +61,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                 if (!tx.Data.Contains(swap.SecretHash.ToHexString()) ||
                     !tx.Data.Contains(swap.PartyAddress) ||
-                    !tx.Data.Contains(erc20Config.Erc20ContractAddress))
+                    !tx.Data.Contains(erc20Config.TokenContractAddress))
                     continue;
 
                 if (tx.Status == TransactionStatus.Failed)
@@ -103,7 +103,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
                         toBlock: ulong.MaxValue,
                         topic0: EventSignatureExtractor.GetSignatureHash<Erc20InitiatedEventDTO>(),
                         topic1: "0x" + swap.SecretHash.ToHexString(),
-                        topic2: "0x000000000000000000000000" + erc20.Erc20ContractAddress[2..], //??
+                        topic2: "0x000000000000000000000000" + erc20.TokenContractAddress[2..], //??
                         topic3: "0x000000000000000000000000" + swap.ToAddress[2..],
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
@@ -279,7 +279,7 @@ namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 
                 var (events, error) = await api
                     .GetContractEventsAsync(
-                        address: erc20.Erc20ContractAddress,
+                        address: erc20.TokenContractAddress,
                         fromBlock: (ulong) new HexBigInteger(blockNumber).Value,
                         toBlock: ulong.MaxValue,
                         topic0: EventSignatureExtractor.GetSignatureHash<Erc20TransferEventDTO>(),

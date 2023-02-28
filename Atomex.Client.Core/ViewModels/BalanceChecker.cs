@@ -92,7 +92,7 @@ namespace Atomex.ViewModels
                             var (balance, error) = await api
                                 .GetErc20BalanceAsync(
                                     address: address.Address,
-                                    tokenContractAddress: erc20.Erc20ContractAddress,
+                                    tokenContractAddress: erc20.TokenContractAddress,
                                     cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
 
