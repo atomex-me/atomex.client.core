@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Common;
@@ -18,7 +19,7 @@ namespace Atomex.TezosTokens
         public long ApproveSize { get; protected set; }
 
         public string TokenContractAddress { get; protected set; }
-        public int TokenId { get; protected set; }
+        public BigInteger TokenId { get; protected set; }
         public string ViewContractAddress { get; protected set; }
 
         public override async Task<Result<decimal>> GetRewardForRedeemAsync(

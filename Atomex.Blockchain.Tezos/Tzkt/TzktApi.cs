@@ -285,7 +285,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
             string holderAddress,
             string spenderAddress,
             string tokenContractAddress,
-            int tokenId,
+            BigInteger tokenId,
             CancellationToken cancellationToken = default)
         {
             try
@@ -325,7 +325,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         public async Task<Result<List<TokenBalance>>> GetTokenBalanceAsync(
             IEnumerable<string> addresses,
             IEnumerable<string>? tokenContracts = null,
-            IEnumerable<int>? tokenIds = null,
+            IEnumerable<BigInteger>? tokenIds = null,
             int offset = 0,
             int limit = int.MaxValue,
             CancellationToken cancellationToken = default)

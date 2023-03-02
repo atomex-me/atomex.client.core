@@ -5,10 +5,8 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
-using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Common;
 using Atomex.Core;
@@ -42,6 +40,8 @@ namespace Atomex.Wallet.Abstract
         Task<WalletAddress> GetWalletAddressAsync(
             string currency,
             string address,
+            string tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default);
 
         Task<WalletAddress> GetLastActiveWalletAddressAsync(
@@ -52,63 +52,72 @@ namespace Atomex.Wallet.Abstract
 
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string currency,
+            string tokenContract = null,
+            BigInteger? tokenId = null,
             bool includeUnconfirmed = true,
             CancellationToken cancellationToken = default);
 
         Task<IEnumerable<WalletAddress>> GetAddressesAsync(
             string currency,
+            string tokenContract = null,
+            string address = null,
             CancellationToken cancellationToken = default);
+
+        //Task<IEnumerable<WalletAddress>> GetAddressesAsync(
+        //    string address,
+        //    string tokenContract,
+        //    CancellationToken cancellationToken = default);
 
         #endregion Addresses
 
-        #region TezosTokens
+        #region Tokens
 
-        Task<WalletAddress> GetTokenAddressAsync(
-            string currency,
-            string tokenContract,
-            BigInteger tokenId,
-            string address,
-            CancellationToken cancellationToken = default);
+        //Task<WalletAddress> GetTokenAddressAsync(
+        //    string currency,
+        //    string tokenContract,
+        //    BigInteger tokenId,
+        //    string address,
+        //    CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
-            string currency,
-            string tokenContract,
-            decimal tokenId,
-            CancellationToken cancellationToken = default);
+        //Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+        //    string currency,
+        //    string tokenContract,
+        //    decimal tokenId,
+        //    CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
-            CancellationToken cancellationToken = default);
+        //Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
+        //    CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
-            string address,
-            string tokenContract,
-            CancellationToken cancellationToken = default);
+        //Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
+        //    string address,
+        //    string tokenContract,
+        //    CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<WalletAddress>> GetTokenAddressesByContractAsync(
-            string tokenContract,
-            CancellationToken cancellationToken = default);
+        //Task<IEnumerable<WalletAddress>> GetTokenAddressesByContractAsync(
+        //    string tokenContract,
+        //    CancellationToken cancellationToken = default);
 
-        Task<int> UpsertTokenAddressesAsync(
-            IEnumerable<WalletAddress> walletAddresses,
-            CancellationToken cancellationToken = default);
+        //Task<int> UpsertTokenAddressesAsync(
+        //    IEnumerable<WalletAddress> walletAddresses,
+        //    CancellationToken cancellationToken = default);
 
-        Task<int> UpsertTokenTransfersAsync(
-            IEnumerable<TezosTokenTransfer> tokenTransfers,
-            CancellationToken cancellationToken = default);
+        //Task<int> UpsertTokenTransfersAsync(
+        //    IEnumerable<TezosTokenTransfer> tokenTransfers,
+        //    CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<TezosTokenTransfer>> GetTokenTransfersAsync(
-            string contractAddress,
-            int offset = 0,
-            int limit = int.MaxValue,
-            SortDirection sort = SortDirection.Desc,
-            CancellationToken cancellationToken = default);
+        //Task<IEnumerable<TezosTokenTransfer>> GetTokenTransfersAsync(
+        //    string contractAddress,
+        //    int offset = 0,
+        //    int limit = int.MaxValue,
+        //    SortDirection sort = SortDirection.Desc,
+        //    CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<(TezosTokenTransfer Transfer, TransactionMetadata Metadata)>> GetTokenTransfersWithMetadataAsync(
-            string contractAddress,
-            int offset = 0,
-            int limit = int.MaxValue,
-            SortDirection sort = SortDirection.Desc,
-            CancellationToken cancellationToken = default);
+        //Task<IEnumerable<(TezosTokenTransfer Transfer, TransactionMetadata Metadata)>> GetTokenTransfersWithMetadataAsync(
+        //    string contractAddress,
+        //    int offset = 0,
+        //    int limit = int.MaxValue,
+        //    SortDirection sort = SortDirection.Desc,
+        //    CancellationToken cancellationToken = default);
 
         Task<int> UpsertTokenContractsAsync(
             IEnumerable<TokenContract> tokenContracts,
@@ -117,7 +126,7 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<TokenContract>> GetTokenContractsAsync(
             CancellationToken cancellationToken = default);
 
-        #endregion TezosTokens
+        #endregion Tokens
 
         #region Transactions
 
@@ -159,6 +168,7 @@ namespace Atomex.Wallet.Abstract
 
         Task<IEnumerable<T>> GetTransactionsAsync<T>(
             string currency,
+            string tokenContract = null,
             int offset = 0,
             int limit = int.MaxValue,
             SortDirection sort = SortDirection.Desc,
@@ -168,6 +178,7 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<ITransaction>> GetTransactionsAsync(
             string currency,
             Type transactionType,
+            string tokenContract = null,
             int offset = 0,
             int limit = int.MaxValue,
             SortDirection sort = SortDirection.Desc,
@@ -177,6 +188,7 @@ namespace Atomex.Wallet.Abstract
             string currency,
             Type transactionType,
             Type metadataType,
+            string tokenContract = null,
             int offset = 0,
             int limit = int.MaxValue,
             SortDirection sort = SortDirection.Desc,
@@ -184,6 +196,7 @@ namespace Atomex.Wallet.Abstract
 
         Task<IEnumerable<(T, M)>> GetTransactionsWithMetadataAsync<T, M>(
             string currency,
+            string tokenContract = null,
             int offset = 0,
             int limit = int.MaxValue,
             SortDirection sort = SortDirection.Desc,
@@ -198,6 +211,7 @@ namespace Atomex.Wallet.Abstract
 
         Task<bool> RemoveTransactionByIdAsync(
             string id,
+            string currency,
             CancellationToken cancellationToken = default);
 
         Task<bool> UpsertTransactionsMetadataAsync(

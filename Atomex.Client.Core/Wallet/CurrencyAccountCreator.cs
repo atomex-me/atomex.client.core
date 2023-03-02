@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Ethereum;
@@ -110,7 +111,7 @@ namespace Atomex.Wallet
                     tokenId: 0,
                     currencies: currencies,
                     wallet: wallet,
-                    dataRepository: dataRepository,
+                    localStorage: dataRepository,
                     tezosAccount: baseChainAccount as TezosAccount),
 
                 "USDT_XTZ" => new Fa2Account(
@@ -122,7 +123,7 @@ namespace Atomex.Wallet
                         .TokenId,
                     currencies: currencies,
                     wallet: wallet,
-                    dataRepository: dataRepository,
+                    localStorage: dataRepository,
                     tezosAccount: baseChainAccount as TezosAccount),
 
                 "XTZ" => new TezosAccount(
@@ -137,10 +138,10 @@ namespace Atomex.Wallet
         public static ICurrencyAccount CreateTezosTokenAccount(
             string tokenType,
             string tokenContract,
-            int tokenId,
+            BigInteger tokenId,
             ICurrencies currencies,
             IHdWallet wallet,
-            ILocalStorage dataRepository,
+            ILocalStorage localStorage,
             TezosAccount tezosAccount)
         {
             return tokenType switch
@@ -150,7 +151,7 @@ namespace Atomex.Wallet
                     tokenId: tokenId,
                     currencies: currencies,
                     wallet: wallet,
-                    dataRepository: dataRepository,
+                    localStorage: localStorage,
                     tezosAccount: tezosAccount),
 
                 "FA2" or "USDT_XTZ" => new Fa2Account(
@@ -158,7 +159,7 @@ namespace Atomex.Wallet
                     tokenId: tokenId,
                     currencies: currencies,
                     wallet: wallet,
-                    dataRepository: dataRepository,
+                    localStorage: localStorage,
                     tezosAccount: tezosAccount),
 
                 _ => throw new NotSupportedException($"Not supported token type {tokenType}."),

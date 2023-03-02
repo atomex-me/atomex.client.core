@@ -25,15 +25,16 @@ namespace Atomex.LiteDb
 {
     public class LiteDbLocalStorage : ILocalStorage
     {
-        public const string OrdersCollectionName = "Orders";
-        public const string SwapsCollectionName = "Swaps";
-        public const string TransactionCollectionName = "Transactions";
-        public const string TransactionMetadataCollectionName = "TransactionsMetadata";
-        public const string OutputsCollectionName = "Outputs";
-        public const string AddressesCollectionName = "Addresses";
-        public const string TezosTokensAddresses = "TezosTokensAddresses";
-        public const string TezosTokensTransfers = "TezosTokensTransfers";
-        public const string TezosTokensContracts = "TezosTokensContracts";
+        public const string OrdersCollectionName = "orders";
+        public const string SwapsCollectionName = "swaps";
+        public const string XtzTokensContractsCollectionName = "xtz_tokens_contracts";
+        //public const string TransactionCollectionName = "Transactions";
+        //public const string TransactionMetadataCollectionName = "TransactionsMetadata";
+        //public const string OutputsCollectionName = "Outputs";
+        //public const string AddressesCollectionName = "Addresses";
+        //public const string TezosTokensAddresses = "TezosTokensAddresses";
+        //public const string TezosTokensTransfers = "TezosTokensTransfers";
+        //public const string TezosTokensContracts = "TezosTokensContracts";
 
         private const string CurrencyKey = nameof(WalletAddress.Currency);
         private const string AddressKey = nameof(WalletAddress.Address);
@@ -107,6 +108,33 @@ namespace Atomex.LiteDb
             _db = null;
         }
 
+        private bool IsXtzToken(string currency) =>
+            currency == "FA12" ||
+            currency == "FA2";
+
+        private bool IsEthToken(string currency) =>
+            currency == "ERC20" ||
+            currency == "ERC721";
+
+        private bool IsToken(string currency) =>
+            IsEthToken(currency) || IsXtzToken(currency);
+
+        private string GetCollectionNamePrefix(string currency) =>
+            IsXtzToken(currency)
+                ? $"xtz_tokens"
+                : IsEthToken(currency)
+                    ? "eth_tokens"
+                    : $"{currency.ToLowerInvariant()}";
+
+        private string GetAddressesCollectionName(string currency) =>
+            $"{GetCollectionNamePrefix(currency)}_addrs";
+
+        private string GetTransactionsCollectionName(string currency) =>
+            $"{GetCollectionNamePrefix(currency)}_txs";
+
+        private string GetTransactionsMetadataCollectionName(string currency) =>
+            $"{GetCollectionNamePrefix(currency)}_meta";
+
         #region Addresses
 
         public Task<bool> UpsertAddressAsync(
@@ -117,10 +145,10 @@ namespace Atomex.LiteDb
             {
                 var document = _bsonMapper.ToDocument(walletAddress);
 
-                var addresses = _db.GetCollection(AddressesCollectionName);
-                //addresses.EnsureIndex(IndexKey);
-                addresses.EnsureIndex(CurrencyKey);
-                addresses.EnsureIndex(AddressKey);
+                var addressesCollectionName = GetAddressesCollectionName(walletAddress.Currency); 
+
+                var addresses = _db.GetCollection(addressesCollectionName);
+                //addresses.EnsureIndex(AddressKey);
                 
                 var upsertResult = addresses.Upsert(document);
 
@@ -142,10 +170,10 @@ namespace Atomex.LiteDb
             {
                 var documents = walletAddresses.Select(_bsonMapper.ToDocument);
 
-                var addresses = _db.GetCollection(AddressesCollectionName);
-                //addresses.EnsureIndex(IndexKey);
-                addresses.EnsureIndex(CurrencyKey);
-                addresses.EnsureIndex(AddressKey);
+                var addressesCollectionName = GetAddressesCollectionName(walletAddresses.First().Currency);
+
+                var addresses = _db.GetCollection(addressesCollectionName);
+                //addresses.EnsureIndex(AddressKey);
                 
                 var upsertResult = addresses.Upsert(documents);
 
@@ -162,14 +190,18 @@ namespace Atomex.LiteDb
         public Task<WalletAddress> GetWalletAddressAsync(
             string currency,
             string address,
+            string tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 var id = WalletAddress.GetUniqueId(address, currency);
 
+                var addressesCollectionName = GetAddressesCollectionName(currency);
+
                 var document = _db
-                    .GetCollection(AddressesCollectionName)
+                    .GetCollection(addressesCollectionName)
                     .FindById(id);
 
                 var walletAddress = document != null
@@ -194,7 +226,9 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var document = _db.GetCollection(AddressesCollectionName)
+                var addressesCollectionName = GetAddressesCollectionName(currency);
+
+                var document = _db.GetCollection(addressesCollectionName)
                     .Find(Query.And(
                         Query.EQ(CurrencyKey, currency),
                         Query.EQ(KeyTypeKey, keyType),
@@ -218,6 +252,8 @@ namespace Atomex.LiteDb
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string currency,
+            string tokenContract = null,
+            BigInteger? tokenId = null,
             bool includeUnconfirmed = true,
             CancellationToken cancellationToken = default)
         {
@@ -235,8 +271,10 @@ namespace Atomex.LiteDb
 
             try
             {
+                var addressesCollectionName = GetAddressesCollectionName(currency);
+
                 var unspentAddresses = _db
-                    .GetCollection(AddressesCollectionName)
+                    .GetCollection(addressesCollectionName)
                     .Find(query)
                     .Select(_bsonMapper.ToObject<WalletAddress>)
                     .ToList();
@@ -253,12 +291,16 @@ namespace Atomex.LiteDb
 
         public Task<IEnumerable<WalletAddress>> GetAddressesAsync(
             string currency,
+            string tokenContract = null,
+            string address = null,
             CancellationToken cancellationToken = default)
         {
             try
             {
+                var addressesCollectionName = GetAddressesCollectionName(currency);
+
                 var unspentAddresses = _db
-                    .GetCollection(AddressesCollectionName)
+                    .GetCollection(addressesCollectionName)
                     .Find(Query.EQ(CurrencyKey, currency))
                     .Select(_bsonMapper.ToObject<WalletAddress>)
                     .ToList();
@@ -277,268 +319,268 @@ namespace Atomex.LiteDb
 
         #region TezosTokens
 
-        public Task<WalletAddress> GetTokenAddressAsync(
-            string currency,
-            string tokenContract,
-            BigInteger tokenId,
-            string address,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var id = WalletAddress.GetUniqueId(address, currency, tokenContract, tokenId);
+        //public Task<WalletAddress> GetTokenAddressAsync(
+        //    string currency,
+        //    string tokenContract,
+        //    BigInteger tokenId,
+        //    string address,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    try
+        //    {
+        //        var id = WalletAddress.GetUniqueId(address, currency, tokenContract, tokenId);
 
-                var document = _db
-                    .GetCollection(TezosTokensAddresses)
-                    .FindById(id);
+        //        var document = _db
+        //            .GetCollection(TezosTokensAddresses)
+        //            .FindById(id);
 
-                var walletAddress = document != null
-                    ? _bsonMapper.ToObject<WalletAddress>(document)
-                    : null;
+        //        var walletAddress = document != null
+        //            ? _bsonMapper.ToObject<WalletAddress>(document)
+        //            : null;
 
-                return Task.FromResult(walletAddress);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error getting token wallet address");
-            }
+        //        return Task.FromResult(walletAddress);
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Log.Error(e, "Error getting token wallet address");
+        //    }
 
-            return Task.FromResult<WalletAddress>(null);
-        }
+        //    return Task.FromResult<WalletAddress>(null);
+        //}
 
-        public Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var addresses = _db
-                    .GetCollection(TezosTokensAddresses)
-                    .FindAll()
-                    .Select(_bsonMapper.ToObject<WalletAddress>)
-                    .ToList();
+        //public Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    try
+        //    {
+        //        var addresses = _db
+        //            .GetCollection(TezosTokensAddresses)
+        //            .FindAll()
+        //            .Select(_bsonMapper.ToObject<WalletAddress>)
+        //            .ToList();
 
-                return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error getting tezos tokens addresses");
-            }
+        //        return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Log.Error(e, "Error getting tezos tokens addresses");
+        //    }
 
-            return Task.FromResult(Enumerable.Empty<WalletAddress>());
-        }
+        //    return Task.FromResult(Enumerable.Empty<WalletAddress>());
+        //}
 
-        public Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
-            string address,
-            string tokenContract,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var addresses = _db
-                    .GetCollection(TezosTokensAddresses)
-                    .Find(Query.And(
-                        Query.EQ(AddressKey, address),
-                        Query.EQ(TokenContractKey, tokenContract)))
-                    .Select(_bsonMapper.ToObject<WalletAddress>)
-                    .ToList();
+        //public Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
+        //    string address,
+        //    string tokenContract,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    try
+        //    {
+        //        var addresses = _db
+        //            .GetCollection(TezosTokensAddresses)
+        //            .Find(Query.And(
+        //                Query.EQ(AddressKey, address),
+        //                Query.EQ(TokenContractKey, tokenContract)))
+        //            .Select(_bsonMapper.ToObject<WalletAddress>)
+        //            .ToList();
 
-                return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error getting tezos tokens addresses");
-            }
+        //        return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Log.Error(e, "Error getting tezos tokens addresses");
+        //    }
 
-            return Task.FromResult(Enumerable.Empty<WalletAddress>());
-        }
+        //    return Task.FromResult(Enumerable.Empty<WalletAddress>());
+        //}
 
-        public Task<IEnumerable<WalletAddress>> GetTokenAddressesByContractAsync(
-            string tokenContract,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var addresses = _db
-                    .GetCollection(TezosTokensAddresses)
-                    .Find(Query.EQ(TokenContractKey, tokenContract))
-                    .Select(_bsonMapper.ToObject<WalletAddress>)
-                    .ToList();
+        //public Task<IEnumerable<WalletAddress>> GetTokenAddressesByContractAsync(
+        //    string tokenContract,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    try
+        //    {
+        //        var addresses = _db
+        //            .GetCollection(TezosTokensAddresses)
+        //            .Find(Query.EQ(TokenContractKey, tokenContract))
+        //            .Select(_bsonMapper.ToObject<WalletAddress>)
+        //            .ToList();
 
-                return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error getting tezos tokens addresses");
-            }
+        //        return Task.FromResult<IEnumerable<WalletAddress>>(addresses);
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Log.Error(e, "Error getting tezos tokens addresses");
+        //    }
 
-            return Task.FromResult(Enumerable.Empty<WalletAddress>());
-        }
+        //    return Task.FromResult(Enumerable.Empty<WalletAddress>());
+        //}
 
-        public Task<int> UpsertTokenAddressesAsync(
-            IEnumerable<WalletAddress> walletAddresses,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var documents = walletAddresses.Select(_bsonMapper.ToDocument);
+        //public Task<int> UpsertTokenAddressesAsync(
+        //    IEnumerable<WalletAddress> walletAddresses,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    try
+        //    {
+        //        var documents = walletAddresses.Select(_bsonMapper.ToDocument);
 
-                var addresses = _db.GetCollection(TezosTokensAddresses);
-                //addresses.EnsureIndex(IndexKey);
-                //addresses.EnsureIndex(CurrencyKey);
-                //addresses.EnsureIndex(AddressKey);
+        //        var addresses = _db.GetCollection(TezosTokensAddresses);
+        //        //addresses.EnsureIndex(IndexKey);
+        //        //addresses.EnsureIndex(CurrencyKey);
+        //        //addresses.EnsureIndex(AddressKey);
 
-                var result = addresses.Upsert(documents);
+        //        var result = addresses.Upsert(documents);
 
-                return Task.FromResult(result);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error updating tezos token addresses");
-            }
+        //        return Task.FromResult(result);
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Log.Error(e, "Error updating tezos token addresses");
+        //    }
 
-            return Task.FromResult(0);
-        }
+        //    return Task.FromResult(0);
+        //}
 
-        public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
-            string currency,
-            string tokenContract,
-            decimal tokenId,
-            CancellationToken cancellationToken = default)
-        {
-            var queries = new List<BsonExpression>
-            {
-                Query.EQ(TokenContractKey, tokenContract),
-                Query.Or(
-                    Query.Not(BalanceKey, 0m),
-                    Query.Not(UnconfirmedIncomeKey, 0m),
-                    Query.Not(UnconfirmedOutcomeKey, 0m))
-            };
+        //public Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
+        //    string currency,
+        //    string tokenContract,
+        //    decimal tokenId,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    var queries = new List<BsonExpression>
+        //    {
+        //        Query.EQ(TokenContractKey, tokenContract),
+        //        Query.Or(
+        //            Query.Not(BalanceKey, 0m),
+        //            Query.Not(UnconfirmedIncomeKey, 0m),
+        //            Query.Not(UnconfirmedOutcomeKey, 0m))
+        //    };
 
-            if (tokenId != 0)
-                queries.Insert(1, Query.EQ(TokenIdKey, tokenId));
+        //    if (tokenId != 0)
+        //        queries.Insert(1, Query.EQ(TokenIdKey, tokenId));
 
-            var query = Query.And(queries.ToArray());
+        //    var query = Query.And(queries.ToArray());
 
-            try
-            {
-                var unspentAddresses = _db
-                    .GetCollection(TezosTokensAddresses)
-                    .Find(query)
-                    .Select(_bsonMapper.ToObject<WalletAddress>)
-                    .ToList();
+        //    try
+        //    {
+        //        var unspentAddresses = _db
+        //            .GetCollection(TezosTokensAddresses)
+        //            .Find(query)
+        //            .Select(_bsonMapper.ToObject<WalletAddress>)
+        //            .ToList();
 
-                return Task.FromResult<IEnumerable<WalletAddress>>(unspentAddresses);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error getting unspent tezos tokens wallet addresses");
-            }
+        //        return Task.FromResult<IEnumerable<WalletAddress>>(unspentAddresses);
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Log.Error(e, "Error getting unspent tezos tokens wallet addresses");
+        //    }
 
-            return Task.FromResult(Enumerable.Empty<WalletAddress>());
-        }
+        //    return Task.FromResult(Enumerable.Empty<WalletAddress>());
+        //}
 
-        public Task<int> UpsertTokenTransfersAsync(
-            IEnumerable<TezosTokenTransfer> tokenTransfers,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var documents = tokenTransfers
-                    .Select(t =>
-                    {
-                        var d = _bsonMapper.ToDocument(t);
+        //public Task<int> UpsertTokenTransfersAsync(
+        //    IEnumerable<TezosTokenTransfer> tokenTransfers,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    try
+        //    {
+        //        var documents = tokenTransfers
+        //            .Select(t =>
+        //            {
+        //                var d = _bsonMapper.ToDocument(t);
 
-                        d[UserMetadata] = new BsonDocument
-                        {
-                            ["$id"] = d["_id"],
-                            ["$ref"] = TransactionMetadataCollectionName
-                        };
+        //                d[UserMetadata] = new BsonDocument
+        //                {
+        //                    ["$id"] = d["_id"],
+        //                    ["$ref"] = TransactionMetadataCollectionName
+        //                };
 
-                        return d;
-                    });
+        //                return d;
+        //            });
 
-                var upserted = _db
-                    .GetCollection(TezosTokensTransfers)
-                    .Upsert(documents);
+        //        var upserted = _db
+        //            .GetCollection(TezosTokensTransfers)
+        //            .Upsert(documents);
 
-                return Task.FromResult(upserted);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error adding transfers");
-            }
+        //        return Task.FromResult(upserted);
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Log.Error(e, "Error adding transfers");
+        //    }
 
-            return Task.FromResult(0);
-        }
+        //    return Task.FromResult(0);
+        //}
 
-        public Task<IEnumerable<TezosTokenTransfer>> GetTokenTransfersAsync(
-            string contractAddress,
-            int offset = 0,
-            int limit = int.MaxValue,
-            SortDirection sort = SortDirection.Desc,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var transfers = _db
-                    .GetCollection(TezosTokensTransfers)
-                    .Query()
-                    .Where($"Contract = @0", contractAddress)
-                    .OrderBy("CreationTime", sort == SortDirection.Desc ? -1 : 1)
-                    .Offset(offset)
-                    .Limit(limit)
-                    .ToList()
-                    .Select(_bsonMapper.ToObject<TezosTokenTransfer>)
-                    .ToList();
+        //public Task<IEnumerable<TezosTokenTransfer>> GetTokenTransfersAsync(
+        //    string contractAddress,
+        //    int offset = 0,
+        //    int limit = int.MaxValue,
+        //    SortDirection sort = SortDirection.Desc,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    try
+        //    {
+        //        var transfers = _db
+        //            .GetCollection(TezosTokensTransfers)
+        //            .Query()
+        //            .Where($"Contract = @0", contractAddress)
+        //            .OrderBy("CreationTime", sort == SortDirection.Desc ? -1 : 1)
+        //            .Offset(offset)
+        //            .Limit(limit)
+        //            .ToList()
+        //            .Select(_bsonMapper.ToObject<TezosTokenTransfer>)
+        //            .ToList();
 
-                return Task.FromResult<IEnumerable<TezosTokenTransfer>>(transfers);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error getting tezos tokens transfers");
-            }
+        //        return Task.FromResult<IEnumerable<TezosTokenTransfer>>(transfers);
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Log.Error(e, "Error getting tezos tokens transfers");
+        //    }
 
-            return Task.FromResult(Enumerable.Empty<TezosTokenTransfer>());
-        }
+        //    return Task.FromResult(Enumerable.Empty<TezosTokenTransfer>());
+        //}
 
-        public Task<IEnumerable<(TezosTokenTransfer Transfer, TransactionMetadata Metadata)>> GetTokenTransfersWithMetadataAsync(
-            string contractAddress,
-            int offset = 0,
-            int limit = int.MaxValue,
-            SortDirection sort = SortDirection.Desc,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var transfers = _db
-                    .GetCollection(TezosTokensTransfers)
-                    .Query()
-                    .Include(UserMetadata)
-                    .Where($"Contract = @0", contractAddress)
-                    .OrderBy("CreationTime", sort == SortDirection.Desc ? -1 : 1)
-                    .Offset(offset)
-                    .Limit(limit)
-                    .ToList()
-                    .Select(d =>
-                    {
-                        var tx = _bsonMapper.ToObject<TezosTokenTransfer>(d);
-                        var metadata = !d[UserMetadata].AsDocument.ContainsKey("$missing")
-                            ? _bsonMapper.ToObject<TransactionMetadata>(d[UserMetadata].AsDocument)
-                            : null;
+        //public Task<IEnumerable<(TezosTokenTransfer Transfer, TransactionMetadata Metadata)>> GetTokenTransfersWithMetadataAsync(
+        //    string contractAddress,
+        //    int offset = 0,
+        //    int limit = int.MaxValue,
+        //    SortDirection sort = SortDirection.Desc,
+        //    CancellationToken cancellationToken = default)
+        //{
+        //    try
+        //    {
+        //        var transfers = _db
+        //            .GetCollection(TezosTokensTransfers)
+        //            .Query()
+        //            .Include(UserMetadata)
+        //            .Where($"Contract = @0", contractAddress)
+        //            .OrderBy("CreationTime", sort == SortDirection.Desc ? -1 : 1)
+        //            .Offset(offset)
+        //            .Limit(limit)
+        //            .ToList()
+        //            .Select(d =>
+        //            {
+        //                var tx = _bsonMapper.ToObject<TezosTokenTransfer>(d);
+        //                var metadata = !d[UserMetadata].AsDocument.ContainsKey("$missing")
+        //                    ? _bsonMapper.ToObject<TransactionMetadata>(d[UserMetadata].AsDocument)
+        //                    : null;
 
-                        return (tx, metadata);
-                    })
-                    .ToList();
+        //                return (tx, metadata);
+        //            })
+        //            .ToList();
 
-                return Task.FromResult<IEnumerable<(TezosTokenTransfer, TransactionMetadata)>>(transfers);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Error getting tezos tokens transfers");
-            }
+        //        return Task.FromResult<IEnumerable<(TezosTokenTransfer, TransactionMetadata)>>(transfers);
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        Log.Error(e, "Error getting tezos tokens transfers");
+        //    }
 
-            return Task.FromResult(Enumerable.Empty<(TezosTokenTransfer, TransactionMetadata)>());
-        }
+        //    return Task.FromResult(Enumerable.Empty<(TezosTokenTransfer, TransactionMetadata)>());
+        //}
 
         public Task<int> UpsertTokenContractsAsync(
             IEnumerable<TokenContract> tokenContracts,
@@ -550,7 +592,7 @@ namespace Atomex.LiteDb
                     .Select(t => _bsonMapper.ToDocument(t));
 
                 var upserted = _db
-                    .GetCollection(TezosTokensContracts)
+                    .GetCollection(XtzTokensContractsCollectionName)
                     .Upsert(documents);
 
                 return Task.FromResult(upserted);
@@ -569,7 +611,7 @@ namespace Atomex.LiteDb
             try
             {
                 var contracts = _db
-                    .GetCollection(TezosTokensContracts)
+                    .GetCollection(XtzTokensContractsCollectionName)
                     .FindAll()
                     .Select(d => new TokenContract
                     {
@@ -637,8 +679,11 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var transactionsCollectionName = GetTransactionsCollectionName(tx.Currency);
+                var transactionsMetadataCollectionName = GetTransactionsMetadataCollectionName(tx.Currency);
+
                 var transactions = _db
-                    .GetCollection(TransactionCollectionName);
+                    .GetCollection(transactionsCollectionName);
 
                 transactions.EnsureIndex(CurrencyKey);
 
@@ -647,7 +692,7 @@ namespace Atomex.LiteDb
                 document[UserMetadata] = new BsonDocument
                 {
                     ["$id"] = document["_id"],
-                    ["$ref"] = TransactionMetadataCollectionName
+                    ["$ref"] = transactionsMetadataCollectionName
                 };
 
                 var result = transactions.Upsert(document);
@@ -671,8 +716,11 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var transactionsCollectionName = GetTransactionsCollectionName(txs.First().Currency);
+                var transactionsMetadataCollectionName = GetTransactionsMetadataCollectionName(txs.First().Currency);
+
                 var transactions = _db
-                    .GetCollection(TransactionCollectionName);
+                    .GetCollection(transactionsCollectionName);
 
                 transactions.EnsureIndex(CurrencyKey);
 
@@ -683,7 +731,7 @@ namespace Atomex.LiteDb
                     d[UserMetadata] = new BsonDocument
                     {
                         ["$id"] = d["_id"],
-                        ["$ref"] = TransactionMetadataCollectionName
+                        ["$ref"] = transactionsMetadataCollectionName
                     };
 
                     return d;
@@ -720,8 +768,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var transactionsCollectionName = GetTransactionsCollectionName(currency);
+
                 var document = _db
-                    .GetCollection(TransactionCollectionName)
+                    .GetCollection(transactionsCollectionName)
                     .FindById($"{txId}:{currency}");
 
                 if (document != null)
@@ -761,8 +811,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var transactionsCollectionName = GetTransactionsCollectionName(currency);
+
                 var document = _db
-                    .GetCollection(TransactionCollectionName)
+                    .GetCollection(transactionsCollectionName)
                     .Include(UserMetadata)
                     .FindById($"{txId}:{currency}");
 
@@ -787,6 +839,7 @@ namespace Atomex.LiteDb
         public Task<IEnumerable<ITransaction>> GetTransactionsAsync(
             string currency,
             Type transactionType,
+            string tokenContract = null,
             int offset = 0,
             int limit = int.MaxValue,
             SortDirection sort = SortDirection.Desc,
@@ -794,8 +847,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var transactionsCollectionName = GetTransactionsCollectionName(currency);
+
                 var transactions = _db
-                    .GetCollection(TransactionCollectionName)
+                    .GetCollection(transactionsCollectionName)
                     .Query()
                     .Where($"Currency = @0", currency)
                     .OrderBy("CreationTime", sort == SortDirection.Desc ? -1 : 1)
@@ -817,6 +872,7 @@ namespace Atomex.LiteDb
 
         public Task<IEnumerable<T>> GetTransactionsAsync<T>(
             string currency,
+            string tokenContract = null,
             int offset = 0,
             int limit = int.MaxValue,
             SortDirection sort = SortDirection.Desc,
@@ -825,8 +881,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var transactionsCollectionName = GetTransactionsCollectionName(currency);
+
                 var transactions = _db
-                    .GetCollection(TransactionCollectionName)
+                    .GetCollection(transactionsCollectionName)
                     .Query()
                     .Where($"Currency = @0", currency)
                     .OrderBy("CreationTime", sort == SortDirection.Desc ? -1 : 1)
@@ -850,6 +908,7 @@ namespace Atomex.LiteDb
             string currency,
             Type transactionType,
             Type metadataType,
+            string tokenContract = null,
             int offset = 0,
             int limit = int.MaxValue,
             SortDirection sort = SortDirection.Desc,
@@ -857,8 +916,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var transactionsCollectionName = GetTransactionsCollectionName(currency);
+
                 var transactions = _db
-                    .GetCollection(TransactionCollectionName)
+                    .GetCollection(transactionsCollectionName)
                     .Query()
                     .Include(UserMetadata)
                     .Where("Currency = @0", currency)
@@ -889,6 +950,7 @@ namespace Atomex.LiteDb
 
         public Task<IEnumerable<(T,M)>> GetTransactionsWithMetadataAsync<T,M>(
             string currency,
+            string tokenContract = null,
             int offset = 0,
             int limit = int.MaxValue,
             SortDirection sort = SortDirection.Desc,
@@ -898,8 +960,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var transactionsCollectionName = GetTransactionsCollectionName(currency);
+
                 var transactions = _db
-                    .GetCollection(TransactionCollectionName)
+                    .GetCollection(transactionsCollectionName)
                     .Query()
                     .Include(UserMetadata)
                     .Where($"Currency = @0", currency)
@@ -934,8 +998,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var transactionsCollectionName = GetTransactionsCollectionName(currency);
+
                 var documents = _db
-                    .GetCollection(TransactionCollectionName)
+                    .GetCollection(transactionsCollectionName)
                     .Query()
                     .Where($"Currency = @0 AND Confirmations = 0", currency)
                     .ToList();
@@ -956,12 +1022,15 @@ namespace Atomex.LiteDb
 
         public Task<bool> RemoveTransactionByIdAsync(
             string id,
+            string currency,
             CancellationToken cancellationToken = default)
         {
             try
             {
+                var transactionsCollectionName = GetTransactionsCollectionName(currency);
+
                 var transactions = _db
-                    .GetCollection(TransactionCollectionName);
+                    .GetCollection(transactionsCollectionName);
 
                 return Task.FromResult(transactions.Delete(id));
             }
@@ -980,8 +1049,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var transactionsMetadataCollectionName = GetTransactionsMetadataCollectionName(metadata.First().Currency);
+
                 var transactionTypes = _db
-                    .GetCollection(TransactionMetadataCollectionName);
+                    .GetCollection(transactionsMetadataCollectionName);
 
                 transactionTypes.EnsureIndex(CurrencyKey);
 
@@ -1017,8 +1088,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var transactionsMetadataCollectionName = GetTransactionsMetadataCollectionName(currency);
+
                 var document = _db
-                    .GetCollection(TransactionMetadataCollectionName)
+                    .GetCollection(transactionsMetadataCollectionName)
                     .FindById($"{txId}:{currency}");
 
                 if (document != null)
@@ -1042,8 +1115,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var transactionsMetadataCollectionName = GetTransactionsMetadataCollectionName(currency);
+
                 var deleted = _db
-                    .GetCollection(TransactionMetadataCollectionName)
+                    .GetCollection(transactionsMetadataCollectionName)
                     .DeleteMany("Currency = @0", currency);
 
                     return Task.FromResult(deleted);
@@ -1068,6 +1143,8 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var outputsCollectionName = $"{currency}_outs";
+
                 var documents = outputs
                     .Select(o =>
                     {
@@ -1076,7 +1153,9 @@ namespace Atomex.LiteDb
                         return document;
                     });
 
-                var outputsCollection = _db.GetCollection(OutputsCollectionName);
+                var outputsCollection = _db
+                    .GetCollection(outputsCollectionName);
+
                 outputsCollection.EnsureIndex(CurrencyKey);
                 outputsCollection.Upsert(documents);
 
@@ -1096,8 +1175,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var outputsCollectionName = $"{currency}_outs";
+
                 var outputs = _db
-                    .GetCollection(OutputsCollectionName)
+                    .GetCollection(outputsCollectionName)
                     .Query()
                     .Where("Currency = @0 AND SpentTxPoints = null", currency)
                     .ToList()
@@ -1121,8 +1202,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var outputsCollectionName = $"{currency}_outs";
+
                 var outputs = _db
-                    .GetCollection(OutputsCollectionName)
+                    .GetCollection(outputsCollectionName)
                     .Query()
                     .Where("Currency = @0 AND Address = @1 AND SpentTxPoints = null", currency, address)
                     .ToList()
@@ -1145,8 +1228,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var outputsCollectionName = $"{currency}_outs";
+
                 var outputs = _db
-                    .GetCollection(OutputsCollectionName)
+                    .GetCollection(outputsCollectionName)
                     .Query()
                     .Where("Currency = @0", currency)
                     .ToList()
@@ -1170,8 +1255,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var outputsCollectionName = $"{currency}_outs";
+
                 var outputs = _db
-                    .GetCollection(OutputsCollectionName)
+                    .GetCollection(outputsCollectionName)
                     .Query()
                     .Where("Currency = @0 AND Address = @1", currency, address)
                     .ToList()
@@ -1196,8 +1283,10 @@ namespace Atomex.LiteDb
         {
             try
             {
+                var outputsCollectionName = $"{currency}_outs";
+
                 var outputDocument = _db
-                    .GetCollection(OutputsCollectionName)
+                    .GetCollection(outputsCollectionName)
                     .FindById($"{txId}:{index}:{currency}");
 
                 var output = outputDocument != null
@@ -1291,7 +1380,7 @@ namespace Atomex.LiteDb
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error getting order");
+                Log.Error(e, "Error getting order by id");
 
                 return null;
             }
@@ -1313,7 +1402,7 @@ namespace Atomex.LiteDb
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error getting order");
+                Log.Error(e, "Error getting order by id");
 
                 return null;
             }
@@ -1333,7 +1422,7 @@ namespace Atomex.LiteDb
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error while remove order");
+                Log.Error(e, "Error while remove order by id");
 
                 return Task.FromResult(false);
             }

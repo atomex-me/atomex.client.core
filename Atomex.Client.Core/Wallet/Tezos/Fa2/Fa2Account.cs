@@ -9,17 +9,17 @@ namespace Atomex.Wallet.Tezos
     {
         public Fa2Account(
             string tokenContract,
-            int tokenId,
+            BigInteger tokenId,
             ICurrencies currencies,
             IHdWallet wallet,
-            ILocalStorage dataRepository,
+            ILocalStorage localStorage,
             TezosAccount tezosAccount)
             : base("FA2",
                   tokenContract,
                   tokenId,
                   currencies,
                   wallet,
-                  dataRepository,
+                  localStorage,
                   tezosAccount)
         {
         }
@@ -35,7 +35,7 @@ namespace Atomex.Wallet.Tezos
         }
 
         private string CreateTransferParams(
-            int tokenId,
+            BigInteger tokenId,
             string from,
             string to,
             BigInteger amount)

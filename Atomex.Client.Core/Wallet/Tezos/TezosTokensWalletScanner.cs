@@ -11,6 +11,7 @@ using Atomex.Blockchain;
 using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
+using Atomex.Blockchain.Tezos;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -60,14 +61,30 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             // all tezos addresses
-            var xtzLocalAddresses = await _tezosAccount.LocalStorage
-                .GetAddressesAsync(TezosConfig.Xtz)
+            var xtzLocalAddresses = await _tezosAccount
+                .LocalStorage
+                .GetAddressesAsync(
+                    currency: TezosHelper.Xtz,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             // all tezos tokens addresses
-            var tokenLocalAddresses = await _tezosAccount.LocalStorage
-                .GetTokenAddressesAsync()
+            var fa12LocalAddresses = await _tezosAccount
+                .LocalStorage
+                .GetAddressesAsync(
+                    currency: TezosHelper.Fa12,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            var fa2LocalAddresses = await _tezosAccount
+                .LocalStorage
+                .GetAddressesAsync(
+                    currency: TezosHelper.Fa2,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            var tokenLocalAddresses = fa12LocalAddresses
+                .Concat(fa2LocalAddresses);
 
             var uniqueLocalAddresses = xtzLocalAddresses
                 .Concat(tokenLocalAddresses)
@@ -159,7 +176,7 @@ namespace Atomex.Wallet.Tezos
             {
                 await _tezosAccount
                     .LocalStorage
-                    .UpsertTokenAddressesAsync(changedAddresses)
+                    .UpsertAddressesAsync(changedAddresses, cancellationToken)
                     .ConfigureAwait(false);
 
                 await UpdateAndSaveTokenTransfersAsync(
@@ -187,11 +204,24 @@ namespace Atomex.Wallet.Tezos
             var xtzAddress = xtzLocalAddresses.First(w => w.Address == address);
 
             // tezos tokens addresses
-            var tokenLocalAddresses = (await _tezosAccount
+            var fa12LocalAddresses = await _tezosAccount
                 .LocalStorage
-                .GetTokenAddressesAsync()
-                .ConfigureAwait(false))
-                .Where(w => w.Address == address);
+                .GetAddressesAsync(
+                    currency: TezosHelper.Fa12,
+                    address: address,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            var fa2LocalAddresses = await _tezosAccount
+                .LocalStorage
+                .GetAddressesAsync(
+                    currency: TezosHelper.Fa2,
+                    address: address,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            var tokenLocalAddresses = fa12LocalAddresses
+                .Concat(fa2LocalAddresses);
 
             var tzktApi = new TzktApi(_tezosAccount.Config.GetTzktSettings());
 
@@ -276,7 +306,7 @@ namespace Atomex.Wallet.Tezos
             {
                 await _tezosAccount
                     .LocalStorage
-                    .UpsertTokenAddressesAsync(changedAddresses)
+                    .UpsertAddressesAsync(changedAddresses, cancellationToken)
                     .ConfigureAwait(false);
 
                 await UpdateAndSaveTokenTransfersAsync(
@@ -294,18 +324,33 @@ namespace Atomex.Wallet.Tezos
         /// <returns></returns>
         public async Task UpdateBalanceAsync(
             string tokenContract,
-            int tokenId,
+            BigInteger tokenId,
             CancellationToken cancellationToken = default)
         {
             // all tezos addresses
-            var xtzLocalAddresses = await _tezosAccount.LocalStorage
-                .GetAddressesAsync(TezosConfig.Xtz)
+            var xtzLocalAddresses = await _tezosAccount
+                .LocalStorage
+                .GetAddressesAsync(TezosConfig.Xtz, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             // token's addresses
-            var allTokensLocalAddresses = await _tezosAccount.LocalStorage
-                .GetTokenAddressesAsync()
+            // all tezos tokens addresses
+            var fa12LocalAddresses = await _tezosAccount
+                .LocalStorage
+                .GetAddressesAsync(
+                    currency: TezosHelper.Fa12,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            var fa2LocalAddresses = await _tezosAccount
+                .LocalStorage
+                .GetAddressesAsync(
+                    currency: TezosHelper.Fa2,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            var allTokensLocalAddresses = fa12LocalAddresses
+                .Concat(fa2LocalAddresses);
 
             var tokenLocalAddresses = allTokensLocalAddresses.Where(w =>
                 w.TokenBalance.Contract == tokenContract &&
@@ -403,7 +448,7 @@ namespace Atomex.Wallet.Tezos
             {
                 await _tezosAccount
                     .LocalStorage
-                    .UpsertTokenAddressesAsync(changedAddresses)
+                    .UpsertAddressesAsync(changedAddresses, cancellationToken)
                     .ConfigureAwait(false);
 
                 await UpdateAndSaveTokenTransfersAsync(
@@ -422,7 +467,7 @@ namespace Atomex.Wallet.Tezos
         public async Task UpdateBalanceAsync(
             string address,
             string tokenContract,
-            int tokenId,
+            BigInteger tokenId,
             CancellationToken cancellationToken = default)
         {
             // all tezos addresses
@@ -433,9 +478,26 @@ namespace Atomex.Wallet.Tezos
             var xtzAddress = xtzLocalAddresses.First(w => w.Address == address);
 
             // tezos token address
-            var tokenLocalAddresses = (await _tezosAccount.LocalStorage
-                .GetTokenAddressesAsync(address, tokenContract)
-                .ConfigureAwait(false))
+            var fa12LocalAddresses = await _tezosAccount
+                .LocalStorage
+                .GetAddressesAsync(
+                    currency: TezosHelper.Fa12,
+                    tokenContract: tokenContract,
+                    address: address,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            var fa2LocalAddresses = await _tezosAccount
+                .LocalStorage
+                .GetAddressesAsync(
+                    currency: TezosHelper.Fa2,
+                    tokenContract: tokenContract,
+                    address: address,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            var tokenLocalAddresses = fa12LocalAddresses
+                .Concat(fa2LocalAddresses)
                 .Where(w => w.TokenBalance.TokenId == tokenId);
 
             var tzktApi = new TzktApi(_tezosAccount.Config.GetTzktSettings());
@@ -523,7 +585,7 @@ namespace Atomex.Wallet.Tezos
             {
                 await _tezosAccount
                     .LocalStorage
-                    .UpsertTokenAddressesAsync(changedAddresses)
+                    .UpsertAddressesAsync(changedAddresses, cancellationToken)
                     .ConfigureAwait(false);
 
                 await UpdateAndSaveTokenTransfersAsync(
@@ -571,7 +633,7 @@ namespace Atomex.Wallet.Tezos
 
             if (error != null)
             {
-                Log.Error("Error while get transfers. Code: {@code}. Message: {@message}.",
+                Log.Error("Error while get transfers. Code: {@code}. Message: {@message}",
                     error.Value.Code,
                     error.Value.Message);
 
@@ -582,7 +644,7 @@ namespace Atomex.Wallet.Tezos
             {
                 await _tezosAccount
                     .LocalStorage
-                    .UpsertTokenTransfersAsync(transfers)
+                    .UpsertTransactionsAsync(transfers, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
         }

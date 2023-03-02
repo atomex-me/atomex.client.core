@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 
 using Atomex.Blockchain;
+using Atomex.Blockchain.Tezos;
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
@@ -52,12 +53,15 @@ namespace Atomex.ViewModels
                 var tezosAddresses = unspentTezosAddresses
                     .Concat(new[] { freeTezosAddress });
 
-                var tokenAddresses = (await tezosAccount.LocalStorage
-                    .GetTokenAddressesByContractAsync(tokenContract)
-                    .ConfigureAwait(false))
-                    .Where(w => w.Currency == "FA12" || w.Currency == "FA2");
+                var tokenType = tezosTokenConfig is Fa12Config
+                    ? TezosHelper.Fa12
+                    : TezosHelper.Fa2;
 
-                tokenAddresses = tokenAddresses.Where(wa => wa.TokenBalance?.TokenId == tokenId);
+                var tokenAddresses = (await tezosAccount
+                    .LocalStorage
+                    .GetAddressesAsync(tokenType, tokenContract: tokenContract)
+                    .ConfigureAwait(false))
+                    .Where(wa => wa.TokenBalance?.TokenId == tokenId);
 
                 var tezosAddressesWithoutTokens = tezosAddresses
                     .Where(w => tokenAddresses.All(ta => ta.Address != w.Address));
@@ -74,7 +78,7 @@ namespace Atomex.ViewModels
                             tokenAddress = new WalletAddress
                             {
                                 Address     = w.Address,
-                                Currency    = tezosTokenConfig is Fa12Config ? "FA12" : "FA2",
+                                Currency    = tokenType,
                                 Balance     = 0,
                                 HasActivity = false,
                                 KeyIndex    = w.KeyIndex,
@@ -126,7 +130,8 @@ namespace Atomex.ViewModels
                     });
             }
 
-            var addresses = (await account.GetCurrencyAccount(currency.Name)
+            var addresses = (await account
+                .GetCurrencyAccount(currency.Name)
                 .GetAddressesAsync()
                 .ConfigureAwait(false))
                 .ToList();

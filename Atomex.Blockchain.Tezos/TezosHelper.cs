@@ -10,6 +10,8 @@ namespace Atomex.Blockchain.Tezos
         public const int Decimals = 6;
         public const int MtzInTz = 1000000;
         public const string Xtz = "XTZ";
+        public const string Fa12 = "FA12";
+        public const string Fa2 = "FA2";
 
         public static decimal ToTez(this long mtz) =>
             (decimal)mtz / MtzInTz;

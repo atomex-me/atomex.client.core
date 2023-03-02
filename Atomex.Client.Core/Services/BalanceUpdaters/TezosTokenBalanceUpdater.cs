@@ -10,6 +10,7 @@ using Atomex.TzktEvents;
 using Atomex.TzktEvents.Models;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Tezos;
+using Atomex.Blockchain.Tezos;
 
 namespace Atomex.Services.BalanceUpdaters
 {
@@ -48,11 +49,11 @@ namespace Atomex.Services.BalanceUpdaters
 
             try
             {
-                var currency = _currenciesProvider
+                var xtzConfig = _currenciesProvider
                     .GetCurrencies(_account.Network)
                     .Get<TezosConfig>(TezosConfig.Xtz);
 
-                var baseUri = currency.BaseUri;
+                var baseUri = xtzConfig.BaseUri;
 
                 await _tzkt
                     .StartAsync(baseUri)
@@ -99,7 +100,8 @@ namespace Atomex.Services.BalanceUpdaters
                     .ScanAsync()
                     .ConfigureAwait(false);
 
-                xtzAddresses = await _tezosAccount.LocalStorage
+                xtzAddresses = await _tezosAccount
+                    .LocalStorage
                     .GetAddressesAsync(TezosConfig.Xtz)
                     .ConfigureAwait(false);
             }
@@ -113,11 +115,18 @@ namespace Atomex.Services.BalanceUpdaters
             walletAddresses.Add(freeAddress);
 
             // addresses from local db
-            var localAddresses = await _tezosAccount.LocalStorage
-                .GetTokenAddressesAsync()
+            var fa12Addresses = await _tezosAccount
+                .LocalStorage
+                .GetAddressesAsync(currency: TezosHelper.Fa12)
                 .ConfigureAwait(false);
 
-            var addresses = localAddresses
+            var fa2Addresses = await _tezosAccount
+                .LocalStorage
+                .GetAddressesAsync(currency: TezosHelper.Fa2)
+                .ConfigureAwait(false);
+
+            var addresses = fa12Addresses
+                .Concat(fa2Addresses)
                 .Select(a => a.Address)
                 .ToHashSet();
 

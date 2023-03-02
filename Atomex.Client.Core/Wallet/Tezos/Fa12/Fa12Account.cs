@@ -9,17 +9,17 @@ namespace Atomex.Wallet.Tezos
     {
         public Fa12Account(
             string tokenContract,
-            int tokenId,
+            BigInteger tokenId,
             ICurrencies currencies,
             IHdWallet wallet,
-            ILocalStorage dataRepository,
+            ILocalStorage localStorage,
             TezosAccount tezosAccount)
             : base("FA12",
                   tokenContract,
                   tokenId,
                   currencies,
                   wallet,
-                  dataRepository,
+                  localStorage,
                   tezosAccount)
         {
         }

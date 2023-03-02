@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
@@ -80,14 +81,14 @@ namespace Atomex.Wallet.Abstract
         ICurrencyAccount GetTezosTokenAccount(
             string currency,
             string tokenContract,
-            int tokenId);
+            BigInteger tokenId);
 
         T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount;
 
         T GetTezosTokenAccount<T>(
             string currency,
             string tokenContract,
-            int tokenId) where T : class;
+            BigInteger tokenId) where T : class;
 
         string GetUserId(uint keyIndex = 0);
 

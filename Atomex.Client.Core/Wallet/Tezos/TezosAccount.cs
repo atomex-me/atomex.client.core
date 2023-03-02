@@ -197,7 +197,10 @@ namespace Atomex.Wallet.Tezos
             try
             {
                 var walletAddress = await LocalStorage
-                    .GetWalletAddressAsync(Currency, operation.From, cancellationToken)
+                    .GetWalletAddressAsync(
+                        currency: Currency,
+                        address: operation.From,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 var forgedOperationWithPrefix = await operation
@@ -491,11 +494,15 @@ namespace Atomex.Wallet.Tezos
         public async Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            return (await LocalStorage
-                .GetTokenAddressesAsync()
-                .ConfigureAwait(false))
-                .Where(w => w.Balance > 0)
-                .ToList();
+            var fa12Addresses = await LocalStorage
+                .GetUnspentAddressesAsync(currency: TezosHelper.Fa12)
+                .ConfigureAwait(false);
+
+            var fa2Addresses = await LocalStorage
+                .GetUnspentAddressesAsync(currency: TezosHelper.Fa12)
+                .ConfigureAwait(false);
+
+            return fa12Addresses.Concat(fa2Addresses);
         }
 
         public async Task<SelectedWalletAddress> CalculateFundsUsageAsync(

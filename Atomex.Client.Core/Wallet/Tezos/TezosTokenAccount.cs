@@ -21,7 +21,7 @@ namespace Atomex.Wallet.Tezos
     public abstract class TezosTokenAccount : ICurrencyAccount, IEstimatable
     {
         protected readonly string _tokenContract;
-        protected readonly int _tokenId;
+        protected readonly BigInteger _tokenId;
         protected readonly TezosAccount _tezosAccount;
 
         public string Currency { get; }
@@ -36,7 +36,7 @@ namespace Atomex.Wallet.Tezos
         public TezosTokenAccount(
             string tokenType,
             string tokenContract,
-            int tokenId,
+            BigInteger tokenId,
             ICurrencies currencies,
             IHdWallet wallet,
             ILocalStorage localStorage,
@@ -248,9 +248,9 @@ namespace Atomex.Wallet.Tezos
                         message: Resources.InsufficientFundsToCoverFees),
                     ErrorHint = string.Format(
                         Resources.InsufficientFundsToCoverFeesDetails,
-                        requiredFeeInMtz,              // required fee
-                        TokenConfig.FeeCurrencyName,   // currency code
-                        xtzAddress.Balance) // available
+                        requiredFeeInMtz,            // required fee
+                        TokenConfig.FeeCurrencyName, // currency code
+                        xtzAddress.Balance)          // available
                 };
 
             if (fromAddress.Balance <= 0)
@@ -264,7 +264,7 @@ namespace Atomex.Wallet.Tezos
                     ErrorHint = string.Format(
                         Resources.InsufficientFundsDetails,
                         fromAddress.Balance, // available tokens
-                        TokenConfig.Name)               // currency code
+                        TokenConfig.Name)    // currency code
                 };
 
             return new MaxAmountEstimation
@@ -428,7 +428,12 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await LocalStorage
-                .GetTokenAddressAsync(TokenType, _tokenContract, _tokenId, address)
+                .GetWalletAddressAsync(
+                    currency: TokenType,
+                    address: address,
+                    tokenContract: _tokenContract,
+                    tokenId: _tokenId,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             return walletAddress != null
@@ -444,7 +449,10 @@ namespace Atomex.Wallet.Tezos
             BigInteger balance = 0;
 
             var addresses = await LocalStorage
-                .GetUnspentTokenAddressesAsync(TokenType, _tokenContract, _tokenId)
+                .GetUnspentAddressesAsync(
+                    currency: TokenType,
+                    tokenContract: _tokenContract,
+                    tokenId: _tokenId)
                 .ConfigureAwait(false);
 
             foreach (var address in addresses)
@@ -525,22 +533,31 @@ namespace Atomex.Wallet.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            return LocalStorage
-                .GetTokenAddressAsync(TokenType, _tokenContract, _tokenId, address);
+            return LocalStorage.GetWalletAddressAsync(
+                currency: TokenType,
+                address: address,
+                tokenContract: _tokenContract,
+                tokenId: _tokenId,
+                cancellationToken: cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            return LocalStorage
-                .GetTokenAddressesByContractAsync(_tokenContract, cancellationToken);
+            return LocalStorage.GetAddressesAsync(
+                currency: TokenType,
+                tokenContract: _tokenContract,
+                cancellationToken: cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            return LocalStorage
-                .GetUnspentTokenAddressesAsync(TokenType, _tokenContract, _tokenId, cancellationToken);
+            return LocalStorage.GetUnspentAddressesAsync(
+                currency: TokenType,
+                tokenContract: _tokenContract,
+                tokenId: _tokenId,
+                cancellationToken: cancellationToken);
         }
 
         public async Task<WalletAddress> GetFreeExternalAddressAsync(
@@ -548,7 +565,11 @@ namespace Atomex.Wallet.Tezos
         {
             // 1. try to find address with tokens
             var unspentAddresses = await LocalStorage
-                .GetUnspentTokenAddressesAsync(TokenType, _tokenContract, _tokenId, cancellationToken)
+                .GetUnspentAddressesAsync(
+                    currency: TokenType,
+                    tokenContract: _tokenContract,
+                    tokenId: _tokenId,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (unspentAddresses.Any())
@@ -556,7 +577,10 @@ namespace Atomex.Wallet.Tezos
 
             // 2. try to find xtz address with max balance
             var unspentTezosAddresses = await LocalStorage
-                .GetUnspentAddressesAsync(TezosConfig.Xtz, includeUnconfirmed: true, cancellationToken)
+                .GetUnspentAddressesAsync(
+                    currency: TezosConfig.Xtz,
+                    includeUnconfirmed: true,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             if (unspentTezosAddresses.Any())
@@ -564,11 +588,12 @@ namespace Atomex.Wallet.Tezos
                 var xtzAddress = unspentTezosAddresses.MaxBy(a => a.Balance);
 
                 var tokenAddress = await LocalStorage
-                    .GetTokenAddressAsync(
+                    .GetWalletAddressAsync(
                         currency: TokenType,
+                        address: xtzAddress.Address,
                         tokenContract: _tokenContract,
                         tokenId: _tokenId,
-                        address: xtzAddress.Address)
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (tokenAddress != null)
@@ -586,11 +611,11 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             var tokenRedeemAddress = await LocalStorage
-                .GetTokenAddressAsync(
+                .GetWalletAddressAsync(
                     currency: TokenType,
+                    address: xtzRedeemAddress.Address,
                     tokenContract: _tokenContract,
                     tokenId: _tokenId,
-                    address: xtzRedeemAddress.Address,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 

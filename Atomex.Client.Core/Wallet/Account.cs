@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Numerics;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
@@ -99,7 +100,7 @@ namespace Atomex.Wallet
         public ICurrencyAccount GetTezosTokenAccount(
             string currency,
             string tokenContract,
-            int tokenId)
+            BigInteger tokenId)
         {
             var uniqueId = $"{currency}:{tokenContract}:{tokenId}";
 
@@ -107,13 +108,13 @@ namespace Atomex.Wallet
                 return account;
 
             return CurrencyAccountCreator.CreateTezosTokenAccount(
-                currency,
-                tokenContract,
-                tokenId,
-                Currencies,
-                Wallet,
-                _localStorage,
-                _currencyAccounts[TezosConfig.Xtz] as TezosAccount);
+                tokenType: currency,
+                tokenContract: tokenContract,
+                tokenId: tokenId,
+                currencies: Currencies,
+                wallet: Wallet,
+                localStorage: _localStorage,
+                tezosAccount: _currencyAccounts[TezosConfig.Xtz] as TezosAccount);
         }
 
         public T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount =>
@@ -122,7 +123,7 @@ namespace Atomex.Wallet
         public T GetTezosTokenAccount<T>(
             string currency,
             string tokenContract,
-            int tokenId) where T : class =>
+            BigInteger tokenId) where T : class =>
             GetTezosTokenAccount(currency, tokenContract, tokenId) as T;
 
         public string GetUserId(uint keyIndex = 0)

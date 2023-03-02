@@ -376,11 +376,11 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await LocalStorage
-                .GetTokenAddressAsync(
+                .GetWalletAddressAsync(
                     currency: EthereumHelper.Erc20,
+                    address: address,
                     tokenContract: Erc20Config.TokenContractAddress,
                     tokenId: 0,
-                    address: address,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -397,7 +397,7 @@ namespace Atomex.Wallet.Ethereum
             BigInteger balance = 0;
 
             var addresses = await LocalStorage
-                .GetUnspentTokenAddressesAsync(
+                .GetUnspentAddressesAsync(
                     currency: EthereumHelper.Erc20,
                     tokenContract: Erc20Config.TokenContractAddress,
                     tokenId: 0)
@@ -470,25 +470,29 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             return LocalStorage
-                .GetTokenAddressAsync(
+                .GetWalletAddressAsync(
                     currency: EthereumHelper.Erc20,
                     tokenContract: Erc20Config.TokenContractAddress,
                     tokenId: 0,
-                    address: address);
+                    address: address,
+                    cancellationToken: cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetAddressesAsync(
             CancellationToken cancellationToken = default)
         {
             return LocalStorage
-                .GetTokenAddressesByContractAsync(Erc20Config.TokenContractAddress, cancellationToken);
+                .GetAddressesAsync(
+                    currency: EthereumHelper.Erc20,
+                    tokenContract: Erc20Config.TokenContractAddress,
+                    cancellationToken: cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             CancellationToken cancellationToken = default)
         {
             return LocalStorage
-                .GetUnspentTokenAddressesAsync(
+                .GetUnspentAddressesAsync(
                     currency: EthereumHelper.Erc20,
                     tokenContract: Erc20Config.TokenContractAddress,
                     tokenId: 0,
@@ -546,7 +550,7 @@ namespace Atomex.Wallet.Ethereum
         {
             // addresses with tokens
             var unspentAddresses = await LocalStorage
-                .GetUnspentTokenAddressesAsync(
+                .GetUnspentAddressesAsync(
                     currency: EthereumHelper.Erc20,
                     tokenContract: Erc20Config.TokenContractAddress,
                     tokenId: 0,
@@ -571,7 +575,7 @@ namespace Atomex.Wallet.Ethereum
                     .ConfigureAwait(false);
 
                 _ = await LocalStorage
-                    .UpsertTokenAddressesAsync(new WalletAddress[] { result }, cancellationToken)
+                    .UpsertAddressAsync(result, cancellationToken)
                     .ConfigureAwait(false);
 
                 return result;
@@ -606,7 +610,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             _ = await LocalStorage
-                .UpsertTokenAddressesAsync(new WalletAddress[] { freeAddress }, cancellationToken)
+                .UpsertAddressAsync(freeAddress, cancellationToken)
                 .ConfigureAwait(false);
 
             return freeAddress;

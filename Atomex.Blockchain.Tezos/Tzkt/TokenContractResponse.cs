@@ -181,14 +181,15 @@ namespace Atomex.Blockchain.Tezos.Tzkt
 
         public TokenContract ToTokenContract()
         {
-            var contractType = "FA2";
+            var contractType = TezosHelper.Fa2;
+
             if (Tzips != null)
             {
                 if (Tzips.Contains("fa2"))
-                    contractType = "FA2";
+                    contractType = TezosHelper.Fa2;
 
                 if (Tzips.Contains("fa12"))
-                    contractType = "FA12";
+                    contractType = TezosHelper.Fa12;
             }
 
             return new TokenContract()
