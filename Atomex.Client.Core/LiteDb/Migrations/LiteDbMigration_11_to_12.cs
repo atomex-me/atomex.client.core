@@ -26,7 +26,6 @@ namespace Atomex.LiteDb.Migrations
     {
         private const string Temp = "temp";
         private const string Backup = "backup";
-        private const string TxIdKey = "TxId";
         private const string OrderIdKey = "OrderId";
 
         public static LiteDbMigrationResult Migrate(
@@ -45,9 +44,12 @@ namespace Atomex.LiteDb.Migrations
                 // create transactions metadata collection
                 const string InitialId = "0";
 
-                var metadata = newDb.GetCollection<TransactionMetadata>("TransactionsMetadata");
-                metadata.Insert(new TransactionMetadata { Id = InitialId });
-                metadata.Delete(InitialId);
+                foreach (var c in new string[] { "btc", "ltc", "xtz", "eth", "erc20", "fa12", "fa2" })
+                {
+                    var metadata = newDb.GetCollection<TransactionMetadata>($"{c}_meta");
+                    metadata.Insert(new TransactionMetadata { Id = InitialId });
+                    metadata.Delete(InitialId);
+                }
 
                 // wallet addresses
                 foreach (var oldAddress in oldDb.GetCollection("Addresses").FindAll())
@@ -94,10 +96,22 @@ namespace Atomex.LiteDb.Migrations
                         _ => throw new Exception($"Invalid currency {currency} or key type {keyType}")
                     };
 
+                    var newCurrency = currency switch
+                    {
+                        "BTC" => "BTC",
+                        "LTC" => "LTC",
+                        "XTZ" => "XTZ",
+                        "ETH" => "ETH",
+                        "USDT" => "ERC20",
+                        "WBTC" => "ERC20",
+                        "TBTC" => "ERC20",
+                        _ => throw new Exception($"Invalid currency {currency}")
+                    };
+
                     var walletAddress = new WalletAddress
                     {
                         Address               = oldAddress["Address"].AsString,
-                        Currency              = oldAddress["Currency"].AsString,
+                        Currency              = newCurrency,
                         Balance               = oldAddress["Balance"].AsDecimal.ToBigInteger(decimals),
                         UnconfirmedIncome     = oldAddress["UnconfirmedIncome"].AsDecimal.ToBigInteger(decimals),
                         UnconfirmedOutcome    = oldAddress["UnconfirmedOutcome"].AsDecimal.ToBigInteger(decimals),
@@ -110,10 +124,38 @@ namespace Atomex.LiteDb.Migrations
                         TokenBalance          = null
                     };
 
+                    if (newCurrency == EthereumHelper.Erc20)
+                    {
+                        var contract = (currency, network) switch
+                        {
+                            ("USDT", Network.MainNet) => "0xdac17f958d2ee523a2206206994597c13d831ec7",
+                            ("WBTC", Network.MainNet) => "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
+                            ("TBTC", Network.MainNet) => "0x8dAEBADE922dF735c38C80C7eBD708Af50815fAa",
+                            ("USDT", Network.TestNet) => "0x2b33e8490a4e87e4ab313ab6785d06fc54cf2e98",
+                            ("WBTC", Network.TestNet) => "0x906cd19c4a8d745eedfa3fcbfe7766e6f8579e9f",
+                            ("TBTC", Network.TestNet) => "0x4fb4b4812b103b759a491fec6a8feafb6784ed8d",
+                            _ => throw new Exception($"Invalid currency {currency}")
+                        };
+
+                        walletAddress.TokenBalance = new TokenBalance
+                        {
+                            Address     = walletAddress.Address,
+                            Name        = currency,
+                            Balance     = walletAddress.Balance.ToString(),
+                            Contract    = contract,
+                            Decimals    = decimals,
+                            Description = currency,
+                            Standard    = EthereumHelper.Erc20,
+                            Symbol      = currency,
+                        };
+                    }
+
                     var walletAddressDocument = mapper.ToDocument(walletAddress);
 
+                    var addressesCollectionName = $"{newCurrency.ToLowerInvariant()}_addrs";
+
                     _ = newDb
-                        .GetCollection("Addresses")
+                        .GetCollection(addressesCollectionName)
                         .Upsert(walletAddressDocument);
                 }
 
@@ -128,8 +170,10 @@ namespace Atomex.LiteDb.Migrations
 
                     outputDocument["Address"] = output.DestinationAddress(txNetwork);
 
+                    var outputsCollectionName = $"{output.Currency.ToLowerInvariant()}_outs";
+
                     _ = newDb
-                        .GetCollection("Outputs")
+                        .GetCollection(outputsCollectionName)
                         .Upsert(outputDocument);
                 }
 
@@ -177,16 +221,20 @@ namespace Atomex.LiteDb.Migrations
                         confirmations: confirmations,
                         fee: fee);
 
+                    var transactionsMetadataCollectionName = $"{currency.ToLowerInvariant()}_meta";
+
                     var txDocument = mapper.ToDocument(tx);
 
                     txDocument["UserMetadata"] = new BsonDocument
                     {
                         ["$id"] = txDocument["_id"],
-                        ["$ref"] = "TransactionsMetadata",
+                        ["$ref"] = transactionsMetadataCollectionName,
                     };
 
+                    var transactionsCollectionName = $"{currency.ToLowerInvariant()}_txs";
+
                     _ = newDb
-                        .GetCollection("Transactions")
+                        .GetCollection(transactionsCollectionName)
                         .Upsert(txDocument);
                 }
 
@@ -227,7 +275,7 @@ namespace Atomex.LiteDb.Migrations
                     var orderDocument = mapper.ToDocument(order);
 
                     _ = newDb
-                        .GetCollection("Orders")
+                        .GetCollection("orders")
                         .Upsert(orderDocument);
                 }
 
@@ -280,9 +328,9 @@ namespace Atomex.LiteDb.Migrations
 
                     var swap = new Swap
                     {
+                        Id                     = oldSwap["_id"].AsInt64,
                         FromAddress            = oldSwap["FromAddress"].AsString,
                         FromOutputs            = fromOutputs,
-                        Id                     = oldSwap["_id"].AsInt64,
                         IsInitiator            = oldSwap["IsInitiative"].AsBoolean,
                         LastRedeemTryTimeStamp = DateTime.MinValue,
                         LastRefundTryTimeStamp = DateTime.MinValue,
@@ -315,7 +363,7 @@ namespace Atomex.LiteDb.Migrations
                     var swapDocument = mapper.ToDocument(swap);
 
                     _ = newDb
-                        .GetCollection("Swaps")
+                        .GetCollection("swaps")
                         .Upsert(swapDocument);
                 }
 
@@ -327,13 +375,13 @@ namespace Atomex.LiteDb.Migrations
 
             return new LiteDbMigrationResult
             {
+                { Collections.Addresses, "FA12" },
+                { Collections.Addresses, "FA2" },
                 { Collections.Transactions, "XTZ" },
                 { Collections.Transactions, "ETH" },
-                { Collections.Transactions, "USDT" },
-                { Collections.Transactions, "WBTC" },
-                { Collections.Transactions, "TBTC" },
-                { Collections.TezosTokensTransfers, "ALL" },
-                { Collections.TezosTokensAddresses, "ALL" },
+                { Collections.Transactions, "ERC20" },
+                { Collections.Transactions, "FA12" },
+                { Collections.Transactions, "FA2" },
                 { Collections.TezosTokensContracts, "ALL" },
             };
         }
@@ -347,7 +395,6 @@ namespace Atomex.LiteDb.Migrations
                 .UseSerializer(new BitcoinTransactionSerializer(network));
 
             mapper.Entity<WalletAddress>()
-                .Id(w => w.UniqueId)
                 .Ignore(w => w.IsDisabled);
 
             mapper.Entity<BitcoinTxOutput>()
@@ -362,35 +409,24 @@ namespace Atomex.LiteDb.Migrations
                 .Ignore(o => o.IsSegWit);
 
             mapper.Entity<EthereumTransaction>()
-                .Id(t => t.UniqueId)
-                .Field(t => t.Id, TxIdKey)
                 .Ignore(t => t.IsConfirmed);
 
             mapper.Entity<TezosOperation>()
-                .Id(t => t.UniqueId)
-                .Field(t => t.Id, TxIdKey)
                 .Ignore(t => t.From)
                 .Ignore(t => t.IsConfirmed);
 
-            mapper.Entity<TezosTokenTransfer>()
-                .Id(t => t.UniqueId)
-                .Field(t => t.Id, TxIdKey);
+            //mapper.Entity<TezosTokenTransfer>();
 
             mapper.Entity<Erc20Transaction>()
-                .Id(t => t.UniqueId)
-                .Field(t => t.Id, TxIdKey)
                 .Ignore(t => t.IsConfirmed);
 
-            mapper.Entity<TransactionMetadata>()
-                .Id(t => t.UniqueId)
-                .Field(t => t.Id, TxIdKey);
+            //mapper.Entity<TransactionMetadata>();
 
             mapper.Entity<Order>()
                 .Id(o => o.ClientOrderId)
                 .Field(o => o.Id, OrderIdKey);
 
             mapper.Entity<Swap>()
-                .Id(s => s.Id)
                 .Ignore(s => s.SoldCurrency)
                 .Ignore(s => s.PurchasedCurrency)
                 .Ignore(s => s.IsComplete)

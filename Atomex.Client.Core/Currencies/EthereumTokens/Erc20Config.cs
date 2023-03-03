@@ -6,6 +6,7 @@ using System.Threading;
 
 using Microsoft.Extensions.Configuration;
 
+using Atomex.Abstract;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Common;
@@ -13,12 +14,13 @@ using Atomex.Wallets.Bips;
 
 namespace Atomex.EthereumTokens
 {
-    public class Erc20Config : EthereumConfig
+    public class Erc20Config : EthereumConfig, ITokenConfig
     {
         public long TransferGasLimit { get; private set; }
         public long ApproveGasLimit { get; private set; }
         public string TokenContractAddress { get; private set; }
         public ulong TokenContractBlockNumber { get; private set; }
+        public BigInteger TokenId => 0;
 
         public Erc20Config()
         {

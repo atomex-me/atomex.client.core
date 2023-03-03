@@ -37,7 +37,7 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await LocalStorage
-                .GetWalletAddressAsync(
+                .GetAddressAsync(
                     currency: Currency,
                     address: address,
                     cancellationToken: cancellationToken)
@@ -98,7 +98,7 @@ namespace Atomex.Wallet.Abstract
             string address,
             CancellationToken cancellationToken = default)
         {
-            return LocalStorage.GetWalletAddressAsync(
+            return LocalStorage.GetAddressAsync(
                 currency: Currency,
                 address: address,
                 cancellationToken: cancellationToken);

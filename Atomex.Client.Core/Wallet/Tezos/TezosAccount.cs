@@ -197,7 +197,7 @@ namespace Atomex.Wallet.Tezos
             try
             {
                 var walletAddress = await LocalStorage
-                    .GetWalletAddressAsync(
+                    .GetAddressAsync(
                         currency: Currency,
                         address: operation.From,
                         cancellationToken: cancellationToken)

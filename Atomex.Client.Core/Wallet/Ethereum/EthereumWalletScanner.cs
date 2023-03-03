@@ -128,7 +128,7 @@ namespace Atomex.Wallet.Ethereum
 
                 var _ = await _account
                     .LocalStorage
-                    .UpsertAddressesAsync(walletAddresses)
+                    .UpsertAddressesAsync(_account.Currency, walletAddresses)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -198,7 +198,7 @@ namespace Atomex.Wallet.Ethereum
                 {
                     var _ = await _account
                         .LocalStorage
-                        .UpsertAddressesAsync(walletAddresses)
+                        .UpsertAddressesAsync(_account.Currency, walletAddresses, cancellationToken)
                         .ConfigureAwait(false);
                 }
             }
@@ -222,7 +222,10 @@ namespace Atomex.Wallet.Ethereum
 
                 var walletAddress = await _account
                     .LocalStorage
-                    .GetWalletAddressAsync(_account.Currency, address)
+                    .GetAddressAsync(
+                        currency: _account.Currency,
+                        address: address,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (walletAddress == null)
@@ -256,7 +259,7 @@ namespace Atomex.Wallet.Ethereum
 
                 var _ = await _account
                     .LocalStorage
-                    .UpsertAddressAsync(walletAddress)
+                    .UpsertAddressAsync(walletAddress, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -299,7 +302,10 @@ namespace Atomex.Wallet.Ethereum
             if (walletAddress.LastSuccessfullUpdate != DateTime.MinValue)
             {
                 var (blockNumber, blockNumberError) = await api
-                    .GetBlockNumberAsync(walletAddress.LastSuccessfullUpdate, ClosestBlock.Before, cancellationToken)
+                    .GetBlockNumberAsync(
+                        timeStamp: walletAddress.LastSuccessfullUpdate,
+                        blockClosest: ClosestBlock.Before,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (blockNumberError != null)

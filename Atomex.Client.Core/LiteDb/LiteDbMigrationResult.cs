@@ -12,8 +12,6 @@ namespace Atomex.LiteDb
         TransactionsMetadata,
         Outputs,
         Addresses,
-        TezosTokensAddresses,
-        TezosTokensTransfers,
         TezosTokensContracts
     }
 

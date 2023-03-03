@@ -58,7 +58,7 @@ namespace Atomex.Wallet.Ethereum
                 var walletAddresses = ethAddresses.Select(w => new WalletAddress
                 {
                     Address               = w.Address,
-                    Currency              = EthereumHelper.Erc20, //_account.Currency,
+                    Currency              = EthereumHelper.Erc20,
                     HasActivity           = false,
                     KeyIndex              = w.KeyIndex,
                     KeyType               = w.KeyType,
@@ -117,7 +117,10 @@ namespace Atomex.Wallet.Ethereum
                 {
                     var _ = await _account
                         .LocalStorage
-                        .UpsertAddressesAsync(walletAddresses, cancellationToken)
+                        .UpsertAddressesAsync(
+                            currency: EthereumHelper.Erc20,
+                            walletAddresses: walletAddresses,
+                            cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
             }
@@ -196,7 +199,10 @@ namespace Atomex.Wallet.Ethereum
                 {
                     var _ = await _account
                         .LocalStorage
-                        .UpsertAddressesAsync(walletAddresses, cancellationToken)
+                        .UpsertAddressesAsync(
+                            currency: EthereumHelper.Erc20,
+                            walletAddresses: walletAddresses,
+                            cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
             }
@@ -220,7 +226,7 @@ namespace Atomex.Wallet.Ethereum
 
                 var walletAddress = await _account
                     .LocalStorage
-                    .GetWalletAddressAsync(
+                    .GetAddressAsync(
                         currency: EthereumHelper.Erc20,
                         tokenContract: Erc20Config.TokenContractAddress,
                         tokenId: 0,
@@ -252,7 +258,10 @@ namespace Atomex.Wallet.Ethereum
                     {
                         var existsTx = await _account
                             .LocalStorage
-                            .GetTransactionByIdAsync<Erc20Transaction>(_account.Currency, tx.Id)
+                            .GetTransactionByIdAsync<Erc20Transaction>(
+                                currency: _account.Currency,
+                                txId: tx.Id,
+                                cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
                         if (existsTx != null)
@@ -314,7 +323,10 @@ namespace Atomex.Wallet.Ethereum
             if (walletAddress.LastSuccessfullUpdate != DateTime.MinValue)
             {
                 var (blockNumber, blockNumberError) = await api
-                    .GetBlockNumberAsync(walletAddress.LastSuccessfullUpdate, ClosestBlock.Before, cancellationToken)
+                    .GetBlockNumberAsync(
+                        timeStamp: walletAddress.LastSuccessfullUpdate,
+                        blockClosest: ClosestBlock.Before,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (blockNumberError != null)

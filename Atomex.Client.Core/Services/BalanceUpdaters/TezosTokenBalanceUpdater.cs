@@ -5,12 +5,12 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 using Atomex.Abstract;
+using Atomex.Blockchain.Tezos;
 using Atomex.Services.Abstract;
 using Atomex.TzktEvents;
 using Atomex.TzktEvents.Models;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Tezos;
-using Atomex.Blockchain.Tezos;
 
 namespace Atomex.Services.BalanceUpdaters
 {

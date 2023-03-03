@@ -15,7 +15,6 @@ namespace Atomex.Blockchain.Ethereum.Erc20
 
     public class Erc20Transaction : ITransaction
     {
-        public string UniqueId => $"{Id}:{Currency}";
         public string Id { get; set; }
         public string Currency { get; set; }
         public string Contract { get; set; }

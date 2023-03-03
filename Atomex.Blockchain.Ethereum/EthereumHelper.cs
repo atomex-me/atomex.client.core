@@ -13,6 +13,7 @@ namespace Atomex.Blockchain.Ethereum
         public const long GweiInEth = 1000000000;
         public const string Eth = "ETH";
         public const string Erc20 = "ERC20";
+        public const string Erc721 = "ERC721";
         public const byte Eip1559TransactionType = 0x02;
 
         public static decimal WeiToEth(this BigInteger wei)

@@ -127,7 +127,8 @@ namespace Atomex.Wallet.BitcoinBased
                         .UpsertOutputsAsync(
                             outputs: outputs,
                             currency: _account.Currency,
-                            network: Config.Network)
+                            network: Config.Network,
+                            cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
 
@@ -147,7 +148,10 @@ namespace Atomex.Wallet.BitcoinBased
 
                 var _ = await _account
                     .LocalStorage
-                    .UpsertAddressesAsync(walletAddresses)
+                    .UpsertAddressesAsync(
+                        currency: _account.Currency,
+                        walletAddresses: walletAddresses,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -231,7 +235,10 @@ namespace Atomex.Wallet.BitcoinBased
                 {
                     var _ = await _account
                         .LocalStorage
-                        .UpsertAddressesAsync(walletAddresses)
+                        .UpsertAddressesAsync(
+                            currency: _account.Currency,
+                            walletAddresses: walletAddresses,
+                            cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
             }
@@ -255,7 +262,10 @@ namespace Atomex.Wallet.BitcoinBased
 
                 var walletAddress = await _account
                     .LocalStorage
-                    .GetWalletAddressAsync(_account.Currency, address)
+                    .GetAddressAsync(
+                        currency: _account.Currency,
+                        address: address,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (walletAddress == null)
@@ -283,7 +293,8 @@ namespace Atomex.Wallet.BitcoinBased
                         .UpsertOutputsAsync(
                             outputs: updateResult.Outputs,
                             currency: _account.Currency,
-                            network: Config.Network)
+                            network: Config.Network,
+                            cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
 
@@ -300,7 +311,9 @@ namespace Atomex.Wallet.BitcoinBased
 
                 var _ = await _account
                     .LocalStorage
-                    .UpsertAddressAsync(walletAddress)
+                    .UpsertAddressAsync(
+                        walletAddress: walletAddress,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
             }

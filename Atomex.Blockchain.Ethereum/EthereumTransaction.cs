@@ -35,7 +35,6 @@ namespace Atomex.Blockchain.Ethereum
 
     public class EthereumTransaction : ITransaction, IEthereumTransaction
     {
-        public string UniqueId => $"{Id}:{Currency}";
         public string Id { get; set; }
         public string Currency { get; set; }
         public TransactionStatus Status { get; set; }

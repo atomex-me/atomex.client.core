@@ -147,7 +147,7 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
             where T : ITransaction;
         Task<IEnumerable<ITransaction>> GetTransactionsAsync(string currency);
-        Task<IEnumerable<(ITransaction Tx, ITransactionMetadata Metadata)>> GetTransactionsWithMetadataAsync(
+        Task<IEnumerable<TransactionInfo<ITransaction, ITransactionMetadata>>> GetTransactionsWithMetadataAsync(
             string currency,
             int offset = 0,
             int limit = int.MaxValue,

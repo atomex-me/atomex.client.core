@@ -34,10 +34,11 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default);
 
         Task<int> UpsertAddressesAsync(
+            string currency,
             IEnumerable<WalletAddress> walletAddresses,
             CancellationToken cancellationToken = default);
 
-        Task<WalletAddress> GetWalletAddressAsync(
+        Task<WalletAddress> GetAddressAsync(
             string currency,
             string address,
             string tokenContract = null,
@@ -63,61 +64,9 @@ namespace Atomex.Wallet.Abstract
             string address = null,
             CancellationToken cancellationToken = default);
 
-        //Task<IEnumerable<WalletAddress>> GetAddressesAsync(
-        //    string address,
-        //    string tokenContract,
-        //    CancellationToken cancellationToken = default);
-
         #endregion Addresses
 
         #region Tokens
-
-        //Task<WalletAddress> GetTokenAddressAsync(
-        //    string currency,
-        //    string tokenContract,
-        //    BigInteger tokenId,
-        //    string address,
-        //    CancellationToken cancellationToken = default);
-
-        //Task<IEnumerable<WalletAddress>> GetUnspentTokenAddressesAsync(
-        //    string currency,
-        //    string tokenContract,
-        //    decimal tokenId,
-        //    CancellationToken cancellationToken = default);
-
-        //Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
-        //    CancellationToken cancellationToken = default);
-
-        //Task<IEnumerable<WalletAddress>> GetTokenAddressesAsync(
-        //    string address,
-        //    string tokenContract,
-        //    CancellationToken cancellationToken = default);
-
-        //Task<IEnumerable<WalletAddress>> GetTokenAddressesByContractAsync(
-        //    string tokenContract,
-        //    CancellationToken cancellationToken = default);
-
-        //Task<int> UpsertTokenAddressesAsync(
-        //    IEnumerable<WalletAddress> walletAddresses,
-        //    CancellationToken cancellationToken = default);
-
-        //Task<int> UpsertTokenTransfersAsync(
-        //    IEnumerable<TezosTokenTransfer> tokenTransfers,
-        //    CancellationToken cancellationToken = default);
-
-        //Task<IEnumerable<TezosTokenTransfer>> GetTokenTransfersAsync(
-        //    string contractAddress,
-        //    int offset = 0,
-        //    int limit = int.MaxValue,
-        //    SortDirection sort = SortDirection.Desc,
-        //    CancellationToken cancellationToken = default);
-
-        //Task<IEnumerable<(TezosTokenTransfer Transfer, TransactionMetadata Metadata)>> GetTokenTransfersWithMetadataAsync(
-        //    string contractAddress,
-        //    int offset = 0,
-        //    int limit = int.MaxValue,
-        //    SortDirection sort = SortDirection.Desc,
-        //    CancellationToken cancellationToken = default);
 
         Task<int> UpsertTokenContractsAsync(
             IEnumerable<TokenContract> tokenContracts,
@@ -152,14 +101,14 @@ namespace Atomex.Wallet.Abstract
             Type transactionType,
             CancellationToken cancellationToken = default);
 
-        Task<(T,M)> GetTransactionWithMetadataByIdAsync<T,M>(
+        Task<TransactionInfo<T, M>> GetTransactionWithMetadataByIdAsync<T,M>(
             string currency,
             string txId,
             CancellationToken cancellationToken = default)
             where T : ITransaction
             where M : ITransactionMetadata;
 
-        Task<(ITransaction, ITransactionMetadata)> GetTransactionWithMetadataByIdAsync(
+        Task<TransactionInfo<ITransaction, ITransactionMetadata>> GetTransactionWithMetadataByIdAsync(
             string currency,
             string txId,
             Type transactionType,
@@ -184,7 +133,7 @@ namespace Atomex.Wallet.Abstract
             SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<(ITransaction, ITransactionMetadata)>> GetTransactionsWithMetadataAsync(
+        Task<IEnumerable<TransactionInfo<ITransaction, ITransactionMetadata>>> GetTransactionsWithMetadataAsync(
             string currency,
             Type transactionType,
             Type metadataType,
@@ -194,7 +143,7 @@ namespace Atomex.Wallet.Abstract
             SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default);
 
-        Task<IEnumerable<(T, M)>> GetTransactionsWithMetadataAsync<T, M>(
+        Task<IEnumerable<TransactionInfo<T, M>>> GetTransactionsWithMetadataAsync<T, M>(
             string currency,
             string tokenContract = null,
             int offset = 0,

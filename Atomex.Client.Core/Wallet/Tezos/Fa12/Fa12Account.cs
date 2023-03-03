@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 
 using Atomex.Abstract;
+using Atomex.Blockchain.Tezos;
 using Atomex.Wallet.Abstract;
 
 namespace Atomex.Wallet.Tezos
@@ -14,7 +15,7 @@ namespace Atomex.Wallet.Tezos
             IHdWallet wallet,
             ILocalStorage localStorage,
             TezosAccount tezosAccount)
-            : base("FA12",
+            : base(TezosHelper.Fa12,
                   tokenContract,
                   tokenId,
                   currencies,

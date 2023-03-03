@@ -2,11 +2,12 @@
 using System.Threading;
 using System.Threading.Tasks;
 
+using Atomex.Abstract;
 using Atomex.Common;
 
 namespace Atomex.TezosTokens
 {
-    public class TezosTokenConfig : TezosConfig
+    public class TezosTokenConfig : TezosConfig, ITokenConfig
     {
         public long TransferFee { get; protected set; }
         public long TransferGasLimit { get; protected set; }

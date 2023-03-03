@@ -27,10 +27,15 @@ namespace Atomex.Wallet.Ethereum
     public class Erc20Account : ICurrencyAccount, IEstimatable
     {
         protected readonly EthereumAccount _ethereumAccount;
+        protected readonly string _tokenContract;
+
         public string Currency { get; }
         public ICurrencies Currencies { get; }
         public IHdWallet Wallet { get; }
         public ILocalStorage LocalStorage { get; }
+
+        private Erc20Config Erc20Config => Currencies.Get<Erc20Config>(Currency);
+        private EthereumConfig EthConfig => Currencies.Get<EthereumConfig>(EthereumHelper.Eth);
 
         public Erc20Account(
             string currency,
@@ -48,9 +53,6 @@ namespace Atomex.Wallet.Ethereum
         }
 
         #region Common
-
-        private Erc20Config Erc20Config => Currencies.Get<Erc20Config>(Currency);
-        private EthereumConfig EthConfig => Currencies.Get<EthereumConfig>("ETH");
 
         public async Task<Result<string>> SendAsync(
             string from,
@@ -267,7 +269,7 @@ namespace Atomex.Wallet.Ethereum
             var requiredFeeInWei = feeInWei + (reserve ? reserveFeeInWei : 0);
 
             var ethAddress = await LocalStorage
-                .GetWalletAddressAsync(eth.Name, tokenAddress.Address)
+                .GetAddressAsync(eth.Name, tokenAddress.Address)
                 .ConfigureAwait(false);
 
             if (ethAddress == null)
@@ -376,7 +378,7 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             var walletAddress = await LocalStorage
-                .GetWalletAddressAsync(
+                .GetAddressAsync(
                     currency: EthereumHelper.Erc20,
                     address: address,
                     tokenContract: Erc20Config.TokenContractAddress,
@@ -438,10 +440,8 @@ namespace Atomex.Wallet.Ethereum
             string keyPath,
             int keyType)
         {
-            var currency = Currencies.GetByName(Currency);
-
             var walletAddress = Wallet.GetAddress(
-                currency: currency,
+                currency: EthConfig,
                 keyPath: keyPath,
                 keyType: keyType);
 
@@ -470,7 +470,7 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             return LocalStorage
-                .GetWalletAddressAsync(
+                .GetAddressAsync(
                     currency: EthereumHelper.Erc20,
                     tokenContract: Erc20Config.TokenContractAddress,
                     tokenId: 0,
@@ -517,7 +517,7 @@ namespace Atomex.Wallet.Ethereum
             var feeInWei = gasLimit * gasPrice.GweiToWei();
 
             var ethAddress = await LocalStorage
-                .GetWalletAddressAsync(eth.Name, fromAddress.Address)
+                .GetAddressAsync(eth.Name, fromAddress.Address)
                 .ConfigureAwait(false);
 
             var availableBalanceInWei = ethAddress?.Balance ?? 0;
@@ -562,7 +562,7 @@ namespace Atomex.Wallet.Ethereum
 
             // addresses with eth
             var unspentEthereumAddresses = await LocalStorage
-                .GetUnspentAddressesAsync("ETH")
+                .GetUnspentAddressesAsync(EthereumHelper.Eth)
                 .ConfigureAwait(false);
 
             if (unspentEthereumAddresses.Any())

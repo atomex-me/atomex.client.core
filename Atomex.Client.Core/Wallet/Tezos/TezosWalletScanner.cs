@@ -129,7 +129,10 @@ namespace Atomex.Wallet.Tezos
 
                 var _ = await _account
                     .LocalStorage
-                    .UpsertAddressesAsync(walletAddresses)
+                    .UpsertAddressesAsync(
+                        currency: _account.Currency,
+                        walletAddresses: walletAddresses,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -199,7 +202,10 @@ namespace Atomex.Wallet.Tezos
                 {
                     var _ = await _account
                         .LocalStorage
-                        .UpsertAddressesAsync(walletAddresses)
+                        .UpsertAddressesAsync(
+                            currency: _account.Currency,
+                            walletAddresses: walletAddresses,
+                            cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
             }
@@ -223,7 +229,10 @@ namespace Atomex.Wallet.Tezos
 
                 var walletAddress = await _account
                     .LocalStorage
-                    .GetWalletAddressAsync(_account.Currency, address)
+                    .GetAddressAsync(
+                        currency: _account.Currency,
+                        address: address,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
                 if (walletAddress == null)
@@ -257,7 +266,7 @@ namespace Atomex.Wallet.Tezos
     
                 var _ = await _account
                     .LocalStorage
-                    .UpsertAddressAsync(walletAddress)
+                    .UpsertAddressAsync(walletAddress, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
