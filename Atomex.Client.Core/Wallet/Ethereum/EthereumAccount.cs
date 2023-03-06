@@ -44,8 +44,8 @@ namespace Atomex.Wallet.Ethereum
             string currency,
             ICurrencies currencies,
             IHdWallet wallet,
-            ILocalStorage dataRepository)
-                : base(currency, currencies, wallet, dataRepository)
+            ILocalStorage localStorage)
+                : base(currency, currencies, wallet, localStorage)
         {
         }
 
@@ -409,10 +409,10 @@ namespace Atomex.Wallet.Ethereum
         {
             var result = new List<WalletAddress>();
 
-            foreach (var token in Atomex.Currencies.EthTokens)
+            foreach (var tokenStandard in Atomex.Currencies.EthTokensStandards)
             {
                 var addresses = await LocalStorage
-                    .GetUnspentAddressesAsync(token)
+                    .GetUnspentAddressesAsync(tokenStandard)
                     .ConfigureAwait(false);
 
                 result.AddRange(addresses);

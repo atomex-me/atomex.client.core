@@ -11,6 +11,8 @@ namespace Atomex.TezosTokens
 {
     public class Fa2Config : TezosTokenConfig
     {
+        public override string Standard => TezosHelper.Fa2;
+
         public Fa2Config()
         {
         }

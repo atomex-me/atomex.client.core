@@ -7,9 +7,9 @@ namespace Atomex.Common.Bson
     public class BigIntegerToBsonSerializer : BsonSerializer<BigInteger>
     {
         public override BigInteger Deserialize(BsonValue value) =>
-            new(value.AsBinary);
+            BigInteger.Parse(value.AsString);
 
         public override BsonValue Serialize(BigInteger value) =>
-            value.ToByteArray();
+            value.ToString();
     }
 }

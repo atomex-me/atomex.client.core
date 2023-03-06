@@ -150,22 +150,26 @@ namespace Atomex.LiteDb
         }
 
         public Task<int> UpsertAddressesAsync(
-            string currency,
             IEnumerable<WalletAddress> walletAddresses,
             CancellationToken cancellationToken = default)
         {
             try
             {
-                var documents = walletAddresses.Select(_bsonMapper.ToDocument);
+                var upserted = 0;
 
-                var addressesCollectionName = GetAddressesCollectionName(currency);
+                foreach (var addressesGroup in walletAddresses.GroupBy(w => w.Currency))
+                {
+                    var documents = addressesGroup.Select(_bsonMapper.ToDocument);
 
-                var addresses = _db.GetCollection(addressesCollectionName);
-                //addresses.EnsureIndex(AddressKey);
-                
-                var upsertResult = addresses.Upsert(documents);
+                    var addressesCollectionName = GetAddressesCollectionName(addressesGroup.Key);
 
-                return Task.FromResult(upsertResult);
+                    var addresses = _db.GetCollection(addressesCollectionName);
+                    //addresses.EnsureIndex(AddressKey);
+
+                    upserted += addresses.Upsert(documents);
+                }
+
+                return Task.FromResult(upserted);
             }
             catch (Exception e)
             {
@@ -453,26 +457,31 @@ namespace Atomex.LiteDb
         {
             try
             {
-                var transactionsCollectionName = GetTransactionsCollectionName(txs.First().Currency);
-                var transactionsMetadataCollectionName = GetTransactionsMetadataCollectionName(txs.First().Currency);
-
-                var transactions = _db
-                    .GetCollection(transactionsCollectionName);
-
-                var documents = txs.Select(tx =>
+                foreach (var txsGroup in txs.GroupBy(t => t.Currency))
                 {
-                    var d = _bsonMapper.ToDocument(tx);
+                    var transactionsCollectionName = GetTransactionsCollectionName(txsGroup.Key);
+                    var transactionsMetadataCollectionName = GetTransactionsMetadataCollectionName(txsGroup.Key);
 
-                    d[UserMetadata] = new BsonDocument
-                    {
-                        ["$id"] = d["_id"],
-                        ["$ref"] = transactionsMetadataCollectionName
-                    };
+                    var transactions = _db
+                        .GetCollection(transactionsCollectionName);
 
-                    return d;
-                });
+                    var documents = txsGroup
+                        .Select(tx =>
+                        {
+                            var d = _bsonMapper.ToDocument(tx);
 
-                var result = transactions.Upsert(documents);
+                            d[UserMetadata] = new BsonDocument
+                            {
+                                ["$id"] = d["_id"],
+                                ["$ref"] = transactionsMetadataCollectionName
+                            };
+
+                            return d;
+                        })
+                        .ToList();
+
+                    var result = transactions.Upsert(documents);
+                }
 
                 // todo: notify if add or changed
 

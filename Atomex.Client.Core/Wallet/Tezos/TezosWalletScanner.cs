@@ -130,7 +130,6 @@ namespace Atomex.Wallet.Tezos
                 var _ = await _account
                     .LocalStorage
                     .UpsertAddressesAsync(
-                        currency: _account.Currency,
                         walletAddresses: walletAddresses,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
@@ -203,7 +202,6 @@ namespace Atomex.Wallet.Tezos
                     var _ = await _account
                         .LocalStorage
                         .UpsertAddressesAsync(
-                            currency: _account.Currency,
                             walletAddresses: walletAddresses,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);

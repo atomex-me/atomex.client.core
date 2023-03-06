@@ -24,7 +24,7 @@ namespace Atomex.Wallet.Ethereum
 
         protected int InternalLookAhead { get; } = DefaultInternalLookAhead;
         protected int ExternalLookAhead { get; } = DefaultExternalLookAhead;
-        private Erc20Config Erc20Config => _account.Currencies.Get<Erc20Config>(_account.Currency);
+        private Erc20Config Erc20Config => _account.Erc20Config;
         private readonly Erc20Account _account;
         private readonly EthereumAccount _ethereumAccount;
 
@@ -118,7 +118,6 @@ namespace Atomex.Wallet.Ethereum
                     var _ = await _account
                         .LocalStorage
                         .UpsertAddressesAsync(
-                            currency: EthereumHelper.Erc20,
                             walletAddresses: walletAddresses,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
@@ -200,7 +199,6 @@ namespace Atomex.Wallet.Ethereum
                     var _ = await _account
                         .LocalStorage
                         .UpsertAddressesAsync(
-                            currency: EthereumHelper.Erc20,
                             walletAddresses: walletAddresses,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
@@ -259,7 +257,7 @@ namespace Atomex.Wallet.Ethereum
                         var existsTx = await _account
                             .LocalStorage
                             .GetTransactionByIdAsync<Erc20Transaction>(
-                                currency: _account.Currency,
+                                currency: EthereumHelper.Erc20,
                                 txId: tx.Id,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);

@@ -13,11 +13,12 @@ namespace Atomex.Blockchain.Ethereum.Erc20
         public BigInteger Value { get; set; }
     }
 
-    public class Erc20Transaction : ITransaction
+    public class Erc20Transaction : ITransaction, ITokenTransfer
     {
         public string Id { get; set; }
         public string Currency { get; set; }
         public string Contract { get; set; }
+        public BigInteger TokenId => BigInteger.Zero;
         public TransactionStatus Status { get; set; }
         public DateTimeOffset? CreationTime { get; set; }
         public DateTimeOffset? BlockTime { get; set; }

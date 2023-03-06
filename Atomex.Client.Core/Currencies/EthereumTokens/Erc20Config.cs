@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 
 using Atomex.Abstract;
 using Atomex.Blockchain;
+using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Common;
 using Atomex.Wallets.Bips;
@@ -16,6 +17,8 @@ namespace Atomex.EthereumTokens
 {
     public class Erc20Config : EthereumConfig, ITokenConfig
     {
+        public string Standard => EthereumHelper.Erc20;
+        public string BaseCurrencyName => EthereumHelper.Eth;
         public long TransferGasLimit { get; private set; }
         public long ApproveGasLimit { get; private set; }
         public string TokenContractAddress { get; private set; }
@@ -77,7 +80,9 @@ namespace Atomex.EthereumTokens
 
             ChainId = int.Parse(configuration[nameof(ChainId)], CultureInfo.InvariantCulture);
             TokenContractAddress = configuration["TokenContract"];
-            TokenContractBlockNumber = ulong.Parse(configuration[nameof(TokenContractBlockNumber)], CultureInfo.InvariantCulture);
+            TokenContractBlockNumber = configuration[nameof(TokenContractBlockNumber)] != null
+                ? ulong.Parse(configuration[nameof(TokenContractBlockNumber)], CultureInfo.InvariantCulture)
+                : 0;
 
             SwapContractAddress = configuration["SwapContract"];
             SwapContractBlockNumber = ulong.Parse(configuration[nameof(SwapContractBlockNumber)], CultureInfo.InvariantCulture);

@@ -3,12 +3,15 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Abstract;
+using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 
 namespace Atomex.TezosTokens
 {
-    public class TezosTokenConfig : TezosConfig, ITokenConfig
+    public abstract class TezosTokenConfig : TezosConfig, ITokenConfig
     {
+        public abstract string Standard { get; }
+        public string BaseCurrencyName => TezosHelper.Xtz;
         public long TransferFee { get; protected set; }
         public long TransferGasLimit { get; protected set; }
         public long TransferStorageLimit { get; protected set; }

@@ -120,8 +120,8 @@ namespace Atomex.Swaps.Abstract
                 {
                     while (!cancellationToken.IsCancellationRequested)
                     {
-                        var currency = Atomex.Currencies.IsTezosToken(Currency)
-                            ? TezosConfig.Xtz
+                        var currency = Atomex.Currencies.IsPresetToken(Currency)
+                            ? Atomex.Currencies.GetBaseChainForPresetToken(Currency)
                             : Currency;
 
                         var tx = await localStorage
@@ -133,7 +133,8 @@ namespace Atomex.Swaps.Abstract
 
                         if (tx.IsConfirmed)
                         {
-                            await confirmationHandler.Invoke(swap, cancellationToken)
+                            await confirmationHandler
+                                .Invoke(swap, cancellationToken)
                                 .ConfigureAwait(false);
 
                             break;

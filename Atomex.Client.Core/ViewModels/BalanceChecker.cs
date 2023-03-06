@@ -12,6 +12,7 @@ using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
+using Atomex.Blockchain.Ethereum;
 
 namespace Atomex.ViewModels
 {
@@ -47,19 +48,18 @@ namespace Atomex.ViewModels
                     {
                         BigInteger actualBalance = 0;
 
-                        if (Currencies.IsTezosToken(address.Currency))
+                        if (Currencies.IsTezosTokenStandard(address.Currency))
                         {
                             // tezos tokens
                             var xtzConfig = account.Currencies.Get<TezosConfig>("XTZ");
-                            var tezosTokenConfig = account.Currencies.Get<TezosTokenConfig>(address.Currency);
 
                             var tzktApi = new TzktApi(xtzConfig.GetTzktSettings());
 
                             var (balances, error) = await tzktApi
                                 .GetTokenBalanceAsync(
                                     addresses: new[] { address.Address },
-                                    tokenContracts: new[] { tezosTokenConfig.TokenContractAddress },
-                                    tokenIds: new [] { tezosTokenConfig.TokenId },
+                                    tokenContracts: new[] { address.TokenBalance.Contract },
+                                    tokenIds: new [] { address.TokenBalance.TokenId},
                                     cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
 
@@ -81,18 +81,17 @@ namespace Atomex.ViewModels
                                 .First()
                                 .GetTokenBalance();
                         }
-                        else if (Currencies.IsEthereumToken(address.Currency))
+                        else if (address.Currency == EthereumHelper.Erc20)
                         {
                             // ethereum tokens
-                            var erc20 = account.Currencies
-                                .Get<Erc20Config>(address.Currency);
+                            var ethConfig = account.Currencies.Get<EthereumConfig>("ETH");
 
-                            var api = erc20.GetEtherScanApi();
+                            var api = ethConfig.GetEtherScanApi();
 
                             var (balance, error) = await api
                                 .GetErc20BalanceAsync(
                                     address: address.Address,
-                                    tokenContractAddress: erc20.TokenContractAddress,
+                                    tokenContractAddress: address.TokenBalance.Contract,
                                     cancellationToken: cancellationToken)
                                 .ConfigureAwait(false);
 

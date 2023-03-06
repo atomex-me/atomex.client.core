@@ -26,29 +26,28 @@ namespace Atomex.Wallet.Ethereum
 {
     public class Erc20Account : ICurrencyAccount, IEstimatable
     {
-        protected readonly EthereumAccount _ethereumAccount;
         protected readonly string _tokenContract;
+        protected readonly EthereumAccount _ethereumAccount;
 
-        public string Currency { get; }
         public ICurrencies Currencies { get; }
         public IHdWallet Wallet { get; }
         public ILocalStorage LocalStorage { get; }
 
-        private Erc20Config Erc20Config => Currencies.Get<Erc20Config>(Currency);
+        public Erc20Config Erc20Config => Currencies.FirstOrDefault(c => c is Erc20Config erc20 && erc20.TokenContractAddress == _tokenContract) as Erc20Config;
         private EthereumConfig EthConfig => Currencies.Get<EthereumConfig>(EthereumHelper.Eth);
 
         public Erc20Account(
-            string currency,
+            string tokenContract,
             ICurrencies currencies,
             IHdWallet wallet,
             ILocalStorage localStorage,
             EthereumAccount ethereumAccount)
         {
-            Currency     = currency ?? throw new ArgumentNullException(nameof(currency));
             Currencies   = currencies ?? throw new ArgumentNullException(nameof(currencies));
             Wallet       = wallet ?? throw new ArgumentNullException(nameof(wallet));
             LocalStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
 
+            _tokenContract = tokenContract ?? throw new ArgumentNullException(nameof(tokenContract));
             _ethereumAccount = ethereumAccount ?? throw new ArgumentNullException(nameof(ethereumAccount));
         }
 
@@ -69,13 +68,13 @@ namespace Atomex.Wallet.Ethereum
             //        code: Errors.SendingAndReceivingAddressesAreSame,
             //        description: "Sending and receiving addresses are the same.");
 
-            var erc20Config = Erc20Config;
+            var erc20 = Erc20Config;
 
             if (useDefaultFee)
             {
                 gasLimit = GasLimitByType(TransactionType.Output);
 
-                var (gasPrice, gasPriceError) = await erc20Config
+                var (gasPrice, gasPriceError) = await erc20
                     .GetGasPriceAsync(cancellationToken)
                     .ConfigureAwait(false);
 
@@ -99,7 +98,7 @@ namespace Atomex.Wallet.Ethereum
                     code: Errors.InsufficientFunds,
                     message: "Insufficient funds");
 
-            if (gasLimit < erc20Config.TransferGasLimit)
+            if (gasLimit < erc20.TransferGasLimit)
                 return new Error(
                     code: Errors.InsufficientGas,
                     message: "Insufficient gas");
@@ -112,7 +111,7 @@ namespace Atomex.Wallet.Ethereum
 
             Log.Debug("Send {@amount} of {@currency} from address {@address} with available balance {@balance}",
                 addressFeeUsage.UsedAmount,
-                erc20Config.Name,
+                erc20.Name,
                 addressFeeUsage.WalletAddress.Address,
                 addressFeeUsage.WalletAddress.Balance);
 
@@ -143,7 +142,7 @@ namespace Atomex.Wallet.Ethereum
                 TransactionType      = EthereumHelper.Eip1559TransactionType
             };
 
-            txInput = message.CreateTransactionInput(erc20Config.TokenContractAddress);
+            txInput = message.CreateTransactionInput(_tokenContract);
 
             var txRequest = new EthereumTransactionRequest(txInput, EthConfig.ChainId);
 
@@ -230,6 +229,8 @@ namespace Atomex.Wallet.Ethereum
             //        Error = new Error(Errors.SendingAndReceivingAddressesAreSame, "Sending and receiving addresses are same")
             //    };
 
+            var erc20Config = Erc20Config;
+
             var tokenAddress = await GetAddressAsync(from, cancellationToken)
                 .ConfigureAwait(false);
 
@@ -241,7 +242,7 @@ namespace Atomex.Wallet.Ethereum
                     ErrorHint = string.Format(
                         Resources.InsufficientFundsDetails,
                         0,                // available tokens
-                        Erc20Config.Name) // currency code
+                        erc20Config.Name) // currency code
                 };
 
             var eth = EthConfig;
@@ -283,7 +284,7 @@ namespace Atomex.Wallet.Ethereum
                     ErrorHint = string.Format(
                         Resources.InsufficientFundsToCoverFeesDetails,
                         requiredFeeInWei,            // required fee
-                        Erc20Config.FeeCurrencyName, // currency code
+                        erc20Config.FeeCurrencyName, // currency code
                         0m)                          // available
                 };
 
@@ -299,7 +300,7 @@ namespace Atomex.Wallet.Ethereum
                     ErrorHint = string.Format(
                         Resources.InsufficientFundsToCoverFeesDetails,
                         requiredFeeInWei,            // required fee
-                        Erc20Config.FeeCurrencyName, // currency code
+                        erc20Config.FeeCurrencyName, // currency code
                         ethAddress.Balance)          // available
                 };
 
@@ -313,7 +314,7 @@ namespace Atomex.Wallet.Ethereum
                     ErrorHint = string.Format(
                         Resources.InsufficientFundsDetails,
                         tokenAddress.Balance, // available tokens
-                        Erc20Config.Name)     // currency code
+                        erc20Config.Name)     // currency code
                 };
 
             return new MaxAmountEstimation
@@ -381,7 +382,7 @@ namespace Atomex.Wallet.Ethereum
                 .GetAddressAsync(
                     currency: EthereumHelper.Erc20,
                     address: address,
-                    tokenContract: Erc20Config.TokenContractAddress,
+                    tokenContract: _tokenContract,
                     tokenId: 0,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -401,7 +402,7 @@ namespace Atomex.Wallet.Ethereum
             var addresses = await LocalStorage
                 .GetUnspentAddressesAsync(
                     currency: EthereumHelper.Erc20,
-                    tokenContract: Erc20Config.TokenContractAddress,
+                    tokenContract: _tokenContract,
                     tokenId: 0)
                 .ConfigureAwait(false);
 
@@ -448,17 +449,19 @@ namespace Atomex.Wallet.Ethereum
             if (walletAddress == null)
                 return null;
 
+            var erc20Config = Erc20Config;
+
             walletAddress.Currency = EthereumHelper.Erc20;
 
             walletAddress.TokenBalance = new TokenBalance
             {
                 Address     = walletAddress.Address,
-                Contract    = Erc20Config.TokenContractAddress,
+                Contract    = _tokenContract,
                 TokenId     = 0,
-                Symbol      = Erc20Config.Name,
+                Symbol      = erc20Config.Name,
                 Standard    = EthereumHelper.Erc20,
-                Decimals    = Erc20Config.Decimals,
-                Description = Erc20Config.Description,
+                Decimals    = erc20Config.Decimals,
+                Description = erc20Config.Description,
                 Balance     = "0"
             };
 
@@ -472,9 +475,9 @@ namespace Atomex.Wallet.Ethereum
             return LocalStorage
                 .GetAddressAsync(
                     currency: EthereumHelper.Erc20,
-                    tokenContract: Erc20Config.TokenContractAddress,
-                    tokenId: 0,
                     address: address,
+                    tokenContract: _tokenContract,
+                    tokenId: 0,
                     cancellationToken: cancellationToken);
         }
 
@@ -484,7 +487,7 @@ namespace Atomex.Wallet.Ethereum
             return LocalStorage
                 .GetAddressesAsync(
                     currency: EthereumHelper.Erc20,
-                    tokenContract: Erc20Config.TokenContractAddress,
+                    tokenContract: _tokenContract,
                     cancellationToken: cancellationToken);
         }
 
@@ -494,7 +497,7 @@ namespace Atomex.Wallet.Ethereum
             return LocalStorage
                 .GetUnspentAddressesAsync(
                     currency: EthereumHelper.Erc20,
-                    tokenContract: Erc20Config.TokenContractAddress,
+                    tokenContract: _tokenContract,
                     tokenId: 0,
                     cancellationToken: cancellationToken);
         }
@@ -552,7 +555,7 @@ namespace Atomex.Wallet.Ethereum
             var unspentAddresses = await LocalStorage
                 .GetUnspentAddressesAsync(
                     currency: EthereumHelper.Erc20,
-                    tokenContract: Erc20Config.TokenContractAddress,
+                    tokenContract: _tokenContract,
                     tokenId: 0,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

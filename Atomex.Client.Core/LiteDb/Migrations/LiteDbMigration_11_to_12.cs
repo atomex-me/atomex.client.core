@@ -415,10 +415,13 @@ namespace Atomex.LiteDb.Migrations
                 .Ignore(t => t.From)
                 .Ignore(t => t.IsConfirmed);
 
-            //mapper.Entity<TezosTokenTransfer>();
+            mapper.Entity<TezosTokenTransfer>()
+                .Ignore(t => t.IsConfirmed)
+                .Ignore(t => t.TokenId);
 
             mapper.Entity<Erc20Transaction>()
-                .Ignore(t => t.IsConfirmed);
+                .Ignore(t => t.IsConfirmed)
+                .Ignore(t => t.TokenId);
 
             //mapper.Entity<TransactionMetadata>();
 

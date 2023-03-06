@@ -34,7 +34,6 @@ namespace Atomex.Wallet.Abstract
             CancellationToken cancellationToken = default);
 
         Task<int> UpsertAddressesAsync(
-            string currency,
             IEnumerable<WalletAddress> walletAddresses,
             CancellationToken cancellationToken = default);
 

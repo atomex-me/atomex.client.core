@@ -128,7 +128,7 @@ namespace Atomex.Wallet.Ethereum
 
                 var _ = await _account
                     .LocalStorage
-                    .UpsertAddressesAsync(_account.Currency, walletAddresses)
+                    .UpsertAddressesAsync(walletAddresses, cancellationToken)
                     .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
@@ -198,7 +198,7 @@ namespace Atomex.Wallet.Ethereum
                 {
                     var _ = await _account
                         .LocalStorage
-                        .UpsertAddressesAsync(_account.Currency, walletAddresses, cancellationToken)
+                        .UpsertAddressesAsync(walletAddresses, cancellationToken)
                         .ConfigureAwait(false);
                 }
             }

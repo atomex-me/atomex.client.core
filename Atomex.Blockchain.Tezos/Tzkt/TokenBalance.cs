@@ -37,7 +37,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// Total number of transfers, affecting the token balance.  
         /// **[sortable]**
         /// </summary>
-        [JsonPropertyName("transferCount")]
+        [JsonPropertyName("transfersCount")]
         public int TransfersCount { get; set; }
 
         /// <summary>

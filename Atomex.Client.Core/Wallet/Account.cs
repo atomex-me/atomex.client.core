@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
@@ -10,11 +11,12 @@ using Serilog;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography.Abstract;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Tezos;
 
 namespace Atomex.Wallet
 {
@@ -34,7 +36,7 @@ namespace Atomex.Wallet
         public UserData UserData { get; private set; }
 
         private readonly ILocalStorage _localStorage;
-        private readonly IDictionary<string, ICurrencyAccount> _currencyAccounts;
+        private readonly IDictionary<string, ICurrencyAccount> _accountsCache;
 
         public Account(
             IHdWallet wallet,
@@ -44,8 +46,8 @@ namespace Atomex.Wallet
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
             _localStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
 
-            Currencies = currenciesProvider.GetCurrencies(Network);
-            _currencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, _localStorage);
+            Currencies = currenciesProvider.GetCurrencies(Network);   
+            _accountsCache = new ConcurrentDictionary<string, ICurrencyAccount>();
 
             UserData = UserData.TryLoadFromFile(SettingsFilePath) ?? UserData.GetDefaultSettings(Currencies);
         }
@@ -62,6 +64,7 @@ namespace Atomex.Wallet
                 return false;
 
             UserData.SaveToFile(SettingsFilePath);
+
             _localStorage.ChangePassword(newPassword);
 
             return true;
@@ -89,42 +92,70 @@ namespace Atomex.Wallet
             return this;
         }
 
-        public ICurrencyAccount GetCurrencyAccount(string currency)
-        {
-            if (_currencyAccounts.TryGetValue(currency, out var account))
-                return account;
-
-            throw new NotSupportedException($"Not supported currency {currency}");
-        }
-
-        public ICurrencyAccount GetTezosTokenAccount(
+        public ICurrencyAccount GetCurrencyAccount(
             string currency,
-            string tokenContract,
-            BigInteger tokenId)
+            string? tokenContract = null,
+            BigInteger? tokenId = null)
         {
-            var uniqueId = $"{currency}:{tokenContract}:{tokenId}";
+            if (Atomex.Currencies.IsTokenStandard(currency) && tokenContract == null)
+                throw new ArgumentException($"Token contract cannot be null for token {currency} standard");
 
-            if (_currencyAccounts.TryGetValue(uniqueId, out var account))
+            if (Atomex.Currencies.IsPresetToken(currency))
+            {
+                if (Currencies.GetByName(currency) is not ITokenConfig tokenConfig)
+                    throw new ArgumentException($"Can't find config for {currency}");
+
+                if (tokenConfig.TokenContractAddress == null)
+                    throw new Exception($"Token contract address for {currency} is null");
+
+                currency = tokenConfig.Standard;
+
+                if (tokenContract != null && tokenContract != tokenConfig.TokenContractAddress)
+                    throw new ArgumentException($"The token contract {tokenContract} does not match the token contract {tokenConfig.TokenContractAddress} in the configuration");
+
+                tokenContract = tokenConfig.TokenContractAddress;
+
+                if (tokenId != null && tokenId != tokenConfig.TokenId)
+                    throw new ArgumentException($"The token id {tokenId} does not match the token id {tokenConfig.TokenId} in the configuration");
+
+                tokenId = tokenConfig.TokenId;
+            }
+
+            var uniqueId = tokenContract != null
+                ? $"{currency}:{tokenContract}:{tokenId ?? 0}"
+                : currency;
+
+            if (_accountsCache.TryGetValue(uniqueId, out var account))
                 return account;
 
-            return CurrencyAccountCreator.CreateTezosTokenAccount(
-                tokenType: currency,
-                tokenContract: tokenContract,
-                tokenId: tokenId,
-                currencies: Currencies,
+            var baseChainAccount = Atomex.Currencies.IsEthereumTokenStandard(currency)
+                ? GetCurrencyAccount(EthereumHelper.Eth)
+                : Atomex.Currencies.IsTezosTokenStandard(currency)
+                    ? GetCurrencyAccount(TezosHelper.Xtz)
+                    : null;
+
+            account = CurrencyAccountCreator.CreateCurrencyAccount(
+                currency: currency,
                 wallet: Wallet,
                 localStorage: _localStorage,
-                tezosAccount: _currencyAccounts[TezosConfig.Xtz] as TezosAccount);
+                currencies: Currencies,
+                tokenContract: tokenContract,
+                tokenId: tokenId,
+                baseChainAccount: baseChainAccount);
+
+            if (account == null)
+                throw new NotSupportedException($"Can't create account for currency {currency}");
+
+            _accountsCache.TryAdd(uniqueId, account);
+
+            return account;
         }
 
-        public T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount =>
-            GetCurrencyAccount(currency) as T;
-
-        public T GetTezosTokenAccount<T>(
+        public T GetCurrencyAccount<T>(
             string currency,
-            string tokenContract,
-            BigInteger tokenId) where T : class =>
-            GetTezosTokenAccount(currency, tokenContract, tokenId) as T;
+            string? tokenContract = null,
+            BigInteger? tokenId = null) where T : class, ICurrencyAccount =>
+            GetCurrencyAccount(currency, tokenContract, tokenId) as T;
 
         public string GetUserId(uint keyIndex = 0)
         {
@@ -205,26 +236,6 @@ namespace Atomex.Wallet
 
         #region Transactions
 
-        public Task<T> GetTransactionByIdAsync<T>(
-            string currency,
-            string txId) where T : ITransaction
-        {
-            return _localStorage.GetTransactionByIdAsync<T>(
-                currency: currency,
-                txId: txId);
-        }
-
-        public Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
-            where T : ITransaction
-        {
-            return _localStorage.GetTransactionsAsync<T>(currency);
-        }
-
-        public Task<IEnumerable<ITransaction>> GetTransactionsAsync(string currency)
-        {
-            return _localStorage.GetTransactionsAsync(currency, Currencies.GetByName(currency).TransactionType);
-        }
-
         public Task<IEnumerable<TransactionInfo<ITransaction, ITransactionMetadata>>> GetTransactionsWithMetadataAsync(
             string currency,
             int offset = 0,
@@ -248,7 +259,7 @@ namespace Atomex.Wallet
         {
             var result = new List<ITransaction>();
 
-            foreach (var (_, account) in _currencyAccounts)
+            foreach (var (_, account) in _accountsCache)
             {
                 var txs = await account
                     .GetUnconfirmedTransactionsAsync()
@@ -264,6 +275,14 @@ namespace Atomex.Wallet
             ITransaction tx,
             CancellationToken cancellationToken = default)
         {
+            if (Atomex.Currencies.IsTokenStandard(tx.Currency))
+            {
+                var tokenTransfer = (ITokenTransfer)tx;
+
+                return GetCurrencyAccount(tokenTransfer.Currency, tokenTransfer.Contract, tokenTransfer.TokenId)
+                    .ResolveTransactionMetadataAsync(tx, cancellationToken);
+            }
+
             return GetCurrencyAccount(tx.Currency)
                 .ResolveTransactionMetadataAsync(tx, cancellationToken);
         }
@@ -272,20 +291,8 @@ namespace Atomex.Wallet
 
         #region Orders
 
-        public Task<bool> UpsertOrderAsync(Order order) =>
-            _localStorage.UpsertOrderAsync(order);
-
-        public Task<bool> RemoveAllOrdersAsync() =>
-            _localStorage.RemoveAllOrdersAsync();
-
-        public Order GetOrderById(string clientOrderId) =>
-            _localStorage.GetOrderById(clientOrderId);
-
         public Order GetOrderById(long id) =>
             _localStorage.GetOrderById(id);
-
-        public Task<bool> RemoveOrderByIdAsync(long id) =>
-            _localStorage.RemoveOrderByIdAsync(id);
 
         #endregion Orders
 

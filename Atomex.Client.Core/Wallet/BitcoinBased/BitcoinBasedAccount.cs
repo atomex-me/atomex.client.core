@@ -27,8 +27,8 @@ namespace Atomex.Wallet.BitcoinBased
             string currency,
             ICurrencies currencies,
             IHdWallet wallet,
-            ILocalStorage dataRepository)
-                : base(currency, currencies, wallet, dataRepository)
+            ILocalStorage localStorage)
+                : base(currency, currencies, wallet, localStorage)
         {
         }
 

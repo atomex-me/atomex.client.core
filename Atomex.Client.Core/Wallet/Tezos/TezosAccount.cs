@@ -47,8 +47,8 @@ namespace Atomex.Wallet.Tezos
         public TezosAccount(
             ICurrencies currencies,
             IHdWallet wallet,
-            ILocalStorage dataRepository)
-                : base(TezosConfig.Xtz, currencies, wallet, dataRepository)
+            ILocalStorage localStorage)
+                : base(TezosConfig.Xtz, currencies, wallet, localStorage)
         {
             var xtz = Config;
 

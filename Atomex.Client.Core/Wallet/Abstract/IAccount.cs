@@ -66,29 +66,15 @@ namespace Atomex.Wallet.Abstract
         /// <returns>this</returns>
         IAccount UseUserSettings(UserData userData);
 
-        /// <summary>
-        /// Create auth request for service key with <paramref name="keyIndex"/>, which can be used for authentication using server <paramref name="nonce"/>
-        /// </summary>
-        /// <param name="nonce">Server nonce</param>
-        /// <param name="keyIndex">Service key index</param>
-        /// <returns>Auth request</returns>
-        //Task<Auth> CreateAuthRequestAsync(
-        //    AuthNonce nonce,
-        //    uint keyIndex = 0);
-
-        ICurrencyAccount GetCurrencyAccount(string currency);
-
-        ICurrencyAccount GetTezosTokenAccount(
+        ICurrencyAccount GetCurrencyAccount(
             string currency,
-            string tokenContract,
-            BigInteger tokenId);
+            string? tokenContract = null,
+            BigInteger? tokenId = null);
 
-        T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount;
-
-        T GetTezosTokenAccount<T>(
+        T GetCurrencyAccount<T>(
             string currency,
-            string tokenContract,
-            BigInteger tokenId) where T : class;
+            string? tokenContract = null,
+            BigInteger? tokenId = null) where T : class, ICurrencyAccount;
 
         string GetUserId(uint keyIndex = 0);
 
@@ -142,11 +128,6 @@ namespace Atomex.Wallet.Abstract
 
         #region Transactions
 
-        Task<T> GetTransactionByIdAsync<T>(string currency, string txId)
-            where T : ITransaction;
-        Task<IEnumerable<T>> GetTransactionsAsync<T>(string currency)
-            where T : ITransaction;
-        Task<IEnumerable<ITransaction>> GetTransactionsAsync(string currency);
         Task<IEnumerable<TransactionInfo<ITransaction, ITransactionMetadata>>> GetTransactionsWithMetadataAsync(
             string currency,
             int offset = 0,
@@ -161,12 +142,7 @@ namespace Atomex.Wallet.Abstract
         #endregion Transactions
 
         #region Orders
-
-        Task<bool> UpsertOrderAsync(Order order);
-        Task<bool> RemoveAllOrdersAsync();
-        Order GetOrderById(string clientOrderId);
         Order GetOrderById(long id);
-        Task<bool> RemoveOrderByIdAsync(long id);
 
         #endregion Orders
 

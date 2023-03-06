@@ -6,7 +6,7 @@ using Atomex.Common;
 
 namespace Atomex.Blockchain.Tezos
 {
-    public class TezosTokenTransfer : ITransaction
+    public class TezosTokenTransfer : ITransaction, ITokenTransfer
     {
         public string Id { get; set; }
         public string Currency { get; set; }
@@ -17,6 +17,7 @@ namespace Atomex.Blockchain.Tezos
         public long Confirmations { get; set; }
         public bool IsConfirmed => Confirmations > 0;
         public string Contract => Token.Contract;
+        public BigInteger TokenId => Token.TokenId;
         public string From { get; set; }
         public string To { get; set; }
         public string Amount { get; set; }

@@ -38,7 +38,7 @@ namespace Atomex.Swaps.Ethereum
             Erc20Account account,
             EthereumAccount ethereumAccount,
             ICurrencies currencies)
-            : base(account.Currency, currencies)
+            : base(account.Erc20Config.Name, currencies)
         {
             Erc20Account = account ?? throw new ArgumentNullException(nameof(account));
             EthereumAccount = ethereumAccount ?? throw new ArgumentNullException(nameof(ethereumAccount));

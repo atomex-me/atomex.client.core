@@ -394,7 +394,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         public async Task<Result<List<TezosTokenTransfer>>> GetTokenTransfersAsync(
             IEnumerable<string> addresses,
             IEnumerable<string>? tokenContracts = null,
-            IEnumerable<int>? tokenIds = null,
+            IEnumerable<BigInteger>? tokenIds = null,
             DateTimeParameter? timeStamp = null,
             int offset = 0,
             int limit = int.MaxValue,
@@ -482,7 +482,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     using var operationResponse = await HttpHelper
                         .GetAsync(
                             baseUri: Settings.BaseUri,
-                            relativeUri: requestUri,
+                            relativeUri: operationRequestUri,
                             headers: GetHeaders(),
                             requestLimitControl: null,
                             cancellationToken: cancellationToken)
@@ -521,11 +521,13 @@ namespace Atomex.Blockchain.Tezos.Tzkt
                     break; // completed
             }
 
-            return transfers
+            var uniqueTransfers = transfers
                 .Distinct(new Atomex.Common.EqualityComparer<TezosTokenTransfer>(
                     (t1, t2) => t1.Id.Equals(t2.Id),
                     t => t.Id.GetHashCode()))
                 .ToList();
+
+            return uniqueTransfers;
         }
     }
 }

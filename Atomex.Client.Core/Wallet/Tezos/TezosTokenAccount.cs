@@ -498,7 +498,7 @@ namespace Atomex.Wallet.Tezos
             int keyType)
         {
             var walletAddress = Wallet.GetAddress(
-                currency: TokenConfig,
+                currency: XtzConfig,
                 keyPath: keyPath,
                 keyType: keyType);
 

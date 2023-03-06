@@ -1,20 +1,20 @@
 ﻿using System;
-
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Atomex.Blockchain.Tezos.Common
 {
-    public class ObjectAsRawStringJsonConverter : JsonConverter
+    public class ObjectAsRawStringJsonConverter : JsonConverter<string>
     {
-        public override bool CanConvert(Type objectType) => true;
-
-        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            return JObject.Load(reader).ToString(Formatting.None);
+            if (!JsonDocument.TryParseValue(ref reader, out var document))
+                throw new NotImplementedException();
+
+            return document.RootElement.GetRawText();
         }
 
-        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options)
         {
             throw new NotImplementedException();
         }

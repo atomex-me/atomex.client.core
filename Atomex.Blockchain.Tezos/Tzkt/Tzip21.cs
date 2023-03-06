@@ -10,7 +10,7 @@ namespace Atomex.Blockchain.Tezos
         [JsonPropertyName("name")]
         public string Name { get; set; }
         [JsonPropertyName("decimals")]
-        public int Decimals { get; set; }
+        public string Decimals { get; set; }
         [JsonPropertyName("description")]
         public string Description { get; set; }
         [JsonPropertyName("artifactUri")]

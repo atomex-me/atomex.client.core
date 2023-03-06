@@ -235,13 +235,13 @@ namespace Atomex
                 // remove canceled orders without trades from local db if StoreCanceledOrders options is true
                 if (e.Order.Status == OrderStatus.Canceled && e.Order.LastQty == 0 && !_storeCanceledOrders)
                 {
-                    await Account
+                    await LocalStorage
                         .RemoveOrderByIdAsync(e.Order.Id)
                         .ConfigureAwait(false);
                 }
                 else
                 {
-                    await Account
+                    await LocalStorage
                         .UpsertOrderAsync(new Order
                         {
                             Id            = e.Order.Id,
