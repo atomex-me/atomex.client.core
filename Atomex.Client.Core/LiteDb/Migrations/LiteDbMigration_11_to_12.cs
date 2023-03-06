@@ -394,6 +394,12 @@ namespace Atomex.LiteDb.Migrations
                 .UseSerializer(new CoinToBsonSerializer())
                 .UseSerializer(new BitcoinTransactionSerializer(network));
 
+            mapper.Entity<TokenBalance>()
+                .Ignore(t => t.ParsedBalance)
+                .Ignore(t => t.HasDescription)
+                .Ignore(t => t.IsNft)
+                .Ignore(t => t.ContractType);
+
             mapper.Entity<WalletAddress>()
                 .Ignore(w => w.IsDisabled);
 

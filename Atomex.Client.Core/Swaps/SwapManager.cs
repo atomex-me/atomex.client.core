@@ -578,7 +578,7 @@ namespace Atomex.Swaps
 
             var redeemFromWalletAddress = swap.RedeemFromAddress != null
                 ? await _account
-                    .GetAddressAsync(swap.PurchasedCurrency, swap.RedeemFromAddress, cancellationToken)
+                    .GetAddressAsync(swap.PurchasedCurrency, swap.RedeemFromAddress, cancellationToken: cancellationToken)
                     .ConfigureAwait(false)
                 : null;
 
@@ -634,7 +634,7 @@ namespace Atomex.Swaps
 
             var redeemFromWalletAddress = swap.RedeemFromAddress != null
                 ? await _account
-                    .GetAddressAsync(swap.PurchasedCurrency, swap.RedeemFromAddress, cancellationToken)
+                    .GetAddressAsync(swap.PurchasedCurrency, swap.RedeemFromAddress, cancellationToken: cancellationToken)
                     .ConfigureAwait(false)
                 : null;
 

@@ -171,35 +171,43 @@ namespace Atomex.Wallet
 
         public Task<Balance> GetBalanceAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency)
+            return GetCurrencyAccount(currency, tokenContract, tokenId)
                 .GetBalanceAsync();
         }
 
         public Task<Balance> GetAddressBalanceAsync(
             string currency,
             string address,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency)
+            return GetCurrencyAccount(currency, tokenContract, tokenId)
                 .GetAddressBalanceAsync(address, cancellationToken);
         }
 
         public Task UpdateBalanceAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency)
+            return GetCurrencyAccount(currency, tokenContract, tokenId)
                 .UpdateBalanceAsync(cancellationToken);
         }
 
         public Task UpdateBalanceAsync(
             string currency,
             string address,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency)
+            return GetCurrencyAccount(currency, tokenContract, tokenId)
                 .UpdateBalanceAsync(address, cancellationToken);
         }
 
@@ -210,25 +218,31 @@ namespace Atomex.Wallet
         public Task<WalletAddress> GetAddressAsync(
             string currency,
             string address,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency)
+            return GetCurrencyAccount(currency, tokenContract, tokenId)
                 .GetAddressAsync(address, cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency)
+            return GetCurrencyAccount(currency, tokenContract, tokenId)
                 .GetUnspentAddressesAsync(cancellationToken);
         }
 
         public Task<WalletAddress> GetFreeExternalAddressAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency)
+            return GetCurrencyAccount(currency, tokenContract, tokenId)
                 .GetFreeExternalAddressAsync(cancellationToken);
         }
 

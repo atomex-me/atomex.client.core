@@ -627,7 +627,6 @@ namespace Atomex.Wallet.Tezos
             IEnumerable<WalletAddress> changedAddresses,
             CancellationToken cancellationToken = default)
         {
-            
             var addresses = changedAddresses.Select(w => w.Address)
                 .Distinct()
                 .ToList();

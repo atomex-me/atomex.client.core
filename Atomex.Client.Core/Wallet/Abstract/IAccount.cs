@@ -84,20 +84,28 @@ namespace Atomex.Wallet.Abstract
 
         Task<Balance> GetBalanceAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default);
 
         Task<Balance> GetAddressBalanceAsync(
             string currency,
             string address,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default);
 
         Task UpdateBalanceAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default);
 
         Task UpdateBalanceAsync(
             string currency,
             string address,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default);
 
         #endregion Balances
@@ -112,6 +120,8 @@ namespace Atomex.Wallet.Abstract
         /// <returns>Set of unspent addresses</returns>
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default);
         
         /// <summary>
@@ -122,6 +132,8 @@ namespace Atomex.Wallet.Abstract
         /// <returns>Wallet address</returns>
         Task<WalletAddress> GetFreeExternalAddressAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default);
 
         #endregion Addresses

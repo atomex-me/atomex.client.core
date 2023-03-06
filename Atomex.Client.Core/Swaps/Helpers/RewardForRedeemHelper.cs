@@ -27,7 +27,7 @@ namespace Atomex.Swaps.Helpers
 
             var feeCurrencyAddress = redeemFromAddress != null
                 ? await account
-                    .GetAddressAsync(feeCurrency, redeemFromAddress.Address, cancellationToken)
+                    .GetAddressAsync(feeCurrency, redeemFromAddress.Address, cancellationToken: cancellationToken)
                     .ConfigureAwait(false)
                 : null;
 

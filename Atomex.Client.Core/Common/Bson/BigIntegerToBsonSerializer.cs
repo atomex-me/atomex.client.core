@@ -10,6 +10,6 @@ namespace Atomex.Common.Bson
             BigInteger.Parse(value.AsString);
 
         public override BsonValue Serialize(BigInteger value) =>
-            value.ToString();
+            new(value.ToString());
     }
 }

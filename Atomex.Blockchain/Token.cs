@@ -5,6 +5,7 @@ namespace Atomex.Blockchain
 {
     public class Token
     {
+        public string Id => $"{Contract}:{TokenId}";
         public string Contract { get; set; }
         public string ContractAlias { get; set; }
         public string Standard { get; set; }

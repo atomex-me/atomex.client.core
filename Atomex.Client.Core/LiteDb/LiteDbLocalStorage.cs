@@ -9,7 +9,6 @@ using System.Threading.Tasks;
 using LiteDB;
 using Serilog;
 
-using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Ethereum;
@@ -32,23 +31,8 @@ namespace Atomex.LiteDb
 
         private const string CurrencyKey = nameof(WalletAddress.Currency);
         private const string AddressKey = nameof(WalletAddress.Address);
-        private const string BalanceKey = nameof(WalletAddress.Balance);
-        private const string UnconfirmedIncomeKey = nameof(WalletAddress.UnconfirmedIncome);
-        private const string UnconfirmedOutcomeKey = nameof(WalletAddress.UnconfirmedOutcome);
-        private const string HasActivityKey = nameof(WalletAddress.HasActivity);
-        private const string TokenContractKey = nameof(TokenBalance) + "." + nameof(TokenBalance.Contract);
-        private const string TokenIdKey = nameof(TokenBalance) + "." + nameof(TokenBalance.TokenId);
-        private const string TransferContract = nameof(TezosTokenTransfer.Contract);
-        private const string KeyTypeKey = nameof(WalletAddress.KeyType);
-        private const string KeyPathKey = nameof(WalletAddress.KeyPath);
-        private const string KeyIndexKey = nameof(WalletAddress.KeyIndex);
         private const string PaymentTxIdKey = nameof(Swap.PaymentTxId);
         private const string OrderIdKey = "OrderId";
-        private const string OutputTxIdKey = nameof(BitcoinTxOutput.TxId);
-        private const string OutputIndexKey = nameof(BitcoinTxOutput.Index);
-        private const string TokenContractAddressKey = nameof(TokenContract.Address);
-        private const string TokenContractNameKey = nameof(TokenContract.Name);
-        private const string TokenContractTypeKey = nameof(TokenContract.Type);
         private const string UserMetadata = "UserMetadata";
 
         public event EventHandler<BalanceChangedEventArgs> BalanceChanged;
@@ -261,14 +245,14 @@ namespace Atomex.LiteDb
                     query.Where("TokenBalance.Contract = @0", tokenContract);
 
                 if (tokenId != null)
-                    query.Where("TokenBalance.TokenId = @0", tokenId.Value.ToByteArray());
+                    query.Where("TokenBalance.TokenId = @0", tokenId.Value.ToString());
 
-                var zeroBalance = BigInteger.Zero.ToByteArray();
+                const string ZeroBalance = "0";
 
                 if (includeUnconfirmed) {
-                    query.Where("(Balance != @0 OR UnconfirmedIncome != @0 OR UnconfirmedOutcome != @0)", zeroBalance);
+                    query.Where("(Balance != @0 OR UnconfirmedIncome != @0 OR UnconfirmedOutcome != @0)", ZeroBalance);
                 } else {
-                    query.Where("Balance != @0", zeroBalance);
+                    query.Where("Balance != @0", ZeroBalance);
                 }
 
                 var unspentAddresses = query

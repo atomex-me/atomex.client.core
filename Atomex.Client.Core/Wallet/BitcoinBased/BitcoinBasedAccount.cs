@@ -444,6 +444,8 @@ namespace Atomex.Wallet.BitcoinBased
         public Task<WalletAddress> GetAddressAsync(
             string currency,
             string address,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
             return GetAddressAsync(address, cancellationToken);

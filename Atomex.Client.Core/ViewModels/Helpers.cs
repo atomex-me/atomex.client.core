@@ -525,7 +525,7 @@ namespace Atomex.ViewModels
             // get redeem address for ToCurrency base blockchain
             var redeemFromWalletAddress = redeemFromAddress != null
                 ? await account
-                    .GetAddressAsync(toCurrency.FeeCurrencyName, redeemFromAddress, cancellationToken)
+                    .GetAddressAsync(toCurrency.FeeCurrencyName, redeemFromAddress, cancellationToken: cancellationToken)
                     .ConfigureAwait(false)
                 : null;
 

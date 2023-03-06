@@ -1,9 +1,9 @@
-﻿using LiteDB;
-using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System;
+using System.Numerics;
 using Xunit;
 using Xunit.Abstractions;
+
+using LiteDB;
 
 namespace Atomex.Client.Core.Tests
 {
@@ -85,6 +85,20 @@ namespace Atomex.Client.Core.Tests
             {
                 console.WriteLine(reader.Current.ToString());
             }
+        }
+
+        public class TestTokenBalance
+        {
+            public BigInteger BigIntegerValue { get; set; } = BigInteger.Zero;
+        }
+
+        public class TestClass
+        {
+            public int Id { get; set; }
+            public int IntegerValue { get; set; }
+            public string StringValue { get; set; }
+            public BigInteger BigIntegerValue { get; set; }
+            public TestTokenBalance TokenBalance { get; set; }
         }
     }
 }
