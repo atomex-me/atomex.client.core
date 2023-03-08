@@ -557,7 +557,7 @@ namespace Atomex.Wallet.Ethereum
                 result.Amount += tx.Value;
             }
 
-            if (tx.Data != null)
+            if (tx.Data != null && tx.Data != "0x")
             {
                 result.Type |= TransactionType.ContractCall;
 

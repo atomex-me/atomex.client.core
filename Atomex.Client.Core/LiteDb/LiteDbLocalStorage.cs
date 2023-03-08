@@ -1235,13 +1235,17 @@ namespace Atomex.LiteDb
         public Task<IEnumerable<Swap>> GetSwapsAsync(
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
         {
             try
             {
                 var swaps = _db
                     .GetCollection<Swap>(SwapsCollectionName)
-                    .Find(Query.All(), offset, limit)
+                    .Query()
+                    .OrderBy(s => s.TimeStamp, sort == SortDirection.Desc ? -1 : 1)
+                    .Offset(offset)
+                    .Limit(limit)
                     .ToList();
 
                 return Task.FromResult<IEnumerable<Swap>>(swaps);

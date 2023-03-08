@@ -344,6 +344,8 @@ namespace Atomex.Wallet.BitcoinBased
                     walletAddress.Address,
                     addressInfoError.Value.Code,
                     addressInfoError.Value.Message);
+
+                return addressInfoError;
             }
 
             walletAddress.Balance               = addressInfo.Balance;
@@ -369,6 +371,8 @@ namespace Atomex.Wallet.BitcoinBased
                     walletAddress.Address,
                     txsError.Value.Code,
                     txsError.Value.Message);
+
+                return txsError;
             }
 
             return new Result<AddressScanResult> {

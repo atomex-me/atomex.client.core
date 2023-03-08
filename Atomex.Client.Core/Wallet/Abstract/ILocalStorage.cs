@@ -259,6 +259,7 @@ namespace Atomex.Wallet.Abstract
         Task<IEnumerable<Swap>> GetSwapsAsync(
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default);
 
         Task<Swap> GetSwapByPaymentTxIdAsync(

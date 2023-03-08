@@ -305,7 +305,9 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
                 var transfersResponse = JsonSerializer.Deserialize<Response<List<Erc20TransferDto>>>(content);
 
-                if (transfersResponse == null || transfersResponse.Message != "OK" || transfersResponse.Result == null)
+                if (transfersResponse == null ||
+                    (transfersResponse.Message != "OK" && transfersResponse.Message != "No transactions found") ||
+                    transfersResponse.Result == null)
                     return new Error(Errors.GetErc20TransactionsError, "Invalid response");
 
                 var transfers = transfersResponse.Result;
@@ -1026,7 +1028,9 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
             var txsResponse = JsonSerializer.Deserialize<Response<List<InternalTransactionDto>>>(content);
 
-            if (txsResponse == null || txsResponse.Message != "OK" || txsResponse.Result == null)
+            if (txsResponse == null ||
+                (txsResponse.Message != "OK" && txsResponse.Message != "No transactions found") ||
+                txsResponse.Result == null)
                 return new Error(Errors.GetInternalTransactionsError, "Invalid response");
 
             return ParseInternalTransactions(txsResponse.Result);

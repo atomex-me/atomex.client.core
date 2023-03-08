@@ -613,11 +613,13 @@ namespace Atomex.LiteDb
         public Task<IEnumerable<Swap>> GetSwapsAsync(
             int offset = 0,
             int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
             CancellationToken cancellationToken = default)
         {
             return _liteDbLocalStorage.GetSwapsAsync(
                 offset,
                 limit,
+                sort,
                 cancellationToken);
         }
 
