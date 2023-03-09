@@ -361,7 +361,7 @@ namespace Atomex.Blockchain.BlockCypher
                         if (addresses == null || !addresses.Values<string>().Contains(address))
                             continue;
 
-                        outgoingTxConfirmations.Add(tx.Value<string>("hash"), tx.Value<long>("confirmations"));
+                        outgoingTxConfirmations.TryAdd(tx.Value<string>("hash"), tx.Value<long>("confirmations"));
                     }
                 }
 

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -125,13 +126,17 @@ namespace Atomex.Blockchain.Tezos
         {
             try
             {
-                var operations = requests.Select(r => r.Content);
+                var operations = requests
+                    .Select(r => r.Content)
+                    .ToList();
+
+                var serialziedOperations = JsonSerializer.Serialize(operations, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
 
                 var runJsonResponse = await rpc
                     .RunOperationsAsync(
                         branch: blockHash,
                         chainId: settings.ChainId,
-                        operations: JsonSerializer.Serialize(operations),
+                        operations: serialziedOperations,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 

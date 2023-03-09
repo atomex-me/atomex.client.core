@@ -40,14 +40,13 @@ namespace Atomex.Blockchain.Tezos
             IsAutoFilled = isAutoFilled;
         }
 
-        public async Task<byte[]> ForgeAsync(
-            bool addOperationPrefix = false)
+        public async Task<byte[]> ForgeAsync()
         {
             byte[]? forgedOperation = null;
 
             if (OperationsContents.Any(o => o is ManagerOperationContent))
             {
-                forgedOperation = await new LocalForge()
+                return forgedOperation = await new LocalForge()
                     .ForgeOperationGroupAsync(
                         branch: Branch,
                         contents: OperationsContents.Cast<ManagerOperationContent>())
@@ -55,19 +54,13 @@ namespace Atomex.Blockchain.Tezos
             }
             else if (OperationsContents.Count() == 1)
             {
-                forgedOperation = await new LocalForge()
+                return forgedOperation = await new LocalForge()
                     .ForgeOperationAsync(
                         branch: Branch,
                         content: OperationsContents.First())
                     .ConfigureAwait(false);
             }
-            else throw new NotSupportedException("Can't forge several non manager operatrions");
-
-            return addOperationPrefix
-                ? new byte[] { 3 }
-                    .Concat(forgedOperation)
-                    .ToArray()
-                : forgedOperation;
+            else throw new NotSupportedException("Can't forge several non manager operations");
         }
 
         public bool IsManaged() => OperationsContents

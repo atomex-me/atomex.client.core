@@ -1,4 +1,4 @@
-﻿namespace Atomex.Blockchain.Tezos.Internal
+﻿namespace Atomex.Blockchain.Tezos.Common
 {
     public static class Watermark
     {

@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,9 +14,11 @@ using Atomex.Abstract;
 using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Common;
 using Atomex.Blockchain.Tezos.Tzkt.Operations;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.Cryptography.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallets.Bips;
 using Atomex.Wallets.Tezos;
@@ -122,6 +125,46 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
         }
 
+        public async Task<Result<TezosOperationRequestResult>> DelegateAsync(
+            string from,
+            string @delegate,
+            Fee fee,
+            GasLimit gasLimit,
+            StorageLimit storageLimit,
+            CancellationToken cancellationToken = default)
+        {
+            if (fee == null)
+                throw new ArgumentNullException(nameof(fee), "Fee must be not null. Please use Fee.FromValue() or Fee.FromNetwork()");
+
+            if (gasLimit == null)
+                throw new ArgumentNullException(nameof(gasLimit), "GasLimit must be not null. Please use GasLimit.FromValue() or GasLimit.FromNetwork()");
+
+            if (storageLimit == null)
+                throw new ArgumentNullException(nameof(storageLimit), "StorageLimit must be not null. Please use StorageLimit.FromValue() or StorageLimit.FromNetwork()");
+
+            return await OperationsBatcher
+                .SendOperationsAsync(
+                    account: this,
+                    operationsParameters: new List<TezosOperationParameters> {
+                        new TezosOperationParameters {
+                            Content = new DelegationContent
+                            {
+                                Source = from,
+                                Delegate = @delegate,
+                                Fee          = fee.Value,
+                                GasLimit     = gasLimit.Value,
+                                StorageLimit = storageLimit.Value
+                            },
+                            From         = from,
+                            Fee          = fee,
+                            GasLimit     = gasLimit,
+                            StorageLimit = storageLimit
+                        }
+                    },
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         public async Task<Result<string>> SendUnmanagedOperationAsync(
             TezosOperationRequest operation,
             CancellationToken cancellationToken = default)
@@ -155,7 +198,7 @@ namespace Atomex.Wallet.Tezos
             CancellationToken cancellationToken = default)
         {
             // sign the operation
-            var (_, error) = await SignAsync(operationRequest, cancellationToken)
+            var (_, error) = await SignAsync(operationRequest, Watermark.Generic, cancellationToken)
                 .ConfigureAwait(false);
 
             if (error != null)
@@ -169,9 +212,11 @@ namespace Atomex.Wallet.Tezos
 
             var signedBytesInHex = forgedOperationBytes.ToHexString() + operationRequest.Signature.ToHexString();
 
-            var operationId = await rpc
+            var operationIdResponse = await rpc
                 .InjectOperationsAsync(signedBytesInHex, cancellationToken)
                 .ConfigureAwait(false);
+
+            var operationId = JsonSerializer.Deserialize<string>(operationIdResponse);
 
             var operation = new TezosOperation(operationRequest, operationId);
 
@@ -192,6 +237,37 @@ namespace Atomex.Wallet.Tezos
 
         public async Task<Result<bool>> SignAsync(
             TezosOperationRequest operation,
+            byte[] prefix = null,
+            CancellationToken cancellationToken = default)
+        {
+            var forgedOperations = await operation
+                .ForgeAsync()
+                .ConfigureAwait(false);
+
+            if (prefix != null)
+                forgedOperations = prefix
+                    .Concat(forgedOperations)
+                    .ToArray();
+
+            var (signature, error) = await SignAsync(
+                    from: operation.From,
+                    forgedOperations: forgedOperations,
+                    prefix: prefix,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (error != null)
+                return error;
+
+            operation.Signature = signature;
+
+            return true;
+        }
+
+        public async Task<Result<byte[]>> SignAsync(
+            string from,
+            byte[] forgedOperations,
+            byte[] prefix = null,
             CancellationToken cancellationToken = default)
         {
             try
@@ -199,23 +275,24 @@ namespace Atomex.Wallet.Tezos
                 var walletAddress = await LocalStorage
                     .GetAddressAsync(
                         currency: Currency,
-                        address: operation.From,
+                        address: from,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                var forgedOperationWithPrefix = await operation
-                    .ForgeAsync(addOperationPrefix: true)
-                    .ConfigureAwait(false);
+                if (prefix != null)
+                    forgedOperations = prefix
+                        .Concat(forgedOperations)
+                        .ToArray();
 
-                operation.Signature = await Wallet
+                var hash = MacAlgorithm.HmacBlake2b.Mac(key: null, data: forgedOperations);
+
+                return await Wallet
                     .SignHashAsync(
-                        hash: forgedOperationWithPrefix,
+                        hash: hash,
                         address: walletAddress,
                         currency: Config,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
-
-                return true;
             }
             catch (Exception e)
             {
