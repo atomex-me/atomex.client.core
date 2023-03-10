@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 
 using Atomex.Abstract;
+using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.SoChain;
 using Atomex.Services.Abstract;
 using Atomex.Services.BalanceUpdaters;
@@ -114,7 +115,16 @@ namespace Atomex.Services
 
                 var tzkt = new TzktEventsClient(_log);
                 _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, tzkt, _log));
-                _balanceUpdaters.Add(new TezosTokenBalanceUpdater(_account, _currenciesProvider, new TezosTokensWalletScanner(_account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz)), tzkt, _log));
+                _balanceUpdaters.Add(new TezosTokenBalanceUpdater(
+                    account: _account,
+                    currenciesProvider: _currenciesProvider,
+                    walletScanners: new[]
+                    {
+                        new TezosTokensWalletScanner(_account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz), TezosHelper.Fa12),
+                        new TezosTokensWalletScanner(_account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz), TezosHelper.Fa2)
+                    },
+                    tzkt: tzkt,
+                    log: _log));
             }
             catch (Exception e)
             {

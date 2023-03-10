@@ -15,6 +15,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
+using Newtonsoft.Json.Linq;
 
 namespace Atomex.Wallet.Tezos
 {
@@ -464,7 +465,7 @@ namespace Atomex.Wallet.Tezos
         public async Task UpdateBalanceAsync(
             CancellationToken cancellationToken = default)
         {
-            var scanner = new TezosTokensWalletScanner(_tezosAccount);
+            var scanner = new TezosTokensWalletScanner(_tezosAccount, TokenType);
 
             await scanner
                 .UpdateBalanceAsync(
@@ -478,7 +479,7 @@ namespace Atomex.Wallet.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            var scanner = new TezosTokensWalletScanner(_tezosAccount);
+            var scanner = new TezosTokensWalletScanner(_tezosAccount, TokenType);
 
             await scanner
                 .UpdateBalanceAsync(

@@ -4,7 +4,7 @@ using Atomex.Common;
 
 namespace Atomex.LiteDb
 {
-    public enum Collections
+    public enum MigrationEntityType
     {
         Orders,
         Swaps,
@@ -12,32 +12,32 @@ namespace Atomex.LiteDb
         TransactionsMetadata,
         Outputs,
         Addresses,
-        TezosTokensContracts
+        TezosTokensContracts,
     }
 
-    public struct LiteDbMigrationRemoveAction
+    public struct LiteDbMigrationChange
     {
-        public Collections Collection { get; set; }
+        public MigrationEntityType EntityType { get; set; }
         public string Currency { get; set; }
     }
 
-    public class LiteDbMigrationActionEqualityComparer : IEqualityComparer<LiteDbMigrationRemoveAction>
+    public class LiteDbMigrationChangeEqualityComparer : IEqualityComparer<LiteDbMigrationChange>
     {
-        public bool Equals(LiteDbMigrationRemoveAction x, LiteDbMigrationRemoveAction y) => 
-            x.Collection == y.Collection &&
+        public bool Equals(LiteDbMigrationChange x, LiteDbMigrationChange y) => 
+            x.EntityType == y.EntityType &&
             x.Currency == y.Currency;
 
-        public int GetHashCode(LiteDbMigrationRemoveAction obj) =>
-            obj.Collection.GetHashCode() ^ obj.Currency.GetHashCode();
+        public int GetHashCode(LiteDbMigrationChange obj) =>
+            obj.EntityType.GetHashCode() ^ obj.Currency.GetHashCode();
     }
 
-    public class LiteDbMigrationResult : List<LiteDbMigrationRemoveAction>
+    public class LiteDbMigrationResult : List<LiteDbMigrationChange>
     {
         public Error? Error { get; }
 
-        public void Add(Collections collections, string currency)
+        public void Add(MigrationEntityType entityType, string currency)
         {
-            Add(new LiteDbMigrationRemoveAction { Collection = collections, Currency = currency });
+            Add(new LiteDbMigrationChange { EntityType = entityType, Currency = currency });
         }
     }
 }

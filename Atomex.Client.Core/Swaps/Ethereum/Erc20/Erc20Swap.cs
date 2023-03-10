@@ -24,6 +24,7 @@ using Atomex.Swaps.Abstract;
 using Atomex.Swaps.Ethereum.Erc20.Helpers;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Ethereum;
+using Atomex.Wallet.Tezos;
 
 namespace Atomex.Swaps.Ethereum
 {
@@ -728,11 +729,23 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
 
                 // get transactions & update balance for address async
-                _ = AddressHelper.UpdateAddressBalanceAsync<Erc20WalletScanner, Erc20Account, EthereumAccount>(
-                    account: Erc20Account,
-                    baseAccount: EthereumAccount,
-                    address: swap.ToAddress,
-                    cancellationToken: cancellationToken);
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Erc20Account
+                            .UpdateBalanceAsync(swap.ToAddress, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Log.Debug($"Erc20 swap update balance for address {swap.ToAddress} canceled");
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error(e, $"Error while update balance for address {swap.ToAddress}");
+                    }
+                });
             }
         }
 

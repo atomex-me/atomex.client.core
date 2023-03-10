@@ -163,14 +163,6 @@ namespace Atomex.Wallet.BitcoinBased
             }
         }
 
-        [Obsolete("Use UpdateBalanceAsync instead")]
-        public Task ScanAsync(
-            string address,
-            CancellationToken cancellationToken = default)
-        {
-            return UpdateBalanceAsync(address, cancellationToken);
-        }
-
         public async Task UpdateBalanceAsync(
             bool skipUsed = false,
             CancellationToken cancellationToken = default)

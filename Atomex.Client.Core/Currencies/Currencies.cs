@@ -109,6 +109,24 @@ namespace Atomex
 
         public IEnumerator<CurrencyConfig> GetEnumerator()
         {
+            
+            lock (_sync)
+            {
+                return _currencies.Values.GetEnumerator();
+                //var result = new List<CurrencyConfig>(_currencies.Values.Count);
+
+                //foreach (var currencyByOrder in _currenciesOrder)
+                //    if (_currencies.TryGetValue(currencyByOrder, out var currency))
+                //        result.Add(currency);
+
+                //return result.GetEnumerator();
+            }
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public IEnumerable<CurrencyConfig> GetOrderedPreset()
+        {
             lock (_sync)
             {
                 var result = new List<CurrencyConfig>(_currencies.Values.Count);
@@ -117,11 +135,9 @@ namespace Atomex
                     if (_currencies.TryGetValue(currencyByOrder, out var currency))
                         result.Add(currency);
 
-                return result.GetEnumerator();
+                return result;
             }
         }
-
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         public static bool HasTokens(string name) =>
             name == "ETH" ||

@@ -83,6 +83,7 @@ namespace Atomex.Swaps
             _swapsCts = new ConcurrentDictionary<long, CancellationTokenSource>();
 
             var currencySwaps = _account.Currencies
+                .GetOrderedPreset()
                 .Select(c =>
                 {
                     var currencySwap = CurrencySwapCreator.Create(

@@ -574,11 +574,24 @@ namespace Atomex.Swaps.Tezos
                 await UpdateSwapAsync(swap, SwapStateFlags.IsRedeemConfirmed, cancellationToken)
                     .ConfigureAwait(false);
 
-                // get transactions & update balance for address async 
-                _ = AddressHelper.UpdateAddressBalanceAsync<TezosWalletScanner, TezosAccount>(
-                    account: _account,
-                    address: swap.ToAddress,
-                    cancellationToken: cancellationToken);
+                // get transactions & update balance for address async
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _account
+                            .UpdateBalanceAsync(swap.ToAddress, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Log.Debug($"Tezos swap update balance for address {swap.ToAddress} canceled");
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error(e, $"Error while update balance for address {swap.ToAddress}");
+                    }
+                });
             }
         }
 

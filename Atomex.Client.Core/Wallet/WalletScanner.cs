@@ -9,6 +9,7 @@ using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
 using Atomex.Wallet.Ethereum;
 using Atomex.Wallet.Tezos;
+using Atomex.Blockchain.Tezos;
 
 namespace Atomex.Wallet
 {
@@ -54,23 +55,6 @@ namespace Atomex.Wallet
             catch (Exception e)
             {
                 Log.Error(e, "Error while scanning HdWallet for {Currency} currency", currency);
-            }
-        }
-
-        public async Task ScanAddressAsync(
-            string currency,
-            string address,
-            CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                await GetCurrencyScanner(currency)
-                    .ScanAsync(address, cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Address scan error for currency {@currency} and address {@address}", currency, address);
             }
         }
 
@@ -135,28 +119,26 @@ namespace Atomex.Wallet
             {
                 "BTC" => new BitcoinBasedWalletScanner(
                     Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
-
                 "LTC" => new BitcoinBasedWalletScanner(
                     Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
-
                 "USDT" or
                 "TBTC" or
                 "WBTC" => new Erc20WalletScanner(
                     Account.GetCurrencyAccount<Erc20Account>(currency),
                     Account.GetCurrencyAccount<EthereumAccount>("ETH")),
-
                 "ETH" => new EthereumWalletScanner(
                     Account.GetCurrencyAccount<EthereumAccount>(currency)),
-
                 "XTZ" => new TezosWalletScanner(
                     Account.GetCurrencyAccount<TezosAccount>(currency)),
-
                 "TZBTC" or
                 "KUSD" or
+                "FA12" => new TezosTokensWalletScanner(
+                    tezosAccount: Account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz),
+                    tokenType: TezosHelper.Fa12),
                 "USDT_XTZ" or
-                "FA12" or
                 "FA2" => new TezosTokensWalletScanner(
-                    Account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz)),
+                    tezosAccount: Account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz),
+                    tokenType: TezosHelper.Fa2),
 
                 _ => throw new NotSupportedException($"Currency {currency} not supported")
             };

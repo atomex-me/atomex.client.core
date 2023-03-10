@@ -10,10 +10,6 @@ namespace Atomex.Wallet.Abstract
         Task ScanAsync(
             string currency,
             CancellationToken cancellationToken = default);
-        Task ScanAddressAsync(
-            string currency,
-            string address,
-            CancellationToken cancellationToken = default);
         Task UpdateBalanceAsync(
             bool skipUsed = false,
             CancellationToken cancellationToken = default);

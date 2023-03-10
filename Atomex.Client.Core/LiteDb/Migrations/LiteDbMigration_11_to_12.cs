@@ -375,14 +375,16 @@ namespace Atomex.LiteDb.Migrations
 
             return new LiteDbMigrationResult
             {
-                { Collections.Addresses, "FA12" },
-                { Collections.Addresses, "FA2" },
-                { Collections.Transactions, "XTZ" },
-                { Collections.Transactions, "ETH" },
-                { Collections.Transactions, "ERC20" },
-                { Collections.Transactions, "FA12" },
-                { Collections.Transactions, "FA2" },
-                { Collections.TezosTokensContracts, "ALL" },
+                { MigrationEntityType.Transactions, "ETH" },
+                { MigrationEntityType.Transactions, "USDT" },
+                { MigrationEntityType.Transactions, "WBTC" },
+                { MigrationEntityType.Transactions, "TBTC" },
+                { MigrationEntityType.Addresses, "XTZ" },
+                { MigrationEntityType.Transactions, "XTZ" },
+                { MigrationEntityType.Addresses, "FA12" },
+                { MigrationEntityType.Transactions, "FA12" },
+                { MigrationEntityType.Addresses, "FA2" },
+                { MigrationEntityType.Transactions, "FA2" },
             };
         }
 

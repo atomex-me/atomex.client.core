@@ -725,10 +725,23 @@ namespace Atomex.Swaps.Tezos.Fa12
                     .ConfigureAwait(false);
 
                 // get transactions & update balance for address async 
-                _ = AddressHelper.UpdateAddressBalanceAsync<TezosTokensWalletScanner, TezosAccount>(
-                    account: TezosAccount,
-                    address: swap.ToAddress,
-                    cancellationToken: cancellationToken);
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Fa12Account
+                            .UpdateBalanceAsync(swap.ToAddress, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Log.Debug($"Fa12 swap update balance for address {swap.ToAddress} canceled");
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error(e, $"Error while update balance for address {swap.ToAddress}");
+                    }
+                });
             }
         }
 

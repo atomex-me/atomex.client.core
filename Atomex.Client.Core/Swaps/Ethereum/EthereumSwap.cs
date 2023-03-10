@@ -713,10 +713,23 @@ namespace Atomex.Swaps.Ethereum
                     .ConfigureAwait(false);
 
                 // get transactions & update balance for address async
-                _ = AddressHelper.UpdateAddressBalanceAsync<EthereumWalletScanner, EthereumAccount>(
-                    account: _account,
-                    address: swap.ToAddress,
-                    cancellationToken: cancellationToken);
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _account
+                            .UpdateBalanceAsync(swap.ToAddress, cancellationToken)
+                            .ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        Log.Debug($"Ethereum swap update balance for address {swap.ToAddress} canceled");
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error(e, $"Error while update balance for address {swap.ToAddress}");
+                    }
+                });
             }
         }
 

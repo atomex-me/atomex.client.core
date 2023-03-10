@@ -21,21 +21,21 @@ namespace Atomex.Services.BalanceUpdaters
         private readonly ICurrenciesProvider _currenciesProvider;
         private readonly ILogger? _log;
         private readonly ITzktEventsClient _tzkt;
-        private readonly TezosTokensWalletScanner _walletScanner;
+        private readonly TezosTokensWalletScanner[] _walletScanners;
 
         private ISet<string> _addresses;
 
         public TezosTokenBalanceUpdater(
             IAccount account,
             ICurrenciesProvider currenciesProvider,
-            TezosTokensWalletScanner walletScanner,
+            TezosTokensWalletScanner[] walletScanners,
             ITzktEventsClient tzkt,
             ILogger? log = null)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _tezosAccount = account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz);
             _currenciesProvider = currenciesProvider;
-            _walletScanner = walletScanner ?? throw new ArgumentNullException(nameof(walletScanner));
+            _walletScanners = walletScanners ?? throw new ArgumentNullException(nameof(walletScanners));
             _tzkt = tzkt ?? throw new ArgumentNullException(nameof(tzkt));
             _log = log;
         }
@@ -142,15 +142,23 @@ namespace Atomex.Services.BalanceUpdaters
             {
                 if (@event.Contract != null)
                 {
-                    await _walletScanner
+                    var walletScanner = _walletScanners.FirstOrDefault(s => s.TokenType == @event.Standard);
+
+                    if (walletScanner == null)
+                        throw new Exception($"Can't find standard {@event.Standard}");
+
+                    await walletScanner
                         .UpdateBalanceAsync(@event.Address, @event.Contract, (int)@event.TokenId)
                         .ConfigureAwait(false);
                 }
                 else
                 {
-                    await _walletScanner
-                        .UpdateBalanceAsync(@event.Address)
-                        .ConfigureAwait(false);
+                    foreach (var walletScanner in _walletScanners)
+                    {
+                        await walletScanner
+                            .UpdateBalanceAsync(@event.Address)
+                            .ConfigureAwait(false);
+                    }
                 }
 
                 var newAddresses = await GetAddressesAsync()

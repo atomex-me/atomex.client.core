@@ -1,4 +1,6 @@
-﻿using LiteDB;
+﻿#nullable enable
+
+using LiteDB;
 
 using Atomex.LiteDb.Migrations;
 using Atomex.Core;
@@ -10,12 +12,12 @@ namespace Atomex.LiteDb
         public const int Version12 = 12;
         public const int CurrentVersion = Version12;
 
-        public static LiteDbMigrationResult Migrate(
+        public static LiteDbMigrationResult? Migrate(
             string pathToDb,
             string sessionPassword,
             Network network)
         {
-            LiteDbMigrationResult result = null;
+            LiteDbMigrationResult? result = null;
 
             var dbVersion = GetDataBaseVersion(pathToDb, sessionPassword);
 
