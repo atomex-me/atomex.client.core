@@ -298,7 +298,7 @@ namespace Atomex.Swaps.Ethereum
                     Nonce                = nonce,
                     MaxFeePerGas         = gasPrice.MaxFeePerGas.GweiToWei(),
                     MaxPriorityFeePerGas = gasPrice.MaxPriorityFeePerGas.GweiToWei(),
-                    TransactionType      = EthereumHelper.Eip1559TransactionType
+                    TransactionType      = EthereumHelper.Eip1559TransactionType,
                 };
 
                 message.Gas = await EstimateGasAsync(message, new BigInteger(erc20Config.RedeemGasLimit))
@@ -1048,7 +1048,7 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("TxId {@id} for swap {@swapId}", txId, swap.Id);
 
-            var tx = new EthereumTransaction(txRequest);
+            var tx = new EthereumTransaction(txRequest, txId);
 
             await EthereumAccount
                 .LocalStorage

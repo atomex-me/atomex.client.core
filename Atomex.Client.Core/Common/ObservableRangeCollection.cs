@@ -158,7 +158,7 @@ namespace System.Collections.ObjectModel
                         return;
                     }
             }
-            else if (!(ContainsAny(collection)))
+            else if (!ContainsAny(collection))
             {
                 return;
             }

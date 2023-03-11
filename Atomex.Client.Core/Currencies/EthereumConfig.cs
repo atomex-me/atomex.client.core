@@ -229,9 +229,30 @@ namespace Atomex
                 feeCurrencyToBasePrice: feeCurrencyToBasePrice);
         }
 
+        private static DateTime _lastGasPriceTimeStamp;
+        private static GasPrice _lastGasPrice;
+        private const int GAS_PRICE_CACHE_IN_SEC = 10;
+
         public async Task<Result<GasPrice>> GetGasPriceAsync(
             CancellationToken cancellationToken = default)
         {
+            if (ChainId != Mainnet)
+            {
+                return new GasPrice
+                {
+                    LastBlock            = 0,
+                    LowGasPrice          = 10,
+                    AverageGasPrice      = 11,
+                    HighGasPrice         = 12,
+                    SuggestBaseFee       = 10,
+                    MaxFeePerGas         = 12 * MaxFeePerGasCoeff,
+                    MaxPriorityFeePerGas = MinPriorityFeePerGas,
+                };
+            }
+
+            if (_lastGasPrice != null && DateTime.UtcNow - _lastGasPriceTimeStamp < TimeSpan.FromSeconds(GAS_PRICE_CACHE_IN_SEC))
+                return _lastGasPrice;
+
             var gasPriceProvider = GetGasPriceProvider();
 
             var (gasPrice, error) = await gasPriceProvider
@@ -244,7 +265,7 @@ namespace Atomex
             var highGasPrice = long.Parse(gasPrice.FastGasPrice);
             var suggestBaseFee = decimal.Parse(gasPrice.SuggestBaseFee, CultureInfo.InvariantCulture);
 
-            return new GasPrice
+            var result = new GasPrice
             {
                 LastBlock            = long.Parse(gasPrice.LastBlock),
                 LowGasPrice          = long.Parse(gasPrice.SafeGasPrice),
@@ -254,6 +275,11 @@ namespace Atomex
                 MaxFeePerGas         = highGasPrice * MaxFeePerGasCoeff,
                 MaxPriorityFeePerGas = Math.Max(highGasPrice - Math.Floor(suggestBaseFee), MinPriorityFeePerGas),
             };
+
+            _lastGasPrice = result;
+            _lastGasPriceTimeStamp = DateTime.UtcNow;
+
+            return result;
         }
     }
 }

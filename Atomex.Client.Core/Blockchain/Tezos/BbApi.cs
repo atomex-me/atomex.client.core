@@ -83,7 +83,8 @@ namespace Atomex.Blockchain.Tezos
                     MinDelegation = baker.minDelegation,
                     StakingAvailable = Math.Round(baker.freeSpace, 6),
                     EstimatedRoi = baker.estimatedRoi
-                });
+                })
+                .ToList();
                 
             return bakersList;
         }

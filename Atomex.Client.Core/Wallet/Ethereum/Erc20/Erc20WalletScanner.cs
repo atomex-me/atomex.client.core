@@ -19,11 +19,6 @@ namespace Atomex.Wallet.Ethereum
 {
     public class Erc20WalletScanner : ICurrencyWalletScanner
     {
-        private const int DefaultInternalLookAhead = 1;
-        private const int DefaultExternalLookAhead = 1;
-
-        protected int InternalLookAhead { get; } = DefaultInternalLookAhead;
-        protected int ExternalLookAhead { get; } = DefaultExternalLookAhead;
         private Erc20Config Erc20Config => _account.Erc20Config;
         private readonly Erc20Account _account;
         private readonly EthereumAccount _ethereumAccount;
@@ -47,90 +42,19 @@ namespace Atomex.Wallet.Ethereum
         public async Task ScanAsync(
             CancellationToken cancellationToken = default)
         {
-            try
-            {
-                var updateTimeStamp = DateTime.UtcNow;
+            var ethAddresses = await _ethereumAccount
+                .GetAddressesAsync(cancellationToken)
+                .ConfigureAwait(false);
 
-                var ethAddresses = await _ethereumAccount
-                    .GetAddressesAsync(cancellationToken)
+            if (ethAddresses.Count() <= 1)
+            {
+                await new EthereumWalletScanner(_ethereumAccount)
+                    .ScanAsync(cancellationToken)
                     .ConfigureAwait(false);
-
-                var walletAddresses = ethAddresses.Select(w => new WalletAddress
-                {
-                    Address               = w.Address,
-                    Currency              = EthereumHelper.Erc20,
-                    HasActivity           = false,
-                    KeyIndex              = w.KeyIndex,
-                    KeyType               = w.KeyType,
-                    LastSuccessfullUpdate = DateTime.MinValue,
-                    Balance               = 0,
-                    UnconfirmedIncome     = 0,
-                    UnconfirmedOutcome    = 0,
-                    TokenBalance          = new TokenBalance
-                    {
-                        Address       = w.Address,
-                        Standard      = EthereumHelper.Erc20,
-                        Contract      = Erc20Config.TokenContractAddress,
-                        ContractAlias = Erc20Config.Name,
-                        Decimals      = Erc20Config.Decimals,
-                        Name          = Erc20Config.Name,
-                        Description   = Erc20Config.Description,
-                        Symbol        = Erc20Config.Name,
-                        Balance       = "0"
-                    }
-                });
-
-                var api = GetErc20Api(); 
-                var txs = new List<Erc20Transaction>();
-
-                foreach (var walletAddress in walletAddresses)
-                {
-                    var (addressTxs, error) = await UpdateAddressAsync(
-                            walletAddress,
-                            api: api,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (error != null)
-                    {
-                        Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error while scan {@address}", walletAddress.Address);
-                        return;
-                    }
-
-                    txs.AddRange(addressTxs);
-                }
-
-                if (txs.Any())
-                {
-                    var uniqueTxs = DistinctTransactions(txs);
-
-                    var _ = await _account
-                        .LocalStorage
-                        .UpsertTransactionsAsync(
-                            txs: uniqueTxs,
-                            notifyIfNewOrChanged: true,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
-                }
-
-                if (walletAddresses.Any())
-                {
-                    var _ = await _account
-                        .LocalStorage
-                        .UpsertAddressesAsync(
-                            walletAddresses: walletAddresses,
-                            cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
-                }
             }
-            catch (OperationCanceledException)
-            {
-                Log.Debug("[Erc20WalletScanner] ScanAsync canceled");
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "[Erc20WalletScanner] ScanAsync error: {@message}", e.Message);
-            }
+
+            await UpdateBalanceAsync(skipUsed: false, cancellationToken)
+                .ConfigureAwait(false);
         }
 
         public async Task UpdateBalanceAsync(
@@ -141,20 +65,53 @@ namespace Atomex.Wallet.Ethereum
             {
                 var updateTimeStamp = DateTime.UtcNow;
 
-                var walletAddresses = await _account
+                // all tokens addresses
+                var tokenLocalAddresses = (await _account
                     .LocalStorage
                     .GetAddressesAsync(
                         currency: EthereumHelper.Erc20,
                         tokenContract: Erc20Config.TokenContractAddress,
                         cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
+                    .ConfigureAwait(false))
+                    .ToList();
 
-                // todo: if skipUsed == true => skip "disabled" wallets
+                // all ethereum addresses without tokens
+                var emptyAddresses = (await _ethereumAccount
+                    .GetAddressesAsync(cancellationToken)
+                    .ConfigureAwait(false))
+                    .Where(w => !tokenLocalAddresses.Any(ta => ta.Address == w.Address))
+                    .Select(w => new WalletAddress
+                    {
+                        Address               = w.Address,
+                        Currency              = EthereumHelper.Erc20,
+                        HasActivity           = false,
+                        KeyIndex              = w.KeyIndex,
+                        KeyType               = w.KeyType,
+                        LastSuccessfullUpdate = DateTime.MinValue,
+                        Balance               = 0,
+                        UnconfirmedIncome     = 0,
+                        UnconfirmedOutcome    = 0,
+                        TokenBalance = new TokenBalance
+                        {
+                            Address       = w.Address,
+                            Standard      = EthereumHelper.Erc20,
+                            Contract      = Erc20Config.TokenContractAddress,
+                            ContractAlias = Erc20Config.Name,
+                            Decimals      = Erc20Config.Decimals,
+                            Name          = Erc20Config.Name,
+                            Description   = Erc20Config.Description,
+                            Symbol        = Erc20Config.Name,
+                            Balance       = "0"
+                        }
+                    })
+                    .ToList();
+
+                tokenLocalAddresses.AddRange(emptyAddresses);
 
                 var api = GetErc20Api();
                 var txs = new List<Erc20Transaction>();
 
-                foreach (var walletAddress in walletAddresses)
+                foreach (var walletAddress in tokenLocalAddresses)
                 {
                     if (skipUsed && walletAddress.IsDisabled)
                         continue;
@@ -187,12 +144,12 @@ namespace Atomex.Wallet.Ethereum
                         .ConfigureAwait(false);
                 }
 
-                if (walletAddresses.Any())
+                if (tokenLocalAddresses.Any())
                 {
                     var _ = await _account
                         .LocalStorage
                         .UpsertAddressesAsync(
-                            walletAddresses: walletAddresses,
+                            walletAddresses: tokenLocalAddresses,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
@@ -227,8 +184,44 @@ namespace Atomex.Wallet.Ethereum
 
                 if (walletAddress == null)
                 {
-                    Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error. Can't find address {@address} in local db", address);
-                    return;
+                    var ethAddress = await _account
+                        .LocalStorage
+                        .GetAddressAsync(
+                            currency: EthereumHelper.Eth,
+                            address: address,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (ethAddress == null)
+                    {
+                        Log.Error("[Erc20WalletScanner] UpdateBalanceAsync error. Can't find address {@address} in local db", address);
+                        return;
+                    }
+
+                    walletAddress = new WalletAddress
+                    {
+                        Address               = ethAddress.Address,
+                        Currency              = EthereumHelper.Erc20,
+                        HasActivity           = false,
+                        KeyIndex              = ethAddress.KeyIndex,
+                        KeyType               = ethAddress.KeyType,
+                        LastSuccessfullUpdate = DateTime.MinValue,
+                        Balance               = 0,
+                        UnconfirmedIncome     = 0,
+                        UnconfirmedOutcome    = 0,
+                        TokenBalance = new TokenBalance
+                        {
+                            Address       = ethAddress.Address,
+                            Standard      = EthereumHelper.Erc20,
+                            Contract      = Erc20Config.TokenContractAddress,
+                            ContractAlias = Erc20Config.Name,
+                            Decimals      = Erc20Config.Decimals,
+                            Name          = Erc20Config.Name,
+                            Description   = Erc20Config.Description,
+                            Symbol        = Erc20Config.Name,
+                            Balance       = "0"
+                        }
+                    };
                 }
 
                 var (addressTxs, error) = await UpdateAddressAsync(
@@ -373,7 +366,8 @@ namespace Atomex.Wallet.Ethereum
                     firstTx.Transfers = UnionTransfers(g);
 
                     return firstTx;
-                });
+                })
+                .ToList();
         }
 
         private List<Erc20Transfer> UnionTransfers(IEnumerable<Erc20Transaction> txs)
@@ -383,10 +377,12 @@ namespace Atomex.Wallet.Ethereum
             foreach (var tx in txs)
                 transfers.AddRange(tx.Transfers);
 
-            transfers.Distinct(new Common.EqualityComparer<Erc20Transfer>(
-                (t1, t2) => t1.From.Equals(t2.From) && t1.To.Equals(t2.To) && t1.Value.Equals(t2.Value),
-                t => t.From.GetHashCode() ^ t.To.GetHashCode() ^ t.Value.GetHashCode()
-            ));
+            transfers = transfers
+                .Distinct(new Common.EqualityComparer<Erc20Transfer>(
+                    (t1, t2) => t1.From.Equals(t2.From) && t1.To.Equals(t2.To) && t1.Value.Equals(t2.Value),
+                    t => t.From.GetHashCode() ^ t.To.GetHashCode() ^ t.Value.GetHashCode()
+                ))
+                .ToList();
 
             return transfers;
         }

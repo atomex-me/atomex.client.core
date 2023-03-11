@@ -62,8 +62,9 @@ namespace Atomex.Blockchain.Ethereum
         {          
         }
 
-        public EthereumTransaction(EthereumTransactionRequest txRequest)
+        public EthereumTransaction(EthereumTransactionRequest txRequest, string txId)
         {
+            Id                   = txId;
             Currency             = EthereumHelper.Eth;
             Status               = TransactionStatus.Pending;
             CreationTime         = DateTimeOffset.UtcNow;

@@ -1,9 +1,11 @@
-﻿using System.Collections.Generic;
-using System.Numerics;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
 using Nethereum.RPC.Eth.DTOs;
 using Nethereum.Signer;
+using Nethereum.Signer.Crypto;
 using Nethereum.Util;
 
 using Atomex.Common;
@@ -27,8 +29,9 @@ namespace Atomex.Blockchain.Ethereum
         public BigInteger GasLimit { get; set; }
         public string Data { get; set; }
         public BigInteger ChainId { get; set; }
-        public List<EthereumAccessList> AccessList { get; set; }
+        public List<EthereumAccessList>? AccessList { get; set; }
         public byte[] Signature { get; set; }
+        public byte[] SignatureV { get; set; }
 
         public EthereumTransactionRequest()
         {
@@ -46,7 +49,7 @@ namespace Atomex.Blockchain.Ethereum
             Data                 = txInput.Data;
             ChainId              = chainId;
             AccessList = txInput.AccessList
-                .Select(a => new EthereumAccessList
+                ?.Select(a => new EthereumAccessList
                 {
                     Address = a.Address,
                     StorageKeys = a.StorageKeys
@@ -54,8 +57,15 @@ namespace Atomex.Blockchain.Ethereum
                 .ToList();
         }
 
-        private Transaction1559 GetTransaction()
+        public Transaction1559 GetTransaction()
         {
+            var signature = Signature != null
+                ? new EthECDSASignature(Signature)
+                : null;
+
+            if (signature != null)
+                signature.V = SignatureV;
+
             return new Transaction1559(
                 chainId: ChainId,
                 nonce: Nonce,
@@ -66,14 +76,15 @@ namespace Atomex.Blockchain.Ethereum
                 amount: Value,
                 data: Data,
                 accessList: AccessList
-                    .Select(a => new AccessListItem
+                    ?.Select(a => new AccessListItem
                     {
                         Address = a.Address,
                         StorageKeys = a.StorageKeys
                             .Select(k => Hex.FromString(k))
                             .ToList()
                     })
-                    .ToList());
+                    .ToList(),
+                signature: signature);
         }
 
         public byte[] GetRawHash()
@@ -89,8 +100,6 @@ namespace Atomex.Blockchain.Ethereum
         {
             var tx = GetTransaction();
 
-            tx.SetSignature(new EthECDSASignature(Signature));
-
             return tx
                 .GetRLPEncoded()
                 .ToHexString();
@@ -98,5 +107,28 @@ namespace Atomex.Blockchain.Ethereum
 
         public bool Verify() => TransactionVerificationAndRecovery
             .VerifyTransaction(GetRlpEncoded());
+
+        public static int CalculateRecId(ECDSASignature signature, byte[] hash, byte[] uncompressedPublicKey)
+        {
+            var recId = -1;
+
+            for (var i = 0; i < 4; i++)
+            {
+                var rec = ECKey.RecoverFromSignature(i, signature, hash, false);
+                if (rec != null)
+                {
+                    var k = rec.GetPubKey(false);
+                    if (k != null && k.SequenceEqual(uncompressedPublicKey))
+                    {
+                        recId = i;
+                        break;
+                    }
+                }
+            }
+            if (recId == -1)
+                throw new Exception("Could not construct a recoverable key. This should never happen.");
+
+            return recId;
+        }
     }
 }

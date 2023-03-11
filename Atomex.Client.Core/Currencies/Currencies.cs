@@ -176,6 +176,9 @@ namespace Atomex
         public static bool IsTokenStandard(string name) =>
             EthTokensStandards.Contains(name) || IsTezosTokenStandard(name);
 
+        public static bool IsToken(string name) =>
+            IsTezosToken(name) || IsEthereumToken(name);
+
         public static string GetBaseChainForPresetToken(string name) =>
             IsPresetTezosToken(name)
                 ? "XTZ"

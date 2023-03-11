@@ -174,7 +174,7 @@ namespace Atomex.Wallet.Ethereum
 
             Log.Debug("Transaction successfully sent with txId: {@id}", txId);
 
-            var tx = new EthereumTransaction(txRequest);
+            var tx = new EthereumTransaction(txRequest, txId);
 
             await LocalStorage
                 .UpsertTransactionAsync(
@@ -220,7 +220,7 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(from))
-                return new MaxAmountEstimation {
+                return new EthereumMaxAmountEstimation {
                     Error = new Error(Errors.FromAddressIsNullOrEmpty, Resources.FromAddressIsNullOrEmpty)
                 };
 
@@ -235,7 +235,8 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (tokenAddress == null)
-                return new MaxAmountEstimation {
+                return new EthereumMaxAmountEstimation
+                {
                     Error = new Error(
                         code: Errors.InsufficientFunds,
                         message: Resources.InsufficientFunds),
@@ -252,7 +253,7 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (estimateError != null)
-                return new MaxAmountEstimation
+                return new EthereumMaxAmountEstimation
                 {
                     Error = estimateError
                 };
@@ -263,7 +264,9 @@ namespace Atomex.Wallet.Ethereum
                            (maxFeePerGas == null ? estimatedGasPrice.MaxFeePerGas.GweiToWei() : maxFeePerGas.Value.GweiToWei());
 
             if (feeInWei == 0)
-                return new MaxAmountEstimation {
+                return new EthereumMaxAmountEstimation
+                {
+                    GasPrice = estimatedGasPrice,
                     Error = new Error(Errors.InsufficientFee, Resources.TooLowFees)
                 };
 
@@ -274,10 +277,11 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (ethAddress == null)
-                return new MaxAmountEstimation
+                return new EthereumMaxAmountEstimation
                 {
                     Fee = requiredFeeInWei,
                     Reserved = reserveFeeInWei,
+                    GasPrice = estimatedGasPrice,
                     Error = new Error(
                         code: Errors.InsufficientFunds,
                         message: Resources.InsufficientFundsToCoverFees),
@@ -291,9 +295,11 @@ namespace Atomex.Wallet.Ethereum
             var restBalanceInWei = ethAddress.Balance - requiredFeeInWei;
 
             if (restBalanceInWei < 0)
-                return new MaxAmountEstimation {
+                return new EthereumMaxAmountEstimation
+                {
                     Fee = requiredFeeInWei,
                     Reserved = reserveFeeInWei,
+                    GasPrice = estimatedGasPrice,
                     Error = new Error(
                         code: Errors.InsufficientFunds,
                         message: Resources.InsufficientFundsToCoverFees),
@@ -305,9 +311,11 @@ namespace Atomex.Wallet.Ethereum
                 };
 
             if (tokenAddress.Balance <= 0)
-                return new MaxAmountEstimation {
+                return new EthereumMaxAmountEstimation
+                {
                     Fee = requiredFeeInWei,
                     Reserved = reserveFeeInWei,
+                    GasPrice = estimatedGasPrice,
                     Error = new Error(
                         code: Errors.InsufficientFunds,
                         message: Resources.InsufficientFunds),
@@ -317,11 +325,12 @@ namespace Atomex.Wallet.Ethereum
                         erc20Config.Name)     // currency code
                 };
 
-            return new MaxAmountEstimation
+            return new EthereumMaxAmountEstimation
             {
                 Amount = tokenAddress.Balance,
                 Fee = requiredFeeInWei,
-                Reserved = reserveFeeInWei
+                Reserved = reserveFeeInWei,
+                GasPrice = estimatedGasPrice
             };
         }
 

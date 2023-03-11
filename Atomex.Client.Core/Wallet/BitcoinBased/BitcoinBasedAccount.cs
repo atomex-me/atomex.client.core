@@ -324,7 +324,8 @@ namespace Atomex.Wallet.BitcoinBased
 
             var inputsToSign = outputs
                 .Select(o => new BitcoinInputToSign { Output = o })
-                .Where(i => i.SizeWithSignature() * feeRate < i.Output.Value); // skip outputs that are less than the fee for adding them
+                .Where(i => i.SizeWithSignature() * feeRate < i.Output.Value)
+                .ToList(); // skip outputs that are less than the fee for adding them
 
             availableInSatoshi = inputsToSign.Sum(i => i.Output.Value);
 

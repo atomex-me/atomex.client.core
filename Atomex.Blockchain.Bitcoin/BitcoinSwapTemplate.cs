@@ -291,6 +291,7 @@ namespace Atomex.Blockchain.Bitcoin
         public static IEnumerable<byte[]> ExtractAllPushData(Script script) => script
             .ToOps()
             .Where(op => op.PushData != null)
-            .Select(op => op.PushData);
+            .Select(op => op.PushData)
+            .ToList();
     }
 }

@@ -882,7 +882,7 @@ namespace Atomex.Swaps.Ethereum
 
             Log.Debug("TxId {@id} for swap {@swapId}", txId, swap.Id);
 
-            var tx = new EthereumTransaction(txRequest);
+            var tx = new EthereumTransaction(txRequest, txId);
 
             await _account
                 .LocalStorage

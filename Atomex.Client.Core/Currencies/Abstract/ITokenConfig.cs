@@ -8,5 +8,6 @@ namespace Atomex.Abstract
         public string TokenContractAddress { get; }
         public BigInteger TokenId { get; }
         public string BaseCurrencyName { get; }
+        public string DisplayedName { get; }
     }
 }

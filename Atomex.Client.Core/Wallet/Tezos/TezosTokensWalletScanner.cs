@@ -64,7 +64,7 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            // all tezos tokens addresses
+            // all tokens addresses
             var tokenLocalAddresses = await _tezosAccount
                 .LocalStorage
                 .GetAddressesAsync(
@@ -182,12 +182,11 @@ namespace Atomex.Wallet.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
-            // all tezos addresses
-            var xtzLocalAddresses = await _tezosAccount.LocalStorage
+            // tezos address
+            var xtzAddress = (await _tezosAccount.LocalStorage
                 .GetAddressesAsync(TezosConfig.Xtz)
-                .ConfigureAwait(false);
-
-            var xtzAddress = xtzLocalAddresses.First(w => w.Address == address);
+                .ConfigureAwait(false))
+                .First(w => w.Address == address);
 
             // tezos tokens addresses
             var tokenLocalAddresses = await _tezosAccount
@@ -319,7 +318,8 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false))
                 .Where(w =>
                     w.TokenBalance.Contract == tokenContract &&
-                    w.TokenBalance.TokenId == tokenId);
+                    w.TokenBalance.TokenId == tokenId)
+                .ToList();
 
             var uniqueLocalAddresses = xtzLocalAddresses
                 .Concat(tokenLocalAddresses)
@@ -435,12 +435,11 @@ namespace Atomex.Wallet.Tezos
             BigInteger tokenId,
             CancellationToken cancellationToken = default)
         {
-            // all tezos addresses
-            var xtzLocalAddresses = await _tezosAccount.LocalStorage
+            // tezos address
+            var xtzAddress = (await _tezosAccount.LocalStorage
                 .GetAddressesAsync(TezosConfig.Xtz)
-                .ConfigureAwait(false);
-
-            var xtzAddress = xtzLocalAddresses.First(w => w.Address == address);
+                .ConfigureAwait(false))
+                .First(w => w.Address == address);
 
             // tezos token address
             var tokenLocalAddresses = (await _tezosAccount
@@ -451,7 +450,8 @@ namespace Atomex.Wallet.Tezos
                     address: address,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false))
-                .Where(w => w.TokenBalance.TokenId == tokenId);
+                .Where(w => w.TokenBalance.TokenId == tokenId)
+                .ToList();
 
             var tzktApi = new TzktApi(_tezosAccount.Config.GetTzktSettings());
 
