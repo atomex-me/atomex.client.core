@@ -44,7 +44,6 @@
       "RedeemGasLimit": 140000,
       "EstimatedRedeemGasLimit": 71000,
       "EstimatedRedeemWithRewardGasLimit": 101000,
-      "GasPriceInGwei": 90,
       "MaxGasPriceInGwei": 650,
       "ChainId": 1,
       "BlockchainApi": "EtherScan",
@@ -345,7 +344,6 @@
       "RedeemGasLimit": 140000,
       "EstimatedRedeemGasLimit": 48000,
       "EstimatedRedeemWithRewardGasLimit": 66000,
-      "GasPriceInGwei": 25,
       "ChainId": 5,
       "BlockchainApi": "EtherScan",
       "BlockchainApiBaseUri": "https://api-goerli.etherscan.io/",
@@ -377,8 +375,7 @@
       "RefundGasLimit": 110000,
       "RedeemGasLimit": 200000,
       "EstimatedRedeemGasLimit": 68000,
-      "EstimatedRedeemWithRewardGasLimit": 90000,
-      "GasPriceInGwei": 25
+      "EstimatedRedeemWithRewardGasLimit": 90000
     },
     "USDT": {
       "BasedOn": "ERC20",

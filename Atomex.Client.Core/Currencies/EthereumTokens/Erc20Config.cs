@@ -12,6 +12,7 @@ using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Common;
 using Atomex.Wallets.Bips;
+using Atomex.Blockchain.Ethereum.EtherScan;
 
 namespace Atomex.EthereumTokens
 {
@@ -72,11 +73,6 @@ namespace Atomex.EthereumTokens
             RedeemGasLimit = long.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
             EstimatedRedeemGasLimit = long.Parse(configuration[nameof(EstimatedRedeemGasLimit)], CultureInfo.InvariantCulture);
             EstimatedRedeemWithRewardGasLimit = long.Parse(configuration[nameof(EstimatedRedeemWithRewardGasLimit)], CultureInfo.InvariantCulture);
-            GasPriceInGwei = decimal.Parse(configuration[nameof(GasPriceInGwei)], CultureInfo.InvariantCulture);
-
-            MaxGasPriceInGwei = configuration[nameof(MaxGasPriceInGwei)] != null
-                ? decimal.Parse(configuration[nameof(MaxGasPriceInGwei)], CultureInfo.InvariantCulture)
-                : 650m;
 
             ChainId = int.Parse(configuration[nameof(ChainId)], CultureInfo.InvariantCulture);
             TokenContractAddress = configuration["TokenContract"];
@@ -89,6 +85,11 @@ namespace Atomex.EthereumTokens
 
             BlockchainApiBaseUri = configuration[nameof(BlockchainApiBaseUri)];
             BlockchainApi = configuration["BlockchainApi"];
+
+            EtherScanSettings = new EtherScanSettings
+            {
+                BaseUri = BlockchainApiBaseUri
+            };
 
             TxExplorerUri = configuration[nameof(TxExplorerUri)];
             AddressExplorerUri = configuration[nameof(AddressExplorerUri)];

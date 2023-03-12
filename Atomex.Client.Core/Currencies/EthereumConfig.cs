@@ -47,8 +47,6 @@ namespace Atomex
         public long RedeemGasLimit { get; protected set; }
         public long EstimatedRedeemGasLimit { get; protected set; }
         public long EstimatedRedeemWithRewardGasLimit { get; protected set; }
-        public decimal GasPriceInGwei { get; protected set; }
-        public decimal MaxGasPriceInGwei { get; protected set; }
 
         public int ChainId { get; protected set; }
         public string BlockchainApiBaseUri { get; protected set; }
@@ -102,11 +100,6 @@ namespace Atomex
             RedeemGasLimit = long.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
             EstimatedRedeemGasLimit = long.Parse(configuration[nameof(EstimatedRedeemGasLimit)], CultureInfo.InvariantCulture);
             EstimatedRedeemWithRewardGasLimit = long.Parse(configuration[nameof(EstimatedRedeemWithRewardGasLimit)], CultureInfo.InvariantCulture);
-            GasPriceInGwei = decimal.Parse(configuration[nameof(GasPriceInGwei)], CultureInfo.InvariantCulture);
-
-            MaxGasPriceInGwei = configuration[nameof(MaxGasPriceInGwei)] != null
-                ? decimal.Parse(configuration[nameof(MaxGasPriceInGwei)], CultureInfo.InvariantCulture)
-                : 650m;
 
             ChainId = int.Parse(configuration[nameof(ChainId)], CultureInfo.InvariantCulture);
             SwapContractAddress = configuration["SwapContract"];

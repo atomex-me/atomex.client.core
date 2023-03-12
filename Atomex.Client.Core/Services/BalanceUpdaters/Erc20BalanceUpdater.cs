@@ -51,7 +51,7 @@ namespace Atomex.Services.BalanceUpdaters
                     .Replace("https", "wss")
                     .Replace("v3", "ws/v3");
 
-                foreach (var currency in _account.Currencies)
+                foreach (var currency in _account.Currencies.GetOrderedPreset())
                 {
                     if (currency is Erc20Config erc20Currency)
                     {

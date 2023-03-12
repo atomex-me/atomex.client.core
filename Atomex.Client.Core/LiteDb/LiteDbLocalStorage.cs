@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Security;
@@ -57,18 +58,16 @@ namespace Atomex.LiteDb
             _sessionPassword = SessionPasswordHelper.GetSessionPassword(password);
             _bsonMapper = LiteDbMigration_11_to_12.CreateBsonMapper(network);
 
-            var connectionString = $"FileName={_pathToDb};Password={_sessionPassword};Connection=direct;Upgrade=true";
+            var connectionString = $"FileName={_pathToDb};Password={_sessionPassword};Connection=direct";
+
+            var isNewDb = !File.Exists(_pathToDb); // check db exists before creation
 
             _db = new LiteDatabase(connectionString, _bsonMapper);
-        }
 
-        public static void CreateDataBase(string pathToDb, string sessionPassword, int version)
-        {
-            var connectionString = $"FileName={pathToDb};Password={sessionPassword};Connection=direct";
-
-            using var db = new LiteDatabase(connectionString);
-
-            db.UserVersion = version;
+            if (isNewDb)
+            {
+                LiteDbMigration_11_to_12.InitDb(_db);
+            }
         }
 
         public void ChangePassword(SecureString newPassword)

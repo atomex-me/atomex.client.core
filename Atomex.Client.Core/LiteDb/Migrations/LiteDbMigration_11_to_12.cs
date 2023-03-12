@@ -28,6 +28,20 @@ namespace Atomex.LiteDb.Migrations
         private const string Backup = "backup";
         private const string OrderIdKey = "OrderId";
 
+        public static void InitDb(LiteDatabase db)
+        {
+            const string InitialId = "0";
+
+            foreach (var c in new string[] { "btc", "ltc", "xtz", "eth", "erc20", "fa12", "fa2" })
+            {
+                var metadata = db.GetCollection<TransactionMetadata>($"{c}_meta");
+                metadata.Insert(new TransactionMetadata { Id = InitialId });
+                metadata.Delete(InitialId);
+            }
+
+            db.UserVersion = LiteDbMigrationManager.Version12;
+        }
+
         public static LiteDbMigrationResult Migrate(
             string pathToDb,
             string sessionPassword,
@@ -42,14 +56,7 @@ namespace Atomex.LiteDb.Migrations
             using (var newDb = new LiteDatabase(newConnectionString, mapper))
             {
                 // create transactions metadata collection
-                const string InitialId = "0";
-
-                foreach (var c in new string[] { "btc", "ltc", "xtz", "eth", "erc20", "fa12", "fa2" })
-                {
-                    var metadata = newDb.GetCollection<TransactionMetadata>($"{c}_meta");
-                    metadata.Insert(new TransactionMetadata { Id = InitialId });
-                    metadata.Delete(InitialId);
-                }
+                InitDb(newDb);
 
                 // wallet addresses
                 foreach (var oldAddress in oldDb.GetCollection("Addresses").FindAll())
@@ -366,8 +373,6 @@ namespace Atomex.LiteDb.Migrations
                         .GetCollection("swaps")
                         .Upsert(swapDocument);
                 }
-
-                newDb.UserVersion = LiteDbMigrationManager.Version12;
             };
 
             File.Move(pathToDb, $"{pathToDb}.{Backup}");
