@@ -935,18 +935,25 @@ namespace Atomex.ViewModels
         public static async Task<List<UserMessage>> GetUserMessages(string userId,
             CancellationToken cancellationToken = default)
         {
-            using var response = await HttpHelper.GetAsync(
-                    baseUri: "https://services.atomex.me/",
-                    relativeUri: $"usermessages/get_user_messages/?uid={userId}&format=json",
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+            try
+            {
+                using var response = await HttpHelper.GetAsync(
+                        baseUri: "https://services.atomex.me/",
+                        relativeUri: $"usermessages/get_user_messages/?uid={userId}&format=json",
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
 
-            var responseContent = await response
-                .Content
-                .ReadAsStringAsync()
-                .ConfigureAwait(false);
+                var responseContent = await response
+                    .Content
+                    .ReadAsStringAsync()
+                    .ConfigureAwait(false);
 
-            return JsonConvert.DeserializeObject<List<UserMessage>>(responseContent);
+                return JsonConvert.DeserializeObject<List<UserMessage>>(responseContent);
+            }
+            catch
+            {
+                return new List<UserMessage>();
+            }
         }
 
         public static async Task<HttpResponseMessage> MarkUserMessageReaded(int messageId,

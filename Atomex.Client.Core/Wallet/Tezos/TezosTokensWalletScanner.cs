@@ -112,7 +112,12 @@ namespace Atomex.Wallet.Tezos
                 if (tokenBalanceMap.TryGetValue(uniqueTokenId, out var tb))
                 {
                     if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
-                        tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount ||
+                        tokenLocalAddress.TokenBalance.ArtifactUri != tb.ArtifactUri ||
+                        tokenLocalAddress.TokenBalance.DisplayUri != tb.DisplayUri ||
+                        tokenLocalAddress.TokenBalance.ThumbnailUri != tb.ThumbnailUri ||
+                        tokenLocalAddress.TokenBalance.Name != tb.Name ||
+                        tokenLocalAddress.TokenBalance.Description != tb.Description)
                     {
                         tokenLocalAddress.Balance = tb.GetTokenBalance();
                         tokenLocalAddress.TokenBalance = tb;
@@ -232,7 +237,12 @@ namespace Atomex.Wallet.Tezos
                 if (tokenBalanceMap.TryGetValue(uniqueTokenId, out var tb))
                 {
                     if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
-                        tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount ||
+                        tokenLocalAddress.TokenBalance.ArtifactUri != tb.ArtifactUri ||
+                        tokenLocalAddress.TokenBalance.DisplayUri != tb.DisplayUri ||
+                        tokenLocalAddress.TokenBalance.ThumbnailUri != tb.ThumbnailUri ||
+                        tokenLocalAddress.TokenBalance.Name != tb.Name ||
+                        tokenLocalAddress.TokenBalance.Description != tb.Description)
                     {
                         tokenLocalAddress.Balance = tb.GetTokenBalance();
                         tokenLocalAddress.TokenBalance = tb;
@@ -363,7 +373,12 @@ namespace Atomex.Wallet.Tezos
                 if (tokenBalanceMap.TryGetValue(uniqueTokenId, out var tb))
                 {
                     if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
-                        tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount ||
+                        tokenLocalAddress.TokenBalance.ArtifactUri != tb.ArtifactUri ||
+                        tokenLocalAddress.TokenBalance.DisplayUri != tb.DisplayUri ||
+                        tokenLocalAddress.TokenBalance.ThumbnailUri != tb.ThumbnailUri ||
+                        tokenLocalAddress.TokenBalance.Name != tb.Name ||
+                        tokenLocalAddress.TokenBalance.Description != tb.Description)
                     {
                         tokenLocalAddress.Balance = tb.GetTokenBalance();
                         tokenLocalAddress.TokenBalance = tb;
@@ -490,7 +505,12 @@ namespace Atomex.Wallet.Tezos
                 if (tokenBalanceMap.TryGetValue(uniqueTokenId, out var tb))
                 {
                     if (tokenLocalAddress.Balance != tb.GetTokenBalance() ||
-                        tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount)
+                        tokenLocalAddress.TokenBalance.TransfersCount != tb.TransfersCount ||
+                        tokenLocalAddress.TokenBalance.ArtifactUri != tb.ArtifactUri ||
+                        tokenLocalAddress.TokenBalance.DisplayUri != tb.DisplayUri ||
+                        tokenLocalAddress.TokenBalance.ThumbnailUri != tb.ThumbnailUri ||
+                        tokenLocalAddress.TokenBalance.Name != tb.Name ||
+                        tokenLocalAddress.TokenBalance.Description != tb.Description)
                     {
                         tokenLocalAddress.Balance = tb.GetTokenBalance();
                         tokenLocalAddress.TokenBalance = tb;
