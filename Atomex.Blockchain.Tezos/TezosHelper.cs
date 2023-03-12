@@ -16,6 +16,9 @@ namespace Atomex.Blockchain.Tezos
         public static decimal ToTez(this long mtz) =>
             (decimal)mtz / MtzInTz;
 
+        public static decimal ToTez(this int mtz) =>
+            (decimal)mtz / MtzInTz;
+
         public static decimal ToTez(this BigInteger mtz) =>
             mtz.ToDecimal(Decimals);
 
