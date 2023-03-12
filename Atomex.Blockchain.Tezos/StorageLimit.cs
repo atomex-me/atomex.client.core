@@ -27,9 +27,9 @@
         /// Use estimated value from network, in case of failure use passed default value
         /// </summary>
         /// <param name="defaultValue">Storage limit value</param>
-        /// <param name="useSafeValue">If flag is set, the maximum value between the Network value and Default value is used</param>
+        /// <param name="useSafeValue">If flag is set, the maximum value between the Network value and Default value will be used</param>
         /// <returns>Storage limit source</returns>
-        public static StorageLimit FromNetwork(int defaultValue, bool useSafeValue = true) =>
+        public static StorageLimit FromNetwork(int defaultValue, bool useSafeValue) =>
             new(useNetwork: true,
                 defaultValue: defaultValue,
                 useSafeValue: useSafeValue);

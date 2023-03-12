@@ -176,7 +176,7 @@ namespace Atomex.Blockchain.Tezos
 
                         gas += metaData
                             ?["internal_operation_results"]
-                            ?.Sum(res => (res["result"]?["consumed_gas"]?.Value<int>() ?? 0) / 1000) ?? 0;
+                            ?.Sum(res => (res["result"]?["consumed_milligas"]?.Value<int>() ?? 0) / 1000) ?? 0;
 
                         operation.GasLimit = gas;
                     }
