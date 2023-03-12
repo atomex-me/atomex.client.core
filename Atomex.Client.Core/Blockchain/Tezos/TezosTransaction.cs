@@ -155,10 +155,9 @@ namespace Atomex.Blockchain.Tezos
                 .GetHeader()
                 .ConfigureAwait(false);
 
-            if (Head == null)
-                Head = await rpc
-                    .GetHeader(headOffset)
-                    .ConfigureAwait(false);
+            Head ??= await rpc
+                .GetHeader(headOffset)
+                .ConfigureAwait(false);
 
             Operations = new JArray();
 

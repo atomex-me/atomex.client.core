@@ -10,7 +10,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// **[sortable]**
         /// </summary>
         [JsonPropertyName("id")]
-        public int Id { get; set; }
+        public long Id { get; set; }
 
         /// <summary>
         /// Owner account.  

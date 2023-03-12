@@ -10,7 +10,7 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// **[sortable]**
         /// </summary>
         [JsonPropertyName("id")]
-        public int Id { get; set; }
+        public long Id { get; set; }
 
         /// <summary>
         /// Level of the block, at which the token transfer was made.  
@@ -57,19 +57,19 @@ namespace Atomex.Blockchain.Tezos.Tzkt
         /// Internal TzKT id of the transaction operation, caused the token transfer.
         /// </summary>
         [JsonPropertyName("transactionId")]
-        public int? TransactionId { get; set; }
+        public long? TransactionId { get; set; }
 
         /// <summary>
         /// Internal TzKT id of the origination operation, caused the token transfer.
         /// </summary>
         [JsonPropertyName("originationId")]
-        public int? OriginationId { get; set; }
+        public long? OriginationId { get; set; }
 
         /// <summary>
         /// Internal TzKT id of the migration operation, caused the token transfer.
         /// </summary>
         [JsonPropertyName("migrationId")]
-        public int? MigrationId { get; set; }
+        public long? MigrationId { get; set; }
 
         public TokenTransfer ToTokenTransfer(string operationHash, int counter, int? nonce)
         {
