@@ -20,6 +20,11 @@ namespace Atomex.Blockchain.Tezos.Common
     {
         public List<(DateTimeOffset, EqualityType)> TimeStamps { get; set; }
 
+        public DateTimeParameter()
+        {
+            TimeStamps = new List<(DateTimeOffset, EqualityType)>();
+        }
+
         public DateTimeParameter(DateTimeOffset timeStamp)
         {
             TimeStamps = new List<(DateTimeOffset, EqualityType)> { (timeStamp, EqualityType.Eq) };

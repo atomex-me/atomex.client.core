@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -25,7 +26,7 @@ namespace Atomex.LiteDb
 
         //private IDictionary<string, WalletAddress> _walletByAddress;
         //private IDictionary<string, List<WalletAddress>> _walletsByCurrency;
-        //private readonly Lazy<IDictionary<long, Swap>> _swapById;
+        private readonly Lazy<IDictionary<long, Swap>> _swapById;
 
         public LiteDbCachedLocalStorage(
             string pathToDb,
@@ -37,9 +38,9 @@ namespace Atomex.LiteDb
                 password,
                 network);
 
-            //_swapById = new Lazy<IDictionary<long, Swap>>(
-            //    valueFactory: () => new ConcurrentDictionary<long, Swap>(),
-            //    isThreadSafe: true);
+            _swapById = new Lazy<IDictionary<long, Swap>>(
+                valueFactory: () => new ConcurrentDictionary<long, Swap>(),
+                isThreadSafe: true);
         }
 
         public void ChangePassword(SecureString newPassword)
@@ -582,7 +583,7 @@ namespace Atomex.LiteDb
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            //_swapById.Value.TryAdd(swap.Id, swap);
+            _swapById.Value.TryAdd(swap.Id, swap);
 
             return _liteDbLocalStorage
                 .AddSwapAsync(swap, cancellationToken);
@@ -592,7 +593,7 @@ namespace Atomex.LiteDb
             Swap swap,
             CancellationToken cancellationToken = default)
         {
-            //_swapById.Value[swap.Id] = swap;
+            _swapById.Value[swap.Id] = swap;
 
             return _liteDbLocalStorage
                 .UpdateSwapAsync(swap, cancellationToken);
@@ -602,8 +603,8 @@ namespace Atomex.LiteDb
             long id,
             CancellationToken cancellationToken = default)
         {
-            //if (_swapById.Value.TryGetValue(id, out var swap))
-            //    return swap;
+            if (_swapById.Value.TryGetValue(id, out var swap))
+                return swap;
 
             return await _liteDbLocalStorage
                 .GetSwapByIdAsync(id, cancellationToken)

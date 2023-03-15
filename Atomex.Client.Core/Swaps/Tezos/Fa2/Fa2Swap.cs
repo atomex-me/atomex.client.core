@@ -389,7 +389,7 @@ namespace Atomex.Swaps.Tezos.Fa2
 
             if (result.Error != null)
             {
-                Log.Error($"Error while send Fa2 redeem transaction. Code: {error.Value.Code}. Message: {error.Value.Message}");
+                Log.Error($"Error while send Fa2 redeem transaction. Code: {result.Error.Value.Code}. Message: {result.Error.Value.Message}");
                 return;
             }
 
@@ -466,7 +466,7 @@ namespace Atomex.Swaps.Tezos.Fa2
 
             if (result.Error != null)
             {
-                Log.Error($"Error while send Fa2 redeem fort party transaction. Code: {error.Value.Code}. Message: {error.Value.Message}");
+                Log.Error($"Error while send Fa2 redeem fort party transaction. Code: {result.Error.Value.Code}. Message: {result.Error.Value.Message}");
                 return;
             }
         }
@@ -540,7 +540,7 @@ namespace Atomex.Swaps.Tezos.Fa2
 
             if (result.Error != null)
             {
-                Log.Error($"Error while send Fa2 refund transaction. Code: {error.Value.Code}. Message: {error.Value.Message}");
+                Log.Error($"Error while send Fa2 refund transaction. Code: {result.Error.Value.Code}. Message: {result.Error.Value.Message}");
                 return;
             }
 

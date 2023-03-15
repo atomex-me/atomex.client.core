@@ -542,7 +542,8 @@ namespace Atomex.ViewModels
                 };
             }
 
-            var estimatedRedeemFee = estimatedRedeemFeeInTokens.ToDecimal(toCurrency.Decimals);
+            var toBaseCurrency = account.Currencies.GetByName(toCurrency.FeeCurrencyName);
+            var estimatedRedeemFee = estimatedRedeemFeeInTokens.ToDecimal(toBaseCurrency.Decimals);
 
             // estimate reward for redeem
             var (rewardForRedeem, rewardForRedeemError) = await RewardForRedeemHelper
@@ -633,7 +634,9 @@ namespace Atomex.ViewModels
 
             var maxAmount = maxAmountEstimation.Amount.ToDecimal(fromCurrency.Decimals);
             var maxNetAmount = Math.Max(maxAmount - reservedForSwapsAmount - estimatedMakerNetworkFee, 0m);
-            var maxAmountEstimationFee = maxAmountEstimation.Fee.ToDecimal(fromCurrency.Decimals);
+
+            var fromBaseCurrency = account.Currencies.GetByName(fromCurrency.FeeCurrencyName);
+            var maxAmountEstimationFee = maxAmountEstimation.Fee.ToDecimal(fromBaseCurrency.Decimals);
 
             if (maxNetAmount == 0m) // insufficient funds
             {
@@ -812,7 +815,8 @@ namespace Atomex.ViewModels
             if (getPaymentFeeError != null)
                 return getPaymentFeeError;
 
-            var makerPaymentFee = makerPaymentFeeInTokens.ToDecimal(toCurrency.Decimals);
+            var toBaseCurrency = account.Currencies.GetByName(toCurrency.FeeCurrencyName);
+            var makerPaymentFee = makerPaymentFeeInTokens.ToDecimal(toBaseCurrency.Decimals);
 
             // if toCurrency.Name is not equal toCurrency.FeeCurrencyName convert makerPaymentFee from toCurrency.FeeCurrencyName to toCurrency.Name
             if (toCurrency.Name != toCurrency.FeeCurrencyName)
@@ -834,7 +838,8 @@ namespace Atomex.ViewModels
             if (estimateRedeemFeeError != null)
                 return estimateRedeemFeeError;
 
-            var makerRedeemFee = makerRedeemFeeInTokens.ToDecimal(fromCurrency.Decimals);
+            var fromBaseCurrency = account.Currencies.GetByName(fromCurrency.FeeCurrencyName);
+            var makerRedeemFee = makerRedeemFeeInTokens.ToDecimal(fromBaseCurrency.Decimals);
 
             // if fromCurrency.Name is not equal fromCurrency.FeeCurrencyName convert makerRedeemFee from fromCurrency.FeeCurrencyName to fromCurrency.Name
             if (fromCurrency.Name != fromCurrency.FeeCurrencyName)

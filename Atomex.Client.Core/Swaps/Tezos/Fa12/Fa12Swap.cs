@@ -441,7 +441,7 @@ namespace Atomex.Swaps.Tezos.Fa12
 
             if (result.Error != null)
             {
-                Log.Error($"Error while send Fa12 redeem transaction. Code: {error.Value.Code}. Message: {error.Value.Message}");
+                Log.Error($"Error while send Fa12 redeem transaction. Code: {result.Error.Value.Code}. Message: {result.Error.Value.Message}");
                 return;
             }
 
@@ -518,7 +518,7 @@ namespace Atomex.Swaps.Tezos.Fa12
 
             if (result.Error != null)
             {
-                Log.Error($"Error while send Fa12 redeem fort party transaction. Code: {error.Value.Code}. Message: {error.Value.Message}");
+                Log.Error($"Error while send Fa12 redeem fort party transaction. Code: {result.Error.Value.Code}. Message: {result.Error.Value.Message}");
                 return;
             }
         }
@@ -592,7 +592,7 @@ namespace Atomex.Swaps.Tezos.Fa12
 
             if (result.Error != null)
             {
-                Log.Error($"Error while send Fa12 refund transaction. Code: {error.Value.Code}. Message: {error.Value.Message}");
+                Log.Error($"Error while send Fa12 refund transaction. Code: {result.Error.Value.Code}. Message: {result.Error.Value.Message}");
                 return;
             }
 
@@ -810,7 +810,7 @@ namespace Atomex.Swaps.Tezos.Fa12
             string spender,
             BigInteger amount)
         {
-            return $"{{'prim':'Pair','args':[{{'string':'{spender}'}},{{'int':'{amount}'}}]}}";
+            return $"{{\"prim\":\"Pair\",\"args\":[{{\"string\":\"{spender}\"}},{{\"int\":\"{amount}\"}}]}}";
         }
 
         private string GetInitiateParameters(

@@ -125,7 +125,7 @@ namespace Atomex.Swaps.Tezos
 
             if (result.Error != null)
             {
-                Log.Error($"Error while send Tezos initiate transaction. Code: {error.Value.Code}. Message: {error.Value.Message}");
+                Log.Error($"Error while send Tezos initiate transaction. Code: {result.Error.Value.Code}. Message: {result.Error.Value.Message}");
                 return;
             }
 
@@ -293,7 +293,7 @@ namespace Atomex.Swaps.Tezos
 
             if (result.Error != null)
             {
-                Log.Error($"Error while send Tezos redeem transaction. Code: {error.Value.Code}. Message: {error.Value.Message}");
+                Log.Error($"Error while send Tezos redeem transaction. Code: {result.Error.Value.Code}. Message: {result.Error.Value.Message}");
                 return;
             }
 
@@ -370,7 +370,7 @@ namespace Atomex.Swaps.Tezos
 
             if (result.Error != null)
             {
-                Log.Error($"Error while send Tezos redeem for party transaction. Code: {error.Value.Code}. Message: {error.Value.Message}");
+                Log.Error($"Error while send Tezos redeem for party transaction. Code: {result.Error.Value.Code}. Message: {result.Error.Value.Message}");
                 return;
             }
         }
@@ -444,7 +444,7 @@ namespace Atomex.Swaps.Tezos
 
             if (result.Error != null)
             {
-                Log.Error($"Error while send Tezos refund transaction. Code: {error.Value.Code}. Message: {error.Value.Message}");
+                Log.Error($"Error while send Tezos refund transaction. Code: {result.Error.Value.Code}. Message: {result.Error.Value.Message}");
                 return;
             }
 

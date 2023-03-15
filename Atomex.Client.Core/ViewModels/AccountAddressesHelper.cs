@@ -82,6 +82,7 @@ namespace Atomex.ViewModels
                                 Currency    = tokenType,
                                 Balance     = 0,
                                 HasActivity = false,
+                                KeyPath     = w.KeyPath,
                                 KeyIndex    = w.KeyIndex,
                                 KeyType     = w.KeyType,
                                 TokenBalance = new TokenBalance

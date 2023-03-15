@@ -419,6 +419,10 @@ namespace Atomex.Wallet.BitcoinBased
         public async Task<WalletAddress> GetRefundAddressAsync(
             CancellationToken cancellationToken = default)
         {
+            //return GetFreeAddressAsync(
+            //    keyType: CurrencyConfig.StandardKey, // temporary use Standard keys for refund
+            //    chain: Bip44.Internal,
+            //    cancellationToken: cancellationToken);
             return await GetFreeInternalAddressAsync(cancellationToken)
                 .ConfigureAwait(false);
         }

@@ -244,11 +244,6 @@ namespace Atomex.Wallet.Tezos
                 .ForgeAsync()
                 .ConfigureAwait(false);
 
-            if (prefix != null)
-                forgedOperations = prefix
-                    .Concat(forgedOperations)
-                    .ToArray();
-
             var (signature, error) = await SignAsync(
                     from: operation.From,
                     forgedOperations: forgedOperations,
@@ -334,12 +329,14 @@ namespace Atomex.Wallet.Tezos
         {
             var fromAddress = (from as FromAddress)?.Address;
 
-            return await EstimateFeeAsync(
+            var feeInMtz = await EstimateFeeAsync(
                     from: fromAddress,
                     to: null,
                     type: TransactionType.SwapPayment,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            return feeInMtz.ToTez();
         }
 
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(

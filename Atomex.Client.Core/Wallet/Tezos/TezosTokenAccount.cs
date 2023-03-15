@@ -134,11 +134,13 @@ namespace Atomex.Wallet.Tezos
         {
             var fromAddress = (from as FromAddress)?.Address;
 
-            return await EstimateFeeAsync(
+            var feeInMtz = await EstimateFeeAsync(
                     from: fromAddress,
                     type: TransactionType.SwapPayment,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            return feeInMtz.ToTez();
         }
 
         public virtual async Task<(long fee, bool isEnougth)> EstimateTransferFeeAsync(
