@@ -1,4 +1,6 @@
-﻿namespace Atomex.Common
+﻿#nullable enable
+
+namespace Atomex.Common
 {
     public readonly struct Result<T>
     {
@@ -7,7 +9,7 @@
 
         public static implicit operator Result<T>(T value) => new() { Value = value };
         public static implicit operator Result<T>(Error error) => new() { Error = error };
-        public static implicit operator Result<T>(Error? error) => new() { Error = error.Value };
+        public static implicit operator Result<T>(Error? error) => new() { Error = error };
 
         public void Deconstruct(out T? value, out Error? error)
         {
