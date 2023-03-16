@@ -24,24 +24,24 @@ namespace Atomex.Swaps.Abstract
         /// </summary>
         /// <param name="receivedSwap">Received swap</param>
         /// <returns>Null if everything is ok, otherwise error</returns>
-        Task<Error> HandleSwapAsync(Swap receivedSwap);
+        Task<Result<bool>> HandleSwapAsync(Swap receivedSwap);
         /// <summary>
         /// Cancel swap
         /// </summary>
         /// <param name="id">Swap id</param>
         /// <returns>Null if everything is ok, otherwise error</returns>
-        Task<Error> CancelSwapAsync(long id);
+        Task<Result<bool>> CancelSwapAsync(long id);
         /// <summary>
         /// Resume canceled swap
         /// </summary>
         /// <param name="id">Swap id</param>
         /// <returns>Null if everything is ok, otherwise error</returns>
-        Task<Error> ResumeSwapAsync(long id);
+        Task<Result<bool>> ResumeSwapAsync(long id);
         /// <summary>
         /// Restart swap handler
         /// </summary>
         /// <param name="id">Swap id</param>
         /// <returns>Null if everything is ok, otherwise error</returns>
-        Task<Error> RestartSwapAsync(long id);
+        Task<Result<bool>> RestartSwapAsync(long id);
     }
 }

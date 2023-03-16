@@ -1,5 +1,7 @@
-﻿using System.Threading;
+﻿using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
+
 using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract
@@ -16,6 +18,8 @@ namespace Atomex.Wallet.Abstract
         Task<WalletAddress> GetAddressAsync(
             string currency,
             string address,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default);
     }
 }

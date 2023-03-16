@@ -3,7 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+
 using Atomex.Abstract;
+using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.SoChain;
 using Atomex.Services.Abstract;
 using Atomex.Services.BalanceUpdaters;
@@ -11,8 +14,6 @@ using Atomex.TzktEvents;
 using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.Tezos;
-using Serilog;
-
 
 namespace Atomex.Services
 {
@@ -20,8 +21,8 @@ namespace Atomex.Services
     {
         private readonly IAccount _account;
         private readonly ICurrenciesProvider _currenciesProvider;
-        private readonly ILogger _log;
-        private readonly IHdWalletScanner _walletScanner;
+        private readonly ILogger? _log;
+        private readonly IWalletScanner _walletScanner;
 
         private CancellationTokenSource _cts;
         private bool _isRunning;
@@ -29,12 +30,12 @@ namespace Atomex.Services
         private readonly IList<IChainBalanceUpdater> _balanceUpdaters = new List<IChainBalanceUpdater>();
         private const string SoChainRealtimeApiHost = "pusher.chain.so";
 
-        public BalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, ILogger log)
+        public BalanceUpdater(IAccount account, ICurrenciesProvider currenciesProvider, ILogger? log = null)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _currenciesProvider = currenciesProvider;
-            _log = log ?? throw new ArgumentNullException(nameof(log));
-            _walletScanner = new HdWalletScanner(_account);
+            _log = log;
+            _walletScanner = new WalletScanner(_account);
 
             InitChainBalanceUpdaters();
         }
@@ -55,17 +56,19 @@ namespace Atomex.Services
                 {
                     var startTasks = _balanceUpdaters
                         .Select(x => x.StartAsync());
-                    await Task.WhenAll(startTasks).ConfigureAwait(false);
 
-                    _log.Information("BalanceUpdater successfully started");
+                    await Task.WhenAll(startTasks)
+                        .ConfigureAwait(false);
+
+                    _log?.LogInformation("BalanceUpdater successfully started");
                 }
                 catch (OperationCanceledException)
                 {
-                    _log.Debug("BalanceUpdater canceled");
+                    _log?.LogDebug("BalanceUpdater canceled");
                 }
                 catch (Exception e)
                 {
-                    _log.Error(e, "Unconfirmed BalanceUpdater error");
+                    _log?.LogError(e, "Unconfirmed BalanceUpdater error");
                 }
 
             }, _cts.Token);
@@ -84,17 +87,19 @@ namespace Atomex.Services
                 {
                     var stopTasks = _balanceUpdaters
                         .Select(x => x.StopAsync());
-                    await Task.WhenAll(stopTasks).ConfigureAwait(false);
+
+                    await Task.WhenAll(stopTasks)
+                        .ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {
-                    _log.Error(e, "Error while stopping BalanceUpdater");
+                    _log?.LogError(e, "Error while stopping BalanceUpdater");
                 }
             });
 
             _cts.Cancel();
             _isRunning = false;
-            _log.Information("BalanceUpdater stopped");
+            _log?.LogInformation("BalanceUpdater stopped");
         }
 
         private void InitChainBalanceUpdaters()
@@ -110,11 +115,20 @@ namespace Atomex.Services
 
                 var tzkt = new TzktEventsClient(_log);
                 _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, tzkt, _log));
-                _balanceUpdaters.Add(new TezosTokenBalanceUpdater(_account, _currenciesProvider, new TezosTokensScanner(_account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz)), tzkt, _log));
+                _balanceUpdaters.Add(new TezosTokenBalanceUpdater(
+                    account: _account,
+                    currenciesProvider: _currenciesProvider,
+                    walletScanners: new[]
+                    {
+                        new TezosTokensWalletScanner(_account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz), TezosHelper.Fa12),
+                        new TezosTokensWalletScanner(_account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz), TezosHelper.Fa2)
+                    },
+                    tzkt: tzkt,
+                    log: _log));
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error while initializing chain balance updaters");
+                _log?.LogError(e, "Error while initializing chain balance updaters");
             }
         }
     }

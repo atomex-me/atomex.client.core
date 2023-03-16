@@ -8,7 +8,7 @@ namespace Atomex.Core
         public Error Error { get; }
 
         public InternalException(Error error)
-            : base(error.Description)
+            : base(error.Message)
         {
             Error = error;
         }

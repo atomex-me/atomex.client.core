@@ -5,9 +5,9 @@ namespace Atomex.Blockchain
 {
     public class TransactionEventArgs : EventArgs
     {
-        public IBlockchainTransaction Transaction { get; }
+        public ITransaction Transaction { get; }
 
-        public TransactionEventArgs(IBlockchainTransaction transaction)
+        public TransactionEventArgs(ITransaction transaction)
         {
             Transaction = transaction ?? throw new ArgumentNullException(nameof(transaction));
         }

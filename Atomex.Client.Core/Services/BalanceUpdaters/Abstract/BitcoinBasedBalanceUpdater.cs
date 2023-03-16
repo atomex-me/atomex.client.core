@@ -2,31 +2,37 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+
+using Microsoft.Extensions.Logging;
+
 using Atomex.Blockchain.SoChain;
 using Atomex.Services.Abstract;
 using Atomex.Wallet.Abstract;
-using Serilog;
-
 
 namespace Atomex.Services.BalanceUpdaters.Abstract
 {
     public abstract class BitcoinBasedBalanceUpdater : IChainBalanceUpdater
     {
         private readonly IAccount _account;
-        private readonly ILogger _log;
+        private readonly ILogger? _log;
         private readonly ISoChainRealtimeApi _api;
-        private readonly IHdWalletScanner _walletScanner;
+        private readonly IWalletScanner _walletScanner;
 
         private ISet<string> _addresses;
         private readonly string _network;
         private readonly string _currencyName;
 
-        protected BitcoinBasedBalanceUpdater(IAccount account, IHdWalletScanner walletScanner, ISoChainRealtimeApi api, ILogger log, string currencyName)
+        protected BitcoinBasedBalanceUpdater(
+            IAccount account,
+            IWalletScanner walletScanner,
+            ISoChainRealtimeApi api,
+            string currencyName,
+            ILogger? log = null)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _walletScanner = walletScanner ?? throw new ArgumentNullException(nameof(walletScanner));
             _api = api ?? throw new ArgumentNullException(nameof(api));
-            _log = log ?? throw new ArgumentNullException(nameof(log));
+            _log = log;
             _currencyName = currencyName;
 
             var currency = _currencyName.ToLower();
@@ -37,8 +43,12 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
         {
             try
             {
-                await _api.StartAsync().ConfigureAwait(false);
-                _addresses = await GetAddressesAsync().ConfigureAwait(false);
+                await _api
+                    .StartAsync()
+                    .ConfigureAwait(false);
+
+                _addresses = await GetAddressesAsync()
+                    .ConfigureAwait(false);
 
                 await _api
                     .SubscribeOnBalanceUpdateAsync(_network, _addresses, BalanceUpdatedHandler)
@@ -46,7 +56,7 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error on starting {@CurrencyName} BalanceUpdater", _currencyName);
+                _log?.LogError(e, "Error on starting {@CurrencyName} BalanceUpdater", _currencyName);
             }
         }
 
@@ -54,18 +64,20 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
         {
             try
             {
-                await _api.StopAsync().ConfigureAwait(false);
+                await _api
+                    .StopAsync()
+                    .ConfigureAwait(false);
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error on stopping {@CurrencyName} BalanceUpdater", _currencyName);
+                _log?.LogError(e, "Error on stopping {@CurrencyName} BalanceUpdater", _currencyName);
             }
         }
-
 
         private async Task<ISet<string>> GetAddressesAsync()
         {
             var account = _account.GetCurrencyAccount(_currencyName);
+
             var addresses = await account
                 .GetAddressesAsync()
                 .ConfigureAwait(false);
@@ -74,7 +86,8 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
                 .GetFreeExternalAddressAsync()
                 .ConfigureAwait(false);
 
-            return addresses.Concat(new[] { freeAddress })
+            return addresses
+                .Concat(new[] { freeAddress })
                 .Select(wa => wa.Address)
                 .ToHashSet();
         }
@@ -84,15 +97,18 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
             try
             {
                 await _walletScanner
-                    .ScanAddressAsync(_currencyName, address)
+                    .UpdateBalanceAsync(_currencyName, address)
                     .ConfigureAwait(false);
 
-                var newAddresses = await GetAddressesAsync().ConfigureAwait(false);
+                var newAddresses = await GetAddressesAsync()
+                    .ConfigureAwait(false);
+
                 newAddresses.ExceptWith(_addresses);
 
                 if (newAddresses.Any())
                 {
-                    Log.Information("{@CurrencyName} BalanceUpdater adds new addresses {@Addresses}", _currencyName, newAddresses);
+                    _log?.LogInformation("{@CurrencyName} BalanceUpdater adds new addresses {@Addresses}", _currencyName, newAddresses);
+
                     await _api
                         .SubscribeOnBalanceUpdateAsync(_network, newAddresses, BalanceUpdatedHandler)
                         .ConfigureAwait(false);
@@ -102,7 +118,7 @@ namespace Atomex.Services.BalanceUpdaters.Abstract
             }
             catch (Exception e)
             {
-                _log.Error(e, "Error on handling {@CurrencyName} balance update", _currencyName);
+                _log?.LogError(e, "Error on handling {@CurrencyName} balance update", _currencyName);
             }
         }
     }

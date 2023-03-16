@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Numerics;
 
 namespace Atomex.Blockchain.Tezos
 {
@@ -58,7 +59,7 @@ namespace Atomex.Blockchain.Tezos
             return $"{_settings.CatavaApiUri}/{contractAddress}";
         }
 
-        public static string GetTokenPreviewUrl(string contractAddress, decimal tokenId) =>
-            $"https://services.atomex.me/tokens-preview/{contractAddress}/{decimal.ToInt32(tokenId)}.png";
+        public static string GetTokenPreviewUrl(string contractAddress, BigInteger tokenId) =>
+            $"https://services.atomex.me/tokens-preview/{contractAddress}/{tokenId}.png";
     }
 }

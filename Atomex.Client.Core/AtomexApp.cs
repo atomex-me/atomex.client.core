@@ -1,20 +1,20 @@
 using System;
 
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 using Atomex.Abstract;
 using Atomex.Client.Abstract;
 using Atomex.Client.Common;
 using Atomex.Client.Entities;
 using Atomex.Client.V1.Common;
+using Atomex.MarketData;
 using Atomex.MarketData.Abstract;
+using Atomex.MarketData.Common;
 using Atomex.Services;
 using Atomex.Services.Abstract;
 using Atomex.Swaps;
 using Atomex.Swaps.Abstract;
 using Atomex.Wallet.Abstract;
-using Atomex.MarketData;
-using Atomex.MarketData.Common;
 using SwapEventArgs = Atomex.Client.V1.Common.SwapEventArgs;
 using Swap = Atomex.Core.Swap;
 using Order = Atomex.Core.Order;
@@ -37,16 +37,19 @@ namespace Atomex
         public ISwapManager SwapManager { get; private set; }
         public ITransactionsTracker TransactionsTracker { get; private set; }
         public IMarketDataRepository MarketDataRepository { get; private set; }
+        public ILocalStorage LocalStorage { get; private set; }
+        public ILogger Logger { get; private set; }
         public bool HasQuotesProvider => QuotesProvider != null;
         public AtomexAppOptions Options { get; }
 
         private IBalanceUpdater _balanceUpdater;
         private bool _storeCanceledOrders;
 
-        public AtomexApp(AtomexAppOptions options = null)
+        public AtomexApp(AtomexAppOptions options = null, ILogger logger = null)
         {
             Options = options ?? AtomexAppOptions.Default;
             Instance = this;
+            Logger = logger;
         }
 
         public IAtomexApp Start()
@@ -116,6 +119,7 @@ namespace Atomex
         public IAtomexApp ChangeAtomexClient(
             IAtomexClient atomexClient,
             IAccount account,
+            ILocalStorage localStorage,
             bool restart = false,
             bool storeCanceledOrders = false)
         {
@@ -132,6 +136,7 @@ namespace Atomex
 
                 // lock account's wallet
                 Account?.Lock();
+                LocalStorage?.Close();
 
                 previousAtomexClient.OrderUpdated    -= AtomexClient_OrderUpdated;
                 previousAtomexClient.SwapUpdated     -= AtomexClient_SwapReceived;
@@ -142,6 +147,7 @@ namespace Atomex
 
             Account = account;
             AtomexClient = atomexClient;
+            LocalStorage = localStorage;
 
             if (AtomexClient != null)
             {
@@ -162,17 +168,24 @@ namespace Atomex
                     options: Options.SwapManager);
 
                 // create transactions tracker
-                TransactionsTracker = new TransactionsTracker(Account);
+                TransactionsTracker = new TransactionsTracker(Account, LocalStorage);
 
                 _balanceUpdater = new BalanceUpdater(
                     account: Account,
                     currenciesProvider: CurrenciesProvider,
-                    log: Log.Logger);
+                    log: Logger);
             }
 
-            AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(
-                oldClient: previousAtomexClient,
-                newClient: AtomexClient));
+            try
+            {
+                AtomexClientChanged?.Invoke(this, new AtomexClientChangedEventArgs(
+                    oldClient: previousAtomexClient,
+                    newClient: AtomexClient));
+            }
+            catch (Exception e)
+            {
+                Logger?.LogError(e, "AtomexClientChanged event handler error");
+            }
 
             if (AtomexClient != null && restart)
                 StartAtomexClient();
@@ -222,13 +235,13 @@ namespace Atomex
                 // remove canceled orders without trades from local db if StoreCanceledOrders options is true
                 if (e.Order.Status == OrderStatus.Canceled && e.Order.LastQty == 0 && !_storeCanceledOrders)
                 {
-                    await Account
+                    await LocalStorage
                         .RemoveOrderByIdAsync(e.Order.Id)
                         .ConfigureAwait(false);
                 }
                 else
                 {
-                    await Account
+                    await LocalStorage
                         .UpsertOrderAsync(new Order
                         {
                             Id            = e.Order.Id,
@@ -249,13 +262,13 @@ namespace Atomex
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "AtomexClient_OrderUpdated error");
+                Logger?.LogError(ex, "AtomexClient_OrderUpdated error");
             }
         }
 
         private async void AtomexClient_SwapReceived(object sender, SwapEventArgs e)
         {
-            var error = await SwapManager
+            var (_, error) = await SwapManager
                 .HandleSwapAsync(new Swap
                 {
                     Id                   = e.Swap.Id,
@@ -266,7 +279,7 @@ namespace Atomex
                     Side                 = e.Swap.Side,
                     Price                = e.Swap.Price,
                     Qty                  = e.Swap.Qty,
-                    IsInitiative         = e.Swap.IsInitiative,
+                    IsInitiator          = e.Swap.IsInitiative,
                     ToAddress            = e.Swap.ToAddress,
                     RewardForRedeem      = e.Swap.RewardForRedeem,
                     PaymentTxId          = e.Swap.PaymentTxId,
@@ -282,7 +295,7 @@ namespace Atomex
                 .ConfigureAwait(false);
 
             if (error != null)
-                Log.Error(error.Description);
+                Logger?.LogError(error.Value.Message);
         }
 
         private void AtomexClient_SnapshotUpdated(object sender, SnapshotEventArgs e)

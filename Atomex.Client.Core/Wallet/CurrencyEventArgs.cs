@@ -4,6 +4,7 @@
 
 namespace Atomex.Wallet
 {
+    [Obsolete]
     public class CurrencyEventArgs : EventArgs
     {
         public string? Currency { get; }

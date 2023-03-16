@@ -7,12 +7,12 @@ namespace Atomex.Wallet.Abstract
     {
         SecureBytes GetPrivateKey(
             CurrencyConfig currency,
-            KeyIndex keyIndex,
+            string keyPath,
             int keyType);
 
         SecureBytes GetPublicKey(
             CurrencyConfig currency,
-            KeyIndex keyIndex,
+            string keyPath,
             int keyType);
     }
 }

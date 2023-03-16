@@ -71,10 +71,12 @@ namespace Atomex.MarketData.TezTools
 
         private async Task<bool> UpdateQuotesAsync(CancellationToken cancellationToken = default)
         {
-            var response = await HttpHelper.GetAsync(
-                baseUri: BaseUrl,
-                relativeUri: "token/prices",
-                cancellationToken: cancellationToken);
+            using var response = await HttpHelper
+                .GetAsync(
+                    baseUri: BaseUrl,
+                    relativeUri: "token/prices",
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
                 return false;

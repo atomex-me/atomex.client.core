@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
 namespace Atomex.Common
 {
@@ -35,5 +36,15 @@ namespace Atomex.Common
 
         public static IEnumerable<T> WhereNotNull<T>(this IEnumerable<T> source) =>
             source.Where(i => i != null);
+
+        public static BigInteger SumBigIntegers<TSource>(this IEnumerable<TSource> source, Func<TSource, BigInteger> selector)
+        {
+            BigInteger result = 0;
+
+            foreach (var i in source)
+                result += selector(i);
+
+            return result;
+        }
     }
 }

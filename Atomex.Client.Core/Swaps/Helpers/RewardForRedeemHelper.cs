@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
+using Atomex.Common;
 using Atomex.Core;
 using Atomex.MarketData.Abstract;
 using Atomex.MarketData.Entities;
@@ -11,7 +12,7 @@ namespace Atomex.Swaps.Helpers
 {
     public static class RewardForRedeemHelper
     {
-        public static async Task<decimal> EstimateAsync(
+        public static async Task<Result<decimal>> EstimateAsync(
             IAccount account,
             IQuotesProvider quotesProvider,
             Func<string, Quote> feeCurrencyQuotesProvider,
@@ -26,13 +27,16 @@ namespace Atomex.Swaps.Helpers
 
             var feeCurrencyAddress = redeemFromAddress != null
                 ? await account
-                    .GetAddressAsync(feeCurrency, redeemFromAddress.Address, cancellationToken)
+                    .GetAddressAsync(feeCurrency, redeemFromAddress.Address, cancellationToken: cancellationToken)
                     .ConfigureAwait(false)
                 : null;
 
-            var redeemFee = await redeemableCurrency
+            var (redeemFee, redeemFeeError) = await redeemableCurrency
                 .GetRedeemFeeAsync(redeemFromAddress, cancellationToken)
                 .ConfigureAwait(false);
+
+            if (redeemFeeError != null)
+                return redeemFeeError;
 
             if (feeCurrencyAddress != null && feeCurrencyAddress.AvailableBalance() >= redeemFee)
                 return 0m;

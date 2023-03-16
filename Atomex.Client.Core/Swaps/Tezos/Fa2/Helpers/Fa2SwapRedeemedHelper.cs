@@ -1,18 +1,16 @@
 ﻿using System;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Newtonsoft.Json.Linq;
 using Serilog;
 
-using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Tzkt;
+using Atomex.Blockchain.Tezos.Tzkt.Swaps.V1;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Swaps.Abstract;
 using Atomex.TezosTokens;
 
-namespace Atomex.Swaps.Tezos.FA2.Helpers
+namespace Atomex.Swaps.Tezos.Fa2.Helpers
 {
     public static class Fa2SwapRedeemedHelper
     {
@@ -29,52 +27,34 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
                 var fa2 = (Fa2Config)currency;
 
                 var contractAddress = fa2.SwapContractAddress;
+                var secretHash = swap.SecretHash.ToHexString();
 
-                var blockchainApi = (ITezosBlockchainApi)tezos.BlockchainApi;
+                var api = new TzktApi(tezos.GetTzktSettings());
 
-                var txsResult = await blockchainApi
-                    .TryGetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
+                var (ops, error) = await api
+                    .FindRedeemsAsync(
+                        secretHash: secretHash,
+                        contractAddress: contractAddress,
+                        timeStamp: (ulong)swap.TimeStamp.ToUnixTimeSeconds(),
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (txsResult == null)
-                    return new Error(Errors.RequestError, $"Connection error while getting txs from contract {contractAddress}");
-
-                if (txsResult.HasError)
+                if (error != null)
                 {
-                    Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Description: {@desc}",
+                    Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Message: {@desc}",
                         contractAddress,
-                        txsResult.Error.Code,
-                        txsResult.Error.Description);
+                        error.Value.Code,
+                        error.Value.Message);
 
-                    return txsResult.Error;
+                    return error;
                 }
 
-                var txs = txsResult.Value
-                    ?.Cast<TezosTransaction>()
-                    .ToList();
-
-                if (txs != null)
+                foreach (var op in ops)
                 {
-                    foreach (var tx in txs)
+                    if (op.IsRedeem(contractAddress, secretHash, out var secret))
                     {
-                        if (tx.To == contractAddress && IsSwapRedeem(tx, swap.SecretHash))
-                        {
-                            // redeem!
-                            var secret = GetSecret(tx);
-
-                            Log.Debug("Redeem event received with secret {@secret}", Convert.ToBase64String(secret));
-
-                            return secret;
-                        }
-
-                        if (tx.BlockInfo?.BlockTime == null)
-                            continue;
-
-                        var blockTimeUtc = tx.BlockInfo.BlockTime.Value.ToUniversalTime();
-                        var swapTimeUtc = swap.TimeStamp.ToUniversalTime();
-
-                        if (blockTimeUtc < swapTimeUtc)
-                            break;
+                        Log.Debug("Redeem event received with secret {@secret}", secret);
+                        return Hex.FromString(secret);
                     }
                 }
             }
@@ -102,18 +82,18 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
             {
                 ++attempt;
 
-                var isRedeemedResult = await IsRedeemedAsync(
+                var (isRedeemed, error) = await IsRedeemedAsync(
                         swap: swap,
                         currency: currency,
                         tezos: tezos,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (isRedeemedResult.HasError && isRedeemedResult.Error.Code != Errors.RequestError) // has error
-                    return isRedeemedResult;
+                if (error != null && error.Value.Code != Errors.RequestError) // has error
+                    return error;
 
-                if (!isRedeemedResult.HasError)
-                    return isRedeemedResult;
+                if (error == null)
+                    return isRedeemed;
 
                 await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
                     .ConfigureAwait(false);
@@ -122,7 +102,7 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
             return new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for redeem check");
         }
 
-        public static Task StartSwapRedeemedControlAsync(
+        public static async Task StartSwapRedeemedControlAsync(
             Swap swap,
             CurrencyConfig currency,
             TezosConfig tezos,
@@ -134,119 +114,64 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
         {
             Log.Debug("StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} started", currency.Name, swap.Id);
 
-            return Task.Run(async () =>
-            {
-                try
-                {
-                    while (!cancellationToken.IsCancellationRequested)
-                    {
-                        var isRedeemedResult = await IsRedeemedAsync(
-                                swap: swap,
-                                currency: currency,
-                                tezos: tezos,
-                                cancellationToken: cancellationToken)
-                            .ConfigureAwait(false);
-
-                        if (isRedeemedResult.HasError)
-                            Log.Error("{@currency} IsRedeemedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
-                                currency.Name,
-                                swap.Id,
-                                isRedeemedResult.Error.Code,
-                                isRedeemedResult.Error.Description);
-
-                        if (!isRedeemedResult.HasError && isRedeemedResult.Value != null) // has secret
-                        {
-                            await redeemedHandler
-                                .Invoke(swap, isRedeemedResult.Value, cancellationToken)
-                                .ConfigureAwait(false);
-
-                            break;
-                        }
-
-                        if (DateTime.UtcNow >= refundTimeUtc)
-                        {
-                            await canceledHandler
-                                .Invoke(swap, refundTimeUtc, cancellationToken)
-                                .ConfigureAwait(false);
-
-                            break;
-                        }
-
-                        await Task.Delay(interval, cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-
-                    Log.Debug("StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} {@message}",
-                        currency.Name,
-                        swap.Id,
-                        cancellationToken.IsCancellationRequested ? "canceled" : "completed");
-                }
-                catch (OperationCanceledException)
-                {
-                    Log.Debug("StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} canceled",
-                        currency.Name,
-                        swap.Id);
-                }
-                catch (Exception e)
-                {
-                    Log.Error(e, "StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} error",
-                        currency.Name,
-                        swap.Id);
-                }
-
-            }, cancellationToken);
-        }
-
-        public static bool IsSwapRedeem(TezosTransaction tx, byte[] secretHash)
-        {
             try
             {
-                if (tx.Params == null)
-                    return false;
-
-                var entrypoint = tx.Params?["entrypoint"]?.ToString();
-
-                var paramSecretHex = entrypoint switch
+                while (!cancellationToken.IsCancellationRequested)
                 {
-                    "default" => GetSecret(tx.Params?["value"]?["args"]?[0]?["args"]?[0]),
-                    "redeem" => GetSecret(tx.Params?["value"]),
-                    _ => null
-                };
+                    var (secret, error) = await IsRedeemedAsync(
+                            swap: swap,
+                            currency: currency,
+                            tezos: tezos,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
 
-                if (paramSecretHex == null)
-                    return false;
+                    if (error != null)
+                    {
+                        Log.Error("{@currency} IsRedeemedAsync error for swap {@swap}. Code: {@code}. Message: {@desc}",
+                            currency.Name,
+                            swap.Id,
+                            error.Value.Code,
+                            error.Value.Message);
+                    }
+                    else if (error == null && secret != null) // has secret
+                    {
+                        await redeemedHandler
+                            .Invoke(swap, secret, cancellationToken)
+                            .ConfigureAwait(false);
 
-                var paramSecretBytes = Hex.FromString(paramSecretHex);
-                var paramSecretHashBytes = CurrencySwap.CreateSwapSecretHash(paramSecretBytes);
+                        break;
+                    }
 
-                return paramSecretHashBytes.SequenceEqual(secretHash);
+                    if (DateTime.UtcNow >= refundTimeUtc)
+                    {
+                        await canceledHandler
+                            .Invoke(swap, refundTimeUtc, cancellationToken)
+                            .ConfigureAwait(false);
+
+                        break;
+                    }
+
+                    await Task.Delay(interval, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                Log.Debug("StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} {@message}",
+                    currency.Name,
+                    swap.Id,
+                    cancellationToken.IsCancellationRequested ? "canceled" : "completed");
             }
-            catch (Exception)
+            catch (OperationCanceledException)
             {
-                return false;
+                Log.Debug("StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} canceled",
+                    currency.Name,
+                    swap.Id);
             }
-        }
-
-        public static byte[] GetSecret(TezosTransaction tx)
-        {
-            if (tx.Params == null)
-                return null;
-
-            var entrypoint = tx.Params?["entrypoint"]?.ToString();
-
-            var secretHex = entrypoint switch
+            catch (Exception e)
             {
-                "default" => GetSecret(tx.Params?["value"]?["args"]?[0]?["args"]?[0]),
-                "redeem" => GetSecret(tx.Params?["value"]),
-                _ => null
-            };
-
-            return Hex.FromString(secretHex);
-        }
-
-        private static string GetSecret(JToken redeemParams)
-        {
-            return redeemParams?["bytes"]?.Value<string>();
+                Log.Error(e, "StartSwapRedeemedControlAsync for {@Currency} swap with id {@swapId} error",
+                    currency.Name,
+                    swap.Id);
+            }
         }
     }
 }

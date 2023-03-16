@@ -1,18 +1,20 @@
-﻿namespace Atomex.Common
+﻿#nullable enable
+
+namespace Atomex.Common
 {
-    public class Result<T>
+    public readonly struct Result<T>
     {
-        public Error Error { get; }
-        public T Value { get; }
-        public bool HasError => Error != null;
+        public T? Value { get; init; }
+        public Error? Error { get; init; }
 
-        public Result(T value) => Value = value;
-        public Result(Error error) => Error = error;
+        public static implicit operator Result<T>(T value) => new() { Value = value };
+        public static implicit operator Result<T>(Error error) => new() { Error = error };
+        public static implicit operator Result<T>(Error? error) => new() { Error = error };
 
-        public static implicit operator Result<T>(T value) => new(value);
-        public static implicit operator Result<T>(Error error) => new(error);
-
-        public bool IsConnectionError =>
-            Error != null && Error.Code == Errors.RequestError;
+        public void Deconstruct(out T? value, out Error? error)
+        {
+            value = Value;
+            error = Error;
+        }
     }
 }

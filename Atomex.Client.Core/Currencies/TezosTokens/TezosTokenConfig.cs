@@ -1,27 +1,32 @@
-﻿using System.Threading;
+﻿using System.Numerics;
+using System.Threading;
 using System.Threading.Tasks;
 
+using Atomex.Abstract;
+using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 
 namespace Atomex.TezosTokens
 {
-    public class TezosTokenConfig : TezosConfig
+    public abstract class TezosTokenConfig : TezosConfig, ITokenConfig
     {
-        public decimal TransferFee { get; protected set; }
-        public decimal TransferGasLimit { get; protected set; }
-        public decimal TransferStorageLimit { get; protected set; }
-        public decimal TransferSize { get; protected set; }
+        public abstract string Standard { get; }
+        public string BaseCurrencyName => TezosHelper.Xtz;
+        public long TransferFee { get; protected set; }
+        public long TransferGasLimit { get; protected set; }
+        public long TransferStorageLimit { get; protected set; }
+        public long TransferSize { get; protected set; }
 
-        public decimal ApproveFee { get; protected set; }
-        public decimal ApproveGasLimit { get; protected set; }
-        public decimal ApproveStorageLimit { get; protected set; }
-        public decimal ApproveSize { get; protected set; }
+        public long ApproveFee { get; protected set; }
+        public long ApproveGasLimit { get; protected set; }
+        public long ApproveStorageLimit { get; protected set; }
+        public long ApproveSize { get; protected set; }
 
         public string TokenContractAddress { get; protected set; }
-        public int TokenId { get; protected set; }
+        public BigInteger TokenId { get; protected set; }
         public string ViewContractAddress { get; protected set; }
 
-        public override async Task<decimal> GetRewardForRedeemAsync(
+        public override async Task<Result<decimal>> GetRewardForRedeemAsync(
             decimal maxRewardPercent,
             decimal maxRewardPercentInBase,
             string feeCurrencyToBaseSymbol,
@@ -30,24 +35,26 @@ namespace Atomex.TezosTokens
             decimal feeCurrencyPrice = 0,
             CancellationToken cancellationToken = default)
         {
-            var rewardForRedeemInXtz = await base.GetRewardForRedeemAsync(
-                maxRewardPercent: maxRewardPercent,
-                maxRewardPercentInBase: maxRewardPercentInBase,
-                feeCurrencyToBaseSymbol: feeCurrencyToBaseSymbol,
-                feeCurrencyToBasePrice: feeCurrencyToBasePrice,
-                feeCurrencySymbol: feeCurrencySymbol,
-                feeCurrencyPrice: feeCurrencyPrice,
-                cancellationToken: cancellationToken);
+            var (rewardForRedeemInXtz, error) = await base
+                .GetRewardForRedeemAsync(
+                    maxRewardPercent: maxRewardPercent,
+                    maxRewardPercentInBase: maxRewardPercentInBase,
+                    feeCurrencyToBaseSymbol: feeCurrencyToBaseSymbol,
+                    feeCurrencyToBasePrice: feeCurrencyToBasePrice,
+                    feeCurrencySymbol: feeCurrencySymbol,
+                    feeCurrencyPrice: feeCurrencyPrice,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (error != null)
+                return error;
 
             if (feeCurrencySymbol == null || feeCurrencyPrice == 0)
                 return 0m;
 
             return AmountHelper.RoundDown(feeCurrencySymbol.IsBaseCurrency(Name)
                 ? rewardForRedeemInXtz / feeCurrencyPrice
-                : rewardForRedeemInXtz * feeCurrencyPrice, DigitsMultiplier);
+                : rewardForRedeemInXtz * feeCurrencyPrice, Precision);
         }
-
-        public override decimal GetDefaultFee() =>
-            TransferGasLimit;
     }
 }

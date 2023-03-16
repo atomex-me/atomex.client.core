@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,71 +12,43 @@ namespace Atomex.Wallet.Tezos
 {
     public partial class TezosRevealChecker
     {
-        private readonly TezosConfig _tezos;
-        private readonly IDictionary<string, TezosAddressInfo> _addresses;
+        private record struct TezosAddressRevealCache(bool Revealed, DateTimeOffset TimeStamp);
+
+        private readonly TezosConfig _tezosConfig;
+        private readonly ConcurrentDictionary<string, TezosAddressRevealCache> _cache;
 
         public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromSeconds(30);
 
-        public TezosRevealChecker(TezosConfig tezos)
+        public TezosRevealChecker(TezosConfig tezosConfig)
         {
-            _tezos = tezos;
-            _addresses = new Dictionary<string, TezosAddressInfo>();
+            _tezosConfig = tezosConfig ?? throw new ArgumentNullException(nameof(tezosConfig));
+            _cache = new ConcurrentDictionary<string, TezosAddressRevealCache>();
         }
 
         public async Task<bool> IsRevealedAsync(
             string address,
             CancellationToken cancellationToken)
         {
-            lock (_addresses)
-            {
-                if (_addresses.TryGetValue(address, out var info))
-                {
-                    if (info.LastCheckTimeUtc + UpdateInterval > DateTime.UtcNow)
-                        return info.IsRevealed;
-                }
-            }
+            if (_cache.TryGetValue(address, out var cacheValue) && cacheValue.TimeStamp + UpdateInterval > DateTimeOffset.UtcNow)
+                return cacheValue.Revealed;
 
-            var isRevealedResult = await new TzktApi(_tezos)
+            var (isRevealed, error) = await new TzktApi(_tezosConfig.GetTzktSettings())
                 .IsRevealedAsync(address, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (isRevealedResult == null)
+            if (error != null && error.Value.Code != (int)HttpStatusCode.NotFound)
             {
-                Log.Error("Error while checking reveal status for address {@address}", address);
-
-                return false;
-            }
-
-            if (isRevealedResult.HasError && isRevealedResult.Error.Code != (int)HttpStatusCode.NotFound)
-            {
-                Log.Error("Error while checking reveal status for address {@address}. Code: {@code}. Description: {@desc}",
+                Log.Error("Error while checking reveal status for address {@address}. Code: {@code}. Message: {@message}",
                     address,
-                    isRevealedResult.Error.Code,
-                    isRevealedResult.Error.Description);
+                    error.Value.Code,
+                    error.Value.Message);
 
                 return false;
             }
 
-            lock (_addresses)
-            {
-                if (_addresses.TryGetValue(address, out var info))
-                {
-                    info.Address = address;
-                    info.IsRevealed = isRevealedResult.Value;
-                    info.LastCheckTimeUtc = DateTime.UtcNow;
-                }
-                else
-                {
-                    _addresses.Add(address, new TezosAddressInfo()
-                    {
-                        Address = address,
-                        IsRevealed = isRevealedResult.Value,
-                        LastCheckTimeUtc = DateTime.UtcNow
-                    });
-                }
-            }
+            _cache[address] = new TezosAddressRevealCache(isRevealed, DateTimeOffset.UtcNow);
 
-            return isRevealedResult.Value;
+            return isRevealed;
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -8,72 +9,25 @@ using Microsoft.Extensions.Logging;
 
 namespace Atomex.Common
 {
-    public class HttpRequestHeaders : List<KeyValuePair<string, IEnumerable<string>>> { };
+    public class HttpRequestHeaders : List<KeyValuePair<string, IEnumerable<string>>>
+    {
+        public HttpRequestHeaders() { }
+        public HttpRequestHeaders(IEnumerable<KeyValuePair<string, IEnumerable<string>>> values)
+        {
+            AddRange(values);
+        }
+        public HttpRequestHeaders(IEnumerable<KeyValuePair<string, string>> values)
+            : this(values.Select(pair => new KeyValuePair<string, IEnumerable<string>>(
+                key: pair.Key,
+                value: new string[] { pair.Value })))
+        {
+        }
+    };
 
     public static class HttpHelper
     {
         public const int SslHandshakeFailed = 525;
         public static HttpClient HttpClient { get; } = new HttpClient();
-
-        public static Task<Result<T>> GetAsyncResult<T>(
-            string baseUri,
-            string requestUri,
-            Func<HttpResponseMessage, string, Result<T>> responseHandler,
-            CancellationToken cancellationToken = default)
-        {
-            return GetAsyncResult(
-                baseUri: baseUri,
-                requestUri: requestUri,
-                headers: null,
-                responseHandler: responseHandler,
-                cancellationToken: cancellationToken);
-        }
-
-        public static async Task<Result<T>> GetAsyncResult<T>(
-            string baseUri,
-            string requestUri,
-            HttpRequestHeaders headers,
-            Func<HttpResponseMessage, string, Result<T>> responseHandler,
-            CancellationToken cancellationToken = default)
-        {
-            using var response = await GetAsync(
-                    baseUri: baseUri,
-                    relativeUri: requestUri,
-                    headers: headers,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            var responseContent = await response.Content
-                .ReadAsStringAsync()
-                .ConfigureAwait(false);
-
-            return !response.IsSuccessStatusCode
-                ? new Error((int)response.StatusCode, responseContent)
-                : responseHandler(response, responseContent);
-        }
-
-        public static async Task<Result<T>> PostAsyncResult<T>(
-            string baseUri,
-            string requestUri,
-            HttpContent content,
-            Func<HttpResponseMessage, string, Result<T>> responseHandler,
-            CancellationToken cancellationToken = default)
-        {
-            using var response = await PostAsync(
-                    baseUri: baseUri,
-                    relativeUri: requestUri,
-                    content: content,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            var responseContent = await response.Content
-                .ReadAsStringAsync()
-                .ConfigureAwait(false);
-
-            return !response.IsSuccessStatusCode
-                ? new Error((int)response.StatusCode, responseContent)
-                : responseHandler(response, responseContent);
-        }
         
         public static async Task<Result<T>> PostAsyncResult<T>(
             string baseUri,
@@ -96,7 +50,11 @@ namespace Atomex.Common
                 .ConfigureAwait(false);
 
             return !response.IsSuccessStatusCode
-                ? new Error((int)response.StatusCode, responseContent)
+                ? new Error
+                {
+                    Code = (int)response.StatusCode,
+                    Message = responseContent
+                }
                 : responseHandler(response, responseContent);
         }
 

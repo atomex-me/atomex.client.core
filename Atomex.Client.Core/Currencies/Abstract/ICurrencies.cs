@@ -11,5 +11,6 @@ namespace Atomex.Abstract
         void Update(IConfiguration configuration);
         CurrencyConfig GetByName(string name);
         T Get<T>(string name) where T : CurrencyConfig;
+        IEnumerable<CurrencyConfig> GetOrderedPreset();
     }
 }

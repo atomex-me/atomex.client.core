@@ -96,7 +96,7 @@ namespace Atomex.MarketData.Bitfinex
 
             var request = $"tickers/?symbols={symbols}";
 
-            var response = await HttpHelper
+            using var response = await HttpHelper
                 .GetAsync(
                     baseUri: BaseUrl,
                     relativeUri: request,

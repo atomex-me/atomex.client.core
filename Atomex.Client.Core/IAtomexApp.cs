@@ -25,6 +25,7 @@ namespace Atomex
         ISwapManager SwapManager { get; }
         ITransactionsTracker TransactionsTracker { get; }
         IMarketDataRepository MarketDataRepository { get; }
+        ILocalStorage LocalStorage { get; }
         bool HasQuotesProvider { get; }
 
         IAtomexApp Start();
@@ -32,6 +33,7 @@ namespace Atomex
         IAtomexApp ChangeAtomexClient(
             IAtomexClient atomexClient,
             IAccount account,
+            ILocalStorage localStorage,
             bool restart = false,
             bool storeCanceledOrders = false);
         IAtomexApp UseCurrenciesProvider(ICurrenciesProvider currenciesProvider);

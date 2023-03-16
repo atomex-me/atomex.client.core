@@ -4,13 +4,11 @@ using System.Threading.Tasks;
 
 using Serilog;
 
-using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Helpers;
-using Atomex.Blockchain.Tezos;
-using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Tezos;
 using Atomex.Services.Abstract;
+using Atomex.Wallet;
+using Atomex.Wallet.Abstract;
 
 namespace Atomex.Services
 {
@@ -19,6 +17,7 @@ namespace Atomex.Services
         protected static TimeSpan DefaultMaxTransactionTimeout = TimeSpan.FromMinutes(48 * 60);
 
         private readonly IAccount _account;
+        private readonly ILocalStorage _localStorage;
         private CancellationTokenSource _cts;
 
         public bool IsRunning { get; private set; }
@@ -28,10 +27,28 @@ namespace Atomex.Services
                 ? TimeSpan.FromSeconds(120)
                 : TimeSpan.FromSeconds(45);
 
-        public TransactionsTracker(IAccount account)
+        public TransactionsTracker(IAccount account, ILocalStorage localStorage)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
-            _account.UnconfirmedTransactionAdded += OnUnconfirmedTransactionAddedEventHandler;
+
+            _localStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
+            _localStorage.TransactionsChanged += LocalStorage_TransactionsChanged;
+        }
+
+        private void LocalStorage_TransactionsChanged(object sender, TransactionsChangedEventArgs e)
+        {
+            try
+            {
+                foreach (var tx in e.Transactions)
+                {
+                    if (!tx.IsConfirmed && tx.Status != TransactionStatus.Failed)
+                        _ = TrackTransactionAsync(tx, _cts.Token);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "TransactionChanged event handler error");
+            }
         }
 
         public void Start()
@@ -49,12 +66,14 @@ namespace Atomex.Services
                 try
                 {
                     var txs = await _account
-                        .GetTransactionsAsync()
+                        .GetUnconfirmedTransactionsAsync()
                         .ConfigureAwait(false);
 
                     foreach (var tx in txs)
-                        if (!tx.IsConfirmed && tx.State != BlockchainTransactionState.Failed)
+                    {
+                        if (tx.Status != TransactionStatus.Failed)
                             _ = TrackTransactionAsync(tx, _cts.Token);
+                    }
                 }
                 catch (OperationCanceledException)
                 {
@@ -76,7 +95,7 @@ namespace Atomex.Services
                 return;
 
             // unsubscribe from unconfirmed transaction added event handler
-            _account.UnconfirmedTransactionAdded -= OnUnconfirmedTransactionAddedEventHandler;
+            _localStorage.TransactionsChanged -= LocalStorage_TransactionsChanged;
 
             // cancel all background tasks
             _cts.Cancel();
@@ -86,14 +105,8 @@ namespace Atomex.Services
             IsRunning = false;
         }
 
-        private void OnUnconfirmedTransactionAddedEventHandler(object sender, TransactionEventArgs e)
-        {
-            if (!e.Transaction.IsConfirmed && e.Transaction.State != BlockchainTransactionState.Failed)
-                _ = TrackTransactionAsync(e.Transaction, _cts.Token);
-        }
-
         private Task TrackTransactionAsync(
-            IBlockchainTransaction tx,
+            ITransaction tx,
             CancellationToken cancellationToken)
         {
             return Task.Run(async () =>
@@ -105,13 +118,13 @@ namespace Atomex.Services
                         var currency = _account.Currencies
                             .GetByName(tx.Currency);
 
-                        var result = await currency
+                        var (result, error) = await currency
                             .IsTransactionConfirmed(
                                 txId: tx.Id,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (result.HasError)
+                        if (error != null)
                         {
                             await Task.Delay(TransactionConfirmationCheckInterval(tx?.Currency), cancellationToken)
                                 .ConfigureAwait(false);
@@ -119,9 +132,9 @@ namespace Atomex.Services
                             continue;
                         }
 
-                        if (result.Value.IsConfirmed || result.Value.Transaction != null && result.Value.Transaction.State == BlockchainTransactionState.Failed)
+                        if (result.IsConfirmed || result.Transaction != null && result.Transaction.Status == TransactionStatus.Failed)
                         {
-                            TransactionProcessedHandler(result.Value.Transaction, cancellationToken);
+                            TransactionProcessedHandler(result.Transaction, cancellationToken);
                             break;
                         }
 
@@ -130,7 +143,7 @@ namespace Atomex.Services
                             DateTime.UtcNow > tx.CreationTime.Value.ToUniversalTime() + DefaultMaxTransactionTimeout &&
                             !Currencies.IsBitcoinBased(tx.Currency))
                         {
-                            tx.State = BlockchainTransactionState.Failed;
+                            tx.Fail();
 
                             TransactionProcessedHandler(tx, cancellationToken);
                             break;
@@ -153,28 +166,14 @@ namespace Atomex.Services
         }
 
         private async void TransactionProcessedHandler(
-            IBlockchainTransaction tx,
+            ITransaction tx,
             CancellationToken cancellationToken)
         {
             try
             {
-                if (_account.GetCurrencyAccount(tx.Currency) is not ITransactionalAccount account)
-                {
-                    Log.Error("Transaction for {@currency} received", tx.Currency);
-                    return;
-                }
-
-                await account
-                    .UpsertTransactionAsync(tx, cancellationToken: cancellationToken)
+                await _localStorage
+                    .UpsertTransactionAsync(tx, notifyIfNewOrChanged: true, cancellationToken)
                     .ConfigureAwait(false);
-
-                await _account
-                    .UpdateBalanceAsync(tx.Currency, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (Currencies.HasTokens(tx.Currency))
-                    await UpdateTokenBalanceAsync(tx, cancellationToken)
-                        .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -186,31 +185,31 @@ namespace Atomex.Services
             }
         }
 
-        private async Task UpdateTokenBalanceAsync(
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken)
-        {
-            if (tx.Currency == EthereumConfig.Eth)
-            {
-                // 
-            }
-            else if (tx.Currency == TezosConfig.Xtz)
-            {
-                var tezosTx = tx as TezosTransaction;
+        //private async Task UpdateTokenBalanceAsync(
+        //    IBlockchainTransaction tx,
+        //    CancellationToken cancellationToken)
+        //{
+        //    if (tx.Currency == EthereumConfig.Eth)
+        //    {
+        //        // 
+        //    }
+        //    else if (tx.Currency == TezosConfig.Xtz)
+        //    {
+        //        var tezosTx = tx as TezosTransaction;
 
-                if (tezosTx.Params == null)
-                    return;
+        //        if (tezosTx.Params == null)
+        //            return;
 
-                var tezosAccount = _account
-                    .GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz);
+        //        var tezosAccount = _account
+        //            .GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz);
 
-                var tezosTokensScanner = new TezosTokensScanner(tezosAccount);
+        //        var tezosTokensScanner = new TezosTokensWalletScanner(tezosAccount);
 
-                // todo: scan balance only for addresses affected by transaction!!
-                await tezosTokensScanner
-                    .UpdateBalanceAsync(cancellationToken)
-                    .ConfigureAwait(false);
-            }
-        }
+        //        // todo: scan balance only for addresses affected by transaction!!
+        //        await tezosTokensScanner
+        //            .UpdateBalanceAsync(cancellationToken)
+        //            .ConfigureAwait(false);
+        //    }
+        //}
     }
 }

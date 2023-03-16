@@ -11,7 +11,7 @@ namespace Atomex.Swaps
 
         public SwapErrorEventArgs(Error error, long swapId)
         {
-            Error = error ?? throw new ArgumentNullException(nameof(error));
+            Error = error;
             SwapId = swapId;
         }
     }

@@ -1,8 +1,8 @@
-﻿using Atomex.Blockchain.SoChain;
+﻿using Microsoft.Extensions.Logging;
+
+using Atomex.Blockchain.SoChain;
 using Atomex.Services.BalanceUpdaters.Abstract;
 using Atomex.Wallet.Abstract;
-using Serilog;
-
 
 namespace Atomex.Services.BalanceUpdaters
 {
@@ -10,9 +10,12 @@ namespace Atomex.Services.BalanceUpdaters
     {
         private const string CurrencyName = "BTC";
 
-        public BitcoinBalanceUpdater(IAccount account, IHdWalletScanner walletScanner, ISoChainRealtimeApi api,
+        public BitcoinBalanceUpdater(
+            IAccount account,
+            IWalletScanner walletScanner,
+            ISoChainRealtimeApi api,
             ILogger log)
-            : base(account, walletScanner, api, log, CurrencyName)
+            : base(account, walletScanner, api, CurrencyName, log)
         {
         }
     }

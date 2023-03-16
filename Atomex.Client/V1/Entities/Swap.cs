@@ -9,7 +9,7 @@ namespace Atomex.Client.V1.Entities
     {
         Empty     = 0,
         Initiated = 0x01,
-        Accepted  = 0x02,
+        Accepted  = 0x02
     }
 
     public class Swap

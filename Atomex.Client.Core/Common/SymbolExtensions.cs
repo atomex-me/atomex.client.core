@@ -7,39 +7,27 @@ namespace Atomex.Common
 {
     public static class SymbolExtensions
     {
-        public static Side OrderSideForBuyCurrency(this Symbol symbol, string currency)
-        {
-            return symbol.Name.OrderSideForBuyCurrency(currency);
-        }
+        public static Side OrderSideForBuyCurrency(this Symbol symbol, string currency) =>
+            symbol.Name.OrderSideForBuyCurrency(currency);
 
-        public static Side OrderSideForBuyCurrency(this Symbol symbol, CurrencyConfig currency)
-        {
-            return symbol.Name.OrderSideForBuyCurrency(currency.Name);
-        }
+        public static Side OrderSideForBuyCurrency(this Symbol symbol, CurrencyConfig currency) =>
+            symbol.Name.OrderSideForBuyCurrency(currency.Name);
 
-        public static string PurchasedCurrency(this Symbol symbol, Side side)
-        {
-            return side == Side.Buy
+        public static string PurchasedCurrency(this Symbol symbol, Side side) =>
+            side == Side.Buy
                 ? symbol.Base
                 : symbol.Quote;
-        }
 
-        public static string SoldCurrency(this Symbol symbol, Side side)
-        {
-            return side == Side.Buy
+        public static string SoldCurrency(this Symbol symbol, Side side) =>
+            side == Side.Buy
                 ? symbol.Quote
                 : symbol.Base;
-        }
 
-        public static bool IsBaseCurrency(this Symbol symbol, string currency)
-        {
-            return symbol.Base == currency;
-        }
+        public static bool IsBaseCurrency(this Symbol symbol, string currency) =>
+            symbol.Base == currency;
 
-        public static bool IsQuoteCurrency(this Symbol symbol, string currency)
-        {
-            return symbol.Quote == currency;
-        }
+        public static bool IsQuoteCurrency(this Symbol symbol, string currency) =>
+            symbol.Quote == currency;
 
         public static Symbol SymbolByCurrencies(
             this IEnumerable<Symbol> symbols,

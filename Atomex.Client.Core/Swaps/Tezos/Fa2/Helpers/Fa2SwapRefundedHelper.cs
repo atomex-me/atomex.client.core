@@ -3,15 +3,15 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Newtonsoft.Json.Linq;
 using Serilog;
 
-using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Tzkt;
+using Atomex.Blockchain.Tezos.Tzkt.Swaps.V1;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.TezosTokens;
 
-namespace Atomex.Swaps.Tezos.FA2.Helpers
+namespace Atomex.Swaps.Tezos.Fa2.Helpers
 {
     public static class Fa2SwapRefundedHelper
     {
@@ -28,47 +28,29 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
                 var fa2 = (Fa2Config)currency;
 
                 var contractAddress = fa2.SwapContractAddress;
+                var secretHash = swap.SecretHash.ToHexString();
 
-                var blockchainApi = (ITezosBlockchainApi)tezos.BlockchainApi;
+                var api = new TzktApi(tezos.GetTzktSettings());
 
-                var txsResult = await blockchainApi
-                    .TryGetTransactionsAsync(contractAddress, cancellationToken: cancellationToken)
+                var (refunds, error) = await api
+                    .FindRefundsAsync(
+                        secretHash: secretHash,
+                        contractAddress: contractAddress,
+                        fromTimeStamp: (ulong)swap.TimeStamp.ToUnixTimeSeconds(),
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (txsResult == null)
-                    return new Error(Errors.RequestError, $"Connection error while getting {contractAddress} transactions");
-
-                if (txsResult.HasError)
+                if (error != null)
                 {
-                    Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Description: {@desc}",
+                    Log.Error("Error while get transactions from contract {@contract}. Code: {@code}. Message: {@desc}",
                         contractAddress,
-                        txsResult.Error.Code,
-                        txsResult.Error.Description);
+                        error.Value.Code,
+                        error.Value.Message);
 
-                    return txsResult.Error;
+                    return error;
                 }
 
-                var txs = txsResult.Value
-                    ?.Cast<TezosTransaction>()
-                    .ToList();
-
-                if (txs != null)
-                {
-                    foreach (var tx in txs)
-                    {
-                        if (tx.To == contractAddress && IsSwapRefund(tx, swap.SecretHash))
-                            return true;
-
-                        if (tx.BlockInfo?.BlockTime == null)
-                            continue;
-
-                        var blockTimeUtc = tx.BlockInfo.BlockTime.Value.ToUniversalTime();
-                        var swapTimeUtc = swap.TimeStamp.ToUniversalTime();
-
-                        if (blockTimeUtc < swapTimeUtc)
-                            break;
-                    }
-                }
+                return refunds.Any(op => op.IsRefund(contractAddress, secretHash));
             }
             catch (Exception e)
             {
@@ -76,8 +58,6 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
 
                 return new Error(Errors.InternalError, e.Message);
             }
-
-            return false;
         }
 
         public static async Task<Result<bool>> IsRefundedAsync(
@@ -94,58 +74,24 @@ namespace Atomex.Swaps.Tezos.FA2.Helpers
             {
                 ++attempt;
 
-                var isRefundedResult = await IsRefundedAsync(
+                var (isRefunded, error) = await IsRefundedAsync(
                         swap: swap,
                         currency: currency,
                         tezos: tezos,
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (isRefundedResult.HasError && isRefundedResult.Error.Code != Errors.RequestError) // has error
-                    return isRefundedResult;
+                if (error != null && error.Value.Code != Errors.RequestError) // has error
+                    return error;
 
-                if (!isRefundedResult.HasError)
-                    return isRefundedResult;
+                if (error == null)
+                    return isRefunded;
 
                 await Task.Delay(TimeSpan.FromSeconds(attemptIntervalInSec), cancellationToken)
                     .ConfigureAwait(false);
             }
 
             return new Error(Errors.MaxAttemptsCountReached, "Max attempts count reached for refund check");
-        }
-
-        public static bool IsSwapRefund(TezosTransaction tx, byte[] secretHash)
-        {
-            try
-            {
-                if (tx.Params == null)
-                    return false;
-
-                var entrypoint = tx.Params?["entrypoint"]?.ToString();
-
-                var paramSecretHash = entrypoint switch
-                {
-                    "default" => GetSecretHash(tx.Params?["value"]?["args"]?[0]),
-                    "refund" => GetSecretHash(tx.Params?["value"]),
-                    _ => null
-                };
-
-                if (paramSecretHash == null)
-                    return false;
-
-                var paramSecretHashBytes = Hex.FromString(paramSecretHash);
-
-                return paramSecretHashBytes.SequenceEqual(secretHash);
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
-
-        private static string GetSecretHash(JToken refundParams)
-        {
-            return refundParams?["bytes"]?.Value<string>();
         }
     }
 }

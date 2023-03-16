@@ -3,74 +3,32 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Serilog;
-
 using Atomex.Abstract;
-using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
-using Atomex.Wallet.Bip;
+using Atomex.Wallets.Bips;
 
 namespace Atomex.Wallet.Abstract
 {
-    public abstract class CurrencyAccount : ICurrencyAccount, ITransactionalAccount
+    public abstract class CurrencyAccount : ICurrencyAccount
     {
-        public event EventHandler<CurrencyEventArgs> BalanceUpdated;
-        public event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded;
-
         public string Currency { get; }
         public ICurrencies Currencies { get; }
         public IHdWallet Wallet { get; }
-        public IAccountDataRepository DataRepository { get; }
-        protected decimal Balance { get; set; }
-        protected decimal UnconfirmedIncome { get; set; }
-        protected decimal UnconfirmedOutcome { get; set; }
+        public ILocalStorage LocalStorage { get; }
 
         protected CurrencyAccount(
             string currency,
             ICurrencies currencies,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository)
+            ILocalStorage localStorage)
         {
-            Currency       = currency ?? throw new ArgumentNullException(nameof(currency));
-            Currencies     = currencies ?? throw new ArgumentNullException(nameof(currencies));
-            Wallet         = wallet ?? throw new ArgumentNullException(nameof(wallet));
-            DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
-
-            LoadBalances();
+            Currency     = currency ?? throw new ArgumentNullException(nameof(currency));
+            Currencies   = currencies ?? throw new ArgumentNullException(nameof(currencies));
+            Wallet       = wallet ?? throw new ArgumentNullException(nameof(wallet));
+            LocalStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
         }
-
-        #region Common
-
-        protected void RaiseBalanceUpdated(CurrencyEventArgs eventArgs)
-        {
-            BalanceUpdated?.Invoke(this, eventArgs);
-        }
-
-        protected void RaiseUnconfirmedTransactionAdded(TransactionEventArgs eventArgs)
-        {
-            UnconfirmedTransactionAdded?.Invoke(this, eventArgs);
-        }
-
-        protected virtual Task<bool> ResolveTransactionTypeAsync(
-            IBlockchainTransaction tx,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.FromResult(true);
-        }
-
-        protected async Task<bool> IsSelfAddressAsync(
-            string address,
-            CancellationToken cancellationToken = default)
-        {
-            var walletAddress = await GetAddressAsync(address, cancellationToken)
-                .ConfigureAwait(false);
-
-            return walletAddress != null;
-        }
-
-        #endregion Common
 
         #region Balances
 
@@ -78,8 +36,11 @@ namespace Atomex.Wallet.Abstract
             string address,
             CancellationToken cancellationToken = default)
         {
-            var walletAddress = await DataRepository
-                .GetWalletAddressAsync(Currency, address)
+            var walletAddress = await LocalStorage
+                .GetAddressAsync(
+                    currency: Currency,
+                    address: address,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             return walletAddress != null
@@ -90,12 +51,22 @@ namespace Atomex.Wallet.Abstract
                 : new Balance();
         }
 
-        public virtual Balance GetBalance()
+        public virtual async Task<Balance> GetBalanceAsync()
         {
-            return new Balance(
-                Balance,
-                UnconfirmedIncome,
-                UnconfirmedOutcome);
+            var unspentAddresses = await LocalStorage
+                .GetUnspentAddressesAsync(Currency)
+                .ConfigureAwait(false);
+
+            var totalBalance = new Balance();
+
+            foreach (var unspentAddress in unspentAddresses)
+            {
+                totalBalance.Confirmed += unspentAddress.Balance;
+                totalBalance.UnconfirmedIncome += unspentAddress.UnconfirmedIncome;
+                totalBalance.UnconfirmedOutcome += unspentAddress.UnconfirmedOutcome;
+            }
+
+            return totalBalance;
         }
 
         public abstract Task UpdateBalanceAsync(
@@ -105,167 +76,114 @@ namespace Atomex.Wallet.Abstract
             string address,
             CancellationToken cancellationToken = default);
 
-        protected void LoadBalances()
-        {
-            Balance            = 0;
-            UnconfirmedIncome  = 0;
-            UnconfirmedOutcome = 0;
-
-            var addresses = DataRepository
-                .GetUnspentAddressesAsync(Currency)
-                .WaitForResult();
-
-            foreach (var address in addresses)
-            {
-                Balance            += address.Balance;
-                UnconfirmedIncome  += address.UnconfirmedIncome;
-                UnconfirmedOutcome += address.UnconfirmedOutcome;
-            }
-        }
-
         #endregion Balances
 
         #region Addresses
 
-        public Task<WalletAddress> DivideAddressAsync(
-            KeyIndex keyIndex,
-            int keyType)
-        {
-            return DivideAddressAsync(
-                account: keyIndex.Account,
-                chain: keyIndex.Chain,
-                index: keyIndex.Index,
-                keyType: keyType);
-        }
-
-        public virtual async Task<WalletAddress> DivideAddressAsync(
-            uint account,
-            uint chain,
-            uint index,
+        public virtual Task<WalletAddress> DivideAddressAsync(
+            string keyPath,
             int keyType)
         {
             var currency = Currencies.GetByName(Currency);
 
             var walletAddress = Wallet.GetAddress(
                 currency: currency,
-                account: account,
-                chain: chain,
-                index: index,
+                keyPath: keyPath,
                 keyType: keyType);
 
-            if (walletAddress == null)
-                return null;
-
-            _ = await DataRepository
-                .TryInsertAddressAsync(walletAddress)
-                .ConfigureAwait(false);
-
-            return walletAddress;
+            return Task.FromResult(walletAddress);
         }
 
-        public virtual async Task<WalletAddress> GetAddressAsync(
+        public virtual Task<WalletAddress> GetAddressAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            var walletAddress = await DataRepository
-                .GetWalletAddressAsync(Currency, address)
-                .ConfigureAwait(false);
-
-            return walletAddress != null
-                ? ResolvePublicKey(walletAddress)
-                : null;
+            return LocalStorage.GetAddressAsync(
+                currency: Currency,
+                address: address,
+                cancellationToken: cancellationToken);
         }
 
         public virtual Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            return DataRepository.GetUnspentAddressesAsync(Currency);
+            return LocalStorage.GetUnspentAddressesAsync(
+                currency: Currency,
+                includeUnconfirmed: true,
+                cancellationToken: cancellationToken);
         }
 
-        protected WalletAddress ResolvePublicKey(WalletAddress address) =>
-            address.ResolvePublicKey(Currencies, Wallet);
-
-        protected IList<WalletAddress> ResolvePublicKeys(IList<WalletAddress> addresses) =>
-            addresses.ResolvePublicKeys(Currencies, Wallet);
-
-        public virtual async Task<WalletAddress> GetFreeExternalAddressAsync(
+        public virtual Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default)
         {
-            // for tezos and tezos tokens with standard keys different account are used
-            if (Atomex.Currencies.IsTezosBased(Currency))
-            {
-                var lastActiveAccountAddress = await DataRepository
-                    .GetLastActiveWalletAddressByAccountAsync(
-                        currency: Currency,
-                        keyType: CurrencyConfig.StandardKey)
-                    .ConfigureAwait(false);
+            return GetFreeAddressAsync(
+                keyType: CurrencyConfig.StandardKey,
+                chain: Bip44.External,
+                cancellationToken: cancellationToken);
+        }
 
-                return await DivideAddressAsync(
-                        account: lastActiveAccountAddress?.KeyIndex.Account + 1 ?? Bip44.DefaultAccount,
-                        chain: Bip44.External,
-                        index: Bip44.DefaultIndex,
-                        keyType: CurrencyConfig.StandardKey)
-                    .ConfigureAwait(false);
-            }
+        protected async Task<WalletAddress> GetFreeAddressAsync(
+            int keyType,
+            uint chain,
+            CancellationToken cancellationToken = default)
+        {
+            var currency = Currencies.GetByName(Currency);
 
-            var lastActiveAddress = await DataRepository
+            var keyPathPattern = currency
+                .GetKeyPathPattern(keyType)
+                .Replace(KeyPathExtensions.ChainPattern, chain.ToString());
+
+            var lastActiveAddress = await LocalStorage
                 .GetLastActiveWalletAddressAsync(
                     currency: Currency,
-                    chain: Bip44.External,
-                    keyType: CurrencyConfig.StandardKey)
+                    keyPathPattern: keyPathPattern,
+                    keyType: keyType,
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            return await DivideAddressAsync(
-                    account: Bip44.DefaultAccount,
-                    chain: Bip44.External,
-                    index: lastActiveAddress?.KeyIndex.Index + 1 ?? Bip44.DefaultIndex,
-                    keyType: CurrencyConfig.StandardKey)
+            var keyPath = lastActiveAddress != null
+                ? lastActiveAddress.KeyPath.SetIndex(
+                    keyPathPattern: keyPathPattern,
+                    indexPattern: KeyPathExtensions.IndexPattern,
+                    indexValue: $"{lastActiveAddress.KeyIndex + 1}")
+                : keyPathPattern
+                    .Replace(KeyPathExtensions.AccountPattern, KeyPathExtensions.DefaultAccount)
+                    .Replace(KeyPathExtensions.IndexPattern, KeyPathExtensions.DefaultIndex);
+
+            var freeAddress = await DivideAddressAsync(
+                    keyPath: keyPath,
+                    keyType: keyType)
                 .ConfigureAwait(false);
+
+            _ = await LocalStorage
+                .UpsertAddressAsync(freeAddress, cancellationToken)
+                .ConfigureAwait(false);
+
+            return freeAddress;
         }
 
         public Task<IEnumerable<WalletAddress>> GetAddressesAsync(
             CancellationToken cancellationToken = default)
         {
-            return DataRepository.GetAddressesAsync(Currency);
+            return LocalStorage.GetAddressesAsync(
+                currency: Currency,
+                cancellationToken: cancellationToken);
         }
 
         #endregion Addresses
 
         #region Transactions
 
-        public virtual async Task UpsertTransactionAsync(
-            IBlockchainTransaction tx,
-            bool updateBalance = false,
-            bool notifyIfUnconfirmed = true,
-            bool notifyIfBalanceUpdated = true,
-            CancellationToken cancellationToken = default)
-        {
-            var result = await ResolveTransactionTypeAsync(tx, cancellationToken)
-                .ConfigureAwait(false);
+        public abstract Task<IEnumerable<ITransaction>> GetUnconfirmedTransactionsAsync(
+            CancellationToken cancellationToken = default);
 
-            if (result == false)
-                return;
+        public abstract Task<ITransactionMetadata> ResolveTransactionMetadataAsync(
+            ITransaction tx,
+            CancellationToken cancellationToken = default);
 
-            result = await DataRepository
-                .UpsertTransactionAsync(tx)
-                .ConfigureAwait(false);
-
-            if (!result)
-            {
-                Log.Error("Tx upsert error.");
-                return; // todo: error or message?
-            }
-
-            if (updateBalance)
-                await UpdateBalanceAsync(cancellationToken)
-                    .ConfigureAwait(false);
-
-            if (notifyIfUnconfirmed && !tx.IsConfirmed)
-                RaiseUnconfirmedTransactionAdded(new TransactionEventArgs(tx));
-
-            if (updateBalance && notifyIfBalanceUpdated)
-                RaiseBalanceUpdated(new CurrencyEventArgs(tx.Currency));
-        }
+        public abstract Task ResolveTransactionsMetadataAsync(
+            IEnumerable<ITransaction> txs,
+            CancellationToken cancellationToken = default);
 
         #endregion Transactions
     }

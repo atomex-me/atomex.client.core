@@ -7,64 +7,46 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Nethereum.Signer;
 using Nethereum.Util;
-using Serilog;
 
+using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Abstract;
+using Atomex.Blockchain.Ethereum.EtherScan;
+using Atomex.Blockchain.Ethereum.Erc20.Abstract;
 using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Core;
-using Atomex.Wallet.Bip;
 using Atomex.Wallets;
+using Atomex.Wallets.Bips;
 using Atomex.Wallets.Ethereum;
 
 namespace Atomex
 {
     public class EthereumConfig : CurrencyConfig
     {
-        public const string Eth = "ETH";
-        protected const long WeiInEth = 1000000000000000000;
-        protected const long WeiInGwei = 1000000000;
-        protected const long GweiInEth = 1000000000;
         protected const string DefaultGasPriceFormat = "F9";
         protected const string DefaultGasPriceCode = "GWEI";
         protected const string DefaultFeeCode = "GAS";
-        protected const long EthDigitsMultiplier = GweiInEth; //1_000_000_000;
+        protected const long EthDigitsMultiplier = EthereumHelper.GweiInEth; //1_000_000_000;
+        protected const decimal MaxFeePerGasCoeff = 1.2m;
+        protected const long MinPriorityFeePerGas = 1;
+        protected const int EthDecimals = 18;
+        protected const int DisplayedDecimals = 9;
 
         public const int Mainnet = 1;
         //public const int Ropsten = 3;
         //public const int Rinkeby = 4;
         //public const int Goerli = 5;
 
-        public decimal GasLimit { get; protected set; }
-        public decimal InitiateGasLimit { get; protected set; }
-        public decimal InitiateWithRewardGasLimit { get; protected set; }
-        public decimal AddGasLimit { get; protected set; }
-        public decimal RefundGasLimit { get; protected set; }
-        public decimal RedeemGasLimit { get; protected set; }
-        public decimal EstimatedRedeemGasLimit { get; protected set; }
-        public decimal EstimatedRedeemWithRewardGasLimit { get; protected set; }
-        public decimal GasPriceInGwei { get; protected set; }
-        public decimal MaxGasPriceInGwei { get; protected set; }
-
-        public decimal InitiateFeeAmount(decimal gasPrice) =>
-            InitiateGasLimit * gasPrice / GweiInEth;
-
-        public decimal InitiateWithRewardFeeAmount(decimal gasPrice) =>
-            InitiateWithRewardGasLimit * gasPrice / GweiInEth;
-
-        public decimal AddFeeAmount(decimal gasPrice) =>
-            AddGasLimit * gasPrice / GweiInEth;
-
-        public decimal RedeemFeeAmount(decimal gasPrice) =>
-            RedeemGasLimit * gasPrice / GweiInEth;
-
-        public decimal EstimatedRedeemFeeAmount(decimal gasPrice) =>
-            EstimatedRedeemGasLimit * gasPrice / GweiInEth;
-
-        public decimal EstimatedRedeemWithRewardFeeAmount(decimal gasPrice) =>
-            EstimatedRedeemWithRewardGasLimit * gasPrice / GweiInEth;
+        public long GasLimit { get; protected set; }
+        public long InitiateGasLimit { get; protected set; }
+        public long InitiateWithRewardGasLimit { get; protected set; }
+        public long AddGasLimit { get; protected set; }
+        public long RefundGasLimit { get; protected set; }
+        public long RedeemGasLimit { get; protected set; }
+        public long EstimatedRedeemGasLimit { get; protected set; }
+        public long EstimatedRedeemWithRewardGasLimit { get; protected set; }
 
         public int ChainId { get; protected set; }
         public string BlockchainApiBaseUri { get; protected set; }
@@ -72,6 +54,7 @@ namespace Atomex
         public ulong SwapContractBlockNumber { get; protected set; }
         public string InfuraApi { get; protected set; }
         public string InfuraWsApi { get; protected set; }
+        public EtherScanSettings EtherScanSettings { get; protected set; }
 
         public EthereumConfig()
         {
@@ -84,77 +67,68 @@ namespace Atomex
 
         public virtual void Update(IConfiguration configuration)
         {
-            Name                       = configuration[nameof(Name)];
-            DisplayedName              = configuration[nameof(DisplayedName)];
-            Description                = configuration[nameof(Description)];
-            DigitsMultiplier           = EthDigitsMultiplier;
-            Digits                     = (int)Math.Round(Math.Log10(EthDigitsMultiplier));
-            Format                     = DecimalExtensions.GetFormatWithPrecision(Digits);
-            IsToken                    = bool.Parse(configuration[nameof(IsToken)]);
+            Name = configuration[nameof(Name)];
+            DisplayedName = configuration[nameof(DisplayedName)];
+            Description = configuration[nameof(Description)];
 
-            FeeCode                    = Name;
-            FeeFormat                  = DecimalExtensions.GetFormatWithPrecision(Digits);
-            FeeCurrencyName            = Name;
+            Decimals = int.Parse(configuration[nameof(Decimals)]);
+            Format = DecimalExtensions.GetFormatWithPrecision(DisplayedDecimals);
+            IsToken = bool.Parse(configuration[nameof(IsToken)]);
 
-            HasFeePrice                = true;
-            FeePriceCode               = DefaultGasPriceCode;
-            FeePriceFormat             = DefaultGasPriceFormat;
+            FeeCode = Name;
+            FeeFormat = DecimalExtensions.GetFormatWithPrecision(DisplayedDecimals);
+            FeeCurrencyName = Name;
 
-            MaxRewardPercent           = configuration[nameof(MaxRewardPercent)] != null
+            HasFeePrice  = true;
+            FeePriceCode = DefaultGasPriceCode;
+            FeePriceFormat = DefaultGasPriceFormat;
+
+            MaxRewardPercent = configuration[nameof(MaxRewardPercent)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercent)], CultureInfo.InvariantCulture)
                 : 0m;
-            MaxRewardPercentInBase     = configuration[nameof(MaxRewardPercentInBase)] != null
+            MaxRewardPercentInBase = configuration[nameof(MaxRewardPercentInBase)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercentInBase)], CultureInfo.InvariantCulture)
                 : 0m;
-            FeeCurrencyToBaseSymbol    = configuration[nameof(FeeCurrencyToBaseSymbol)];
-            FeeCurrencySymbol          = configuration[nameof(FeeCurrencySymbol)];
+            FeeCurrencyToBaseSymbol = configuration[nameof(FeeCurrencyToBaseSymbol)];
+            FeeCurrencySymbol = configuration[nameof(FeeCurrencySymbol)];
 
-            GasLimit                   = decimal.Parse(configuration[nameof(GasLimit)], CultureInfo.InvariantCulture);
-            InitiateGasLimit           = decimal.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
-            InitiateWithRewardGasLimit = decimal.Parse(configuration[nameof(InitiateWithRewardGasLimit)], CultureInfo.InvariantCulture);
-            AddGasLimit                = decimal.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
-            RefundGasLimit             = decimal.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
-            RedeemGasLimit             = decimal.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
-            EstimatedRedeemGasLimit    = decimal.Parse(configuration[nameof(EstimatedRedeemGasLimit)], CultureInfo.InvariantCulture);
-            EstimatedRedeemWithRewardGasLimit = decimal.Parse(configuration[nameof(EstimatedRedeemWithRewardGasLimit)], CultureInfo.InvariantCulture);
-            GasPriceInGwei             = decimal.Parse(configuration[nameof(GasPriceInGwei)], CultureInfo.InvariantCulture);
+            GasLimit = long.Parse(configuration[nameof(GasLimit)], CultureInfo.InvariantCulture);
+            InitiateGasLimit = long.Parse(configuration[nameof(InitiateGasLimit)], CultureInfo.InvariantCulture);
+            InitiateWithRewardGasLimit = long.Parse(configuration[nameof(InitiateWithRewardGasLimit)], CultureInfo.InvariantCulture);
+            AddGasLimit = long.Parse(configuration[nameof(AddGasLimit)], CultureInfo.InvariantCulture);
+            RefundGasLimit = long.Parse(configuration[nameof(RefundGasLimit)], CultureInfo.InvariantCulture);
+            RedeemGasLimit = long.Parse(configuration[nameof(RedeemGasLimit)], CultureInfo.InvariantCulture);
+            EstimatedRedeemGasLimit = long.Parse(configuration[nameof(EstimatedRedeemGasLimit)], CultureInfo.InvariantCulture);
+            EstimatedRedeemWithRewardGasLimit = long.Parse(configuration[nameof(EstimatedRedeemWithRewardGasLimit)], CultureInfo.InvariantCulture);
 
-            MaxGasPriceInGwei = configuration[nameof(MaxGasPriceInGwei)] != null
-                ? decimal.Parse(configuration[nameof(MaxGasPriceInGwei)], CultureInfo.InvariantCulture)
-                : 650m;
+            ChainId = int.Parse(configuration[nameof(ChainId)], CultureInfo.InvariantCulture);
+            SwapContractAddress = configuration["SwapContract"];
+            SwapContractBlockNumber = ulong.Parse(configuration[nameof(SwapContractBlockNumber)], CultureInfo.InvariantCulture);
 
-            ChainId                    = int.Parse(configuration[nameof(ChainId)], CultureInfo.InvariantCulture);
-            SwapContractAddress        = configuration["SwapContract"];
-            SwapContractBlockNumber    = ulong.Parse(configuration[nameof(SwapContractBlockNumber)], CultureInfo.InvariantCulture);
+            BlockchainApiBaseUri = configuration[nameof(BlockchainApiBaseUri)];
+            BlockchainApi = configuration["BlockchainApi"];
 
-            BlockchainApiBaseUri       = configuration[nameof(BlockchainApiBaseUri)];
-            BlockchainApi              = ResolveBlockchainApi(
-                configuration: configuration,
-                currency: this);
-
-            TxExplorerUri              = configuration[nameof(TxExplorerUri)];
-            AddressExplorerUri         = configuration[nameof(AddressExplorerUri)];
-            InfuraApi                  = configuration[nameof(InfuraApi)];
-            InfuraWsApi                = configuration[nameof(InfuraWsApi)];
-            TransactionType            = typeof(EthereumTransaction);
-
-            IsSwapAvailable            = true;
-            Bip44Code                  = Bip44.Ethereum;
-        }
-
-        protected static IBlockchainApi ResolveBlockchainApi(
-            IConfiguration configuration,
-            EthereumConfig currency)
-        {
-            var blockchainApi = configuration["BlockchainApi"]
-                .ToLowerInvariant();
-
-            return blockchainApi switch
+            EtherScanSettings = new EtherScanSettings
             {
-                "etherscan" => new EtherScanApi(currency.Name, currency.BlockchainApiBaseUri),
-                _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
+                BaseUri = BlockchainApiBaseUri
             };
+
+            TxExplorerUri = configuration[nameof(TxExplorerUri)];
+            AddressExplorerUri = configuration[nameof(AddressExplorerUri)];
+            InfuraApi = configuration[nameof(InfuraApi)];
+            InfuraWsApi = configuration[nameof(InfuraWsApi)];
+            TransactionType = typeof(EthereumTransaction);
+            TransactionMetadataType = typeof(TransactionMetadata);
+
+            IsSwapAvailable = true;
+            Bip44Code = Bip44.Ethereum;
         }
+
+        public override IBlockchainApi GetBlockchainApi() => GetEtherScanApi();
+        public IEthereumApi GetEthereumApi() => GetEtherScanApi();
+        public IErc20Api GetErc20Api() => GetEtherScanApi();
+        public IGasPriceProvider GetGasPriceProvider() => GetEtherScanApi();
+        public EtherScanApi GetEtherScanApi() => new(EtherScanSettings);
 
         public override IExtKey CreateExtKey(SecureBytes seed, int keyType) =>
             new EthereumExtKey(seed);
@@ -162,7 +136,7 @@ namespace Atomex
         public override IKey CreateKey(SecureBytes seed) =>
             new EthereumKey(seed);
 
-        public override string AddressFromKey(byte[] publicKey) =>
+        public override string AddressFromKey(byte[] publicKey, int keyType) =>
             new EthECKey(publicKey, false)
                 .GetPublicAddress()
                 .ToLowerInvariant();
@@ -171,60 +145,54 @@ namespace Atomex
             new AddressUtil()
                 .IsValidEthereumAddressHexFormat(address);
 
-        public override bool IsAddressFromKey(string address, byte[] publicKey) =>
-            AddressFromKey(publicKey).ToLowerInvariant()
-                .Equals(address.ToLowerInvariant());
+        public decimal GetFeeInEth(long gasLimit, decimal gasPrice) =>
+            gasLimit * gasPrice / EthereumHelper.GweiInEth;
 
-        //public override bool VerifyMessage(byte[] data, byte[] signature, byte[] publicKey) =>
-        //    new EthECKey(publicKey, false)
-        //        .Verify(data, EthECDSASignature.FromDER(signature));
+        public decimal GetGasPriceInGwei(BigInteger valueInWei, long gasLimit) =>
+            (decimal)(valueInWei / gasLimit / EthereumHelper.WeiInGwei);
 
-        public override decimal GetFeeAmount(decimal fee, decimal feePrice) =>
-            fee * feePrice / GweiInEth;
-
-        public override decimal GetFeeFromFeeAmount(decimal feeAmount, decimal feePrice) =>
-            feePrice != 0
-                ? Math.Floor(feeAmount / feePrice * GweiInEth)
-                : 0;
-
-        public override decimal GetFeePriceFromFeeAmount(decimal feeAmount, decimal fee) =>
-            fee != 0
-                ? Math.Floor(feeAmount / fee * GweiInEth)
-                : 0;
-
-        public override async Task<decimal> GetPaymentFeeAsync(
+        public override async Task<Result<BigInteger>> GetPaymentFeeAsync(
             CancellationToken cancellationToken = default)
         {
-            var gasPrice = await GetGasPriceAsync(cancellationToken)
+            var (gasPrice, error) = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return InitiateFeeAmount(gasPrice);
+            if (error != null)
+                return error;
+
+            return InitiateGasLimit * gasPrice.MaxFeePerGas.GweiToWei();
         }
 
-        public override async Task<decimal> GetRedeemFeeAsync(
+        public override async Task<Result<BigInteger>> GetRedeemFeeAsync(
             WalletAddress toAddress = null,
             CancellationToken cancellationToken = default)
         {
-            var gasPrice = await GetGasPriceAsync(cancellationToken)
+            var (gasPrice, error) = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            return RedeemFeeAmount(gasPrice);
+            if (error != null)
+                return error;
+
+            return RedeemGasLimit * gasPrice.MaxFeePerGas.GweiToWei();
         }
 
-        public override async Task<decimal> GetEstimatedRedeemFeeAsync(
+        public override async Task<Result<BigInteger>> GetEstimatedRedeemFeeAsync(
             WalletAddress toAddress = null,
             bool withRewardForRedeem = false,
             CancellationToken cancellationToken = default)
         {
-            var gasPrice = await GetGasPriceAsync(cancellationToken)
+            var (gasPrice, error) = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
+            if (error != null) 
+                return error;
+
             return withRewardForRedeem
-                ? EstimatedRedeemWithRewardFeeAmount(gasPrice)
-                : EstimatedRedeemFeeAmount(gasPrice);
+                ? EstimatedRedeemWithRewardGasLimit * gasPrice.MaxFeePerGas.GweiToWei()
+                : EstimatedRedeemGasLimit * gasPrice.MaxFeePerGas.GweiToWei();
         }
 
-        public override async Task<decimal> GetRewardForRedeemAsync(
+        public override async Task<Result<decimal>> GetRewardForRedeemAsync(
             decimal maxRewardPercent,
             decimal maxRewardPercentInBase,
             string feeCurrencyToBaseSymbol,
@@ -236,67 +204,75 @@ namespace Atomex
             if (maxRewardPercent == 0 || maxRewardPercentInBase == 0)
                 return 0m;
 
-            var gasPrice = await GetGasPriceAsync(cancellationToken)
+            var (gasPrice, error) = await GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
-            var redeemFeeInEth = EstimatedRedeemWithRewardFeeAmount(gasPrice);
+            if (error != null)
+                return error;
+
+            var redeemFeeInEth = GetFeeInEth(EstimatedRedeemWithRewardGasLimit, gasPrice.MaxFeePerGas);
 
             return CalculateRewardForRedeem(
                 redeemFee: redeemFeeInEth,
                 redeemFeeCurrency: "ETH",
-                redeemFeeDigitsMultiplier: EthDigitsMultiplier,
+                redeemFeePrecision: Precision,
                 maxRewardPercent: maxRewardPercent,
                 maxRewardPercentValue: maxRewardPercentInBase,
                 feeCurrencyToBaseSymbol: feeCurrencyToBaseSymbol,
                 feeCurrencyToBasePrice: feeCurrencyToBasePrice);
         }
 
-        public override Task<decimal> GetDefaultFeePriceAsync(
-            CancellationToken cancellationToken = default) =>
-            GetGasPriceAsync(cancellationToken);
+        private static DateTime _lastGasPriceTimeStamp;
+        private static GasPrice _lastGasPrice;
+        private const int GAS_PRICE_CACHE_IN_SEC = 10;
 
-        public override decimal GetDefaultFee() =>
-            GasLimit;
-
-        public async Task<decimal> GetGasPriceAsync(
+        public async Task<Result<GasPrice>> GetGasPriceAsync(
             CancellationToken cancellationToken = default)
         {
             if (ChainId != Mainnet)
-                return GasPriceInGwei;
-
-            var gasPriceProvider = BlockchainApi as IGasPriceProvider;
-
-            try
             {
-                var gasPrice = await gasPriceProvider
-                    .GetGasPriceAsync(cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (gasPrice == null || gasPrice.HasError || gasPrice.Value == null)
-                    Log.Error("Invalid gas price!" + ((gasPrice?.HasError ?? false) ? " " + gasPrice.Error.Description : ""));
-
-                return gasPrice != null && !gasPrice.HasError && gasPrice.Value != null
-                    ? Math.Min(gasPrice.Value.High * 1.2m, MaxGasPriceInGwei)
-                    : GasPriceInGwei;
+                return new GasPrice
+                {
+                    LastBlock            = 0,
+                    LowGasPrice          = 10,
+                    AverageGasPrice      = 11,
+                    HighGasPrice         = 12,
+                    SuggestBaseFee       = 10,
+                    MaxFeePerGas         = 12 * MaxFeePerGasCoeff,
+                    MaxPriorityFeePerGas = MinPriorityFeePerGas,
+                };
             }
-            catch (Exception e)
+
+            if (_lastGasPrice != null && DateTime.UtcNow - _lastGasPriceTimeStamp < TimeSpan.FromSeconds(GAS_PRICE_CACHE_IN_SEC))
+                return _lastGasPrice;
+
+            var gasPriceProvider = GetGasPriceProvider();
+
+            var (gasPrice, error) = await gasPriceProvider
+                .GetOracleGasPriceAsync(cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (error != null)
+                return error;
+
+            var highGasPrice = long.Parse(gasPrice.FastGasPrice);
+            var suggestBaseFee = decimal.Parse(gasPrice.SuggestBaseFee, CultureInfo.InvariantCulture);
+
+            var result = new GasPrice
             {
-                Log.Error(e, "Get gas price error");
+                LastBlock            = long.Parse(gasPrice.LastBlock),
+                LowGasPrice          = long.Parse(gasPrice.SafeGasPrice),
+                AverageGasPrice      = long.Parse(gasPrice.ProposeGasPrice),
+                HighGasPrice         = highGasPrice,
+                SuggestBaseFee       = suggestBaseFee,
+                MaxFeePerGas         = highGasPrice * MaxFeePerGasCoeff,
+                MaxPriorityFeePerGas = Math.Max(highGasPrice - Math.Floor(suggestBaseFee), MinPriorityFeePerGas),
+            };
 
-                return GasPriceInGwei;
-            }
+            _lastGasPrice = result;
+            _lastGasPriceTimeStamp = DateTime.UtcNow;
+
+            return result;
         }
-
-        public static BigInteger EthToWei(decimal eth) =>
-            new(eth * WeiInEth);
-
-        public static long GweiToWei(decimal gwei) =>
-            (long)(gwei * WeiInGwei);
-        
-        public static long WeiToGwei(decimal wei) =>
-            (long)(wei / WeiInGwei);
-
-        public static decimal WeiToEth(BigInteger wei) =>
-            (decimal)wei / WeiInEth;
     }
 }

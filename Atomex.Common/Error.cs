@@ -1,31 +1,48 @@
-﻿namespace Atomex.Common
-{
-    public class Error
-    {
-        public int Code { get; set; }
-        public string Description { get; set; }
-        public string Details { get; set; }
-        public string RequestId { get; set; }
-        public string OrderId { get; set; }
-        public long? SwapId { get; set; }
+﻿using System;
 
-        public Error()
-            : this(0, null)
+namespace Atomex.Common
+{
+    public readonly struct Error
+    {
+        public int Code { get; init; }
+        public string Message { get; init; }
+        public Exception Exception { get; init; }
+
+        public Error(int code, string message)
+            : this(code, message, null)
         {
         }
 
-        public Error(int code, string description)
+        public Error(int code, string message, Exception exception)
         {
             Code = code;
-            Description = description;
+            Message = message;
+            Exception = exception;
+        }
+    }
+
+    public readonly struct DetailedError
+    {
+        public Error Error { get; init; }
+        public string Details { get; init; }
+        public int Code => Error.Code;
+        public string Message => Error.Message;
+        public DetailedError(Error error, string details)
+        {
+            Error = error;
+            Details = details;
         }
 
-        public Error(int code, string description, string details)
-            : this(code, description) => Details = details;
-
-        public override string ToString()
+        public DetailedError(int code, string message, string details)
         {
-            return $"{{Code: {Code}, Description: {Description}, RequestId: {RequestId}}}";
+            Error = new Error(code, message);
+            Details = details;
+        }
+
+        public DetailedError(int code, string message, string details, Exception exception)
+        {
+            Error = new Error(code, message, exception);
+            Details = details;
         }
     }
 
@@ -41,6 +58,7 @@
         public const int RequestError = 7;
         public const int MaxAttemptsCountReached = 8;
         public const int InvalidResponse = 9;
+        public const int SigningError = 10;
         // from 1xx to 5xx the same with HTTP codes
 
         public const int IsCriminalWallet = 1000;
@@ -54,6 +72,26 @@
         public const int InvalidTimeStamp = 1008;
         public const int InvalidConnection = 1009;
         public const int InvalidRewardForRedeem = 1010;
+
+        public const int BroadcastError = 1099;
+        public const int GetBalanceError = 1100;
+        public const int GetTransactionError = 1101;
+        public const int GetOutputsError = 1102;
+        public const int GetInputError = 1103;
+        public const int GetReceiptStatusError = 1106;
+        public const int GetRecentBlockHeightError = 1107;
+        public const int GetGasPriceError = 1108;
+        public const int GetErc20BalanceError = 1109;
+        public const int GetErc20TransactionsError = 1110;
+        public const int GetInternalTransactionsError = 1111;
+        public const int GetTransactionsError = 1112;
+        public const int GetBlockNumberError = 1113;
+        public const int GetHeaderError = 1114;
+        public const int GetContractEventsError = 1115;
+        public const int GetTransactionsCountError = 1116;
+        public const int EstimateGasError = 1117;
+        public const int GetBlockError = 1118;
+        public const int GetTransactionReceiptError = 1119;
 
         public const int TransactionCreationError = 2000;
         public const int TransactionSigningError = 2001;
@@ -91,5 +129,7 @@
         public const int RpcResponseError = 5005;
         public const int AddressNotFound = 5006;
         public const int AutoFillError = 5007;
+        public const int OperationBatchingError = 5008;
+        public const int GetFa12AllowanceError = 5009;
     }
 }

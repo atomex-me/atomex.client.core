@@ -116,7 +116,7 @@ namespace Atomex.MarketData.Binance
                     {
                         var binanceSymbol = Symbols[symbol];
 
-                        var response = await HttpHelper
+                        using var response = await HttpHelper
                             .GetAsync(
                                 baseUri: BaseUrl,
                                 relativeUri: $"api/v3/ticker/bookTicker?symbol={binanceSymbol}",

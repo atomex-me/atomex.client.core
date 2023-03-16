@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Client.V1.Entities;
 using Atomex.Common;
 
@@ -41,7 +40,6 @@ namespace Atomex.Core
     public class Swap
     {
         public long Id { get; set; }
-        public string UserId { get; set; }
         public SwapStatus Status { get; set; }
         public SwapStateFlags StateFlags { get; set; }
         public DateTime TimeStamp { get; set; }
@@ -50,21 +48,18 @@ namespace Atomex.Core
         public Side Side { get; set; }
         public decimal Price { get; set; }
         public decimal Qty { get; set; }
-        public bool IsInitiative { get; set; }
         public string ToAddress { get; set; }
         public decimal RewardForRedeem { get; set; }
-        public string PaymentTxId { get; set; }
         public string RedeemScript { get; set; }
         public string RefundAddress { get; set; }
         public string PartyAddress { get; set; }
         public decimal PartyRewardForRedeem { get; set; }
-        public string PartyPaymentTxId { get; set; }
         public string PartyRedeemScript { get; set; }
         public string PartyRefundAddress { get; set; }
         public decimal MakerNetworkFee { get; set; }
 
         public string FromAddress { get; set; }
-        public List<BitcoinBasedTxOutput> FromOutputs { get; set; }
+        public List<BitcoinTxPoint> FromOutputs { get; set; }
         public string RedeemFromAddress { get; set; }
 
         public string SoldCurrency => Symbol.SoldCurrency(Side);
@@ -78,8 +73,8 @@ namespace Atomex.Core
         public bool IsCanceled => StateFlags.HasFlag(SwapStateFlags.IsCanceled);
         public bool IsUnsettled => StateFlags.HasFlag(SwapStateFlags.IsUnsettled);
         public bool IsActive => !IsComplete && !IsRefunded && !IsCanceled && !IsUnsettled;
-        public bool IsInitiator => IsInitiative;
-        public bool IsAcceptor => !IsInitiative;
+        public bool IsInitiator { get; set; }
+        public bool IsAcceptor => !IsInitiator;
         public bool HasPartyPayment => 
             StateFlags.HasFlag(SwapStateFlags.HasPartyPayment) &&
             StateFlags.HasFlag(SwapStateFlags.IsPartyPaymentConfirmed);
@@ -88,60 +83,69 @@ namespace Atomex.Core
         public byte[] Secret
         {
             get => _secret;
-            set { _secret = value; StateFlags |= SwapStateFlags.HasSecret; }
+            set
+            {
+                _secret = value;
+                StateFlags |= SwapStateFlags.HasSecret;
+            }
         }
 
         private byte[] _secretHash;
         public byte[] SecretHash
         {
             get => _secretHash;
-            set { _secretHash = value; StateFlags |= SwapStateFlags.HasSecretHash; }
+            set
+            {
+                _secretHash = value;
+                StateFlags |= SwapStateFlags.HasSecretHash;
+            }
         }
 
-        private IBlockchainTransaction _paymentTx;
-        public IBlockchainTransaction PaymentTx
+        private string _paymentTxId;
+        public string PaymentTxId
         {
-            get => _paymentTx;
-            set { _paymentTx = value; if (_paymentTx != null) StateFlags |= SwapStateFlags.HasPayment; }
+            get => _paymentTxId;
+            set
+            {
+                _paymentTxId = value;
+                StateFlags |= SwapStateFlags.HasPayment;
+            }
         }
 
-        private IBlockchainTransaction _refundTx;
-        public IBlockchainTransaction RefundTx
+        private string _redeemTxId;
+        public string RedeemTxId
         {
-            get => _refundTx;
-            set { _refundTx = value; if (_refundTx != null) StateFlags |= SwapStateFlags.HasRefund; }
+            get => _redeemTxId;
+            set
+            {
+                _redeemTxId = value;
+                StateFlags |= SwapStateFlags.HasRedeem;
+            }
         }
 
-        private IBlockchainTransaction _redeemTx;
-        public IBlockchainTransaction RedeemTx
+        private string _refundTxId;
+        public string RefundTxId
         {
-            get => _redeemTx;
-            set { _redeemTx = value; if (_redeemTx != null) StateFlags |= SwapStateFlags.HasRedeem; }
+            get => _refundTxId;
+            set
+            {
+                _refundTxId = value;
+                StateFlags |= SwapStateFlags.HasRefund;
+            }
         }
 
-        private IBlockchainTransaction _partyPaymentTx;
-        public IBlockchainTransaction PartyPaymentTx
+        private string _partyPaymentTxId;
+        public string PartyPaymentTxId
         {
-            get => _partyPaymentTx;
-            set { _partyPaymentTx = value; if (_partyPaymentTx != null) StateFlags |= SwapStateFlags.HasPartyPayment; }
+            get => _partyPaymentTxId;
+            set
+            {
+                _partyPaymentTxId = value;
+                StateFlags |= SwapStateFlags.HasPartyPayment;
+            }
         }
 
-        public override string ToString() =>
-            $"Id: {Id}, " +
-            $"Status: {Status}, " +
-            $"StateFlags: {StateFlags}, " +
-            $"Side: {Side}, " +
-            $"Price: {Price}, " +
-            $"Qty: {Qty}, " +
-            $"ToAddress: {ToAddress}, " +
-            $"RewardForRedeem: {RewardForRedeem}, " +
-            $"PaymentTxId: {PaymentTxId}, " +
-            $"RedeemScript: {RedeemScript}, " +
-            $"RefundAddress: {RefundAddress}, " +
-            $"PartyAddress: {PartyAddress}, " +
-            $"PartyRewardForRedeem: {PartyRewardForRedeem}, " +
-            $"PartyPaymentTxId: {PartyPaymentTxId}, " +
-            $"PartyRedeemScript: {PartyRedeemScript}, " +
-            $"PartyRefundAddress: {PartyRefundAddress}.";
+        public DateTime LastRedeemTryTimeStamp { get; set; }
+        public DateTime LastRefundTryTimeStamp { get; set; }
     }
 }

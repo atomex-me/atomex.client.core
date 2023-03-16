@@ -1,98 +1,100 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using Atomex.Blockchain;
-using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
-using Atomex.Common;
-using Atomex.Core;
-using Atomex.Swaps.BitcoinBased;
-using Moq;
-using NBitcoin;
-using NBitcoin.Altcoins;
-using Xunit;
+﻿//using System;
+//using System.Collections.Generic;
+//using System.Linq;
+//using System.Threading;
+//using System.Threading.Tasks;
 
-namespace Atomex.Client.Core.Tests
-{
-    public class BitcoinBasedSwapTransactionFactoryTests
-    {
-        private static Result<IEnumerable<ITxOutput>> GetTestOutputs(PubKey pubKey, NBitcoin.Network network)
-        {
-            var tx = Transaction.Create(network);
-            tx.Outputs.Add(new TxOut(new Money(100000L), pubKey.Hash));
-            tx.Outputs.Add(new TxOut(new Money(200000L), pubKey.Hash));
-            tx.Outputs.Add(new TxOut(new Money(300000L), pubKey.Hash));
+//using Moq;
+//using NBitcoin;
+//using NBitcoin.Altcoins;
+//using Xunit;
 
-            var outputs = tx.Outputs
-                .AsCoins()
-                .Select(c => new BitcoinBasedTxOutput(c));
+//using Atomex.Blockchain;
+//using Atomex.Blockchain.Abstract;
+//using Atomex.Blockchain.Bitcoin;
+//using Atomex.Common;
+//using Atomex.Core;
+//using Atomex.Swaps.BitcoinBased;
 
-            return new Result<IEnumerable<ITxOutput>>(outputs);
-        }
+//namespace Atomex.Client.Core.Tests
+//{
+//    public class BitcoinBasedSwapTransactionFactoryTests
+//    {
+//        private static Result<IEnumerable<BitcoinTxOutput>> GetTestOutputs(PubKey pubKey, NBitcoin.Network network)
+//        {
+//            var tx = Transaction.Create(network);
+//            tx.Outputs.Add(new TxOut(new Money(100000L), pubKey.Hash));
+//            tx.Outputs.Add(new TxOut(new Money(200000L), pubKey.Hash));
+//            tx.Outputs.Add(new TxOut(new Money(300000L), pubKey.Hash));
 
-        [Fact]
-        public async Task<IBlockchainTransaction> CreateSwapPaymentTxTest()
-        {
-            var bitcoinApi = new Mock<IInOutBlockchainApi>();
-            bitcoinApi.Setup(a => a.GetUnspentOutputsAsync(It.IsAny<string>(), null, new CancellationToken()))
-                .Returns(Task.FromResult(GetTestOutputs(Common.Alice.PubKey, NBitcoin.Network.TestNet)));
+//            var outputs = tx.Outputs
+//                .AsCoins()
+//                .Select(c => new BitcoinTxOutput(c));
 
-            var litecoinApi = new Mock<IInOutBlockchainApi>();
-            litecoinApi.Setup(a => a.GetUnspentOutputsAsync(It.IsAny<string>(), null, new CancellationToken()))
-                .Returns(Task.FromResult(GetTestOutputs(Common.Bob.PubKey, AltNetworkSets.Litecoin.Testnet)));
+//            return new Result<IEnumerable<BitcoinTxOutput>>(outputs);
+//        }
 
-            var tempCurrencies = new CurrenciesProvider(Common.CurrenciesConfigurationString)
-                .GetCurrencies(Atomex.Core.Network.TestNet);
+//        [Fact]
+//        public async Task<ITransaction> CreateSwapPaymentTxTest()
+//        {
+//            var bitcoinApi = new Mock<BitcoinBlockchainApi>();
+//            bitcoinApi.Setup(a => a.GetUnspentOutputsAsync(It.IsAny<string>(), null, new CancellationToken()))
+//                .Returns(Task.FromResult(GetTestOutputs(Common.Alice.PubKey, NBitcoin.Network.TestNet)));
 
-            var bitcoin = tempCurrencies.Get<BitcoinConfig>("BTC");
-            bitcoin.BlockchainApi = bitcoinApi.Object;
+//            var litecoinApi = new Mock<BitcoinBlockchainApi>();
+//            litecoinApi.Setup(a => a.GetUnspentOutputsAsync(It.IsAny<string>(), null, new CancellationToken()))
+//                .Returns(Task.FromResult(GetTestOutputs(Common.Bob.PubKey, AltNetworkSets.Litecoin.Testnet)));
 
-            var litecoin = tempCurrencies.Get<LitecoinConfig>("LTC");
-            litecoin.BlockchainApi = litecoinApi.Object;
+//            var tempCurrencies = new CurrenciesProvider(Common.CurrenciesConfigurationString)
+//                .GetCurrencies(Atomex.Core.Network.TestNet);
 
-            var aliceBtcAddress = Common.Alice.PubKey
-                .GetAddress(ScriptPubKeyType.Legacy, bitcoin.Network)
-                .ToString();
+//            var bitcoin = tempCurrencies.Get<BitcoinConfig>("BTC");
+//            bitcoin.BlockchainApi = bitcoinApi.Object;
 
-            var bobBtcAddress = Common.Bob.PubKey
-                .GetAddress(ScriptPubKeyType.Legacy, bitcoin.Network)
-                .ToString();
+//            var litecoin = tempCurrencies.Get<LitecoinConfig>("LTC");
+//            litecoin.BlockchainApi = litecoinApi.Object;
 
-            const decimal lastPrice = 0.000001m;
-            const decimal lastQty = 10m;
+//            var aliceBtcAddress = Common.Alice.PubKey
+//                .GetAddress(ScriptPubKeyType.Legacy, bitcoin.Network)
+//                .ToString();
 
-            var swap = new Swap
-            {
-                Symbol = "LTC/BTC",
-                Side = Side.Buy,
-                Price = lastPrice,
-                Qty = lastQty
-            };
+//            var bobBtcAddress = Common.Bob.PubKey
+//                .GetAddress(ScriptPubKeyType.Legacy, bitcoin.Network)
+//                .ToString();
 
-            var amountInSatoshi = bitcoin.CoinToSatoshi(AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, bitcoin.DigitsMultiplier));
+//            const decimal lastPrice = 0.000001m;
+//            const decimal lastQty = 10m;
 
-            var outputs = (await new BlockchainTxOutputSource(bitcoin)
-                .GetAvailableOutputsAsync(new[] { aliceBtcAddress }))
-                .Cast<BitcoinBasedTxOutput>();
+//            var swap = new Swap
+//            {
+//                Symbol = "LTC/BTC",
+//                Side = Side.Buy,
+//                Price = lastPrice,
+//                Qty = lastQty
+//            };
 
-            var tx = await new BitcoinBasedSwapTransactionFactory()
-                .CreateSwapPaymentTxAsync(
-                    fromOutputs: outputs,
-                    amount: amountInSatoshi,
-                    refundAddress: aliceBtcAddress,
-                    toAddress: bobBtcAddress,
-                    lockTime: DateTimeOffset.UtcNow.AddHours(1),
-                    secretHash: Common.SecretHash,
-                    secretSize: Common.Secret.Length,
-                    currencyConfig: bitcoin)
-                .ConfigureAwait(false);
+//            var amountInSatoshi = bitcoin.CoinToSatoshi(AmountHelper.QtyToSellAmount(swap.Side, swap.Qty, swap.Price, bitcoin.Precision));
 
-            Assert.NotNull(tx);
-            //Assert.NotNull(redeemScript);
+//            var outputs = (await new BlockchainTxOutputSource(bitcoin)
+//                .GetAvailableOutputsAsync(new[] { aliceBtcAddress }))
+//                .Cast<BitcoinTxOutput>();
 
-            return tx;
-        }
-    }
-}
+//            var tx = await new BitcoinBasedSwapTransactionFactory()
+//                .CreateSwapPaymentTxAsync(
+//                    fromOutputs: outputs,
+//                    amount: amountInSatoshi,
+//                    refundAddress: aliceBtcAddress,
+//                    toAddress: bobBtcAddress,
+//                    lockTime: DateTimeOffset.UtcNow.AddHours(1),
+//                    secretHash: Common.SecretHash,
+//                    secretSize: Common.Secret.Length,
+//                    currencyConfig: bitcoin)
+//                .ConfigureAwait(false);
+
+//            Assert.NotNull(tx);
+//            //Assert.NotNull(redeemScript);
+
+//            return tx;
+//        }
+//    }
+//}

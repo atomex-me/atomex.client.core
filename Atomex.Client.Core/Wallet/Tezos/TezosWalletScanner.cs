@@ -7,279 +7,319 @@ using System.Threading.Tasks;
 using Serilog;
 
 using Atomex.Blockchain.Tezos;
+using Atomex.Blockchain.Tezos.Common;
+using Atomex.Blockchain.Tezos.Tzkt;
+using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
+using Atomex.Wallets.Bips;
 
 namespace Atomex.Wallet.Tezos
 {
-    public class TezosWalletScanner : ICurrencyHdWalletScanner
+    public class TezosWalletScanner : ICurrencyWalletScanner
     {
         private const int DefaultInternalLookAhead = 2;
-        private const int DefaultExternalLookAhead = 2;
-        private const int OldLookAhead = 2;
+        private const int OldLookAhead = 4;
 
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
-        private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
-        private TezosAccount Account { get; }
-        private CurrencyConfig Currency => Account.Currencies.GetByName(Account.Currency);
+        private readonly TezosAccount _account;
+        private TezosConfig Config => _account.Config;
 
         public TezosWalletScanner(TezosAccount account)
         {
-            Account = account ?? throw new ArgumentNullException(nameof(account));
+            _account = account ?? throw new ArgumentNullException(nameof(account));
         }
 
         public async Task ScanAsync(
-            bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
-            var currency = Currency;
-
-            var tezosAddresses = await Account.DataRepository
-                .GetAddressesAsync(currency.Name)
-                .ConfigureAwait(false);
-
-            var isFirstScan = tezosAddresses.Count() <= 1;
-
-            var scanBip32Ed25519 = isFirstScan || tezosAddresses
-                .FirstOrDefault(w => w.KeyType == TezosConfig.Bip32Ed25519Key &&
-                                     (w.HasActivity ||
-                                     w.Balance != 0 ||
-                                     w.UnconfirmedIncome != 0 ||
-                                     w.UnconfirmedOutcome != 0)) != null;
-
-            var scanParams = scanBip32Ed25519
-                ? new[]
+            try
+            {
+                var scanParams = new[]
                 {
                     (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.Internal, LookAhead : OldLookAhead),
                     (KeyType : TezosConfig.Bip32Ed25519Key, Chain : Bip44.External, LookAhead : OldLookAhead),
                     (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : InternalLookAhead)
-                }
-                : new[]
-                {
-                    (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : ExternalLookAhead),
                 };
 
-            var txs = new List<TezosTransaction>();
-            var txsById = new Dictionary<string, TezosTransaction>();
-            var internalTxs = new List<TezosTransaction>();
+                var tzktApi = new TzktApi(Config.GetTzktSettings());
+                var updateTimeStamp = DateTime.UtcNow;
 
-            foreach (var (keyType, chain, lookAhead) in scanParams)
-            {
-                var freeKeysCount = 0;
-                var account = 0u;
-                var index = 0u;
+                var operations = new List<TezosOperation>();
+                var walletAddresses = new List<WalletAddress>();
 
-                while (true)
+                WalletAddress defautWalletAddress = null;
+
+                foreach (var (keyType, chain, lookAhead) in scanParams)
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
+                    var freeKeysCount = 0;
+                    var index = 0u;
 
-                    var walletAddress = await Account
-                        .DivideAddressAsync(
-                            account: account,
-                            chain: chain,
-                            index: index,
-                            keyType: keyType)
-                        .ConfigureAwait(false);
-
-                    if (walletAddress == null)
-                        break;
-
-                    Log.Debug(
-                        "Scan transactions for {@name} address {@chain}:{@index}:{@address}",
-                        currency.Name,
-                        chain,
-                        index,
-                        walletAddress.Address);
-
-                    var addressTxs = await ScanAddressAsync(walletAddress.Address, cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (addressTxs == null || !addressTxs.Any()) // address without activity
+                    while (true)
                     {
-                        freeKeysCount++;
+                        cancellationToken.ThrowIfCancellationRequested();
 
-                        if (freeKeysCount >= lookAhead)
+                        var keyPath = Config.GetKeyPathPattern(keyType)
+                            .Replace(KeyPathExtensions.AccountPattern, KeyPathExtensions.DefaultAccount)
+                            .Replace(KeyPathExtensions.ChainPattern, chain.ToString())
+                            .Replace(KeyPathExtensions.IndexPattern, index.ToString());
+
+                        var walletAddress = await _account
+                            .DivideAddressAsync(
+                                keyPath: keyPath,
+                                keyType: keyType)
+                            .ConfigureAwait(false);
+
+                        if (keyType == CurrencyConfig.StandardKey &&
+                            chain == Bip44.External &&
+                            index == 0)
                         {
-                            Log.Debug("{@lookAhead} free keys found. Chain scan completed", lookAhead);
-                            break;
+                            defautWalletAddress = walletAddress;
                         }
-                    }
-                    else // address has activity
-                    {
-                        freeKeysCount = 0;
 
-                        foreach (var tx in addressTxs)
+                        var (ops, error) = await UpdateAddressAsync(
+                                walletAddress,
+                                tzktApi: tzktApi,
+                                cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (error != null)
                         {
-                            if (tx.IsInternal)
+                            Log.Error("[TezosWalletScanner] ScanAsync error while scan {@address}", walletAddress.Address);
+                            return;
+                        }
+
+                        if (!walletAddress.HasActivity && !ops.Any()) // address without activity
+                        {
+                            freeKeysCount++;
+
+                            if (freeKeysCount >= lookAhead)
                             {
-                                internalTxs.Add(tx);
-                            }
-                            else if (!txsById.ContainsKey(tx.Id))
-                            {
-                                txsById.Add(tx.Id, tx);
+                                Log.Debug("{@lookAhead} free keys found. Chain scan completed", lookAhead);
+                                break;
                             }
                         }
-                    }
+                        else // address has activity
+                        {
+                            freeKeysCount = 0;
 
-                    if (keyType == TezosConfig.Bip32Ed25519Key)
-                    {
+                            operations.AddRange(ops);
+
+                            // save only active addresses
+                            walletAddresses.Add(walletAddress);
+                        }
+
                         index++;
                     }
-                    else
+                }
+
+                if (operations.Any())
+                {
+                    var upsertResult = await _account
+                        .LocalStorage
+                        .UpsertTransactionsAsync(
+                            txs: operations,
+                            notifyIfNewOrChanged: true,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                if (!walletAddresses.Any())
+                    walletAddresses.Add(defautWalletAddress);
+
+                var _ = await _account
+                    .LocalStorage
+                    .UpsertAddressesAsync(
+                        walletAddresses: walletAddresses,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("[TezosWalletScanner] ScanAsync canceled");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[TezosWalletScanner] ScanAsync error: {@message}", e.Message);
+            }
+        }
+
+        public async Task UpdateBalanceAsync(
+            bool skipUsed = false,
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var updateTimeStamp = DateTime.UtcNow;
+
+                var walletAddresses = await _account
+                    .GetAddressesAsync(cancellationToken)
+                    .ConfigureAwait(false);
+
+                var tzktApi = new TzktApi(Config.GetTzktSettings());
+                var operations = new List<TezosOperation>();
+
+                foreach (var walletAddress in walletAddresses)
+                {
+                    if (skipUsed && walletAddress.IsDisabled)
+                        continue;
+
+                    var (ops, error) = await UpdateAddressAsync(
+                            walletAddress,
+                            tzktApi: tzktApi,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (error != null)
                     {
-                        account++;
+                        Log.Error("[TezosWalletScanner] UpdateBalanceAsync error while scan {@address}", walletAddress.Address);
+                        return;
                     }
-                }
-            }
 
-            // distribute internal txs
-            foreach (var internalTx in internalTxs)
-            {
-                if (txsById.TryGetValue(internalTx.Id, out var tx))
+                    operations.AddRange(ops);
+                }
+
+                if (operations.Any())
                 {
-                    if (tx.InternalTxs == null)
-                        tx.InternalTxs = new List<TezosTransaction>();
-
-                    tx.InternalTxs.Add(internalTx);
+                    var _ = await _account
+                        .LocalStorage
+                        .UpsertTransactionsAsync(
+                            txs: operations,
+                            notifyIfNewOrChanged: true,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
                 }
-                else
+
+                if (walletAddresses.Any())
                 {
-                    txs.Add(internalTx);
+                    var _ = await _account
+                        .LocalStorage
+                        .UpsertAddressesAsync(
+                            walletAddresses: walletAddresses,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
                 }
             }
-
-            txs.AddRange(txsById.Values);
-
-            if (txs.Any())
+            catch (OperationCanceledException)
             {
-                await UpsertTransactionsAsync(txs)
-                    .ConfigureAwait(false);
+                Log.Debug("[TezosWalletScanner] UpdateBalanceAsync canceled");
             }
-
-            await Account
-                .UpdateBalanceAsync(cancellationToken)
-                .ConfigureAwait(false);
-
-            var needToCheckBip32Ed25519 = isFirstScan && scanBip32Ed25519;
-
-            if (!needToCheckBip32Ed25519)
-                return;
-
-            var addresses = (await Account.DataRepository
-                .GetAddressesAsync(currency.Name)
-                .ConfigureAwait(false))
-                .Where(a => a.KeyType == TezosConfig.Bip32Ed25519Key);
-
-            // if there is at least one address with activity => leave bip32ed25519 addresses in db
-            if (addresses.Any(w => w.HasActivity || w.Balance > 0 || w.UnconfirmedIncome > 0 || w.UnconfirmedOutcome > 0))
-                return;
-
-            // remove bip32Ed25519 addresses if there is no activity on them
-            foreach (var address in addresses.ToList())
+            catch (Exception e)
             {
-                _ = await Account.DataRepository
-                    .RemoveAddressAsync(address.Currency, address.Address)
-                    .ConfigureAwait(false);
+                Log.Error(e, "[TezosWalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
             }
         }
 
-        public async Task ScanAsync(
+        public async Task UpdateBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            Log.Debug("Scan transactions for address {@address}", address);
-
-            var addressTxs = await ScanAddressAsync(address, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (addressTxs == null || !addressTxs.Any()) // address without activity
-                return;
-
-            var txs = new List<TezosTransaction>();
-            var txsById = new Dictionary<string, TezosTransaction>();
-            var internalTxs = new List<TezosTransaction>();
-
-            foreach (var tx in addressTxs)
+            try
             {
-                if (tx.IsInternal)
-                {
-                    internalTxs.Add(tx);
-                }
-                else if (!txsById.ContainsKey(tx.Id))
-                {
-                    txsById.Add(tx.Id, tx);
-                }
-            }
+                Log.Debug("UpdateBalanceAsync for address {@address}", address);
 
-            // distribute internal txs
-            foreach (var internalTx in internalTxs)
-            {
-                if (txsById.TryGetValue(internalTx.Id, out var tx))
+                var walletAddress = await _account
+                    .LocalStorage
+                    .GetAddressAsync(
+                        currency: _account.Currency,
+                        address: address,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (walletAddress == null)
                 {
-                    if (tx.InternalTxs == null)
-                        tx.InternalTxs = new List<TezosTransaction>();
-
-                    tx.InternalTxs.Add(internalTx);
+                    Log.Error("[TezosWalletScanner] UpdateBalanceAsync error. Can't find address {@address} in local db", address);
+                    return;
                 }
-                else
+
+                var (ops, error) = await UpdateAddressAsync(
+                        walletAddress,
+                        tzktApi: null,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (error != null)
                 {
-                    txs.Add(internalTx);
+                    Log.Error("[TezosWalletScanner] UpdateBalanceAsync error while scan {@address}", address);
+                    return;
                 }
-            }
 
-            txs.AddRange(txsById.Values);
-
-            if (txs.Any())
-            {
-                await UpsertTransactionsAsync(txs)
+                if (ops.Any())
+                {
+                    await _account
+                        .LocalStorage
+                        .UpsertTransactionsAsync(
+                            txs: ops,
+                            notifyIfNewOrChanged: true,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+    
+                var _ = await _account
+                    .LocalStorage
+                    .UpsertAddressAsync(walletAddress, cancellationToken)
                     .ConfigureAwait(false);
             }
-
-            await Account
-                .UpdateBalanceAsync(address, cancellationToken)
-                .ConfigureAwait(false);
+            catch (OperationCanceledException)
+            {
+                Log.Debug("[TezosWalletScanner] UpdateBalanceAsync canceled");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[TezosWalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
+            }
         }
 
-        private async Task<IEnumerable<TezosTransaction>> ScanAddressAsync(
-            string address,
+        private async Task<Result<IEnumerable<TezosOperation>>> UpdateAddressAsync(
+            WalletAddress walletAddress,
+            TzktApi tzktApi = null,
             CancellationToken cancellationToken = default)
         {
-            var currency = Currency;
+            var updateTimeStamp = DateTime.UtcNow;
 
-            var txsResult = await ((ITezosBlockchainApi)currency.BlockchainApi)
-                .TryGetTransactionsAsync(address, cancellationToken: cancellationToken)
+            tzktApi ??= new TzktApi(Config.GetTzktSettings());
+
+            var (account, accountError) = await tzktApi
+                .GetAccountAsync(walletAddress.Address, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (txsResult.HasError)
+            if (accountError != null)
             {
-                Log.Error(
-                    "Error while scan address transactions for {@address} with code {@code} and description {@description}",
-                    address,
-                    txsResult.Error.Code,
-                    txsResult.Error.Description);
-                return null;
+                Log.Error("[TezosWalletScanner] ScanAddressAsync error. Can't get account for address: {@address}. Code: {@code}. Description: {@description}",
+                    walletAddress.Address,
+                    accountError.Value.Code,
+                    accountError.Value.Message);
+
+                return accountError;
             }
 
-            var addressTxs = txsResult.Value
-                ?.Cast<TezosTransaction>()
-                .ToList();
+            walletAddress.Balance = account.Balance;
+            walletAddress.UnconfirmedIncome = 0;
+            walletAddress.UnconfirmedOutcome = 0;
+            walletAddress.HasActivity = account.NumberOfTransactions > 0 || account.TokenBalancesCount > 0;
 
-            return await Task.FromResult<IEnumerable<TezosTransaction>>(addressTxs);
-        }
+            var (ops, opsError) = await tzktApi
+                .GetOperationsByAddressAsync(
+                    address: walletAddress.Address,
+                    timeStamp: walletAddress.LastSuccessfullUpdate != DateTime.MinValue
+                        ? new DateTimeParameter(walletAddress.LastSuccessfullUpdate, EqualityType.Ge)
+                        : null,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
 
-        private async Task UpsertTransactionsAsync(IEnumerable<TezosTransaction> transactions)
-        {
-            foreach (var tx in transactions)
+            if (opsError != null)
             {
-                await Account
-                    .UpsertTransactionAsync(
-                        tx: tx,
-                        updateBalance: false,
-                        notifyIfUnconfirmed: false,
-                        notifyIfBalanceUpdated: false)
-                    .ConfigureAwait(false);
+                Log.Error("[TezosWalletScanner] UpdateBalanceAsync error. Can't get txs for address: {@address}. Code: {@code}. Description: {@description}",
+                    walletAddress.Address,
+                    opsError.Value.Code,
+                    opsError.Value.Message);
+
+                return opsError;
             }
+
+            walletAddress.LastSuccessfullUpdate = updateTimeStamp;
+
+            return new Result<IEnumerable<TezosOperation>> { Value = ops };
         }
     }
 }

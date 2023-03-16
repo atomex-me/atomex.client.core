@@ -40,6 +40,7 @@ namespace Atomex.Wallets.Ethereum
 
             return key
                 .Sign(data.ToArray())
+                //.SignAndCalculateYParityV(data.ToArray())
                 .ToDER();
         }
 

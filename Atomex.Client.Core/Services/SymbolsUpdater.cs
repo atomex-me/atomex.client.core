@@ -83,7 +83,8 @@ namespace Atomex.Services
         {
             try
             {
-                var response = await HttpHelper.GetAsync(
+                using var response = await HttpHelper
+                    .GetAsync(
                         baseUri: BaseUri,
                         relativeUri: SymbolsConfig,
                         cancellationToken: cancellationToken)

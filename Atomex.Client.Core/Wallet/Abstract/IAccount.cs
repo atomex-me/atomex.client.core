@@ -1,20 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Abstract;
-using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
+using Atomex.Common;
 using Atomex.Core;
 
 namespace Atomex.Wallet.Abstract
 {
     public interface IAccount : IAddressResolver
     {
-        event EventHandler<CurrencyEventArgs> BalanceUpdated;
-        event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded;
         event EventHandler Locked;
         event EventHandler Unlocked;
 
@@ -67,29 +66,15 @@ namespace Atomex.Wallet.Abstract
         /// <returns>this</returns>
         IAccount UseUserSettings(UserData userData);
 
-        /// <summary>
-        /// Create auth request for service key with <paramref name="keyIndex"/>, which can be used for authentication using server <paramref name="nonce"/>
-        /// </summary>
-        /// <param name="nonce">Server nonce</param>
-        /// <param name="keyIndex">Service key index</param>
-        /// <returns>Auth request</returns>
-        //Task<Auth> CreateAuthRequestAsync(
-        //    AuthNonce nonce,
-        //    uint keyIndex = 0);
-
-        ICurrencyAccount GetCurrencyAccount(string currency);
-
-        ICurrencyAccount GetTezosTokenAccount(
+        ICurrencyAccount GetCurrencyAccount(
             string currency,
-            string tokenContract,
-            int tokenId);
+            string? tokenContract = null,
+            BigInteger? tokenId = null);
 
-        T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount;
-
-        T GetTezosTokenAccount<T>(
+        T GetCurrencyAccount<T>(
             string currency,
-            string tokenContract,
-            int tokenId) where T : class;
+            string? tokenContract = null,
+            BigInteger? tokenId = null) where T : class, ICurrencyAccount;
 
         string GetUserId(uint keyIndex = 0);
 
@@ -99,20 +84,28 @@ namespace Atomex.Wallet.Abstract
 
         Task<Balance> GetBalanceAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default);
 
         Task<Balance> GetAddressBalanceAsync(
             string currency,
             string address,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default);
 
         Task UpdateBalanceAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default);
 
         Task UpdateBalanceAsync(
             string currency,
             string address,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default);
 
         #endregion Balances
@@ -127,6 +120,8 @@ namespace Atomex.Wallet.Abstract
         /// <returns>Set of unspent addresses</returns>
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default);
         
         /// <summary>
@@ -137,33 +132,29 @@ namespace Atomex.Wallet.Abstract
         /// <returns>Wallet address</returns>
         Task<WalletAddress> GetFreeExternalAddressAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default);
 
         #endregion Addresses
 
         #region Transactions
 
-        Task<IBlockchainTransaction> GetTransactionByIdAsync(
+        Task<IEnumerable<TransactionInfo<ITransaction, ITransactionMetadata>>> GetTransactionsWithMetadataAsync(
             string currency,
-            string txId);
-
-        Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(
-            string currency);
-
-        Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync();
-
-        Task<bool> RemoveTransactionAsync(
-            string id);
+            int offset = 0,
+            int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
+            CancellationToken cancellationToken = default);
+        Task<IEnumerable<ITransaction>> GetUnconfirmedTransactionsAsync();
+        Task<ITransactionMetadata> ResolveTransactionMetadataAsync(
+            ITransaction tx,
+            CancellationToken cancellationToken = default);
 
         #endregion Transactions
 
         #region Orders
-
-        Task<bool> UpsertOrderAsync(Order order);
-        Task<bool> RemoveAllOrdersAsync();
-        Order GetOrderById(string clientOrderId);
         Order GetOrderById(long id);
-        Task<bool> RemoveOrderByIdAsync(long id);
 
         #endregion Orders
 

@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Numerics;
 
 using Atomex.Abstract;
-using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
 using Atomex.Wallet.Ethereum;
@@ -12,134 +11,89 @@ namespace Atomex.Wallet
 {
     public static class CurrencyAccountCreator
     {
-        public static IDictionary<string, ICurrencyAccount> Create(
-            ICurrencies currencies,
-            IHdWallet wallet,
-            IAccountDataRepository dataRepository)
-        {
-            var accounts = new Dictionary<string, ICurrencyAccount>();
-
-            foreach (var currency in currencies)
-            {
-                if (Currencies.IsTezosToken(currency.Name))
-                {
-                    if (!accounts.TryGetValue(TezosConfig.Xtz, out var tezosAccount))
-                    {
-                        tezosAccount = CreateCurrencyAccount(
-                            currency: TezosConfig.Xtz,
-                            wallet: wallet,
-                            dataRepository: dataRepository,
-                            currencies: currencies);
-
-                        accounts.Add(TezosConfig.Xtz, tezosAccount);
-                    }
-
-                    accounts.Add(currency.Name, CreateCurrencyAccount(
-                        currency: currency.Name,
-                        wallet: wallet,
-                        dataRepository: dataRepository,
-                        currencies: currencies,
-                        baseChainAccount: tezosAccount));
-                }
-                else
-                {
-                    accounts.Add(currency.Name, CreateCurrencyAccount(
-                        currency: currency.Name,
-                        wallet: wallet,
-                        dataRepository: dataRepository,
-                        currencies: currencies));
-                }
-            }
-
-            return accounts;
-        }
-
         public static ICurrencyAccount CreateCurrencyAccount(
             string currency,
             IHdWallet wallet,
-            IAccountDataRepository dataRepository,
+            ILocalStorage localStorage,
             ICurrencies currencies,
+            string tokenContract = null,
+            BigInteger? tokenId = null,
             ICurrencyAccount baseChainAccount = null)
         {
             return currency switch
             {
-                "BTC" or "LTC" => (ICurrencyAccount) new BitcoinBasedAccount(
-                    currency,
-                    currencies,
-                    wallet,
-                    dataRepository),
+                "BTC" or "LTC" => new BitcoinBasedAccount(
+                    currency: currency,
+                    currencies: currencies,
+                    wallet: wallet,
+                    localStorage: localStorage),
 
-                "USDT" or "USDC" or "TBTC" or "WBTC" => new Erc20Account(
-                    currency,
-                    currencies,
-                    wallet,
-                    dataRepository),
+                //"USDT" or "USDC" or "TBTC" or "WBTC" => new Erc20Account(
+                //    tokenContract: currencies
+                //        .Get<Erc20Config>(currency)
+                //        .TokenContractAddress,
+                //    currencies: currencies,
+                //    wallet: wallet,
+                //    localStorage: localStorage,
+                //    ethereumAccount: baseChainAccount as EthereumAccount),
+
+                "ERC20" => new Erc20Account(
+                    tokenContract: tokenContract,
+                    currencies: currencies,
+                    wallet: wallet,
+                    localStorage: localStorage,
+                    ethereumAccount: baseChainAccount as EthereumAccount),
 
                 "ETH" => new EthereumAccount(
-                    currency,
-                    currencies,
-                    wallet,
-                    dataRepository),
+                    currency: currency,
+                    currencies: currencies,
+                    wallet: wallet,
+                    localStorage: localStorage),
 
-                "TZBTC" or "KUSD" => new Fa12Account(
-                    tokenContract: currencies
-                        .Get<Fa12Config>(currency)
-                        .TokenContractAddress,
+                //"TZBTC" or "KUSD" => new Fa12Account(
+                //    tokenContract: currencies
+                //        .Get<Fa12Config>(currency)
+                //        .TokenContractAddress,
+                //    tokenId: 0,
+                //    currencies: currencies,
+                //    wallet: wallet,
+                //    localStorage: localStorage,
+                //    tezosAccount: baseChainAccount as TezosAccount),
+
+                "FA12" => new Fa12Account(
+                    tokenContract: tokenContract,
                     tokenId: 0,
                     currencies: currencies,
                     wallet: wallet,
-                    dataRepository: dataRepository,
+                    localStorage: localStorage,
                     tezosAccount: baseChainAccount as TezosAccount),
 
-                "USDT_XTZ" => new Fa2Account(
-                    tokenContract: currencies
-                        .Get<Fa2Config>(currency)
-                        .TokenContractAddress,
-                    tokenId: currencies
-                        .Get<Fa2Config>(currency)
-                        .TokenId,
+                //"USDT_XTZ" => new Fa2Account(
+                //    tokenContract: currencies
+                //        .Get<Fa2Config>(currency)
+                //        .TokenContractAddress,
+                //    tokenId: currencies
+                //        .Get<Fa2Config>(currency)
+                //        .TokenId,
+                //    currencies: currencies,
+                //    wallet: wallet,
+                //    localStorage: localStorage,
+                //    tezosAccount: baseChainAccount as TezosAccount),
+
+                "FA2" => new Fa2Account(
+                    tokenContract: tokenContract,
+                    tokenId: tokenId.Value,
                     currencies: currencies,
                     wallet: wallet,
-                    dataRepository: dataRepository,
+                    localStorage: localStorage,
                     tezosAccount: baseChainAccount as TezosAccount),
 
                 "XTZ" => new TezosAccount(
-                    currencies,
-                    wallet,
-                    dataRepository),
-
-                _ => throw new NotSupportedException($"Not supported currency {currency}."),
-            };
-        }
-
-        public static ICurrencyAccount CreateTezosTokenAccount(
-            string tokenType,
-            string tokenContract,
-            int tokenId,
-            ICurrencies currencies,
-            IHdWallet wallet,
-            IAccountDataRepository dataRepository,
-            TezosAccount tezosAccount)
-        {
-            return tokenType switch
-            {
-                "FA12" or "KUSD" or "TZBTC" => new Fa12Account(
-                    tokenContract: tokenContract,
-                    tokenId: tokenId,
                     currencies: currencies,
                     wallet: wallet,
-                    dataRepository: dataRepository,
-                    tezosAccount: tezosAccount),
+                    localStorage: localStorage),
 
-                "FA2" or "USDT_XTZ" => new Fa2Account(
-                    tokenContract: tokenContract,
-                    tokenId: tokenId,
-                    currencies: currencies,
-                    wallet: wallet,
-                    dataRepository: dataRepository,
-                    tezosAccount: tezosAccount),
-
-                _ => throw new NotSupportedException($"Not supported token type {tokenType}."),
+                _ => throw new NotSupportedException($"Not supported currency {currency}"),
             };
         }
     }

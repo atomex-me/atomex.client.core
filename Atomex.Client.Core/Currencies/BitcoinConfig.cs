@@ -6,22 +6,17 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using NBitcoin;
 
-using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
-using Atomex.Blockchain.BitCore;
+using Atomex.Blockchain.Bitcoin;
+using Atomex.Blockchain.Bitcoin.SoChain;
 using Atomex.Blockchain.BlockCypher;
-using Atomex.Blockchain.Insight;
-using Atomex.Blockchain.SoChain;
 using Atomex.Common;
-using Atomex.Wallet.Bip;
-using FeeRate = Atomex.Blockchain.BitcoinBased.FeeRate;
+using Atomex.Wallets.Bips;
+using FeeRate = Atomex.Blockchain.Bitcoin.FeeRate;
 
 namespace Atomex
 {
     public class BitcoinConfig : BitcoinBasedConfig
     {
-        private const long BtcDigitsMultiplier = 100_000_000;
-
         public BitcoinConfig()
         {
         }
@@ -33,42 +28,54 @@ namespace Atomex
 
         public void Update(IConfiguration configuration)
         {
-            Name                    = configuration[nameof(Name)];
-            DisplayedName           = configuration[nameof(DisplayedName)];
-            Description             = configuration[nameof(Description)];
-            IsToken                 = bool.Parse(configuration[nameof(IsToken)]);
- 
-            DigitsMultiplier        = BtcDigitsMultiplier;
-            Digits                  = (int)Math.Round(Math.Log10(BtcDigitsMultiplier));
-            Format                  = DecimalExtensions.GetFormatWithPrecision(Digits);
+            Name = configuration[nameof(Name)];
+            DisplayedName = configuration[nameof(DisplayedName)];
+            Description = configuration[nameof(Description)];
+            IsToken = bool.Parse(configuration[nameof(IsToken)]);
 
-            FeeRate                 = decimal.Parse(configuration[nameof(FeeRate)]);
-            DustFeeRate             = decimal.Parse(configuration[nameof(DustFeeRate)]);
-            MinTxFeeRate            = decimal.Parse(configuration[nameof(MinTxFeeRate)]);
-            MinRelayTxFeeRate       = decimal.Parse(configuration[nameof(MinRelayTxFeeRate)]);
+            Decimals = int.Parse(configuration[nameof(Decimals)]);
+            Format = DecimalExtensions.GetFormatWithPrecision(Decimals);
+            FeeRate = decimal.Parse(configuration[nameof(FeeRate)]);
+            DustFeeRate = decimal.Parse(configuration[nameof(DustFeeRate)]);
+            MinTxFeeRate = decimal.Parse(configuration[nameof(MinTxFeeRate)]);
+            MinRelayTxFeeRate = decimal.Parse(configuration[nameof(MinRelayTxFeeRate)]);
 
-            FeeCode                 = Name;
-            FeeFormat               = DecimalExtensions.GetFormatWithPrecision(Digits);
-            FeeCurrencyName         = Name;
+            FeeCode = Name;
+            FeeFormat = DecimalExtensions.GetFormatWithPrecision(Decimals);
+            FeeCurrencyName = Name;
 
-            MaxRewardPercent        = configuration[nameof(MaxRewardPercent)] != null
+            MaxRewardPercent = configuration[nameof(MaxRewardPercent)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercent)], CultureInfo.InvariantCulture)
                 : 0m;
-            MaxRewardPercentInBase  = configuration[nameof(MaxRewardPercentInBase)] != null
+            MaxRewardPercentInBase = configuration[nameof(MaxRewardPercentInBase)] != null
                 ? decimal.Parse(configuration[nameof(MaxRewardPercentInBase)], CultureInfo.InvariantCulture)
                 : 0m;
             FeeCurrencyToBaseSymbol = configuration[nameof(FeeCurrencyToBaseSymbol)];
-            FeeCurrencySymbol       = configuration[nameof(FeeCurrencySymbol)];
+            FeeCurrencySymbol = configuration[nameof(FeeCurrencySymbol)];
 
-            HasFeePrice             = false;
+            HasFeePrice = false;
 
-            Network                 = ResolveNetwork(configuration);
-            BlockchainApi           = ResolveBlockchainApi(configuration);
-            TxExplorerUri           = configuration[nameof(TxExplorerUri)];
-            AddressExplorerUri      = configuration[nameof(AddressExplorerUri)];
+            Network = ResolveNetwork(configuration);
+            BlockchainApi = configuration["BlockchainApi"];
+            SoChainSettings = new SoChainSettings
+            {
+                BaseUrl = configuration["SoChain:BaseUrl"],
+                Network = configuration["SoChain:Network"],
+                Decimals = Decimals
+            };
+            BlockCypherSettings = new BlockCypherSettings
+            {
+                BaseUrl = configuration["BlockCypher:BaseUrl"],
+                Network = configuration["BlockCypher:Network"],
+                Coin = configuration["BlockCypher:Coin"],
+                Decimals = Decimals
+            };
 
-            IsSwapAvailable         = true;
-            Bip44Code               = Bip44.Bitcoin;
+            TxExplorerUri = configuration[nameof(TxExplorerUri)];
+            AddressExplorerUri = configuration[nameof(AddressExplorerUri)];
+
+            IsSwapAvailable = true;
+            Bip44Code = Bip44.Bitcoin;
         }
 
         private static Network ResolveNetwork(IConfiguration configuration)
@@ -83,23 +90,17 @@ namespace Atomex
                 _ => throw new NotSupportedException($"Chain {chain} not supported")
             };
         }
-
-        private IBlockchainApi ResolveBlockchainApi(IConfiguration configuration)
+        public override BitcoinBlockchainApi GetBitcoinBlockchainApi()
         {
-            var blockchainApi = configuration["BlockchainApi"]
-                .ToLowerInvariant();
-
-            return blockchainApi switch
+            return BlockchainApi.ToLowerInvariant() switch
             {
-                "sochain"             => new SoChainApi(this, configuration),
-                "blockcypher"         => new BlockCypherApi(this, configuration),
-                "insight"             => new InsightApi(this, configuration),
-                "bitcore+blockcypher" => new BitCoreApi(this, configuration),
-                _ => throw new NotSupportedException($"BlockchainApi {blockchainApi} not supported")
+                "sochain" => new SoChainApi(Name, SoChainSettings),
+                "blockcypher" => new BlockCypherApi(Name, BlockCypherSettings),
+                _ => throw new NotSupportedException($"BlockchainApi {BlockchainApi} not supported")
             };
         }
 
-        private FeeRate _feeRate;
+        private readonly FeeRate _feeRate;
         private DateTime _feeRateTimeStampUtc;
 
         public override async Task<decimal> GetFeeRateAsync(
@@ -118,15 +119,14 @@ namespace Atomex
 
             try
             {
-                var feeRateResult = await BitcoinFeesEarn
+                var (feeRate, error) = await BitcoinFeesEarn
                     .GetFeeRateAsync(cancellationToken)
                     .ConfigureAwait(false);
 
-                _feeRate = feeRateResult?.Value;
                 _feeRateTimeStampUtc = DateTime.UtcNow;
 
-                return feeRateResult != null && !feeRateResult.HasError && feeRateResult.Value != null
-                    ? feeRateResult.Value.FastestFee
+                return error == null
+                    ? feeRate.FastestFee
                     : FeeRate;
             }
             catch

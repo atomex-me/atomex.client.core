@@ -1,55 +1,14 @@
 ﻿using System;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Serilog;
 
 using Atomex.Client.Entities;
 using Atomex.Core;
-using Atomex.Cryptography.Abstract;
-using Atomex.Wallet.Abstract;
 
 namespace Atomex.Common
 {
     public static class OrderExtensions
     {
-        public static async Task CreateProofOfPossessionAsync(this Order order, IAccount account)
-        {
-            try
-            {
-                foreach (var address in order.FromWallets)
-                {
-                    if (address == null)
-                        continue;
-
-                    address.Nonce = Guid.NewGuid().ToString();
-
-                    var data = Encoding.Unicode
-                        .GetBytes($"{address.Nonce}{order.TimeStamp.ToUniversalTime():yyyy.MM.dd HH:mm:ss.fff}");
-
-                    var hashToSign = HashAlgorithm.Sha256.Hash(data);
-
-                    var currency = account.Currencies.GetByName(address.Currency);
-
-                    var signature = await account.Wallet
-                        .SignAsync(hashToSign, address, currency)
-                        .ConfigureAwait(false);
-
-                    if (signature == null)
-                        throw new Exception("Error during creation of proof of possession. Sign is null.");
-
-                    address.ProofOfPossession = Convert.ToBase64String(signature);
-
-                    Log.Verbose("ProofOfPossession {@signature}", address.ProofOfPossession);
-                }
-            }
-            catch (Exception e)
-            {
-                Log.Error(e, "Proof of possession creating error");
-            }
-        }
-
         public static bool IsContinuationOf(this Order order, Order previousOrder)
         {
             if (previousOrder == null)
@@ -94,58 +53,6 @@ namespace Atomex.Common
                 OrderStatus.Rejected => previousStatus == OrderStatus.Pending,
                 _ => throw new ArgumentOutOfRangeException(nameof(status), status, null),
             };
-        }
-
-        public static Order WithEndOfTransaction(this Order order, bool endOfTransaction)
-        {
-            order.EndOfTransaction = endOfTransaction;
-            return order;
-        }
-
-        public static async Task<Order> ResolveWallets(
-            this Order order,
-            IAccount account,
-            CancellationToken cancellationToken = default)
-        {
-            if (order.FromWallets == null)
-                return order;
-
-            foreach (var wallet in order.FromWallets)
-            {
-                if (wallet == null)
-                    continue;
-
-                var resolvedAddress = await account
-                    .GetAddressAsync(wallet.Currency, wallet.Address, cancellationToken)
-                    .ConfigureAwait(false);
-
-                if (resolvedAddress == null)
-                    throw new Exception($"Can't resolve wallet address {wallet.Address} for order {order.Id}");
-
-                wallet.KeyIndex           = resolvedAddress.KeyIndex;
-                wallet.Balance            = resolvedAddress.Balance;
-                wallet.UnconfirmedIncome  = resolvedAddress.UnconfirmedIncome;
-                wallet.UnconfirmedOutcome = resolvedAddress.UnconfirmedOutcome;
-                wallet.PublicKey          = resolvedAddress.PublicKey;
-            }
-
-            return order;
-        }
-
-        public static string ToCompactString(this Order order)
-        {
-            return $"{{\"OrderId\": \"{order.Id}\", " +
-                   $"\"ClientOrderId\": \"{order.ClientOrderId}\", " +
-                   $"\"Symbol\": \"{order.Symbol}\", " +
-                   $"\"Price\": \"{order.Price}\", " +
-                   $"\"LastPrice\": \"{order.LastPrice}\", " +
-                   $"\"Qty\": \"{order.Qty}\", " +
-                   $"\"LeaveQty\": \"{order.LeaveQty}\", " +
-                   $"\"LastQty\": \"{order.LastQty}\", " +
-                   $"\"Side\": \"{order.Side}\", " +
-                   $"\"Type\": \"{order.Type}\", " +
-                   $"\"Status\": \"{order.Status}\", " +
-                   $"\"EndOfTransaction\": \"{order.EndOfTransaction}\"}}";
         }
 
         public static bool VerifyOrder(this Order order, Order localOrder)

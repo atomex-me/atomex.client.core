@@ -3,42 +3,45 @@ using System.Collections.Generic;
 
 using NBitcoin;
 
-using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 
 namespace Atomex.Client.Core.Tests
 {
     public static class BitcoinBasedCommon
     {
-        public static IBitcoinBasedTransaction CreateFakeTx(BitcoinBasedConfig currency, PubKey to, params long[] outputs)
+        public static BitcoinTransaction CreateFakeTx(BitcoinBasedConfig currency, PubKey to, params long[] outputs)
         {
             var tx = Transaction.Create(currency.Network);
 
             foreach (var output in outputs)
                 tx.Outputs.Add(new TxOut(new Money(output), to.Hash)); // p2pkh
 
-            return new BitcoinBasedTransaction(currency.Name, tx);
+            return new BitcoinTransaction(currency.Name, tx);
         }
 
-        public static IBitcoinBasedTransaction CreateSegwitPaymentTx(
+        public static BitcoinTransaction CreateSegwitPaymentTx(
             BitcoinBasedConfig currency,
-            IEnumerable<ITxOutput> outputs,
+            IEnumerable<BitcoinTxOutput> outputs,
             PubKey from,
             PubKey to,
             int amount,
             int fee)
         {
-            return currency.CreateP2WPkhTx(
+            return currency.CreateTransaction(
                 unspentOutputs: outputs,
-                destinationAddress: to.GetAddress(ScriptPubKeyType.Segwit, currency.Network).ToString(),
-                changeAddress: from.GetAddress(ScriptPubKeyType.Segwit, currency.Network).ToString(),
+                destinationAddress: to
+                    .GetAddress(ScriptPubKeyType.Segwit, currency.Network)
+                    .ToString(),
+                changeAddress: from
+                    .GetAddress(ScriptPubKeyType.Segwit, currency.Network)
+                    .ToString(),
                 amount: amount,
                 fee: fee);
         }
 
-        public static IBitcoinBasedTransaction CreatePaymentTx(
+        public static BitcoinTransaction CreatePaymentTx(
             BitcoinBasedConfig currency,
-            IEnumerable<ITxOutput> outputs,
+            IEnumerable<BitcoinTxOutput> outputs,
             PubKey from,
             PubKey to,
             int amount,
@@ -46,10 +49,14 @@ namespace Atomex.Client.Core.Tests
             DateTimeOffset lockTime,
             params Script[] knownRedeems)
         {
-            return currency.CreateP2PkhTx(
+            return currency.CreateTransaction(
                 unspentOutputs: outputs,
-                destinationAddress: to.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
-                changeAddress: from.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
+                destinationAddress: to
+                    .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
+                    .ToString(),
+                changeAddress: from
+                    .GetAddress(ScriptPubKeyType.Legacy, currency.Network)
+                    .ToString(),
                 amount: amount,
                 fee: fee,
                 lockTime: lockTime,

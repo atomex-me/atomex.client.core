@@ -5,8 +5,7 @@ using System.Threading.Tasks;
 using NBitcoin;
 using Serilog;
 
-using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
@@ -15,7 +14,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
 {
     public class BitcoinBasedSwapInitiatedHelper
     {
-        public static async Task<Result<IBlockchainTransaction>> TryToFindPaymentAsync(
+        public static async Task<Result<BitcoinTransaction>> TryToFindPaymentAsync(
             Swap swap,
             CurrencyConfig currency,
             Side side,
@@ -31,13 +30,13 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
 
                 var bitcoinBased = (BitcoinBasedConfig)currency;
 
-                var requiredAmount = AmountHelper.QtyToSellAmount(side, swap.Qty, swap.Price, bitcoinBased.DigitsMultiplier);
+                var requiredAmount = AmountHelper.QtyToSellAmount(side, swap.Qty, swap.Price, bitcoinBased.Precision);
                 var requiredAmountInSatoshi = bitcoinBased.CoinToSatoshi(requiredAmount);
 
                 var redeemScript = refundAddress == null && redeemScriptBase64 != null
                     ? new Script(Convert.FromBase64String(redeemScriptBase64))
-                    : BitcoinBasedSwapTemplate
-                        .GenerateHtlcP2PkhSwapPayment(
+                    : BitcoinSwapTemplate
+                        .CreateHtlcSwapPayment(
                             aliceRefundAddress: refundAddress,
                             bobAddress: toAddress,
                             lockTimeStamp: refundTimeStamp,
@@ -45,52 +44,50 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                             secretSize: CurrencySwap.DefaultSecretSize,
                             expectedNetwork: bitcoinBased.Network);
 
-                var redeemScriptAddress = redeemScript
-                    .PaymentScript
+                var redeemScriptPubKey = redeemScriptBase64 != null
+                    ? redeemScript.Hash.ScriptPubKey
+                    : redeemScript.WitHash.ScriptPubKey;
+
+                var redeemScriptAddress = redeemScriptPubKey
                     .GetDestinationAddress(bitcoinBased.Network)
                     .ToString();
 
-                var api = bitcoinBased.BlockchainApi as BitcoinBasedBlockchainApi;
+                var api = bitcoinBased.GetBitcoinBlockchainApi();
 
-                var outputsResult = await api
-                    .GetOutputsAsync(redeemScriptAddress, null, cancellationToken)
+                var (outputs, error) = await api
+                    .GetOutputsAsync(redeemScriptAddress, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (outputsResult == null)
+                if (error != null)
+                    return error;
+
+                if (outputs == null)
                     return new Error(Errors.RequestError, $"Connection error while getting outputs for {redeemScriptAddress} address");
 
-                if (outputsResult.HasError)
-                    return outputsResult.Error;
-
-                foreach (var output in outputsResult.Value)
+                foreach (var output in outputs)
                 {
-                    var o = output as BitcoinBasedTxOutput;
+                    var outputScriptHex = output.Coin.TxOut.ScriptPubKey.ToHex();
 
-                    var outputScriptHex = o.Coin.TxOut.ScriptPubKey.ToHex();
-
-                    if (redeemScript.PaymentScript.ToHex() != outputScriptHex)
+                    if (redeemScriptPubKey.ToHex() != outputScriptHex)
                         continue;
 
-                    if (o.Value < requiredAmountInSatoshi)
+                    if (output.Value < requiredAmountInSatoshi)
                         continue;
 
-                    var txResult = await api
-                        .GetTransactionAsync(o.TxId, cancellationToken)
+                    var (tx, txError) = await api
+                        .GetTransactionAsync(output.TxId, cancellationToken)
                         .ConfigureAwait(false);
 
-                    if (txResult == null)
-                        return new Error(Errors.RequestError, $"Connection error while getting tx {o.TxId}");
+                    if (txError != null)
+                        return txError;
 
-                    if (txResult.HasError)
-                        return txResult.Error;
-
-                    if (txResult.Value == null)
+                    if (tx == null)
                         continue;
 
-                    return txResult.Value as BitcoinBasedTransaction;
+                    return tx as BitcoinTransaction;
                 }
 
-                return new Result<IBlockchainTransaction>((IBitcoinBasedTransaction)null);
+                return new Result<BitcoinTransaction> { Value = null };
             }
             catch (Exception e)
             {
@@ -114,7 +111,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                     .OrderSideForBuyCurrency(swap.PurchasedCurrency)
                     .Opposite();
 
-                var txResult = await TryToFindPaymentAsync(
+                var (tx, error) = await TryToFindPaymentAsync(
                         swap: swap,
                         currency: currency,
                         side: side,
@@ -125,16 +122,13 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-                if (txResult == null)
-                    return new Error(Errors.RequestError, $"Connection error while getting payment tx");
+                if (error != null)
+                    return error;
 
-                if (txResult.HasError)
-                    return txResult.Error;
-
-                if (txResult.Value == null)
+                if (tx == null)
                     return false;
 
-                return txResult.Value.IsConfirmed;
+                return tx.IsConfirmed;
             }
             catch (Exception e)
             {
@@ -170,21 +164,22 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                             break;
                         }
 
-                        var isInitiatedResult = await IsInitiatedAsync(
+                        var (isInitiated, error) = await IsInitiatedAsync(
                                 swap: swap,
                                 currency: currency,
                                 refundTimeStamp: refundTimeStamp,
                                 cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (isInitiatedResult.HasError)
+                        if (error != null)
+                        {
                             Log.Error("{@currency} IsInitiatedAsync error for swap {@swap}. Code: {@code}. Description: {@desc}",
                                 currency.Name,
                                 swap.Id,
-                                isInitiatedResult.Error.Code,
-                                isInitiatedResult.Error.Description);
-
-                        if (!isInitiatedResult.HasError && isInitiatedResult.Value)
+                                error.Value.Code,
+                                error.Value.Message);
+                        }
+                        else if (error == null && isInitiated)
                         {
                             await initiatedHandler
                                 .Invoke(swap, cancellationToken)

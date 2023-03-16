@@ -1,8 +1,15 @@
-﻿using Atomex.Core;
+﻿using System.Numerics;
+
+using Atomex.Core;
 
 namespace Atomex.ViewModels
 {
-    public class WalletAddressViewModel
+    public interface IWalletAddressViewModel
+    {
+        WalletAddress WalletAddress { get; set; }
+    }
+
+    public class WalletAddressViewModel : IWalletAddressViewModel
     {
         public WalletAddress WalletAddress { get; set; }
         public string Address { get; set; }
@@ -16,10 +23,10 @@ namespace Atomex.ViewModels
         public string TokenFormat { get; set; }
         public string TokenCode { get; set; }
         public int TokenId { get; set; }
-        public bool IsTezosToken { get; set; }
+        public bool IsToken { get; set; }
 
-        public decimal Balance => IsTezosToken ? TokenBalance : AvailableBalance;
-        public string BalanceFormat => IsTezosToken ? TokenFormat : CurrencyFormat;
-        public string BalanceCode => IsTezosToken ? TokenCode : CurrencyCode;
+        public decimal Balance => IsToken ? TokenBalance : AvailableBalance;
+        public string BalanceFormat => IsToken ? TokenFormat : CurrencyFormat;
+        public string BalanceCode => IsToken ? TokenCode : CurrencyCode;
     }
 }

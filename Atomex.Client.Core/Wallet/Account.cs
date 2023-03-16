@@ -1,22 +1,22 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Numerics;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Microsoft.Extensions.Configuration;
 using Serilog;
 
 using Atomex.Abstract;
-using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
+using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography.Abstract;
-using Atomex.LiteDb;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Tezos;
 
 namespace Atomex.Wallet
 {
@@ -24,37 +24,8 @@ namespace Atomex.Wallet
     {
         public const string DefaultUserSettingsFileName = "user.config";
         public const string DefaultDataFileName = "data.db";
-        private const string DefaultAccountKey = "Account:Default";
         public string SettingsFilePath => $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}";
 
-        public event EventHandler<CurrencyEventArgs> BalanceUpdated
-        {
-            add
-            {
-                foreach (var currencyAccount in CurrencyAccounts)
-                    currencyAccount.Value.BalanceUpdated += value;
-            }
-            remove
-            {
-                foreach (var currencyAccount in CurrencyAccounts)
-                    currencyAccount.Value.BalanceUpdated -= value;
-            }
-        }
-        public event EventHandler<TransactionEventArgs> UnconfirmedTransactionAdded
-        {
-            add
-            {
-                foreach (var currencyAccount in CurrencyAccounts.Values)
-                    if (currencyAccount is ITransactionalAccount account)
-                        account.UnconfirmedTransactionAdded += value;
-            }
-            remove
-            {
-                foreach (var currencyAccount in CurrencyAccounts.Values)
-                    if (currencyAccount is ITransactionalAccount account)
-                        account.UnconfirmedTransactionAdded -= value;
-            }
-        }
         public event EventHandler Locked;
         public event EventHandler Unlocked;
 
@@ -63,57 +34,22 @@ namespace Atomex.Wallet
         public IHdWallet Wallet { get; }
         public ICurrencies Currencies { get; }
         public UserData UserData { get; private set; }
-        private IAccountDataRepository DataRepository { get; }
-        private IDictionary<string, ICurrencyAccount> CurrencyAccounts { get; }
 
-        private Account(
-            string pathToAccount,
-            SecureString password,
-            ICurrenciesProvider currenciesProvider,
-            Action<MigrationActionType> migrationCompleteCallback = null)
-            : this(wallet: HdWallet.LoadFromFile(pathToAccount, password),
-                   password: password,
-                   currenciesProvider: currenciesProvider,
-                   migrationCompleteCallback: migrationCompleteCallback)
-        {
-        }
+        private readonly ILocalStorage _localStorage;
+        private readonly IDictionary<string, ICurrencyAccount> _accountsCache;
 
         public Account(
             IHdWallet wallet,
-            SecureString password,
-            ICurrenciesProvider currenciesProvider,
-            Action<MigrationActionType> migrationCompleteCallback = null)
-        {
-            Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
-
-            Currencies = currenciesProvider.GetCurrencies(Network);
-
-            DataRepository = new LiteDbAccountDataRepository(
-                pathToDb: Path.Combine(Path.GetDirectoryName(Wallet.PathToWallet), DefaultDataFileName),
-                password: password,
-                currencies: Currencies,
-                network: wallet.Network,
-                migrationCompleteCallback);
-
-            CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, DataRepository);
-
-            UserData = UserData.TryLoadFromFile(
-                pathToFile: SettingsFilePath) ?? UserData.GetDefaultSettings(Currencies);
-        }
-
-        public Account(
-            IHdWallet wallet,
-            IAccountDataRepository dataRepository,
+            ILocalStorage localStorage,
             ICurrenciesProvider currenciesProvider)
         {
             Wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
-            DataRepository = dataRepository ?? throw new ArgumentNullException(nameof(dataRepository));
+            _localStorage = localStorage ?? throw new ArgumentNullException(nameof(localStorage));
 
-            Currencies = currenciesProvider.GetCurrencies(Network);
-            CurrencyAccounts = CurrencyAccountCreator.Create(Currencies, wallet, DataRepository);
+            Currencies = currenciesProvider.GetCurrencies(Network);   
+            _accountsCache = new ConcurrentDictionary<string, ICurrencyAccount>();
 
-            UserData = UserData.TryLoadFromFile(
-                pathToFile: SettingsFilePath) ?? UserData.GetDefaultSettings(Currencies);
+            UserData = UserData.TryLoadFromFile(SettingsFilePath) ?? UserData.GetDefaultSettings(Currencies);
         }
 
         #region Common
@@ -128,7 +64,8 @@ namespace Atomex.Wallet
                 return false;
 
             UserData.SaveToFile(SettingsFilePath);
-            DataRepository.ChangePassword(newPassword);
+
+            _localStorage.ChangePassword(newPassword);
 
             return true;
         }
@@ -143,7 +80,9 @@ namespace Atomex.Wallet
         public void Unlock(SecureString password)
         {
             Wallet.Unlock(password);
+
             Log.Information("Wallet is unlocked");
+
             Unlocked?.Invoke(this, EventArgs.Empty);
         }
 
@@ -153,73 +92,70 @@ namespace Atomex.Wallet
             return this;
         }
 
-        public static IAccount LoadFromConfiguration(
-            IConfiguration configuration,
-            SecureString password,
-            ICurrenciesProvider currenciesProvider)
+        public ICurrencyAccount GetCurrencyAccount(
+            string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null)
         {
-            var pathToAccount = configuration[DefaultAccountKey];
+            if (Atomex.Currencies.IsTokenStandard(currency) && tokenContract == null)
+                throw new ArgumentException($"Token contract cannot be null for token {currency} standard");
 
-            if (string.IsNullOrEmpty(pathToAccount))
+            if (Atomex.Currencies.IsPresetToken(currency))
             {
-                Log.Error("Path to default account is null or empty");
-                return null;
+                if (Currencies.GetByName(currency) is not ITokenConfig tokenConfig)
+                    throw new ArgumentException($"Can't find config for {currency}");
+
+                if (tokenConfig.TokenContractAddress == null)
+                    throw new Exception($"Token contract address for {currency} is null");
+
+                currency = tokenConfig.Standard;
+
+                if (tokenContract != null && tokenContract != tokenConfig.TokenContractAddress)
+                    throw new ArgumentException($"The token contract {tokenContract} does not match the token contract {tokenConfig.TokenContractAddress} in the configuration");
+
+                tokenContract = tokenConfig.TokenContractAddress;
+
+                if (tokenId != null && tokenId != tokenConfig.TokenId)
+                    throw new ArgumentException($"The token id {tokenId} does not match the token id {tokenConfig.TokenId} in the configuration");
+
+                tokenId = tokenConfig.TokenId;
             }
 
-            if (!File.Exists(FileSystem.Current.ToFullPath(pathToAccount)))
-            {
-                Log.Error("Default account not found");
-                return null;
-            }
+            var uniqueId = tokenContract != null
+                ? $"{currency}:{tokenContract}:{tokenId ?? 0}"
+                : currency;
 
-            return LoadFromFile(pathToAccount, password, currenciesProvider);
-        }
-
-        public static Account LoadFromFile(
-            string pathToAccount,
-            SecureString password,
-            ICurrenciesProvider currenciesProvider,
-            Action<MigrationActionType> migrationCompleteCallback = null)
-        {
-            return new Account(pathToAccount, password, currenciesProvider, migrationCompleteCallback);
-        }
-
-        public ICurrencyAccount GetCurrencyAccount(string currency)
-        {
-            if (CurrencyAccounts.TryGetValue(currency, out var account))
+            if (_accountsCache.TryGetValue(uniqueId, out var account))
                 return account;
 
-            throw new NotSupportedException($"Not supported currency {currency}");
+            var baseChainAccount = Atomex.Currencies.IsEthereumTokenStandard(currency)
+                ? GetCurrencyAccount(EthereumHelper.Eth)
+                : Atomex.Currencies.IsTezosTokenStandard(currency)
+                    ? GetCurrencyAccount(TezosHelper.Xtz)
+                    : null;
+
+            account = CurrencyAccountCreator.CreateCurrencyAccount(
+                currency: currency,
+                wallet: Wallet,
+                localStorage: _localStorage,
+                currencies: Currencies,
+                tokenContract: tokenContract,
+                tokenId: tokenId,
+                baseChainAccount: baseChainAccount);
+
+            if (account == null)
+                throw new NotSupportedException($"Can't create account for currency {currency}");
+
+            _accountsCache.TryAdd(uniqueId, account);
+
+            return account;
         }
 
-        public ICurrencyAccount GetTezosTokenAccount(
+        public T GetCurrencyAccount<T>(
             string currency,
-            string tokenContract,
-            int tokenId)
-        {
-            var uniqueId = $"{currency}:{tokenContract}:{tokenId}";
-
-            if (CurrencyAccounts.TryGetValue(uniqueId, out var account))
-                return account;
-
-            return CurrencyAccountCreator.CreateTezosTokenAccount(
-                currency,
-                tokenContract,
-                tokenId,
-                Currencies,
-                Wallet,
-                DataRepository,
-                CurrencyAccounts[TezosConfig.Xtz] as TezosAccount);
-        }
-
-        public T GetCurrencyAccount<T>(string currency) where T : class, ICurrencyAccount =>
-            GetCurrencyAccount(currency) as T;
-
-        public T GetTezosTokenAccount<T>(
-            string currency,
-            string tokenContract,
-            int tokenId) where T : class =>
-            GetTezosTokenAccount(currency, tokenContract, tokenId) as T;
+            string? tokenContract = null,
+            BigInteger? tokenId = null) where T : class, ICurrencyAccount =>
+            GetCurrencyAccount(currency, tokenContract, tokenId) as T;
 
         public string GetUserId(uint keyIndex = 0)
         {
@@ -235,34 +171,43 @@ namespace Atomex.Wallet
 
         public Task<Balance> GetBalanceAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(GetCurrencyAccount(currency).GetBalance());
+            return GetCurrencyAccount(currency, tokenContract, tokenId)
+                .GetBalanceAsync();
         }
 
         public Task<Balance> GetAddressBalanceAsync(
             string currency,
             string address,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency)
+            return GetCurrencyAccount(currency, tokenContract, tokenId)
                 .GetAddressBalanceAsync(address, cancellationToken);
         }
 
         public Task UpdateBalanceAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency)
+            return GetCurrencyAccount(currency, tokenContract, tokenId)
                 .UpdateBalanceAsync(cancellationToken);
         }
 
         public Task UpdateBalanceAsync(
             string currency,
             string address,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency)
+            return GetCurrencyAccount(currency, tokenContract, tokenId)
                 .UpdateBalanceAsync(address, cancellationToken);
         }
 
@@ -273,25 +218,31 @@ namespace Atomex.Wallet
         public Task<WalletAddress> GetAddressAsync(
             string currency,
             string address,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency)
+            return GetCurrencyAccount(currency, tokenContract, tokenId)
                 .GetAddressAsync(address, cancellationToken);
         }
 
         public Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency)
+            return GetCurrencyAccount(currency, tokenContract, tokenId)
                 .GetUnspentAddressesAsync(cancellationToken);
         }
 
         public Task<WalletAddress> GetFreeExternalAddressAsync(
             string currency,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
             CancellationToken cancellationToken = default)
         {
-            return GetCurrencyAccount(currency)
+            return GetCurrencyAccount(currency, tokenContract, tokenId)
                 .GetFreeExternalAddressAsync(cancellationToken);
         }
 
@@ -299,30 +250,33 @@ namespace Atomex.Wallet
 
         #region Transactions
 
-        public Task<IBlockchainTransaction> GetTransactionByIdAsync(
+        public Task<IEnumerable<TransactionInfo<ITransaction, ITransactionMetadata>>> GetTransactionsWithMetadataAsync(
             string currency,
-            string txId)
+            int offset = 0,
+            int limit = int.MaxValue,
+            SortDirection sort = SortDirection.Desc,
+            CancellationToken cancellationToken = default)
         {
-            return DataRepository.GetTransactionByIdAsync(
+            var config = Currencies.GetByName(currency);
+
+            return _localStorage.GetTransactionsWithMetadataAsync(
                 currency: currency,
-                txId: txId,
-                transactionType: Currencies.GetByName(currency).TransactionType);
+                transactionType: config.TransactionType,
+                metadataType: config.TransactionMetadataType,
+                offset: offset,
+                limit: limit,
+                sort: sort,
+                cancellationToken: cancellationToken);
         }
 
-        public Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync(string currency)
+        public async Task<IEnumerable<ITransaction>> GetUnconfirmedTransactionsAsync()
         {
-            return DataRepository.GetTransactionsAsync(
-                currency: currency,
-                transactionType: Currencies.GetByName(currency).TransactionType);
-        }
+            var result = new List<ITransaction>();
 
-        public async Task<IEnumerable<IBlockchainTransaction>> GetTransactionsAsync()
-        {
-            var result = new List<IBlockchainTransaction>();
-
-            foreach (var currency in Currencies)
+            foreach (var (_, account) in _accountsCache)
             {
-                var txs = await GetTransactionsAsync(currency.Name)
+                var txs = await account
+                    .GetUnconfirmedTransactionsAsync()
                     .ConfigureAwait(false);
 
                 result.AddRange(txs);
@@ -331,43 +285,44 @@ namespace Atomex.Wallet
             return result;
         }
 
-        public Task<bool> RemoveTransactionAsync(string id) =>
-            DataRepository.RemoveTransactionByIdAsync(id);
+        public Task<ITransactionMetadata> ResolveTransactionMetadataAsync(
+            ITransaction tx,
+            CancellationToken cancellationToken = default)
+        {
+            if (Atomex.Currencies.IsTokenStandard(tx.Currency))
+            {
+                var tokenTransfer = (ITokenTransfer)tx;
+
+                return GetCurrencyAccount(tokenTransfer.Currency, tokenTransfer.Contract, tokenTransfer.TokenId)
+                    .ResolveTransactionMetadataAsync(tx, cancellationToken);
+            }
+
+            return GetCurrencyAccount(tx.Currency)
+                .ResolveTransactionMetadataAsync(tx, cancellationToken);
+        }
 
         #endregion Transactions
 
         #region Orders
 
-        public Task<bool> UpsertOrderAsync(Order order) =>
-            DataRepository.UpsertOrderAsync(order);
-
-        public Task<bool> RemoveAllOrdersAsync() =>
-            DataRepository.RemoveAllOrdersAsync();
-
-        public Order GetOrderById(string clientOrderId) =>
-            DataRepository.GetOrderById(clientOrderId);
-
         public Order GetOrderById(long id) =>
-            DataRepository.GetOrderById(id);
-
-        public Task<bool> RemoveOrderByIdAsync(long id) =>
-            DataRepository.RemoveOrderByIdAsync(id);
+            _localStorage.GetOrderById(id);
 
         #endregion Orders
 
         #region Swaps
 
         public Task<bool> AddSwapAsync(Swap swap) =>
-            DataRepository.AddSwapAsync(swap);
+            _localStorage.AddSwapAsync(swap);
 
         public Task<bool> UpdateSwapAsync(Swap swap) =>
-            DataRepository.UpdateSwapAsync(swap);
+            _localStorage.UpdateSwapAsync(swap);
 
         public Task<Swap> GetSwapByIdAsync(long swapId) =>
-            DataRepository.GetSwapByIdAsync(swapId);
+            _localStorage.GetSwapByIdAsync(swapId);
 
         public Task<IEnumerable<Swap>> GetSwapsAsync() =>
-            DataRepository.GetSwapsAsync();
+            _localStorage.GetSwapsAsync();
 
         #endregion Swaps
     }

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 
 namespace Atomex.Common
 {
@@ -8,53 +9,70 @@ namespace Atomex.Common
             Side side,
             decimal amount,
             decimal price,
-            decimal digitsMultiplier)
+            int precision)
         {
-            return RoundDown(side == Side.Buy ? amount / price : amount, digitsMultiplier);
+            return RoundDown(side == Side.Buy ? amount / price : amount, precision);
         }
 
         public static decimal AmountToBuyQty(
             Side side,
             decimal amount,
             decimal price,
-            decimal digitsMultiplier) => AmountToSellQty(side.Opposite(), amount, price, digitsMultiplier);
+            int precision) => AmountToSellQty(side.Opposite(), amount, price, precision);
 
         public static decimal QtyToSellAmount(
             Side side,
             decimal qty,
             decimal price,
-            decimal digitsMultiplier)
+            int precision)
         {
-            return RoundDown(side == Side.Buy ? qty * price : qty, digitsMultiplier);
+            return RoundDown(side == Side.Buy ? qty * price : qty, precision);
         }
 
         public static decimal QtyToBuyAmount(
             Side side,
             decimal qty,
             decimal price,
-            decimal digitsMultiplier) => QtyToSellAmount(side.Opposite(), qty, price, digitsMultiplier);
+            int precision) => QtyToSellAmount(side.Opposite(), qty, price, precision);
 
-        public static decimal RoundDown(decimal d, decimal digitsMultiplier)
+        public static decimal RoundDown(decimal d, int precision)
         {
-            if (digitsMultiplier > 1000000000)
-                digitsMultiplier = 1000000000; // server decimal precision
+            const int MaxDecimalPrecision = 28;
 
-            var integral = Math.Truncate(d);
-            var fraction = d - integral;
+            try
+            {
+                if (precision < MaxDecimalPrecision)
+                {
+                    var multiplier = (decimal)Math.Pow(10, precision);
 
-            return integral + Math.Truncate(fraction * digitsMultiplier) / digitsMultiplier;
+                    var integral = Math.Truncate(d);
+                    var fraction = d - integral;
+
+                    return integral + Math.Truncate(fraction * multiplier) / multiplier;
+                }
+            }
+            catch
+            {
+                // nothing todo
+            }
+
+            return d
+                .Multiply(BigInteger.Pow(10, precision))
+                .ToDecimal(
+                    valueDecimals: precision,
+                    resultDecimals: Math.Min(precision, MaxDecimalPrecision));
         }
 
-        public static decimal DustProofMin(
-            decimal amount,
-            decimal refAmount,
-            decimal digitsMultiplier,
-            decimal dustMultiplier)
+        public static BigInteger DustProofMin(
+            BigInteger amount,
+            BigInteger refAmount,
+            long dustMultiplier)
         {
-            return RoundDown(amount - refAmount, digitsMultiplier / dustMultiplier) == 0 ? amount : Math.Min(amount, refAmount);
-        }
+            var rest = amount - refAmount;
 
-        public static decimal RoundAmount(decimal value, decimal digitsMultiplier) =>
-            Math.Floor(value * digitsMultiplier);
+            return rest < dustMultiplier
+                ? amount
+                : refAmount;
+        }
     }
 }

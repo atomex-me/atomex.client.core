@@ -1,44 +1,44 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
-using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 
 namespace Atomex.Common
 {
     public static class TxOutputExtensions
     {
-        public static IEnumerable<BitcoinBasedTxOutput> SelectOutputsForAmount(
-            this IEnumerable<BitcoinBasedTxOutput> outputs,
-            long amountInSatoshi)
+        public static IEnumerable<BitcoinTxOutput> SelectOutputsForAmount(
+            this IEnumerable<BitcoinTxOutput> outputs,
+            BigInteger amountInSatoshi)
         {
             foreach (var selectedOutputs in outputs.SelectOutputs())
             {
-                var selectedAmountInSatoshi = selectedOutputs.Sum(o => o.Value);
+                var selectedAmountInSatoshi = selectedOutputs.SumBigIntegers(o => o.Value);
 
                 if (selectedAmountInSatoshi >= amountInSatoshi)
                     return selectedOutputs;
             }
 
-            return Enumerable.Empty<BitcoinBasedTxOutput>();
+            return Enumerable.Empty<BitcoinTxOutput>();
         }
 
-        public static IEnumerable<ITxOutput> RemoveDuplicates(
-            this IEnumerable<ITxOutput> outputs)
+        public static IEnumerable<BitcoinTxOutput> RemoveDuplicates(
+            this IEnumerable<BitcoinTxOutput> outputs)
         {
             return outputs.GroupBy(o => $"{o.TxId}{o.Index}", RemoveDuplicatesOutputs);
         }
 
-        private static ITxOutput RemoveDuplicatesOutputs(
+        private static BitcoinTxOutput RemoveDuplicatesOutputs(
             string id,
-            IEnumerable<ITxOutput> outputs)
+            IEnumerable<BitcoinTxOutput> outputs)
         {
             var txOutputs = outputs.ToList();
 
             return txOutputs.FirstOrDefault(o => o.IsSpent) ?? txOutputs.First();
         }
 
-        public static IEnumerable<IEnumerable<BitcoinBasedTxOutput>> SelectOutputs(this IEnumerable<BitcoinBasedTxOutput> outputs)
+        public static IEnumerable<IEnumerable<BitcoinTxOutput>> SelectOutputs(this IEnumerable<BitcoinTxOutput> outputs)
         {
             var outputsList = outputs.ToList();
 
@@ -47,7 +47,7 @@ namespace Atomex.Common
 
             // single outputs
             foreach (var output in outputsList)
-                yield return new BitcoinBasedTxOutput[] { output };
+                yield return new BitcoinTxOutput[] { output };
 
             // sort descending balance
             outputsList.Reverse();

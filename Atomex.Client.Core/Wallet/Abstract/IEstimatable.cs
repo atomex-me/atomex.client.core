@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
 
 namespace Atomex.Wallet.Abstract
@@ -24,9 +25,9 @@ namespace Atomex.Wallet.Abstract
 
     public class FromOutputs : IFromSource
     {
-        public IEnumerable<BitcoinBasedTxOutput> Outputs { get; }
+        public IEnumerable<BitcoinTxOutput> Outputs { get; }
 
-        public FromOutputs(IEnumerable<BitcoinBasedTxOutput> outputs)
+        public FromOutputs(IEnumerable<BitcoinTxOutput> outputs)
         {
             Outputs = outputs ?? throw new ArgumentNullException(nameof(outputs));
         }
@@ -34,10 +35,11 @@ namespace Atomex.Wallet.Abstract
 
     public class MaxAmountEstimation
     {
-        public decimal Amount { get; set; }
-        public decimal Fee { get; set; }
-        public decimal Reserved { get; set; }
-        public Error Error { get; set; }
+        public BigInteger Amount { get; set; }
+        public BigInteger Fee { get; set; }
+        public BigInteger Reserved { get; set; }
+        public Error? Error { get; set; }
+        public string ErrorHint { get; set; }
     }
 
     public interface IEstimatable
@@ -47,7 +49,7 @@ namespace Atomex.Wallet.Abstract
             bool reserve = false,
             CancellationToken cancellationToken = default);
 
-        Task<decimal?> EstimateSwapPaymentFeeAsync(
+        Task<Result<decimal>> EstimateSwapPaymentFeeAsync(
             IFromSource from,
             decimal amount,
             CancellationToken cancellationToken = default);

@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 
 using NBitcoin;
 using Serilog;
 
-using Atomex.Blockchain.Abstract;
-using Atomex.Blockchain.BitcoinBased;
+using Atomex.Blockchain.Bitcoin;
+using Nethereum.KeyStore.Crypto;
 
 namespace Atomex.Swaps.BitcoinBased
 {
@@ -17,9 +18,9 @@ namespace Atomex.Swaps.BitcoinBased
         //public const decimal MaxFeeRateChangePercent = 0.5m;
         public const int MinFeeRate = 1;
 
-        public async Task<IBitcoinBasedTransaction> CreateSwapPaymentTxAsync(
-            IEnumerable<BitcoinBasedTxOutput> fromOutputs,
-            long amount,
+        public async Task<BitcoinTransaction> CreateSwapPaymentTxAsync(
+            IEnumerable<BitcoinTxOutput> fromOutputs,
+            BigInteger amount,
             string refundAddress,
             string toAddress,
             DateTimeOffset lockTime,
@@ -37,7 +38,7 @@ namespace Atomex.Swaps.BitcoinBased
                 .GetFeeRateAsync(cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var lockScript = BitcoinBasedSwapTemplate.GenerateHtlcP2PkhSwapPayment(
+            var lockScript = BitcoinSwapTemplate.CreateHtlcSwapPayment(
                 aliceRefundAddress: refundAddress,
                 bobAddress: toAddress,
                 lockTimeStamp: lockTime.ToUnixTimeSeconds(),
@@ -45,7 +46,7 @@ namespace Atomex.Swaps.BitcoinBased
                 secretSize: secretSize,
                 expectedNetwork: currencyConfig.Network);
 
-            var feeInSatoshi = 0L;
+            var feeInSatoshi = BigInteger.Zero;
 
             var inputsToSign = fromOutputs
                 .Select(o => new BitcoinInputToSign { Output = o });
@@ -54,12 +55,13 @@ namespace Atomex.Swaps.BitcoinBased
             {
                 new BitcoinDestination
                 {
-                    Script = lockScript.PaymentScript,
+                    Script = lockScript.WitHash.ScriptPubKey,
                     AmountInSatoshi = amount
                 }
             };
 
-            var txParams = await BitcoinTransactionParams.SelectTransactionParamsByFeeRateAsync(
+            var txParams = await BitcoinTransactionParams
+                .SelectTransactionParamsByFeeRateAsync(
                     availableInputs: inputsToSign,
                     destinations: destinations,
                     changeAddress: refundAddress,
@@ -82,7 +84,7 @@ namespace Atomex.Swaps.BitcoinBased
                         changeAddress: refundAddress,
                         network: currencyConfig.Network));
 
-                var estimatedFeeRate = maxFeeInSatoshi / txSizeWithChange;
+                var estimatedFeeRate = (long)maxFeeInSatoshi / txSizeWithChange;
 
                 if (estimatedFeeRate > feeRate)
                     Log.Error($"EstimatedFeeRate changed: {estimatedFeeRate}, old fee rate: {feeRate}");
@@ -101,30 +103,30 @@ namespace Atomex.Swaps.BitcoinBased
             }
 
             var tx = currencyConfig
-                .CreateHtlcP2PkhScriptSwapPaymentTx(
+                .CreateHtlcSegwitScriptSwapPaymentTx(
                     unspentOutputs: txParams?.InputsToSign.Select(i => i.Output) ?? fromOutputs,
                     aliceRefundAddress: refundAddress,
                     bobAddress: toAddress,
                     lockTime: lockTime,
                     secretHash: secretHash,
                     secretSize: secretSize,
-                    amount: amount,
-                    fee: feeInSatoshi,
+                    amount: (long)amount,
+                    fee: (long)feeInSatoshi,
                     redeemScript: out _);
 
             return tx;
         }
 
-        public async Task<IBitcoinBasedTransaction> CreateSwapRefundTxAsync(
-            IBitcoinBasedTransaction paymentTx,
-            long amount,
+        public async Task<BitcoinTransaction> CreateSwapRefundTxAsync(
+            BitcoinTransaction paymentTx,
+            BigInteger amount,
             string refundAddress,
             byte[] redeemScript,
             DateTimeOffset lockTime,
             BitcoinBasedConfig currencyConfig)
         {
             var swapOutput = paymentTx.Outputs
-                .Cast<BitcoinBasedTxOutput>()
+                .Cast<BitcoinTxOutput>()
                 .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));
 
             if (swapOutput == null)
@@ -161,26 +163,26 @@ namespace Atomex.Swaps.BitcoinBased
             if (amount - feeInSatoshi < 0)
                 throw new Exception($"Insufficient funds for fee. Available {amount}, required {feeInSatoshi}");
 
-            return currencyConfig.CreateP2PkhTx(
-                unspentOutputs: new ITxOutput[] { swapOutput },
+            return currencyConfig.CreateTransaction(
+                unspentOutputs: new BitcoinTxOutput[] { swapOutput },
                 destinationAddress: refundAddress,
                 changeAddress: refundAddress,
-                amount: amount - feeInSatoshi,
+                amount: (long)(amount - feeInSatoshi),
                 fee: feeInSatoshi,
                 lockTime: lockTime,
-                knownRedeems: new Script(redeemScript));
+                knownRedeems: new Script[] { new Script(redeemScript) });
         }
 
-        public async Task<IBitcoinBasedTransaction> CreateSwapRedeemTxAsync(
-            IBitcoinBasedTransaction paymentTx,
-            long amount,
+        public async Task<BitcoinTransaction> CreateSwapRedeemTxAsync(
+            BitcoinTransaction paymentTx,
+            BigInteger amount,
             string redeemAddress,
             byte[] redeemScript,
             BitcoinBasedConfig currencyConfig,
             uint sequenceNumber = 0)
         {
             var swapOutput = paymentTx.Outputs
-                .Cast<BitcoinBasedTxOutput>()
+                .Cast<BitcoinTxOutput>()
                 .FirstOrDefault(o => o.IsPayToScriptHash(redeemScript));
 
             if (swapOutput == null)
@@ -217,14 +219,14 @@ namespace Atomex.Swaps.BitcoinBased
             if (amount - feeInSatoshi < 0)
                 throw new Exception($"Insufficient funds for fee. Available {amount}, required {feeInSatoshi}");
 
-            var tx = currencyConfig.CreateP2PkhTx(
-                unspentOutputs: new ITxOutput[] { swapOutput },
+            var tx = currencyConfig.CreateTransaction(
+                unspentOutputs: new BitcoinTxOutput[] { swapOutput },
                 destinationAddress: redeemAddress,
                 changeAddress: redeemAddress,
-                amount: amount - feeInSatoshi,
+                amount: (long)(amount - feeInSatoshi),
                 fee: feeInSatoshi,
-                lockTime: DateTimeOffset.MinValue,
-                knownRedeems: new Script(redeemScript));
+                lockTime: null,
+                knownRedeems: new Script[] { new Script(redeemScript) });
 
             if (sequenceNumber > 0)
                 tx.SetSequenceNumber(sequenceNumber);

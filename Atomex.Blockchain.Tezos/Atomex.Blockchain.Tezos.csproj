@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>preview</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Netezos" Version="2.7.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Atomex.Blockchain\Atomex.Blockchain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Swaps\V1\" />
+  </ItemGroup>
+
+</Project>

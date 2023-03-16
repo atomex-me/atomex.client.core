@@ -3,78 +3,52 @@ using System.Collections.Generic;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using Atomex.Blockchain.Tezos.Tzkt;
+
 using Serilog;
+
+using Atomex.Blockchain.Tezos.Tzkt;
 
 namespace Atomex.Wallet.Tezos
 {
     public class TezosAllocationChecker
     {
-        private readonly Atomex.TezosConfig _tezos;
-        private readonly IDictionary<string, TezosAddressInfo> _addresses;
+        private record struct TezosAddressAllocationCache(bool Allocated, DateTimeOffset TimeStamp);
+
+        private readonly TezosConfig _tezosConfig;
+        private readonly IDictionary<string, TezosAddressAllocationCache> _cache;
 
         public TimeSpan UpdateInterval { get; set; } = TimeSpan.FromSeconds(60);
 
-        public TezosAllocationChecker(Atomex.TezosConfig tezos)
+        public TezosAllocationChecker(TezosConfig tezosConfig)
         {
-            _tezos = tezos;
-            _addresses = new Dictionary<string, TezosAddressInfo>();
+            _tezosConfig = tezosConfig;
+            _cache = new Dictionary<string, TezosAddressAllocationCache>();
         }
 
         public async Task<bool> IsAllocatedAsync(
             string address,
             CancellationToken cancellationToken)
         {
-            lock (_addresses)
-            {
-                if (_addresses.TryGetValue(address, out var info))
-                {
-                    if (info.LastCheckTimeUtc + UpdateInterval > DateTime.UtcNow)
-                        return info.IsAllocated;
-                }
-            }
+            if (_cache.TryGetValue(address, out var cacheValue) && cacheValue.TimeStamp + UpdateInterval > DateTimeOffset.UtcNow)
+                return cacheValue.Allocated;
 
-            var isAllocatedResult = await new TzktApi(_tezos)
+            var (isAllocated, error) = await new TzktApi(_tezosConfig.GetTzktSettings())
                 .IsAllocatedAsync(address, cancellationToken)
                 .ConfigureAwait(false);
 
-            if (isAllocatedResult == null)
+            if (error != null && error.Value.Code != (int)HttpStatusCode.NotFound)
             {
-                Log.Error("Error while checking allocation status for address {@address}", address);
-
-                return false;
-            }
-
-            if (isAllocatedResult.HasError && isAllocatedResult.Error.Code != (int)HttpStatusCode.NotFound)
-            {
-                Log.Error("Error while checking allocation status for address {@address}. Code: {@code}. Description: {@desc}",
+                Log.Error("Error while checking allocation status for address {@address}. Code: {@code}. Message: {@message}",
                     address,
-                    isAllocatedResult.Error.Code,
-                    isAllocatedResult.Error.Description);
+                    error.Value.Code,
+                    error.Value.Message);
 
                 return false;
             }
 
-            lock (_addresses)
-            {
-                if (_addresses.TryGetValue(address, out var info))
-                {
-                    info.Address = address;
-                    info.IsAllocated = isAllocatedResult.Value;
-                    info.LastCheckTimeUtc = DateTime.UtcNow;
-                }
-                else
-                {
-                    _addresses.Add(address, new TezosAddressInfo()
-                    {
-                        Address = address,
-                        IsAllocated = isAllocatedResult.Value,
-                        LastCheckTimeUtc = DateTime.UtcNow
-                    });
-                }
-            }
+            _cache[address] = new TezosAddressAllocationCache(isAllocated, DateTimeOffset.UtcNow);
 
-            return isAllocatedResult.Value;
+            return isAllocated;
         }
     }
 }

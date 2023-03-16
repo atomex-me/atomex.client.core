@@ -3,248 +3,342 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
+using Serilog;
+
 using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Ethereum.EtherScan;
+using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
-using Atomex.Wallet.Bip;
-using Serilog;
+using Atomex.Wallets.Bips;
 
 namespace Atomex.Wallet.Ethereum
 {
-    public class EthereumWalletScanner : ICurrencyHdWalletScanner
+    public class EthereumWalletScanner : ICurrencyWalletScanner
     {
         private const int DefaultInternalLookAhead = 1;
         private const int DefaultExternalLookAhead = 1;
 
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private int ExternalLookAhead { get; } = DefaultExternalLookAhead;
-        private EthereumAccount Account { get; }
-        private CurrencyConfig Currency => Account.Currencies.GetByName(Account.Currency);
-
+        private readonly EthereumAccount _account;
+        private EthereumConfig Config => _account.EthConfig;
 
         public EthereumWalletScanner(EthereumAccount account)
         {
-            Account = account ?? throw new ArgumentNullException(nameof(account));
+            _account = account ?? throw new ArgumentNullException(nameof(account));
         }
 
         public async Task ScanAsync(
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var scanParams = new[]
+                {
+                    (Chain : Bip44.Internal, LookAhead : InternalLookAhead),
+                    (Chain : Bip44.External, LookAhead : ExternalLookAhead),
+                };
+
+                var api = Config.GetEtherScanApi();
+                var transactions = new List<EthereumTransaction>();
+                var walletAddresses = new List<WalletAddress>();
+
+                WalletAddress defautWalletAddress = null;
+
+                var keyType = CurrencyConfig.StandardKey;
+
+                foreach (var (chain, lookAhead) in scanParams)
+                {
+                    var freeKeysCount = 0;
+                    var index = 0u;
+
+                    while (true)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        var keyPath = Config.GetKeyPathPattern(keyType)
+                            .Replace(KeyPathExtensions.AccountPattern, KeyPathExtensions.DefaultAccount)
+                            .Replace(KeyPathExtensions.ChainPattern, chain.ToString())
+                            .Replace(KeyPathExtensions.IndexPattern, index.ToString());
+
+                        var walletAddress = await _account
+                            .DivideAddressAsync(
+                                keyPath: keyPath,
+                                keyType: keyType)
+                            .ConfigureAwait(false);
+
+                        if (keyType == CurrencyConfig.StandardKey &&
+                            chain == Bip44.External &&
+                            index == 0)
+                        {
+                            defautWalletAddress = walletAddress;
+                        }
+
+                        var (txs, error) = await UpdateAddressAsync(
+                                walletAddress: walletAddress,
+                                api: api,
+                                cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (error != null)
+                        {
+                            Log.Error("[EthereumWalletScanner] ScanAsync error while scan {@address}", walletAddress.Address);
+                            return;
+                        }
+
+                        if (!walletAddress.HasActivity && !txs.Any()) // address without activity
+                        {
+                            freeKeysCount++;
+
+                            if (freeKeysCount >= lookAhead)
+                            {
+                                Log.Debug("[EthereumWalletScanner] {@lookAhead} free keys found. Chain scan completed", lookAhead);
+                                break;
+                            }
+                        }
+                        else // address has activity
+                        {
+                            freeKeysCount = 0;
+
+                            transactions.AddRange(txs);
+
+                            // save only active addresses
+                            walletAddresses.Add(walletAddress);
+                        }
+
+                        index++;
+                    }
+                }
+
+                if (transactions.Any())
+                {
+                    var upsertResult = await _account
+                        .LocalStorage
+                        .UpsertTransactionsAsync(
+                            txs: transactions,
+                            notifyIfNewOrChanged: true,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                if (!walletAddresses.Any())
+                    walletAddresses.Add(defautWalletAddress);
+
+                var _ = await _account
+                    .LocalStorage
+                    .UpsertAddressesAsync(walletAddresses, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("[EthereumWalletScanner] ScanAsync canceled");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[EthereumWalletScanner] ScanAsync error: {@message}", e.Message);
+            }
+        }
+
+        public async Task UpdateBalanceAsync(
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
-            var currency = Currency;
-
-            var scanParams = new[]
+            try
             {
-                new {Chain = Bip44.Internal, LookAhead = InternalLookAhead},
-                new {Chain = Bip44.External, LookAhead = ExternalLookAhead},
-            };
+                var updateTimeStamp = DateTime.UtcNow;
 
-            var txs = new List<EthereumTransaction>();
-            var txsById = new Dictionary<string, EthereumTransaction>();
-            var internalTxs = new List<EthereumTransaction>();
-
-            foreach (var param in scanParams)
-            {
-                var freeKeysCount = 0;
-                var index = 0u;
-
-                while (true)
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-
-                    var walletAddress = await Account
-                        .DivideAddressAsync(
-                            account: Bip44.DefaultAccount,
-                            chain: param.Chain,
-                            index: index,
-                            keyType: CurrencyConfig.StandardKey)
-                        .ConfigureAwait(false);
-
-                    if (walletAddress == null)
-                        break;
-
-                    if (skipUsed)
-                    {
-                        var resolvedAddress = await Account
-                            .GetAddressAsync(walletAddress.Address, cancellationToken)
-                            .ConfigureAwait(false);
-
-                        if (resolvedAddress != null &&
-                            resolvedAddress.HasActivity &&
-                            resolvedAddress.Balance == 0 &&
-                            resolvedAddress.UnconfirmedIncome == 0 &&
-                            resolvedAddress.UnconfirmedOutcome == 0)
-                        {
-                            freeKeysCount = 0;
-                            index++;
-
-                            continue;
-                        }
-                    }
-
-                    Log.Debug(
-                        "Scan transactions for {@name} address {@chain}:{@index}:{@address}",
-                        currency.Name,
-                        param.Chain,
-                        index,
-                        walletAddress.Address);
-
-                    var txsResult = await ((IEthereumBlockchainApi)currency.BlockchainApi)
-                        .TryGetTransactionsAsync(walletAddress.Address, cancellationToken: cancellationToken)
-                        .ConfigureAwait(false);
-
-                    if (txsResult.HasError)
-                    {
-                        Log.Error(
-                            "Error while scan address transactions for {@address} with code {@code} and description {@description}",
-                            walletAddress.Address,
-                            txsResult.Error.Code,
-                            txsResult.Error.Description);
-
-                        break;
-                    }
-
-                    var addressTxs = txsResult.Value
-                        ?.Cast<EthereumTransaction>()
-                        .ToList();
-
-                    if (addressTxs == null || !addressTxs.Any()) // address without activity
-                    {
-                        freeKeysCount++;
-
-                        if (freeKeysCount >= param.LookAhead)
-                        {
-                            Log.Debug("{@lookAhead} free keys found. Chain scan completed", param.LookAhead);
-                            break;
-                        }
-                    }
-                    else // address has activity
-                    {
-                        freeKeysCount = 0;
-
-                        foreach (var tx in addressTxs)
-                        {
-                            if (tx.IsInternal)
-                                internalTxs.Add(tx);
-                            else if (!txsById.ContainsKey(tx.Id))
-                                txsById.Add(tx.Id, tx);
-                        }
-                    }
-
-                    index++;
-                }
-            }
-
-            // distribute internal txs
-            foreach (var internalTx in internalTxs)
-            {
-                if (txsById.TryGetValue(internalTx.Id, out var tx))
-                {
-                    if (tx.InternalTxs == null)
-                        tx.InternalTxs = new List<EthereumTransaction>();
-
-                    tx.InternalTxs.Add(internalTx);
-                }
-                else
-                {
-                    txs.Add(internalTx);
-                }
-            }
-
-            txs.AddRange(txsById.Values);
-
-            if (txs.Any())
-                await UpsertTransactionsAsync(txs)
+                var walletAddresses = await _account
+                    .GetAddressesAsync(cancellationToken)
                     .ConfigureAwait(false);
 
-            await Account
-                .UpdateBalanceAsync(cancellationToken)
-                .ConfigureAwait(false);
+                var api = Config.GetEtherScanApi();
+                var transactions = new List<EthereumTransaction>();
+
+                foreach (var walletAddress in walletAddresses)
+                {
+                    if (skipUsed && walletAddress.IsDisabled)
+                        continue;
+
+                    var (txs, error) = await UpdateAddressAsync(
+                            walletAddress,
+                            api: api,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (error != null)
+                    {
+                        Log.Error("[EthereumWalletScanner] UpdateBalanceAsync error while scan {@address}", walletAddress.Address);
+                        return;
+                    }
+
+                    transactions.AddRange(txs);
+                }
+
+                if (transactions.Any())
+                {
+                    var _ = await _account
+                        .LocalStorage
+                        .UpsertTransactionsAsync(
+                            txs: transactions,
+                            notifyIfNewOrChanged: true,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                if (walletAddresses.Any())
+                {
+                    var _ = await _account
+                        .LocalStorage
+                        .UpsertAddressesAsync(walletAddresses, cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("[EthereumWalletScanner] UpdateBalanceAsync canceled");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[EthereumWalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
+            }
         }
 
-        public async Task ScanAsync(
+        public async Task UpdateBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
-            var currency = Currency;
-
-            Log.Debug("Scan transactions for {@currency} address {@address}",
-                currency.Name,
-                address);
-
-            var txsResult = await ((IEthereumBlockchainApi)currency.BlockchainApi)
-                .TryGetTransactionsAsync(address, cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            if (txsResult.HasError)
+            try
             {
-                Log.Error(
-                    "Error while scan address transactions for {@address} with code {@code} and description {@description}",
-                    address,
-                    txsResult.Error.Code,
-                    txsResult.Error.Description);
+                Log.Debug("[EthereumWalletScanner] UpdateBalanceAsync for address {@address}", address);
 
-                return;
-            }
-
-            var addressTxs = txsResult.Value
-                ?.Cast<EthereumTransaction>()
-                .ToList();
-
-            if (addressTxs == null || !addressTxs.Any()) // address without activity
-                return;
-
-            var txs = new List<EthereumTransaction>();
-            var txsById = new Dictionary<string, EthereumTransaction>();
-            var internalTxs = new List<EthereumTransaction>();
-
-            foreach (var tx in addressTxs)
-            {
-                if (tx.IsInternal)
-                    internalTxs.Add(tx);
-                else if (!txsById.ContainsKey(tx.Id))
-                    txsById.Add(tx.Id, tx);
-            }
-
-            // distribute internal txs
-            foreach (var internalTx in internalTxs)
-            {
-                if (txsById.TryGetValue(internalTx.Id, out var tx))
-                {
-                    if (tx.InternalTxs == null)
-                        tx.InternalTxs = new List<EthereumTransaction>();
-
-                    tx.InternalTxs.Add(internalTx);
-                }
-                else
-                {
-                    txs.Add(internalTx);
-                }
-            }
-
-            txs.AddRange(txsById.Values);
-
-            if (txs.Any())
-                await UpsertTransactionsAsync(txs)
+                var walletAddress = await _account
+                    .LocalStorage
+                    .GetAddressAsync(
+                        currency: _account.Currency,
+                        address: address,
+                        cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
 
-            await Account
-                .UpdateBalanceAsync(address, cancellationToken)
-                .ConfigureAwait(false);
+                if (walletAddress == null)
+                {
+                    Log.Error("[EthereumWalletScanner] UpdateBalanceAsync error. Can't find address {@address} in local db", address);
+                    return;
+                }
+
+                var (txs, error) = await UpdateAddressAsync(
+                        walletAddress,
+                        api: null,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (error != null)
+                {
+                    Log.Error("[EthereumWalletScanner] UpdateBalanceAsync error while scan {@address}", address);
+                    return;
+                }
+
+                if (txs.Any())
+                {
+                    await _account
+                        .LocalStorage
+                        .UpsertTransactionsAsync(
+                            txs: txs,
+                            notifyIfNewOrChanged: true,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                var _ = await _account
+                    .LocalStorage
+                    .UpsertAddressAsync(walletAddress, cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("[EthereumWalletScanner] UpdateBalanceAsync canceled");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[EthereumWalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
+            }
         }
 
-        private async Task UpsertTransactionsAsync(IEnumerable<EthereumTransaction> transactions)
+        private async Task<Result<IEnumerable<EthereumTransaction>>> UpdateAddressAsync(
+            WalletAddress walletAddress,
+            EtherScanApi api = null,
+            CancellationToken cancellationToken = default)
         {
-            foreach (var tx in transactions)
+            var updateTimeStamp = DateTime.UtcNow;
+
+            api ??= Config.GetEtherScanApi();
+
+            var (balance, getBalanceError) = await api
+                .GetBalanceAsync(
+                    address: walletAddress.Address,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (getBalanceError != null)
             {
-                await Account
-                    .UpsertTransactionAsync(
-                        tx: tx,
-                        updateBalance: false,
-                        notifyIfUnconfirmed: false,
-                        notifyIfBalanceUpdated: false)
-                    .ConfigureAwait(false);
+                Log.Error("[EthereumWalletScanner] UpdateAddressAsync error while getting balance for {@address} with code {@code} and message {@message}",
+                    walletAddress.Address,
+                    getBalanceError.Value.Code,
+                    getBalanceError.Value.Message);
+
+                return getBalanceError;
             }
+
+            var fromBlock = 0UL;
+
+            if (walletAddress.LastSuccessfullUpdate != DateTime.MinValue)
+            {
+                var (blockNumber, blockNumberError) = await api
+                    .GetBlockNumberAsync(
+                        timeStamp: walletAddress.LastSuccessfullUpdate,
+                        blockClosest: ClosestBlock.Before,
+                        cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (blockNumberError != null)
+                {
+                    Log.Error(
+                        "[EthereumWalletScanner] Error while getting block number with code {@code} and message {@message}",
+                        blockNumberError.Value.Code,
+                        blockNumberError.Value.Message);
+
+                    return blockNumberError;
+                }
+
+                fromBlock = blockNumber;
+            }
+
+            var (txs, getTxsError) = await api
+                .GetTransactionsAsync(
+                    address: walletAddress.Address,
+                    fromBlock: fromBlock,
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            if (getTxsError != null)
+            {
+                Log.Error(
+                    "[EthereumWalletScanner] UpdateAddressAsync error while scan address transactions for {@address} with code {@code} and message {@message}",
+                    walletAddress.Address,
+                    getTxsError.Value.Code,
+                    getTxsError.Value.Message);
+
+                return getTxsError;
+            }
+
+            walletAddress.Balance = balance;
+            walletAddress.UnconfirmedIncome = 0;
+            walletAddress.UnconfirmedOutcome = 0;
+            walletAddress.HasActivity = txs.Any();
+            walletAddress.LastSuccessfullUpdate = updateTimeStamp;
+
+            return new Result<IEnumerable<EthereumTransaction>> { Value = txs };
         }
     }
 }
