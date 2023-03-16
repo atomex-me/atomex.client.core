@@ -20,11 +20,6 @@ namespace Atomex.Blockchain.Tezos.Common
     {
         public List<(DateTimeOffset, EqualityType)> TimeStamps { get; set; }
 
-        public DateTimeParameter()
-        {
-            TimeStamps = new List<(DateTimeOffset, EqualityType)>();
-        }
-
         public DateTimeParameter(DateTimeOffset timeStamp)
         {
             TimeStamps = new List<(DateTimeOffset, EqualityType)> { (timeStamp, EqualityType.Eq) };
@@ -42,6 +37,8 @@ namespace Atomex.Blockchain.Tezos.Common
 
         public void Add(DateTimeOffset timeStamp, EqualityType type)
         {
+            TimeStamps ??= new List<(DateTimeOffset, EqualityType)>();
+
             TimeStamps.Add((timeStamp, type));
         }
 
