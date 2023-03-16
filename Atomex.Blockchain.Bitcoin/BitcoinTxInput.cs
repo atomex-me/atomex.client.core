@@ -21,16 +21,14 @@ namespace Atomex.Blockchain.Bitcoin
         {
             var scriptSig = Script.FromHex(i.ScriptSig);
 
-            return BitcoinSwapTemplate.IsP2PkhSwapRedeem(scriptSig) ||
-                BitcoinSwapTemplate.IsP2PkhScriptSwapRedeem(scriptSig);
+            return BitcoinSwapTemplate.IsSwapRedeem(scriptSig);
         }
 
         public static bool IsRefund(this BitcoinTxInput i)
         {
             var scriptSig = Script.FromHex(i.ScriptSig);
 
-            return BitcoinSwapTemplate.IsP2PkhSwapRefund(scriptSig) ||
-                BitcoinSwapTemplate.IsP2PkhScriptSwapRefund(scriptSig);
+            return BitcoinSwapTemplate.IsSwapRefund(scriptSig);
         }
     }
 }

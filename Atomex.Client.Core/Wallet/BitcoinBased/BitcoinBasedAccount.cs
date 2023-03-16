@@ -91,7 +91,7 @@ namespace Atomex.Wallet.BitcoinBased
                 }
             }
 
-            var tx = config.CreateP2PkhTx(
+            var tx = config.CreateTransaction(
                 unspentOutputs: from,
                 destinationAddress: to,
                 changeAddress: changeAddress.Address,
@@ -548,7 +548,7 @@ namespace Atomex.Wallet.BitcoinBased
                 if (address == null)
                     continue;
 
-                if (o.IsP2Sh)
+                if (o.IsPayToScript)
                 {
                     // pay to script (is it swap payment?)
                     var swap = await LocalStorage

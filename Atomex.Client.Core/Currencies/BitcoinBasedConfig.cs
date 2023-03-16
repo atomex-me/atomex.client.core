@@ -132,41 +132,14 @@ namespace Atomex
         public decimal SatoshiToCoin(BigInteger satoshi) =>
             satoshi.ToDecimal(Decimals);
 
-        public string TestAddress()
-        {
-            return new Key()
-                .PubKey
-                .GetAddress(ScriptPubKeyType.Legacy, Network)
-                .ToString();
-        }
-
-        public BitcoinTransaction CreatePaymentTx(
+        public BitcoinTransaction CreateTransaction(
             IEnumerable<BitcoinTxOutput> unspentOutputs,
             string destinationAddress,
             string changeAddress,
             long amount,
             long fee,
-            DateTimeOffset lockTime,
-            params Script[] knownRedeems)
-        {
-            return CreateP2PkhTx(
-                unspentOutputs: unspentOutputs,
-                destinationAddress: destinationAddress,
-                changeAddress: changeAddress,
-                amount: amount,
-                fee: fee,
-                lockTime: lockTime,
-                knownRedeems: knownRedeems);
-        }
-
-        public BitcoinTransaction CreateP2PkhTx(
-            IEnumerable<BitcoinTxOutput> unspentOutputs,
-            string destinationAddress,
-            string changeAddress,
-            long amount,
-            long fee,
-            DateTimeOffset lockTime,
-            params Script[] knownRedeems)
+            DateTimeOffset? lockTime = null,
+            Script[]? knownRedeems = null)
         {
             var coins = unspentOutputs
                 .Select(o => o.Coin);
@@ -184,40 +157,12 @@ namespace Atomex
                 change: change,
                 amount: amount,
                 fee: fee,
+                network: Network,
                 lockTime: lockTime,
-                network: Network,
                 knownRedeems: knownRedeems);
         }
 
-        public BitcoinTransaction CreateP2WPkhTx(
-            IEnumerable<BitcoinTxOutput> unspentOutputs,
-            string destinationAddress,
-            string changeAddress,
-            long amount,
-            long fee,
-            params Script[] knownRedeems)
-        {
-            var coins = unspentOutputs
-                .Select(o => o.Coin);
-
-            var destination = new BitcoinWitPubKeyAddress(destinationAddress, Network)
-                .ScriptPubKey;
-
-            var change = new BitcoinWitPubKeyAddress(changeAddress, Network)
-                .ScriptPubKey;
-
-            return BitcoinTransaction.CreateTransaction(
-                currency: Name,
-                coins: coins,
-                destination: destination,
-                change: change,
-                amount: amount,
-                fee: fee,
-                network: Network,
-                knownRedeems: knownRedeems);
-        }
-
-        public virtual BitcoinTransaction CreateHtlcP2PkhScriptSwapPaymentTx(
+        public virtual BitcoinTransaction CreateHtlcSegwitScriptSwapPaymentTx(
             IEnumerable<BitcoinTxOutput> unspentOutputs,
             string aliceRefundAddress,
             string bobAddress,
@@ -231,7 +176,7 @@ namespace Atomex
             var coins = unspentOutputs
                 .Select(o => o.Coin);
 
-            var swap = BitcoinSwapTemplate.CreateHtlcP2PkhSwapPayment(
+            var lockScript = BitcoinSwapTemplate.CreateHtlcSwapPayment(
                 aliceRefundAddress: aliceRefundAddress,
                 bobAddress: bobAddress,
                 lockTimeStamp: lockTime.ToUnixTimeSeconds(),
@@ -239,15 +184,17 @@ namespace Atomex
                 secretSize: secretSize,
                 expectedNetwork: Network);
 
-            redeemScript = swap.ToBytes();
+            redeemScript = lockScript.ToBytes();
 
             var change = BitcoinAddress.Create(aliceRefundAddress, Network)
                 .ScriptPubKey;
 
+            var destinationSegwit = lockScript.WitHash.ScriptPubKey;
+
             return BitcoinTransaction.CreateTransaction(
                 currency: Name,
                 coins: coins,
-                destination: swap.PaymentScript,
+                destination: destinationSegwit,
                 change: change,
                 amount: amount,
                 fee: fee,

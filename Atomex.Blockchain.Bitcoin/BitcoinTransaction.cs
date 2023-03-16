@@ -36,7 +36,8 @@ namespace Atomex.Blockchain.Bitcoin
                     Index = i.PrevOut.N,
                     Hash = i.PrevOut.Hash.ToString()
                 },
-                ScriptSig = i.ScriptSig.ToHex(),
+                ScriptSig = i.ScriptSig?.ToHex(),
+                WitScript = i.WitScript?.ToBytes().ToHexString()
             })
             .ToArray();
 
@@ -143,7 +144,8 @@ namespace Atomex.Blockchain.Bitcoin
             Network network,
             bool checkScriptPubKey = true)
         {
-            var result = network.CreateTransactionBuilder()
+            var result = network
+                .CreateTransactionBuilder()
                 .SetTransactionPolicy(new StandardTransactionPolicy
                 {
                     CheckScriptPubKey = checkScriptPubKey,
@@ -164,7 +166,8 @@ namespace Atomex.Blockchain.Bitcoin
             Network network,
             bool checkScriptPubKey = true)
         {
-            var result = network.CreateTransactionBuilder()
+            var result = network
+                .CreateTransactionBuilder()
                 .SetTransactionPolicy(new StandardTransactionPolicy
                 {
                     CheckScriptPubKey = checkScriptPubKey,
@@ -184,7 +187,8 @@ namespace Atomex.Blockchain.Bitcoin
             Network network,
             bool checkScriptPubKey = true)
         {
-            var result = network.CreateTransactionBuilder()
+            var result = network
+                .CreateTransactionBuilder()
                 .SetTransactionPolicy(new StandardTransactionPolicy
                 {
                     CheckScriptPubKey = checkScriptPubKey,
@@ -262,43 +266,26 @@ namespace Atomex.Blockchain.Bitcoin
             long amount,
             long fee,
             Network network,
-            params Script[] knownRedeems)
+            DateTimeOffset? lockTime = null,
+            Script[]? knownRedeems = null)
         {
-            return CreateTransaction(
-                currency: currency,
-                coins: coins,
-                destination: destination,
-                change: change,
-                amount: amount,
-                fee: fee,
-                lockTime: DateTimeOffset.MinValue,
-                network: network,
-                knownRedeems: knownRedeems);
-        }
-
-        public static BitcoinTransaction CreateTransaction(
-            string currency,
-            IEnumerable<ICoin> coins,
-            Script destination,
-            Script change,
-            long amount,
-            long fee,
-            DateTimeOffset lockTime,
-            Network network,
-            params Script[] knownRedeems)
-        {
-            var tx = network.CreateTransactionBuilder()
+            var txBuilder = network
+                .CreateTransactionBuilder()
                 .SetDustPrevention(false)
                 .SetOptInRBF(true)
                 .AddCoins(coins)
                 .Send(destination, new Money(amount))
                 .SendFees(new Money(fee))
-                .SetChange(change)
-                .SetLockTime(lockTime != DateTimeOffset.MinValue
-                    ? new LockTime(lockTime)
-                    : NBitcoin.LockTime.Zero)
-                .AddKnownRedeems(knownRedeems)
-                .BuildTransaction(false);
+                .SetChange(change);
+
+            if (lockTime != null)
+                txBuilder.SetLockTime(lockTime.Value);
+
+            if (knownRedeems != null)
+                txBuilder.AddKnownRedeems(knownRedeems);
+
+            var tx = txBuilder
+                .BuildTransaction(sign: false);
 
             return new BitcoinTransaction(
                 currency: currency,

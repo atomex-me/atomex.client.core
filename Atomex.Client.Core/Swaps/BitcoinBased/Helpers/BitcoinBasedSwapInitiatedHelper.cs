@@ -36,7 +36,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                 var redeemScript = refundAddress == null && redeemScriptBase64 != null
                     ? new Script(Convert.FromBase64String(redeemScriptBase64))
                     : BitcoinSwapTemplate
-                        .CreateHtlcP2PkhSwapPayment(
+                        .CreateHtlcSwapPayment(
                             aliceRefundAddress: refundAddress,
                             bobAddress: toAddress,
                             lockTimeStamp: refundTimeStamp,
@@ -44,8 +44,11 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                             secretSize: CurrencySwap.DefaultSecretSize,
                             expectedNetwork: bitcoinBased.Network);
 
-                var redeemScriptAddress = redeemScript
-                    .PaymentScript
+                var redeemScriptPubKey = redeemScriptBase64 != null
+                    ? redeemScript.Hash.ScriptPubKey
+                    : redeemScript.WitHash.ScriptPubKey;
+
+                var redeemScriptAddress = redeemScriptPubKey
                     .GetDestinationAddress(bitcoinBased.Network)
                     .ToString();
 
@@ -65,7 +68,7 @@ namespace Atomex.Swaps.BitcoinBased.Helpers
                 {
                     var outputScriptHex = output.Coin.TxOut.ScriptPubKey.ToHex();
 
-                    if (redeemScript.PaymentScript.ToHex() != outputScriptHex)
+                    if (redeemScriptPubKey.ToHex() != outputScriptHex)
                         continue;
 
                     if (output.Value < requiredAmountInSatoshi)

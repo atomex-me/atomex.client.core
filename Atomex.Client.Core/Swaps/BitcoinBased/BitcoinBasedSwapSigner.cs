@@ -109,12 +109,14 @@ namespace Atomex.Swaps.BitcoinBased
                 keyPath: refundAddress.KeyPath,
                 keyType: refundAddress.KeyType);
 
-            var refundScriptSig = BitcoinSwapTemplate.CreateHtlcSwapRefundForP2Sh(
+            var refundScriptSig = BitcoinSwapTemplate.CreateSwapRefundScript(
                 aliceRefundSig: signature,
                 aliceRefundPubKey: refundAddressPublicKey.ToUnsecuredBytes(),
                 redeemScript: redeemScript);
 
-            tx.SetSignature(refundScriptSig, spentOutput);
+            var refundScriptSigSegwit = refundScriptSig.ToWitScript();
+
+            tx.SetSignature(refundScriptSigSegwit, spentOutput);
 
             if (!tx.Verify(spentOutput, out var errors, Account.Config.Network))
             {
@@ -172,13 +174,15 @@ namespace Atomex.Swaps.BitcoinBased
                 keyPath: redeemAddress.KeyPath,
                 keyType: redeemAddress.KeyType);
 
-            var redeemScriptSig = BitcoinSwapTemplate.CreateP2PkhSwapRedeemForP2Sh(
+            var redeemScriptSig = BitcoinSwapTemplate.CreateSwapRedeemScript(
                 sig: signature,
                 pubKey: redeemAddressPublicKey.ToUnsecuredBytes(),
                 secret: secret,
                 redeemScript: redeemScript);
 
-            tx.SetSignature(redeemScriptSig, spentOutput);
+            var redeemScriptSigSegwit = redeemScriptSig.ToWitScript();
+
+            tx.SetSignature(redeemScriptSigSegwit, spentOutput);
 
             if (!tx.Verify(spentOutput, out var errors, Account.Config.Network))
             {

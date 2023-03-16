@@ -418,7 +418,7 @@ namespace Atomex.LiteDb.Migrations
                 .Ignore(o => o.TxId)
                 .Ignore(o => o.Type)
                 .Ignore(o => o.IsSpent)
-                .Ignore(o => o.IsP2Sh)
+                .Ignore(o => o.IsPayToScript)
                 .Ignore(o => o.IsSegWit);
 
             mapper.Entity<EthereumTransaction>()

@@ -34,14 +34,16 @@ namespace Atomex.Blockchain.Bitcoin
         public bool IsSpent => SpentTxPoints?.Any() ?? false;
         public bool IsSpentConfirmed { get; set; }
 
-        public bool IsP2Sh =>
-            Coin.TxOut.ScriptPubKey.IsScriptType(ScriptType.P2SH);
+        public bool IsPayToScript =>
+            Coin.TxOut.ScriptPubKey.IsScriptType(ScriptType.P2SH) ||
+            Coin.TxOut.ScriptPubKey.IsScriptType(ScriptType.P2WSH);
 
         public bool IsPayToScriptHash(Script redeemScript) =>
-            IsP2Sh && redeemScript.PaymentScript.Equals(Coin.TxOut.ScriptPubKey);
+            IsPayToScript &&
+            (redeemScript.Hash.ScriptPubKey.Equals(Coin.TxOut.ScriptPubKey) || redeemScript.WitHash.ScriptPubKey.Equals(Coin.TxOut.ScriptPubKey));
 
         public bool IsPayToScriptHash(byte[] redeemScript) =>
-            IsP2Sh && new Script(redeemScript).PaymentScript.Equals(Coin.TxOut.ScriptPubKey);
+            IsPayToScriptHash(new Script(redeemScript));
 
         public bool IsSegWit => Coin.GetHashVersion() == HashVersion.WitnessV0;
 
