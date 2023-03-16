@@ -36,7 +36,7 @@ namespace Atomex.Wallets.Tezos
         }
 
         private const int ConfirmationCheckIntervalSec = 5;
-
+        private const int ConfirmationWaitingTimeOutInSec = 60;
         private readonly TezosAccount _account;
         private readonly AsyncQueue<TezosOperationCompletionEvent> _operationsQueue;
         private CancellationTokenSource _cts;
@@ -112,7 +112,7 @@ namespace Atomex.Wallets.Tezos
                             currency: _account.Currency)
                         .ConfigureAwait(false);
 
-                    while (unconfirmedOperations.Any())
+                    while (unconfirmedOperations.Any(o => DateTimeOffset.UtcNow - o.CreationTime < TimeSpan.FromSeconds(ConfirmationWaitingTimeOutInSec)))
                     {
                         // wait for external confirmation event or ConfirmationCheckIntervalSec timeout
                         _ = await _confirmedEvent
@@ -161,12 +161,25 @@ namespace Atomex.Wallets.Tezos
                             cancellationToken: _cts.Token)
                         .ConfigureAwait(false);
 
+                    if (fillingError != null)
+                    {
+                        Log.Error($"Operation filling error: {fillingError.Value.Message}");
+
+                        // notify all subscribers about error
+                        foreach (var op in operationCompletionEvents)
+                            op.CompleteWithResult(TezosOperationRequestResult.FromError(operationRequest, fillingError.Value));
+
+                        continue;
+                    }
+
                     var (operationId, sendingError) = await _account
                         .SendOperationAsync(operationRequest, _cts.Token)
                         .ConfigureAwait(false);
 
                     if (sendingError != null)
                     {
+                        Log.Error($"Operation sending error: {sendingError.Value.Message}");
+
                         // notify all subscribers about error
                         foreach (var op in operationCompletionEvents)
                             op.CompleteWithResult(TezosOperationRequestResult.FromError(operationRequest, sendingError.Value));
