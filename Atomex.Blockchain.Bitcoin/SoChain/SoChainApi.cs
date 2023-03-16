@@ -119,7 +119,7 @@ namespace Atomex.Blockchain.Bitcoin.SoChain
                     Hash = input.FromOutput.TxId
                 },
                 ScriptSig = scriptHex,
-                WitScript = witScript.ToBytes().ToHexString()
+                WitScript = witScript.ToScript().ToHex()
             };
         }
 

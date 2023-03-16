@@ -37,7 +37,7 @@ namespace Atomex.Blockchain.Bitcoin
                     Hash = i.PrevOut.Hash.ToString()
                 },
                 ScriptSig = i.ScriptSig?.ToHex(),
-                WitScript = i.WitScript?.ToBytes().ToHexString()
+                WitScript = i.WitScript?.ToScript().ToHex()
             })
             .ToArray();
 

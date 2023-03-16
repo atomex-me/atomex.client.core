@@ -14,8 +14,18 @@ namespace Atomex.Blockchain.Bitcoin
 
     public static class BitcoinTxInputExtensions
     {
-        public static IEnumerable<byte[]> ExtractAllPushData(this BitcoinTxInput i) =>
-            BitcoinSwapTemplate.ExtractAllPushData(Script.FromHex(i.ScriptSig));
+        public static IEnumerable<byte[]> ExtractAllPushData(this BitcoinTxInput i)
+        {
+            var result = new List<byte[]>();
+
+            if (!string.IsNullOrEmpty(i.ScriptSig))
+                result.AddRange(BitcoinSwapTemplate.ExtractAllPushData(Script.FromHex(i.ScriptSig)));
+
+            if (!string.IsNullOrEmpty(i.WitScript))
+                result.AddRange(BitcoinSwapTemplate.ExtractAllPushData(Script.FromHex(i.WitScript)));
+
+            return result;
+        }
 
         public static bool IsRedeem(this BitcoinTxInput i)
         {

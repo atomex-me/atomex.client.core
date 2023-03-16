@@ -96,8 +96,7 @@ namespace Atomex.Wallet.BitcoinBased
                 destinationAddress: to,
                 changeAddress: changeAddress.Address,
                 amount: (long)amountInSatoshi,
-                fee: (long)feeInSatoshi,
-                lockTime: DateTimeOffset.MinValue);
+                fee: (long)feeInSatoshi);
 
             var signResult = await SignAsync(
                     tx: tx,

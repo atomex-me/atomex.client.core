@@ -225,7 +225,7 @@ namespace Atomex.Swaps.BitcoinBased
                 changeAddress: redeemAddress,
                 amount: (long)(amount - feeInSatoshi),
                 fee: feeInSatoshi,
-                lockTime: DateTimeOffset.MinValue,
+                lockTime: null,
                 knownRedeems: new Script[] { new Script(redeemScript) });
 
             if (sequenceNumber > 0)

@@ -35,8 +35,7 @@ namespace Atomex.Client.Core.Tests
                 destinationAddress: Common.Bob.PubKey.GetAddress(currency),
                 changeAddress: Common.Alice.PubKey.GetAddress(currency),
                 amount: amount,
-                fee: fee,
-                lockTime: DateTimeOffset.MinValue);
+                fee: fee);
 
             Assert.NotNull(tx);
             Assert.True(tx.Check());
@@ -214,7 +213,7 @@ namespace Atomex.Client.Core.Tests
                 changeAddress: Common.Bob.PubKey.GetAddress(currency),
                 amount: amount,
                 fee: fee,
-                lockTime: DateTimeOffset.MinValue,
+                lockTime: null,
                 knownRedeems: new Script[] { redeemScript });
 
             var sigHash = new uint256(redeemTx.GetSignatureHash(paymentOutput, redeemScript));
@@ -274,6 +273,8 @@ namespace Atomex.Client.Core.Tests
                 .ExtractAllPushData();
 
             var secret = data.FirstOrDefault(d => d.SequenceEqual(Common.Secret));
+
+            var secretHex = Common.Secret.ToHexString();
 
             Assert.NotNull(secret);
         }
