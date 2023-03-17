@@ -41,7 +41,7 @@ namespace Atomex.Wallet.Tezos
             string to,
             BigInteger amount)
         {
-            return $"[{{\"prim\":\"Pair\",\"args\":[{{\"string\":\"{from}\"}},[{{\"prim\":\"Pair\",\"args\":[{{\"string\":\"{to}\"}},{{\"prim\":\"Pair\",\"args\":[{{\"int\":\"{tokenId}\",\"int\":\"{amount}\"}}]}}]}}]]}}]";
+            return $"[{{\"prim\":\"Pair\",\"args\":[{{\"string\":\"{from}\"}},[{{\"prim\":\"Pair\",\"args\":[{{\"string\":\"{to}\"}},{{\"prim\":\"Pair\",\"args\":[{{\"int\":\"{tokenId}\"}},{{\"int\":\"{amount}\"}}]}}]}}]]}}]";
         }
 
         #endregion Helpers
