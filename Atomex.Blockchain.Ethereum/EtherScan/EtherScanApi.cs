@@ -20,26 +20,11 @@ using Error = Atomex.Common.Error;
 
 namespace Atomex.Blockchain.Ethereum.EtherScan
 {
-    public class EtherScanContractSettings
-    {
-        public string Address { get; set; }
-        public ulong Block { get; set; }
-        public string Token { get; set; }
-        public bool IsToken => Token != null;
-    }
-
     public class EtherScanSettings
     {
         public string BaseUri { get; set; } = EtherScanApi.Uri;
         public string? ApiToken { get; set; } = "2R1AIHZZE5NVSHRQUGAHU8EYNYYZ5B2Y37";
         public int RequestLimitDelayMs { get; set; } = 500;
-        public List<EtherScanContractSettings>? Contracts { get; set; }
-
-        public ulong GetBlock(string contractAddress) =>
-            Contracts?.FirstOrDefault(s => s.Address == contractAddress)?.Block ?? 0;
-
-        public string? GetTokenContract(string token) =>
-            Contracts?.FirstOrDefault(s => s.Token == token)?.Address;
     }
 
     public class EtherScanApi : IBlockchainApi, IErc20Api, IEthereumApi, IGasPriceProvider
@@ -263,11 +248,16 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
         public async Task<Result<TransactionsResult<Erc20Transaction>>> GetErc20TransactionsAsync(
             string address,
             string tokenContractAddress,
-            ulong fromBlock = ulong.MinValue,
+            ulong fromBlock = 0,
             ulong toBlock = ulong.MaxValue,
+            SortDirection sortDirection = SortDirection.Asc,
             CancellationToken cancellationToken = default)
         {
+            var fromBlockStr = BlockNumberToTag(fromBlock);
             var toBlockStr = BlockNumberToTag(toBlock);
+            var sort = sortDirection
+                .ToString()
+                .ToLowerInvariant();
             var offset = 10000;
 
             var txs = new List<Erc20Transaction>();
@@ -280,11 +270,11 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                     "&action=tokentx" +
                     $"&contractaddress={tokenContractAddress}" +
                     $"&address={address}" +
-                    $"&startblock={fromBlock}" +
+                    $"&startblock={fromBlockStr}" +
                     $"&endblock={toBlockStr}" +
                     $"&page={page}" +
                     $"&offset={offset}" +
-                    $"&sort=asc" +
+                    $"&sort={sort}" +
                     $"&apikey={Settings.ApiToken}";
 
                 using var response = await HttpHelper
@@ -417,6 +407,43 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             {
                 return new Error(Errors.RequestError, e.Message);
             }
+        }
+
+        public async Task<Result<BigInteger>> GetErc20TotalSupplyAsync(
+            string tokenContractAddress,
+            CancellationToken cancellationToken = default)
+        {
+            var requestUri = "api?" +
+                "module=stats" +
+                "&action=tokensupply" +
+                $"&contractaddress={tokenContractAddress}" +
+                $"&apikey={Settings.ApiToken}";
+
+            using var response = await HttpHelper
+                .GetAsync(
+                    baseUri: Settings.BaseUri,
+                    relativeUri: requestUri,
+                    requestLimitControl: GetRequestLimitControl(Settings.RequestLimitDelayMs),
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+
+            var content = await response
+                .Content
+                .ReadAsStringAsync()
+                .ConfigureAwait(false);
+
+            if (!response.IsSuccessStatusCode)
+                return new Error((int)response.StatusCode, "Error status code received");
+
+            var responseObj = JsonSerializer.Deserialize<Response<string>>(content);
+
+            if (responseObj == null || responseObj.Message != "OK")
+                return new Error((int)response.StatusCode, "Error response");
+
+            if (responseObj.Result == null)
+                return new Error(Errors.GetErc20TotalSupplyError, "Invalid response");
+
+            return BigInteger.Parse(responseObj.Result);
         }
 
         #endregion
@@ -837,9 +864,14 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             string address,
             ulong fromBlock = 0,
             ulong toBlock = ulong.MaxValue,
+            SortDirection sortDirection = SortDirection.Asc,
             CancellationToken cancellationToken = default)
         {
+            var fromBlockStr = BlockNumberToTag(fromBlock);
             var toBlockStr = BlockNumberToTag(toBlock);
+            var sort = sortDirection
+                .ToString()
+                .ToLowerInvariant();
             var offset = 10000;
 
             var txs = new List<EthereumTransaction>();
@@ -851,11 +883,11 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                     "module=account" +
                     "&action=txlist" +
                     $"&address={address}" +
-                    $"&startblock={fromBlock}" +
+                    $"&startblock={fromBlockStr}" +
                     $"&endblock={toBlockStr}" +
                     $"&page={page}" +
                     $"&offset={offset}" +
-                    $"&sort=asc" +
+                    $"&sort={sort}" +
                     $"&apikey={Settings.ApiToken}";
 
                 using var response = await HttpHelper
@@ -946,9 +978,14 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
             string address,
             ulong fromBlock = 0,
             ulong toBlock = ulong.MaxValue,
+            SortDirection sortDirection = SortDirection.Asc,
             CancellationToken cancellationToken = default)
         {
+            var fromBlockStr = BlockNumberToTag(fromBlock);
             var toBlockStr = BlockNumberToTag(toBlock);
+            var sort = sortDirection
+                .ToString()
+                .ToLowerInvariant();
             var offset = 10000;
 
             var txs = new List<EthereumInternalTransaction>();
@@ -959,11 +996,11 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                     "module=account" +
                     "&action=txlistinternal" +
                     $"&address={address}" +
-                    $"&startblock={fromBlock}" +
+                    $"&startblock={fromBlockStr}" +
                     $"&endblock={toBlockStr}" +
                     $"&page={page}" +
                     $"&offset={offset}" +
-                    $"&sort=asc" +
+                    $"&sort={sort}" +
                     $"&apikey={Settings.ApiToken}";
 
                 using var response = await HttpHelper
@@ -1181,7 +1218,7 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
 
         public async Task<Result<IEnumerable<ContractEvent>>> GetContractEventsAsync(
             string address,
-            ulong fromBlock = ulong.MinValue,
+            ulong fromBlock = 0,
             ulong toBlock = ulong.MaxValue,
             CancellationToken cancellationToken = default,
             params string[] topics)
@@ -1194,7 +1231,8 @@ namespace Atomex.Blockchain.Ethereum.EtherScan
                 "&action=getLogs" +
                 $"&address={address}" +
                 $"&fromBlock={fromBlockStr}" +
-                $"&toBlock={toBlockStr}{topicsStr}" +
+                $"&toBlock={toBlockStr}" +
+                $"{topicsStr}" +
                 $"&apikey={Settings.ApiToken}";
 
             using var response = await HttpHelper

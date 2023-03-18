@@ -92,6 +92,7 @@ namespace Atomex.Common
         public const int EstimateGasError = 1117;
         public const int GetBlockError = 1118;
         public const int GetTransactionReceiptError = 1119;
+        public const int GetErc20TotalSupplyError = 1120;
 
         public const int TransactionCreationError = 2000;
         public const int TransactionSigningError = 2001;

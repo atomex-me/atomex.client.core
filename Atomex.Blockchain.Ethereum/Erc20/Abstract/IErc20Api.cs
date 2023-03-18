@@ -27,6 +27,10 @@ namespace Atomex.Blockchain.Ethereum.Erc20.Abstract
             Erc20AllowanceMessage allowanceMessage,
             CancellationToken cancellationToken = default);
 
+        Task<Result<BigInteger>> GetErc20TotalSupplyAsync(
+            string tokenContractAddress,
+            CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Gets transactions count
         /// </summary>

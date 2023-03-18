@@ -83,19 +83,20 @@ namespace Atomex.Swaps.Ethereum
                     {
                         var isPaymentTx = type.HasFlag(TransactionType.SwapPayment);
 
-                        var (nonce, error) = await EthereumNonceManager.Instance
+                        var (nonce, nonceError) = await EthereumNonceManager.Instance
                             .GetNonceAsync(EthConfig.GetEthereumApi(), txRequest.From, pending: true, cancellationToken)
                             .ConfigureAwait(false);
 
-                        if (error != null)
+                        if (nonceError != null)
                         {
                             Log.Error("Nonce getting error with code {@code} and message {@message}",
-                                error.Value.Code,
-                                error.Value.Message);
+                                nonceError.Value.Code,
+                                nonceError.Value.Message);
 
                             return;
                         }
 
+                        // set nonce for every tx
                         txRequest.Nonce = nonce;
 
                         var signResult = await EthereumAccount
@@ -939,8 +940,9 @@ namespace Atomex.Swaps.Ethereum
                 FromAddress = walletAddress.Address
             };
 
-            var (allowance, allowanceError) = await Erc20Config
-                .GetErc20Api()
+            var etherScanApi = erc20.GetEtherScanApi();
+
+            var (allowance, allowanceError) = await etherScanApi
                 .GetErc20AllowanceAsync(
                     tokenAddress: erc20.TokenContractAddress,
                     allowanceMessage: allowanceMessage,
@@ -950,35 +952,21 @@ namespace Atomex.Swaps.Ethereum
             if (allowanceError != null)
             {
                 Log.Error($"Getting allowance error: {allowanceError.Value.Message}");
-                return new List<EthereumTransactionRequest>();
+                return null;
             }
 
-            var (nonce, nonceError) = await EthConfig
-                .GetEthereumApi()
-                .GetTransactionsCountAsync(
-                    address: walletAddress.Address,
-                    pending: false,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
+            //var (nonce, nonceError) = await etherScanApi
+            //    .GetTransactionsCountAsync(
+            //        address: walletAddress.Address,
+            //        pending: false,
+            //        cancellationToken: cancellationToken)
+            //    .ConfigureAwait(false);
 
-            if (nonceError != null)
-            {
-                Log.Error($"Getting nonce error: {nonceError.Value.Message}");
-                return new List<EthereumTransactionRequest>();
-            }
-
-            if (allowance > 0)
-            {
-                var tx = await CreateApproveTx(
-                        walletAddress: walletAddress.Address,
-                        nonce: nonce,
-                        value: 0,
-                        maxFeePerGas: gasPrice.MaxFeePerGas,
-                        maxPriorityFeePerGas: gasPrice.MaxPriorityFeePerGas)
-                    .ConfigureAwait(false);
-
-                transactions.Add(tx);
-            }
+            //if (nonceError != null)
+            //{
+            //    Log.Error($"Getting nonce error: {nonceError.Value.Message}");
+            //    return new List<EthereumTransactionRequest>();
+            //}
 
             var requiredAmount = GetRequiredAmount(swap, erc20);
             var requiredAmountInTokens = requiredAmount.ToTokens(erc20.Decimals);
@@ -988,10 +976,34 @@ namespace Atomex.Swaps.Ethereum
                 requiredAmountInTokens,
                 erc20.DustDigitsMultiplier);
 
+            if (allowance >= amountInTokens)
+                return new List<EthereumTransactionRequest>();
+
+            // reset allowance to zero
+            var resetTx = await CreateApproveTx(
+                    walletAddress: walletAddress.Address,
+                    //nonce: nonce,
+                    value: 0,
+                    maxFeePerGas: gasPrice.MaxFeePerGas,
+                    maxPriorityFeePerGas: gasPrice.MaxPriorityFeePerGas)
+                .ConfigureAwait(false);
+
+            transactions.Add(resetTx);
+
+            var (totalSupply, totalSupplyError) = await etherScanApi
+                .GetErc20TotalSupplyAsync(erc20.TokenContractAddress, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (totalSupplyError != null)
+            {
+                Log.Error($"Getting total supply error: {totalSupplyError.Value.Message}");
+                return new List<EthereumTransactionRequest>();
+            }
+
             var approveTx = await CreateApproveTx(
                     walletAddress: walletAddress.Address,
-                    nonce: nonce,
-                    value: amountInTokens,
+                    //nonce: nonce,
+                    value: totalSupply,//amountInTokens,
                     maxFeePerGas: gasPrice.MaxFeePerGas,
                     maxPriorityFeePerGas: gasPrice.MaxPriorityFeePerGas)
                 .ConfigureAwait(false);
@@ -1003,7 +1015,7 @@ namespace Atomex.Swaps.Ethereum
 
         private async Task<EthereumTransactionRequest> CreateApproveTx(
             string walletAddress,
-            BigInteger nonce,
+            //BigInteger nonce,
             BigInteger value,
             decimal maxFeePerGas,
             decimal maxPriorityFeePerGas)
@@ -1017,7 +1029,7 @@ namespace Atomex.Swaps.Ethereum
                 FromAddress          = walletAddress,
                 MaxFeePerGas         = maxFeePerGas.GweiToWei(),
                 MaxPriorityFeePerGas = maxPriorityFeePerGas.GweiToWei(),
-                Nonce                = nonce,
+                Nonce                = 0,//nonce,
                 TransactionType      = EthereumHelper.Eip1559TransactionType
             };
 
