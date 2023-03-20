@@ -97,9 +97,15 @@ namespace Atomex.Wallet.Tezos
                     from: from,
                     to: _tokenContract,
                     amount: 0,
-                    fee: Fee.FromValue((long)addressFeeUsage.UsedFee),
-                    gasLimit: GasLimit.FromValue((int)tokenConfig.TransferGasLimit),
-                    storageLimit: StorageLimit.FromValue((int)storageLimit),
+                    fee: useDefaultFee
+                        ? Fee.FromNetwork((long)addressFeeUsage.UsedFee)
+                        : Fee.FromValue((long)addressFeeUsage.UsedFee),
+                    gasLimit: useDefaultFee
+                        ? GasLimit.FromNetwork((int)tokenConfig.TransferGasLimit)
+                        : GasLimit.FromValue((int)tokenConfig.TransferGasLimit),
+                    storageLimit: useDefaultFee
+                        ? StorageLimit.FromNetwork((int)storageLimit, useSafeValue: false)
+                        : StorageLimit.FromValue((int)storageLimit),
                     entrypoint: "transfer",
                     parameters: CreateTransferParams(from, to, addressAmountInTokenDigits),
                     cancellationToken: cancellationToken)

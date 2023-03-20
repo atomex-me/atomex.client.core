@@ -14,10 +14,6 @@ namespace Atomex.TezosTokens
     public class Fa12Config : TezosTokenConfig
     {
         public override string Standard => TezosHelper.Fa12;
-        public decimal GetBalanceFee { get; private set; }
-        public decimal GetBalanceGasLimit { get; private set; }
-        public decimal GetBalanceStorageLimit { get; private set; }
-        public decimal GetBalanceSize { get; private set; }
         public decimal GetAllowanceGasLimit { get; private set; }
 
         public Fa12Config()
