@@ -7,12 +7,11 @@ using System.Threading.Tasks;
 
 using Serilog;
 
-using Atomex.Blockchain.Tezos.Tzkt;
-using Atomex.Core;
-using Atomex.EthereumTokens;
-using Atomex.TezosTokens;
-using Atomex.Wallet.Abstract;
 using Atomex.Blockchain.Ethereum;
+using Atomex.Blockchain.Tezos.Tzkt;
+using Atomex.Common;
+using Atomex.Wallet.Abstract;
+using Atomex.Wallets;
 
 namespace Atomex.ViewModels
 {

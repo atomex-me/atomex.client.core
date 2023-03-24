@@ -17,6 +17,7 @@ using Atomex.MarketData.Common;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.Abstract;
 using Swap = Atomex.Core.Swap;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.ViewModels
 {
@@ -930,9 +931,7 @@ namespace Atomex.ViewModels
 
         public static string GetUserId(IAccount account)
         {
-            using var servicePublicKey =
-                account.Wallet.GetServicePublicKey(account.UserData.AuthenticationKeyIndex);
-            var publicKey = servicePublicKey.ToUnsecuredBytes();
+            var publicKey = account.Wallet.GetServicePublicKey(account.UserData.AuthenticationKeyIndex);
 
             return HashAlgorithm.Sha256.Hash(publicKey, iterations: 2).ToHexString();
         }

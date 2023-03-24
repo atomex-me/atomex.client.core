@@ -9,9 +9,9 @@ using Serilog;
 using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.EtherScan;
 using Atomex.Common;
-using Atomex.Core;
-using Atomex.Wallet.Abstract;
 using Atomex.Wallets.Bips;
+using Atomex.Wallets;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.Ethereum
 {

@@ -14,6 +14,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet;
+using Atomex.Wallets;
 
 namespace Atomex.LiteDb
 {

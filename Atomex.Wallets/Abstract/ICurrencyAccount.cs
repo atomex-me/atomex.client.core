@@ -3,9 +3,8 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Blockchain.Abstract;
-using Atomex.Core;
 
-namespace Atomex.Wallet.Abstract
+namespace Atomex.Wallets.Abstract
 {
     public interface ICurrencyAccount
     {
@@ -34,7 +33,7 @@ namespace Atomex.Wallet.Abstract
 
         Task<IEnumerable<WalletAddress>> GetUnspentAddressesAsync(
             CancellationToken cancellationToken = default);
-        
+
         Task<WalletAddress> GetFreeExternalAddressAsync(
             CancellationToken cancellationToken = default);
 

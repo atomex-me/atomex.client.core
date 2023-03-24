@@ -9,6 +9,7 @@ using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Swaps.BitcoinBased.Helpers
 {

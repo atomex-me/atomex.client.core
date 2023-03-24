@@ -10,9 +10,9 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Common;
 using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Common;
-using Atomex.Core;
-using Atomex.Wallet.Abstract;
 using Atomex.Wallets.Bips;
+using Atomex.Wallets;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.Tezos
 {

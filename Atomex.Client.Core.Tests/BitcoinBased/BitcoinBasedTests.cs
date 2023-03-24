@@ -32,8 +32,8 @@ namespace Atomex.Client.Core.Tests
 
             var tx = currency.CreateTransaction(
                 unspentOutputs: initTx.Outputs,
-                destinationAddress: Common.Bob.PubKey.GetAddress(currency),
-                changeAddress: Common.Alice.PubKey.GetAddress(currency),
+                destinationAddress: Common.Bob.PubKey.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
+                changeAddress: Common.Alice.PubKey.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
                 amount: amount,
                 fee: fee);
 
@@ -86,8 +86,8 @@ namespace Atomex.Client.Core.Tests
 
             var tx = currency.CreateHtlcSegwitScriptSwapPaymentTx(
                 unspentOutputs: initTx.Outputs,
-                aliceRefundAddress: Common.Alice.PubKey.GetAddress(currency),
-                bobAddress: Common.Bob.PubKey.GetAddress(currency),
+                aliceRefundAddress: Common.Alice.PubKey.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
+                bobAddress: Common.Bob.PubKey.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
                 lockTime: Common.LockTime,
                 secretHash: Common.SecretHash,
                 secretSize: Common.Secret.Length,
@@ -209,8 +209,8 @@ namespace Atomex.Client.Core.Tests
 
             var redeemTx = currency.CreateTransaction(
                 unspentOutputs: paymentOutputs,
-                destinationAddress: Common.Bob.PubKey.GetAddress(currency),
-                changeAddress: Common.Bob.PubKey.GetAddress(currency),
+                destinationAddress: Common.Bob.PubKey.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
+                changeAddress: Common.Bob.PubKey.GetAddress(ScriptPubKeyType.Legacy, currency.Network).ToString(),
                 amount: amount,
                 fee: fee,
                 lockTime: null,

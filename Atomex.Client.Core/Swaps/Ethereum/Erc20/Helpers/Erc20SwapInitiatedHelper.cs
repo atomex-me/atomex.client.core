@@ -17,6 +17,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Blockchain;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Swaps.Ethereum.Erc20.Helpers
 {

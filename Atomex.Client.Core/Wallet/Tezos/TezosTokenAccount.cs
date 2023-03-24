@@ -15,7 +15,8 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Abstract;
-using Newtonsoft.Json.Linq;
+using Atomex.Wallets;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.Tezos
 {

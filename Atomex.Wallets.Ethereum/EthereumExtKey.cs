@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 using NBitcoin;
 
@@ -50,20 +48,6 @@ namespace Atomex.Wallets.Ethereum
             using var privateKey = Derive(extKey => extKey.Derive(new KeyPath(keyPath)));
 
             return new EthereumExtKey(privateKey);
-        }
-
-        public Task<IExtKey> DeriveAsync(
-            uint index,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.Run(() => Derive(index), cancellationToken);
-        }
-
-        public Task<IExtKey> DeriveAsync(
-            string keyPath,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.Run(() => Derive(keyPath), cancellationToken);
         }
 
         private ExtKey GetExtKey()

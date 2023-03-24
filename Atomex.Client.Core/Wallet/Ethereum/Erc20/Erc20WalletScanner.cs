@@ -11,9 +11,9 @@ using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Erc20;
 using Atomex.Blockchain.Ethereum.EtherScan;
 using Atomex.Common;
-using Atomex.Core;
 using Atomex.EthereumTokens;
-using Atomex.Wallet.Abstract;
+using Atomex.Wallets;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.Ethereum
 {

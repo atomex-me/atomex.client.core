@@ -3,7 +3,7 @@ using System.Numerics;
 
 using Atomex.Blockchain;
 
-namespace Atomex.Core
+namespace Atomex.Wallets
 {
     public enum WalletAddressType
     {
@@ -14,7 +14,7 @@ namespace Atomex.Core
 
     public class WalletAddress
     {
-        public string Id => GetUniqueId(Address, TokenBalance?.Contract, TokenBalance?.TokenId);      
+        public string Id => GetUniqueId(Address, TokenBalance?.Contract, TokenBalance?.TokenId);
         public string Address { get; set; }
         public string Currency { get; set; }
         public BigInteger Balance { get; set; }
@@ -28,15 +28,11 @@ namespace Atomex.Core
         public DateTime LastSuccessfullUpdate { get; set; }
         public WalletAddressType Type { get; set; }
 
-        public BigInteger AvailableBalance() => Currencies.IsBitcoinBased(Currency)
-            ? Balance + UnconfirmedIncome
-            : Balance;
-
-        public bool IsDisabled => 
+        public bool IsDisabled =>
             Type == WalletAddressType.Inactive ||
-            (Type == WalletAddressType.SingleUse && HasActivity && Balance == 0 && UnconfirmedIncome == 0 && UnconfirmedOutcome == 0);
+            Type == WalletAddressType.SingleUse && HasActivity && Balance == 0 && UnconfirmedIncome == 0 && UnconfirmedOutcome == 0;
 
-        public static string GetUniqueId(string address, string tokenContract = null, BigInteger? tokenId = null) => 
+        public static string GetUniqueId(string address, string tokenContract = null, BigInteger? tokenId = null) =>
             tokenContract == null && tokenId == null
                 ? $"{address}"
                 : $"{address}:{tokenContract}:{tokenId.Value}";

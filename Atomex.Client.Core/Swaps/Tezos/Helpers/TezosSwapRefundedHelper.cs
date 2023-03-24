@@ -9,6 +9,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Blockchain.Tezos.Tzkt.Swaps.V1;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Swaps.Tezos.Helpers
 {

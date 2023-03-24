@@ -9,10 +9,12 @@ using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.Wallets;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.Abstract
 {
-    public interface IAccount : IAddressResolver
+    public interface IAccount
     {
         event EventHandler Locked;
         event EventHandler Unlocked;
@@ -111,6 +113,22 @@ namespace Atomex.Wallet.Abstract
         #endregion Balances
 
         #region Addresses
+
+        /// <summary>
+        /// Get wallet's address for <paramref name="currency"/> by <paramref name="address"/>
+        /// </summary>
+        /// <param name="currency">Currency</param>
+        /// <param name="address">Address</param>
+        /// <param name="tokenContract">Token contract (optional)</param>
+        /// <param name="tokenId">Token Id (optional)</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>Wallet's address</returns>
+        Task<WalletAddress> GetAddressAsync(
+            string currency,
+            string address,
+            string? tokenContract = null,
+            BigInteger? tokenId = null,
+            CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets unspent addresses for <paramref name="currency"/>

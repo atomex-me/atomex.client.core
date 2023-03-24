@@ -12,13 +12,13 @@ using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Bitcoin.SoChain;
 using Atomex.Blockchain.BlockCypher;
-using Atomex.Core;
 using Atomex.Common;
 using Atomex.Common.Memory;
 using Atomex.Wallets;
 using Atomex.Wallets.Bitcoin;
 using Atomex.Wallets.Bips;
 using BitcoinExtKey = Atomex.Wallets.Bitcoin.BitcoinExtKey;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex
 {

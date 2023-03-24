@@ -26,11 +26,11 @@ namespace Atomex.Wallets.Ethereum
 
         public SecureBytes GetPrivateKey() => _privateKey.Copy();
 
-        public SecureBytes GetPublicKey()
+        public byte[] GetPublicKey()
         {
             var key = GetKey();
 
-            return new SecureBytes(key.GetPubKey());
+            return key.GetPubKey();
         }
 
         public virtual byte[] Sign(

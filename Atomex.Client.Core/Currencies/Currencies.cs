@@ -7,9 +7,9 @@ using Microsoft.Extensions.Configuration;
 using Serilog;
 
 using Atomex.Abstract;
-using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.TezosTokens;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex
 {

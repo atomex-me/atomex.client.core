@@ -10,22 +10,20 @@ using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Common;
-using Atomex.Blockchain.Tezos.Internal;
 using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Common;
 using Atomex.Common.Memory;
-using Atomex.Core;
 using Atomex.Cryptography;
 using Atomex.Wallets;
 using Atomex.Wallets.Bips;
 using Atomex.Wallets.Keys;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex
 {
     public class TezosConfig : CurrencyConfig
     {
         public const string Xtz = "XTZ";
-        public const long XtzDigitsMultiplier = 1_000_000;
         public const int HeadOffset = 55;
 
         // ext key types

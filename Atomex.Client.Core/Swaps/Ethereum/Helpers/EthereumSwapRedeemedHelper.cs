@@ -10,6 +10,7 @@ using Atomex.Blockchain.Ethereum.Dto.Swaps.V1;
 using Atomex.Blockchain.Ethereum.EtherScan;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Swaps.Ethereum.Helpers
 {

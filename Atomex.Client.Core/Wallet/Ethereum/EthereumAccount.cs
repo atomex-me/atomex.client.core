@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Serilog;
+using Nethereum.Signer.Crypto;
 
 using Atomex.Abstract;
 using Atomex.Blockchain;
@@ -14,13 +15,11 @@ using Atomex.Blockchain.Ethereum;
 using Atomex.Blockchain.Ethereum.Erc20.Messages;
 using Atomex.Blockchain.Ethereum.Messages.Swaps.V1;
 using Atomex.Common;
-using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Wallet.Abstract;
+using Atomex.Wallets;
 using Atomex.Wallets.Bips;
-using System.Security.Cryptography.X509Certificates;
-using Nethereum.Signer.Crypto;
-using Atomex.Blockchain.Ethereum.EtherScan;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.Ethereum
 {
@@ -196,7 +195,7 @@ namespace Atomex.Wallet.Ethereum
                     .SignHashAsync(rawHash, walletAddress, EthConfig, cancellationToken)
                     .ConfigureAwait(false);
 
-                using var securePublicKey = Wallet.GetPublicKey(
+                var publicKey = Wallet.GetPublicKey(
                     EthConfig,
                     walletAddress.KeyPath,
                     walletAddress.KeyType);
@@ -208,7 +207,7 @@ namespace Atomex.Wallet.Ethereum
                     (byte)EthereumTransactionRequest.CalculateRecId(
                         signature: new ECDSASignature(txRequest.Signature),
                         hash: rawHash,
-                        uncompressedPublicKey: securePublicKey.ToUnsecuredBytes())
+                        uncompressedPublicKey: publicKey)
                 };
 
                 return true;

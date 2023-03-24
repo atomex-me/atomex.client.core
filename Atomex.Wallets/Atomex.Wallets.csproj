@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Atomex.Blockchain\Atomex.Blockchain.csproj" />
     <ProjectReference Include="..\Atomex.Common\Atomex.Common.csproj" />
     <ProjectReference Include="..\Atomex.Cryptography\Atomex.Cryptography.csproj" />
   </ItemGroup>

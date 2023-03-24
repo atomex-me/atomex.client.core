@@ -21,6 +21,7 @@ using Atomex.LiteDb.Migrations;
 using Atomex.Wallet;
 using Atomex.Wallet.Abstract;
 using Network = Atomex.Core.Network;
+using Atomex.Wallets;
 
 namespace Atomex.LiteDb
 {

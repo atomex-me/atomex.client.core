@@ -32,7 +32,7 @@ namespace Atomex.Wallets
         /// Gets public key
         /// </summary>
         /// <returns>Public key</returns>
-        SecureBytes GetPublicKey();
+        byte[] GetPublicKey();
 
         /// <summary>
         /// Signs <paramref name="data"/>

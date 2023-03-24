@@ -1,6 +1,6 @@
 ﻿using System.Numerics;
 
-namespace Atomex.Wallet
+namespace Atomex.Wallets
 {
     public class Balance
     {
@@ -9,7 +9,7 @@ namespace Atomex.Wallet
         public BigInteger UnconfirmedOutcome { get; set; }
 
         public Balance()
-        { 
+        {
         }
 
         public Balance(

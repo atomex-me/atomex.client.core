@@ -3,10 +3,11 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Atomex.Common;
-using Atomex.Core;
 using Atomex.MarketData.Abstract;
 using Atomex.MarketData.Entities;
 using Atomex.Wallet.Abstract;
+using Atomex.Wallets;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Swaps.Helpers
 {

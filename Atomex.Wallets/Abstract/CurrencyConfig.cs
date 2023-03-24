@@ -6,17 +6,14 @@ using System.Threading.Tasks;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
 using Atomex.Common.Memory;
-using Atomex.Wallets;
 using Atomex.Wallets.Bips;
 
-namespace Atomex.Core
+namespace Atomex.Wallets.Abstract
 {
     public abstract class CurrencyConfig
     {
         public const decimal MaxRewardForRedeemDeviation = 0.05m;
 
-        public const int MaxNameLength = 32;
-        public const string CoinsDefaultFileName = "coins.default.json";
         public const int StandardKey = 0;
         public const int MaxPrecision = 9;
 
@@ -24,7 +21,6 @@ namespace Atomex.Core
         public string Name { get; set; }
         public string DisplayedName { get; set; }
         public string Description { get; set; }
-        //public BigInteger Precision => BigInteger.Pow(10, Decimals);
         public long DustDigitsMultiplier { get; protected set; }
         public int Decimals { get; set; }
         public int Precision => Decimals <= MaxPrecision ? Decimals : MaxPrecision;

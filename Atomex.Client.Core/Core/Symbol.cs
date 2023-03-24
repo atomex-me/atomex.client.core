@@ -6,8 +6,6 @@ namespace Atomex.Core
 {
     public class Symbol
     {
-        public const int MaxNameLength = 32;
-
         public int Id { get; set; }
         public string Name { get; set; }
         public decimal MinimumQty { get; set; }

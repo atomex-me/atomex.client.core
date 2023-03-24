@@ -10,8 +10,7 @@ namespace Atomex.Common
             {
                 const int keyIndex = 0;
 
-                var securePublicKey = account.Wallet.GetServicePublicKey(keyIndex);
-                var publicKey = securePublicKey.ToUnsecuredBytes();
+                var publicKey = account.Wallet.GetServicePublicKey(keyIndex);
 
                 var signature = await account.Wallet
                     .SignByServiceKeyAsync(data, keyIndex)

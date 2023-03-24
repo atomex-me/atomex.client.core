@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
 using Atomex.Common;
-using Atomex.Core;
+using Atomex.Wallets;
+using Atomex.Wallets.Abstract;
 using Atomex.Wallets.Bips;
 
 namespace Atomex.Wallet.Abstract

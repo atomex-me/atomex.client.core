@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -7,7 +8,7 @@ using Serilog;
 
 using Atomex.Cryptography.Abstract;
 using Atomex.Wallet.Abstract;
-using WalletAddress = Atomex.Core.WalletAddress;
+using WalletAddress = Atomex.Wallets.WalletAddress;
 using DtoWalletAddress = Atomex.Client.V1.Entities.WalletAddress;
 
 namespace Atomex.Common
@@ -46,7 +47,7 @@ namespace Atomex.Common
 
                     Log.Verbose("ProofOfPossession: {@signature}", proofOfPossession);
 
-                    using var securePublicKey = account.Wallet.GetPublicKey(
+                    var publicKey = account.Wallet.GetPublicKey(
                         currency: currencyConfig,
                         keyPath: address.KeyPath,
                         keyType: address.KeyType);
@@ -57,7 +58,7 @@ namespace Atomex.Common
                         Currency          = address.Currency,
                         Nonce             = nonce,
                         ProofOfPossession = proofOfPossession,
-                        PublicKey         = Convert.ToBase64String(securePublicKey.ToUnsecuredBytes())
+                        PublicKey         = Convert.ToBase64String(publicKey)
                     });
                 }
 
@@ -70,5 +71,9 @@ namespace Atomex.Common
 
             return null;
         }
+
+        public static BigInteger AvailableBalance(this WalletAddress walletAddress) => Currencies.IsBitcoinBased(walletAddress.Currency)
+            ? walletAddress.Balance + walletAddress.UnconfirmedIncome
+            : walletAddress.Balance;
     }
 }

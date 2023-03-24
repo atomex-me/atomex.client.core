@@ -1,8 +1,7 @@
 ﻿using System.Collections.Generic;
 
 using Microsoft.Extensions.Configuration;
-
-using Atomex.Core;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Abstract
 {

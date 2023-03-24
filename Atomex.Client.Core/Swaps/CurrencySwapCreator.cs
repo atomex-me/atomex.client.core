@@ -1,6 +1,4 @@
 ﻿using System;
-
-using Atomex.Core;
 using Atomex.EthereumTokens;
 using Atomex.Swaps.Abstract;
 using Atomex.Swaps.BitcoinBased;
@@ -13,6 +11,7 @@ using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
 using Atomex.Wallet.Ethereum;
 using Atomex.Wallet.Tezos;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Swaps
 {

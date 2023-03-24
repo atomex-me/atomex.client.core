@@ -13,6 +13,7 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.TezosTokens;
 using Atomex.Swaps.Abstract;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Swaps.Tezos.Fa2.Helpers
 {

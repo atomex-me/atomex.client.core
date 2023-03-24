@@ -17,6 +17,7 @@ using Atomex.Swaps.Abstract;
 using Atomex.Swaps.BitcoinBased.Helpers;
 using Atomex.Swaps.Helpers;
 using Atomex.Wallet.BitcoinBased;
+using Atomex.Wallets;
 
 namespace Atomex.Swaps.BitcoinBased
 {
@@ -316,7 +317,7 @@ namespace Atomex.Swaps.BitcoinBased
                 .ConfigureAwait(false);
 
             var toAddress = await _account
-                .GetAddressAsync(currency.Name, swap.ToAddress, cancellationToken: cancellationToken)
+                .GetAddressAsync(swap.ToAddress, cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             // sign redeem tx

@@ -19,6 +19,7 @@ using Atomex.Wallets.Bips;
 using Network = Atomex.Core.Network;
 using Swap = Atomex.Core.Swap;
 using SwapStatus = Atomex.Client.V1.Entities.SwapStatus;
+using Atomex.Wallets;
 
 namespace Atomex.LiteDb.Migrations
 {

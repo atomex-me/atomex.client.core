@@ -15,7 +15,6 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
-using Atomex.Swaps.Helpers;
 using Atomex.Swaps.Tezos.Fa12.Helpers;
 using Atomex.TezosTokens;
 using Atomex.Wallet.Tezos;
@@ -89,7 +88,7 @@ namespace Atomex.Swaps.Tezos.Fa12
 
             var rpc = new TezosRpc(fa12.GetRpcSettings());
 
-            using var securePublicKey = Fa12Account.Wallet.GetPublicKey(
+            var publicKey = Fa12Account.Wallet.GetPublicKey(
                 currency: Fa12Config,
                 keyPath: walletAddress.KeyPath,
                 keyType: walletAddress.KeyType);
@@ -101,7 +100,7 @@ namespace Atomex.Swaps.Tezos.Fa12
                     callingAddress: walletAddress.Address,
                     tokenContractAddress: fa12.TokenContractAddress,
                     tokenViewContractAddress: fa12.ViewContractAddress,
-                    publicKey: securePublicKey.ToUnsecuredBytes(),
+                    publicKey: publicKey,
                     settings: fa12.GetFillOperationSettings(),
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
@@ -190,7 +189,7 @@ namespace Atomex.Swaps.Tezos.Fa12
                         callingAddress: walletAddress.Address,
                         tokenContractAddress: fa12.TokenContractAddress,
                         tokenViewContractAddress: fa12.ViewContractAddress,
-                        publicKey: securePublicKey.ToUnsecuredBytes(),
+                        publicKey: publicKey,
                         settings: fa12.GetFillOperationSettings(),
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);

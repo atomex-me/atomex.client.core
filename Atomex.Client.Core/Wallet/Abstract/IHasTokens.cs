@@ -1,8 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Atomex.Core;
+using Atomex.Wallets;
 
 namespace Atomex.Wallet.Abstract
 {

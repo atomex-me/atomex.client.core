@@ -1,7 +1,6 @@
-﻿using Atomex.Blockchain.Tezos.Common;
-using Atomex.Cryptography;
+﻿using Atomex.Cryptography;
 
-namespace Atomex.Blockchain.Tezos.Internal
+namespace Atomex.Blockchain.Tezos.Common
 {
     public static class Address
     {

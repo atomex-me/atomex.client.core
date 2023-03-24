@@ -10,15 +10,10 @@ using Atomex.Blockchain.Bitcoin;
 using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Common;
 using Atomex.Core;
+using Atomex.Wallets;
 
 namespace Atomex.Wallet.Abstract
 {
-    public enum MigrationActionType
-    {
-        XtzTransactionsDeleted,
-        XtzTokensDataDeleted
-    }
-
     public interface ILocalStorage
     {
         public event EventHandler<BalanceChangedEventArgs> BalanceChanged;

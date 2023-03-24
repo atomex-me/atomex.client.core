@@ -8,9 +8,9 @@ using Serilog;
 
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
-using Atomex.Core;
-using Atomex.Wallet.Abstract;
 using Atomex.Wallets.Bips;
+using Atomex.Wallets;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.BitcoinBased
 {

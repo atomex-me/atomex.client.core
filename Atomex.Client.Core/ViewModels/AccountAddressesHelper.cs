@@ -5,8 +5,10 @@ using System.Threading.Tasks;
 
 using Atomex.Abstract;
 using Atomex.Blockchain;
-using Atomex.Core;
+using Atomex.Common;
 using Atomex.Wallet.Abstract;
+using Atomex.Wallets;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.ViewModels
 {

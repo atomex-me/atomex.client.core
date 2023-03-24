@@ -52,7 +52,7 @@ namespace Atomex.Wallets
             SignDataType = signDataType;
         }
 
-        public override Task<SecureBytes> GetPublicKeyAsync(
+        public override Task<byte[]> GetPublicKeyAsync(
             string keyPath,
             CancellationToken cancellationToken = default)
         {

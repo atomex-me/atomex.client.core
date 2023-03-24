@@ -10,12 +10,12 @@ using Serilog;
 
 using Atomex.Common;
 using Atomex.Common.Memory;
-using Atomex.Core;
 using Atomex.Cryptography.Abstract;
 using Atomex.Cryptography.DotNet;
 using Atomex.Wallets;
 using Atomex.Wallet.Abstract;
 using Network = Atomex.Core.Network;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet
 {
@@ -122,7 +122,7 @@ namespace Atomex.Wallet
             return masterKey.Derive(keyPath);
         }
 
-        public SecureBytes GetPublicKey(
+        public byte[] GetPublicKey(
             CurrencyConfig currency,
             string keyPath,
             int keyType)
@@ -135,7 +135,7 @@ namespace Atomex.Wallet
             return extKey.GetPublicKey();
         }
 
-        public SecureBytes GetServicePublicKey(uint index)
+        public byte[] GetServicePublicKey(uint index)
         {
             using var masterKey = BitcoinBasedConfig
                 .CreateExtKeyFromSeed(Seed);
@@ -248,8 +248,7 @@ namespace Atomex.Wallet
             using var extKey = masterKey
                 .Derive($"m/{ServicePurpose}'/{currency.Bip44Code}'/0'/{daysIndex}/{secondsIndex}/{msIndex}/{counter}");
 
-            using var securePublicKey = extKey.GetPublicKey();
-            var publicKey = securePublicKey.ToUnsecuredBytes();
+            var publicKey = extKey.GetPublicKey();
 
             return HashAlgorithm.Sha512.Hash(publicKey);
         }

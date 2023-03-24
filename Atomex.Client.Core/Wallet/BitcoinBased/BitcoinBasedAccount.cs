@@ -13,13 +13,13 @@ using Atomex.Blockchain;
 using Atomex.Blockchain.Abstract;
 using Atomex.Blockchain.Bitcoin;
 using Atomex.Common;
-using Atomex.Core;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallets.Bips;
+using Atomex.Wallets;
 
 namespace Atomex.Wallet.BitcoinBased
 {
-    public class BitcoinBasedAccount : CurrencyAccount, IAddressResolver, IEstimatable
+    public class BitcoinBasedAccount : CurrencyAccount, IEstimatable
     {
         public BitcoinBasedConfig Config => Currencies.Get<BitcoinBasedConfig>(Currency);
 
@@ -151,7 +151,6 @@ namespace Atomex.Wallet.BitcoinBased
                     var address = spentOutput.DestinationAddress(Config.Network);
 
                     var walletAddress = await GetAddressAsync(
-                            currency: Currency,
                             address: address,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
@@ -159,7 +158,7 @@ namespace Atomex.Wallet.BitcoinBased
                     if (walletAddress == null)
                         return false; // todo error?
 
-                    using var publicKey = Wallet.GetPublicKey(Config, walletAddress.KeyPath, walletAddress.KeyType);
+                    var publicKey = Wallet.GetPublicKey(Config, walletAddress.KeyPath, walletAddress.KeyType);
 
                     var signatureHash = tx.GetSignatureHash(spentOutput, redeemScript: null, SigHash.All);
 
@@ -175,11 +174,11 @@ namespace Atomex.Wallet.BitcoinBased
                     {
                         BitcoinOutputType.P2PKH => PayToPubkeyHashTemplate.Instance.GenerateScriptSig(
                             signature: new TransactionSignature(signature, SigHash.All),
-                            publicKey: new PubKey(publicKey.ToUnsecuredBytes())),
+                            publicKey: new PubKey(publicKey)),
 
                         BitcoinOutputType.P2WPKH => (Script)PayToWitPubKeyHashTemplate.Instance.GenerateWitScript(
                             signature: new TransactionSignature(signature, SigHash.All),
-                            publicKey: new PubKey(publicKey.ToUnsecuredBytes())),
+                            publicKey: new PubKey(publicKey)),
 
                         BitcoinOutputType.P2PK => PayToPubkeyTemplate.Instance.GenerateScriptSig(
                             signature: new TransactionSignature(signature, SigHash.All)),
@@ -442,20 +441,6 @@ namespace Atomex.Wallet.BitcoinBased
             LocalStorage.GetOutputsAsync(Currency);
 
         #endregion Outputs
-
-        #region AddressResolver
-
-        public Task<WalletAddress> GetAddressAsync(
-            string currency,
-            string address,
-            string? tokenContract = null,
-            BigInteger? tokenId = null,
-            CancellationToken cancellationToken = default)
-        {
-            return GetAddressAsync(address, cancellationToken);
-        }
-
-        #endregion AddressResolver
 
         #region Transactions
 

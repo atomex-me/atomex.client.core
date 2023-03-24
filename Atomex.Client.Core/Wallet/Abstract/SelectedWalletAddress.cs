@@ -1,6 +1,5 @@
 ﻿using System.Numerics;
-
-using Atomex.Core;
+using Atomex.Wallets;
 
 namespace Atomex.Wallet.Abstract
 {

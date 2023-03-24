@@ -7,11 +7,14 @@ namespace Atomex.Wallets.Abstract
     /// </summary>
     public interface IKeyStorage
     {
-        /// <summary>
-        /// Gets private key by index
-        /// </summary>
-        /// <param name="keyIndex">Key index</param>
-        /// <returns>Private key secure bytes</returns>
-        SecureBytes GetPrivateKey(int keyIndex);
+        SecureBytes GetPrivateKey(
+            CurrencyConfig currency,
+            string keyPath,
+            int keyType);
+
+        byte[] GetPublicKey(
+            CurrencyConfig currency,
+            string keyPath,
+            int keyType);
     }
 }

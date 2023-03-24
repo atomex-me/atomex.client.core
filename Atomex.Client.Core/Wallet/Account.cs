@@ -17,6 +17,8 @@ using Atomex.Common;
 using Atomex.Core;
 using Atomex.Cryptography.Abstract;
 using Atomex.Wallet.Abstract;
+using Atomex.Wallets;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet
 {
@@ -159,8 +161,7 @@ namespace Atomex.Wallet
 
         public string GetUserId(uint keyIndex = 0)
         {
-            using var servicePublicKey = Wallet.GetServicePublicKey(keyIndex);
-            var publicKey = servicePublicKey.ToUnsecuredBytes();
+            var publicKey = Wallet.GetServicePublicKey(keyIndex);
 
             return HashAlgorithm.Sha256.Hash(publicKey, iterations: 2).ToHexString();
         }

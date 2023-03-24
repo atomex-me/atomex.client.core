@@ -1,7 +1,7 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
 
-namespace Atomex.Wallet.Abstract
+namespace Atomex.Wallets.Abstract
 {
     public interface ICurrencyWalletScanner
     {

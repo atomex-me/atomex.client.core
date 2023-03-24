@@ -6,8 +6,8 @@ using NBitcoin;
 using Serilog;
 
 using Atomex.Blockchain.Bitcoin;
-using Atomex.Core;
 using Atomex.Wallet.BitcoinBased;
+using Atomex.Wallets;
 
 namespace Atomex.Swaps.BitcoinBased
 {
@@ -104,14 +104,14 @@ namespace Atomex.Swaps.BitcoinBased
                 return null;
             }
 
-            using var refundAddressPublicKey = Account.Wallet.GetPublicKey(
+            var refundAddressPublicKey = Account.Wallet.GetPublicKey(
                 currency: Account.Config,
                 keyPath: refundAddress.KeyPath,
                 keyType: refundAddress.KeyType);
 
             var refundScriptSig = BitcoinSwapTemplate.CreateSwapRefundScript(
                 aliceRefundSig: signature,
-                aliceRefundPubKey: refundAddressPublicKey.ToUnsecuredBytes(),
+                aliceRefundPubKey: refundAddressPublicKey,
                 redeemScript: redeemScript);
 
             var refundScriptSigSegwit = refundScriptSig.ToWitScript();
@@ -169,14 +169,14 @@ namespace Atomex.Swaps.BitcoinBased
                 return null;
             }
 
-            using var redeemAddressPublicKey = Account.Wallet.GetPublicKey(
+            var redeemAddressPublicKey = Account.Wallet.GetPublicKey(
                 currency: Account.Config,
                 keyPath: redeemAddress.KeyPath,
                 keyType: redeemAddress.KeyType);
 
             var redeemScriptSig = BitcoinSwapTemplate.CreateSwapRedeemScript(
                 sig: signature,
-                pubKey: redeemAddressPublicKey.ToUnsecuredBytes(),
+                pubKey: redeemAddressPublicKey,
                 secret: secret,
                 redeemScript: redeemScript);
 

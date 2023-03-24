@@ -3,8 +3,9 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Atomex.Common.Memory;
 using Atomex.Core;
+using Atomex.Wallets;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.Abstract
 {
@@ -48,7 +49,7 @@ namespace Atomex.Wallet.Abstract
             string keyPath,
             int keyType);
 
-        SecureBytes GetPublicKey(
+        byte[] GetPublicKey(
             CurrencyConfig currency,
             string keyPath,
             int keyType);
@@ -58,7 +59,7 @@ namespace Atomex.Wallet.Abstract
         /// </summary>
         /// <param name="index">Service key index</param>
         /// <returns>Public key bytes</returns>
-        SecureBytes GetServicePublicKey(uint index);
+        byte[] GetServicePublicKey(uint index);
 
         /// <summary>
         /// Sign transaction <paramref name="hash"/> using public key corresponding to <paramref name="address"/>

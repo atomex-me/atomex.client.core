@@ -28,13 +28,13 @@ namespace Atomex.Wallets.Bitcoin
 
         public SecureBytes GetPrivateKey() => _privateKey.Copy();
  
-        public SecureBytes GetPublicKey()
+        public byte[] GetPublicKey()
         {
             using var key = GetKey();
 
             var privateKey = key.ToBytes();
 
-            return new SecureBytes(key.PubKey.ToBytes());
+            return key.PubKey.ToBytes();
         }
 
         public virtual byte[] Sign(

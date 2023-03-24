@@ -8,10 +8,10 @@ using NBitcoin;
 using Serilog;
 
 using Atomex.Common;
-using Atomex.Common.Memory;
-using Atomex.Core;
 using Atomex.Wallet.Abstract;
+using Atomex.Wallets;
 using Network = Atomex.Core.Network;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet
 {
@@ -61,15 +61,13 @@ namespace Atomex.Wallet
             string keyPath,
             int keyType)
         {
-            using var securePublicKey = KeyStorage.GetPublicKey(
+            var publicKey = KeyStorage.GetPublicKey(
                 currency: currency,
                 keyPath: keyPath,
                 keyType: keyType);
 
-            if (securePublicKey == null)
+            if (publicKey == null)
                 return null;
-
-            var publicKey = securePublicKey.ToUnsecuredBytes();
 
             var address = currency.AddressFromKey(publicKey, keyType);
 
@@ -85,13 +83,13 @@ namespace Atomex.Wallet
             };
         }
 
-        public SecureBytes GetPublicKey(
+        public byte[] GetPublicKey(
             CurrencyConfig currency,
             string keyPath,
             int keyType) =>
             KeyStorage.GetPublicKey(currency, keyPath, keyType);
 
-        public SecureBytes GetServicePublicKey(uint index) =>
+        public byte[] GetServicePublicKey(uint index) =>
             KeyStorage.GetServicePublicKey(index);
 
         public Task<byte[]> SignHashAsync(

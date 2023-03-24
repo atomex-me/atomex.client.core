@@ -561,7 +561,9 @@ namespace Atomex.Swaps
                 var secret = _account.Wallet
                     .GetDeterministicSecret(soldCurrency, swap.TimeStamp);
 
-                swap.Secret = secret.SubArray(0, CurrencySwap.DefaultSecretSize);
+                swap.Secret = secret
+                    .Take(CurrencySwap.DefaultSecretSize)
+                    .ToArray();
 
                 await UpdateSwapStateAsync(swap, SwapStateFlags.HasSecret)
                     .ConfigureAwait(false);

@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Atomex.Common.Memory;
-
 namespace Atomex.Wallets.Abstract
 {
     /// <summary>
@@ -23,7 +21,7 @@ namespace Atomex.Wallets.Abstract
         /// <param name="keyPath">Key derivation path</param>
         /// <param name="cancellationToken">Cancellation token</param>
         /// <returns>Task representing an asynchronous public key getting operation and returning public key</returns>
-        Task<SecureBytes> GetPublicKeyAsync(
+        Task<byte[]> GetPublicKeyAsync(
             string keyPath,
             CancellationToken cancellationToken = default);
 

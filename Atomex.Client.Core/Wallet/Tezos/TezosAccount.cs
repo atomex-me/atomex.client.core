@@ -22,6 +22,8 @@ using Atomex.Cryptography.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallets.Bips;
 using Atomex.Wallets.Tezos;
+using Atomex.Wallets;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet.Tezos
 {

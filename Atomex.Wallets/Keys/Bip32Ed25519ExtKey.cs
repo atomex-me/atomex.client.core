@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 using NBitcoin;
 using NBitcoin.Crypto;
@@ -222,20 +220,6 @@ namespace Atomex.Wallets.Keys
             }
 
             return derivedKey;
-        }
-
-        public Task<IExtKey> DeriveAsync(
-            uint index,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.Run(() => Derive(index), cancellationToken);
-        }
-
-        public Task<IExtKey> DeriveAsync(
-            string keyPath,
-            CancellationToken cancellationToken = default)
-        {
-            return Task.Run(() => Derive(keyPath), cancellationToken);
         }
 
         private static byte[] IndexToBytes(uint index)

@@ -21,7 +21,7 @@ namespace Atomex.Wallets.Keys
 
         public SignDataType SignDataType => SignDataType.Plain;
         public SecureBytes GetPrivateKey() => _privateKey.Copy();
-        public SecureBytes GetPublicKey() => _publicKey.Copy();
+        public byte[] GetPublicKey() => _publicKey.ToUnsecuredBytes();
 
         protected Ed25519Key() { }
 

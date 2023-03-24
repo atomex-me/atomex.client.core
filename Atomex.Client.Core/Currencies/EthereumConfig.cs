@@ -16,10 +16,10 @@ using Atomex.Blockchain.Ethereum.EtherScan;
 using Atomex.Blockchain.Ethereum.Erc20.Abstract;
 using Atomex.Common;
 using Atomex.Common.Memory;
-using Atomex.Core;
 using Atomex.Wallets;
 using Atomex.Wallets.Bips;
 using Atomex.Wallets.Ethereum;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex
 {

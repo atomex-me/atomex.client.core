@@ -2,6 +2,7 @@
 using System.Linq;
 
 using Atomex.Core;
+using Atomex.Wallets.Abstract;
 
 namespace Atomex.Common
 {
