@@ -25,9 +25,7 @@ namespace Atomex.Client.Core.Tests.Wallets.Ethereum
 
             var key = new EthereumKey(new SecureBytes(seed));
 
-            var securePublicKey = key.GetPublicKey();
-
-            var publicKey = securePublicKey.ToUnsecuredBytes();
+            var publicKey = key.GetPublicKey();
 
             var ethEcKey = new EthECKey(publicKey, false);
 
