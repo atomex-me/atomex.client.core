@@ -10,7 +10,6 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 using Atomex.Core;
 using Atomex.Swaps.Abstract;
-using Atomex.Swaps.Helpers;
 using Atomex.Swaps.Tezos.Helpers;
 using Atomex.Wallet.Tezos;
 

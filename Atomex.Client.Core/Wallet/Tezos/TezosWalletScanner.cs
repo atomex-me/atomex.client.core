@@ -43,7 +43,6 @@ namespace Atomex.Wallet.Tezos
                 };
 
                 var tzktApi = new TzktApi(Config.GetTzktSettings());
-                var updateTimeStamp = DateTime.UtcNow;
 
                 var operations = new List<TezosOperation>();
                 var walletAddresses = new List<WalletAddress>();

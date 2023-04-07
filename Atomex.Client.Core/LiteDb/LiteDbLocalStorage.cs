@@ -63,7 +63,7 @@ namespace Atomex.LiteDb
 
             var isNewDb = !File.Exists(_pathToDb); // check db exists before creation
 
-            _db = new LiteDatabase(connectionString, _bsonMapper);
+            _db = new LiteDatabase(connectionString, _bsonMapper) { UtcDate = true };
 
             if (isNewDb)
             {

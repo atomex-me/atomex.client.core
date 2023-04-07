@@ -69,11 +69,16 @@ namespace Atomex.LiteDb
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
-            var balanceChanged = localAddress == null || localAddress.Balance != walletAddress.Balance;
+            var isOldUpdate = localAddress != null && localAddress.LastSuccessfullUpdate.ToUniversalTime() > walletAddress.LastSuccessfullUpdate.ToUniversalTime();
+
+            if (isOldUpdate)
+                return false;
 
             var upsertResult = await _liteDbLocalStorage
                 .UpsertAddressAsync(walletAddress, cancellationToken)
                 .ConfigureAwait(false);
+
+            var balanceChanged = localAddress == null || localAddress.Balance != walletAddress.Balance;
 
             if (balanceChanged)
             {
@@ -105,12 +110,14 @@ namespace Atomex.LiteDb
         {
             var upserted = 0;
 
-            foreach (var walletAddressesGroup in walletAddresses.GroupBy(w => w.Currency))
+            foreach (var walletAddressesByCurrency in walletAddresses.GroupBy(w => w.Currency))
             {
                 var changedAddresses = new HashSet<string>();
                 var changedTokens = new HashSet<(string, BigInteger)>();
 
-                foreach (var walletAddress in walletAddressesGroup)
+                var updatedWalletAddresses = new List<WalletAddress>();
+
+                foreach (var walletAddress in walletAddressesByCurrency)
                 {
                     var localAddress = await _liteDbLocalStorage
                         .GetAddressAsync(
@@ -120,6 +127,13 @@ namespace Atomex.LiteDb
                             tokenId: walletAddress.TokenBalance?.TokenId,
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
+
+                    var isOldUpdate = localAddress != null && localAddress.LastSuccessfullUpdate.ToUniversalTime() > walletAddress.LastSuccessfullUpdate.ToUniversalTime();
+
+                    if (isOldUpdate)
+                        continue;
+
+                    updatedWalletAddresses.Add(walletAddress);
 
                     var balanceChanged = localAddress == null || localAddress.Balance != walletAddress.Balance;
 
@@ -132,17 +146,20 @@ namespace Atomex.LiteDb
                     }
                 }
 
-                upserted += await _liteDbLocalStorage
-                    .UpsertAddressesAsync(walletAddressesGroup, cancellationToken)
-                    .ConfigureAwait(false);
+                if (updatedWalletAddresses.Any())
+                {
+                    upserted += await _liteDbLocalStorage
+                        .UpsertAddressesAsync(updatedWalletAddresses, cancellationToken)
+                        .ConfigureAwait(false);
+                }
 
                 if (changedAddresses.Any())
                 {
-                    if (_liteDbLocalStorage.IsToken(walletAddressesGroup.Key))
+                    if (_liteDbLocalStorage.IsToken(walletAddressesByCurrency.Key))
                     {
                         BalanceChanged?.Invoke(this, new TokenBalanceChangedEventArgs
                         {
-                            Currency = walletAddressesGroup.Key,
+                            Currency = walletAddressesByCurrency.Key,
                             Addresses = changedAddresses.ToArray(),
                             Tokens = changedTokens.ToArray()
                         });
@@ -151,7 +168,7 @@ namespace Atomex.LiteDb
                     {
                         BalanceChanged?.Invoke(this, new BalanceChangedEventArgs
                         {
-                            Currency = walletAddressesGroup.Key,
+                            Currency = walletAddressesByCurrency.Key,
                             Addresses = changedAddresses.ToArray()
                         });
                     }

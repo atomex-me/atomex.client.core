@@ -17,7 +17,6 @@ using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Common;
 using Atomex.Blockchain.Tezos.Tzkt.Operations;
 using Atomex.Common;
-using Atomex.Core;
 using Atomex.Cryptography.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallets.Bips;
@@ -151,8 +150,8 @@ namespace Atomex.Wallet.Tezos
                         new TezosOperationParameters {
                             Content = new DelegationContent
                             {
-                                Source = from,
-                                Delegate = @delegate,
+                                Source       = from,
+                                Delegate     = @delegate,
                                 Fee          = fee.Value,
                                 GasLimit     = gasLimit.Value,
                                 StorageLimit = storageLimit.Value
@@ -579,55 +578,6 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             return fa12Addresses.Concat(fa2Addresses);
-        }
-
-        public async Task<SelectedWalletAddress> CalculateFundsUsageAsync(
-            string from,
-            string to,
-            BigInteger amount,
-            long fee,
-            FeeUsagePolicy feeUsagePolicy,
-            TransactionType transactionType,
-            CancellationToken cancellationToken = default)
-        {
-            var xtz = Config;
-            
-            var fromAddress = await GetAddressAsync(from, cancellationToken)
-                .ConfigureAwait(false);
-
-            if (fromAddress == null)
-                return null; // invalid address
-
-            var txFeeInMtz = feeUsagePolicy == FeeUsagePolicy.EstimatedFee
-                ? await FeeInMtzByType(
-                        type: transactionType,
-                        from: fromAddress.Address,
-                        cancellationToken: cancellationToken)
-                    .ConfigureAwait(false)
-                : fee;
-
-            var storageFeeInMtz = await StorageFeeInMtzByTypeAsync(
-                    type: transactionType,
-                    to: to,
-                    cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            var restBalanceInMtz = fromAddress.Balance -
-                amount -
-                txFeeInMtz -
-                storageFeeInMtz -
-                xtz.MicroTezReserve;
-
-            if (restBalanceInMtz < 0)
-                return null; // insufficient funds
-
-            return new SelectedWalletAddress
-            {
-                WalletAddress  = fromAddress,
-                UsedAmount     = amount,
-                UsedFee        = txFeeInMtz,
-                UsedStorageFee = storageFeeInMtz
-            };
         }
 
         #endregion Addresses
