@@ -75,6 +75,33 @@ namespace Atomex.Wallet.Tezos
                     cancellationToken: cancellationToken);
         }
 
+        public async Task<Result<TezosOperationRequest>> FillOperationsAsync(
+            IEnumerable<TezosOperationParameters> operationsParameters,
+            CancellationToken cancellationToken = default)
+        {
+            var from = operationsParameters.First().From;
+
+            var walletAddress = await GetAddressAsync(from, cancellationToken)
+                .ConfigureAwait(false);
+
+            var tezosConfig = Config;
+
+            var publicKey = Wallet
+                .GetPublicKey(tezosConfig, walletAddress.KeyPath, walletAddress.KeyType);
+
+            var rpcSettings = tezosConfig.GetRpcSettings();
+            var rpc = new TezosRpc(rpcSettings);
+
+            // fill operation
+            return await rpc
+                .FillOperationAsync(
+                    operationsRequests: operationsParameters,
+                    publicKey: publicKey,
+                    settings: tezosConfig.GetFillOperationSettings(),
+                    cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         public async Task<Result<TezosOperationRequestResult>> SendTransactionAsync(
             string from,
             string to,
@@ -98,8 +125,10 @@ namespace Atomex.Wallet.Tezos
             return await OperationsBatcher
                 .SendOperationsAsync(
                     account: this,
-                    operationsParameters: new List<TezosOperationParameters> {
-                        new TezosOperationParameters {
+                    operationsParameters: new List<TezosOperationParameters>
+                    {
+                        new TezosOperationParameters
+                        {
                             Content = new TransactionContent
                             {
                                 Source       = from,
@@ -116,7 +145,6 @@ namespace Atomex.Wallet.Tezos
                                     }
                                     : null
                             },
-                            From         = from,
                             Fee          = fee,
                             GasLimit     = gasLimit,
                             StorageLimit = storageLimit
@@ -146,8 +174,10 @@ namespace Atomex.Wallet.Tezos
             return await OperationsBatcher
                 .SendOperationsAsync(
                     account: this,
-                    operationsParameters: new List<TezosOperationParameters> {
-                        new TezosOperationParameters {
+                    operationsParameters: new List<TezosOperationParameters>
+                    {
+                        new TezosOperationParameters
+                        {
                             Content = new DelegationContent
                             {
                                 Source       = from,
@@ -156,7 +186,6 @@ namespace Atomex.Wallet.Tezos
                                 GasLimit     = gasLimit.Value,
                                 StorageLimit = storageLimit.Value
                             },
-                            From         = from,
                             Fee          = fee,
                             GasLimit     = gasLimit,
                             StorageLimit = storageLimit

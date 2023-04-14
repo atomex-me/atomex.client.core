@@ -174,7 +174,6 @@ namespace Atomex.Swaps.Tezos.Fa12
                             Value = Micheline.FromJson(GetApproveParameters(fa12.SwapContractAddress, 0))
                         }
                     },
-                    From         = walletAddress.Address,
                     Fee          = Fee.FromNetwork(fa12.ApproveFee),
                     GasLimit     = GasLimit.FromValue((int)fa12.ApproveGasLimit),
                     StorageLimit = StorageLimit.FromValue((int)fa12.ApproveStorageLimit)
@@ -216,7 +215,6 @@ namespace Atomex.Swaps.Tezos.Fa12
                             Value = Micheline.FromJson(GetApproveParameters(fa12.SwapContractAddress, totalSupply))
                         }
                     },
-                    From         = walletAddress.Address,
                     Fee          = Fee.FromNetwork(fa12.ApproveFee),
                     GasLimit     = GasLimit.FromValue((int)fa12.ApproveGasLimit),
                     StorageLimit = StorageLimit.FromValue((int)fa12.ApproveStorageLimit)
@@ -245,7 +243,6 @@ namespace Atomex.Swaps.Tezos.Fa12
                             redeemFeeAmount: rewardForRedeemInTokens))
                     }
                 },
-                From         = walletAddress.Address,
                 Fee          = Fee.FromNetwork(feeAmountInMtz),
                 GasLimit     = GasLimit.FromValue((int)fa12.InitiateGasLimit),
                 StorageLimit = StorageLimit.FromValue((int)fa12.InitiateStorageLimit)

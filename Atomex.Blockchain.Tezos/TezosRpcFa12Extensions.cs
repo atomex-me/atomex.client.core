@@ -49,7 +49,6 @@ namespace Atomex.Blockchain.Tezos
                                         Value = Micheline.FromJson($"{{\"prim\":\"Pair\",\"args\":[{{\"prim\":\"Pair\",\"args\":[{{\"string\":\"{holderAddress}\"}},{{\"string\":\"{spenderAddress}\"}}]}},{{\"string\":\"{tokenViewContractAddress}%viewNat\"}}]}}")
                                     }
                                 },
-                                From         = callingAddress,
                                 Fee          = Fee.FromValue(0),
                                 GasLimit     = GasLimit.FromValue(GetAllowanceGasLimit),
                                 StorageLimit = StorageLimit.FromValue(0)
@@ -131,7 +130,6 @@ namespace Atomex.Blockchain.Tezos
                                         Value = Micheline.FromJson($"{{\"prim\":\"Pair\",\"args\":[{{\"prim\":\"Unit\"}},{{\"string\":\"{tokenViewContractAddress}%viewNat\"}}]}}")
                                     }
                                 },
-                                From         = callingAddress,
                                 Fee          = Fee.FromValue(0),
                                 GasLimit     = GasLimit.FromValue(GetAllowanceGasLimit),
                                 StorageLimit = StorageLimit.FromValue(0)

@@ -74,15 +74,44 @@ namespace Atomex.Blockchain.Tezos
             {
                 fee += op switch
                 {
-                    TransactionContent t => t.Fee,
-                    RevealContent r => r.Fee,
-                    DelegationContent d => d.Fee,
-                    OriginationContent o => o.Fee,
+                    ManagerOperationContent c => c.Fee,
                     _ => 0
                 };
             }
 
             return fee;
+        }
+
+        public long TotalGasLimit()
+        {
+            var gasLimit = 0L;
+
+            foreach (var op in OperationsContents)
+            {
+                gasLimit += op switch
+                {
+                    ManagerOperationContent c => c.GasLimit,
+                    _ => 0
+                };
+            }
+
+            return gasLimit;
+        }
+
+        public long TotalStorageLimit()
+        {
+            var storageLimit = 0L;
+
+            foreach (var op in OperationsContents)
+            {
+                storageLimit += op switch
+                {
+                    ManagerOperationContent c => c.StorageLimit,
+                    _ => 0
+                };
+            }
+
+            return storageLimit;
         }
     }
 }
