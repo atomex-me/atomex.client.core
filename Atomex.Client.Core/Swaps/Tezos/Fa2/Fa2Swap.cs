@@ -164,9 +164,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                                 tokenId: fa2.TokenId))
                         }
                     },
-                    Fee          = Fee.FromNetwork(fa2.ApproveFee),
-                    GasLimit     = GasLimit.FromValue((int)fa2.ApproveGasLimit),
-                    StorageLimit = StorageLimit.FromValue((int)fa2.ApproveStorageLimit)
+                    UseFeeFromNetwork = true
                 });
             }
 
@@ -193,9 +191,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                             redeemFeeAmount: rewardForRedeemInTokenDigits))
                     }
                 },
-                Fee          = Fee.FromNetwork(feeAmountInMtz),
-                GasLimit     = GasLimit.FromValue((int)fa2.InitiateGasLimit),
-                StorageLimit = StorageLimit.FromValue((int)fa2.InitiateStorageLimit)
+                UseFeeFromNetwork = true
             });
 
             var (result, error) = await TezosAccount

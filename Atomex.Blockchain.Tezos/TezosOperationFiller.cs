@@ -92,9 +92,9 @@ namespace Atomex.Blockchain.Tezos
                 : currentHeader;
 
             var needAutoFill = operationsRequests.Any(opr =>
-                opr.Fee != null && opr.Fee.UseNetwork ||
-                opr.GasLimit != null && opr.GasLimit.UseNetwork ||
-                opr.StorageLimit != null && opr.StorageLimit.UseNetwork);
+                opr.UseFeeFromNetwork ||
+                opr.UseGasLimitFromNetwork ||
+                opr.UseStorageLimitFromNetwork);
 
             var isAutoFilled = false;
 
@@ -169,7 +169,7 @@ namespace Atomex.Blockchain.Tezos
                     var operation = request.Content;
 
                     // gas limit
-                    if (request.GasLimit == null || request.GasLimit.UseNetwork)
+                    if (request.UseGasLimitFromNetwork)
                     {
                         var gas = settings.ReserveGasLimit
                             + (operationResult?["consumed_milligas"]?.Value<int>() ?? 0) / 1000;
@@ -182,7 +182,7 @@ namespace Atomex.Blockchain.Tezos
                     }
 
                     // storage limit
-                    if (request.StorageLimit == null || request.StorageLimit.UseNetwork)
+                    if (request.UseStorageLimitFromNetwork)
                     {
                         var isAllocatedContract = operationResult
                             ?["allocated_destination_contract"]
@@ -204,13 +204,13 @@ namespace Atomex.Blockchain.Tezos
                             ?["internal_operation_results"]
                             ?.Sum(res => res["result"]?["paid_storage_size_diff"]?.Value<int>() ?? 0) ?? 0;
 
-                        operation.StorageLimit = request.StorageLimit != null && request.StorageLimit.UseSafeValue
+                        operation.StorageLimit = request.UseSafeStorageLimit
                             ? Math.Max(operation.StorageLimit, storageDiff)
                             : storageDiff;
                     }
 
                     // fee
-                    if (request.Fee == null || request.Fee.UseNetwork)
+                    if (request.UseFeeFromNetwork)
                     {
                         var forged = await new LocalForge()
                             .ForgeOperationAsync(blockHash, operation)

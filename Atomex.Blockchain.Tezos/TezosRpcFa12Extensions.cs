@@ -48,10 +48,7 @@ namespace Atomex.Blockchain.Tezos
                                         Entrypoint = "getAllowance",
                                         Value = Micheline.FromJson($"{{\"prim\":\"Pair\",\"args\":[{{\"prim\":\"Pair\",\"args\":[{{\"string\":\"{holderAddress}\"}},{{\"string\":\"{spenderAddress}\"}}]}},{{\"string\":\"{tokenViewContractAddress}%viewNat\"}}]}}")
                                     }
-                                },
-                                Fee          = Fee.FromValue(0),
-                                GasLimit     = GasLimit.FromValue(GetAllowanceGasLimit),
-                                StorageLimit = StorageLimit.FromValue(0)
+                                }
                             }
                         },
                         publicKey: publicKey,
@@ -129,10 +126,7 @@ namespace Atomex.Blockchain.Tezos
                                         Entrypoint = "getTotalSupply",
                                         Value = Micheline.FromJson($"{{\"prim\":\"Pair\",\"args\":[{{\"prim\":\"Unit\"}},{{\"string\":\"{tokenViewContractAddress}%viewNat\"}}]}}")
                                     }
-                                },
-                                Fee          = Fee.FromValue(0),
-                                GasLimit     = GasLimit.FromValue(GetAllowanceGasLimit),
-                                StorageLimit = StorageLimit.FromValue(0)
+                                }
                             }
                         },
                         publicKey: publicKey,

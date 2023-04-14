@@ -6,8 +6,9 @@ namespace Atomex.Blockchain.Tezos
     {
         public ManagerOperationContent Content { get; set; }
         public string From => Content.Source;
-        public Fee Fee { get; set; }
-        public GasLimit GasLimit { get; set; }
-        public StorageLimit StorageLimit { get; set; }
+        public bool UseFeeFromNetwork { get; set; }
+        public bool UseGasLimitFromNetwork { get; set; }
+        public bool UseStorageLimitFromNetwork { get; set; }
+        public bool UseSafeStorageLimit { get; set; }
     }
 }

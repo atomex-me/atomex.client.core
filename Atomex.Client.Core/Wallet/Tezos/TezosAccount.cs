@@ -145,9 +145,10 @@ namespace Atomex.Wallet.Tezos
                                     }
                                     : null
                             },
-                            Fee          = fee,
-                            GasLimit     = gasLimit,
-                            StorageLimit = storageLimit
+                            UseFeeFromNetwork          = fee.UseNetwork,
+                            UseGasLimitFromNetwork     = gasLimit.UseNetwork,
+                            UseStorageLimitFromNetwork = storageLimit.UseNetwork,
+                            UseSafeStorageLimit        = storageLimit.UseSafeValue
                         }
                     },
                     cancellationToken: cancellationToken)
@@ -186,9 +187,10 @@ namespace Atomex.Wallet.Tezos
                                 GasLimit     = gasLimit.Value,
                                 StorageLimit = storageLimit.Value
                             },
-                            Fee          = fee,
-                            GasLimit     = gasLimit,
-                            StorageLimit = storageLimit
+                            UseFeeFromNetwork          = fee.UseNetwork,
+                            UseGasLimitFromNetwork     = gasLimit.UseNetwork,
+                            UseStorageLimitFromNetwork = storageLimit.UseNetwork,
+                            UseSafeStorageLimit        = storageLimit.UseSafeValue
                         }
                     },
                     cancellationToken: cancellationToken)
