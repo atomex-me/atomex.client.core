@@ -91,8 +91,6 @@ namespace Atomex.Wallet.Tezos
                 addressFeeUsage.WalletAddress.Address,
                 addressFeeUsage.WalletAddress.Balance);
 
-            var storageLimit = Math.Max(tokenConfig.TransferStorageLimit - tokenConfig.ActivationStorage, 0); // without activation storage fee
-
             var (result, error) = await _tezosAccount
                 .SendTransactionAsync(
                     from: from,
@@ -105,8 +103,8 @@ namespace Atomex.Wallet.Tezos
                         ? GasLimit.FromNetwork((int)tokenConfig.TransferGasLimit)
                         : GasLimit.FromValue((int)tokenConfig.TransferGasLimit),
                     storageLimit: useDefaultFee
-                        ? StorageLimit.FromNetwork((int)storageLimit, useSafeValue: false)
-                        : StorageLimit.FromValue((int)storageLimit),
+                        ? StorageLimit.FromNetwork((int)tokenConfig.TransferStorageLimit, useSafeValue: false)
+                        : StorageLimit.FromValue((int)tokenConfig.TransferStorageLimit),
                     entrypoint: "transfer",
                     parameters: CreateTransferParams(from, to, addressAmountInTokenDigits),
                     cancellationToken: cancellationToken)
@@ -286,11 +284,11 @@ namespace Atomex.Wallet.Tezos
         }
 
         public Task<MaxAmountEstimation> EstimateMaxSwapPaymentAmountAsync(
-            IFromSource from,
+            IFromSource fromSource,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
-            var fromAddress = (from as FromAddress)?.Address;
+            var fromAddress = (fromSource as FromAddress)?.Address;
 
             return EstimateMaxAmountToSendAsync(
                 from: fromAddress,
@@ -334,10 +332,10 @@ namespace Atomex.Wallet.Tezos
             var xtz = XtzConfig;
             var tokenConfig = TokenConfig;
 
-            var tokenRedeemFeeInMtz = tokenConfig.RedeemFee + Math.Max((tokenConfig.RedeemStorageLimit - tokenConfig.ActivationStorage) * tokenConfig.StorageFeeMultiplier, 0);
-            var tokenRefundFeeInMtz = tokenConfig.RefundFee + Math.Max((tokenConfig.RefundStorageLimit - tokenConfig.ActivationStorage) * tokenConfig.StorageFeeMultiplier, 0);
-            var xtzRedeemFeeInMtz = xtz.RedeemFee + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0);
-            var xtzRefundFeeInMtz = xtz.RefundFee + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0);
+            var tokenRedeemFeeInMtz = tokenConfig.RedeemFee + Math.Max(tokenConfig.RedeemStorageLimit * tokenConfig.StorageFeeMultiplier, 0);
+            var tokenRefundFeeInMtz = tokenConfig.RefundFee + Math.Max(tokenConfig.RefundStorageLimit * tokenConfig.StorageFeeMultiplier, 0);
+            var xtzRedeemFeeInMtz = xtz.RedeemFee + Math.Max(xtz.RedeemStorageLimit * xtz.StorageFeeMultiplier, 0);
+            var xtzRefundFeeInMtz = xtz.RefundFee + Math.Max(xtz.RefundStorageLimit * xtz.StorageFeeMultiplier, 0);
 
             var maxTxFeeInMtz = new[]
             {
@@ -356,18 +354,18 @@ namespace Atomex.Wallet.Tezos
             var tokenConfig = TokenConfig;
 
             if (type.HasFlag(TransactionType.TokenApprove))
-                return tokenConfig.ApproveStorageLimit;
+                return tokenConfig.ApproveStorageLimit * tokenConfig.StorageFeeMultiplier;
 
             if (type.HasFlag(TransactionType.SwapPayment))
-                return (tokenConfig.ApproveStorageLimit * 2 + tokenConfig.InitiateStorageLimit) * tokenConfig.StorageFeeMultiplier;
+                return (tokenConfig.ApproveStorageLimit + tokenConfig.InitiateStorageLimit) * tokenConfig.StorageFeeMultiplier;
 
             if (type.HasFlag(TransactionType.SwapRefund))
-                return (tokenConfig.RefundStorageLimit - tokenConfig.ActivationStorage) * tokenConfig.StorageFeeMultiplier;
+                return tokenConfig.RefundStorageLimit * tokenConfig.StorageFeeMultiplier;
 
             if (type.HasFlag(TransactionType.SwapRedeem))
-                return (tokenConfig.RedeemStorageLimit - tokenConfig.ActivationStorage) * tokenConfig.StorageFeeMultiplier;
+                return tokenConfig.RedeemStorageLimit * tokenConfig.StorageFeeMultiplier;
 
-            return (tokenConfig.TransferStorageLimit - tokenConfig.ActivationStorage) * tokenConfig.StorageFeeMultiplier;
+            return tokenConfig.TransferStorageLimit * tokenConfig.StorageFeeMultiplier;
         }
 
         protected async Task<SelectedWalletAddress> CalculateFundsUsageAsync(

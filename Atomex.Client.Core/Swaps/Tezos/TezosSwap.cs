@@ -263,7 +263,7 @@ namespace Atomex.Swaps.Tezos
             }
 
             var feeAmountInMtz = xtzConfig.RedeemFee + xtzConfig.RevealFee;
-            var storageLimitInMtz = xtzConfig.RedeemStorageLimit * xtzConfig.StorageFeeMultiplier;
+            var storageLimitInMtz = (xtzConfig.RedeemStorageLimit + xtzConfig.ActivationStorage) * xtzConfig.StorageFeeMultiplier;
 
             if (walletAddress.Balance < feeAmountInMtz + storageLimitInMtz)
             {
@@ -278,7 +278,7 @@ namespace Atomex.Swaps.Tezos
                     amount: 0,
                     fee: Fee.FromNetwork(xtzConfig.RedeemFee + xtzConfig.RevealFee),
                     gasLimit: GasLimit.FromValue((int)xtzConfig.RedeemGasLimit),
-                    storageLimit: StorageLimit.FromValue((int)xtzConfig.RedeemStorageLimit),
+                    storageLimit: StorageLimit.FromValue((int)xtzConfig.RedeemStorageLimit + (int)xtzConfig.ActivationStorage),
                     entrypoint: "redeem",
                     parameters: GetRedeemParameters(swap),
                     cancellationToken: cancellationToken)
@@ -341,7 +341,7 @@ namespace Atomex.Swaps.Tezos
             }
 
             var feeAmountInMtz = xtzConfig.RedeemFee + xtzConfig.RevealFee;
-            var storageLimitInMtz = xtzConfig.RedeemStorageLimit * xtzConfig.StorageFeeMultiplier;
+            var storageLimitInMtz = (xtzConfig.RedeemStorageLimit + xtzConfig.ActivationStorage) * xtzConfig.StorageFeeMultiplier;
 
             if (walletAddress.Balance < feeAmountInMtz + storageLimitInMtz)
             {
@@ -355,7 +355,7 @@ namespace Atomex.Swaps.Tezos
                     amount: 0,
                     fee: Fee.FromNetwork(xtzConfig.RedeemFee + xtzConfig.RevealFee),
                     gasLimit: GasLimit.FromValue((int)xtzConfig.RedeemGasLimit),
-                    storageLimit: StorageLimit.FromValue((int)xtzConfig.RedeemStorageLimit),
+                    storageLimit: StorageLimit.FromValue((int)xtzConfig.RedeemStorageLimit + (int)xtzConfig.ActivationStorage),
                     entrypoint: "redeem",
                     parameters: GetRedeemParameters(swap),
                     cancellationToken: cancellationToken)
@@ -415,7 +415,7 @@ namespace Atomex.Swaps.Tezos
             }
 
             var feeAmountInMtz = xtzConfig.RefundFee + xtzConfig.RevealFee;
-            var storageLimitInMtz = xtzConfig.RefundStorageLimit * xtzConfig.StorageFeeMultiplier;
+            var storageLimitInMtz = (xtzConfig.RefundStorageLimit + xtzConfig.ActivationStorage) * xtzConfig.StorageFeeMultiplier;
 
             if (walletAddress.Balance < feeAmountInMtz + storageLimitInMtz)
             {
@@ -429,7 +429,7 @@ namespace Atomex.Swaps.Tezos
                     amount: 0,
                     fee: Fee.FromNetwork(xtzConfig.RefundFee + xtzConfig.RevealFee),
                     gasLimit: GasLimit.FromValue((int)xtzConfig.RefundGasLimit),
-                    storageLimit: StorageLimit.FromValue((int)xtzConfig.RefundStorageLimit),
+                    storageLimit: StorageLimit.FromValue((int)xtzConfig.RefundStorageLimit + (int)xtzConfig.ActivationStorage),
                     entrypoint: "refund",
                     parameters: GetRefundParameters(swap),
                     cancellationToken: cancellationToken)

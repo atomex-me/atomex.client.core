@@ -65,17 +65,31 @@ namespace Atomex.Blockchain.Tezos
 
             if (!isRevealed)
             {
-                operations.Add(new RevealContent
+                var revealContent = new RevealContent
                 {
                     Source       = from,
                     PublicKey    = Base58Check.Encode(publicKey, TezosPrefix.Edpk),
                     StorageLimit = 0,
                     GasLimit     = settings.RevealGasLimit,
                     Fee          = 0,
-                    Counter      = counter
-                });
+                };
+               
+                // add reveal to operations requests
+                var modifiedRequests = new List<TezosOperationParameters>
+                {
+                    new TezosOperationParameters
+                    {
+                        Content = revealContent,
+                        UseFeeFromNetwork = true,
+                        UseGasLimitFromNetwork = true,
+                        UseStorageLimitFromNetwork = true
+                    }
+                };
 
-                counter++;
+                modifiedRequests.AddRange(operationsRequests);
+                operationsRequests = modifiedRequests;
+
+                operations.Add(revealContent);
             }
 
             foreach (var request in operationsRequests)

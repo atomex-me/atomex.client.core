@@ -612,7 +612,7 @@ namespace Atomex.ViewModels
             // estimate max amount and max fee
             var maxAmountEstimation = await fromCurrencyAccount
                 .EstimateMaxSwapPaymentAmountAsync(
-                    from: from,
+                    fromSource: from,
                     reserve: true,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);

@@ -373,13 +373,67 @@ namespace Atomex.Wallet.Tezos
 
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             string from,
-            string to,
-            TransactionType type,
+            long fee,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(from))
-                return new MaxAmountEstimation {
+                return new MaxAmountEstimation
+                {
+                    Error = new Error(Errors.FromAddressIsNullOrEmpty, Resources.FromAddressIsNullOrEmpty)
+                };
+
+            var fromAddress = await GetAddressAsync(from, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (fromAddress == null)
+                return new MaxAmountEstimation
+                {
+                    Error = new Error(Errors.AddressNotFound, Resources.AddressNotFoundInLocalDb)
+                };
+
+            var reserveFeeInMtz = ReserveFeeInMtz();
+
+            var requiredFeeInMtz = fee + (reserve ? reserveFeeInMtz : 0);
+
+            var restBalanceInMtz = fromAddress.Balance - requiredFeeInMtz - Config.MicroTezReserve;
+
+            if (restBalanceInMtz < 0)
+            {
+                return new MaxAmountEstimation
+                {
+                    Amount = restBalanceInMtz,
+                    Fee = requiredFeeInMtz,
+                    Reserved = reserveFeeInMtz,
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        message: Resources.InsufficientFundsToCoverFees),
+                    ErrorHint = string.Format(
+                        Resources.InsufficientFundsToCoverFeesDetails,
+                        requiredFeeInMtz,
+                        Currency,
+                        fromAddress.Balance)
+                };
+            }
+
+            return new MaxAmountEstimation
+            {
+                Amount = restBalanceInMtz,
+                Fee = requiredFeeInMtz,
+                Reserved = reserveFeeInMtz
+            };
+        }
+
+        public async Task<MaxAmountEstimation> EstimateMaxSwapPaymentAmountAsync(
+            IFromSource fromSource,
+            bool reserve = false,
+            CancellationToken cancellationToken = default)
+        {
+            var from = (fromSource as FromAddress)?.Address;
+
+            if (string.IsNullOrEmpty(from))
+                return new MaxAmountEstimation
+                {
                     Error = new Error(Errors.FromAddressIsNullOrEmpty, Resources.FromAddressIsNullOrEmpty)
                 };
 
@@ -392,21 +446,22 @@ namespace Atomex.Wallet.Tezos
                 .ConfigureAwait(false);
 
             if (fromAddress == null)
-                return new MaxAmountEstimation {
+                return new MaxAmountEstimation
+                {
                     Error = new Error(Errors.AddressNotFound, Resources.AddressNotFoundInLocalDb)
                 };
 
             var reserveFeeInMtz = ReserveFeeInMtz();
 
             var feeInMtz = await FeeInMtzByType(
-                    type: type,
+                    type: TransactionType.SwapPayment,
                     from: fromAddress.Address,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
             var storageFeeInMtz = await StorageFeeInMtzByTypeAsync(
-                    type: type,
-                    to: to,
+                    type: TransactionType.SwapPayment,
+                    to: null,
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
 
@@ -419,7 +474,8 @@ namespace Atomex.Wallet.Tezos
             var restAmountInMtz = fromAddress.Balance - requiredInMtz;
 
             if (restAmountInMtz < 0)
-                return new MaxAmountEstimation {
+                return new MaxAmountEstimation
+                {
                     Amount = restAmountInMtz,
                     Fee = requiredFeeInMtz,
                     Reserved = reserveFeeInMtz,
@@ -435,25 +491,10 @@ namespace Atomex.Wallet.Tezos
 
             return new MaxAmountEstimation
             {
-                Amount   = restAmountInMtz,
-                Fee      = requiredFeeInMtz,
+                Amount = restAmountInMtz,
+                Fee = requiredFeeInMtz,
                 Reserved = reserveFeeInMtz
             };
-        }
-
-        public Task<MaxAmountEstimation> EstimateMaxSwapPaymentAmountAsync(
-            IFromSource from,
-            bool reserve = false,
-            CancellationToken cancellationToken = default)
-        {
-            var fromAddress = (from as FromAddress)?.Address;
-
-            return EstimateMaxAmountToSendAsync(
-                from: fromAddress,
-                to: null,
-                type: TransactionType.SwapPayment,
-                reserve: reserve,
-                cancellationToken: cancellationToken);
         }
 
         private async Task<long> FeeInMtzByType(
@@ -486,8 +527,8 @@ namespace Atomex.Wallet.Tezos
         {
             var xtz = Config;
 
-            var redeemFeeInMtz = xtz.RedeemFee + Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0);
-            var refundFeeInMtz = xtz.RefundFee + Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0);
+            var redeemFeeInMtz = xtz.RedeemFee + Math.Max(xtz.RedeemStorageLimit * xtz.StorageFeeMultiplier, 0);
+            var refundFeeInMtz = xtz.RefundFee + Math.Max(xtz.RefundStorageLimit * xtz.StorageFeeMultiplier, 0);
 
             return Math.Max(redeemFeeInMtz, refundFeeInMtz) + xtz.RevealFee + xtz.MicroTezReserve;
         }
@@ -507,17 +548,17 @@ namespace Atomex.Wallet.Tezos
 
             if (type.HasFlag(TransactionType.SwapRefund))
                 return isActive
-                    ? Math.Max((xtz.RefundStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0) // without activation storage fee
-                    : xtz.RefundStorageLimit * xtz.StorageFeeMultiplier;
+                    ? Math.Max(xtz.RefundStorageLimit * xtz.StorageFeeMultiplier, 0) // without activation storage fee
+                    : (xtz.RefundStorageLimit + xtz.ActivationStorage) * xtz.StorageFeeMultiplier;
 
             if (type.HasFlag(TransactionType.SwapRedeem))
                 return isActive
-                    ? Math.Max((xtz.RedeemStorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0) // without activation storage fee
-                    : xtz.RedeemStorageLimit * xtz.StorageFeeMultiplier;
+                    ? Math.Max(xtz.RedeemStorageLimit * xtz.StorageFeeMultiplier, 0) // without activation storage fee
+                    : (xtz.RedeemStorageLimit + xtz.ActivationStorage) * xtz.StorageFeeMultiplier;
 
             return isActive
-                ? Math.Max((xtz.StorageLimit - xtz.ActivationStorage) * xtz.StorageFeeMultiplier, 0) // without activation storage fee
-                : xtz.StorageLimit * xtz.StorageFeeMultiplier;
+                ? Math.Max(xtz.StorageLimit * xtz.StorageFeeMultiplier, 0) // without activation storage fee
+                : (xtz.StorageLimit + xtz.ActivationStorage) * xtz.StorageFeeMultiplier;
         }
 
         public async Task<bool> IsRevealedSourceAsync(

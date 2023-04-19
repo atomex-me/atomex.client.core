@@ -334,11 +334,11 @@ namespace Atomex.Wallet.Ethereum
         }
 
         public Task<MaxAmountEstimation> EstimateMaxSwapPaymentAmountAsync(
-            IFromSource from,
+            IFromSource fromSource,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
-            var fromAddress = (from as FromAddress)?.Address;
+            var fromAddress = (fromSource as FromAddress)?.Address;
 
             return EstimateMaxAmountToSendAsync(
                 from: fromAddress,

@@ -250,11 +250,11 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         public Task<MaxAmountEstimation> EstimateMaxSwapPaymentAmountAsync(
-            IFromSource from,
+            IFromSource fromSource,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
-            var outputs = (from as FromOutputs)?.Outputs;
+            var outputs = (fromSource as FromOutputs)?.Outputs;
 
             return EstimateMaxAmountToSendAsync(
                 outputs: outputs,

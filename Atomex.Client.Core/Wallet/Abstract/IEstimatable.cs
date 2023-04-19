@@ -45,7 +45,7 @@ namespace Atomex.Wallet.Abstract
     public interface IEstimatable
     {
         Task<MaxAmountEstimation> EstimateMaxSwapPaymentAmountAsync(
-            IFromSource from,
+            IFromSource fromSource,
             bool reserve = false,
             CancellationToken cancellationToken = default);
 
