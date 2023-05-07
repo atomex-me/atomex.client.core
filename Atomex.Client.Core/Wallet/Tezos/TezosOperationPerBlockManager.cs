@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 using Atomex.Blockchain.Tezos;
 using Atomex.Common;
@@ -41,7 +41,8 @@ namespace Atomex.Wallets.Tezos
         private readonly AsyncQueue<TezosOperationCompletionEvent> _operationsQueue;
         private CancellationTokenSource _cts;
         private Task _worker;
-        
+        private readonly ILogger _logger;
+
         private readonly ManualResetEventAsync _confirmedEvent;
         private bool _disposedValue;
 
@@ -50,11 +51,12 @@ namespace Atomex.Wallets.Tezos
             !_worker.IsCanceled &&
             !_worker.IsFaulted;
 
-        public TezosAddressOperatioPerBlockManager(TezosAccount account)
+        public TezosAddressOperatioPerBlockManager(TezosAccount account, ILogger logger = null)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
             _operationsQueue = new AsyncQueue<TezosOperationCompletionEvent>();
             _confirmedEvent = new ManualResetEventAsync(isSet: false);
+            _logger = logger;
         }
 
         public async Task<Result<TezosOperationRequestResult>> SendOperationAsync(
@@ -62,6 +64,8 @@ namespace Atomex.Wallets.Tezos
             CancellationToken cancellationToken = default)
         {
             var operationCompletionEvent = new TezosOperationCompletionEvent(operationsParameters);
+
+            _logger?.LogDebug($"Enqueue operation");
 
             _operationsQueue.Add(operationCompletionEvent);
 
@@ -114,6 +118,8 @@ namespace Atomex.Wallets.Tezos
 
                     while (unconfirmedOperations.Any(o => DateTimeOffset.UtcNow - o.CreationTime < TimeSpan.FromSeconds(ConfirmationWaitingTimeOutInSec)))
                     {
+                        _logger?.LogDebug("Waiting for confirmation of unconfirmed transactions");
+
                         // wait for external confirmation event or ConfirmationCheckIntervalSec timeout
                         _ = await _confirmedEvent
                             .WaitAsync(TimeSpan.FromSeconds(ConfirmationCheckIntervalSec), _cts.Token)
@@ -161,7 +167,7 @@ namespace Atomex.Wallets.Tezos
 
                     if (fillingError != null)
                     {
-                        Log.Error($"Operation filling error: {fillingError.Value.Message}");
+                        _logger?.LogError($"Operation filling error: {fillingError.Value.Message}");
 
                         // notify all subscribers about error
                         foreach (var op in operationCompletionEvents)
@@ -170,13 +176,15 @@ namespace Atomex.Wallets.Tezos
                         continue;
                     }
 
+                    _logger?.LogDebug("Operation successfully filled");
+
                     var (operationId, sendingError) = await _account
                         .SendOperationAsync(operationRequest, _cts.Token)
                         .ConfigureAwait(false);
 
                     if (sendingError != null)
                     {
-                        Log.Error($"Operation sending error: {sendingError.Value.Message}");
+                        _logger?.LogError($"Operation sending error: {sendingError.Value.Message}");
 
                         // notify all subscribers about error
                         foreach (var op in operationCompletionEvents)
@@ -184,6 +192,8 @@ namespace Atomex.Wallets.Tezos
 
                         continue;
                     }
+
+                    _logger?.LogDebug($"Operation successfully sent with id {operationId}");
 
                     // notify all subscribers
                     foreach (var op in operationCompletionEvents)
@@ -195,7 +205,7 @@ namespace Atomex.Wallets.Tezos
                 }
                 catch (Exception ex)
                 {
-                    Log.Error($"Operation batching error: {ex.Message}");
+                    _logger?.LogError($"Operation batching error: {ex.Message}");
 
                     var error = new Error(Errors.OperationBatchingError, ex.Message);
 
@@ -252,10 +262,12 @@ namespace Atomex.Wallets.Tezos
     {
         private readonly ConcurrentDictionary<string, Lazy<TezosAddressOperatioPerBlockManager>> _batchers;
         private bool _disposedValue;
+        private ILogger _logger;
 
-        public TezosOperationPerBlockManager()
+        public TezosOperationPerBlockManager(ILogger logger = null)
         {
             _batchers = new ConcurrentDictionary<string, Lazy<TezosAddressOperatioPerBlockManager>>();
+            _logger = logger;
         }
 
         public async Task<Result<TezosOperationRequestResult>> SendOperationsAsync(
@@ -268,7 +280,7 @@ namespace Atomex.Wallets.Tezos
             var lazyBatcher = _batchers.GetOrAdd(
                 key: from,
                 valueFactory: a => new Lazy<TezosAddressOperatioPerBlockManager>(
-                    () => new TezosAddressOperatioPerBlockManager(account)));
+                    () => new TezosAddressOperatioPerBlockManager(account, _logger)));
 
             var batcher = lazyBatcher.Value;
 

@@ -10,7 +10,8 @@ namespace Atomex.LiteDb
     public static class LiteDbMigrationManager
     {
         public const int Version12 = 12;
-        public const int CurrentVersion = Version12;
+        public const int Version13 = 13;
+        public const int CurrentVersion = Version13;
 
         public static LiteDbMigrationResult? Migrate(
             string pathToDb,
@@ -21,11 +22,14 @@ namespace Atomex.LiteDb
 
             var dbVersion = GetDataBaseVersion(pathToDb, sessionPassword);
 
-            if (dbVersion < Version12) // migrate to version12
+            if (dbVersion < Version12) // migrate to version13
             {
-                result = LiteDbMigration_11_to_12.Migrate(pathToDb, sessionPassword, network);
+                result = LiteDbMigration_11_to_13.Migrate(pathToDb, sessionPassword, network);
+            }
 
-                //dbVersion = Version1;
+            if (dbVersion == Version12)
+            {
+                result = LiteDbMigration_12_to_13.Migrate(pathToDb, sessionPassword, network);
             }
 
             return result;

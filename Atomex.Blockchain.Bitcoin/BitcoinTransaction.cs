@@ -15,7 +15,6 @@ namespace Atomex.Blockchain.Bitcoin
     public class BitcoinTransaction : ITransaction
     {
         private readonly Transaction _tx;
-        public string UniqueId => $"{Id}:{Currency}";
         public string Id => _tx.GetHash().ToString();
         public string Currency { get; }
         public TransactionStatus Status { get; set; }

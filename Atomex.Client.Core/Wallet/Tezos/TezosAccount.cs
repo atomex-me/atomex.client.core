@@ -374,6 +374,7 @@ namespace Atomex.Wallet.Tezos
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
             string from,
             long fee,
+            long storageLimit,
             bool reserve = false,
             CancellationToken cancellationToken = default)
         {
@@ -394,7 +395,9 @@ namespace Atomex.Wallet.Tezos
 
             var reserveFeeInMtz = ReserveFeeInMtz();
 
-            var requiredFeeInMtz = fee + (reserve ? reserveFeeInMtz : 0);
+            var requiredFeeInMtz = fee +
+                (reserve ? reserveFeeInMtz : 0) +
+                storageLimit * Config.StorageFeeMultiplier;
 
             var restBalanceInMtz = fromAddress.Balance - requiredFeeInMtz - Config.MicroTezReserve;
 

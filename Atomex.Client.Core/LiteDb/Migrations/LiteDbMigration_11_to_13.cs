@@ -15,15 +15,15 @@ using Atomex.Client.Entities;
 using Atomex.Common;
 using Atomex.Common.Bson;
 using Atomex.Core;
+using Atomex.Wallets;
 using Atomex.Wallets.Bips;
 using Network = Atomex.Core.Network;
 using Swap = Atomex.Core.Swap;
 using SwapStatus = Atomex.Client.V1.Entities.SwapStatus;
-using Atomex.Wallets;
 
 namespace Atomex.LiteDb.Migrations
 {
-    public class LiteDbMigration_11_to_12
+    public class LiteDbMigration_11_to_13
     {
         private const string Temp = "temp";
         private const string Backup = "backup";
@@ -40,7 +40,7 @@ namespace Atomex.LiteDb.Migrations
                 metadata.Delete(InitialId);
             }
 
-            db.UserVersion = LiteDbMigrationManager.Version12;
+            db.UserVersion = LiteDbMigrationManager.Version13;
         }
 
         public static LiteDbMigrationResult Migrate(

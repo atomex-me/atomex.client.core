@@ -231,6 +231,10 @@ namespace Atomex.Wallet.BitcoinBased
                             cancellationToken: cancellationToken)
                         .ConfigureAwait(false);
                 }
+
+                // check free addresses
+                await UpdateFreeAddressesAsync(cancellationToken)
+                    .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
             {
@@ -239,6 +243,132 @@ namespace Atomex.Wallet.BitcoinBased
             catch (Exception e)
             {
                 Log.Error(e, "[BitcoinBasedWalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
+            }
+        }
+
+        private async Task UpdateFreeAddressesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var scanParams = new[]
+                {
+                    (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.Internal, LookAhead : InternalLookAhead),
+                    (KeyType : CurrencyConfig.StandardKey, Chain : Bip44.External, LookAhead : ExternalLookAhead),
+                    (KeyType : BitcoinBasedConfig.SegwitKey, Chain : Bip44.Internal, LookAhead : InternalLookAhead),
+                    (KeyType : BitcoinBasedConfig.SegwitKey, Chain : Bip44.External, LookAhead : ExternalLookAhead)
+                };
+
+                var api = Config.GetBitcoinBlockchainApi();
+
+                var outputs = new List<BitcoinTxOutput>();
+                var txs = new List<BitcoinTransaction>();
+                var walletAddresses = new List<WalletAddress>();
+
+                foreach (var (keyType, chain, lookAhead) in scanParams)
+                {
+                    var freeKeysCount = 0;
+
+                    var keyPathPattern = Config.GetKeyPathPattern(keyType);
+
+                    var lastActiveAddress = await _account.LocalStorage
+                        .GetLastActiveWalletAddressAsync(Config.Name, keyPathPattern, keyType, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    var index = lastActiveAddress?.KeyIndex + 1 ?? 0u;
+
+                    while (true)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        var keyPath = Config.GetKeyPathPattern(keyType)
+                            .Replace(KeyPathExtensions.AccountPattern, KeyPathExtensions.DefaultAccount)
+                            .Replace(KeyPathExtensions.ChainPattern, chain.ToString())
+                            .Replace(KeyPathExtensions.IndexPattern, index.ToString());
+
+                        var walletAddress = await _account
+                            .DivideAddressAsync(
+                                keyPath: keyPath,
+                                keyType: keyType)
+                            .ConfigureAwait(false);
+
+                        var (updateResult, error) = await UpdateAddressAsync(
+                                walletAddress: walletAddress,
+                                api: api,
+                                cancellationToken: cancellationToken)
+                            .ConfigureAwait(false);
+
+                        if (error != null)
+                        {
+                            Log.Error("[BitcoinBasedWalletScanner] ScanAsync error while scan {@address}", walletAddress.Address);
+                            return;
+                        }
+
+                        if (!walletAddress.HasActivity && !updateResult.Outputs.Any()) // address without activity
+                        {
+                            freeKeysCount++;
+
+                            if (freeKeysCount >= lookAhead)
+                            {
+                                Log.Debug("[BitcoinBasedWalletScanner] {@lookAhead} free keys found. Chain scan completed", lookAhead);
+                                break;
+                            }
+                        }
+                        else // address has activity
+                        {
+                            freeKeysCount = 0;
+
+                            outputs.AddRange(updateResult.Outputs);
+                            txs.AddRange(updateResult.Transactions);
+
+                            // save only active addresses
+                            walletAddresses.Add(walletAddress);
+                        }
+
+                        index++;
+                    }
+                }
+
+                if (outputs.Any())
+                {
+                    var upsertResult = await _account
+                        .LocalStorage
+                        .UpsertOutputsAsync(
+                            outputs: outputs,
+                            currency: _account.Currency,
+                            network: Config.Network,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                if (txs.Any())
+                {
+                    var upsertResult = await _account
+                        .LocalStorage
+                        .UpsertTransactionsAsync(
+                            txs,
+                            notifyIfNewOrChanged: true,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+
+                if (walletAddresses.Any())
+                {
+                    var _ = await _account
+                        .LocalStorage
+                        .UpsertAddressesAsync(
+                            walletAddresses: walletAddresses,
+                            cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                Log.Debug("[BitcoinBasedWalletScanner] UpdateFreeAddressesAsync canceled");
+            }
+            catch (Exception e)
+            {
+                Log.Error(e, "[BitcoinBasedWalletScanner] UpdateFreeAddressesAsync error: {@message}", e.Message);
             }
         }
 

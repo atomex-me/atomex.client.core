@@ -34,8 +34,7 @@ namespace Atomex.Common.Bson
         {
             return new BsonDocument
             {
-                ["_id"]           = obj.UniqueId,
-                ["TxId"]          = obj.Id,
+                ["_id"]           = obj.Id,
                 ["Currency"]      = obj.Currency,
                 ["Status"]        = obj.Status.ToString(),
                 ["CreationTime"]  = obj.CreationTime != null ? obj.CreationTime.Value.DateTime : BsonValue.Null,

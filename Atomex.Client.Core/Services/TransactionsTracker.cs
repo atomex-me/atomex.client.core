@@ -23,9 +23,12 @@ namespace Atomex.Services
         public bool IsRunning { get; private set; }
 
         private TimeSpan TransactionConfirmationCheckInterval(string currency) =>
-            currency == "BTC"
-                ? TimeSpan.FromSeconds(120)
-                : TimeSpan.FromSeconds(45);
+            currency switch
+            {
+                "BTC" => TimeSpan.FromSeconds(120),
+                "XTZ" => TimeSpan.FromSeconds(15),
+                _ => TimeSpan.FromSeconds(45)
+            };
 
         public TransactionsTracker(IAccount account, ILocalStorage localStorage)
         {
