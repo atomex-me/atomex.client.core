@@ -29,7 +29,7 @@ namespace Atomex.Wallet
             SecureString password)
         {
             if (!File.Exists(pathToFile))
-                throw new FileNotFoundException($"File {pathToFile} not found.");
+                throw new FileNotFoundException($"File {pathToFile} not found");
 
             object keyStorage = null;
             StorageVersion storageVersion = null;

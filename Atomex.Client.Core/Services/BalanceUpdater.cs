@@ -1,4 +1,6 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -24,7 +26,7 @@ namespace Atomex.Services
         private readonly ILogger? _log;
         private readonly IWalletScanner _walletScanner;
 
-        private CancellationTokenSource _cts;
+        private CancellationTokenSource? _cts;
         private bool _isRunning;
         
         private readonly IList<IChainBalanceUpdater> _balanceUpdaters = new List<IChainBalanceUpdater>();
@@ -97,7 +99,7 @@ namespace Atomex.Services
                 }
             });
 
-            _cts.Cancel();
+            _cts?.Cancel();
             _isRunning = false;
             _log?.LogInformation("BalanceUpdater stopped");
         }
@@ -107,6 +109,7 @@ namespace Atomex.Services
             try
             {
                 var soChainRealtimeApi = new SoChainRealtimeApi(SoChainRealtimeApiHost, _log);
+
                 _balanceUpdaters.Add(new BitcoinBalanceUpdater(_account, _walletScanner, soChainRealtimeApi, _log));
                 _balanceUpdaters.Add(new LitecoinBalanceUpdater(_account, _walletScanner, soChainRealtimeApi, _log));
 
@@ -114,14 +117,15 @@ namespace Atomex.Services
                 _balanceUpdaters.Add(new Erc20BalanceUpdater(_account, _currenciesProvider, _walletScanner, _log));
 
                 var tzkt = new TzktEventsClient(_log);
+
                 _balanceUpdaters.Add(new TezosBalanceUpdater(_account, _currenciesProvider, _walletScanner, tzkt, _log));
                 _balanceUpdaters.Add(new TezosTokenBalanceUpdater(
                     account: _account,
                     currenciesProvider: _currenciesProvider,
                     walletScanners: new[]
                     {
-                        new TezosTokensWalletScanner(_account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz), TezosHelper.Fa12),
-                        new TezosTokensWalletScanner(_account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz), TezosHelper.Fa2)
+                        new TezosTokensWalletScanner(_account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz), TezosHelper.Fa12, _log),
+                        new TezosTokensWalletScanner(_account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz), TezosHelper.Fa2, _log)
                     },
                     tzkt: tzkt,
                     log: _log));

@@ -1,9 +1,12 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
@@ -16,8 +19,8 @@ namespace Atomex.Wallet.Abstract
 {
     public interface IAccount
     {
-        event EventHandler Locked;
-        event EventHandler Unlocked;
+        event EventHandler? Locked;
+        event EventHandler? Unlocked;
 
         bool IsLocked { get; }
 
@@ -29,7 +32,7 @@ namespace Atomex.Wallet.Abstract
         /// <summary>
         /// Wallet
         /// </summary>
-        IHdWallet Wallet { get; }
+        HdWallet Wallet { get; }
 
         /// <summary>
         /// Get all currencies supported by wallet
@@ -101,6 +104,7 @@ namespace Atomex.Wallet.Abstract
             string currency,
             string? tokenContract = null,
             BigInteger? tokenId = null,
+            ILogger? logger = null,
             CancellationToken cancellationToken = default);
 
         Task UpdateBalanceAsync(
@@ -108,6 +112,7 @@ namespace Atomex.Wallet.Abstract
             string address,
             string? tokenContract = null,
             BigInteger? tokenId = null,
+            ILogger? logger = null,
             CancellationToken cancellationToken = default);
 
         #endregion Balances

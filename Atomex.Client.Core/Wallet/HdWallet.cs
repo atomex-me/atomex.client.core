@@ -1,4 +1,6 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.IO;
 using System.Security;
 using System.Threading;
@@ -10,8 +12,8 @@ using Serilog;
 using Atomex.Common;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallets;
-using Network = Atomex.Core.Network;
 using Atomex.Wallets.Abstract;
+using Network = Atomex.Core.Network;
 
 namespace Atomex.Wallet
 {
@@ -35,7 +37,7 @@ namespace Atomex.Wallet
         public HdWallet(
             string mnemonic,
             Wordlist wordList,
-            SecureString passPhrase = null,
+            SecureString? passPhrase = null,
             Network network = Network.MainNet)
         {
             PathToWallet = FileSystem.Current.ToFullPath(string.Empty);
@@ -67,7 +69,7 @@ namespace Atomex.Wallet
                 keyType: keyType);
 
             if (publicKey == null)
-                return null;
+                throw new Exception($"Can't get public key for {currency?.Name} with key path {keyPath} and key type {keyType}");
 
             var address = currency.AddressFromKey(publicKey, keyType);
 
@@ -106,12 +108,6 @@ namespace Atomex.Wallet
 
             Log.Verbose("Sign request for hash {@hash}", hash.ToHexString());
 
-            if (IsLocked)
-            {
-                Log.Warning("Wallet locked");
-                return Task.FromResult<byte[]>(null);
-            }
-
             var signature = KeyStorage.SignHash(
                 currency: currencyConfig,
                 hash: hash,
@@ -127,8 +123,9 @@ namespace Atomex.Wallet
                 keyPath: address.KeyPath,
                 keyType: address.KeyType))
             {
-                Log.Error("Signature verify error");
-                return Task.FromResult<byte[]>(null);
+                Log.Fatal("Signature verification failed for {@curr}", currencyConfig?.Name);
+
+                throw new Exception($"Signature verification failed for {currencyConfig?.Name}");
             }
 
             Log.Verbose("Hash successfully signed");
@@ -148,12 +145,6 @@ namespace Atomex.Wallet
                 data.ToHexString(),
                 keyIndex);
 
-            if (IsLocked)
-            {
-                Log.Warning("Wallet locked");
-                return null;
-            }
-
             var signature = KeyStorage.SignByServiceKey(
                 data: data,
                 chain: 0,
@@ -163,8 +154,9 @@ namespace Atomex.Wallet
 
             if (!KeyStorage.VerifyByServiceKey(data, signature, chain: 0, index: keyIndex))
             {
-                Log.Error("Signature verify error");
-                return null;
+                Log.Fatal("Service key signature verification failed");
+
+                throw new Exception("ervice key signature verification failed");
             }
 
             Log.Verbose("Data successfully signed by service key");

@@ -27,11 +27,11 @@ namespace Atomex.Blockchain.Ethereum
         public BigInteger MaxFeePerGas { get; set; }
         public BigInteger MaxPriorityFeePerGas { get; set; }
         public BigInteger GasLimit { get; set; }
-        public string Data { get; set; }
+        public string? Data { get; set; }
         public BigInteger ChainId { get; set; }
         public List<EthereumAccessList>? AccessList { get; set; }
-        public byte[] Signature { get; set; }
-        public byte[] SignatureV { get; set; }
+        public byte[]? Signature { get; set; }
+        public byte[]? SignatureV { get; set; }
 
         public EthereumTransactionRequest()
         {

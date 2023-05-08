@@ -1,26 +1,29 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
-using Serilog;
-
+using Atomex.Blockchain.Tezos;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallet.BitcoinBased;
 using Atomex.Wallet.Ethereum;
 using Atomex.Wallet.Tezos;
-using Atomex.Blockchain.Tezos;
 using Atomex.Wallets.Abstract;
 
 namespace Atomex.Wallet
 {
     public class WalletScanner : IWalletScanner
     {
-        private IAccount Account { get; }
+        private readonly IAccount _account;
+        private readonly ILogger? _logger;
 
-        public WalletScanner(IAccount account)
+        public WalletScanner(IAccount account, ILogger? logger = null)
         {
-            Account = account ?? throw new ArgumentNullException(nameof(account));
+            _account = account ?? throw new ArgumentNullException(nameof(account));
+            _logger = logger;
         }
 
         public async Task ScanAsync(
@@ -28,7 +31,7 @@ namespace Atomex.Wallet
         {
             try
             {
-                var scanTasks = Account
+                var scanTasks = _account
                     .Currencies
                     .Select(c => ScanAsync(c.Name, cancellationToken))
                     .ToArray();
@@ -39,7 +42,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error while scanning HdWallet for all currencies");
+                _logger?.LogError(e, "Error while scan balance for all currencies");
             }
         }
 
@@ -55,7 +58,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error while scanning HdWallet for {Currency} currency", currency);
+                _logger?.LogError(e, "Error while scan balance for {@currency}", currency);
             }
         }
 
@@ -65,7 +68,7 @@ namespace Atomex.Wallet
         {
             try
             {
-                var scanTasks = Account
+                var scanTasks = _account
                     .Currencies
                     .Select(c => UpdateBalanceAsync(c.Name, skipUsed, cancellationToken))
                     .ToArray();
@@ -76,7 +79,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error while update balance for all currencies");
+                _logger?.LogError(e, "Error while update balance for all currencies");
             }
         }
 
@@ -93,7 +96,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "Error while update balance for {Currency} currency", currency);
+                _logger?.LogError(e, "Error while update balance for {@currency}", currency);
             }
         }
 
@@ -110,7 +113,7 @@ namespace Atomex.Wallet
             }
             catch (Exception e)
             {
-                Log.Error(e, "Address balance update error for currency {@currency} and address {@address}", currency, address);
+                _logger?.LogError(e, "Error while update balance for {@currency} address {@address}", currency, address);
             }
         }
 
@@ -119,27 +122,30 @@ namespace Atomex.Wallet
             return currency switch
             {
                 "BTC" => new BitcoinBasedWalletScanner(
-                    Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
+                    _account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
                 "LTC" => new BitcoinBasedWalletScanner(
-                    Account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
+                    _account.GetCurrencyAccount<BitcoinBasedAccount>(currency)),
                 "USDT" or
                 "TBTC" or
                 "WBTC" => new Erc20WalletScanner(
-                    Account.GetCurrencyAccount<Erc20Account>(currency),
-                    Account.GetCurrencyAccount<EthereumAccount>("ETH")),
+                    _account.GetCurrencyAccount<Erc20Account>(currency),
+                    _account.GetCurrencyAccount<EthereumAccount>("ETH")),
                 "ETH" => new EthereumWalletScanner(
-                    Account.GetCurrencyAccount<EthereumAccount>(currency)),
+                    _account.GetCurrencyAccount<EthereumAccount>(currency)),
                 "XTZ" => new TezosWalletScanner(
-                    Account.GetCurrencyAccount<TezosAccount>(currency)),
+                    account: _account.GetCurrencyAccount<TezosAccount>(currency),
+                    logger: _logger),
                 "TZBTC" or
                 "KUSD" or
                 "FA12" => new TezosTokensWalletScanner(
-                    tezosAccount: Account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz),
-                    tokenType: TezosHelper.Fa12),
+                    tezosAccount: _account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz),
+                    tokenType: TezosHelper.Fa12,
+                    logger: _logger),
                 "USDT_XTZ" or
                 "FA2" => new TezosTokensWalletScanner(
-                    tezosAccount: Account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz),
-                    tokenType: TezosHelper.Fa2),
+                    tezosAccount: _account.GetCurrencyAccount<TezosAccount>(TezosConfig.Xtz),
+                    tokenType: TezosHelper.Fa2,
+                    logger: _logger),
 
                 _ => throw new NotSupportedException($"Currency {currency} not supported")
             };

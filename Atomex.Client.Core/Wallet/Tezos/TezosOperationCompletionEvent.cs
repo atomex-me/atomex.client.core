@@ -1,4 +1,6 @@
-﻿using Atomex.Blockchain.Tezos;
+﻿#nullable enable
+
+using Atomex.Blockchain.Tezos;
 using Atomex.Common;
 
 namespace Atomex.Wallets.Tezos
@@ -6,10 +8,10 @@ namespace Atomex.Wallets.Tezos
     public class TezosOperationRequestResult
     {
         public TezosOperationRequest Request { get; private set; }
-        public string OperationId { get; private set; }
+        public string? OperationId { get; private set; }
         public Error? Error { get; private set; }
 
-        private TezosOperationRequestResult(TezosOperationRequest request, string operationId, Error? error)
+        private TezosOperationRequestResult(TezosOperationRequest request, string? operationId, Error? error)
         {
             Request = request;
             OperationId = operationId;

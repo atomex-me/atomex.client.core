@@ -1,34 +1,40 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 using Atomex.Blockchain;
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Tzkt;
 using Atomex.Wallets;
 using Atomex.Wallets.Abstract;
+using Atomex.Blockchain.Tezos.Common;
 
 namespace Atomex.Wallet.Tezos
 {
     public class TezosTokensWalletScanner : ICurrencyWalletScanner
     {
         private readonly TezosAccount _tezosAccount;
+        private readonly ILogger? _logger;
         public string TokenType { get; }
 
-        public TezosTokensWalletScanner(TezosAccount tezosAccount, string tokenType)
+        public TezosTokensWalletScanner(TezosAccount tezosAccount, string tokenType, ILogger? logger = null)
         {
             _tezosAccount = tezosAccount ?? throw new ArgumentNullException(nameof(tezosAccount));
+            _logger = logger;
             TokenType = tokenType ?? throw new ArgumentNullException(nameof(tokenType));
         }
 
         public async Task ScanAsync(
             CancellationToken cancellationToken = default)
         {
+            _logger?.LogInformation("Start balance scan for all XTZ tokens addresses");
+
             // all tezos addresses
             var xtzAddresses = await _tezosAccount
                 .LocalStorage
@@ -38,13 +44,15 @@ namespace Atomex.Wallet.Tezos
             if (xtzAddresses.Count() <= 1)
             {
                 // firstly scan xtz
-                await new TezosWalletScanner(_tezosAccount)
+                await new TezosWalletScanner(_tezosAccount, _logger)
                     .ScanAsync(cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
 
             await UpdateBalanceAsync(skipUsed: false, cancellationToken)
                 .ConfigureAwait(false);
+
+            _logger?.LogInformation("Balance scan for all XTZ tokens addresses completed");
         }
 
         /// <summary>
@@ -56,6 +64,8 @@ namespace Atomex.Wallet.Tezos
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
+            _logger?.LogInformation("Start balance update for all XTZ tokens addresses");
+
             // all tezos addresses
             var xtzLocalAddresses = await _tezosAccount
                 .LocalStorage
@@ -87,10 +97,16 @@ namespace Atomex.Wallet.Tezos
 
             if (error != null)
             {
-                Log.Error("Error while scan tokens balance for all tokens and addresses. Code: {@code}. Message: {@message}",
+                _logger?.LogError("Error while scan tokens balance for all tokens and addresses. Code: {@code}. Message: {@message}",
                     error.Value.Code,
                     error.Value.Message);
 
+                return;
+            }
+
+            if (tokenBalances == null)
+            {
+                _logger?.LogError("Error while scan tokens balance for all tokens and addresses. Token balances is null");
                 return;
             }
 
@@ -177,6 +193,8 @@ namespace Atomex.Wallet.Tezos
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
+
+            _logger?.LogInformation("Balance update for all XTZ tokens addresses completed");
         }
 
         /// <summary>
@@ -188,6 +206,8 @@ namespace Atomex.Wallet.Tezos
             string address,
             CancellationToken cancellationToken = default)
         {
+            _logger?.LogInformation("Start balance update for XTZ tokens address {@address}", address);
+
             // tezos address
             var xtzAddress = (await _tezosAccount.LocalStorage
                 .GetAddressesAsync(TezosConfig.Xtz)
@@ -213,10 +233,18 @@ namespace Atomex.Wallet.Tezos
 
             if (error != null)
             {
-                Log.Error("Error while scan tokens balance for all tokens and specific address. Code: {@code}. Message: {@message}",
+                _logger?.LogError("Error while scan tokens balance for all tokens and specific address {@address}. Code: {@code}. Message: {@message}",
+                    address,
                     error.Value.Code,
                     error.Value.Message);
 
+                return;
+            }
+
+            if (tokenBalances == null)
+            {
+                _logger?.LogError("Error while scan tokens balance for all tokens and specific address {@address}. Token balances is null",
+                    address);
                 return;
             }
 
@@ -301,6 +329,8 @@ namespace Atomex.Wallet.Tezos
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
+
+            _logger?.LogInformation("Balance update for XTZ tokens address {@addr} completed", address);
         }
 
         /// <summary>
@@ -313,6 +343,10 @@ namespace Atomex.Wallet.Tezos
             BigInteger tokenId,
             CancellationToken cancellationToken = default)
         {
+            _logger?.LogInformation("Start balance update for XTZ token contract {@contract} and token id {@id}",
+                tokenContract,
+                tokenId.ToString());
+
             // all tezos addresses
             var xtzLocalAddresses = await _tezosAccount
                 .LocalStorage
@@ -350,10 +384,20 @@ namespace Atomex.Wallet.Tezos
 
             if (error != null)
             {
-                Log.Error("Error while scan tokens balance for specific token and all addresses. Code: {@code}. Message: {@message}",
+                _logger?.LogError("Error while scan tokens balance for specific token contract {@contract} and token id {@id} for all addresses. Code: {@code}. Message: {@message}",
+                    tokenContract,
+                    tokenId.ToString(),
                     error.Value.Code,
                     error.Value.Message);
 
+                return;
+            }
+
+            if (tokenBalances == null)
+            {
+                _logger?.LogError("Error while scan tokens balance for specific token contract {@contract} and token id {@id} for all addresses. Token balances is null",
+                    tokenContract,
+                    tokenId.ToString());
                 return;
             }
 
@@ -440,6 +484,10 @@ namespace Atomex.Wallet.Tezos
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
+
+            _logger?.LogInformation("Balance update for XTZ token contract {@contract} and token id {@id} completed",
+                tokenContract,
+                tokenId.ToString());
         }
 
         /// <summary>
@@ -453,6 +501,11 @@ namespace Atomex.Wallet.Tezos
             BigInteger tokenId,
             CancellationToken cancellationToken = default)
         {
+            _logger?.LogInformation("Start balance update for XTZ token contract {@contract} and token id {@id} for address {@addr}",
+                tokenContract,
+                tokenId.ToString(),
+                address);
+
             // tezos address
             var xtzAddress = (await _tezosAccount.LocalStorage
                 .GetAddressesAsync(TezosConfig.Xtz)
@@ -483,10 +536,22 @@ namespace Atomex.Wallet.Tezos
 
             if (error != null)
             {
-                Log.Error("Error while scan tokens balance for specific token and address. Code: {@code}. Message: {@message}",
+                _logger?.LogError("Error while scan tokens balance for specific token contract {@contract} and token id {@id} and address {@addr}. Code: {@code}. Message: {@message}",
+                    tokenContract,
+                    tokenId.ToString(),
+                    address,
                     error.Value.Code,
                     error.Value.Message);
 
+                return;
+            }
+
+            if (tokenBalances == null)
+            {
+                _logger?.LogError("Error while scan tokens balance for specific token contract {@contract} and token id {@id} and address {@addr}. Token balances is null",
+                    tokenContract,
+                    tokenId.ToString(),
+                    address);
                 return;
             }
 
@@ -571,6 +636,11 @@ namespace Atomex.Wallet.Tezos
                         cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
+
+            _logger?.LogInformation("Balance update for XTZ token contract {@contract} and token id {@id} for address {@addr} completed",
+                tokenContract,
+                tokenId.ToString(),
+                address);
         }
 
         private static string UniqueTokenId(string address, string contract, BigInteger tokenId) =>
@@ -627,7 +697,7 @@ namespace Atomex.Wallet.Tezos
 
             if (error != null)
             {
-                Log.Error("Error while get transfers. Code: {@code}. Message: {@message}",
+                _logger?.LogError("Error while get transfers. Code: {@code}. Message: {@message}",
                     error.Value.Code,
                     error.Value.Message);
 

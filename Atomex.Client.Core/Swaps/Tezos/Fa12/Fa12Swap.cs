@@ -720,7 +720,7 @@ namespace Atomex.Swaps.Tezos.Fa12
                     try
                     {
                         await Fa12Account
-                            .UpdateBalanceAsync(swap.ToAddress, cancellationToken)
+                            .UpdateBalanceAsync(swap.ToAddress, cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)

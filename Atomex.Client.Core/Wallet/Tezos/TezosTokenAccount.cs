@@ -1,11 +1,12 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
-
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 using Atomex.Abstract;
 using Atomex.Blockchain;
@@ -86,11 +87,6 @@ namespace Atomex.Wallet.Tezos
 
             var addressAmountInTokenDigits = addressFeeUsage.UsedAmount;
 
-            Log.Debug("Send {@amount} tokens from address {@address} with available balance {@balance}",
-                addressAmountInTokenDigits,
-                addressFeeUsage.WalletAddress.Address,
-                addressFeeUsage.WalletAddress.Balance);
-
             var (result, error) = await _tezosAccount
                 .SendTransactionAsync(
                     from: from,
@@ -113,11 +109,14 @@ namespace Atomex.Wallet.Tezos
             if (error != null)
                 return error;
 
+            if (result?.OperationId == null)
+                return new Error(Errors.TransactionBroadcastError, "Received operation Id is null");
+            
             return result.OperationId;
         }
 
         public async Task<long> EstimateFeeAsync(
-            string from,
+            string? from,
             TransactionType type,
             CancellationToken cancellationToken = default)
         {
@@ -177,7 +176,7 @@ namespace Atomex.Wallet.Tezos
         }
 
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
-            string from,
+            string? from,
             TransactionType type,
             bool reserve = false,
             CancellationToken cancellationToken = default)
@@ -299,7 +298,7 @@ namespace Atomex.Wallet.Tezos
 
         private async Task<long> FeeInMtzByType(
             TransactionType type,
-            string from,
+            string? from,
             CancellationToken cancellationToken = default)
         {
             var tokenConfig = TokenConfig;
@@ -368,7 +367,7 @@ namespace Atomex.Wallet.Tezos
             return tokenConfig.TransferStorageLimit * tokenConfig.StorageFeeMultiplier;
         }
 
-        protected async Task<SelectedWalletAddress> CalculateFundsUsageAsync(
+        protected async Task<SelectedWalletAddress?> CalculateFundsUsageAsync(
             string from,
             BigInteger amount,
             long fee,
@@ -407,10 +406,10 @@ namespace Atomex.Wallet.Tezos
 
             if (restBalanceInMtz < 0)
             {
-                Log.Debug("Unsufficient XTZ ammount for Tezos token processing on address {@address} with available balance {@balance} and needed amount {@amount}",
-                    fromAddress.Address,
-                    availableBalanceInMtz,
-                    txFeeInMtz + storageFeeInMtz + xtz.MicroTezReserve);
+                //Log.Debug("Unsufficient XTZ ammount for Tezos token processing on address {@address} with available balance {@balance} and needed amount {@amount}",
+                //    fromAddress.Address,
+                //    availableBalanceInMtz,
+                //    txFeeInMtz + storageFeeInMtz + xtz.MicroTezReserve);
 
                 return null;
             }
@@ -470,9 +469,10 @@ namespace Atomex.Wallet.Tezos
         }
 
         public async Task UpdateBalanceAsync(
+            ILogger? logger = null,
             CancellationToken cancellationToken = default)
         {
-            var scanner = new TezosTokensWalletScanner(_tezosAccount, TokenType);
+            var scanner = new TezosTokensWalletScanner(_tezosAccount, TokenType, logger);
 
             await scanner
                 .UpdateBalanceAsync(
@@ -484,9 +484,10 @@ namespace Atomex.Wallet.Tezos
 
         public async Task UpdateBalanceAsync(
             string address,
+            ILogger? logger = null,
             CancellationToken cancellationToken = default)
         {
-            var scanner = new TezosTokensWalletScanner(_tezosAccount, TokenType);
+            var scanner = new TezosTokensWalletScanner(_tezosAccount, TokenType, logger);
 
             await scanner
                 .UpdateBalanceAsync(
@@ -511,7 +512,7 @@ namespace Atomex.Wallet.Tezos
                 keyType: keyType);
 
             if (walletAddress == null)
-                return null;
+                throw new Exception($"Can't get wallet address for key path {keyPath} and key type {keyType}");
 
             walletAddress.Currency = TokenType;
 

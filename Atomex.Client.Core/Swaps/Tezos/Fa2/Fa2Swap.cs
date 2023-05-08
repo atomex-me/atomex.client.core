@@ -673,7 +673,7 @@ namespace Atomex.Swaps.Tezos.Fa2
                     try
                     {
                         await Fa2Account
-                            .UpdateBalanceAsync(swap.ToAddress, cancellationToken)
+                            .UpdateBalanceAsync(swap.ToAddress, cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)

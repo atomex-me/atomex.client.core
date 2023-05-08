@@ -1,4 +1,6 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -23,7 +25,7 @@ namespace Atomex.Services.BalanceUpdaters
         private readonly ITzktEventsClient _tzkt;
         private readonly TezosTokensWalletScanner[] _walletScanners;
 
-        private ISet<string> _addresses;
+        private ISet<string>? _addresses;
 
         public TezosTokenBalanceUpdater(
             IAccount account,
@@ -96,7 +98,7 @@ namespace Atomex.Services.BalanceUpdaters
             if (xtzAddresses.Count() <= 1)
             {
                 // firstly scan xtz
-                await new TezosWalletScanner(_tezosAccount)
+                await new TezosWalletScanner(_tezosAccount, _log)
                     .ScanAsync()
                     .ConfigureAwait(false);
 
@@ -174,7 +176,7 @@ namespace Atomex.Services.BalanceUpdaters
                         .NotifyOnTokenBalancesAsync(newAddresses, BalanceUpdatedHandler)
                         .ConfigureAwait(false);
 
-                    _addresses.UnionWith(newAddresses);
+                    _addresses!.UnionWith(newAddresses);
                 }
             }
             catch (Exception e)

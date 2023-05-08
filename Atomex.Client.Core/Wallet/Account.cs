@@ -1,4 +1,6 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
@@ -19,6 +21,7 @@ using Atomex.Cryptography.Abstract;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallets;
 using Atomex.Wallets.Abstract;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace Atomex.Wallet
 {
@@ -28,12 +31,12 @@ namespace Atomex.Wallet
         public const string DefaultDataFileName = "data.db";
         public string SettingsFilePath => $"{Path.GetDirectoryName(Wallet.PathToWallet)}/{DefaultUserSettingsFileName}";
 
-        public event EventHandler Locked;
-        public event EventHandler Unlocked;
+        public event EventHandler? Locked;
+        public event EventHandler? Unlocked;
 
         public bool IsLocked => Wallet.IsLocked;
         public Network Network => Wallet.Network;
-        public IHdWallet Wallet { get; }
+        public HdWallet Wallet { get; }
         public ICurrencies Currencies { get; }
         public UserData UserData { get; private set; }
 
@@ -41,7 +44,7 @@ namespace Atomex.Wallet
         private readonly IDictionary<string, ICurrencyAccount> _accountsCache;
 
         public Account(
-            IHdWallet wallet,
+            HdWallet wallet,
             ILocalStorage localStorage,
             ICurrenciesProvider currenciesProvider)
         {
@@ -58,11 +61,9 @@ namespace Atomex.Wallet
 
         public bool ChangePassword(SecureString newPassword)
         {
-            var hdWallet = Wallet as HdWallet;
+            Wallet.KeyStorage.Encrypt(newPassword);
 
-            hdWallet.KeyStorage.Encrypt(newPassword);
-
-            if (!hdWallet.SaveToFile(Wallet.PathToWallet, newPassword))
+            if (!Wallet.SaveToFile(Wallet.PathToWallet, newPassword))
                 return false;
 
             UserData.SaveToFile(SettingsFilePath);
@@ -195,10 +196,11 @@ namespace Atomex.Wallet
             string currency,
             string? tokenContract = null,
             BigInteger? tokenId = null,
+            ILogger? logger = null,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency, tokenContract, tokenId)
-                .UpdateBalanceAsync(cancellationToken);
+                .UpdateBalanceAsync(logger, cancellationToken);
         }
 
         public Task UpdateBalanceAsync(
@@ -206,10 +208,11 @@ namespace Atomex.Wallet
             string address,
             string? tokenContract = null,
             BigInteger? tokenId = null,
+            ILogger? logger = null,
             CancellationToken cancellationToken = default)
         {
             return GetCurrencyAccount(currency, tokenContract, tokenId)
-                .UpdateBalanceAsync(address, cancellationToken);
+                .UpdateBalanceAsync(address, logger, cancellationToken);
         }
 
         #endregion Balances

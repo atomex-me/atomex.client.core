@@ -579,7 +579,7 @@ namespace Atomex.Swaps.Tezos
                     try
                     {
                         await _account
-                            .UpdateBalanceAsync(swap.ToAddress, cancellationToken)
+                            .UpdateBalanceAsync(swap.ToAddress, cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)

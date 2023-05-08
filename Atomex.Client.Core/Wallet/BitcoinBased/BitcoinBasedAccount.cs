@@ -1,4 +1,6 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.Numerics;
 using System.Linq;
@@ -16,6 +18,7 @@ using Atomex.Common;
 using Atomex.Wallet.Abstract;
 using Atomex.Wallets.Bips;
 using Atomex.Wallets;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace Atomex.Wallet.BitcoinBased
 {
@@ -150,6 +153,9 @@ namespace Atomex.Wallet.BitcoinBased
                 {
                     var address = spentOutput.DestinationAddress(Config.Network);
 
+                    if (address == null)
+                        return false; // todo error?
+
                     var walletAddress = await GetAddressAsync(
                             address: address,
                             cancellationToken: cancellationToken)
@@ -265,8 +271,8 @@ namespace Atomex.Wallet.BitcoinBased
         }
 
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
-            IEnumerable<BitcoinTxOutput> outputs,
-            string to,
+            IEnumerable<BitcoinTxOutput>? outputs,
+            string? to,
             decimal? fee,
             decimal? feeRate,
             CancellationToken cancellationToken = default)
@@ -277,6 +283,20 @@ namespace Atomex.Wallet.BitcoinBased
             // check if all outputs are available
             var availableOutputs = await GetAvailableOutputsAsync()
                 .ConfigureAwait(false);
+
+            if (outputs == null || !outputs.Any())
+            {
+                return new MaxAmountEstimation
+                {
+                    Error = new Error(
+                        code: Errors.InsufficientFunds,
+                        message: Resources.InsufficientFunds),
+                    ErrorHint = string.Format(
+                        Resources.InsufficientFundsDetails,
+                        0m,       // available
+                        Currency) // currency code
+                };
+            }
 
             if (outputs.Any(o => availableOutputs.FirstOrDefault(ao => ao.TxId == o.TxId && ao.Index == o.Index) == null))
             {
@@ -292,17 +312,6 @@ namespace Atomex.Wallet.BitcoinBased
                         Currency) // currency code
                 };
             }
-
-            if (outputs == null || !outputs.Any())
-                return new MaxAmountEstimation {
-                    Error = new Error(
-                        code: Errors.InsufficientFunds,
-                        message: Resources.InsufficientFunds),
-                    ErrorHint = string.Format(
-                        Resources.InsufficientFundsDetails,
-                        0m,       // available
-                        Currency) // currency code
-                };
 
             var availableInSatoshi = outputs.SumBigIntegers(o => o.Value);
 
@@ -372,6 +381,7 @@ namespace Atomex.Wallet.BitcoinBased
         #region Balances
 
         public override async Task UpdateBalanceAsync(
+            ILogger? logger = null,
             CancellationToken cancellationToken = default)
         {
             var scanner = new BitcoinBasedWalletScanner(this);
@@ -383,6 +393,7 @@ namespace Atomex.Wallet.BitcoinBased
 
         public override async Task UpdateBalanceAsync(
             string address,
+            ILogger? logger = null,
             CancellationToken cancellationToken = default)
         {
             var scanner = new BitcoinBasedWalletScanner(this);

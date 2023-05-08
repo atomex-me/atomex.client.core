@@ -1,7 +1,10 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 using Atomex.Abstract;
 using Atomex.Blockchain.Abstract;
@@ -71,10 +74,12 @@ namespace Atomex.Wallet.Abstract
         }
 
         public abstract Task UpdateBalanceAsync(
+            ILogger? logger = null,
             CancellationToken cancellationToken = default);
 
         public abstract Task UpdateBalanceAsync(
             string address,
+            ILogger? logger = null,
             CancellationToken cancellationToken = default);
 
         #endregion Balances

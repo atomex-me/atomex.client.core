@@ -256,7 +256,7 @@ namespace Atomex.Wallet
         public static HdKeyStorage LoadFromFile(string pathToFile, SecureString password)
         {
             if (!File.Exists(pathToFile))
-                throw new FileNotFoundException($"File {pathToFile} not found.");
+                throw new FileNotFoundException($"File {pathToFile} not found");
 
             if (new FileInfo(pathToFile).Length > MaxFileSizeInBytes)
                 throw new Exception("File is too large");
@@ -266,23 +266,24 @@ namespace Atomex.Wallet
             try
             {
                 using var stream = new FileStream(pathToFile, FileMode.Open);
-                var network = stream.ReadByte();
 
+                var networkByte = stream.ReadByte();
                 var encryptedBytes = stream.ReadBytes((int)stream.Length - 1);
 
-                var decryptedBytes = new AesCbc(
-                        keySize: AesKeySize,
-                        saltSize: AesSaltSize,
-                        iterations: AesRfc2898Iterations)
-                    .Decrypt(
-                        key: password.ToBytes(),
-                        ciphertext: encryptedBytes);
+                var aesCbc = new AesCbc(
+                    keySize: AesKeySize,
+                    saltSize: AesSaltSize,
+                    iterations: AesRfc2898Iterations);
+
+                var decryptedBytes = aesCbc.Decrypt(
+                    key: password.ToBytes(),
+                    ciphertext: encryptedBytes);
 
                 var json = Encoding.UTF8.GetString(decryptedBytes);
 
                 result = JsonConvert.DeserializeObject<HdKeyStorage>(json);
 
-                if (result.Network != (Network)network)
+                if (result.Network != (Network)networkByte)
                     throw new Exception("Wallet type does not match the type specified during creation");
 
                 if (result.Version != CurrentVersion)

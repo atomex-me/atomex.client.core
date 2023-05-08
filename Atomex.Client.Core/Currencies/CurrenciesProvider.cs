@@ -79,7 +79,7 @@ namespace Atomex
         
         public string CreateNestedConfig(string content)
         {
-            JObject jObjConfig = JObject.Parse(content);
+            var jObjConfig = JObject.Parse(content);
             IList<string> abstractCurrencies;
             IList<string> networkKeys = jObjConfig.Properties().Select(p => p.Name).ToList();
 
@@ -89,7 +89,7 @@ namespace Atomex
                 var network = jObjConfig[networkKey] as JObject;
                 
                 // filling abstract currencies
-                foreach (JObject currency in network.Values())
+                foreach (var currency in network.Values().Cast<JObject>())
                 {
                     if (currency.Value<bool>(nameof(ConfigKey.Abstract)))
                     {
@@ -109,7 +109,7 @@ namespace Atomex
                 }
 
                 // filling tokens
-                foreach (JObject currency in network.Values())
+                foreach (var currency in network.Values().Cast<JObject>())
                 {
                     if (currency.Value<bool>(nameof(ConfigKey.Abstract)) == true || 
                         currency.Value<string>(nameof(ConfigKey.BasedOn)) == null)

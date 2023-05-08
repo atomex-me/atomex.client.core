@@ -735,7 +735,7 @@ namespace Atomex.Swaps.Ethereum
                     try
                     {
                         await Erc20Account
-                            .UpdateBalanceAsync(swap.ToAddress, cancellationToken)
+                            .UpdateBalanceAsync(swap.ToAddress, cancellationToken: cancellationToken)
                             .ConfigureAwait(false);
                     }
                     catch (OperationCanceledException)

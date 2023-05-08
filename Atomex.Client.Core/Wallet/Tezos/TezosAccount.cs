@@ -1,14 +1,16 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 using Netezos.Forging.Models;
 using Netezos.Encoding;
-using Serilog;
 
 using Atomex.Abstract;
 using Atomex.Blockchain;
@@ -28,7 +30,7 @@ namespace Atomex.Wallet.Tezos
 {
     public class TezosAccount : CurrencyAccount, IEstimatable, IHasTokens
     {
-        private static TezosOperationPerBlockManager _operationsBatcher;
+        private static TezosOperationPerBlockManager? _operationsBatcher;
         public static TezosOperationPerBlockManager OperationsBatcher
         {
             get
@@ -109,8 +111,8 @@ namespace Atomex.Wallet.Tezos
             Fee fee,
             GasLimit gasLimit,
             StorageLimit storageLimit,
-            string entrypoint = null,
-            string parameters = null,
+            string? entrypoint = null,
+            string? parameters = null,
             CancellationToken cancellationToken = default)
         {
             if (fee == null)
@@ -250,6 +252,9 @@ namespace Atomex.Wallet.Tezos
 
             var operationId = JsonSerializer.Deserialize<string>(operationIdResponse);
 
+            if (operationId == null)
+                return new Error(Errors.RpcResponseError, "Received operation Id is null");
+
             var operation = new TezosOperation(operationRequest, operationId);
 
             // save operation in local db
@@ -269,9 +274,12 @@ namespace Atomex.Wallet.Tezos
 
         public async Task<Result<bool>> SignAsync(
             TezosOperationRequest operation,
-            byte[] prefix = null,
+            byte[]? prefix = null,
             CancellationToken cancellationToken = default)
         {
+            if (operation.From == null)
+                throw new ArgumentNullException(nameof(operation), message: "Operation must be managed and have a source address");
+
             var forgedOperations = await operation
                 .ForgeAsync()
                 .ConfigureAwait(false);
@@ -294,7 +302,7 @@ namespace Atomex.Wallet.Tezos
         public async Task<Result<byte[]>> SignAsync(
             string from,
             byte[] forgedOperations,
-            byte[] prefix = null,
+            byte[]? prefix = null,
             CancellationToken cancellationToken = default)
         {
             try
@@ -323,19 +331,15 @@ namespace Atomex.Wallet.Tezos
             }
             catch (Exception e)
             {
-                var error = $"Signing error: {e.Message}";
-
-                Log.Error(error);
-
-                return new Error(Errors.SigningError, error);
+                return new Error(Errors.SigningError, $"Signing error: {e.Message}");
             }
         }
 
         #endregion Signing
 
         public async Task<long> EstimateFeeAsync(
-            string from,
-            string to,
+            string? from,
+            string? to,
             TransactionType type,
             CancellationToken cancellationToken = default)
         {
@@ -502,12 +506,12 @@ namespace Atomex.Wallet.Tezos
 
         private async Task<long> FeeInMtzByType(
             TransactionType type,
-            string from,
+            string? from,
             CancellationToken cancellationToken = default)
         {
             var xtz = Config;
 
-            var isRevealed = await IsRevealedSourceAsync(from, cancellationToken)
+            var isRevealed = from != null && await IsRevealedSourceAsync(from, cancellationToken)
                 .ConfigureAwait(false);
 
             var revealFeeInMtz = !isRevealed
@@ -538,7 +542,7 @@ namespace Atomex.Wallet.Tezos
 
         private async Task<long> StorageFeeInMtzByTypeAsync(
             TransactionType type,
-            string to,
+            string? to,
             CancellationToken cancellationToken = default)
         {
             var xtz = Config;
@@ -564,17 +568,16 @@ namespace Atomex.Wallet.Tezos
                 : (xtz.StorageLimit + xtz.ActivationStorage) * xtz.StorageFeeMultiplier;
         }
 
-        public async Task<bool> IsRevealedSourceAsync(
+        public Task<bool> IsRevealedSourceAsync(
             string from,
             CancellationToken cancellationToken = default)
         {
-            return !string.IsNullOrEmpty(from) && await _tezosRevealChecker
-                .IsRevealedAsync(from, cancellationToken)
-                .ConfigureAwait(false);
+            return _tezosRevealChecker
+                .IsRevealedAsync(from, cancellationToken);
         }
 
         public async Task<bool> IsAllocatedDestinationAsync(
-            string to,
+            string? to,
             CancellationToken cancellationToken = default)
         {
             return !string.IsNullOrEmpty(to) && await _tezosAllocationChecker
@@ -585,9 +588,10 @@ namespace Atomex.Wallet.Tezos
         #region Balances
 
         public override async Task UpdateBalanceAsync(
+            ILogger? logger = null,
             CancellationToken cancellationToken = default)
         {
-            var scanner = new TezosWalletScanner(this);
+            var scanner = new TezosWalletScanner(account: this, logger);
 
             await scanner
                 .UpdateBalanceAsync(skipUsed: false, cancellationToken)
@@ -596,9 +600,10 @@ namespace Atomex.Wallet.Tezos
 
         public override async Task UpdateBalanceAsync(
             string address,
+            ILogger? logger = null,
             CancellationToken cancellationToken = default)
         {
-            var scanner = new TezosWalletScanner(this);
+            var scanner = new TezosWalletScanner(account: this, logger);
 
             await scanner
                 .UpdateBalanceAsync(address, cancellationToken)
@@ -703,6 +708,9 @@ namespace Atomex.Wallet.Tezos
             TezosOperation operation,
             CancellationToken cancellationToken = default)
         {
+            if (operation.From == null)
+                throw new ArgumentNullException(nameof(operation), message: "Operation must be managed and have a source address");
+
             var result = new TransactionMetadata
             {
                 Id = operation.Id,

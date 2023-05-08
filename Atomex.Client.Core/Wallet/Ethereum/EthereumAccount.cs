@@ -1,4 +1,6 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -20,12 +22,13 @@ using Atomex.Wallet.Abstract;
 using Atomex.Wallets;
 using Atomex.Wallets.Bips;
 using Atomex.Wallets.Abstract;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace Atomex.Wallet.Ethereum
 {
     public class EthereumAccount : CurrencyAccount, IEstimatable, IHasTokens
     {
-        private static ResourceLocker<string> _addressLocker;
+        private static ResourceLocker<string>? _addressLocker;
         public static ResourceLocker<string> AddressLocker
         {
             get
@@ -83,6 +86,9 @@ namespace Atomex.Wallet.Ethereum
 
                 if (gasPriceError != null)
                     return gasPriceError;
+
+                if (gasPrice == null)
+                    return new Error(Errors.GetGasPriceError, "Null gas price received");
 
                 maxFeePerGas = gasPrice.MaxFeePerGas;
                 maxPriorityFeePerGas = gasPrice.MaxPriorityFeePerGas;
@@ -230,6 +236,9 @@ namespace Atomex.Wallet.Ethereum
             if (error != null)
                 return error;
 
+            if (gasPrice == null)
+                return new Error(Errors.GetGasPriceError, "Null gas price received");
+
             return EthConfig.GetFeeInEth(GasLimitByType(type), gasPrice.MaxFeePerGas);
         }
 
@@ -245,7 +254,7 @@ namespace Atomex.Wallet.Ethereum
         }
 
         public async Task<MaxAmountEstimation> EstimateMaxAmountToSendAsync(
-            string from,
+            string? from,
             TransactionType type,
             long? gasLimit,
             decimal? maxFeePerGas,
@@ -253,10 +262,11 @@ namespace Atomex.Wallet.Ethereum
             CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(from))
-                return new EthereumMaxAmountEstimation
-                {
+            {
+                return new EthereumMaxAmountEstimation {
                     Error = new Error(Errors.FromAddressIsNullOrEmpty, Resources.FromAddressIsNullOrEmpty)
                 };
+            }
 
             //if (from == to)
             //    return new MaxAmountEstimation {
@@ -269,20 +279,21 @@ namespace Atomex.Wallet.Ethereum
                 .ConfigureAwait(false);
 
             if (fromAddress == null)
-                return new EthereumMaxAmountEstimation
-                {
+            {
+                return new EthereumMaxAmountEstimation {
                     Error = new Error(Errors.AddressNotFound, Resources.AddressNotFoundInLocalDb)
                 };
+            }
 
             var (estimatedGasPrice, estimateError) = await eth
                 .GetGasPriceAsync(cancellationToken)
                 .ConfigureAwait(false);
 
             if (estimateError != null)
-                return new EthereumMaxAmountEstimation
-                {
-                    Error = estimateError
-                };
+                return new EthereumMaxAmountEstimation { Error = estimateError };
+
+            if (estimatedGasPrice == null)
+                return new EthereumMaxAmountEstimation { Error = new Error(Errors.GetGasPriceError, "Null gas price received") };
 
             var gasLimitValue = gasLimit == null
                 ? GasLimitByType(type)
@@ -295,11 +306,13 @@ namespace Atomex.Wallet.Ethereum
             var feeInWei = gasLimitValue * maxFeePerGasValue;
 
             if (feeInWei == 0)
+            {
                 return new EthereumMaxAmountEstimation
                 {
                     GasPrice = estimatedGasPrice,
                     Error = new Error(Errors.InsufficientFee, Resources.TooLowFees),
                 };
+            }
 
             var reserveFeeInWei = ReserveFeeInWei(estimatedGasPrice.MaxFeePerGas);
 
@@ -308,6 +321,7 @@ namespace Atomex.Wallet.Ethereum
             var restAmountInWei = fromAddress.Balance - requiredFeeInWei;
 
             if (restAmountInWei < 0)
+            {
                 return new EthereumMaxAmountEstimation
                 {
                     Amount = restAmountInWei,
@@ -323,6 +337,7 @@ namespace Atomex.Wallet.Ethereum
                         Currency,
                         fromAddress.Balance)
                 };
+            }
 
             return new EthereumMaxAmountEstimation
             {
@@ -380,7 +395,8 @@ namespace Atomex.Wallet.Ethereum
         #region Balances
 
         public override async Task UpdateBalanceAsync(
-             CancellationToken cancellationToken = default)
+            ILogger? logger = null,
+            CancellationToken cancellationToken = default)
         {
             var scanner = new EthereumWalletScanner(this);
 
@@ -391,6 +407,7 @@ namespace Atomex.Wallet.Ethereum
 
         public override async Task UpdateBalanceAsync(
             string address,
+            ILogger? logger = null,
             CancellationToken cancellationToken = default)
         {
             var scanner = new EthereumWalletScanner(this);
@@ -454,7 +471,7 @@ namespace Atomex.Wallet.Ethereum
             return result;
         }
 
-        private async Task<SelectedWalletAddress> CalculateFundsUsageAsync(
+        private async Task<SelectedWalletAddress?> CalculateFundsUsageAsync(
             string from,
             BigInteger amount,
             long gasLimit,
@@ -469,9 +486,7 @@ namespace Atomex.Wallet.Ethereum
 
             var feeInWei = gasLimit * gasPrice.GweiToWei();
 
-            var restBalanceInWei = fromAddress.Balance -
-               amount -
-               feeInWei;
+            var restBalanceInWei = fromAddress.Balance - amount - feeInWei;
 
             if (restBalanceInWei < 0)
                 return null; // insufficient funds

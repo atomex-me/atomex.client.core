@@ -1,10 +1,12 @@
-﻿using System;
+﻿#nullable enable
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-using Serilog;
+using Microsoft.Extensions.Logging;
 
 using Atomex.Blockchain.Tezos;
 using Atomex.Blockchain.Tezos.Common;
@@ -23,16 +25,21 @@ namespace Atomex.Wallet.Tezos
 
         private int InternalLookAhead { get; } = DefaultInternalLookAhead;
         private readonly TezosAccount _account;
+        private readonly ILogger? _logger;
+
         private TezosConfig Config => _account.Config;
 
-        public TezosWalletScanner(TezosAccount account)
+        public TezosWalletScanner(TezosAccount account, ILogger? logger = null)
         {
             _account = account ?? throw new ArgumentNullException(nameof(account));
+            _logger = logger;
         }
 
         public async Task ScanAsync(
             CancellationToken cancellationToken = default)
         {
+            _logger?.LogInformation("Start balance scan for all XTZ addresses");
+
             try
             {
                 var scanParams = new[]
@@ -47,7 +54,7 @@ namespace Atomex.Wallet.Tezos
                 var operations = new List<TezosOperation>();
                 var walletAddresses = new List<WalletAddress>();
 
-                WalletAddress defautWalletAddress = null;
+                WalletAddress? defaultWalletAddress = null;
 
                 foreach (var (keyType, chain, lookAhead) in scanParams)
                 {
@@ -73,7 +80,7 @@ namespace Atomex.Wallet.Tezos
                             chain == Bip44.External &&
                             index == 0)
                         {
-                            defautWalletAddress = walletAddress;
+                            defaultWalletAddress = walletAddress;
                         }
 
                         var (ops, error) = await UpdateAddressAsync(
@@ -84,7 +91,10 @@ namespace Atomex.Wallet.Tezos
 
                         if (error != null)
                         {
-                            Log.Error("[TezosWalletScanner] ScanAsync error while scan {@address}", walletAddress.Address);
+                            _logger?.LogError("Error while scan XTZ address {@address}. Code: {@code}. Message: {@message}",
+                                walletAddress.Address,
+                                error.Value.Code,
+                                error.Value.Message);
                             return;
                         }
 
@@ -94,7 +104,10 @@ namespace Atomex.Wallet.Tezos
 
                             if (freeKeysCount >= lookAhead)
                             {
-                                Log.Debug("{@lookAhead} free keys found. Chain scan completed", lookAhead);
+                                _logger?.LogDebug("{@lookAhead} free keys found for key type {@keyType} and chain {@chain}. Chain scan completed",
+                                    lookAhead,
+                                    keyType,
+                                    chain);
                                 break;
                             }
                         }
@@ -123,8 +136,8 @@ namespace Atomex.Wallet.Tezos
                         .ConfigureAwait(false);
                 }
 
-                if (!walletAddresses.Any())
-                    walletAddresses.Add(defautWalletAddress);
+                if (walletAddresses.Count == 0 && defaultWalletAddress != null)
+                    walletAddresses.Add(defaultWalletAddress);
 
                 var _ = await _account
                     .LocalStorage
@@ -135,18 +148,22 @@ namespace Atomex.Wallet.Tezos
             }
             catch (OperationCanceledException)
             {
-                Log.Debug("[TezosWalletScanner] ScanAsync canceled");
+                _logger?.LogDebug("Scan canceled");
             }
             catch (Exception e)
             {
-                Log.Error(e, "[TezosWalletScanner] ScanAsync error: {@message}", e.Message);
+                _logger?.LogError(e, "Error while scan: {@message}", e.Message);
             }
+
+            _logger?.LogInformation("Balance scan for all XTZ addresses completed");
         }
 
         public async Task UpdateBalanceAsync(
             bool skipUsed = false,
             CancellationToken cancellationToken = default)
         {
+            _logger?.LogInformation("Start balance update for all XTZ addresses");
+
             try
             {
                 var updateTimeStamp = DateTime.UtcNow;
@@ -171,7 +188,10 @@ namespace Atomex.Wallet.Tezos
 
                     if (error != null)
                     {
-                        Log.Error("[TezosWalletScanner] UpdateBalanceAsync error while scan {@address}", walletAddress.Address);
+                        _logger?.LogError("Error while update balance for XTZ address {@address}. Code: {@code}. Message: {@message}",
+                            walletAddress.Address,
+                            error.Value.Code,
+                            error.Value.Message);
                         return;
                     }
 
@@ -201,22 +221,24 @@ namespace Atomex.Wallet.Tezos
             }
             catch (OperationCanceledException)
             {
-                Log.Debug("[TezosWalletScanner] UpdateBalanceAsync canceled");
+                _logger?.LogDebug("Balance update canceled");
             }
             catch (Exception e)
             {
-                Log.Error(e, "[TezosWalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
+                _logger?.LogError(e, "Error while update balance: {@message}", e.Message);
             }
+
+            _logger?.LogInformation("Balance update for all XTZ addresses completed");
         }
 
         public async Task UpdateBalanceAsync(
             string address,
             CancellationToken cancellationToken = default)
         {
+            _logger?.LogInformation("Start balance update for XTZ address {@address}", address);
+
             try
             {
-                Log.Debug("UpdateBalanceAsync for address {@address}", address);
-
                 var walletAddress = await _account
                     .LocalStorage
                     .GetAddressAsync(
@@ -227,7 +249,7 @@ namespace Atomex.Wallet.Tezos
 
                 if (walletAddress == null)
                 {
-                    Log.Error("[TezosWalletScanner] UpdateBalanceAsync error. Can't find address {@address} in local db", address);
+                    _logger?.LogError("Error while balance updating. Can't find address {@address} in local db", address);
                     return;
                 }
 
@@ -239,7 +261,10 @@ namespace Atomex.Wallet.Tezos
 
                 if (error != null)
                 {
-                    Log.Error("[TezosWalletScanner] UpdateBalanceAsync error while scan {@address}", address);
+                    _logger?.LogError("Error while balance updating for XTZ address {@address}. Code: {@code}. Message: {@message}",
+                        address,
+                        error.Value.Code,
+                        error.Value.Message);
                     return;
                 }
 
@@ -261,17 +286,19 @@ namespace Atomex.Wallet.Tezos
             }
             catch (OperationCanceledException)
             {
-                Log.Debug("[TezosWalletScanner] UpdateBalanceAsync canceled");
+                _logger?.LogDebug("Balance updating canceled");
             }
             catch (Exception e)
             {
-                Log.Error(e, "[TezosWalletScanner] UpdateBalanceAsync error: {@message}", e.Message);
+                _logger?.LogError(e, "Error while update balance: {@message}", e.Message);
             }
+
+            _logger?.LogInformation("Balance update for XTZ address {@addr} completed", address);
         }
 
         private async Task<Result<IEnumerable<TezosOperation>>> UpdateAddressAsync(
             WalletAddress walletAddress,
-            TzktApi tzktApi = null,
+            TzktApi? tzktApi = null,
             CancellationToken cancellationToken = default)
         {
             var updateTimeStamp = DateTime.UtcNow;
@@ -284,7 +311,7 @@ namespace Atomex.Wallet.Tezos
 
             if (accountError != null)
             {
-                Log.Error("[TezosWalletScanner] ScanAddressAsync error. Can't get account for address: {@address}. Code: {@code}. Description: {@description}",
+                _logger?.LogError("Error while update balance for XTZ address {@address}. Can't get account for address from TzKT. Code: {@code}. Message: {@message}",
                     walletAddress.Address,
                     accountError.Value.Code,
                     accountError.Value.Message);
@@ -292,10 +319,10 @@ namespace Atomex.Wallet.Tezos
                 return accountError;
             }
 
-            walletAddress.Balance = account.Balance;
+            walletAddress.Balance = account?.Balance ?? 0;
             walletAddress.UnconfirmedIncome = 0;
             walletAddress.UnconfirmedOutcome = 0;
-            walletAddress.HasActivity = account.NumberOfTransactions > 0 || account.TokenBalancesCount > 0;
+            walletAddress.HasActivity = account?.NumberOfTransactions > 0 || account?.TokenBalancesCount > 0;
 
             var (ops, opsError) = await tzktApi
                 .GetOperationsByAddressAsync(
@@ -308,7 +335,7 @@ namespace Atomex.Wallet.Tezos
 
             if (opsError != null)
             {
-                Log.Error("[TezosWalletScanner] UpdateBalanceAsync error. Can't get txs for address: {@address}. Code: {@code}. Description: {@description}",
+                _logger?.LogError("Error while get transactions for XTZ address {@address}. Code: {@code}. Message: {@message}",
                     walletAddress.Address,
                     opsError.Value.Code,
                     opsError.Value.Message);
