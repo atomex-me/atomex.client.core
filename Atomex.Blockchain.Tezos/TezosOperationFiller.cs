@@ -61,8 +61,6 @@ namespace Atomex.Blockchain.Tezos
 
             var counter = int.Parse(accountInfo.Counter) + 1;
 
-            var operations = new List<ManagerOperationContent>();
-
             if (!isRevealed)
             {
                 var revealContent = new RevealContent
@@ -88,15 +86,15 @@ namespace Atomex.Blockchain.Tezos
 
                 modifiedRequests.AddRange(operationsRequests);
                 operationsRequests = modifiedRequests;
-
-                operations.Add(revealContent);
             }
+
+            var operationsContents = new List<ManagerOperationContent>();
 
             foreach (var request in operationsRequests)
             {
                 request.Content.Counter = counter++;
 
-                operations.Add(request.Content);
+                operationsContents.Add(request.Content);
             }
 
             var header = headOffset != 0
@@ -126,7 +124,7 @@ namespace Atomex.Blockchain.Tezos
             }
 
             return new TezosOperationRequest(
-                operationsContents: operations,
+                operationsContents: operationsContents,
                 branch: header.Hash,
                 isAutoFilled: isAutoFilled);
         }
